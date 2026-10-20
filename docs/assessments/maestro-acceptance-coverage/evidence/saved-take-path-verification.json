@@ -1,0 +1,19 @@
+{
+  "utc": "2026-10-20T18:03:48.082608+00:00",
+  "row": {
+    "id": "rec_mvgyi6ut_qg018vsu",
+    "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvgyi6ut_qg018vsu.m4a",
+    "duration_ms": "95675",
+    "file_size_bytes": "1168949",
+    "sync_status": "uploaded",
+    "recorded_by_user_id": "10"
+  },
+  "exact_file_size_bytes": 1168949,
+  "exact_path_existing": true,
+  "account_state": {
+    "active_user_id": "12",
+    "known_user_ids": "10,9,12"
+  },
+  "read_only": true,
+  "audio_content_verified": false
+}

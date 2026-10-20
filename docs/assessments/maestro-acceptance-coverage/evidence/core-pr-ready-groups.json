@@ -89,5 +89,6 @@
     ],
     "validation": "2newPASS; lint/typecheck/formatPASS",
     "limits": "Mockedqueue/DBmarks; no actual DB account filtering or AuthSessionProvider/UI switch proof"
-  }
+  },
+  "superseded_for_PR_scope": "per-issue-pr-plan.json; one focused PR per issue required. Historical grouping is evidence-only."
 }

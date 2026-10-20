@@ -1,8 +1,8 @@
 {
   "schema": "fluent-core-integrity-milestone/v1",
-  "consolidated_utc": "2026-10-20T17:00:57.378948+00:00",
-  "HEAD_before_documentation": "ee55f09",
-  "scope": "Issue-derived isolated core and adapter integration evidence. No newly executed live tests in this consolidation. No whole-app percentage.",
+  "consolidated_utc": "2026-10-20T18:04:44.573366+00:00",
+  "HEAD_before_documentation": "f643d30",
+  "scope": "Issue-derived isolated core/adapter regression evidence plus separately labeled direct-device recording receipts. No whole-app percentage.",
   "issues": [
     {
       "issue": 726,
@@ -97,6 +97,18 @@
       ],
       "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/731",
       "status": "fixed locally;isolated regression verified;not pushed/merged or live E2E verified"
+    },
+    {
+      "issue": 732,
+      "commits": [
+        "f643d30"
+      ],
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/732",
+      "failure": "Retained take UI badge stayed pending after native DB recorded uploaded.",
+      "fail_before": "3new regression cases FAIL",
+      "pass_after": "55PASS=52existing+3new;lint/typecheck/formatPASS",
+      "status": "Fixed locally and isolated tests verified; runtime patch application and live transition unverified",
+      "receipt": "take-badge-checkpoint.json"
     }
   ],
   "combined_sync_validation": {
@@ -207,5 +219,14 @@
     "accurate live progress,pause/retry,offline/reconnect andloss/duplication checks",
     "recording/disposablecapture,recovery andpopulatedresources once verified project12pairing manifest arrives"
   ],
-  "restrictions": "No browser/device fixture writes, password/credential access, reset, role mutation, push/merge or report-only test rerun."
+  "restrictions": "No browser/device fixture writes, password/credential access, reset, role mutation, push/merge or report-only test rerun.",
+  "one_PR_per_issue_required": true,
+  "prior_grouped_PR_metadata_superseded": true,
+  "live_recording_receipt": "device-completion-summary.json",
+  "latest_live_pending": [
+    "Confirm supported runtime reload applied current local fixes; verify badge event transition",
+    "Known non-silent capture/playback and controlled capture resume/recovery require next disposable-capture scope; preserve existing saved take",
+    "Controlled queued upload pause/retry/offline/reconnect and independent server agreement remain unverified",
+    "Populated resource fixture and verified additional role states remain required"
+  ]
 }

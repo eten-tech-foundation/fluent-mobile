@@ -30,25 +30,25 @@
       "unresolved": 7
     },
     "canonical_live_status": {
-      "BLOCKED": 162,
-      "PASS": 10,
+      "BLOCKED": 161,
+      "PASS": 11,
       "UNTESTED": 30
     },
     "canonical_execution_coverage": {
-      "complete_for_requirement": 10,
-      "not_run": 154,
-      "partial": 38
+      "complete_for_requirement": 11,
+      "partial": 39,
+      "not_run": 152
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
-      "BLOCKED": 70,
-      "PASS": 9,
+      "BLOCKED": 69,
+      "PASS": 10,
       "UNTESTED": 7
     },
     "eligible_current_atomic_execution_coverage": {
-      "complete_for_requirement": 9,
-      "not_run": 63,
-      "partial": 14
+      "complete_for_requirement": 10,
+      "partial": 15,
+      "not_run": 61
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -59,7 +59,8 @@
       "D-0190-02",
       "D-0235-02",
       "D-0407-02",
-      "D-0564-01"
+      "D-0564-01",
+      "B-0004-01"
     ],
     "any_partial_live_evidence_candidate_ids": [
       "A-0001-01",
@@ -102,7 +103,9 @@
       "C-0177-01",
       "C-0428-01",
       "C-0267-01",
-      "C-0483-01"
+      "C-0483-01",
+      "B-0001-01",
+      "B-0004-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -1570,8 +1573,14 @@
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Record-to-saved-audible-playback is one end-to-end user outcome; chrome entry is not its acceptance.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "evidence/device-completion-summary.json",
+          "relation": "partial",
+          "reason": "Real Android capture/pause marker/save/play/pause/seek observed on disposable assignment1183; silence does not prove audible acceptance."
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -1588,10 +1597,10 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Named disposable non-944 target; actual capture, commit and audible playback evidence."
+        "Known non-silent audio input and audible playback still unverified; preserved take is synthetic silence."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use permitted non-silent input on a separately authorized disposable capture; verify audible playback.",
       "source_title": "Record and play local draft audio",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/23",
@@ -1680,9 +1689,15 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Stable persisted local path is one data-integrity contract; mocked persistence does not verify Android storage.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "evidence/saved-take-path-verification.json",
+          "relation": "complete_for_requirement",
+          "reason": "Exact persisted DB local_file_path matched existing Android file and1168949byte size for preserved take; duration95675ms,owner10,uploaded status; read-only verification."
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -1692,9 +1707,7 @@
           "reason": "Observed PASS in /tmp/fluent-resource-take-contract-jest.json; injected/mocked native/storage/repository dependencies only, not Android/live grant proof."
         }
       ],
-      "missing_assertions_or_fixture": [
-        "Committed take with DB path and existing file; no capture target is authorized as disposable."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "expo-file-system audio storage paths",
@@ -6554,5 +6567,19 @@
     "new_account_adapter_PASS": 2,
     "live_acceptance_promoted": false
   },
-  "core_validation_does_not_change_live_atomic_counts": true
+  "core_validation_does_not_change_live_atomic_counts": true,
+  "latest_direct_recording_milestone": {
+    "utc": "2026-10-20T18:04:44.573366+00:00",
+    "receipt": "evidence/device-completion-summary.json",
+    "path_receipt": "evidence/saved-take-path-verification.json",
+    "no_new_Maestro_PASS": true,
+    "PDF_v18_cutoff": "9complete16partial61absent; exact file verification completed after render, currentledger10complete15partial61absent",
+    "pending": [
+      "non-silent capture/playback",
+      "capture resume/crash recovery",
+      "controlled interrupted upload",
+      "independent server readback",
+      "runtime patch application and badge transition"
+    ]
+  }
 }

@@ -1,0 +1,73 @@
+{
+  "schema": "fluent-live1183-completion/v1",
+  "finished_utc": "2026-10-20T17:37:08.108236+00:00",
+  "take": "rec_mvgyi6ut_qg018vsu",
+  "fixture": {
+    "project": 12,
+    "milestone": 19,
+    "assignment": 1183,
+    "drafter": 10,
+    "peer": 11,
+    "reference": "1 Peter1:1"
+  },
+  "single_take_preserved": true,
+  "synthetic_audio": "host microphone disabled;synthetic silence",
+  "pause_marker": {
+    "segments": 1,
+    "elapsed_ms": 95675
+  },
+  "saved": {
+    "duration_ms": 95675,
+    "bytes": 1168949,
+    "owner": 10,
+    "unit": 19,
+    "bible_text": 34844
+  },
+  "device_ack": {
+    "status": "uploaded",
+    "blob": "unit-19/text-34844",
+    "version": 2
+  },
+  "playback": "advanced0:02/1:35 thenpaused",
+  "seek": "midpoint0:47/1:35 verified;Playdraft afterseek",
+  "cleanup": {
+    "active_user": 12,
+    "cached_users": [
+      10,
+      9,
+      12
+    ],
+    "Home": true,
+    "capture_or_playback_active": false,
+    "take_deleted": false,
+    "host_microphone": "remains disabled"
+  },
+  "independent_server_readback": "BLOCKED: no authorized Fluent API tool or scoped browser controller in this lane; parent Work browser required",
+  "not_run": [
+    "capture resume",
+    "crash recovery",
+    "independent server readback",
+    "live patched badge transition"
+  ],
+  "Maestro": "INCOMPLETE: navigation timeout beforeRecord/start; later resultsdirectdevice only",
+  "runtime_code_scope": "Existing development build reopened at observed localMetro entry. No broad APK inspection; no claim isolated fixed lifecycle behavior independently exercised. Badge patch committed aftercleanup, runtime transition unverified.",
+  "badge_fix": {
+    "commit": "f643d30",
+    "new_PASS": 3,
+    "existing_PASS": 52,
+    "total_PASS": 55,
+    "new_FAIL_before": 3,
+    "lint_typecheck_format": "PASS",
+    "issue_publication": "PUBLISHED",
+    "issue_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/732"
+  },
+  "no_push_merge": true,
+  "runtime_update_check": {
+    "observed_route": "in-app Tools bubble",
+    "result": "No exactReload control appeared; no reload sent",
+    "source_application_confirmed": false,
+    "current_screen": "Home",
+    "take_mutation": false
+  },
+  "server_handoff": "server-readback-handoff.md"
+}

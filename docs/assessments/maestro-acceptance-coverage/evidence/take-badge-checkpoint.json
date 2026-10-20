@@ -1,0 +1,24 @@
+{
+  "commit": "f643d3030b85499bb22f4a92c357dc995f03ad32",
+  "files": {
+    "src/hooks/useVerseAudio.ts": "4c9521747530b155f0d3df8808e360578fc37b620b56b20b0547e8c4f38892a1",
+    "src/hooks/useVerseAudio.test.tsx": "035ef4051df249ff74d42bd34fe874e420513bdb4c331efffb85ba78f23fd685"
+  },
+  "new_PASS": 3,
+  "existing_PASS": 52,
+  "total_PASS": 55,
+  "red_new_FAIL": 3,
+  "lint": "PASS",
+  "typecheck": "PASS",
+  "format": "PASS",
+  "runtime_fix_verified": false,
+  "issue_publication": "PUBLISHED",
+  "draft": "stale-take-badge-issue-draft.md",
+  "hooks": "normal repository hooks; no override",
+  "issue_publication_history": [
+    "DENIED before execution by automatic approval review: specific publication confirmation pending",
+    "Specific explicit user authorization supplied after denial; duplicate checked; mattrace-gloo verified; single retry succeeded"
+  ],
+  "issue_url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/732",
+  "runtime_update_check": "Observed current in-app Tools control did not expose Reload; no reload command sent; no reset/reinstall/new recording"
+}

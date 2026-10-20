@@ -1,0 +1,1147 @@
+{
+  "schema": "fluent-per-issue-pr-separation/v1",
+  "created_utc": "2026-10-20",
+  "mode": "PLAN ONLY; no patches, branches, history changes, tests, publication, push or merge performed",
+  "base_reference": "758d4b04a9ca81e1ed6228e9d30df1fc80014f5d",
+  "observed_head": "f643d3030b85499bb22f4a92c357dc995f03ad32",
+  "policy": "One PR per issue726,728,729,730,731,732;724 coherent theme PR;717 QA packet.725 has no policy fix. This plan supersedes grouped metadata and mixed commit trailers as PR-boundary guidance. Do not rewrite existing history without separate authorization.",
+  "prs": [
+    {
+      "issue": 726,
+      "title": "Invalidate stopped upload work and isolate restarted upload lifecycle",
+      "commits": [
+        {
+          "commit": "5c2c5ee824b4754996348f6b75be62afcbb6af26",
+          "selection": "All uploadOrchestratorCore.ts changes; only two lifecycle tests plus required harness pending-queue injection. Exclude two generic tests to717.",
+          "files": [
+            "src/services/uploadOrchestrator.test.ts",
+            "src/services/uploadOrchestratorCore.ts"
+          ]
+        },
+        {
+          "commit": "e8ef9c160901d586fe717398621bc60f94d2917f",
+          "selection": "entire commit",
+          "files": [
+            "src/services/uploadOrchestrator.test.ts",
+            "src/services/uploadOrchestratorCore.ts"
+          ]
+        },
+        {
+          "commit": "ee55f09de48a60aae0deb6fefae1bcf207a29113",
+          "selection": "entire commit",
+          "files": [
+            "src/services/uploadAccountReplacement.test.ts"
+          ]
+        }
+      ],
+      "tests": [
+        "does not upload from an old session when a transport probe resolves after stop",
+        "does not start a worker when a pending-queue read resolves after stop",
+        "lets a restarted lifecycle finish fresh work before an old transport probe settles",
+        "lets a restarted lifecycle drain fresh work without waiting for an old pending-queue read",
+        "does not let an old preflight finalizer unlock a restarted lifecycle still probing",
+        "ignores an old post-upload queue read instead of publishing progress into a restarted session",
+        "uploadAccountReplacement.test.ts: both real-adapter account-replacement cases"
+      ],
+      "dependencies": [],
+      "ordering": "Land/reconstruct726 before729:729 source/test context uses lifecycleVersion/version guards and pending-queue harness introduced here. Adapter success-path coverage does not require730 or731.",
+      "scope": "Stopped/restarted lifecycle cancellation, singleton replacement, stale finalizer/preflight isolation."
+    },
+    {
+      "issue": 728,
+      "title": "Preserve newer paused markers during asynchronous orphan cleanup",
+      "commits": [
+        {
+          "commit": "b436e304242b0e1b0eca3502e85fcec6004eea8b",
+          "selection": "entire commit",
+          "files": [
+            "src/services/pausedTakes.test.ts",
+            "src/services/pausedTakes.ts"
+          ]
+        }
+      ],
+      "tests": [
+        "pausedTakes.test.ts: new session, updated kept session, replaced orphan session during deferred deletion"
+      ],
+      "dependencies": [],
+      "verification": [
+        "pausedTakes.test.ts",
+        "pausedTakeRecovery.test.ts",
+        "pausedTakeLaunchRecovery.test.ts"
+      ],
+      "scope": "Remove exact cleaned marker versions from a fresh read; no cancellation of old-file deletion already started."
+    },
+    {
+      "issue": 729,
+      "title": "Recheck pause cancel and connectivity after upload queue preflight",
+      "commits": [
+        {
+          "commit": "dc65d592cd3649fd741916013721dece06c29028",
+          "selection": "entire commit",
+          "files": [
+            "src/services/uploadOrchestrator.test.ts",
+            "src/services/uploadOrchestratorCore.ts"
+          ]
+        }
+      ],
+      "tests": [
+        "honors %s while the initial pending-queue read is unresolved, then drains once after recovery: pause,cancel,offline"
+      ],
+      "dependencies": [
+        726
+      ],
+      "ordering": "726 precedes729 for existing source and test context; keep one issue per PR even if stacked.",
+      "scope": "Recheck user pause, suppressed auto-start, and current transport after await pending queue."
+    },
+    {
+      "issue": 730,
+      "title": "Honor cancellation after version-token preflight before sending recording PUT",
+      "commits": [
+        {
+          "commit": "a3a91dd9fef4ffecf328a0a2177e0e8d66b73747",
+          "selection": "ONLY throwIfAborted(signal) and its two-line cancellation comment immediately after awaited getLatestVersionToken; ONLY named cancellation test. No didAcceptCleanResponse or acceptance catch changes.",
+          "files": [
+            "src/services/recordingSync.test.ts",
+            "src/services/recordingSync.ts"
+          ]
+        }
+      ],
+      "tests": [
+        "does not send a PUT when cancellation arrives during the local version-token lookup"
+      ],
+      "dependencies": [],
+      "independent_of": [
+        731
+      ],
+      "scope": "One abort guard and one named regression. Shared original commit/file is not a semantic dependency on731."
+    },
+    {
+      "issue": 731,
+      "title": "Avoid repeating accepted recording PUT after local acknowledgement failure",
+      "commits": [
+        {
+          "commit": "a3a91dd9fef4ffecf328a0a2177e0e8d66b73747",
+          "selection": "ONLY didAcceptCleanResponse declaration, set after valid clean response/blob extraction before markRecordingUploaded, and accepted-response catch/log/default-message changes. Include accepted-conflict and clean-marker-failure tests; exclude abort guard/cancellation test and owner-token retry test.",
+          "files": [
+            "src/services/recordingSync.test.ts",
+            "src/services/recordingSync.ts"
+          ]
+        }
+      ],
+      "tests": [
+        "does not retry a server-accepted conflict when its local atomic marker fails",
+        "does not repeat an accepted clean PUT when the local uploaded marker fails"
+      ],
+      "dependencies": [],
+      "independent_of": [
+        730
+      ],
+      "scope": "Accepted clean/conflict server responses are not resent due to local persistence failure; no runtime server durability guarantee."
+    },
+    {
+      "issue": 732,
+      "title": "Refresh retained Record-tab take badges on upload and recording events",
+      "commits": [
+        {
+          "commit": "f643d3030b85499bb22f4a92c357dc995f03ad32",
+          "selection": "entire commit",
+          "files": [
+            "src/hooks/useVerseAudio.test.tsx",
+            "src/hooks/useVerseAudio.ts"
+          ]
+        }
+      ],
+      "tests": [
+        "refreshes uploaded take badges from upload completion without interrupting playback",
+        "refreshes take data on recording mutation and unsubscribes after unmount",
+        "ignores an old-verse status refresh after navigation to a different verse"
+      ],
+      "dependencies": [],
+      "scope": "Separate data-only hook refresh; preserve playback/capture state; existing event APIs only.",
+      "metadata_correction": "Use Refs #732; historical commit publication-pending wording and #717-only reference do not define final PR scope.",
+      "runtime_limit": "Patched live badge transition not independently verified; retain isolated red3/green55 evidence."
+    },
+    {
+      "issue": 724,
+      "title": "Isolate Legacy and Next tokens and resolve shared chrome from active theme",
+      "commits": [
+        {
+          "commit": "414e0f6f04a36ce0e89f9a1c6d929fb7282b0e91",
+          "selection": "entire commit",
+          "files": [
+            "docs/guides/ui-version-theming.md",
+            "src/components/layout/AppHeader.tsx",
+            "src/components/layout/PageHeader.test.tsx",
+            "src/components/layout/SharedChromeTheme.test.tsx",
+            "src/components/layout/StackScreenHeader.tsx",
+            "src/components/layout/useHeaderSafeAreaPadding.ts",
+            "src/components/ui/ListCard.tsx",
+            "src/theme/legacyTheme.test.ts",
+            "src/theme/next.ts",
+            "src/theme/nextBaseline.ts"
+          ]
+        },
+        {
+          "commit": "628de360467660316ec7ce3cf75acdd876bdef30",
+          "selection": "entire commit",
+          "files": [
+            "src/components/layout/DraftingTabBar.test.tsx",
+            "src/components/layout/DraftingTabBar.tsx",
+            "src/components/layout/TabBar.test.tsx",
+            "src/components/layout/TabBar.tsx",
+            "src/components/ui/SettingsListRow.test.tsx",
+            "src/components/ui/SettingsListRow.tsx"
+          ]
+        },
+        {
+          "commit": "0566f4c05866b1dfa9485de50eab9ee9a268b723",
+          "selection": "entire commit",
+          "files": [
+            "src/components/ui/AccountSwitcherPanel.tsx",
+            "src/components/ui/Accountswitcherpanel.test.tsx"
+          ]
+        },
+        {
+          "commit": "713c756916ff0de5540e5b0d701f9fe1b21aa8fd",
+          "selection": "entire commit",
+          "files": [
+            "src/components/ui/UserSettingsMenu.test.tsx",
+            "src/components/ui/UserSettingsMenu.tsx",
+            "src/routes/(app)/_layout.tsx"
+          ]
+        },
+        {
+          "commit": "88485e0df76ab3b08ddee10d3b49c07d59211a21",
+          "selection": "entire commit",
+          "files": [
+            "src/components/ui/SyncActionControls.test.tsx",
+            "src/components/ui/SyncActionControls.tsx"
+          ]
+        },
+        {
+          "commit": "59c9685ce4f47f30ab321eda9a92c4f225c23fad",
+          "selection": "entire commit",
+          "files": [
+            "src/components/ui/SyncStatusIndicator.test.tsx",
+            "src/components/ui/SyncStatusIndicator.tsx"
+          ]
+        },
+        {
+          "commit": "67cfa7ec48569369823986834bbf7b5f79f045da",
+          "selection": "entire commit",
+          "files": [
+            "src/components/ui/CloudSyncStatusIcon.test.tsx",
+            "src/components/ui/CloudSyncStatusIcon.tsx"
+          ]
+        },
+        {
+          "commit": "703135f8345f58386fabd6296a97ed5e4fcc3f3e",
+          "selection": "entire commit",
+          "files": [
+            "src/components/ui/ReauthBanner.test.tsx",
+            "src/components/ui/ReauthBanner.tsx"
+          ]
+        }
+      ],
+      "dependencies": [],
+      "tests": [
+        "legacyTheme token parity/deep ownership and retained snapshot",
+        "SharedChromeTheme/PageHeader",
+        "TabBar/DraftingTabBar/SettingsListRow",
+        "Accountswitcherpanel/UserSettingsMenu",
+        "SyncActionControls/SyncStatusIndicator/CloudSyncStatusIcon/ReauthBanner"
+      ],
+      "scope": "One coherent theme issue PR: current mode parity with independent immutable nested token objects and runtime shared-component styles. Keep future Figma inputs; do not claim rendered Lovable fidelity."
+    },
+    {
+      "issue": 717,
+      "title": "Maestro QA harness and clearly scoped acceptance evidence packet",
+      "commits": [
+        {
+          "commit": "b8ff4123f744abfd870092983e24f10f11f001b8",
+          "selection": "entire commit",
+          "files": [
+            ".eas/workflows/maestro-android.yml",
+            ".env.maestro.qa.example",
+            ".gitignore",
+            ".maestro/flows/accounts/multi-account-isolation.yaml",
+            ".maestro/flows/auth/logout.yaml",
+            ".maestro/flows/auth/session-restore.yaml",
+            ".maestro/flows/drafting/bible-verse-to-record.yaml",
+            ".maestro/flows/drafting/images-fullscreen.yaml",
+            ".maestro/flows/drafting/resources-sections.yaml",
+            ".maestro/flows/drafting/source-audio-dock.yaml",
+            ".maestro/flows/drafting/tabs.yaml",
+            ".maestro/flows/edges/cellular-toggle.yaml",
+            ".maestro/flows/edges/deep-link-home.yaml",
+            ".maestro/flows/edges/deep-link-signed-in.yaml",
+            ".maestro/flows/edges/mic-denied.yaml",
+            ".maestro/flows/edges/wrong-credentials.yaml",
+            ".maestro/flows/harness/launch.yaml",
+            ".maestro/flows/navigation/empty-assignments.yaml",
+            ".maestro/flows/navigation/my-work-to-drafting.yaml",
+            ".maestro/flows/navigation/projects-to-drafting.yaml",
+            ".maestro/flows/navigation/tab-switching.yaml",
+            ".maestro/flows/offline/storage-management.yaml",
+            ".maestro/flows/ownership/ownership-auto-claim.yaml",
+            ".maestro/flows/ownership/ownership-conflict.yaml",
+            ".maestro/flows/ownership/ownership-open-peer-check.yaml",
+            ".maestro/flows/ownership/ownership-states.yaml",
+            ".maestro/flows/ownership/ownership-taken-warning.yaml",
+            ".maestro/flows/recording/record-stop-play-delete.yaml",
+            ".maestro/flows/recording/recording-nav-guard.yaml",
+            ".maestro/flows/recording/take-view-toggle.yaml",
+            ".maestro/flows/recording/verse-bounds.yaml",
+            ".maestro/flows/sync/prepare-offline-entry.yaml",
+            ".maestro/flows/sync/record-to-synced.yaml",
+            ".maestro/flows/sync/settings-persistence.yaml",
+            ".maestro/flows/sync/sync-now.yaml",
+            ".maestro/helpers/boot-past-dev-launcher.yaml",
+            ".maestro/helpers/dismiss-expo-dev-menu.yaml",
+            ".maestro/helpers/launch-android-mic-warm.yaml",
+            ".maestro/helpers/launch-android-warm.yaml",
+            ".maestro/shared/ensure/ensure-home-settled.yaml",
+            ".maestro/shared/ensure/ensure-on-login.yaml",
+            ".maestro/shared/ensure/ensure-warm-home.yaml",
+            ".maestro/shared/ensure/ensure-warm-session.yaml",
+            ".maestro/shared/nav/open-any-chapter.yaml",
+            ".maestro/shared/nav/open-my-work-chapter.yaml",
+            ".maestro/shared/nav/sync-now-and-return.yaml",
+            "docs/AGENT_ONBOARDING.md",
+            "docs/README.md",
+            "docs/assessments/chapter-assignment-and-claiming/README.md",
+            "docs/assessments/chapter-assignment-and-claiming/tickets/maestro-ownership-claim-fixtures.md",
+            "docs/assessments/going-offline/README.md",
+            "docs/assessments/offline-chapter-assignment/README.md",
+            "docs/assessments/pericope-view/README.md",
+            "docs/assessments/play-record-rerecord-audio/README.md",
+            "docs/assessments/returning-online-and-sync/README.md",
+            "docs/assessments/viewing-and-listening-to-resources/README.md",
+            "docs/documentation-hygiene.md",
+            "docs/features/next-ui-redesign/theme-figma-audit.md",
+            "docs/features/record-tab/design/README.md",
+            "docs/guides/api-client-standard.md",
+            "docs/guides/local-development-workflow.md",
+            "docs/guides/maestro.md",
+            "docs/guides/pericope-set-bundling.md",
+            "docs/guides/qa-multi-account-nightly.md",
+            "docs/guides/qa-preview-testing.md",
+            "docs/guides/recordings-sync-contract.md",
+            "docs/guides/ui-version-theming.md",
+            "docs/issue-tracking.md",
+            "docs/product-behavior/README.md",
+            "docs/product-behavior/core-flows.md",
+            "docs/product-behavior/roles-and-permissions.md",
+            "package.json",
+            "scripts/maestro-eas-slack-summary.sh",
+            "scripts/maestro-env-guard.cjs",
+            "scripts/maestro-env-guard.test.cjs",
+            "scripts/maestro-env.sh",
+            "scripts/maestro-fixture-guard.cjs",
+            "scripts/maestro-fixture-guard.test.cjs",
+            "scripts/maestro-scrub-artifacts.sh",
+            "scripts/maestro-test-qa.sh",
+            "scripts/maestro-test-stage1.sh",
+            "scripts/maestro-test.sh",
+            "scripts/maestro-verify-receipt.mjs",
+            "src/app/tabs/RecordTab.tsx",
+            "src/components/layout/SourceAudioPlayerBar.tsx",
+            "src/components/ui/DraftTakeRow.test.tsx",
+            "src/components/ui/DraftTakeRow.tsx",
+            "src/components/ui/SharedTakeRow.test.tsx",
+            "src/components/ui/SharedTakeRow.tsx",
+            "src/hooks/useVerseAudio.offlineClaim.test.ts",
+            "src/services/accountSession.test.ts",
+            "src/services/sync.auth.test.ts"
+          ]
+        },
+        {
+          "commit": "7d70a6f551ce20ee03f7e73c414a06942b993520",
+          "selection": "entire commit",
+          "files": [
+            "docs/guides/maestro-role-coverage.md",
+            "src/app/tabs/RecordTab.test.tsx",
+            "src/services/imagesMaps.test.ts",
+            "src/services/prepareOfflineResources.test.ts",
+            "src/services/translationNotes.test.ts",
+            "src/services/translationQuestions.test.ts",
+            "src/types/db/types.ts",
+            "src/utils/chapterTakenStatus.test.ts",
+            "src/utils/stageAdvancement.test.ts"
+          ]
+        },
+        {
+          "commit": "c81bd86d44eecda91dcaf16bb056200bbcb2355c",
+          "selection": "entire commit",
+          "files": [
+            "src/app/screens/HomeScreen.test.tsx",
+            "src/components/ui/CloudSyncStatusIcon.test.tsx",
+            "src/components/ui/CloudSyncStatusIcon.tsx"
+          ]
+        },
+        {
+          "commit": "77ef2be3de23e5ab0f03876c1450a7fd08a5ba80",
+          "selection": "entire commit",
+          "files": [
+            ".maestro/flows/offline/prepare-offline-entry-existing-session.yaml",
+            ".maestro/flows/sync/sync-entry-existing-session.yaml",
+            ".maestro/shared/nav/goto-home.yaml",
+            ".maestro/shared/nav/goto-sync.yaml",
+            "docs/assessments/maestro-existing-session/README.md",
+            "docs/assessments/maestro-sync721/README.md"
+          ]
+        },
+        {
+          "commit": "5334ff6aa69ae4227332ad2304fa3f8a0c70e7f9",
+          "selection": "entire commit",
+          "files": [
+            ".maestro/flows/edges/settings-privacy-existing-session.yaml",
+            ".maestro/flows/edges/settings-terms-existing-session.yaml",
+            "docs/assessments/maestro-settings-privacy-existing-session/README.md",
+            "docs/assessments/maestro-settings-terms-existing-session/README.md"
+          ]
+        },
+        {
+          "commit": "2a09688e10c92135925d333c4c9002b00abca3b5",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/issue-history-reconciliation/EXECUTIVE-FINDINGS.md",
+            "docs/assessments/issue-history-reconciliation/FINAL-report.md",
+            "docs/assessments/issue-history-reconciliation/README.md",
+            "docs/assessments/issue-history-reconciliation/coverage.csv",
+            "docs/assessments/issue-history-reconciliation/inventory/_count_completion_readonly.py",
+            "docs/assessments/issue-history-reconciliation/inventory/_deepen_product_pending.py",
+            "docs/assessments/issue-history-reconciliation/inventory/_recount_and_deepen.py",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c1-c3-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c1.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c1.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c2-c5-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c2.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c2.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c3.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c3.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c4-c6-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c4.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c4.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c5.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c5.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c6.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/c6.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r1-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r1.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r1.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r10-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r10.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r10.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r11-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r11.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r11.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r12-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r12.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r12.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r13-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r13.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r13.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r14-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r14.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r14.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r15-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r15.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r15.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r16-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r16.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r16.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r17-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r17.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r17.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r2-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r2.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r2.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r3-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r3.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r3.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r4-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r4.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r4.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r5-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r5.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r5.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r6-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r6.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r6.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r7-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r7.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r7.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r8-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r8.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r8.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r9-integration-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r9.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-integrations/r9.md",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-ownership.json",
+            "docs/assessments/issue-history-reconciliation/inventory/cohort-status.json",
+            "docs/assessments/issue-history-reconciliation/inventory/complete-row-contract.md",
+            "docs/assessments/issue-history-reconciliation/inventory/completion-counts.json",
+            "docs/assessments/issue-history-reconciliation/inventory/disposition-taxonomy.md",
+            "docs/assessments/issue-history-reconciliation/inventory/executive-findings.json",
+            "docs/assessments/issue-history-reconciliation/inventory/integrator-batch2.json",
+            "docs/assessments/issue-history-reconciliation/inventory/integrator-early-findings.json",
+            "docs/assessments/issue-history-reconciliation/inventory/integrator-lineage-batch.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issue-id-refresh-mattrace.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues-index.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues-inventory.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/1.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/10.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/100.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/101.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/102.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/103.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/104.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/105.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/106.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/107.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/108.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/109.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/110.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/111.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/112.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/113.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/114.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/115.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/116.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/117.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/118.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/119.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/12.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/120.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/121.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/122.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/123.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/124.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/125.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/132.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/133.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/137.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/139.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/14.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/146.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/147.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/149.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/15.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/150.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/151.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/152.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/159.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/16.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/17.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/170.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/173.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/176.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/177.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/18.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/188.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/189.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/19.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/190.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/191.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/192.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/193.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/2.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/201.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/204.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/205.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/206.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/211.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/214.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/217.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/219.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/22.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/221.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/23.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/233.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/234.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/235.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/236.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/238.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/240.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/249.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/253.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/255.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/256.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/257.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/258.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/259.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/260.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/261.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/267.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/268.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/269.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/270.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/271.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/273.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/274.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/275.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/276.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/277.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/279.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/282.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/289.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/291.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/292.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/293.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/294.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/298.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/3.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/300.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/31.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/314.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/317.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/319.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/32.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/324.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/326.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/329.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/33.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/330.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/333.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/343.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/347.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/348.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/36.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/365.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/366.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/367.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/368.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/369.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/370.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/371.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/372.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/373.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/374.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/375.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/376.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/377.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/378.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/379.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/38.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/380.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/39.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/4.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/40.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/404.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/405.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/407.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/408.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/409.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/41.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/410.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/411.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/412.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/417.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/420.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/422.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/423.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/424.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/428.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/435.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/438.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/442.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/443.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/446.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/447.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/448.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/451.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/452.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/459.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/464.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/469.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/47.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/470.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/474.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/476.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/48.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/483.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/484.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/485.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/486.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/488.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/489.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/49.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/490.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/491.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/492.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/493.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/494.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/495.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/496.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/497.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/498.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/499.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/5.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/50.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/503.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/504.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/505.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/508.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/51.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/510.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/513.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/516.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/52.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/526.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/527.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/528.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/529.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/53.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/530.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/531.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/532.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/533.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/534.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/536.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/540.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/542.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/544.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/545.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/546.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/547.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/548.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/549.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/553.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/554.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/564.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/567.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/568.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/569.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/570.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/571.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/572.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/574.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/578.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/579.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/580.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/581.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/584.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/585.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/586.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/587.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/588.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/589.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/591.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/592.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/593.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/594.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/595.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/596.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/597.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/599.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/6.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/600.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/601.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/602.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/603.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/604.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/605.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/607.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/610.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/611.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/612.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/613.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/615.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/617.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/619.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/620.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/621.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/622.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/623.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/638.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/642.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/665.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/670.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/675.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/679.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/683.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/691.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/692.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/694.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/695.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/696.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/7.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/701.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/702.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/703.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/704.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/707.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/71.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/716.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/717.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/718.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/719.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/720.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/721.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/77.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/8.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/84.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/85.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/86.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/87.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/88.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/89.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/9.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/90.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/91.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/92.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/93.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/94.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/95.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/96.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/97.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/98.json",
+            "docs/assessments/issue-history-reconciliation/inventory/issues/99.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/coverage-before-rollback-2026-10-20T004804Z.csv",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/INDEX.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/SHA256SUMS",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/review-receipts/fluent-audit-final-corrections.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/review-receipts/fluent-audit-final-review.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/review-receipts/fluent-audit-frozen-final.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/review-receipts/fluent-audit-independent-review.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r1.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r1.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r10-prompt.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r10.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r10.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r11-prompt.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r11.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r11.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r12-prompt.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r12.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r12.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r13-prompt.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r13.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r13.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r14-prompt.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r14.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r14.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r15-prompt.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r15.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r15.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r16-prompt.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r16.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r16.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r17-prompt.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r17.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r17.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r2.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r2.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r3.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r3.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r4.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r4.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r5.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r5.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r6.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r6.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r7.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r7.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r8.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r8.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r9.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/wave-outputs/fluent-issue-review-r9.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/retired-semantic-completion-scripts/RETIRED.md",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/retired-semantic-completion-scripts/_deepen_product_pending.py",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/retired-semantic-completion-scripts/_recount_and_deepen.py",
+            "docs/assessments/issue-history-reconciliation/inventory/retired-semantic-completion-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/retrieval-provenance.json",
+            "docs/assessments/issue-history-reconciliation/inventory/reviewer-wave1-assignments.json",
+            "docs/assessments/issue-history-reconciliation/inventory/reviewer-wave2-assignments.json",
+            "docs/assessments/issue-history-reconciliation/inventory/reviewer-wave3-assignments.json",
+            "docs/assessments/issue-history-reconciliation/inventory/reviewer-wave4-assignments.json",
+            "docs/assessments/issue-history-reconciliation/inventory/rollback-bulk-completion-receipt.json",
+            "docs/assessments/issue-history-reconciliation/inventory/sync721-maestro-correction-receipt.md",
+            "docs/assessments/issue-history-reconciliation/inventory/sync721-reconnect-receipt.md"
+          ]
+        },
+        {
+          "commit": "dbf5c3421d45a52ea96685f741010d18d51f62ea",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/issue-history-reconciliation/EXECUTIVE-FINDINGS.md",
+            "docs/assessments/issue-history-reconciliation/FINAL-report.md",
+            "docs/assessments/issue-history-reconciliation/README.md",
+            "docs/assessments/issue-history-reconciliation/coverage.csv",
+            "docs/assessments/issue-history-reconciliation/inventory/executive-findings.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/INDEX.json",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/SHA256SUMS",
+            "docs/assessments/issue-history-reconciliation/inventory/provenance/frozen-final/review-receipts/fluent-auth-lineage-correction.md"
+          ]
+        },
+        {
+          "commit": "c9d400b4ddab5e64a1ccf798ac4f46c5c305ed8e",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/issue-history-reconciliation/GAP-REGISTER.md",
+            "docs/assessments/issue-history-reconciliation/inventory/gap-register.json"
+          ]
+        },
+        {
+          "commit": "75d12874d48c3f927c71fa0fcf0036f87a2d871d",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/maestro-web-role-parity/README.md",
+            "docs/assessments/maestro-web-role-parity/observations.json"
+          ]
+        },
+        {
+          "commit": "0c13a3284e4360ae5a2197610bcb406d4721ce13",
+          "selection": "entire commit",
+          "files": [
+            ".maestro/flows/accounts/cached-switch-existing-session.yaml",
+            ".maestro/flows/drafting/resources-empty-existing-session.yaml",
+            ".maestro/flows/drafting/resources-populated-existing-session.yaml",
+            ".maestro/flows/drafting/tabs-existing-session.yaml",
+            ".maestro/flows/navigation/home-tabs-existing-session.yaml",
+            ".maestro/flows/navigation/my-work-to-drafting-existing-session.yaml",
+            ".maestro/flows/offline/pfo-download-button-persist.yaml",
+            ".maestro/flows/ownership/ownership-status-existing-session.yaml",
+            ".maestro/flows/recording/take-view-existing-session.yaml",
+            ".maestro/flows/recording/verse-bounds-existing-session.yaml",
+            ".maestro/flows/sync/status-existing-session.yaml",
+            ".maestro/helpers/dismiss-expo-dev-menu.yaml",
+            ".maestro/shared/scripts/cached-switch-selectors.js",
+            ".maestro/shared/scripts/fixture-row-values.js",
+            ".maestro/shared/scripts/ownership-status-values.js",
+            ".maestro/shared/scripts/pfo-selector-values.js",
+            ".maestro/shared/scripts/resources-empty-values.js",
+            ".maestro/shared/scripts/resources-populated-values.js",
+            ".maestro/shared/scripts/sync-status-values.js",
+            ".maestro/shared/scripts/take-view-values.js",
+            ".maestro/shared/scripts/verse-bounds-values.js",
+            "docs/assessments/maestro-acceptance-coverage/README.md",
+            "docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-receipt.md",
+            "package.json",
+            "src/hooks/useVerseAudio.test.tsx",
+            "src/services/api.translationResources.test.ts"
+          ]
+        },
+        {
+          "commit": "17102f2ed3a0110fe75eac388273815e830e54c3",
+          "selection": "entire commit",
+          "files": [
+            ".maestro/flows/drafting/bible-verse-opens-record-existing-session.yaml",
+            ".maestro/shared/scripts/bible-record-values.js",
+            "docs/assessments/maestro-acceptance-coverage/README.md",
+            "docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-receipt.md"
+          ]
+        },
+        {
+          "commit": "d3f2274116f8d3b5d0c4afb84b7e5389db1a7568",
+          "selection": "entire commit",
+          "files": [
+            "src/app/tabs/RecordTab.test.tsx",
+            "src/components/ui/Accountswitcherpanel.test.tsx"
+          ]
+        },
+        {
+          "commit": "e610e039220bba609712ec4a62fe69a586becd84",
+          "selection": "entire commit",
+          "files": [
+            ".maestro/flows/accounts/three-account-cap-existing-session.yaml",
+            ".maestro/flows/recording/complete-idle-lock-existing-session.yaml",
+            "docs/assessments/maestro-acceptance-coverage/README.md",
+            "docs/assessments/maestro-acceptance-coverage/evidence-reconciliation.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-receipt.md"
+          ]
+        },
+        {
+          "commit": "7def8c60065d8d9cb87a4ed09af138e119d7d910",
+          "selection": "entire commit",
+          "files": [
+            ".maestro/flows/drafting/empty-resources-tab-order-existing-session.yaml",
+            ".maestro/flows/offline/pfo-header-copy-existing-session.yaml",
+            "docs/assessments/maestro-acceptance-coverage/README.md",
+            "docs/assessments/maestro-acceptance-coverage/evidence-reconciliation.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-receipt.md"
+          ]
+        },
+        {
+          "commit": "523d3adcf8a5f511b5c6387f39f4b969a8aabf7a",
+          "selection": "entire commit",
+          "files": [
+            ".maestro/flows/drafting/settings-unit-persist-existing-session.yaml",
+            "docs/assessments/maestro-acceptance-coverage/README.md",
+            "docs/assessments/maestro-acceptance-coverage/evidence-reconciliation.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-receipt.md"
+          ]
+        },
+        {
+          "commit": "a2fc3f5bae3d2fa80c7bcf87659f56dc1ea0f5f9",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/maestro-sync721/README.md"
+          ]
+        },
+        {
+          "commit": "50243ee4e6b8c8233a6c22fce3139b56b3c33418",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/maestro-acceptance-coverage/evidence/assertion-evidence.json",
+            "docs/assessments/maestro-acceptance-coverage/execution-protocol.md"
+          ]
+        },
+        {
+          "commit": "a4a9c83db0f6c5643a3fe71c68c1b26ede67689b",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/maestro-acceptance-coverage/evidence/fixture-source-capabilities.json",
+            "docs/assessments/maestro-acceptance-coverage/fixture-capabilities.md",
+            "docs/assessments/maestro-acceptance-coverage/fixtures/disposable-project12.json"
+          ]
+        },
+        {
+          "commit": "d34ee0b6adb279cb6ea666d5f26ac9c19bae45cb",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/maestro-acceptance-coverage/evidence/fixture-source-capabilities.json",
+            "docs/assessments/maestro-acceptance-coverage/fixture-capabilities.md"
+          ]
+        },
+        {
+          "commit": "9bcf837ac5467b1b4769b0b8a159c3eb275ea086",
+          "selection": "entire commit",
+          "files": [
+            "src/app/tabs/LoginScreen.test.tsx",
+            "src/app/tabs/PrivacyPolicyPage.test.tsx",
+            "src/app/tabs/TermsOfUsePage.test.tsx"
+          ]
+        },
+        {
+          "commit": "9f52d67b0590a9952d27e55c84f87cd415ef12f1",
+          "selection": "entire commit",
+          "files": [
+            ".maestro/flows/edges/settings-privacy-existing-session.yaml",
+            ".maestro/flows/edges/settings-terms-existing-session.yaml",
+            "docs/assessments/maestro-acceptance-coverage/README.md",
+            "docs/assessments/maestro-acceptance-coverage/evidence-reconciliation.json",
+            "docs/assessments/maestro-acceptance-coverage/evidence/legal-functional-checks.json",
+            "docs/assessments/maestro-acceptance-coverage/fixture-capabilities.md",
+            "docs/assessments/maestro-acceptance-coverage/fixtures/disposable-project12.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-receipt.md",
+            "docs/assessments/maestro-settings-privacy-existing-session/README.md",
+            "docs/assessments/maestro-settings-terms-existing-session/README.md"
+          ]
+        },
+        {
+          "commit": "47288d0d28d06d27eee94570d57ab5e3f3b0a80b",
+          "selection": "entire commit",
+          "files": [
+            ".maestro/flows/edges/settings-privacy-existing-session.yaml",
+            ".maestro/flows/edges/settings-terms-existing-session.yaml",
+            "docs/assessments/maestro-acceptance-coverage/evidence/legal-functional-checks.json"
+          ]
+        },
+        {
+          "commit": "af757c7b6491d03f429c5cdb89c365d85ef25115",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/maestro-acceptance-coverage/README.md",
+            "docs/assessments/maestro-acceptance-coverage/evidence-reconciliation.json",
+            "docs/assessments/maestro-acceptance-coverage/evidence/legal-functional-checks.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-receipt.md"
+          ]
+        },
+        {
+          "commit": "dd23b03eaee7cce9a5bf93cbeb073c8fb7d35798",
+          "selection": "entire commit",
+          "files": [
+            "src/audio/createRecordingEngine.test.ts",
+            "src/hooks/useRecordingEngine.test.tsx"
+          ]
+        },
+        {
+          "commit": "694dfbaf61b385caf602987cf1054fbf2abd62bb",
+          "selection": "entire commit",
+          "files": [
+            "src/hooks/useVerseAudio.test.tsx"
+          ]
+        },
+        {
+          "commit": "39b3fa9bcbc4ac2251975f3195e86b242469ba5f",
+          "selection": "entire commit",
+          "files": [
+            "src/hooks/useVerseAudio.persistence.test.ts"
+          ]
+        },
+        {
+          "commit": "2ec36f44ce855f358c5116ad4fb5508cf66df3dd",
+          "selection": "entire commit",
+          "files": [
+            "docs/assessments/maestro-acceptance-coverage/README.md",
+            "docs/assessments/maestro-acceptance-coverage/evidence-reconciliation.json",
+            "docs/assessments/maestro-acceptance-coverage/evidence/core-integrity-milestone.json",
+            "docs/assessments/maestro-acceptance-coverage/evidence/core-pr-ready-groups.json",
+            "docs/assessments/maestro-acceptance-coverage/evidence/legal-functional-checks.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-evidence.json",
+            "docs/assessments/maestro-acceptance-coverage/runtime-receipt.md"
+          ]
+        }
+      ],
+      "mixed_commit_test_only_selections": [
+        {
+          "commit": "5c2c5ee824b4754996348f6b75be62afcbb6af26",
+          "selection": "ONLY generic queue/offline and pre-upload Pause tests named below; exclude lifecycle source/tests to726.",
+          "files": [
+            "src/services/uploadOrchestrator.test.ts",
+            "src/services/uploadOrchestratorCore.ts"
+          ]
+        },
+        {
+          "commit": "a3a91dd9fef4ffecf328a0a2177e0e8d66b73747",
+          "selection": "ONLY owner-token-across-retry test named below; exclude730/731 source and regressions.",
+          "files": [
+            "src/services/recordingSync.test.ts",
+            "src/services/recordingSync.ts"
+          ]
+        }
+      ],
+      "tests": [
+        "preserves failed queued chapters across offline notification bursts and drains once on reconnect",
+        "keeps uploads paused when a pre-upload claim push resolves after the user pauses",
+        "keeps each capture owner token across retry while the active account changes between takes",
+        "dd23b03 recording engine/hook cleanup coverage",
+        "694dfba3 mocked save-failure/remount recovery contracts",
+        "39b3fa9 direct defaultPersistTake file/repository boundary tests",
+        "9bcf837 legal body/back/fallback/footer isolated callbacks",
+        "Maestro flows and retained receipts, distinguishing PASS from direct-device partial/incomplete runs"
+      ],
+      "dependencies": [],
+      "context_dependencies": "QA packet may reference separately reviewed726/728/729/730/731/732/724 fix PRs. Evidence records originating branch snapshots; documentation/test context is not a reason to combine fixes. When constructing against target base, apply only required test scaffolding or declare explicit stacked test dependency if an isolated test fails without a separately landed fix.",
+      "scope": "Harness, generic regression coverage, documentation hygiene and bounded acceptance evidence. No duplication of separately owned product fixes; no inflation of86atomic denominator or Maestro PASS count. Prior grouped-fix descriptions in consolidated evidence are provenance, not a grouped PR proposal."
+    }
+  ],
+  "issue725": {
+    "policy_fix": false,
+    "status": "Open policy wording decision; preserve existing legal copy. d34ee0b diagnostic belongs717 evidence only, not a725 fix PR."
+  },
+  "split_instructions": {
+    "a3a91dd": {
+      "730": "single post-getLatestVersionToken abort guard + named cancellation test",
+      "731": "didAcceptCleanResponse source hunks + accepted-conflict and clean-marker-failure regressions",
+      "717": "capture-owner-token retry/account-change test only",
+      "dependency": "730 and731 independently applicable; shared textual commit does not establish semantic dependency"
+    },
+    "5c2c5ee": {
+      "726": "all lifecycle source changes + two stop-during-preflight tests + pending-queue harness option",
+      "717": "generic offline queue burst/drain and pre-upload claim pause tests",
+      "warning": "Do not cherry-pick full mixed commit into either PR."
+    }
+  },
+  "future_per_pr_validation": "After authorized clean PR construction: exact staged review/secret check, focused issue suites, typecheck/lint/format; applicable repository CI before ready claim. Existing branch results are supporting evidence, not clean split validation. No runs performed for this plan.",
+  "remaining_uncertainty": "Existing commit list is a bounded inspected separation map, not a whole-branch audit. Root reconciles later workspace-only evidence files and publication metadata before final QA packet."
+}
