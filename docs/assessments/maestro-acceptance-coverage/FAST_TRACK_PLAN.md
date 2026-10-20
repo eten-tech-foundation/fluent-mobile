@@ -118,6 +118,8 @@ Preserve all takes, restore the primary account/network/device state, capture fi
 
 ## 5. Blocker handling and dependencies
 
+Matt’s ongoing execution preference: assign each blocked check a separate owner and exact dependency while both device owners advance runnable queue work. Retry a blocked check only after materially new evidence or a concrete correction. Never weaken assertions or safety constraints to obtain a pass.
+
 - Guest connectivity gates server-dependent work, not cached/offline/local UI tests.
 - Fresh authentication gates authenticated B work, not logged-out flows or harness authoring.
 - A populated catalogue fixture gates resource lifecycle proof, not other surfaces.

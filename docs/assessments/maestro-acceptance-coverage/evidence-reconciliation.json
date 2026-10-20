@@ -35,9 +35,9 @@
       "PASS": 30
     },
     "canonical_execution_coverage": {
-      "partial": 46,
+      "partial": 47,
       "complete_for_requirement": 30,
-      "not_run": 126
+      "not_run": 125
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
@@ -46,9 +46,9 @@
       "PASS": 22
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 18,
+      "partial": 19,
       "complete_for_requirement": 22,
-      "not_run": 46
+      "not_run": 45
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -131,7 +131,8 @@
       "B-0015-01",
       "B-0018-01",
       "D-0578-01",
-      "B-0010-01"
+      "B-0010-01",
+      "A-0034-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -1087,6 +1088,13 @@
           "commands": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/cli/2026-10-20_133820/b-user11-unassigned-pfo-default-existing-session/commands.json",
           "commands_sha256": "f35410a4c8607168ab1a42af335d74c00d98845fa1051b1a4bd81bbf8bba50db",
           "reason": "Prior Settings/PFO entry and simple Back proof retained. This durable run presses project-detail headerBack then asserts project-row12 visible (command25COMPLETED), satisfying #503 detail\u2192project-list target. Later pickerBack expects Settings (command27FAILED), actual Home; that expectation is outside #503. FinalHome/radios0/1 verified; no full-flowPASS."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-entry-cancel-smoke-reconciliation.json",
+          "case_id": "pfo735_normal_navigation_smoke_37.197s",
+          "flow": ".maestro/flows/edges/pfo735-navigation-smoke-prepared.yaml",
+          "relation": "ordinary_navigation_support_only",
+          "reason": "Normal automatic Home prompt after cached12\u219210, PFOdetailBack\u2192projectlistBack\u2192Home, Settings stays visible/noPFO across5second dwell and returnHome all passed. Source includes integrated c4a1425e focus guard, runtimehash unattested. No controlled deferred assignment lookup/focus-blur race was induced; isolated8/8 guard proof remains separate."
         }
       ],
       "isolated_status": "UNTESTED",
@@ -1620,8 +1628,16 @@
       "additive_scope": "eligible_current_atomic",
       "review_reason": "One no-hijack invariant during adding another account; switching already-saved accounts does not exercise account addition.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch2-entry-cancel-smoke-reconciliation.json",
+          "case_id": "B_add_account_entry_cancel_62.5s",
+          "flow": ".maestro/flows/accounts/b-add-account-entry-cancel-existing-session.yaml",
+          "relation": "partial_entry_cancel_only",
+          "reason": "Fresh user11-only drawer Add User enabled; entry shows empty email/password, authenticated-stack forgot-password route/back, AndroidBack returnsHome; active11/onlysaved11/AddUserenabled retained. No typing, submit, authentication or successful account addition; no-hijack-after-success remains unproved."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [
         {
@@ -1632,10 +1648,10 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Three-account cap reached; no room/new credential entry permitted. Add-before-switch identity assertion unrun."
+        "Successful addition of a verified separately owned QA identity while original active session remains unchanged until explicit switch is unverified; entry/cancel alone does not prove this invariant."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "When supported separate QA credentials/session are available, complete successful Add Account and assert original active identity before explicit switch. Preserve existing cached sessions; no repeated entry/cancel-only flow.",
       "source_title": "Add-account does not hijack active session until switch",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/86",

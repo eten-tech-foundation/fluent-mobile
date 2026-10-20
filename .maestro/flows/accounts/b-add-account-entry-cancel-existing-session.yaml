@@ -1,0 +1,87 @@
+# A0034 partial entry/cancel only: no typing, submit, auth/session changes.
+# Preflight native Home drawer: only11, active11, Add User enabled.
+# App-stack add-user has headerShown:false; Android Back cancels pushed route.
+appId: com.eten.fluent
+tags: [accounts, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- assertVisible:
+    id: '^settings-menu-active-11$'
+- assertVisible:
+    id: '^settings-menu-account-11$'
+- assertNotVisible:
+    id: '^settings-menu-account-(?!11$)[0-9]+$'
+- assertVisible:
+    id: '^settings-menu-add-user$'
+    enabled: true
+- tapOn:
+    id: '^settings-menu-add-user$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^login-email-input$'
+    timeout: 15000
+- assertVisible:
+    id: '^login-email-input$'
+    text: '^Email address\*$'
+- assertVisible:
+    id: '^login-password-input$'
+    text: '^Password\*$'
+- assertVisible:
+    id: '^login-submit-button$'
+- assertNotVisible:
+    id: '^home-tab-projects$'
+- takeScreenshot: b-add-account-entry-empty-fields
+# Authenticated-stack forgot-password entry/back is distinct from logged-out proof.
+- tapOn:
+    id: '^login-forgot-password-link$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^forgot-password-email-input$'
+    timeout: 15000
+- assertVisible:
+    id: '^forgot-password-email-input$'
+    text: '^Email address\*$'
+- assertVisible:
+    id: '^forgot-password-back-link$'
+- assertNotVisible:
+    id: '^forgot-password-sent-view$'
+- takeScreenshot: b-add-account-forgot-entry-no-input
+- tapOn:
+    id: '^forgot-password-back-link$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^login-password-input$'
+    timeout: 15000
+- assertVisible:
+    id: '^login-password-input$'
+    text: '^Password\*$'
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-projects$'
+    timeout: 15000
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^settings-menu-active-11$'
+    timeout: 15000
+- assertVisible:
+    id: '^settings-menu-account-11$'
+- assertNotVisible:
+    id: '^settings-menu-account-(?!11$)[0-9]+$'
+- assertVisible:
+    id: '^settings-menu-add-user$'
+    enabled: true
+- takeScreenshot: b-add-account-cancel-preserves-only-active11
+- tapOn:
+    id: '^settings-menu-account-11$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^home-tab-projects$'
+- assertNotVisible:
+    id: '^login-email-input$'
