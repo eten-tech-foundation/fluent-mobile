@@ -1,0 +1,89 @@
+{
+  "schema": "fluent-fixture-source-capabilities/v1",
+  "generated_utc": "2026-10-20T15:19:40.549300+00:00",
+  "scope": "Source capability clarification, not new live requirement evidence or authorization to retry a denied operation",
+  "source_commits": {
+    "/Users/matt/Documents/Development/gloo/fluent-web": "e5fa478b6345505b998d789532b67b827068663a",
+    "/Users/matt/Documents/Development/gloo/fluent-api": "0ebc0969cc0fc0b8e19055fd7caa664b4889d497"
+  },
+  "legal": {
+    "web_head": "e5fa478b6345505b998d789532b67b827068663a",
+    "privacy_route": "src/routes/legal/privacy.tsx",
+    "terms_route": "src/routes/legal/terms.tsx",
+    "privacy_component": "src/features/legal/components/PrivacyPolicyPage.tsx",
+    "terms_component": "src/features/legal/components/TermsOfUsePage.tsx",
+    "result": "Both real legal routes and substantive short text exist in web source; mobile mirrors that short content. Do not manufacture missing-link or forced-overflow failure, and do not author legal content.",
+    "limitation": "Current deployed QA Create form differs from local web source; source presence is not a fresh deployed legal render check."
+  },
+  "seed": {
+    "loader": "src/services/pericopeSets.ts:58",
+    "sync": "src/services/sync.ts:979-1025",
+    "versions": "assets/pericope-sets/pericopeSetVersions.ts",
+    "result": "Seed here means bundled FCBH/FIA JSON bootstrap hydrated into local SQLite for project-selected pericope set/book. Existing project/set assignment comes from server; when bundled set/book absent, sync falls back to FluentAPI.getPericopeSet. Version markers2026-09-04; source is not installed APK provenance.",
+    "APK_gate": "deferred per user",
+    "no_live_seed_test": true
+  },
+  "resources": {
+    "creation_or_import_UI": "No supported TN/TQ/Images authoring/import UI found in local fluent-web source; these are upstream Aquifer catalog readers, not per-project authored rows.",
+    "web_route": "/translation/$bookId/$chapterNumber, entered from project/assignment list; route loader requires currentProjectItem/assignment state so do not guess a bare URL or substitute project12 for bookId.",
+    "UI_labels": [
+      "Resources",
+      "TN",
+      "TQ",
+      "Images & Maps",
+      "Select a language to view resources"
+    ],
+    "safe_fixture_method": "Use the NEW project12 assignment with its verified book/chapter/verse/source-language ISO; in existing authorized web editor Resources choose TN/TQ/Images & Maps and a catalog-available language. Observe an actual returned resource ID + exact title/body or image marker; record bookCode/chapter/verse/languageCode/collection. Cannot create arbitrary QA marker text through this UI. Align new-project source Bible/language to an observed populated corpus only through supported new-fixture UI, never modify another project.",
+    "api_paths": [
+      "GET /projects/12/translation-resources/notes/{bookCode}/{chapter}/{verse}?languageCode={ISO}",
+      "GET /projects/12/translation-resources/questions/{bookCode}/{chapter}/{verse}?languageCode={ISO}",
+      "GET /projects/12/translation-resources/images/{bookCode}/{chapter}/{verse}?languageCode={ISO}",
+      "GET /projects/12/translation-resources/manifest?..."
+    ],
+    "api_authorization": "authenticateUser + PROJECT_VIEW + project READ access; no role-name/numeric-ID assumption.",
+    "api_write_routes": "translation-resources.route.ts defines only four GET routes, no POST/PUT/import.",
+    "reference_scope": "Proxy service receives book/chapter/verse/language; projectId gates access, does not identify project-owned TN/TQ/image content.",
+    "evidence": [
+      {
+        "file": "/Users/matt/Documents/Development/gloo/fluent-web/src/features/bible/components/DraftingUI.tsx",
+        "line": 51
+      },
+      {
+        "file": "/Users/matt/Documents/Development/gloo/fluent-web/src/features/resources/components/ResourcePanel.tsx",
+        "line": 301
+      },
+      {
+        "file": "/Users/matt/Documents/Development/gloo/fluent-web/src/features/resources/hooks/useAquiferResources.ts",
+        "line": 7
+      },
+      {
+        "file": "/Users/matt/Documents/Development/gloo/fluent-web/src/features/bible/TranslationLoader.ts",
+        "line": 55
+      },
+      {
+        "file": "/Users/matt/Documents/Development/gloo/fluent-api/src/domains/translation-resources/translation-resources.route.ts",
+        "line": 56
+      }
+    ]
+  },
+  "manager_second_author": {
+    "exact_status_values": [
+      "community_review",
+      "linguist_check",
+      "theological_check",
+      "consultant_check"
+    ],
+    "community_label": "Community Check is the mobile visible label for stored/API community_review; community_check is not the status enum.",
+    "api_predicate": "PUT /verse-audio/{projectUnitId}/{bibleTextId} (not POST) requires authenticateUser + VerseAudio EDIT. EDIT resolves assignment by verse, then ChapterAssignmentPolicy.edit. Existing content:assign with scope{orgId:assignment.organizationId,projectId:assignment.projectId} returns true exactly for POST_PEER_STATUSES. Manager branch does not require assignedUserId/peerCheckerId ownership; effective grant must match project/org or be global per authorize(). Draft, peer_check, not_started and complete return false for manager branch.",
+    "mobile_gate": "RecordTab does not impose separate PM/read-only role gate. captureDisabled = missing bibleTextId OR original-drafter-on-open-peer-check block OR Complete stage lock; NewTake also requires under5 own-take cap (or valid pericope span). At community_review and later non-Complete stages, stage lock=false and peer block=false. Mic permission, source text and capture-ready unit must be satisfied. Use Verse for simplest fixture; no need preference mutation.",
+    "important_capture_side_effect_caveat": "useVerseAudio stop() currently attempts normal auto-claim whenever assignedUserId is null, without passing status into chapterClaim. At post-peer unassigned stages API manager claim is denied (content:assign managers cannot self-claim). The claim failure is caught after the take is persisted; it does not change API upload edit permission. Do not interpret such a claim error as audio authorization failure or force a claim. Source-only risk to observe on disposable fixture, not a confirmed runtime defect.",
+    "runtime_verified": false
+  },
+  "source_receipt_sha256": {
+    "fluent-supported-resource-fixture-paths.json": "4cdc34daa10278eb9d7e5c3e93c52aa9d3aa0f75216ffbb4ff8011f756a2a272",
+    "fluent-supported-pm-second-author-policy.json": "0e247c28177e90a2eb2552c5d2a5b8e18a64c8a77707b5bbc921976f852feba5"
+  },
+  "new_live_executions": 0,
+  "whole_app_percentage": null,
+  "membership_approval_scope": "Source analysis grants no permission; explicit user10 approval resolved only user10 Save Users. Second QA translator membership pending separate approval."
+}

@@ -1,0 +1,93 @@
+{
+  "schema": "fluent-disposable-qa-fixture/v1",
+  "captured_utc": "2026-10-20T15:35:16.577642+00:00",
+  "environment": {
+    "web": "https://qa.app.fluent.bible",
+    "api": "https://qa.api.fluent.bible"
+  },
+  "project_id": 12,
+  "project_title": "DISPOSABLE QA 717 2026-10-20 E2E",
+  "project_url": "https://qa.app.fluent.bible/projects/12",
+  "project_unit_id": 19,
+  "milestone_title": "DISPOSABLE 717 NT checks",
+  "milestone_url": "https://qa.app.fluent.bible/projects/12/milestones/19",
+  "source_language": "eng",
+  "target_language": "spa",
+  "source_bible": {
+    "label": "World English Bible (WEB)",
+    "id": null,
+    "id_status": "UI label verified; assignment Bible178 must not be assumed to be source Bible ID"
+  },
+  "book": {
+    "id": 60,
+    "code": "1PE",
+    "label": "1 Peter"
+  },
+  "assignments": [
+    {
+      "id": 1183,
+      "chapter": 1,
+      "verse_count": 25,
+      "status": "not_started",
+      "assigned_user_id": null,
+      "peer_checker_id": null
+    },
+    {
+      "id": 1184,
+      "chapter": 2,
+      "verse_count": 25
+    },
+    {
+      "id": 1185,
+      "chapter": 3,
+      "verse_count": 22
+    }
+  ],
+  "chapter_count_displayed": 5,
+  "assignment_source": "Supported DevTools Response GET /projects/12/chapter-assignments/progress,200",
+  "known_UI_read_route": "https://qa.app.fluent.bible/view/60/1",
+  "resource_content_marker": null,
+  "resource_limitation": "Deployed read-only view exposes WEB/Spanish and audio controls, no Resources controls observed; upstream catalog content not proven",
+  "target_user": {
+    "id": 10,
+    "username": "qa-t1",
+    "identity_source": "Supported ordinary GET/users Response; no auth Headers/storage",
+    "candidate_email": "qa+fluentqa-translator@fluent.local",
+    "role_requested_only_for_new_fixture": "Project Translator",
+    "membership_saved": true,
+    "membership_verification": "Supported project12 Team UI: qa-t1 Translator, following exact user10 approval and one accepted retry"
+  },
+  "recording_ready": false,
+  "recording_actions_started_by_audit": 0,
+  "current_blocker": {
+    "action": "Open Assign dialog for selected new chapter1183",
+    "target": "https://qa.app.fluent.bible/projects/12/milestones/19",
+    "state": "UI_DISABLED_NO_SAVE_ATTEMPT",
+    "observed": "Only first chapter checkbox value1, other4value0; Assign enabledfalse; project12 has exactly1Translator qa-t1",
+    "source_explanation": "fluent-web/src/features/projects/components/ProjectDetailPage.tsx:473-478 disables Assign when project translators count<2",
+    "scope": "No confirmed product-defect verdict. Distinct drafter/peer workflow may require2translators. No disabled-control or directAPI bypass attempted.",
+    "approval_state": "Second named QA translator membership approval pending; no Save Users attempted for that account"
+  },
+  "existing_projects_modified": false,
+  "global_roles_modified": false,
+  "native_initial_recording_count": {
+    "expected": 0,
+    "verified": true,
+    "observed": 0,
+    "checked_utc": "2026-10-20T15:28:59.551397+00:00",
+    "method": "Direct on-device readonly selected-column SQLite; no DB or credential copies"
+  },
+  "source_manifest_sha256": "1dcf71913d9afd517bea4a97b130ee511bb25df44ed4fc8c61dfbe1ab49c49d2",
+  "fixture_mutations": "Created only new project12 and its single-book milestone; saved user10 as project12 Translator after exact approval; no chapter assignment, drafter, peer or stage mutation yet",
+  "assignment_bible_id": 178,
+  "membership_denial_history": {
+    "action": "Save Users once in Add Project User dialog, qa-t1(id10),Translator role, newly created project12",
+    "target": "https://qa.app.fluent.bible/projects/12",
+    "state": "DENIED_BEFORE_EXECUTION",
+    "reason": "This persists a project Translator role grant for user10, a shared-service permission change; the user explicitly prohibited role changes and did not authorize this exact membership save.",
+    "retry_performed": true,
+    "retry_basis": "New exact user Approved to persistent ProjectTranslator user10 only in disposable project12; trustedparent delegation",
+    "retry_outcome": "Accepted; Save Users clicked exactly once; ProjectTeam UI now qa-t1 Translator"
+  },
+  "second_translator_membership_save_attempted": false
+}
