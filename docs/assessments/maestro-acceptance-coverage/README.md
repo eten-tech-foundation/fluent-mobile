@@ -21,7 +21,7 @@ Operator / reviewer guide for the **15 new `*-existing-session` flows** authored
 | --- | --- | --- |
 | [`coverage.json`](./coverage.json) | Provisional local acceptance→flow mapping | **Local working evidence** — not a final denominator |
 | [`BACKLOG.md`](./BACKLOG.md) | Provisional local candidate backlog | **Local working evidence** — not a final denominator |
-| [`runtime-receipt.md`](./runtime-receipt.md) | **B** (sole device owner) runtime receipt — 16 live variants across twelve flow files, plus recorded failed attempts | **Written** — see receipt for scope; not a whole-app coverage claim |
+| [`runtime-receipt.md`](./runtime-receipt.md) | **B** (sole device owner) runtime receipt — 17 live variants across thirteen flow files, plus recorded failed attempts | **Written** — see receipt for scope; not a whole-app coverage claim |
 
 The runtime receipt and its [durable JSON aggregate](runtime-evidence.json) preserve this milestone. Mapping/backlog files remain a separate provisional workstream.
 
@@ -45,7 +45,7 @@ Current bounded [evidence reconciliation](evidence-reconciliation.json): 204 raw
 | **Official syntax** | `maestro check-syntax <flow.yaml>` and/or `require('js-yaml').loadAll` parse the YAML | Device behavior, fixture truth, QA API state |
 | **Runtime** | A dated device execution under the QA entrypoint with linked receipt | Authoring completeness alone |
 
-**Current runtime:** 16 live case variants across twelve distinct flows have a recorded PASS in [`runtime-receipt.md`](./runtime-receipt.md) (Home-tabs, Resources-empty, PFO viewport-fixed, cached-switch viewport-fixed, verse-boundary, ownership peer-checker mine, direct Bible-verse-to-Record, three-account cap/dismissal, Complete-stage idle lock, empty Resources tab order, and user10 drafting preference persistence). Navigation/tabs YAMLs remain migration/static-check only. **Do not infer PASS** from authoring freeze, parser OK, or this README.
+**Current runtime:** 17 live case variants across thirteen distinct flows have a recorded PASS in [`runtime-receipt.md`](./runtime-receipt.md) (Home-tabs, Resources-empty, PFO viewport-fixed, cached-switch viewport-fixed, verse-boundary, ownership peer-checker mine, direct Bible-verse-to-Record, three-account cap/dismissal, Complete-stage idle lock, empty Resources tab order, and user10 drafting preference persistence). Navigation/tabs YAMLs remain migration/static-check only. **Do not infer PASS** from authoring freeze, parser OK, or this README.
 
 ---
 
@@ -359,4 +359,12 @@ Privacy wording remains a separate [known issue #725](https://github.com/eten-te
 
 ## Latest Privacy Maestro validation
 
-Checkpoint47288d0 drawer-settle guard was validated by one focused Privacy flow: **PASS45.967s,17UIassertions**, first/final body, headerBack and Home. Sessions/preferences unchanged. Current automated total is16variants/12files (baseline15/11 plus this legal variant); two direct-device checks and12component tests stay separate. Earlier failures remain retained; Terms guarded flow and actual overflow are not newly executed. Atomic counts remain9complete/14partial/63absent. Libraryv16 remains the prior frozen report until the next material milestone.
+Checkpoint47288d0 drawer-settle guard was validated by one focused Privacy flow: **PASS45.967s,17UIassertions**, first/final body, headerBack and Home. Sessions/preferences unchanged. At the Privacy checkpoint, automated total was16variants/12files (baseline15/11 plus this legal variant); two direct-device checks and12component tests stay separate. Earlier failures remain retained; Terms guarded flow and actual overflow are not newly executed. Atomic counts remain9complete/14partial/63absent. Libraryv16 remains the prior frozen report until the next material milestone.
+
+## Latest Terms Maestro validation
+
+One specifically authorized Terms flow **PASS45.937s /17UIassertions**, completing targeted body/back/Home Maestro proof for both legal routes. Current automated total17variants/13files (baseline15/11 plus2legalvariants). Earlier failures,2direct-device checks and12component tests remain separate; wording issue725 stays open and no actual scroll/overflow PASS is claimed. Atomic totals unchanged9complete/14partial/63absent. Libraryv16 remains frozen until a material report milestone; fixture work is idle pending verified pairing.
+
+## Core integrity checkpoint
+
+[Consolidated defect and regression evidence](evidence/core-integrity-milestone.json) tracks #726, #728, #729, #730 and #731 as fixed locally and verified by isolated regressions, with fail-before/pass-after evidence. The combined Sync check passed 89/89; 2 new real-adapter account-replacement cases and recording save/recovery contracts remain separately scoped. These results do not promote Sync to live E2E PASS or change the 9 complete / 14 partial / 63 absent live-atomic counts. Current Maestro proof is 17 variants / 13 flow files, including the existing Terms receipt; no reruns were needed. [PR-ready grouping](evidence/core-pr-ready-groups.json) is local-only.

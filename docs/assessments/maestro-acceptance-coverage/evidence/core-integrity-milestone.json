@@ -1,0 +1,211 @@
+{
+  "schema": "fluent-core-integrity-milestone/v1",
+  "consolidated_utc": "2026-10-20T17:00:57.378948+00:00",
+  "HEAD_before_documentation": "ee55f09",
+  "scope": "Issue-derived isolated core and adapter integration evidence. No newly executed live tests in this consolidation. No whole-app percentage.",
+  "issues": [
+    {
+      "issue": 726,
+      "commits": [
+        "5c2c5ee",
+        "e8ef9c1"
+      ],
+      "failure": "Stopped preflight could start work; restart could stall behind old IO; old finalizer/queue response could affect fresh lifecycle and falsely advance progress.",
+      "fail_before": [
+        "2 stop cases fail on original core",
+        "2 restart cases fail",
+        "stale progress 0/2\u21922/2 case fails"
+      ],
+      "pass_after": "41/41 orchestrator cases at e8ef9c1;8 new across two batches,33 original",
+      "receipts": [
+        {
+          "name": "fluent-sync726-restart-batch-result.json",
+          "sha256": "03dfa33e30bdedbb93d39ca9f1474e56dd472f351c03378a1a9e9c4a258362d8"
+        },
+        {
+          "name": "fluent-core-syncqueue-batch-result.json",
+          "sha256": "5794f4ed3224347502e274d5f44fa682e8efcc92f6c6b51eae4aa53bd1e8d337"
+        }
+      ],
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/726",
+      "status": "fixed locally;isolated regression verified;not pushed/merged or live E2E verified"
+    },
+    {
+      "issue": 728,
+      "commits": [
+        "b436e30"
+      ],
+      "failure": "Orphan cleanup snapshot overwrote new or updated pause markers during awaited file deletion.",
+      "fail_before": "3 new cases FAIL,4existing PASS",
+      "pass_after": "30/30 across3affectedservices =3new+27existing",
+      "receipts": [
+        {
+          "name": "paused-marker-checkpoint.json",
+          "sha256": "a16675784b147a0e3a668bbd196a4357ed8e1eb5dbb079353684a635e0fec738"
+        }
+      ],
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/728",
+      "status": "fixed locally;isolated regression verified;not pushed/merged or live E2E verified"
+    },
+    {
+      "issue": 729,
+      "commits": [
+        "dc65d59"
+      ],
+      "failure": "Pause, Cancel or offline change during queue read could be bypassed before upload start.",
+      "fail_before": "3new FAIL,41existing PASS",
+      "pass_after": "85/85 across3suites =3new+82existing;orchestrator44,recordingSync38,foreground3",
+      "receipts": [
+        {
+          "name": "fluent-sync729-preflight-controls-result.json",
+          "sha256": "11dc319fb32b0393830d4dddafc9d62f00a3c6aa2625d92e81fadd6968abec7f"
+        }
+      ],
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/729",
+      "status": "fixed locally;isolated regression verified;not pushed/merged or live E2E verified"
+    },
+    {
+      "issue": 730,
+      "commits": [
+        "a3a91dd"
+      ],
+      "failure": "Abort during local version lookup could still send PUT.",
+      "fail_before": "new abort case FAIL",
+      "pass_after": "42/42 worker =4new+38existing, including730/731 and2new passing contracts",
+      "receipts": [
+        {
+          "name": "fluent-recording-worker-boundaries-result.json",
+          "sha256": "4557c5842de57e6f1a2bc7e0d4da2d3bc6ba3a2bd98c278ffdd5f753f4ac46f2"
+        }
+      ],
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/730",
+      "status": "fixed locally;isolated regression verified;not pushed/merged or live E2E verified"
+    },
+    {
+      "issue": 731,
+      "commits": [
+        "a3a91dd"
+      ],
+      "failure": "Local uploaded-marker failure replayed an accepted PUT three times in a pass.",
+      "fail_before": "new accepted-response case FAIL;3PUT calls",
+      "pass_after": "Same42/42 worker run;1PUT after fix;not additive to730 run",
+      "receipts": [
+        {
+          "name": "fluent-recording-worker-boundaries-result.json",
+          "sha256": "4557c5842de57e6f1a2bc7e0d4da2d3bc6ba3a2bd98c278ffdd5f753f4ac46f2"
+        }
+      ],
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/731",
+      "status": "fixed locally;isolated regression verified;not pushed/merged or live E2E verified"
+    }
+  ],
+  "combined_sync_validation": {
+    "commit": "a3a91dd",
+    "PASS": 89,
+    "FAIL": 0,
+    "suites": {
+      "uploadOrchestrator": 44,
+      "recordingSync": 42,
+      "uploadSyncForeground": 3
+    },
+    "new_tests_in_combined_run": 0,
+    "receipt": {
+      "name": "fluent-sync-combined-a3a91dd.json",
+      "sha256": "7630995a96daca8ca0dd49f78bb471db16c93cadbe6e98ffb8d4a48ba3b48333"
+    }
+  },
+  "additional_account_adapter_validation": {
+    "commit": "ee55f09",
+    "new_PASS": 2,
+    "existing_rerun": 0,
+    "scope": "Real adapter+worker;mockedDBqueues/marks,API,keychain. No actualDBaccountfilter/durability/AuthSessionProvider/UIswitch proof.",
+    "receipt": {
+      "name": "account-replacement-checkpoint.json",
+      "sha256": "d82646a514fa85fb391492b8cdda6523fcddc09cdb1d208bd344ec95910e3845"
+    }
+  },
+  "recording_validation": [
+    {
+      "commits": [
+        "dd23b03"
+      ],
+      "new_PASS": 7,
+      "existing_PASS": 19,
+      "total_PASS": 26,
+      "scope": "mocked native engine/hook lifecycle cleanup"
+    },
+    {
+      "commits": [
+        "694dfba"
+      ],
+      "new_PASS": 3,
+      "existing_PASS": 49,
+      "total_PASS": 52,
+      "scope": "mocked hook save/recovery contracts"
+    },
+    {
+      "commits": [
+        "39b3fa9"
+      ],
+      "new_PASS": 3,
+      "existing_PASS": 0,
+      "total_PASS": 3,
+      "scope": "real defaultPersistTake/audioStorage with in-memoryFS and mocked repository;no actualSQLite/disk proof"
+    }
+  ],
+  "nonadditivity": "Suite totals include existing cases; do not sum reruns or count one42case worker suite once per issue. Combined89 includes the42worker and44orchestrator cases.",
+  "checks": "Focused lint, project typecheck, format and exact staged hash/diff/secret checks passed for each checkpoint;full PR gates not claimed.",
+  "source_only_concern": {
+    "classification": "source finding; not reproduced cross-account failure",
+    "evidence": [
+      {
+        "path": "src/services/pausedTakes.ts",
+        "lines": [
+          18,
+          58
+        ],
+        "finding": "PausedTakeMarker has no capture owner; markers share a global KV collection."
+      },
+      {
+        "path": "src/hooks/useVerseAudio.ts",
+        "lines": [
+          149,
+          549,
+          718
+        ],
+        "finding": "Hydration finds assignment/verse session key without owner filter; defaultPersistTake does not pass recordedByUserId."
+      },
+      {
+        "path": "src/db/recordingsRepository.ts",
+        "lines": [
+          153,
+          298
+        ],
+        "finding": "Insert supports explicit capture-time recordedByUserId but defaults to active user when omitted."
+      }
+    ],
+    "existing_protection": "Drawer capture gate blocks switching while recording/paused UI is active; crash/relaunch recovery ownership remains unproven.",
+    "next_check": "Design bounded capture-owner propagation plus recovery filter across schema/hook/prompt/route; decide behavior for existing ownerless markers before shipping.",
+    "blocker": "Legacy ownerless marker recovery policy and expanded cross-layer scope; no safe identity can be inferred from stored marker alone.",
+    "mutations": "None; worker idle; no new issue or failing test committed."
+  },
+  "live_snapshot": {
+    "maestro_PASS_variants": 17,
+    "distinct_flow_files": 13,
+    "separate_direct_device_legal_checks": 2,
+    "atomic": {
+      "complete": 9,
+      "partial": 14,
+      "absent": 63
+    },
+    "privacy_terms_existing_receipt": "evidence/legal-functional-checks.json",
+    "legal_wording_issue": 725,
+    "new_live_runs_this_consolidation": 0
+  },
+  "remaining_live_checks": [
+    "queued-itemupload and device/server agreement",
+    "accurate live progress,pause/retry,offline/reconnect andloss/duplication checks",
+    "recording/disposablecapture,recovery andpopulatedresources once verified project12pairing manifest arrives"
+  ],
+  "restrictions": "No browser/device fixture writes, password/credential access, reset, role mutation, push/merge or report-only test rerun."
+}

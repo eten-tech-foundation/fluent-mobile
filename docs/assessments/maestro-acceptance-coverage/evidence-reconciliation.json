@@ -127,8 +127,8 @@
       "D-0594-01"
     ],
     "new_selected_live_cases": {
-      "latest_PASS": 15,
-      "flow_files": 11,
+      "latest_PASS": 17,
+      "flow_files": 13,
       "repeat_green_cases_this_reconciliation": 0,
       "new_executions_this_reconciliation": 1,
       "frozen_initial_milestone_PASS": 11
@@ -551,6 +551,13 @@
           "relation": "partial",
           "method": "direct emulator native selector-resolved taps + UI hierarchy assertions; not Maestro",
           "reason": "Terms page, first/final body and header back\u2192Home PASS with active12/cached10,9,12 unchanged; no scroll gesture or overflow proof."
+        },
+        {
+          "receipt": "evidence/legal-functional-checks.json",
+          "case_id": "terms_body_delta_settle_guard_validation",
+          "flow": ".maestro/flows/edges/settings-terms-existing-session.yaml",
+          "relation": "partial",
+          "reason": "MaestroPASS45.937s/17UIassertions verifies page/first+finalbody/headerBack/Home after drawer-settle guard. No actual overflow/scroll proof; whole atomic scope not promoted."
         }
       ],
       "isolated_status": "UNTESTED",
@@ -577,9 +584,9 @@
       ],
       "domain": "identity_navigation",
       "functional_subchecks": {
-        "reachability": "PASS direct-device; earlier Maestro open/back evidence retained",
-        "body_rendering": "PASS direct-device first/final body; Terms also all3bullets",
-        "header_back_to_home": "PASS direct-device",
+        "reachability": "PASS targetedMaestro and direct-device",
+        "body_rendering": "PASS targetedMaestro first/finalbody; direct-device also verified all3bullets",
+        "header_back_to_home": "PASS targetedMaestro and direct-device",
         "component_routes_and_callbacks": "PASS isolated;12testsacross3suites; notliveauthnavigation",
         "policy_wording": "Preserved source; not legal-content approval",
         "overflow_scrolling": "NOT_DEMONSTRATED; current document fits preserved viewport; execute only with genuine overflow"
@@ -6524,9 +6531,28 @@
   },
   "latest_legal_Maestro_PASS": {
     "receipt": "evidence/legal-functional-checks.json",
-    "case_id": "privacy_body_delta_settle_guard_validation",
-    "elapsed_s": 45.967,
+    "case_id": "terms_body_delta_settle_guard_validation",
+    "verified_routes": [
+      "privacy",
+      "terms"
+    ],
+    "elapsed_s": 45.937,
     "UI_assertions": 17,
     "no_whole_atomic_promotion": true
-  }
+  },
+  "latest_core_integrity_milestone": {
+    "receipt": "evidence/core-integrity-milestone.json",
+    "live_runs_added": 0,
+    "local_fixed_issues": [
+      726,
+      728,
+      729,
+      730,
+      731
+    ],
+    "combined_sync_PASS": 89,
+    "new_account_adapter_PASS": 2,
+    "live_acceptance_promoted": false
+  },
+  "core_validation_does_not_change_live_atomic_counts": true
 }

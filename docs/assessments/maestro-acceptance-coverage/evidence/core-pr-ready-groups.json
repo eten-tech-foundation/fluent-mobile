@@ -1,0 +1,93 @@
+{
+  "sync": {
+    "title": "Prevent stopped and restarted upload sessions from applying stale work",
+    "issue": "https://github.com/eten-tech-foundation/fluent-mobile/issues/726",
+    "commits": [
+      "5c2c5ee",
+      "e8ef9c1",
+      "dc65d59"
+    ],
+    "files": [
+      "src/services/uploadOrchestratorCore.ts",
+      "src/services/uploadOrchestrator.test.ts"
+    ],
+    "validation": "44 orchestrator cases =33 original +11 new across #726/#729; recordingSync38 +uploadSyncForeground3 adjacent integration PASS; lint/typecheck/format PASS",
+    "limits": "No live upload or device/server agreement proof",
+    "issues": [
+      "https://github.com/eten-tech-foundation/fluent-mobile/issues/726",
+      "https://github.com/eten-tech-foundation/fluent-mobile/issues/729"
+    ]
+  },
+  "recording": {
+    "title": "Cover recording cleanup and persistence recovery boundaries",
+    "commits": [
+      "dd23b03",
+      "694dfba",
+      "39b3fa9"
+    ],
+    "files": [
+      "src/audio/createRecordingEngine.test.ts",
+      "src/hooks/useRecordingEngine.test.tsx",
+      "src/hooks/useVerseAudio.test.tsx",
+      "src/hooks/useVerseAudio.persistence.test.ts"
+    ],
+    "validation": [
+      "26 native/hook cases =19 original+7new",
+      "52 persistence hook cases =49original+3new",
+      "lint/typecheck/format PASS",
+      "3 new direct defaultPersistTake handoff tests PASS; real audioStorage, in-memory filesystem, mocked repository"
+    ],
+    "limits": "Mocked native/persistence contracts; no product defect or actual disk durability proof"
+  },
+  "publication": "Local checkpoints only. No push, merge or PR creation. Existing legal/doc work intentionally excluded.",
+  "recording_cleanup": {
+    "title": "Preserve concurrent pause markers during orphan cleanup",
+    "issue": "https://github.com/eten-tech-foundation/fluent-mobile/issues/728",
+    "commits": [
+      "b436e30"
+    ],
+    "files": [
+      "src/services/pausedTakes.ts",
+      "src/services/pausedTakes.test.ts"
+    ],
+    "validation": "3new+27existing cases PASS across3affectedservices; lint/typecheck/format PASS",
+    "limits": "Mocked KV/file deletion; already-started old orphan file deletion is not cancelled"
+  },
+  "recording_upload_worker": {
+    "title": "Honor pre-request abort and separate server acceptance from local acknowledgement",
+    "issues": [
+      730,
+      731
+    ],
+    "commits": [
+      "a3a91dd"
+    ],
+    "files": [
+      "src/services/recordingSync.ts",
+      "src/services/recordingSync.test.ts"
+    ],
+    "validation": "4new+38existing=42PASS;2confirmedredbeforefix;lint/typecheck/formatPASS",
+    "limits": "No live upload/observed server duplicate/exactly-once claim"
+  },
+  "combined_sync_validation": {
+    "HEAD": "a3a91dd",
+    "new_tests_in_this_validation": 0,
+    "total_PASS": 89,
+    "FAIL": 0,
+    "suites": {
+      "uploadOrchestrator": 44,
+      "recordingSync": 42,
+      "uploadSyncForeground": 3
+    },
+    "receipt": "fluent-sync-combined-a3a91dd.json",
+    "limits": "Targeted service/adapter integration validation, isolated dependencies. No live upload or full-suite claim."
+  },
+  "account_replacement_integration": {
+    "commit": "ee55f09",
+    "files": [
+      "src/services/uploadAccountReplacement.test.ts"
+    ],
+    "validation": "2newPASS; lint/typecheck/formatPASS",
+    "limits": "Mockedqueue/DBmarks; no actual DB account filtering or AuthSessionProvider/UI switch proof"
+  }
+}

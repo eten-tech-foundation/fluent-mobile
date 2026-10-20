@@ -1,6 +1,6 @@
 # Maestro acceptance coverage — runtime receipt
 
-Dated runtime record for the existing-session flow packet. Scope is 15 live case variants across eleven new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
+Dated runtime record for the existing-session flow packet. Current scope is 17 live Maestro case variants across 13 flow files, including existing Privacy and Terms body/back/Home PASS receipts. Two direct-device legal checks remain separate. The original 15 variants / 11 files are retained below as the historical baseline. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
 
 Sources (read-only verified receipts):
 
@@ -125,4 +125,16 @@ Privacy wording remains a separate [known issue #725](https://github.com/eten-te
 
 ## Latest Privacy Maestro validation
 
-One specifically authorized run of the checkpoint47288d0 settle guard **PASS45.967s /17UIassertions**. Strict body/back/Home assertions passed; PID7152, active12, known10/9/12 and Verse/dirty preference state unchanged. Current total16Maestrovariants/12files; historical failures,2nativelegalchecks and12componenttests remain separate. No Terms rerun or actual overflow/scroll claim. [Durable receipt](evidence/legal-functional-checks.json).
+One specifically authorized run of the checkpoint47288d0 settle guard **PASS45.967s /17UIassertions**. Strict body/back/Home assertions passed; PID7152, active12, known10/9/12 and Verse/dirty preference state unchanged. Privacy checkpoint total16Maestrovariants/12files; historical failures,2nativelegalchecks and12componenttests remain separate. No Terms rerun or actual overflow/scroll claim. [Durable receipt](evidence/legal-functional-checks.json).
+
+## Latest Terms Maestro validation
+
+Terms **PASS45.937s /17UIassertions** in one authorized run; strict first/final body, headerBack and Home. PID7152, active12, cached10/9/12 and preferences unchanged. Both legal body/back routes now have Maestro PASS; current total17variants/13files. No Privacy rerun, policy edits, desktop input, actual scroll claim or PDF regeneration. [Durable receipt](evidence/legal-functional-checks.json). Fixture-dependent work idle pending pairing.
+
+## Consolidated core integrity milestone
+
+[Core evidence](evidence/core-integrity-milestone.json) records locally fixed issues #726, #728, #729, #730 and #731 with fail-before/pass-after receipts and scoped checkpoints. Combined Sync validation passed 89/89 across three suites at `a3a91dd`; two additional real-adapter account-replacement cases passed at `ee55f09`. These use isolated dependencies and do not prove live upload, actual DB account filtering, disk durability, or device/server agreement. Recording engine/hook, recovery and direct save-handoff evidence remains separately counted.
+
+Current live count is 17 Maestro PASS variants / 13 flow files plus 2 separate direct-device legal checks; no live test was rerun for this report. Terms existing 45.937s / 17 assertion PASS is retained; #725 wording remains open. Atomic evidence remains 9 complete / 14 partial / 63 absent. Sync has unfinished live queue/progress/pause/retry/offline/reconnect/loss-duplication/device-server checks.
+
+Paused-marker capture-owner provenance remains a source-only concern requiring legacy-ownerless-marker recovery policy and cross-layer scope; it is not a demonstrated exploit or reproduced cross-account defect. Browser fixture/control input is pending; no browser/device fixture mutations occurred during consolidation. [Focused PR grouping](evidence/core-pr-ready-groups.json) retains local commits only, without push/merge.

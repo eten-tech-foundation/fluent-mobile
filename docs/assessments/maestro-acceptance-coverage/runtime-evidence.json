@@ -1,9 +1,9 @@
 {
   "schema": "fluent-runtime-milestone/v1",
   "generated_utc": "2026-10-20T10:35:07.441883+00:00",
-  "scope": "16currentMaestroPASSvariants across12flowfiles:15baselinevariants/11files plus1Privacybody/back/Home variant. Two direct-device legal checks and12isolatedlegaltests remain separate. No whole-app percentage.",
-  "runtime_pass_flow_files": 12,
-  "live_case_variants_pass": 16,
+  "scope": "17currentMaestroPASSvariants across13flowfiles:15baselinevariants/11files plusPrivacy+Termsbody/back/Home variants. Two direct-device legal checks and12isolatedlegaltests remain separate. No whole-app percentage.",
+  "runtime_pass_flow_files": 13,
+  "live_case_variants_pass": 17,
   "passes": [
     {
       "source_receipt": "fluent-independent-home-tabs-user10-result.json",
@@ -562,6 +562,28 @@
       "artifact_dir": "/tmp/maestro-legal-text-privacy_body_delta_settle_guard_validation-1792513332966063000",
       "commands_artifact": "/tmp/maestro-legal-text-privacy_body_delta_settle_guard_validation-1792513332966063000/2026-10-20_092214/settings-privacy-existing-session/commands.json",
       "flow_sha256": "5ee8fd89c6a94306b188e0a22b8e939a43c0d17c06b183fea8e050ac5be2004c"
+    },
+    {
+      "source_receipt": "evidence/legal-functional-checks.json",
+      "id": "terms_body_delta_settle_guard_validation",
+      "flow": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/edges/settings-terms-existing-session.yaml",
+      "outcome": "PASS",
+      "execution_state": "ran",
+      "exit_code": 0,
+      "elapsed_s": 45.937,
+      "timed_out": false,
+      "kills": [],
+      "command_counts": {
+        "COMPLETED": 41,
+        "SKIPPED": 11
+      },
+      "command_total": 52,
+      "ui_assertCondition_visible_or_notVisible_COMPLETED": 17,
+      "ui_assertCondition_visible_or_notVisible_FAILED": 0,
+      "failed": [],
+      "artifact_dir": "/tmp/maestro-legal-text-terms_body_delta_settle_guard_validation-1792513568898204000",
+      "commands_artifact": "/tmp/maestro-legal-text-terms_body_delta_settle_guard_validation-1792513568898204000/2026-10-20_092610/settings-terms-existing-session/commands.json",
+      "flow_sha256": "bd6b6b764b951ffdab53dbb9f6345b0bfefced67a6c8d1349d6b65d3c11f7a79"
     }
   ],
   "final_identity": {
@@ -635,7 +657,7 @@
     "/tmp/fluent-next-assertion-batch.json": "bf9aa905597e300a1e425ee136b0c6e4a85832616fe27eb5bba5d4595dfee0bd",
     "fluent-preference-persistence-batch.json": "2604ce944c4bba331bfbc8e871942dd1633ec1a65a8efe4cb0404168d6b6d17f"
   },
-  "latest_finished_utc": "2026-10-20T16:22:59.061294+00:00",
+  "latest_finished_utc": "2026-10-20T16:26:54.967590+00:00",
   "developer_overlay_fix": {
     "method": "ObservedUI drag only from1010,170 to1010,560",
     "settings_product_auth_changes": false,
@@ -736,10 +758,28 @@
   },
   "latest_legal_Maestro_delta": {
     "receipt": "evidence/legal-functional-checks.json",
-    "PASS": 1,
-    "elapsed_s": 45.967,
-    "UI_assertions": 17,
+    "verified_routes": [
+      "privacy",
+      "terms"
+    ],
+    "PASS": 2,
+    "latest_Terms_elapsed_s": 45.937,
+    "UI_assertions_per_route": 17,
     "identity_and_preferences_unchanged": true,
     "earlier_failures_retained": true
+  },
+  "latest_core_integrity_milestone": {
+    "receipt": "evidence/core-integrity-milestone.json",
+    "live_runs_added": 0,
+    "local_fixed_issues": [
+      726,
+      728,
+      729,
+      730,
+      731
+    ],
+    "combined_sync_PASS": 89,
+    "new_account_adapter_PASS": 2,
+    "live_acceptance_promoted": false
   }
 }
