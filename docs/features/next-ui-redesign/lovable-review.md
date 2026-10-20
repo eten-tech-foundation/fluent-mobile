@@ -39,7 +39,7 @@ original here; this PR preserves the original textual review and evidence.
 | Original finding / remaining obligation | Tracking and current evidence boundary |
 | --- | --- |
 | A: shared consumers pinned to Legacy despite runtime Next selection | [#724](https://github.com/eten-tech-foundation/fluent-mobile/issues/724). Local reviewed checkpoints below migrate shared consumers and isolate token objects; no rendered fidelity follows. |
-| B: mostly unused `appStyles` keys | [#739](https://github.com/eten-tech-foundation/fluent-mobile/issues/739). Source cleanup remains separate; all live rendered values must stay unchanged. |
+| B: mostly unused `appStyles` keys | [#739](https://github.com/eten-tech-foundation/fluent-mobile/issues/739) / [draft PR #743](https://github.com/eten-tech-foundation/fluent-mobile/pull/743), checkpoint `d84fbe5`. Fresh-main TypeScript AST reference analysis found 105 keys: 7 live keys retained with unchanged initializers, 98 unused keys removed. This is source hygiene, not rendered fidelity; the original historical review below remains unchanged. |
 | B/E: identical AccountSwitcherPanel overlay literal | Already included in #724 checkpoint `0566f4c`; do not repeat it in #739. |
 | C: competing sync/status and workflow color families | #738 comparison/decision checklist; no canonical visual family inferred solely from CSS declarations. No palette change implemented by this document. |
 | D: list-card radius/comment and record-timer comment/value disagreement | #738 reference validation and decision; rendered classes unknown, so no confirmed visual FAIL. |
@@ -66,6 +66,11 @@ These checkpoints were reviewed from the audit checkout and #724 issue history.
 They are outside this docs-only PR. A focused #724 publication PR remains
 separate; these hashes need not resolve on `main` yet. Isolated render/token
 checks establish implementation properties, not device/reference acceptance.
+
+The #739 reference analysis retained `menuDivider`, `menuSectionLabel`,
+`menuItemDanger`, `containerAppInit`, `errorTextAppInit`, `loadingTextAppInit`
+and `appRoot`. The live danger red remains unchanged; draft PR #743 is not
+represented as merged or visually verified.
 
 ## Current baseline versus future independent themes
 
