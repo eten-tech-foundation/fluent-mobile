@@ -1,0 +1,69 @@
+# C0038 missing current-Home exclusivity delta only; existing screen-entry proof reused.
+# Root preflight: active12/HomeLegacy/cache10,9,12; six takes preserved, no active work.
+# Native whole-tree inventory on BOTH Home tabs must show exactly one home-sync-button
+# and no other clickable Sync entry/obsolete detailed inline controls. Source review:
+# HomeScreen343-377 has one header Sync button and only MyWork/Projects content;
+# PageHeaderSyncButton testID home-sync-button, handleSyncPress navigates only.
+# MAESTRO_A_HOME_SYNC_SOLE_ENTRY_VERIFIED=1 attests that exact inventory/source pair.
+# No SyncNow/retry/preferences/accounts/network/auth/recording/download actions.
+appId: com.eten.fluent
+tags: [existing-session, read-only, prepared-phase]
+---
+- assertTrue: ${typeof MAESTRO_A_HOME_SYNC_SOLE_ENTRY_VERIFIED !== 'undefined' && MAESTRO_A_HOME_SYNC_SOLE_ENTRY_VERIFIED === '1'}
+- assertVisible:
+    id: home-tab-my-work
+- assertNotVisible:
+    id: login-email-input
+- tapOn:
+    id: home-tab-my-work
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-my-work
+    selected: true
+- assertVisible:
+    id: home-sync-button
+- assertNotVisible:
+    id: 'sync-action-(sync-now|pause|resume|cancel)'
+- assertNotVisible: '^Sync Now$'
+- assertNotVisible:
+    id: sync-screen
+- takeScreenshot: home12-mywork-one-header-sync-no-inline-actions
+- tapOn:
+    id: home-tab-projects
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-projects
+    selected: true
+- assertVisible:
+    id: home-sync-button
+- assertNotVisible:
+    id: 'sync-action-(sync-now|pause|resume|cancel)'
+- assertNotVisible: '^Sync Now$'
+- assertNotVisible:
+    id: sync-screen
+- takeScreenshot: home12-projects-one-header-sync-no-inline-actions
+- tapOn:
+    point: '95%,7%'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: sync-screen
+    timeout: 10000
+- assertNotVisible:
+    id: login-email-input
+- takeScreenshot: home12-sync-common-shell-reference-comparison
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-projects
+    timeout: 10000
+- tapOn:
+    id: home-tab-my-work
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-my-work
+    selected: true
+- assertNotVisible:
+    id: sync-screen

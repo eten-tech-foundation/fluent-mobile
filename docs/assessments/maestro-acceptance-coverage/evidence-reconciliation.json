@@ -30,24 +30,24 @@
       "unresolved": 7
     },
     "canonical_live_status": {
-      "UNTESTED": 27,
+      "UNTESTED": 26,
       "BLOCKED": 138,
-      "PASS": 37
+      "PASS": 38
     },
     "canonical_execution_coverage": {
-      "partial": 48,
-      "complete_for_requirement": 37,
+      "partial": 47,
+      "complete_for_requirement": 38,
       "not_run": 117
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
-      "UNTESTED": 7,
+      "UNTESTED": 6,
       "BLOCKED": 50,
-      "PASS": 29
+      "PASS": 30
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 17,
-      "complete_for_requirement": 29,
+      "partial": 16,
+      "complete_for_requirement": 30,
       "not_run": 40
     },
     "full_live_PASS_eligible_ids": [
@@ -55,6 +55,7 @@
       "A-0026-01",
       "A-0031-01",
       "B-0004-01",
+      "C-0038-01",
       "C-0050-02",
       "C-0050-03",
       "C-0050-04",
@@ -3416,8 +3417,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Stage D proves one cloud-icon press opens Sync and preserves session, but sole-Home-entry wording additionally requires absence of superseded inline entry; that absence was not asserted.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-sync721-maestro-correction.md",
@@ -3425,13 +3426,18 @@
           "flow": ".maestro/flows/qa-warm-temp/sync-once.yaml",
           "relation": "partial",
           "reason": "Verified receipt: one press opens Sync/cellular and returns Home with active10; no exclusive-entry/obsolete-inline absence assertion."
+        },
+        {
+          "receipt": "evidence/c0038-home-entry/receipt.json",
+          "case_id": "A_Home_soleSync_entry_29.552s",
+          "flow": ".maestro/flows/edges/home-sync-sole-entry-existing-session.yaml",
+          "relation": "complete_UI_inventory_and_navigation_plus_source_oracle",
+          "reason": "Both wholeHomeMyWork/Projects inventories contain exactly1home-sync-button, onlyclickableSync entry, noinline sync-action controls. SourceHome has singleheaderbutton and no supersededinline block. StrictMaestro negatives/both tabs/one groundedpress\u2192Sync\u2192BackHome PASS29.552s. Exactpostflight account12/cache/prefs/radios/sixmetadata unchanged. Sourcea152bf7/runtimehashunattested; no server/visual claim."
         }
       ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Assert Home has no obsolete detailed inline Sync entry and no alternative primary Sync entry; existing open-on-one-press proof retained."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Home cloud sync icon is sole entry and opens Sync screen",
@@ -3441,7 +3447,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/721"
       ],
       "domain": "sync_offline",
-      "current_scope_execution_blocker": "Sole-entry/obsolete-inline absence lacks a defined exhaustive UI oracle; existing one-press Sync entry proof does not establish exclusivity."
+      "current_scope_execution_blocker": null,
+      "closure_scope_note": "Exact current Home sole-entry, obsolete inline absence and Sync navigation criterion; not global Sync success or all-role/app visual fidelity."
     },
     {
       "id": "C-0039-01",

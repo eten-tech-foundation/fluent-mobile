@@ -1,0 +1,64 @@
+{
+  "schema": "fluent-home-sole-Sync-entry/v1",
+  "result": {
+    "outcome": "PASS",
+    "exit_code": 0,
+    "timed_out": false,
+    "elapsed_s": 29.552,
+    "artifact_dir": "/tmp/maestro-a-sole-sync-1792533951117841000",
+    "served_source_head": "a152bf724b2398633ef445cc269415e7128f4810",
+    "runtime_revision_attested": false,
+    "new_uncommitted_harness": true
+  },
+  "commands": "/tmp/maestro-a-sole-sync-1792533951117841000/2026-10-20_150552/a-home-sync-sole-entry-prepared/commands.json",
+  "commands_sha256": "d24831168cde525cc32adc8a724ab625f724ee68100f7b1bb73491473056c831",
+  "native_inventories": [
+    {
+      "tab": "mywork",
+      "source_path": "/tmp/fluent-a-home-mywork-inventory.xml",
+      "raw_sha256": "5ce5ab0a51c72c215a3f40fa3482bb182a9b3b6946fc95e6be2bafea3f4046c6",
+      "snapshot": "mywork-inventory.xml.capture.txt",
+      "native_header_count": 1,
+      "clickable_sync_candidates": [
+        "home-sync-button"
+      ],
+      "inline_sync_action_count": 0,
+      "parser": "Only exact hierarchy prefix parsed; original raw stdout bytes retained unchanged",
+      "trailing_status_bytes": "UI hierchary dumped to: /dev/tty\n"
+    },
+    {
+      "tab": "projects",
+      "source_path": "/tmp/fluent-a-home-projects-inventory.xml",
+      "raw_sha256": "43bc9bf82dca6b5b139389543585ee55c4c0cf04f47bb082681ccec0792d7939",
+      "snapshot": "projects-inventory.xml.capture.txt",
+      "native_header_count": 1,
+      "clickable_sync_candidates": [
+        "home-sync-button"
+      ],
+      "inline_sync_action_count": 0,
+      "parser": "Only exact hierarchy prefix parsed; original raw stdout bytes retained unchanged",
+      "trailing_status_bytes": ""
+    }
+  ],
+  "source_oracle": [
+    {
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/src/app/screens/HomeScreen.tsx",
+      "sha256": "2fddd3f725975280fe8e563eafc04552a4c24fd178481abcd4a8167499784823",
+      "assertion": "One PageHeaderSyncButton; no superseded inline Sync block; handler routes to Sync only"
+    },
+    {
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/src/components/ui/PageHeaderSyncButton.tsx",
+      "sha256": "460628a38b390dec38602328f4e35d0a43d097f5d942026c58c514dd9d782ad9",
+      "assertion": "home-sync-button is unique source header testID/pressable"
+    }
+  ],
+  "criterion": "Both actual Home tabs contain sole headerSync entry and no obsolete primaryinline controls; single observed95%,7% press opensSync, BackrestoresHomeMyWork.",
+  "postflight": "/Users/matt/Documents/Codex/2026-10-19/task-10/a-home-sync-sole-entry-postflight.json",
+  "exact_restoration": "account12/cache10,9,12/Legacy/Verse10/cellularOFF/radios0/1/mobile1/sixmetadata identical to previousA snapshot",
+  "limitations": [
+    "Source/runtime matching is qualified: servedgit a152bf7, runtimehashunattested",
+    "No successful metadata-sync/serveragreement/sync-health timestamp claim",
+    "No #738/724 visual-fidelity or matched-transfer-state claim"
+  ],
+  "flow_sha256": "41922800c74ebf66f8d7360ba5b7105f8339ca3589aa74f44111aad89aacaa18"
+}
