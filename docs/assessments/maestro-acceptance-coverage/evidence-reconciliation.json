@@ -2697,15 +2697,21 @@
           "flow": ".maestro/flows/recording/b-user11-own1184-incomplete-lastverse-existing-session.yaml",
           "relation": "partial_zero_coverage_Verse_negative_guard_PASS",
           "reason": "Fresh1184owner11draft/25verses/0takes; strictMaestroRecord2:25Nextdisabled/PrevEnabled +NOStageAdvancebutton/sheet PASS46.7s. NoStart/Play/advance; native1183/1184/0takesclaimsdownloads unchanged; cleanupHome11/prefs/mic/radios exact. Full/partialVerse andPericope predicatepositive/negative matrix notverified; runtimehashunattested."
+        },
+        {
+          "receipt": "evidence/final-readonly-branch-checks/a-result.json",
+          "case_id": "A_9of25_negative_Verse_guard_77.653s",
+          "relation": "supporting_branch_only_no_status_promotion",
+          "reason": "Strict lastVerse25 no-stage/no-take with9of25 PASS77.653s; restored9/currentaccount12 and all nine rows/file hashes/network unchanged. Both prior scroll failures retained. Full Verse and Pericope predicates remain unverified."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Zero-coverage Verse-mode last-unit advancement absence is now verified on1184. Nonzero partial and full recorded Verse coverage and incomplete/full Pericope coverage remain unverified; all are conditions of the same full-coverage prerequisite."
+        "Zero and nonzero partial9-of25 Verse-mode negative advancement guards verified. Full-recorded Verse and incomplete/full Pericope advancement predicates remain unverified."
       ],
       "executable_now": false,
-      "next_test": "Use separately verified existing partial/full coverage fixtures to assert only remaining Verse/Pericope advancement availability predicates without stage writes. A current9-of25fixture is being prepared separately; do not rerun passed zero-coverage1184 or infer full coverage from last-verse navigation.",
+      "next_test": "Prepare independently verified full-recorded Verse and incomplete/full Pericope fixtures for bounded read-only advancement availability assertions; no stage writes. Do not repeat passed zero/9of25 negative branches.",
       "source_title": "Chapter advance requires full verse/pericope coverage",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/542"
@@ -3088,6 +3094,12 @@
           "flow": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/ownership/ownership-status-existing-session.yaml",
           "relation": "partial",
           "reason": "Scoped row icon branch matches independent stage/assignee fixture; conflict precedence and full later-stage matrix remain absent."
+        },
+        {
+          "receipt": "evidence/final-readonly-branch-checks/b-result.json",
+          "case_id": "B_conflict_precedence_747_vs_993_21.5s",
+          "relation": "supporting_branch_only_no_status_promotion",
+          "reason": "MyWork993 mine/noConflict,747 conflict/noOwnership and milestone16 chapter747 conflict/noOwnership PASS21.5s; cleanupComplete49.8s, rows/prefs/mic/radios restored. Full later-stage matrix and conflict/cloud coexistence remain unverified. Original raw freeze tag retained; source freeze d2da6fe parent-reported. Both cases whole runtime revision unattested."
         }
       ],
       "isolated_status": "PASS",
@@ -3100,7 +3112,7 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Conflict fixture and remaining later-stage/role combinations; no role/grant inference from email labels."
+        "Conflict-over-ownership precedence verified on MyWork and ViewProject747 versus clean993; remaining later-stage/role combinations remain unverified."
       ],
       "executable_now": false,
       "next_test": null,
@@ -4903,13 +4915,18 @@
       "review_reason": "Conflict icon on My Work and chapter-list surfaces needs actual conflict fixture; all observed ownership rows were nonconflicting.",
       "live_status": "BLOCKED",
       "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_evidence": [
+        {
+          "receipt": "evidence/final-readonly-branch-checks/b-result.json",
+          "case_id": "B_conflict_precedence_747_vs_993_21.5s",
+          "relation": "supporting_branch_only_no_status_promotion",
+          "reason": "MyWork993 mine/noConflict,747 conflict/noOwnership and milestone16 chapter747 conflict/noOwnership PASS21.5s; cleanupComplete49.8s, rows/prefs/mic/radios restored. Full later-stage matrix and conflict/cloud coexistence remain unverified. Original raw freeze tag retained; source freeze d2da6fe parent-reported. Both cases whole runtime revision unattested."
+        }
+      ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "conflict coexists with sync icon",
-        "My Work + View Project both",
-        "Necessary safe fixture/authorization not established: MAESTRO_FIXTURE_CONFLICT_LABEL seeded (#607)"
+        "Conflict indicator both MyWork and ViewProject verified; conflict/cloud-sync icon coexistence remains unverified. Requires independently prepared disposable user11 selected-take+conflict fixture; do not mutate shared747."
       ],
       "executable_now": false,
       "next_test": null,

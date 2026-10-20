@@ -1,0 +1,34 @@
+{
+  "candidate": "C-0260-01 remaining conflict-plus-cloud coexistence predicate",
+  "status": "BLOCKED_FIXTURE_NOT_READY_NO_TEST_OR_REPEAT",
+  "alreadyProved": "Conflict substitutes ownership on MyWork747 and ViewProject747; cleancontrol993. Do not rerun.",
+  "currentIndependentFacts": {
+    "activeUser": 11,
+    "freshLastUser11TakeCount": 0,
+    "receipt": "emulators/b-conflict-precedence-readiness/first-run/result.json final1184AndTakeGuard",
+    "existingConflictFixture": 747,
+    "hasConflict": true,
+    "existingConflictFixtureIsNotApprovedForCapture": true
+  },
+  "sourceContract": {
+    "aggregateScope": "src/db/queries.ts RECORDINGS_JOIN_CA scopes selected recording aggregates to active recorded_by_user_id and assignmentprojectunit",
+    "noneWhenZero": "src/utils/chapterSyncState.ts: recordingCount===0 returns none",
+    "cloudVisibility": "src/utils/myWorkRowDisplay.ts: not not_started && syncState!=none",
+    "cloudLabels": "src/components/ui/RecordingCloudIcon.tsx: Synced to cloud OR On device only",
+    "conflictLabel": "Unresolved recording conflict"
+  },
+  "exactPrerequisite": "An independently prepared APPROVED DISPOSABLE chapter with activeuser11 selected recording aggregate>0 and has_conflict=1, with stage/membership and sync_status metadata frozen before/after. Current zero-user11-takes cache cannot render the required cloud condition. Do not record/create conflict on shared747.",
+  "futureReadonlyAssertions": [
+    "On the exactMyWorkrow, assert conflict descendant AND cloud a11y Synced to cloud or On device only simultaneously; ownership indicators absent.",
+    "On the corresponding ViewProject chapterrow, assert both the same conflict and source-backed cloud variant simultaneously.",
+    "Freeze independent active-user/project-unit scoped selected recording count/pendingcount/has_conflict/status before/after; retain both row screenshots; no tapping audio/capture/stage controls.",
+    "Restore Home/MyWork11/Legacy/Verse/cellularOFF/radios0,1/mic unchanged; preserve1184 zero-coverage and protectedsharedtakes."
+  ],
+  "fixtureWritesByThisLane": false,
+  "sourceHashes": {
+    "src/db/queries.ts": "78b27f5bf05f88e867b899369a209814b20090bb1a3403f66fc15d7d9f97b9fb",
+    "src/utils/chapterSyncState.ts": "daf2e491232cd5bf27f1a36f8bba71dbf1488fe183fe76629e9af4ce204c2d82",
+    "src/utils/myWorkRowDisplay.ts": "cb196eb90c591e51aa6eee37aeb7c106e7ba8d6692b64338d2c6cd4113809de4",
+    "src/components/ui/RecordingCloudIcon.tsx": "717d17b1fb92f028eabc19fe313f59af7cd3aa42e684e8581a9076f94b0e5421"
+  }
+}

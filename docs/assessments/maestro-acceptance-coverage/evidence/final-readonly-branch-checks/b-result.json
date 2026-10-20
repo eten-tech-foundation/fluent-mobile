@@ -1,0 +1,49 @@
+{
+  "serial": "emulator-5556",
+  "userId": 11,
+  "productFreezeParentReported": "d2f27fe",
+  "runtimeRevision": "UNATTESTED",
+  "claimBoundary": "Functional regression only, not integrated-repair proof",
+  "profiles": [
+    {
+      "profile": "conflict-precedence",
+      "flow": ".maestro/flows/ownership/b-user11-conflict-precedence-existing-session.yaml",
+      "pid": 90305,
+      "exit": 0,
+      "elapsedSeconds": 21.5
+    }
+  ],
+  "purpose": "NEW_READONLY_CONFLICT_PRECEDENCE_BRANCH",
+  "sourceFreezeParentReported": "d2da6fe",
+  "chapterEntryTaps": 0,
+  "capturePlayStageTaps": 0,
+  "originalRadios": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1"
+  },
+  "originalMic": [
+    "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+  ],
+  "beforeRows": "747|8|16|17|7|11||draft|1\n993|11|17|2|1|11|10|draft|0\n1184|12|19|60|2|11|10|draft|0",
+  "actualNativeBothRowContextsVerified": true,
+  "sourceHashes": {
+    "src/components/ui/MyWorkRow.tsx": "c2fd030f7d02fe7b7913feb0bf69a1b05ca2b49de6adc0f2120af00a7c315dfe",
+    "src/components/ui/ChapterOwnershipIndicator.tsx": "8263565d8eb0dc846cbeebbf957748f30f9177834765257db46b7f9ccde933f6",
+    "src/components/ui/ChapterConflictIndicator.tsx": "e284af11b5718de8685e5f1f1c22aed953550dbc6e7ccebbf1c6ef6289ce048b",
+    "src/utils/chapterOwnershipState.ts": "0b0bb4eb60363d57eb0f86983d5584a3c7e8ca075dd410701c88c4481432c302",
+    "scripts/maestro-test-qa.sh": "255d962b9a5ad820a2ac3aa01423878f9933d697cf9d9917b8f894a5a6167509",
+    "scripts/maestro-fixture-guard.cjs": "81224f22c2fec918d4bc0b7dfea1cbf64a673325fc484388db2181b835ce641a"
+  },
+  "finalHome11LegacyVerseOffVerified": true,
+  "finalRadios": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1"
+  },
+  "finalMic": [
+    "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+  ],
+  "afterRows": "747|8|16|17|7|11||draft|1\n993|11|17|2|1|11|10|draft|0\n1184|12|19|60|2|11|10|draft|0",
+  "final1184AndTakeGuard": "1184|11|10|draft|25|0\n0",
+  "cleanupComplete": true,
+  "totalElapsedSeconds": 49.8
+}

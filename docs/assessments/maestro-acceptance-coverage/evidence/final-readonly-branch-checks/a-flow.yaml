@@ -1,0 +1,91 @@
+# READONLY B0013-01/#542 partial: incomplete verse coverage on last verse.
+# No recording, stage, confirmation, network/auth/reset/delete actions.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - read-only
+  - fixture-blocked
+  - record
+---
+- runScript: /Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/values.js
+- assertVisible:
+    id: '^home-tab-my-work$'
+- runFlow: /Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/nav/open-fixture-chapter-from-milestone.yaml
+- runFlow: /Users/matt/Documents/Codex/2026-10-19/task-10/resume-v9-parser-verified/known-offline-logbox-prestart.yaml
+- tapOn:
+    id: '^drafting-tab-bible$'
+- runFlow: /Users/matt/Documents/Codex/2026-10-19/task-10/resume-v9-parser-verified/known-offline-logbox-prestart.yaml
+- runFlow:
+    when:
+      notVisible:
+        id: '^bible-tab$'
+    commands:
+      - assertVisible:
+          id: '^drafting-tab-bar$'
+      - tapOn:
+          id: '^drafting-tab-bible$'
+- extendedWaitUntil:
+    visible:
+      id: '^bible-tab$'
+    timeout: 10000
+# Unlike scrollUntilVisible's deadline-after-last-swipe path, always perform
+# the final positive lookup after the last bounded scroll. No optional assertion.
+- repeat:
+    times: 5
+    while:
+      notVisible:
+        id: '^bible-verse-row-25$'
+    commands:
+      - scroll
+- assertVisible:
+    id: '^bible-verse-row-25$'
+- tapOn:
+    id: '^bible-verse-row-25$'
+- extendedWaitUntil:
+    visible:
+      id: '^record-tab$'
+    timeout: 10000
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^1 Peter 1:25$'
+- assertVisible:
+    id: '^record-start-button$'
+- assertNotVisible:
+    id: '^stage-advance-button$'
+- assertNotVisible:
+    id: '^record-take-row-.*$'
+- assertNotVisible:
+    id: '^record-stop-button$'
+- assertNotVisible:
+    id: '^record-pause-button$'
+- assertNotVisible:
+    id: '^record-resume-button$'
+- takeScreenshot: incomplete-verse25-no-stage-advance
+- tapOn:
+    id: '^drafting-tab-bible$'
+- extendedWaitUntil:
+    visible:
+      id: '^bible-tab$'
+    timeout: 10000
+# Scroll toward earlier verses = physical DOWN swipe; bound and recheck last swipe.
+- repeat:
+    times: 5
+    while:
+      notVisible:
+        id: '^bible-verse-row-9$'
+    commands:
+      - swipe:
+          direction: DOWN
+- assertVisible:
+    id: '^bible-verse-row-9$'
+- tapOn:
+    id: '^bible-verse-row-9$'
+- extendedWaitUntil:
+    visible:
+      id: '^record-tab$'
+    timeout: 10000
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^1 Peter 1:9$'
+- assertNotVisible:
+    id: '^record-stop-button$'

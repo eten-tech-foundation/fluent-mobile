@@ -1,0 +1,18 @@
+{
+  "receipt_sha256": "e88fb97562930d10f1f7ef01c391c99ca5a387dd7f6ef04f7caacd9499d350ec",
+  "scope": "B0013 partial incomplete verse coverage stage guard",
+  "state": "9 of25 recorded, exact lastverse25 withouttake",
+  "pass": true,
+  "count_change": false,
+  "preserves_original_failures": true,
+  "runtime_whole_bundle_hash_attested": false,
+  "next_missing_checks": [
+    "Fully-recorded Verse stage boundary",
+    "Pericope stage boundary"
+  ],
+  "cleanup": {
+    "accountsRestored": true,
+    "allNineRowsAndFilesUnchanged": true,
+    "networkUnchanged": true
+  }
+}

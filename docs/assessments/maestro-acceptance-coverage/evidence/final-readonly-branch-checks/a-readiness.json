@@ -1,0 +1,66 @@
+{
+  "status": "SYMMETRIC_SCROLLS_OFFLINE_VALIDATED_FROZEN_ROOT_WRAPPER_READY",
+  "criterion": "B0013-01/#542 incompleteVERSEcoverageguard onLASTverse25; partial acceptance only",
+  "flowSha256": "14f050ebf9dd148c40784e71ed3353843ee43c659c20b4ddf18d3bfe415c74b4",
+  "valuesSha256": "f18115d05cfe262dd18597bfc742bc07ef80757060775dc8bbb992364afd133b",
+  "parser": "ActualinstalledYamlCommandReader/Env/Graal PASS main66commands+1externalJS; standalonecleanup17commands+1externalJS",
+  "parserProofLogSha256": "38a21b0244201922167cb515496cdb6aa12ee5da5b7f333783ae8ea8a6fdcffe",
+  "noDeviceActions": true,
+  "noCaptureStageConfirmTap": true,
+  "nativeFreshReadOnlySQL": {
+    "role": "SELECT c.id,c.project_unit_id,c.bible_id,c.book_id,c.chapter_number,c.assigned_user_id,c.peer_checker_id,c.status,u.project_id FROM chapter_assignments c JOIN project_units u ON u.id=c.project_unit_id WHERE c.id=1183;",
+    "coverage": "SELECT count(DISTINCT b.verse_number) AS recorded_verses FROM recordings r JOIN bible_texts b ON b.id=r.bible_text_id WHERE r.recorded_by_user_id=10 AND r.project_unit_id=19 AND b.bible_id=178 AND b.book_id=60 AND b.chapter_number=1;",
+    "totalAndTarget": "SELECT count(*) AS total FROM bible_texts WHERE bible_id=178 AND book_id=60 AND chapter_number=1; SELECT id FROM bible_texts WHERE bible_id=178 AND book_id=60 AND chapter_number=1 AND verse_number=25;",
+    "noTargetTake": "SELECT count(*) AS n FROM recordings r JOIN bible_texts b ON b.id=r.bible_text_id WHERE r.project_unit_id=19 AND b.bible_id=178 AND b.book_id=60 AND b.chapter_number=1 AND b.verse_number=25;"
+  },
+  "expectedNative": {
+    "role": "1183/19/178/60/1/drafter10/peer11/draft/project12",
+    "coverage": "9 of25; exact9 originalIDs/alluploaded/fileSHAimmutable; noverse25take",
+    "preflight": "Home12/cache10,9,12/Legacy/Verse/markers0/transfers0; currentnetworkrecordedandUNTOUCHED"
+  },
+  "shellGuardEnv": {
+    "MAESTRO_FIXTURE_PROJECT_ID": "12",
+    "MAESTRO_FIXTURE_PROJECT_ALLOWLIST": "12",
+    "MAESTRO_FIXTURE_PROJECT_DENYLIST": "944",
+    "MAESTRO_FIXTURE_MILESTONE_ID": "19",
+    "MAESTRO_FIXTURE_CHAPTER_ID": "1183",
+    "MAESTRO_INCOMPLETE_NATIVE_VERIFIED": "1",
+    "MAESTRO_INCOMPLETE_USER_ID": "10"
+  },
+  "rootCommandAfterFreshNativeAndCachedSwitch10Home": "bash scripts/maestro-test-qa.sh /Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/flow.yaml -e MAESTRO_FIXTURE_PROJECT_ID=12 -e MAESTRO_FIXTURE_PROJECT_ALLOWLIST=12 -e MAESTRO_FIXTURE_PROJECT_DENYLIST=944 -e MAESTRO_FIXTURE_MILESTONE_ID=19 -e MAESTRO_FIXTURE_CHAPTER_ID=1183 -e MAESTRO_INCOMPLETE_NATIVE_VERIFIED=1 -e MAESTRO_INCOMPLETE_USER_ID=10 --test-output-dir /Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/final-a-incomplete-coverage-542-semantic-scroll",
+  "rootExecutorReuse": "Use root-reviewed existingA nativeguard/observedcachedswitch helpers. Do not build newexecutor. CLI bounded90s; no retry. FlowrestoresRecordverse9itself; rootfinallyobservedknownBack\u22645/PFO/Sync\u2192Home\u2192account12; preserve9SHA/accountcache/radios. IfunknownUI/activecapture neverblindback/reset; retainpartial androotcleanup.",
+  "rootCleanupIfFlowFails": "Use observed draftingtabBible +positivebible-tab; scrollUPto9onlyif25actuallyselected, tap9/readreference; thenknownBack/Home12. Ifpreparationfailedbefore25, oldselection9remains; verifypositivewherepossible. No capture or advance action.",
+  "noClaim": "No fullrecorded/pericopeguard proof; no automatic fullrowPASS; no exactbundleattestation.",
+  "hashes": {
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/flow.yaml": "14f050ebf9dd148c40784e71ed3353843ee43c659c20b4ddf18d3bfe415c74b4",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/values.js": "f18115d05cfe262dd18597bfc742bc07ef80757060775dc8bbb992364afd133b",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/ParserProof.java": "0f69c62475a2d9780597435d5983218fa6c11892426f3012f87fdf2748487ad9",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/parser-proof.log": "38a21b0244201922167cb515496cdb6aa12ee5da5b7f333783ae8ea8a6fdcffe",
+    "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/shared/nav/open-fixture-chapter-from-milestone.yaml": "4f67618bbbcb9bc4ac4ea97098cf17c326772f974e0bb1123a12c1915929bbdc",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/resume-v9-parser-verified/known-offline-logbox-prestart.yaml": "ba4b33763b75f50866a689165bfaa49066f2b95449043ce9b8cf27b2fb6647f0",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/cleanup-record25-to-record9.yaml": "a7ff253f092689a490be9c62e694b4f2a91c1f7310bc0302a7c8e323116b2286",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/cleanup-parser-proof.log": "9f1a966d619982d9c08d7116e00f4fe7f159d437b0e2f75affbfa7845ff37779"
+  },
+  "materialSemanticCorrection": {
+    "target": "Exactanchoredverse25 unchanged",
+    "scrolls": "Atmost5plainDOWNscrolls, onlywhileexact25absent. No optionalcommands or relaxedvisibility threshold.",
+    "lastLookup": "MandatoryfreshassertVisibleexact25 AFTERloop, thensameexact25tap",
+    "sourceEvidence": "InstalledOrchestra.scrollUntilVisible deadlinecheckafterfinalswipe canthrowbeforelastlookup; retained47.822finalswipe\u219249.301failure\u219249.524row25visible",
+    "matcherEvidence": "InstalledFilters.idMatches returns1forbothanchored/unanchored; retainednode100%visible; Bpassedflowalsoanchored",
+    "noTimeoutInflation": true
+  },
+  "originalFailuresPreserved": [
+    "live-results/20261020/final-a-incomplete-coverage-542/result.json",
+    "live-results/20261020/final-a-incomplete-coverage-542-visible/result.json"
+  ],
+  "oneMissingCriterion": "B0013-01/#542 incompleteversecoverage blocksstageadvance atlastverse25 withA9/25recorded. Partialcandidateonly; fullyrecorded/pericopesremainunproved.",
+  "restore9Correction": "Atmost5physicalDOWNswipes (scrollUPtowardearlierverses) onlywhileexact9absent; unconditionalfreshassert9beforetap, thenexactRecord1Peter1:9 assertion",
+  "standaloneReadOnlyCleanup": {
+    "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/cleanup-record25-to-record9.yaml",
+    "sha256": "a7ff253f092689a490be9c62e694b4f2a91c1f7310bc0302a7c8e323116b2286",
+    "parserLog": "/Users/matt/Documents/Codex/2026-10-19/task-10/incomplete-coverage-readonly-a-semantic-scroll/cleanup-parser-proof.log",
+    "admitOnly": "Freshnativehash9/markers0/transfers0/noNewTake plus exactRecord25/Startvisible/noStopPauseResume/sourcePlaying; nootherentrypoint",
+    "behavior": "Bible->positivebible-tab->boundedUP9->mandatoryfresh9->tap9/exactRecord9; rootthenknownHome12cleanup",
+    "notAcceptance": "Cleanupdoesnotpromoteoriginalfailedflow"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "scope": "ONE selected fixture readiness query only, noUIcase/sync/writes",
+  "sql": "SELECT ca.id,pu.project_id,ca.project_unit_id,ca.book_id,ca.chapter_number,ca.assigned_user_id,ca.peer_checker_id,ca.status,ca.has_conflict FROM chapter_assignments ca JOIN project_units pu ON pu.id=ca.project_unit_id WHERE ca.id IN (747,993,1184) ORDER BY ca.id;",
+  "rows": "747|8|16|17|7|11||draft|1\n993|11|17|2|1|11|10|draft|0\n1184|12|19|60|2|11|10|draft|0"
+}

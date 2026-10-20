@@ -1,0 +1,73 @@
+# NEW missing conflict-over-ownership branch; no chapter entry or writes.
+appId: com.eten.fluent
+tags: [ordered-readonly, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && MAESTRO_B_SERIAL === 'emulator-5556' && MAESTRO_B_CONFLICT_ORACLE === '747-draft-mine-conflict-993-draft-mine-clean'}
+- assertVisible:
+    id: '^home-settings-button$'
+- tapOn:
+    id: '^home-tab-my-work$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^home-tab-my-work$'
+    selected: true
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-993$'
+    direction: UP
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-993$'
+    containsDescendants:
+      - id: '^chapter-ownership-mine$'
+- assertNotVisible:
+    id: '^my-work-row-993$'
+    containsDescendants:
+      - id: '^chapter-conflict-indicator$'
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-747$'
+    direction: DOWN
+    speed: 80
+    timeout: 15000
+- assertVisible:
+    id: '^my-work-row-title-747$'
+    text: '^Esther 7$'
+- assertVisible:
+    id: '^my-work-row-747$'
+    containsDescendants:
+      - id: '^chapter-conflict-indicator$'
+        text: '^Unresolved recording conflict$'
+- assertNotVisible:
+    id: '^my-work-row-747$'
+    containsDescendants:
+      - id: '^chapter-ownership-(mine|other)$'
+- takeScreenshot: b-mywork747-conflict-replaces-mine-ownership
+- tapOn:
+    id: '^home-tab-projects$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-16$'
+    direction: UP
+    speed: 80
+    timeout: 15000
+- tapOn:
+    id: '^milestone-row-16$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-747$'
+    timeout: 15000
+- assertVisible:
+    id: '^chapter-row-747$'
+    containsDescendants:
+      - text: '^Esther 7$'
+      - id: '^chapter-conflict-indicator$'
+        text: '^Unresolved recording conflict$'
+- assertNotVisible:
+    id: '^chapter-row-747$'
+    containsDescendants:
+      - id: '^chapter-ownership-(mine|other)$'
+- takeScreenshot: b-viewproject747-conflict-replaces-mine-ownership

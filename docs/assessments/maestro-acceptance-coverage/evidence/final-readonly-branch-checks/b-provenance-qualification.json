@@ -1,0 +1,26 @@
+{
+  "purpose": "Provenance qualification only; raw result.json unchanged",
+  "rawReceipt": "result.json",
+  "rawReceiptSha256": "733d11f093c73a17c9bfde5f2ab41001e14b30037f8f74f86f30b0bc40172cee",
+  "copiedBaselineField": {
+    "field": "productFreezeParentReported",
+    "value": "d2f27fe",
+    "meaning": "Inherited baseline from earlier generic driver template; not a current source/runtime attestation."
+  },
+  "currentSourceFreeze": {
+    "field": "sourceFreezeParentReported",
+    "value": "d2da6fe",
+    "fullParentReviewedCheckpoint": "d2da6fece7e5b7e0bc0dd8cb19836ec992db36b1",
+    "basis": "Trusted parent freeze, selected source hashes recorded in raw receipt"
+  },
+  "runtimeQualification": {
+    "wholeRuntimeHash": "UNATTESTED",
+    "actualNewFooterCodeObserved": "emulators/b-ordered-fullset/runtime-marker-preflight.json verifies new13/9footer/countIDs after approved R reload",
+    "limit": "Loaded footer markers do not attest the complete bundle or every selected host source hash."
+  },
+  "executionUnchanged": {
+    "cliExit": 0,
+    "cliSeconds": 21.5,
+    "cleanupComplete": true
+  }
+}

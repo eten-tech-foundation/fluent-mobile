@@ -1,0 +1,39 @@
+{
+  "baseline_sha256": "2194d7e87e92b5e8c2c90c66cef32ce98bbd963fefa9d2a071b3dfe3138f7d11",
+  "updated_sha256": "4ef0e6fa81a2d6fb88a6f6bd786778610649f52afe64d8ce7b60299baaac03a7",
+  "counts_unchanged": "33complete/14partial/39not_run of86",
+  "status_changes": 0,
+  "historical_failures_retained": true,
+  "runtime_revision_attested": false,
+  "files": [
+    ".maestro/flows/ownership/b-user11-conflict-precedence-existing-session.yaml",
+    "docs/assessments/maestro-acceptance-coverage/evidence-reconciliation.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/a-criterion-qualification.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/a-executed-wrapper.py",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/a-first-scroll-failure.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/a-flow.yaml",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/a-parser-proof.log",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/a-readiness.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/a-result.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/a-second-scroll-failure.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/a-values.js",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/b-Next-cloud-conflict-dependency.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/b-provenance-qualification.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/b-result.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/b-selected-fixture.json",
+    "docs/assessments/maestro-acceptance-coverage/evidence/final-readonly-branch-checks/receipt.json"
+  ],
+  "source_hashes": {
+    "live-results/20261020/final-a-incomplete-coverage-542-semantic-scroll/result.json": "e88fb97562930d10f1f7ef01c391c99ca5a387dd7f6ef04f7caacd9499d350ec",
+    "live-results/20261020/final-a-incomplete-coverage-542-semantic-scroll/criterion-qualification.json": "fec264d546fd4d3ea8bba0e80085a9346cc4e4a26ed1df5deb058228880dc2c3",
+    "live-results/20261020/final-a-incomplete-coverage-542-semantic-scroll/executed-wrapper.py": "6e156794a20e6bcaf91592e1146d615598a36296d4b0a5ff938290f25fcfffc7",
+    "incomplete-coverage-readonly-a-semantic-scroll/flow.yaml": "14f050ebf9dd148c40784e71ed3353843ee43c659c20b4ddf18d3bfe415c74b4",
+    "incomplete-coverage-readonly-a-semantic-scroll/values.js": "f18115d05cfe262dd18597bfc742bc07ef80757060775dc8bbb992364afd133b",
+    "incomplete-coverage-readonly-a-semantic-scroll/readiness.json": "e873615729bbc81034bc694238e058d400a5c97a95074ceea1e2a2bf27d47981",
+    "incomplete-coverage-readonly-a-semantic-scroll/parser-proof.log": "38a21b0244201922167cb515496cdb6aa12ee5da5b7f333783ae8ea8a6fdcffe",
+    "live-results/20261020/final-a-incomplete-coverage-542/result.json": "21b2dcb6761d39fd1140b7976c646f159c204ef6b39f191f1e762dffc2ea93ba",
+    "live-results/20261020/final-a-incomplete-coverage-542-visible/result.json": "6d0c07e08724440fbe98c520d6ce0843284c6d6aaf7f59b0b25157299821785a",
+    "emulators/b-conflict-precedence-readiness/first-run/result.json": "733d11f093c73a17c9bfde5f2ab41001e14b30037f8f74f86f30b0bc40172cee",
+    "emulators/b-conflict-precedence-readiness/selected-fixture.json": "48425e127e0c093009fe9afd8f47019d8fac54609eaec8028d52d0c6154b46c1"
+  }
+}
