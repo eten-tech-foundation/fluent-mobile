@@ -17,11 +17,11 @@ role values matched across Canvas, Hardware and Accent. The audit found a
 two-value role mismatch, typography that had drifted, and Foundations tokens
 (motion, elevation, sizes, strokes, gradients) that weren't encoded.
 
-**Now (after #638):** all 48 role values match, the roles, elevation, motion,
-disabled opacity, icon sizes, `radius.xs` and `space/2` are on `Theme` in all
-three modes, and components reach them through `useTheme()`. The named type
-styles are on `Theme` too. Still open: the font family, gradients, strokes
-and `space/48`.
+**Now (after #638 and #692):** all 48 role values match, the roles,
+elevation, motion, disabled opacity, icon sizes, strokes, `radius.xs` and
+`space/2` are on `Theme` in all three modes, and components reach them
+through `useTheme()`. The named type styles are on `Theme` too. Still open:
+the font family, gradients and `space/48`.
 
 ## What matches
 
@@ -76,7 +76,7 @@ and `space/48`.
 | --- | --- | --- | --- |
 | `space/48` | 48 | Screen top inset. Use safe-area insets in code, not a constant | Open |
 | `size/icon-24`, `size/icon-32` | 24, 32 | Round buttons and rows; keys and mini player | `theme.controlSizes` |
-| `stroke/1`, `stroke/2` | 1, 2 | Rim on screen buttons; bevel edges on hardware | Open |
+| `stroke/1`, `stroke/2` | 1, 2 | Rim on screen buttons; bevel edges on hardware | `theme.stroke[1]`, `[2]` (#692) |
 | `opacity/disabled` | → `opacity/40` | Disabled controls | `theme.opacity.disabled` |
 | `motion/press` | 80 ms | Press-in | `theme.motion.pressMs` |
 | `motion/release` | 180 ms | Release to rest | `theme.motion.releaseMs` |
@@ -120,5 +120,5 @@ In dependency order:
 1. **Typography family.** The named styles are encoded; confirm the families
    (Google Sans Flex / DM Mono / Noto Sans Telugu are placeholders), then load
    them with `expo-font` and change `nextFontFamilies` in `nextFoundation.ts`.
-2. **Gradients and strokes.** `fade/reading`, `gradient/accent`, `Fluent
-   Gradient`, `stroke/*`, `space/48`.
+2. **Gradients.** `fade/reading`, `gradient/accent`, `Fluent Gradient`, plus
+   `space/48`.

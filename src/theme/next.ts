@@ -2,6 +2,7 @@ import { legacyTheme, type Theme } from './legacy';
 import { buildElevation } from './elevation';
 import {
   nextControlSizes,
+  nextStroke,
   nextMotion,
   nextOpacity,
   nextSpacing,
@@ -164,6 +165,7 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
     motion: { ...nextMotion, easeStandard: { ...nextMotion.easeStandard } },
     opacity: { ...nextOpacity },
     controlSizes: { ...nextControlSizes },
+    stroke: { ...nextStroke },
     spacing: { ...nextSpacing },
     radius: { ...nextRadius },
     typography: {

@@ -145,6 +145,10 @@ exports[`legacyTheme matches the frozen Legacy snapshot 1`] = `
     "xxl": 24,
     "xxs": 2,
   },
+  "stroke": {
+    "1": 1,
+    "2": 2,
+  },
   "type": {
     "body": {
       "fontSize": 18,

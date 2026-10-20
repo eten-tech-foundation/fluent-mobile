@@ -483,6 +483,7 @@ export default function DraftingScreen() {
                   projectId={chapterData.projectId ?? null}
                   userId={userId}
                   bookCode={chapterData.bookCode ?? ''}
+                  languageCode={chapterData.sourceLanguageCode}
                   chapterNumber={chapterData.chapterNumber}
                   bibleId={chapterData.bibleId}
                   bookId={chapterData.bookId}
