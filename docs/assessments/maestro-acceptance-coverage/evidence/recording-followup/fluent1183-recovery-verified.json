@@ -1,0 +1,29 @@
+{
+  "recovered_prompt": true,
+  "resume_restores_paused_verse2": true,
+  "marker": {
+    "sessionKey": "1183:2",
+    "segments": [
+      "file:///data/user/0/com.eten.fluent/files/Audio/recording-308d4944-5b53-44bd-b03b-0de245ddaa3b.aac"
+    ],
+    "elapsedMs": 36999,
+    "startedAt": "2026-10-20T18:11:00.748Z",
+    "chapterAssignmentId": 1183,
+    "verseNumber": 2,
+    "capture": {
+      "bibleTextId": 34845,
+      "granularity": "verse",
+      "startChapter": 1,
+      "startVerse": 2,
+      "endChapter": 1,
+      "endVerse": 2
+    }
+  },
+  "segment_bytes": 454167,
+  "account": {
+    "active_user_id": "10",
+    "known_user_ids": "10,9,12"
+  },
+  "runtime_reload_observed": true,
+  "process_kill_crash_test": false
+}

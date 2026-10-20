@@ -1,0 +1,57 @@
+{
+  "visible": [
+    [
+      "stack-header-back",
+      "",
+      "Go back"
+    ],
+    [
+      "",
+      "Sync",
+      ""
+    ],
+    [
+      "sync-screen",
+      "",
+      ""
+    ],
+    [
+      "",
+      "Online \u00b7 all synced",
+      ""
+    ],
+    [
+      "",
+      "All work has been uploaded to Fluent.",
+      ""
+    ],
+    [
+      "",
+      "All synced",
+      ""
+    ],
+    [
+      "sync-upload-cellular",
+      "",
+      ""
+    ],
+    [
+      "",
+      "Upload/Download over cellular",
+      ""
+    ],
+    [
+      "",
+      "Use mobile data to upload recordings and download resources when WiFi isn't available.",
+      ""
+    ],
+    [
+      "sync-upload-cellular-switch",
+      "",
+      "Upload/Download over cellular"
+    ]
+  ],
+  "paused_marker_cleared": true,
+  "saved_file_bytes": 453302,
+  "no_pending_upload_synthesized": true
+}

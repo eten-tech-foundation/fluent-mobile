@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-20T18:11:13.916Z",
+  "peers": {
+    "socket#2": null,
+    "socket#3": "device=sdk_gphone64_arm64%20-%2013%20-%20API%2033&app=com.eten.fluent&clientid=DevLauncherBridgelessDevSupportManager",
+    "socket#29": "device=sdk_gphone64_arm64%20-%2013%20-%20API%2033&app=com.eten.fluent&clientid=DevLauncherBridgelessDevSupportManager",
+    "socket#30": "device=sdk_gphone64_arm64%20-%2013%20-%20API%2033&app=com.eten.fluent&clientid=DevLauncherBridgelessDevSupportManager",
+    "socket#31": null,
+    "socket#32": "device=sdk_gphone64_arm64%20-%2013%20-%20API%2033&app=com.eten.fluent&clientid=DevLauncherBridgelessDevSupportManager",
+    "socket#33": "device=sdk_gphone64_arm64%20-%2013%20-%20API%2033&app=com.eten.fluent&clientid=DevLauncherBridgelessDevSupportManager",
+    "socket#36": "device=sdk_gphone64_arm64%20-%2013%20-%20API%2033&app=com.eten.fluent&clientid=DevLauncherBridgelessDevSupportManager",
+    "socket#40": "device=sdk_gphone64_arm64%20-%2013%20-%20API%2033&app=com.eten.fluent&clientid=DevLauncherBridgelessDevSupportManager"
+  },
+  "reloadSent": true
+}

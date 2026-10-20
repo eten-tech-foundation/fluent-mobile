@@ -1,0 +1,59 @@
+{
+  "new_take": "rec_mvh032ch_05antbde",
+  "db": [
+    {
+      "id": "rec_mvgyi6ut_qg018vsu",
+      "bible_text_id": "34844",
+      "recorded_by_user_id": "10",
+      "project_unit_id": "19",
+      "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvgyi6ut_qg018vsu.m4a",
+      "duration_ms": "95675",
+      "file_size_bytes": "1168949",
+      "sync_status": "uploaded",
+      "blob_key": "unit-19/text-34844",
+      "version_token": "2"
+    },
+    {
+      "id": "rec_mvh032ch_05antbde",
+      "bible_text_id": "34845",
+      "recorded_by_user_id": "10",
+      "project_unit_id": "19",
+      "local_file_path": "file:///data/user/0/com.eten.fluent/files/recordings/rec_mvh032ch_05antbde.m4a",
+      "duration_ms": "36999",
+      "file_size_bytes": "453302",
+      "sync_status": "uploaded",
+      "blob_key": "unit-19/text-34845",
+      "version_token": "2"
+    }
+  ],
+  "visible_badge": [
+    [
+      "record-take-badge-rec_mvh032ch_05antbde",
+      "Take 1 - Verse - v. 2",
+      ""
+    ],
+    [
+      "record-take-sync-rec_mvh032ch_05antbde",
+      "uploaded",
+      ""
+    ]
+  ],
+  "visible_texts": [
+    "1 Peter 1",
+    "Q",
+    "1 Peter 1:2",
+    "Take 1 - Verse - v. 2",
+    "0:00 / 0:36",
+    "uploaded",
+    "Record New Take",
+    "View source text",
+    "0:00",
+    "--:--",
+    "WEB Source Audio \u00b7 Verse 2 / 25",
+    "Bible",
+    "Resources",
+    "Record"
+  ],
+  "runtime_reload_observed": true,
+  "original_take_preserved": true
+}

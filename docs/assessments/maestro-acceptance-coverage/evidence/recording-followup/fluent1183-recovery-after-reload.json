@@ -1,0 +1,52 @@
+{
+  "marker": [
+    {
+      "sessionKey": "1183:2",
+      "segments": [
+        "file:///data/user/0/com.eten.fluent/files/Audio/recording-308d4944-5b53-44bd-b03b-0de245ddaa3b.aac"
+      ],
+      "elapsedMs": 36999,
+      "startedAt": "2026-10-20T18:11:00.748Z",
+      "chapterAssignmentId": 1183,
+      "verseNumber": 2,
+      "capture": {
+        "bibleTextId": 34845,
+        "granularity": "verse",
+        "startChapter": 1,
+        "startVerse": 2,
+        "endChapter": 1,
+        "endVerse": 2
+      }
+    }
+  ],
+  "visible": [
+    [
+      "com.eten.fluent:id/alert_title",
+      "Recovered recording"
+    ],
+    [
+      "com.eten.fluent:id/scrollView",
+      ""
+    ],
+    [
+      "android:id/message",
+      "A paused recording was recovered. Resume it or discard it?"
+    ],
+    [
+      "com.eten.fluent:id/buttonPanel",
+      ""
+    ],
+    [
+      "android:id/button2",
+      "DISCARD"
+    ],
+    [
+      "android:id/button1",
+      "RESUME"
+    ]
+  ],
+  "account": {
+    "active_user_id": "10",
+    "known_user_ids": "10,9,12"
+  }
+}

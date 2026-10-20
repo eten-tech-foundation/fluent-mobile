@@ -1,0 +1,17 @@
+[
+  {
+    "control": "drafting-header-back",
+    "prompt": true,
+    "Resume_preserves_paused_capture": true
+  },
+  {
+    "control": "home-sync-button",
+    "prompt": true,
+    "Resume_preserves_paused_capture": true
+  },
+  {
+    "control": "drafting-account-initials",
+    "prompt": true,
+    "Resume_preserves_paused_capture": true
+  }
+]

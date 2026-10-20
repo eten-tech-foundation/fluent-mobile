@@ -35,9 +35,9 @@
       "UNTESTED": 30
     },
     "canonical_execution_coverage": {
-      "complete_for_requirement": 11,
-      "partial": 39,
-      "not_run": 152
+      "partial": 40,
+      "not_run": 151,
+      "complete_for_requirement": 11
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
@@ -2141,8 +2141,14 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Background auto-pause, process-kill recovery and leave guard have different triggers and independent failure modes.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "evidence/recording-followup/summary.json",
+          "relation": "partial",
+          "reason": "Actualpause/resume, leaveprompt preservation, MetroJSreload recoveredprompt->paused->saved. OSprocesskill/crash anddrawerSettingsguard unproved."
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -2159,10 +2165,10 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Real capture/marker fixture and authorized restart/kill/recovery; forbidden in preserved-session lane."
+        "OSprocessrestart andbackgroundauto-pause remain unverified; use verified disposable1183 andpersistedmarker preconditions."
       ],
-      "executable_now": false,
-      "next_test": null,
+      "executable_now": true,
+      "next_test": "Persist a fresh disposable pausedcapture and verify segmentfile, then supported non-destructive OSprocessrestart, resume/save; no uncertainupload termination.",
       "source_title": "Kill-safe pause recovery and leave prompt",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/567",
@@ -6581,5 +6587,6 @@
       "independent server readback",
       "runtime patch application and badge transition"
     ]
-  }
+  },
+  "latest_direct_recording_followup": "evidence/recording-followup/summary.json"
 }

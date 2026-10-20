@@ -1,0 +1,43 @@
+{
+  "utc": "2026-10-20T18:13:57.097800+00:00",
+  "fixture": {
+    "project": 12,
+    "assignment": 1183,
+    "verse": 2,
+    "owner": 10
+  },
+  "original_take_preserved": "rec_mvgyi6ut_qg018vsu",
+  "new_take": "rec_mvh032ch_05antbde",
+  "synthetic_silence_only": true,
+  "direct_PASS": [
+    "capture pause marker15951ms",
+    "Back leaveprompt Resume preserves pausedcapture",
+    "Sync leaveprompt Resume preserves pausedcapture",
+    "accountchip leaveprompt Resume preserves pausedcapture",
+    "capture resume observed running0:18; nextpause36999ms",
+    "supported Expo JSreload yieldsRecoveredrecording prompt",
+    "Resume recovery restorespaused verse2",
+    "recoveredtake save36999ms453302bytes",
+    "retainedUIuploaded agrees deviceDBuploaded version2",
+    "Sync online allsynced"
+  ],
+  "not_proved": [
+    "audibleinput/output",
+    "OSprocesskill/crashrecovery",
+    "drawerSettingslock",
+    "pendingtouploadedbadge transition",
+    "uploadPauseRetryCancelofflineReconnect",
+    "independentserverreadback"
+  ],
+  "harness_corrections": [
+    "Androidalertbuttons uppercase RESUME/DISCARD",
+    "Nativepause/resume continuesonefile; expectingtwofiles was invalid"
+  ],
+  "runtime_reload": "source-supported localMetro protocol2/message; actual recoveredprompt proves runtime restart; no reinstall/reset",
+  "atomic_counts_unchanged": {
+    "complete": 10,
+    "partial": 15,
+    "absent": 61
+  },
+  "no_new_Maestro_PASS": true
+}
