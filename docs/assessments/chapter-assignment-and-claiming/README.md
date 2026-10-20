@@ -1,3 +1,5 @@
+> **Historical assessment (dated findings).** Results below are a snapshot from the audit dates in Overview. They are **not** current product AC, **not** proof that mobile code is normative, and **not** human Nightly QA signoff. Agent emulator debug is likewise not Nightly signoff. Canonical living behavior: [product-behavior/](../../product-behavior/README.md). Upload wire: [recordings-sync-contract.md](../../guides/recordings-sync-contract.md). Preserve the matrix as historical evidence; do not rewrite it as the live contract.
+
 # Chapter assignment and claiming Audit
 
 ## Overview

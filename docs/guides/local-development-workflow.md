@@ -11,7 +11,9 @@ Pick **one** API path by setting `EXPO_PUBLIC_API_BASE_URL` in `.env`. No code c
 
 Web app for **Path A (hosted dev)** login / project UI: https://dev.app.fluent.bible
 
-Preview / nightly APKs (QA testers) use **QA** instead — API `https://qa.api.fluent.bible`, web [https://qa.app.fluent.bible/](https://qa.app.fluent.bible/). Local engineering defaults below are unchanged.
+Preview / nightly APKs (QA testers) use **QA** instead — API `https://qa.api.fluent.bible`, web [https://qa.app.fluent.bible/](https://qa.app.fluent.bible/). Local engineering defaults below are **explicitly Dev / local Docker** — not QA acceptance.
+
+> **API host / session boundary:** `EXPO_PUBLIC_API_BASE_URL` is inlined at Metro bundler start. After changing the host (Dev ↔ QA ↔ local Docker), restart Metro with a clean bundle (stop the bundler; prefer a fresh start so the new URL is baked in) and treat auth/SQLite as a **new environment** — do **not** reuse a Dev-signed session against QA (or the reverse). Do **not** clear or overwrite an in-progress human QA session on the shared emulator (e.g. user10) unless the session owner asks.
 
 ---
 

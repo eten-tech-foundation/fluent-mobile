@@ -1,5 +1,11 @@
 # Refreshing bundled pericope sets
 
+Engineering how-to (not product AC). Paths checked 2026-10-19 against mobile
+HEAD `758d4b04a9ca81e1ed6228e9d30df1fc80014f5d`. Product journeys:
+[product-behavior/](../product-behavior/README.md). Dated device findings:
+[assessments/pericope-view/](../assessments/pericope-view/README.md)
+(historical).
+
 fluent-mobile bundles FCBH and FIA pericope boundary data directly in the
 APK for offline-first sync (#447). Source: `FCBH-All-Books.json` /
 `FIA-All-Books.json`, copied unmodified from fluent-api's `data/`

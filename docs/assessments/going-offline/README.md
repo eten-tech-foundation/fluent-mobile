@@ -4,6 +4,8 @@
 > (sub-issues of #529). Gaps 5–7 were added to the open #504, #546 (and PR
 > #559) and #257. E.19 is re-tested after PR #559 (#546) merges.
 
+> **Historical assessment (dated findings).** Results below are a snapshot from the audit dates in Overview. They are **not** current product AC, **not** proof that mobile code is normative, and **not** human Nightly QA signoff. Agent emulator debug is likewise not Nightly signoff. Canonical living behavior: [product-behavior/](../../product-behavior/README.md). Upload wire: [recordings-sync-contract.md](../../guides/recordings-sync-contract.md). Preserve the matrix as historical evidence; do not rewrite it as the live contract.
+
 ## Overview
 
 **Feature:** Preparing a device before losing connectivity and working once

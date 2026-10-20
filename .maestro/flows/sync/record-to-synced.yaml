@@ -1,19 +1,13 @@
 # Record a take, Sync Now, assert Sync screen settles (upload path).
 appId: com.eten.fluent
 tags:
-  - smoke
   - sync
   - record
+  - mutating
 ---
-- runFlow: ../../helpers/launch-android-mic-allow.yaml
-- runFlow: ../../helpers/boot-past-dev-launcher.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'login-email-input'
-    timeout: 180000
-- runFlow: ../../shared/auth/login-translator.yaml
-- runFlow: ../../shared/ensure/ensure-home-settled.yaml
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../helpers/launch-android-mic-warm.yaml
+- runFlow: ../../shared/ensure/ensure-warm-session.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
 - runFlow: ../../shared/ensure/ensure-take-capacity.yaml
@@ -54,18 +48,19 @@ tags:
       id: 'sync-action-sync-now'
     timeout: 60000
 - runFlow: ../../shared/nav/sync-now-and-return.yaml
-- assertVisible:
-    id: 'home-tab-my-work'
-# Cleanup: reopen chapter and delete the take we created when still present
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../shared/nav/goto-sync.yaml
+- assertNotVisible:
+    id: 'sync-action-sync-now'
+- assertNotVisible:
+    id: 'sync-metadata-error'
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
-- runFlow:
-    when:
-      visible:
-        id: 'record-delete-selected-button-.*'
-    commands:
-      - tapOn:
-          id: 'record-delete-selected-button-.*'
-      - tapOn:
-          text: 'Delete'
+- tapOn:
+    id: 'record-delete-selected-button-.*'
+- tapOn:
+    text: 'Delete'
+- extendedWaitUntil:
+    notVisible:
+      id: 'record-delete-selected-button-.*'
+    timeout: 15000

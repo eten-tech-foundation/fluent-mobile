@@ -1,18 +1,24 @@
 # Prefer EXPO_PUBLIC_E2E_MODE=1 on Debug+Metro so the Dev Menu never opens.
-# Only dismiss when Dev Menu chrome is visible. Never pressKey Back — that
+# That mode matches src/config/e2eMode.ts (1 or true). Skip the visible probes
+# then — a miss waits Maestro's fixed 7s optional lookup. When E2E mode is off,
+# still dismiss only if Dev Menu chrome is visible. Never pressKey Back — that
 # leaves the app and lands on the Android launcher (breaks ensure-on-login).
 appId: com.eten.fluent
 ---
 - runFlow:
     when:
-      visible: 'Toggle performance monitor'
+      true: "${(typeof EXPO_PUBLIC_E2E_MODE === 'undefined' ? '' : String(EXPO_PUBLIC_E2E_MODE)).toLowerCase() != '1' && (typeof EXPO_PUBLIC_E2E_MODE === 'undefined' ? '' : String(EXPO_PUBLIC_E2E_MODE)).toLowerCase() != 'true'}"
     commands:
-      - tapOn:
-          text: 'Close'
-- runFlow:
-    when:
-      visible: 'Reload'
-    commands:
-      - tapOn:
-          text: 'Close'
-          optional: true
+      - runFlow:
+          when:
+            visible: 'Toggle performance monitor'
+          commands:
+            - tapOn:
+                text: 'Close'
+      - runFlow:
+          when:
+            visible: 'Reload'
+          commands:
+            - tapOn:
+                text: 'Close'
+                optional: true

@@ -127,6 +127,11 @@ export function SourceAudioPlayerBar({
 
   return (
     <View style={styles.bar} testID="source-audio-bar">
+      <View
+        testID={isPlaying ? 'source-audio-playing' : 'source-audio-paused'}
+        style={styles.stateMarker}
+        collapsable={false}
+      />
       <View style={styles.controlsRow}>
         <Pressable
           onPress={() => {
@@ -200,6 +205,10 @@ export function SourceAudioPlayerBar({
 const TOUCH_TARGET = theme.recordControlSizes.secondary;
 
 const styles = StyleSheet.create({
+  stateMarker: {
+    width: 1,
+    height: 1,
+  },
   bar: {
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,

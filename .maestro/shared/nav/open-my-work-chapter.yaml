@@ -1,0 +1,18 @@
+# Open the fixture chapter by id. Requires MAESTRO_FIXTURE_CHAPTER_ID.
+# Missing id is a failed precondition (runner preflight reports BLOCKED).
+appId: com.eten.fluent
+---
+- runFlow: goto-home.yaml
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-${MAESTRO_FIXTURE_CHAPTER_ID}'
+    timeout: 30000
+- runFlow: ../ensure/ensure-no-modal.yaml
+- tapOn:
+    id: 'my-work-row-${MAESTRO_FIXTURE_CHAPTER_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 30000

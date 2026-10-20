@@ -3,6 +3,11 @@
 # Loads `.env.maestro` literally (no Bash expansion) when present.
 # Resolves translator / Account B aliases onto MAESTRO_EMAIL(_2) for flows + EAS.
 # Account B = member-without-assignments (MAESTRO_PM_* aliases kept for local readability).
+# QA lane: scripts/maestro-test-qa.sh + .env.maestro.qa only; API base is pinned.
+
+# Immutable QA API host for Maestro runner env (not Metro/app JS proof).
+MAESTRO_QA_API_BASE_URL='https://qa.api.fluent.bible'
+MAESTRO_QA_ENV_BASENAME='.env.maestro.qa'
 
 is_supported_maestro_env_key() {
   case "$1" in
@@ -15,7 +20,11 @@ is_supported_maestro_env_key() {
       MAESTRO_FIXTURE_MINE_LABEL | MAESTRO_FIXTURE_OTHER_LABEL | \
       MAESTRO_FIXTURE_UNASSIGNED_LABEL | MAESTRO_FIXTURE_CLAIM_LABEL | \
       MAESTRO_FIXTURE_CONFLICT_LABEL | MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL | \
-      MAESTRO_FIXTURE_CHAPTER_LABEL | MAESTRO_FIXTURE_OTHER_USER_ID)
+      MAESTRO_FIXTURE_CHAPTER_LABEL | MAESTRO_FIXTURE_CHAPTER_ID | \
+      MAESTRO_FIXTURE_OTHER_USER_ID | \
+      MAESTRO_FIXTURE_PROJECT_ALLOWLIST | MAESTRO_FIXTURE_PROJECT_DENYLIST | \
+      MAESTRO_TRANSLATOR2_EMAIL | MAESTRO_TRANSLATOR2_PASSWORD | \
+      MAESTRO_EMAIL_3 | MAESTRO_PASSWORD_3)
       return 0
       ;;
     *)
@@ -55,9 +64,19 @@ load_maestro_env_literal() {
     fi
 
     # Do not clobber MAESTRO_FIXTURE_* already exported (ownership suite rotates
-    # claim label after seed). Credentials / API URL still load from .env.maestro
-    # even when a stale shell export is present.
+    # claim label after seed). Credentials / API URL still load from the env file
+    # even when a stale shell export is present, unless MAESTRO_KEEP_EXPORTS=1
+    # (parallel workers that exported their own account).
+    # QA lane always takes EXPO_PUBLIC_API_BASE_URL from the QA file so a stale
+    # Dev export cannot silently win before the pin/guard.
     if [[ "${key}" == MAESTRO_FIXTURE_* && -n "${!key:-}" ]]; then
+      continue
+    fi
+    if [[ "${key}" == 'EXPO_PUBLIC_API_BASE_URL' && "${MAESTRO_ENV_LANE:-}" == 'qa' ]]; then
+      export "${key}=${value}"
+      continue
+    fi
+    if [[ "${MAESTRO_KEEP_EXPORTS:-}" == "1" && -n "${!key:-}" ]]; then
       continue
     fi
 
@@ -65,6 +84,24 @@ load_maestro_env_literal() {
   done <"${env_file}"
 
   resolve_maestro_role_aliases
+}
+
+# Fail closed before adb/Maestro when MAESTRO_ENV_LANE=qa. Pins the immutable
+# QA API base so shell KEEP_EXPORTS / wrong files / Maestro -e cannot keep Dev.
+# Remaining args after the env file are forwarded as Maestro argv for -e checks.
+assert_and_pin_maestro_qa_env() {
+  local env_file="$1"
+  shift
+  local pinned
+  if ! pinned="$(
+    node "${ROOT}/scripts/maestro-env-guard.cjs" --assert-qa \
+      --lane "${MAESTRO_ENV_LANE:-}" \
+      --env-file "${env_file}" \
+      -- "$@"
+  )"; then
+    return 2
+  fi
+  export EXPO_PUBLIC_API_BASE_URL="${pinned:-${MAESTRO_QA_API_BASE_URL}}"
 }
 
 # Map role aliases ↔ canonical MAESTRO_EMAIL(_2) without printing values.

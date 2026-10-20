@@ -20,6 +20,8 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'modules/**'
+      - 'scripts/**'
+      - 'plugins/**'
   workflow_dispatch:
     inputs:
       suite:
@@ -54,7 +56,7 @@ jobs:
       wait_for_in_progress: true
 
   build_e2e_fallback:
-    name: Build e2e-test APK (fallback)
+    name: Build Dev e2e-test APK (not a QA nightly)
     needs: [get_nightly_build]
     if: ${{ (github.event_name == 'schedule' || inputs.suite == 'nightly') && !needs.get_nightly_build.outputs.build_id }}
     type: build
@@ -73,16 +75,35 @@ jobs:
       build_id: ${{ needs.get_nightly_build.outputs.build_id || needs.build_e2e_fallback.outputs.build_id }}
       flow_path: .maestro
       include_tags: smoke
-      exclude_tags: offline,permissions
+      exclude_tags: offline,permissions,mutating
       maestro_version: '2.10.0'
       output_format: junit
-      retries: 1
-      retry_failed_only: true
+      retries: 0
       record_screen: true
       device_identifier: pixel_6
       android_system_image_package: system-images;android-34;google_apis;x86_64
     hooks:
       before_maestro_tests:
+        - name: Require nightly build commit
+          # get-build outputs.git_commit_hash is the documented Expo contract:
+          # https://docs.expo.dev/eas/workflows/pre-packaged-jobs/
+          run: |
+            set -euo pipefail
+            build_commit="${{ needs.get_nightly_build.outputs.git_commit_hash }}"
+            fallback="${{ needs.build_e2e_fallback.outputs.build_id }}"
+            if [[ -n "${fallback}" ]]; then
+              echo "BLOCKED: Dev e2e-test fallback is not QA nightly proof (build ${fallback})."
+              exit 1
+            fi
+            if [[ -z "${build_commit}" ]]; then
+              echo "BLOCKED: get-build did not return git_commit_hash."
+              exit 1
+            fi
+            if [[ "${build_commit}" != "${GITHUB_SHA}" ]]; then
+              echo "BLOCKED: nightly APK ${build_commit} != workflow SHA ${GITHUB_SHA}."
+              exit 1
+            fi
+            echo "Nightly APK commit matches ${GITHUB_SHA}."
         - name: Require MAESTRO credentials
           run: |
             set -euo pipefail
@@ -174,11 +195,10 @@ jobs:
       build_id: ${{ needs.build_android_e2e.outputs.build_id }}
       flow_path: .maestro
       include_tags: smoke
-      exclude_tags: offline,permissions
+      exclude_tags: offline,permissions,mutating
       maestro_version: '2.10.0'
       output_format: junit
-      retries: 1
-      retry_failed_only: true
+      retries: 0
       device_identifier: pixel_6
       android_system_image_package: system-images;android-34;google_apis;x86_64
     hooks:
@@ -215,8 +235,7 @@ jobs:
       include_tags: multi-account
       maestro_version: '2.10.0'
       output_format: junit
-      retries: 1
-      retry_failed_only: true
+      retries: 0
       record_screen: true
       device_identifier: pixel_6
       android_system_image_package: system-images;android-34;google_apis;x86_64
@@ -261,8 +280,7 @@ jobs:
       exclude_tags: ownership-conflict,ownership-peer-check
       maestro_version: '2.10.0'
       output_format: junit
-      retries: 1
-      retry_failed_only: true
+      retries: 0
       record_screen: true
       device_identifier: pixel_6
       android_system_image_package: system-images;android-34;google_apis;x86_64

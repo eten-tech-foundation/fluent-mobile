@@ -5,10 +5,16 @@ tags:
   - sync
   - edges
 ---
-- runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/ensure/ensure-signed-in.yaml
+- runFlow: ../../shared/ensure/ensure-warm-home.yaml
 - runFlow: ../../shared/nav/goto-sync.yaml
 - assertVisible:
     id: 'sync-screen'
 - assertVisible:
-    id: 'sync-upload-cellular'
+    id: 'sync-upload-cellular-switch'
+# Toggle then restore so the device preference is not left flipped.
+- tapOn:
+    id: 'sync-upload-cellular-switch'
+- tapOn:
+    id: 'sync-upload-cellular-switch'
+- assertVisible:
+    id: 'sync-upload-cellular-switch'

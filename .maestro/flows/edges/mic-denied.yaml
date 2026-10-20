@@ -9,20 +9,25 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'login-email-input'
-    timeout: 180000
+    timeout: 45000
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
+    timeout: 90000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
 - assertVisible:
     id: 'record-tab'
 - tapOn:
     id: 'record-start-button'
-    optional: true
+- extendedWaitUntil:
+    visible: 'Microphone required'
+    timeout: 10000
+- tapOn: 'Cancel'
+- assertNotVisible:
+    id: 'record-stop-button'
 - assertVisible:
     id: 'record-tab'

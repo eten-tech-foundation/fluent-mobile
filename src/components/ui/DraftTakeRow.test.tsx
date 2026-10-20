@@ -26,6 +26,13 @@ describe('DraftTakeRow trailing slot (#571)', () => {
     expect(queryByTestId('record-delete-button-t1')).toBeNull();
   });
 
+  it('exposes the local sync status when one is provided', () => {
+    const { getByTestId } = render(
+      <DraftTakeRow {...baseProps} syncStatus="pending" />,
+    );
+    expect(getByTestId('record-take-sync-t1')).toHaveTextContent('pending');
+  });
+
   it('renders the delete button and no spacer when onDelete is provided', () => {
     const { getByTestId, queryByTestId } = render(
       <DraftTakeRow {...baseProps} onDelete={jest.fn()} />,

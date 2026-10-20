@@ -47,6 +47,17 @@ describe('SharedTakeRow long take labels (#589)', () => {
   });
 });
 
+describe('SharedTakeRow take identity', () => {
+  it('scopes testIDs by take id when one is provided', () => {
+    const { getByTestId } = render(
+      <SharedTakeRow {...baseProps} takeId="42" />,
+    );
+    expect(getByTestId('shared-take-row-42')).toBeTruthy();
+    expect(getByTestId('shared-take-play-button-42')).toBeTruthy();
+    expect(getByTestId('shared-take-canonical-42')).toBeTruthy();
+  });
+});
+
 describe('SharedTakeRow canonical designation', () => {
   it('renders a pressable canonical control when onDesignateCanonical is provided', () => {
     const onDesignateCanonical = jest.fn();

@@ -4,6 +4,8 @@
 > #591–#597 (sub-issues of #531). Gaps 1–6 were observed on device (Gap 6's
 > trigger not isolated); Gap 7 is from file inspection.
 
+> **Historical assessment (dated findings).** Results below are a snapshot from the audit dates in Overview. They are **not** current product AC, **not** proof that mobile code is normative, and **not** human Nightly QA signoff. Agent emulator debug is likewise not Nightly signoff. Canonical living behavior: [product-behavior/](../../product-behavior/README.md). QA 2026-10-19 assignment 484 Resources empty copy is a **valid empty UI fixture** (UI-only; no HTTP 403 conclusion) — see [product-behavior README](../../product-behavior/README.md#qa-device-evidence-assignment-484--chronology). Preserve the matrix as historical evidence; do not rewrite it as the live contract.
+
 ## Overview
 
 **Feature:** Drafting Resources tab (Translation Notes, Translation

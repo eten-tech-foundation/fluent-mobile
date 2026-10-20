@@ -4,13 +4,7 @@ tags:
   - offline
   - sync
 ---
-- runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/ensure/ensure-warm-home.yaml
 - runFlow: ../../shared/nav/goto-settings.yaml
 - scrollUntilVisible:
     element:
@@ -23,21 +17,17 @@ tags:
     visible:
       id: 'prepare-offline-screen'
     timeout: 30000
-- runFlow:
-    when:
-      visible:
-        id: 'project-row-.*'
-    commands:
-      - tapOn:
-          id: 'project-row-.*'
+- extendedWaitUntil:
+    visible:
+      id: 'project-row-.*'
+    timeout: 30000
+- tapOn:
+    id: 'project-row-.*'
 - extendedWaitUntil:
     visible:
       id: 'prepare-offline-resources-section'
     timeout: 60000
-- runFlow:
-    when:
-      visible:
-        id: 'storage-project-.*'
-    commands:
-      - assertVisible:
-          id: 'storage-project-.*'
+- assertVisible:
+    id: 'manage-device-storage-section'
+- assertVisible:
+    id: 'storage-available-bytes'

@@ -1,4 +1,5 @@
 import { AuthError } from './authError';
+import { ApiError } from '../types/api/errors';
 import { waitFor } from '@testing-library/react-native';
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
@@ -23,6 +24,7 @@ import {
   setUserLastSyncedAt,
   getLastAssignmentSyncAt,
   getLastSyncedAt,
+  setLastSyncedAt,
   getUserIdSync,
   setSyncError,
   setSyncCount,
@@ -624,6 +626,23 @@ describe('syncAllData auth handling', () => {
 
     expect(setReauthRequired).not.toHaveBeenCalled();
     expect(syncEvents.emitAuthReauthRequired).not.toHaveBeenCalled();
+  });
+
+  it('keeps a getUserProjects 403 forbidden: no reauth and no empty project reconcile', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+      new ApiError(403, 'Forbidden'),
+    );
+
+    await expect(syncAllData(true)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 403,
+    });
+
+    expect(setReauthRequired).not.toHaveBeenCalled();
+    expect(syncEvents.emitAuthReauthRequired).not.toHaveBeenCalled();
+    expect(reconcileUserProjects).not.toHaveBeenCalled();
+    expect(setLastSyncedAt).not.toHaveBeenCalled();
   });
 
   it('emits sync complete when incremental sync fails', async () => {

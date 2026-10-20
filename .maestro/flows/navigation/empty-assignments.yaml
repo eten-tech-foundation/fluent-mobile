@@ -10,7 +10,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
+    timeout: 90000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 
 # Milestones: membership should surface ≥1 milestone

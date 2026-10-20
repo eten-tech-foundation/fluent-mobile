@@ -1448,6 +1448,7 @@ export function RecordTab({
                             isCanonical={
                               take.id === verseAudio.ownCanonicalTakeId
                             }
+                            syncStatus={take.syncStatus}
                             positionMs={
                               showLiveProgress ? verseAudio.positionMs : 0
                             }
@@ -1505,6 +1506,7 @@ export function RecordTab({
                         return (
                           <View key={take.id} style={styles.takeItemSpacing}>
                             <SharedTakeRow
+                              takeId={String(take.id)}
                               takeNumber={take.takeNumber}
                               label={formatTakeSubtitle(take)}
                               isPlaying={isThisPlaying}

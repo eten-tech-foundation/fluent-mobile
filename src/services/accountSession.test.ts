@@ -62,6 +62,25 @@ describe('accountSession', () => {
       expect(mockSwitchActiveUser).toHaveBeenCalledWith('other-2');
     });
 
+    it('activates only the target account id and token', async () => {
+      mockGetCredentials.mockImplementation(async (userId: string) =>
+        userId === 'other-2'
+          ? { token: 'target-token' }
+          : { token: 'previous-token' },
+      );
+
+      await switchToDeviceAccount('other-2');
+
+      expect(mockGetCredentials).toHaveBeenCalledTimes(1);
+      expect(mockGetCredentials).toHaveBeenCalledWith('other-2');
+      expect(mockAuthTokenSet).toHaveBeenCalledTimes(1);
+      expect(mockAuthTokenSet).toHaveBeenCalledWith('target-token');
+      expect(mockAuthTokenSet).not.toHaveBeenCalledWith('previous-token');
+      expect(mockSwitchActiveUser).toHaveBeenCalledTimes(1);
+      expect(mockSwitchActiveUser).toHaveBeenCalledWith('other-2');
+      expect(mockSwitchActiveUser).not.toHaveBeenCalledWith('active-1');
+    });
+
     it('throws when credentials are missing', async () => {
       mockGetCredentials.mockResolvedValue(null);
 

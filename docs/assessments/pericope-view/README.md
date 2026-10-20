@@ -5,6 +5,8 @@
 > follow-up task from code (#587), and Gap 7 from a re-test on 2026-09-30
 > (#623, confirmed on PR #559 head `ddfdaaa`).
 
+> **Historical assessment (dated findings).** Results below are a snapshot from the audit dates in Overview. They are **not** current product AC, **not** proof that mobile code is normative, and **not** human Nightly QA signoff. Agent emulator debug is likewise not Nightly signoff. Canonical living behavior: [product-behavior/](../../product-behavior/README.md). Bundling how-to: [pericope-set-bundling.md](../../guides/pericope-set-bundling.md). Preserve the matrix as historical evidence; do not rewrite it as the live contract.
+
 ## Overview
 
 **Feature:** Verse/Pericope drafting unit — Settings toggle, Bible tab pericope

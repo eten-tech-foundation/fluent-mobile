@@ -6,6 +6,7 @@ import { Circle, CircleCheck, Pause, Play } from 'lucide-react-native';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type SharedTakeRowProps = {
+  takeId?: string;
   takeNumber: number;
   label?: string;
   positionMs: number;
@@ -24,6 +25,7 @@ function formatDuration(ms: number): string {
 }
 
 export function SharedTakeRow({
+  takeId,
   takeNumber,
   label,
   positionMs,
@@ -38,14 +40,15 @@ export function SharedTakeRow({
       ? `${formatDuration(positionMs)} / ${formatDuration(durationMs)}`
       : formatDuration(positionMs);
 
+  const suffix = takeId ? `-${takeId}` : '';
   return (
-    <View style={styles.row} testID="shared-take-row">
+    <View style={styles.row} testID={`shared-take-row${suffix}`}>
       <RecordCircleButton
         variant="play"
         size={theme.recordControlSizes.secondary}
         onPress={onPlayPause}
         accessibilityLabel={isPlaying ? 'Pause take' : 'Play take'}
-        testID="shared-take-play-button"
+        testID={`shared-take-play-button${suffix}`}
       >
         {isPlaying ? (
           <Pause
@@ -63,13 +66,13 @@ export function SharedTakeRow({
       </RecordCircleButton>
       <View style={styles.middleColumn}>
         <View style={styles.topRow}>
-          <Text style={styles.takeLabel} testID="shared-take-badge">
+          <Text style={styles.takeLabel} testID={`shared-take-badge${suffix}`}>
             {label ?? `Take ${takeNumber}`}
           </Text>
           <Text
             style={styles.time}
             numberOfLines={1}
-            testID="shared-take-time"
+            testID={`shared-take-time${suffix}`}
             accessibilityLabel={`Take time ${timeLabel}`}
           >
             {timeLabel}
@@ -93,7 +96,7 @@ export function SharedTakeRow({
           }
           accessibilityState={{ selected: isCanonical }}
           hitSlop={8}
-          testID="shared-take-canonical"
+          testID={`shared-take-canonical${suffix}`}
         >
           {isCanonical ? (
             <CircleCheck
@@ -112,7 +115,7 @@ export function SharedTakeRow({
       ) : isCanonical ? (
         <View
           accessibilityLabel="Canonical take"
-          testID="shared-take-canonical-readonly"
+          testID={`shared-take-canonical-readonly${suffix}`}
         >
           <CircleCheck
             size={iconSizes.chevron}

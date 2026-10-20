@@ -10,7 +10,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 **Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database and restores the auth session, then shows the navigator. After login (or when the user triggers sync), it syncs Fluent API data into SQLite so translators can browse **projects → chapters → drafting** (Bible / Resources / Record). The **Record** tab captures verse audio, persists takes to the `recordings` table, and uploads pending takes via `recordingSync` + `uploadOrchestrator` (see **Repository layout** and [recordings-sync-contract.md](guides/recordings-sync-contract.md)).
 
-Recording follow-up: wire source audio dock to real fetch + playback ([#235](https://github.com/eten-tech-foundation/fluent-mobile/issues/235)) — consumes fluent-api `GET /projects/.../source-audio/...` (fluent-api #282).
+Source audio (architecture, not a device pass): [`src/components/layout/SourceAudioShell.tsx`](../src/components/layout/SourceAudioShell.tsx) imports [`useSourceAudio`](../src/hooks/useSourceAudio.ts) and drives dock fetch/playback via that hook (FluentAPI source-audio + local cache). Scope is the drafting shell / Record-tab integration — not a claim that Nightly or hardware QA has signed off.
 
 ## Tech stack
 
@@ -90,7 +90,8 @@ Run from repo root after `npm install`:
 
 | Command | Purpose |
 |---------|---------|
-| `npm run lint` | ESLint (passes; 1 warning: unused `db` in `sync.ts`) |
+| `npm run lint` | ESLint (`src/` + configured globs; see `eslint.config.*`) |
+| `npm run architecture-guard` | Fail on UI-layer `fetch(` / `getDatabase(` / `executeSql` (`--ci`) |
 | `npm run format:check` | Prettier on `src/**/*.{ts,tsx}` |
 | `npm run format` | Prettier write (same glob as `format:check`) |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
@@ -102,7 +103,7 @@ Run from repo root after `npm install`:
 
 **Prebuild failures:** if `MainApplication does not exist` → `rm -rf android` then `npm run prebuild`.
 
-**Before claiming PR-ready:** format → lint → typecheck → test (see [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc)).
+**Before claiming PR-ready** (authoritative order in [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc)): `npm run format:check` → `npm run lint` → `npm run architecture-guard` → `npm run typecheck` → `npm test -- --ci`.
 
 ## Production release (Android)
 

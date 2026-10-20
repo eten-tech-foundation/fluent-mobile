@@ -6,8 +6,7 @@ tags:
   - smoke
   - drafting
 ---
-- runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/ensure/ensure-signed-in.yaml
+- runFlow: ../../shared/ensure/ensure-warm-home.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
 - tapOn:
     id: 'drafting-tab-bible'

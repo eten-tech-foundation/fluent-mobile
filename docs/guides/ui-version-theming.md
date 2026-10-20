@@ -1,5 +1,9 @@
 # UI version theming (Legacy / Next)
 
+Engineering theme contract (not product AC for recording/sync). Paths checked
+2026-10-19 against mobile HEAD `758d4b04a9ca81e1ed6228e9d30df1fc80014f5d`.
+Figma gap audit (dated): [theme-figma-audit.md](../features/next-ui-redesign/theme-figma-audit.md).
+
 Fluent Mobile supports a runtime-selectable **UI version** while the redesign
 lands:
 

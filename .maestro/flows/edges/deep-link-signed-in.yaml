@@ -1,0 +1,14 @@
+# Signed-in fluent://home stays in the app. Warm session, no clearState.
+appId: com.eten.fluent
+tags:
+  - edges
+  - deeplink
+---
+- runFlow: ../../shared/ensure/ensure-warm-home.yaml
+- openLink: fluent://home
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

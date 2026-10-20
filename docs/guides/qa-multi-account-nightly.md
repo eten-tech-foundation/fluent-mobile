@@ -2,7 +2,7 @@
 
 Repeatable **post-merge nightly** checklist for proving multi-account isolation on one Android device. Use after account-switcher, session, or sync changes that touch user-scoped data.
 
-**Automated (Debug + Metro):** Maestro encodes required rows A1–A2, B1–B4, C1–C3, D1–D3 — see [maestro.md](maestro.md) (`npm run maestro:test:multi-account`, [#495](https://github.com/eten-tech-foundation/fluent-mobile/issues/495)). That run does **not** replace the nightly APK human pass for optional A3 / E (or release sign-off on a shared device).
+**Automated (engineering Debug + Metro):** Maestro encodes required rows A1–A2, B1–B4, C1–C3, D1–D3 — see [maestro.md](maestro.md). Default `npm run maestro:test:multi-account` uses **Dev** `.env.maestro` via `maestro-test.sh`. For QA API, use `bash scripts/maestro-test-qa.sh` with the same Maestro args and `.env.maestro.qa` (blank password placeholders; no secret persistence). Either automated path does **not** replace the nightly APK human pass ([#495](https://github.com/eten-tech-foundation/fluent-mobile/issues/495)) for optional A3 / E or release sign-off.
 
 **Install / nightly path:** [qa-preview-testing.md](qa-preview-testing.md)  
 **When QA runs / board handoff:** [qa-process.md](qa-process.md)

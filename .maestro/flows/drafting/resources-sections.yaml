@@ -1,27 +1,25 @@
 # Resources sections expand/collapse chrome.
+# Same disposable fixture chapter as images-fullscreen (known populated Images
+# section). First My Work row can be an online empty verse with no toggles.
 appId: com.eten.fluent
 tags:
   - smoke
   - drafting
 ---
-- runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../shared/ensure/ensure-warm-home.yaml
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_MINE_LABEL}
 - tapOn:
     id: 'drafting-tab-resources'
 - assertVisible:
     id: 'resources-tab'
-- runFlow:
-    when:
-      visible:
-        id: 'resources-section-.*-toggle'
-    commands:
-      - tapOn:
-          id: 'resources-section-.*-toggle'
+- extendedWaitUntil:
+    visible:
+      id: 'resources-section-.*-toggle'
+    timeout: 30000
+- tapOn:
+    id: 'resources-section-.*-toggle'
 - assertVisible:
-    id: 'resources-tab'
+    id: 'resources-section-.*'

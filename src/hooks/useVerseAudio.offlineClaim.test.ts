@@ -8,6 +8,7 @@ import { listPausedTakes } from '../services/pausedTakes';
 import { notifyPendingUploads } from '../services/uploadOrchestrator';
 import { useVerseAudio } from './useVerseAudio';
 import { logger } from '../utils/logger';
+import { ApiError } from '../types/api/errors';
 
 type VerseAudioResult = ReturnType<typeof useVerseAudio>;
 
@@ -323,6 +324,31 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
       await stopAfterStart(result);
 
       expect(mockSyncChapterClaim).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not mark the chapter claimed when the online claim returns 404', async () => {
+      mockSyncChapterClaim.mockRejectedValue(new ApiError(404, 'Not Found'));
+      const onChapterClaimed = jest.fn();
+      const { result } = renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          persistTake,
+          loadTakes,
+          onChapterClaimed,
+        }),
+      );
+
+      await stopAfterStart(result);
+      await stopAfterStart(result);
+
+      expect(mockClaimChapterOffline).not.toHaveBeenCalled();
+      expect(onChapterClaimed).not.toHaveBeenCalled();
+      expect(mockSyncChapterClaim).toHaveBeenCalledTimes(2);
+      expect(mockSyncChapterClaim).toHaveBeenCalledWith(
+        CHAPTER_ASSIGNMENT_ID,
+        USER_ID,
+      );
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
     });
 
     it('does not claim online when the chapter is already assigned locally', async () => {

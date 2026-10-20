@@ -3,20 +3,11 @@ appId: com.eten.fluent
 tags:
   - edges
   - record
+  - mutating
 ---
-- runFlow: ../../helpers/launch-android-mic-allow.yaml
-- runFlow: ../../helpers/boot-past-dev-launcher.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'login-email-input'
-    timeout: 180000
-- runFlow: ../../shared/auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../helpers/launch-android-mic-warm.yaml
+- runFlow: ../../shared/ensure/ensure-warm-session.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
 - runFlow: ../../shared/ensure/ensure-take-capacity.yaml
@@ -42,20 +33,19 @@ tags:
     timeout: 15000
 - tapOn:
     id: 'drafting-header-back'
-- runFlow:
-    when:
-      visible: 'Recording in progress'
-    commands:
-      - tapOn: 'Cancel'
+- extendedWaitUntil:
+    visible: 'Recording in progress'
+    timeout: 10000
+- tapOn: 'Resume'
 - assertVisible:
     id: 'record-stop-button'
 - tapOn:
-    id: 'record-stop-button'
+    id: 'drafting-header-back'
 - extendedWaitUntil:
-    visible:
-      id: 'record-play-button-.*'
-    timeout: 30000
-- tapOn:
-    id: 'record-delete-selected-button-.*'
-- tapOn:
-    text: 'Delete'
+    visible: 'Recording in progress'
+    timeout: 10000
+- tapOn: 'Discard'
+- extendedWaitUntil:
+    notVisible:
+      id: 'record-stop-button'
+    timeout: 15000

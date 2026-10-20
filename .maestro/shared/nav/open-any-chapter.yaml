@@ -1,6 +1,8 @@
 # Open first My Work chapter into drafting. Requires ≥1 assignment (Account A).
 # Use my-work-row-\d+$ so we do not match my-work-row-title-* (non-pressable Text).
-# Post-login sync may auto-push Prepare-for-Offline — dismiss and re-tap until drafting mounts.
+# Pre-tap ensure-no-modal dismisses Prepare-for-Offline. Do not while-notVisible
+# drafting-tab-bar: that exit check waits 7s even when the bar is already up.
+# extendedWaitUntil is the positive readiness gate.
 appId: com.eten.fluent
 ---
 - runFlow: goto-home.yaml
@@ -9,27 +11,11 @@ appId: com.eten.fluent
 - extendedWaitUntil:
     visible:
       id: 'my-work-row-\d+$'
-    timeout: 60000
+    timeout: 30000
 - runFlow: ../ensure/ensure-no-modal.yaml
 - tapOn:
     id: 'my-work-row-\d+$'
-- repeat:
-    times: 8
-    while:
-      notVisible:
-        id: 'drafting-tab-bar'
-    commands:
-      - runFlow: ../ensure/ensure-no-modal.yaml
-      - runFlow:
-          when:
-            visible:
-              id: 'my-work-row-\d+$'
-          commands:
-            - tapOn:
-                id: 'my-work-row-\d+$'
-      - waitForAnimationToEnd:
-          timeout: 2000
 - extendedWaitUntil:
     visible:
       id: 'drafting-tab-bar'
-    timeout: 60000
+    timeout: 30000

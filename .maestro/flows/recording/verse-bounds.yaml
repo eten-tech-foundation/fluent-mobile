@@ -4,19 +4,17 @@ tags:
   - smoke
   - record
 ---
-- runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/ensure/ensure-warm-home.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
 - assertVisible:
     id: 'record-verse-reference'
+- tapOn:
+    id: 'record-next-verse'
 - assertVisible:
+    id: 'record-verse-reference'
+- tapOn:
     id: 'record-prev-verse'
 - assertVisible:
-    id: 'record-next-verse'
+    id: 'record-verse-reference'

@@ -1,16 +1,17 @@
 # Verse audio upload contract (mobile ↔ Fluent API)
 
-Frozen client contract for uploading translator verse audio. Refs GitHub [#102](https://github.com/eten-tech-foundation/fluent-mobile/issues/102), epic [#117](https://github.com/eten-tech-foundation/fluent-mobile/issues/117), upload worker [#100](https://github.com/eten-tech-foundation/fluent-mobile/issues/100). Doc refresh: [#547](https://github.com/eten-tech-foundation/fluent-mobile/issues/547).
+Frozen **client wire** for uploading translator verse audio (engineering contract). Refs GitHub [#102](https://github.com/eten-tech-foundation/fluent-mobile/issues/102), epic [#117](https://github.com/eten-tech-foundation/fluent-mobile/issues/117), upload worker [#100](https://github.com/eten-tech-foundation/fluent-mobile/issues/100). Doc refresh: [#547](https://github.com/eten-tech-foundation/fluent-mobile/issues/547). Living product journeys: [product-behavior/](../product-behavior/README.md). Source/code here is **API-doc / inferred** unless a ticket AC says otherwise.
 
 ## fluent-api truth (consulted)
 
 | Source | SHA / ref | Audio upload? |
 | --- | --- | --- |
-| Local clone `/Users/matt/Documents/Development/gloo/fluent-api` **`origin/main`** | `34375d76794b4565e1acf95c3f2c168762b6b293` | **Yes** — `src/domains/verse-audio/` registered; storage is **Cloudflare R2** via `src/lib/audio-storage.ts` (S3-compatible). Azure Blob is gone from this path. |
+| fluent-api **`main`** (pin, reverified 2026-10-19) | `4336602df77ce86a4d46dfd45a7840cc3c64ebc0` | **Yes** — `src/domains/verse-audio/` present (`verse-audio.route.ts`, takes repo, R2 via `src/lib/audio-storage.ts`). Azure Blob is gone from this path. |
+| Historical local consult (superseded pin) | `34375d76794b4565e1acf95c3f2c168762b6b293` | Same surface; keep only as prior-doc provenance — **do not** treat as current `main` |
 | Historical [fluent-api PR #224](https://github.com/eten-tech-foundation/fluent-api/pull/224) `feat/verse-audio` | **Merged / obsolete as an “open” gate** | Introduced the `PUT/GET/DELETE /verse-audio/...` surface mobile still uses; later work swapped storage to R2. Do not treat #224 as unmerged. |
 | Historical draft [fluent-api PR #188](https://github.com/eten-tech-foundation/fluent-api/pull/188) `ft/audio-record-sync` | Superseded | Competing `POST /recordings/sync` design — **not** what mobile implements. |
 
-**Mobile matches shipped `main` verse-audio routes** (multipart `PUT`, Bearer session, chapter-assignment edit gate). Original #102 text assumed `POST /recordings/sync`; that path was never the frozen client contract.
+**Mobile (HEAD `758d4b0` + working tree) matches verse-audio routes** (multipart `PUT`, Bearer session, chapter-assignment edit gate) via [api.ts](../../src/services/api.ts) / [verseAudioFormData.ts](../../src/services/verseAudioFormData.ts) / [verseAudioContract.ts](../../src/services/verseAudioContract.ts) / [recordingSync.ts](../../src/services/recordingSync.ts). Original #102 text assumed `POST /recordings/sync`; that path was never the frozen client contract. Unit tests mock `fetch` — not live grant proof.
 
 **Server owns storage secrets.** Mobile never ships `R2_*`, `AZURE_STORAGE_CONNECTION_STRING`, `AUDIO_CONTAINER`, or any other storage keys. Do not add them to this app’s `.env` / `EXPO_PUBLIC_*`.
 

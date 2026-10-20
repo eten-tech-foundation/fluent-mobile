@@ -6,9 +6,11 @@ Plain-language guide for QA and reviewers. **No developer tools** — just an An
 
 **Default for QA:** install the **nightly** Fluent APK (main). Isolated PR `preview-build` APKs are **optional** for developers debugging a branch — they do not start the QA queue.
 
-**Environment:** preview and nightly APKs talk to the **QA** API (`qa.api.fluent.bible`). Use the matching web app at [https://qa.app.fluent.bible/](https://qa.app.fluent.bible/) (not Dev). Ask your team for QA test accounts.
+**Environment:** preview and nightly APKs talk to the **QA** API (`https://qa.api.fluent.bible`). Use the matching web app at [https://qa.app.fluent.bible/](https://qa.app.fluent.bible/) (**not** Dev `dev.api.fluent.bible` / `dev.app.fluent.bible`). Ask your team for QA test accounts — do not reuse Dev passwords or assume Dev user ids exist on QA.
 
 **Multi-account regression:** use the checklist in [qa-multi-account-nightly.md](qa-multi-account-nightly.md) when testing account switcher / session / sync isolation on a shared device.
+
+**Maestro / agent emulator:** engineering Debug+Metro or `npm run maestro:test*` default to the **Dev** env file. That is **not** Nightly QA acceptance. QA-lane Maestro tooling (if used) is only `bash scripts/maestro-test-qa.sh …` with `.env.maestro.qa` — see [maestro.md](maestro.md). Human sign-off remains this nightly APK checklist.
 
 ## Quick start (QA — nightly)
 

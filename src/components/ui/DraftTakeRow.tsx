@@ -25,6 +25,8 @@ type DraftTakeRowProps = {
   onSeek?: (positionMs: number) => void;
   leadingIndicator?: 'selection' | 'canonicalReadOnly' | 'none';
   isCanonical?: boolean;
+  /** Local upload state, when the row is a real recording. */
+  syncStatus?: string;
 };
 
 /** Design timer: `0:13` (no leading zero on minutes). */
@@ -60,6 +62,7 @@ export function DraftTakeRow({
   onSeek,
   leadingIndicator = 'selection',
   isCanonical = false,
+  syncStatus,
 }: DraftTakeRowProps) {
   const timeLabel =
     durationMs > 0
@@ -136,6 +139,9 @@ export function DraftTakeRow({
           >
             {timeLabel}
           </Text>
+          {syncStatus ? (
+            <Text testID={`record-take-sync-${takeId}`}>{syncStatus}</Text>
+          ) : null}
         </View>
         <View style={styles.waveform}>
           <PlaybackProgressBar

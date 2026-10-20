@@ -15,17 +15,43 @@ source "${ROOT}/scripts/maestro-common.sh"
 
 export PATH="${HOME}/.maestro/bin:${PATH}"
 
+# Dev (default): .env.maestro. QA: scripts/maestro-test-qa.sh sets LANE=qa + .env.maestro.qa.
+if [[ "${MAESTRO_ENV_LANE:-}" == 'qa' ]]; then
+  ENV_FILE="${MAESTRO_ENV_FILE:-${ROOT}/.env.maestro.qa}"
+  if [[ "$(basename "${ENV_FILE}")" != "${MAESTRO_QA_ENV_BASENAME}" ]]; then
+    echo "error: QA lane refuses env file $(basename "${ENV_FILE}"); use ${MAESTRO_QA_ENV_BASENAME}" >&2
+    exit 2
+  fi
+  if [[ ! -f "${ENV_FILE}" ]]; then
+    echo "error: QA env file missing. Copy .env.maestro.qa.example to .env.maestro.qa" >&2
+    exit 2
+  fi
+  load_maestro_env_literal "${ENV_FILE}"
+  # Refuse file/shell/CLI base overrides before fixture preflight and adb.
+  assert_and_pin_maestro_qa_env "${ENV_FILE}" "$@" || exit 2
+else
+  ENV_FILE="${MAESTRO_ENV_FILE:-${ROOT}/.env.maestro}"
+  if [[ -f "${ENV_FILE}" ]]; then
+    load_maestro_env_literal "${ENV_FILE}"
+  else
+    # Shell-exported MAESTRO_* / role aliases still resolve to EMAIL(_2).
+    resolve_maestro_role_aliases
+    resolve_maestro_launch_defaults
+  fi
+fi
+
+# Missing fixture chapter is BLOCKED before adb start-server / device selection.
+set +e
+node "${ROOT}/scripts/maestro-fixture-guard.cjs" --preflight -- "$@"
+preflight_status=$?
+set -e
+if [[ "${preflight_status}" -ne 0 ]]; then
+  exit "${preflight_status}"
+fi
+
 if ! command -v maestro >/dev/null 2>&1; then
   echo "error: maestro not found. Run: npm run maestro:install" >&2
   exit 1
-fi
-
-if [[ -f "${ROOT}/.env.maestro" ]]; then
-  load_maestro_env_literal "${ROOT}/.env.maestro"
-else
-  # Shell-exported MAESTRO_* / role aliases still resolve to EMAIL(_2).
-  resolve_maestro_role_aliases
-  resolve_maestro_launch_defaults
 fi
 
 # Android-only: never fall through to a local iOS Simulator when adb is empty.

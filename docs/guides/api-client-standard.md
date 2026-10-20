@@ -1,6 +1,6 @@
 # API client standard
 
-Short contract for HTTP/network code in Fluent Mobile. Refs GitHub [#113](https://github.com/eten-tech-foundation/fluent-mobile/issues/113).
+Short **engineering** contract for HTTP/network code in Fluent Mobile. Refs GitHub [#113](https://github.com/eten-tech-foundation/fluent-mobile/issues/113). Paths below checked against mobile HEAD `758d4b04a9ca81e1ed6228e9d30df1fc80014f5d` (2026-10-19). Product journeys: [product-behavior/](../product-behavior/README.md).
 
 ## Principles
 

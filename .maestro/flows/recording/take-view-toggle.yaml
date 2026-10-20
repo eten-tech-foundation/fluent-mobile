@@ -1,33 +1,23 @@
 # Take view toggle chrome when multiple recorders are present (optional).
 appId: com.eten.fluent
+# Requires a chapter with more than one recorder. Not in smoke until that fixture exists.
 tags:
-  - smoke
   - record
+  - multi-recorder
 ---
-- runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../shared/ensure/ensure-warm-home.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
+- extendedWaitUntil:
+    visible:
+      id: 'take-view-toggle'
+    timeout: 20000
+- tapOn:
+    id: 'take-view-all'
 - assertVisible:
-    id: 'record-tab'
-- runFlow:
-    when:
-      visible:
-        id: 'take-view-toggle'
-    commands:
-      - tapOn:
-          id: 'take-view-all'
-      - assertVisible:
-          id: 'take-view-all'
-      - tapOn:
-          id: 'take-view-mine'
-      - assertVisible:
-          id: 'take-view-mine'
+    id: 'record-all-take-list'
+- tapOn:
+    id: 'take-view-mine'
 - assertVisible:
-    id: 'record-tab'
+    id: 'record-take-list'

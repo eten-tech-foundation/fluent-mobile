@@ -9,7 +9,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
+    timeout: 90000
 - stopApp
 - launchApp
 # Metro mode: re-open deep-link (clearState wiped most-recent; relaunch may still need it)
@@ -19,7 +19,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
+    timeout: 90000
 - assertNotVisible:
     id: 'login-email-input'
 - assertVisible:

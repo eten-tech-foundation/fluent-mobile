@@ -3,6 +3,8 @@
 > **Status: device run complete; gaps filed.** Gaps 1–3, 5 and 6 are filed
 > as #567–#571 (sub-issues of #528). Gap 4 was added to the open #544.
 
+> **Historical assessment (dated findings).** Results below are a snapshot from the audit dates in Overview. They are **not** current product AC, **not** proof that mobile code is normative, and **not** human Nightly QA signoff. Agent emulator debug is likewise not Nightly signoff. Canonical living behavior: [product-behavior/](../../product-behavior/README.md). Upload wire: [recordings-sync-contract.md](../../guides/recordings-sync-contract.md). Preserve the matrix as historical evidence; do not rewrite it as the live contract.
+
 ## Overview
 
 **Feature:** Record tab draft capture and review — record, pause/resume, stop,

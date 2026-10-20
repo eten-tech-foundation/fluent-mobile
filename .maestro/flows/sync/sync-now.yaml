@@ -1,11 +1,28 @@
-# Sync Now settles without metadata error.
+# Sync Now is required. An empty queue fails this flow (precondition), it does not pass.
+# Not tagged smoke: nightly must not treat "nothing pending" as a sync pass.
 appId: com.eten.fluent
 tags:
-  - smoke
   - sync
 ---
-- runFlow: ../../shared/ensure/ensure-on-login.yaml
-- runFlow: ../../shared/ensure/ensure-signed-in.yaml
-- runFlow: ../../shared/nav/sync-now-and-return.yaml
+- runFlow: ../../shared/ensure/ensure-warm-home.yaml
+- runFlow: ../../shared/nav/goto-sync.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'sync-action-sync-now'
+    timeout: 30000
+- tapOn:
+    id: 'sync-action-sync-now'
+- extendedWaitUntil:
+    notVisible:
+      id: 'sync-action-controls-syncing'
+    timeout: 90000
+- assertNotVisible:
+    id: 'sync-metadata-error'
+- assertNotVisible:
+    id: 'sync-retry-error'
+- assertNotVisible:
+    id: 'login-email-input'
+- back
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - assertVisible:
     id: 'home-tab-my-work'

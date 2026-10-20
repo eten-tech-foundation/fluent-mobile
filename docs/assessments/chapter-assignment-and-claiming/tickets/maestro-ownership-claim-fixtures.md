@@ -1,3 +1,5 @@
+> **Historical gap ticket (dated).** Written during #532 audit for #574. Fixture/pool follow-ups also track #607 / API #368 / #369. Not current Maestro PASS/FAIL. Living roles/claim behavior: [product-behavior/roles-and-permissions.md](../../../product-behavior/roles-and-permissions.md). Role checklist (owned elsewhere): [maestro-role-coverage.md](../../../guides/maestro-role-coverage.md).
+
 # Maestro E2E + safe fixtures for chapter ownership, taken warning, and online claim
 
 ## Summary

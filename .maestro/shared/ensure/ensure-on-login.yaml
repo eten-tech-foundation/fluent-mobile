@@ -6,4 +6,4 @@ appId: com.eten.fluent
 - extendedWaitUntil:
     visible:
       id: 'login-email-input'
-    timeout: 180000
+    timeout: 45000

@@ -10,7 +10,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
+    timeout: 90000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/sync-now-and-return.yaml
 
@@ -37,7 +37,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
+    timeout: 90000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/sync-now-and-return.yaml
 
@@ -59,7 +59,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
+    timeout: 90000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/goto-settings.yaml
 - assertVisible:
@@ -75,7 +75,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
+    timeout: 90000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 
 # C1: Account B empty My Work — then prove A's label is absent
@@ -93,7 +93,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'home-tab-my-work'
-    timeout: 180000
+    timeout: 90000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - tapOn:
     id: 'home-tab-my-work'

@@ -1,18 +1,12 @@
 # Record → stop → play → delete (mic pre-granted). Cleans up the take created.
 appId: com.eten.fluent
 tags:
-  - smoke
   - record
+  - mutating
 ---
-- runFlow: ../../helpers/launch-android-mic-allow.yaml
-- runFlow: ../../helpers/boot-past-dev-launcher.yaml
-- runFlow: ../../shared/auth/login-translator.yaml
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 180000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../helpers/launch-android-mic-warm.yaml
+- runFlow: ../../shared/ensure/ensure-warm-session.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
 - assertVisible:
@@ -38,7 +32,12 @@ tags:
     visible:
       id: 'record-stop-button'
     timeout: 15000
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'record-duration'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 2000
 - tapOn:
     id: 'record-stop-button'
 - extendedWaitUntil:
@@ -47,11 +46,14 @@ tags:
     timeout: 30000
 - tapOn:
     id: 'record-play-button-.*'
-- assertVisible:
-    id: 'record-tab'
+- extendedWaitUntil:
+    visible: 'Pause draft'
+    timeout: 10000
 - tapOn:
     id: 'record-delete-selected-button-.*'
 - tapOn:
     text: 'Delete'
-- assertVisible:
-    id: 'record-tab'
+- extendedWaitUntil:
+    notVisible:
+      id: 'record-delete-selected-button-.*'
+    timeout: 15000

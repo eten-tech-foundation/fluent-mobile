@@ -8,6 +8,10 @@
 > PR #559 @ `09ff2fd`. File:line cites are against that SHA (Gaps 12–14 also
 > `ddfdaaa`) and will not match `main` until #559 merges.
 
+> **Supersession (2026-10-19 hygiene):** [#559](https://github.com/eten-tech-foundation/fluent-mobile/pull/559) **merged** 2026-09-30 (`54f7a0ed…`). The status line above is **dated audit text** (true when written); file:line cites remain historical against the audit SHAs, not a claim about current `main`.
+
+> **Historical assessment (dated findings).** Results below are a snapshot from the audit dates in Overview. They are **not** current product AC, **not** proof that mobile code is normative, and **not** human Nightly QA signoff. Agent emulator debug is likewise not Nightly signoff. Canonical living behavior: [product-behavior/](../../product-behavior/README.md). Upload wire: [recordings-sync-contract.md](../../guides/recordings-sync-contract.md). Related Sync navigation deviation (QA 2026-10-19): [#721](https://github.com/eten-tech-foundation/fluent-mobile/issues/721). Preserve the matrix as historical evidence; do not rewrite it as the live contract.
+
 ## Overview
 
 **Feature:** Coming back online after working offline — server reachability
