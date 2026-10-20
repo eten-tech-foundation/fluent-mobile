@@ -107,6 +107,8 @@ export function createUploadOrchestrator(
   let isWifi = false;
   let connectionType = '';
   let started = false;
+  // Invalidate preflight work across stop/start, before an AbortController exists.
+  let lifecycleVersion = 0;
   let unsubConnectivity: (() => void) | null = null;
   let unsubPrefs: (() => void) | null = null;
   let sessionAbort: AbortController | null = null;
@@ -196,7 +198,9 @@ export function createUploadOrchestrator(
       return;
     }
 
+    const version = lifecycleVersion;
     const snapshot = await deps.getSessionTransportSnapshot();
+    if (!started || version !== lifecycleVersion) return;
     isOnline = snapshot.isOnline;
     isWifi = snapshot.isWifi;
     connectionType = snapshot.connectionType;
@@ -266,6 +270,8 @@ export function createUploadOrchestrator(
   }
 
   const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
+    if (!started) return;
+    const version = lifecycleVersion;
     if (sessionPromise || sessionOpen) {
       rerunAfterSession = true;
       return;
@@ -286,6 +292,7 @@ export function createUploadOrchestrator(
       }
 
       await applyFreshTransportSnapshot();
+      if (!started || version !== lifecycleVersion) return;
 
       const uploadOverCellular = deps.getUploadOverCellular();
       const gate = transportAllowsTransfer({
@@ -314,6 +321,7 @@ export function createUploadOrchestrator(
       }
 
       const chapters = await deps.getPendingUploadChapters();
+      if (!started || version !== lifecycleVersion) return;
       if (chapters.length === 0) {
         phase = 'idle';
         clearSessionCounts();
@@ -472,6 +480,7 @@ export function createUploadOrchestrator(
   const evaluateAuto = (): void => {
     evaluateChain = evaluateChain
       .then(async () => {
+        if (!started) return;
         const gate = transportAllowsTransfer({
           isOnline,
           isWifi,
@@ -559,6 +568,7 @@ export function createUploadOrchestrator(
         return;
       }
       started = true;
+      lifecycleVersion += 1;
       unsubConnectivity = deps.subscribeToConnectivity(onConnectivity);
       unsubPrefs = deps.subscribeToUploadOverCellular(() => {
         evaluateAuto();
@@ -572,6 +582,7 @@ export function createUploadOrchestrator(
         return;
       }
       started = false;
+      lifecycleVersion += 1;
       unsubConnectivity?.();
       unsubPrefs?.();
       unsubConnectivity = null;
