@@ -55,7 +55,7 @@ alwaysApply: true
 
 ## Navigation stack
 
-Authenticated routes live under `src/routes/(app)/` (Drawer + stack). Auth routes under `src/routes/(auth)/`. The v2 tree `src/routes/v2/` is registered only when signed in with the UI version set to Next, and Legacy Home renders `V2HomeRedirect` in Next, so every return home lands on v2 (see `docs/features/next-ui-redesign/v2-feature-manifest.md`). Pass IDs via search params / `hrefs`; load detail in screen `useEffect` / hooks. Sync and Settings are stack destinations; settings/accounts open via the Drawer (`UserSettingsMenu`).
+Authenticated routes live under `src/routes/(app)/` (Drawer + stack). Auth routes under `src/routes/(auth)/`. The v2 tree `src/routes/v2/` is registered only when signed in with the UI version set to Next, and Legacy Home renders `V2HomeRedirect` in Next, so every return home lands on v2. Pass IDs via search params / `hrefs`; load detail in screen `useEffect` / hooks. Sync and Settings are stack destinations; settings/accounts open via the Drawer (`UserSettingsMenu`).
 
 ## Native (Expo CNG, Android-only)
 
