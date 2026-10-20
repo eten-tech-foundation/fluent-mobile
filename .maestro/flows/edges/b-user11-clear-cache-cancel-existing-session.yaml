@@ -1,0 +1,70 @@
+# Settings Clear cache ALWAYS confirms before clearAllPausedTakes callback.
+# Cancel-only supporting evidence, NOT orphan-marker deletion/LogOut coverage.
+# Log Out is deliberately excluded: zero-unsynced branch signs out immediately.
+appId: com.eten.fluent
+tags: [settings, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- scrollUntilVisible:
+    element:
+      id: '^settings-clear-cache$'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: '^settings-clear-cache$'
+    waitToSettleTimeoutMs: 500
+- assertVisible: '^Clear cache\?$'
+- assertVisible: '^Removes paused draft takes stored on this device\.$'
+- assertVisible: '(?i)^Cancel$'
+- assertVisible: '(?i)^Clear$'
+- takeScreenshot: b-clear-cache-confirmation-cancel-only
+- tapOn:
+    text: '(?i)^Cancel$'
+    waitToSettleTimeoutMs: 500
+- assertNotVisible: '^Clear cache\?$'
+- assertNotVisible: '^Cache cleared$'
+- assertVisible:
+    id: '^settings-clear-cache$'
+- assertNotVisible:
+    id: '^login-email-input$'
+- takeScreenshot: b-clear-cache-cancel-settings-preserved
+- scrollUntilVisible:
+    element:
+      id: '^settings-ui-version-legacy$'
+    direction: UP
+    timeout: 10000
+- assertVisible:
+    id: '^settings-ui-version-legacy$'
+    selected: true
+- assertVisible:
+    id: '^settings-ui-version-next$'
+    selected: false
+- assertVisible:
+    id: '^settings-drafting-unit-verse$'
+    selected: true
+- assertVisible:
+    id: '^settings-upload-cellular-switch$'
+    checked: false
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 15000
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-menu-active-11$'
+- assertVisible:
+    id: '^settings-menu-account-11$'
+- assertNotVisible:
+    id: '^settings-menu-account-(?!11$)[0-9]+$'
+- tapOn:
+    id: '^settings-menu-account-11$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^home-tab-projects$'
+- assertNotVisible:
+    id: '^login-email-input$'

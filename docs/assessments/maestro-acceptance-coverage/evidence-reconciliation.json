@@ -1133,6 +1133,13 @@
           "flow": null,
           "relation": "partial",
           "reason": "Legacy\u2192NextusableHome\u2192Nextsettingspersist\u2192LegacyusableHome passed53.061s;visual fidelity remains unverified. Initial implicitdefaultLegacy now explicitlystoredlegacy through normal UI restoration."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-next-cache-capture-support.json",
+          "case_id": "B_Next_functional_switch_69.7s",
+          "flow": ".maestro/flows/edges/b-user11-next-functional-existing-session.yaml",
+          "relation": "partial_functional_runtime_switch_only",
+          "reason": "Nextselected persists after Homeheader/tabs and milestone19chapterlist; no1183entry. FullPASS69.7s/cleanup91.6s restoresLegacy/Verse/cellularOFF/Home11/r0,1. Actual rendered baseline colors observed; no Lovable/reference-fidelity or whole-theme proof."
         }
       ],
       "isolated_status": "UNTESTED",
@@ -2260,7 +2267,15 @@
       "review_reason": "Clearing an orphan marker without navigable verse is one recovery/data-integrity outcome.",
       "live_status": "BLOCKED",
       "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-next-cache-capture-support.json",
+          "case_id": "B_ClearCache_confirmation_Cancel_43s",
+          "flow": ".maestro/flows/edges/b-user11-clear-cache-cancel-existing-session.yaml",
+          "relation": "supporting_cancel_dialog_only_not_orphan_criterion",
+          "reason": "Exact ClearCache warning/Cancel/Clear buttons and CANCELONLY fullPASS43s/cleanup58.3s; no Cachecleared, session/prefs/Home/radios unchanged. No marker inspection, orphan cleanup or deletion. B0007 remains not_run/BLOCKED; source zero-pending LogOut autoexecutes, so not tapped."
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -7473,5 +7488,13 @@
     },
     "scope": "86 bounded applicable atomic subset;202 canonical scope and compounds remain unfinished",
     "source594_corrected": true
+  },
+  "latest_batch3_support_only": {
+    "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-next-cache-capture-support.json",
+    "A_capture_guard_blocked_before_Start": true,
+    "new_take_created": false,
+    "first_preparation_failure_retained": true,
+    "selection_correction_not_capture_proof": true,
+    "new_atomic_completions": 0
   }
 }

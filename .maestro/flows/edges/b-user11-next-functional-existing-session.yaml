@@ -1,0 +1,87 @@
+# #724 conditional functional Next/Legacy isolation support, outside86atomic.
+# Starts in original Legacy Settings from native user11/preference/radio guard.
+# No reference-pixel match, supplied redesign fidelity or shared assignment entry.
+# Driver finally restores Legacy and verifies Verse/cellularOFF/Home/user11/radios.
+appId: com.eten.fluent
+tags: [settings, existing-session, reversible-preference, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- assertVisible:
+    id: '^settings-ui-version-legacy$'
+    selected: true
+- assertVisible:
+    id: '^settings-ui-version-next$'
+    selected: false
+- tapOn:
+    id: '^settings-ui-version-next$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-ui-version-next$'
+    selected: true
+- assertVisible:
+    id: '^settings-ui-version-legacy$'
+    selected: false
+- takeScreenshot: b-next-settings-selected-functional
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 15000
+- assertVisible:
+    id: '^home-sync-button$'
+- tapOn:
+    id: '^home-tab-my-work$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^home-tab-my-work$'
+    selected: true
+- tapOn:
+    id: '^home-tab-projects$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^home-tab-projects$'
+    selected: true
+- takeScreenshot: b-next-home-shell-tabs-header-functional
+- tapOn:
+    id: '^milestone-row-19$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1183$'
+    timeout: 15000
+- assertVisible: '^DISPOSABLE QA 717 2026-10-20 E2E$'
+- assertVisible: '^DISPOSABLE 717 NT checks$'
+- takeScreenshot: b-next-primary-hierarchy-chapter-list-only
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 15000
+- assertNotVisible:
+    id: '^login-email-input$'
+- assertNotVisible: '^Console Error$'
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^settings-menu-active-11$'
+    timeout: 10000
+- tapOn:
+    id: '^settings-menu-more-settings$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^settings-ui-version-next$'
+    timeout: 10000
+- assertVisible:
+    id: '^settings-ui-version-next$'
+    selected: true
+- assertVisible:
+    id: '^settings-ui-version-legacy$'
+    selected: false
+- takeScreenshot: b-next-selection-persists-after-primary-route
