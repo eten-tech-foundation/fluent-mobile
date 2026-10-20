@@ -1,0 +1,65 @@
+# Starts at native-verified explicit project12 PFO, user11 assigned chapter count0.
+# No selection/download/network/preference writes. c4a1425e source receipt.
+appId: com.eten.fluent
+tags: [offline, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_PROJECT12_ASSIGNED_COUNT !== 'undefined' && MAESTRO_B_PROJECT12_ASSIGNED_COUNT === '0'}
+- assertVisible:
+    id: '^prepare-offline-screen$'
+- assertVisible: '^Selected chapters \(0\)$'
+- assertVisible: '^1 Peter, 0 of 5 chapters selected$'
+- assertVisible: '^Expand 1 Peter$'
+- assertNotVisible: '^Chapter [1-5]$'
+- assertVisible:
+    id: '^prepare-offline-download-button$'
+    enabled: false
+- assertVisible:
+    id: '^prepare-offline-total-bytes$'
+    text: '^0 B$'
+- assertNotVisible:
+    id: '^prepare-offline-footer-hint$'
+- takeScreenshot: b-user11-unassigned-default-open-book-collapsed-zero-disabled
+- tapOn:
+    text: '^Expand 1 Peter$'
+    waitToSettleTimeoutMs: 500
+- assertVisible: '^Collapse 1 Peter$'
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 2$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 3$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 4$'
+    checked: false
+- assertVisible:
+    text: '^Chapter 5$'
+    checked: false
+- assertVisible:
+    id: '^prepare-offline-download-button$'
+    enabled: false
+- assertVisible: '^Selected chapters \(0\)$'
+- takeScreenshot: b-user11-all-five-chapters-unchecked-download-disabled
+- tapOn:
+    text: '^Collapse 1 Peter$'
+    waitToSettleTimeoutMs: 500
+- assertVisible: '^Expand 1 Peter$'
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^project-row-12$'
+    timeout: 10000
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+# Cleanup correction AUTHORED/UNEXECUTED: actual picker Back returns Home.
+# Original 45.7s exit1 and native final-Home receipt are retained in checkpoint.
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-projects$'
+    timeout: 10000

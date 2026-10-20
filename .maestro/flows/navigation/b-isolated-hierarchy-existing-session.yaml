@@ -1,0 +1,103 @@
+# B authenticated read-only Home → project-bearing milestone → assignment.
+# Fixture values must come from verified active identity and exact UI receipts.
+# Parent web assignment proves peer11/drafter10; current Draft ownership is other.
+# ProjectsTab displays milestone rows with project name; no separate project-row
+# exists. This flow asserts project title after exact milestone selection.
+# No login, launch/reset, sync, downloads, Record-tab entry, account switch or write.
+appId: com.eten.fluent
+tags:
+  - nav
+  - existing-session
+  - guard
+  - fixture-blocked
+---
+- runScript: ../../shared/scripts/b-isolated-hierarchy-values.js
+- assertTrue: ${output.serial === 'emulator-5556' && output.fixtureAttestation === 'ui-verified-b-member-assignment'}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.userId) && /^[1-9][0-9]*$/.test(output.milestoneId) && /^[1-9][0-9]*$/.test(output.assignmentId)}
+- assertTrue: ${output.projectName.length > 0 && output.milestoneName.length > 0 && output.assignmentLabel.length > 0}
+- assertNotVisible:
+    id: '^login-email-input$'
+- assertVisible:
+    id: '^home-tab-my-work$'
+- assertVisible:
+    id: '^home-tab-projects$'
+- tapOn:
+    id: '^home-settings-button$'
+- extendedWaitUntil:
+    visible:
+      id: '^settings-drawer-content$'
+    timeout: 15000
+- assertVisible:
+    id: ${output.activeUserRe}
+- assertVisible:
+    id: ${output.accountRe}
+# Source handleSwitchUser: verified already-active row only closes drawer.
+- tapOn:
+    id: ${output.accountRe}
+- assertNotVisible:
+    id: '^settings-drawer-content$'
+- tapOn:
+    id: '^home-tab-projects$'
+- scrollUntilVisible:
+    element:
+      id: ${output.milestoneRe}
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    text: ${output.milestoneNameRe}
+- tapOn:
+    id: ${output.milestoneRe}
+- extendedWaitUntil:
+    visible:
+      id: ${output.assignmentRe}
+    timeout: 15000
+- assertVisible:
+    text: ${output.projectNameRe}
+- assertVisible:
+    text: ${output.milestoneNameRe}
+- assertVisible:
+    id: ${output.assignmentRe}
+    containsDescendants:
+      - text: ${output.assignmentLabelRe}
+- assertVisible:
+    id: ${output.assignmentRe}
+    containsDescendants:
+      - text: '^Assigned to another translator$'
+- tapOn:
+    id: ${output.assignmentRe}
+- extendedWaitUntil:
+    visible:
+      id: '^drafting-tab-bar$'
+    timeout: 15000
+- assertVisible:
+    id: '^drafting-tab-bible$'
+- assertVisible:
+    id: '^drafting-tab-resources$'
+- assertVisible:
+    id: '^drafting-tab-record$'
+- assertNotVisible:
+    id: '^login-email-input$'
+- takeScreenshot: b-peer11-hierarchy-drafting
+- tapOn:
+    id: '^drafting-tab-resources$'
+- extendedWaitUntil:
+    visible:
+      id: '^resources-tab$'
+    timeout: 15000
+- assertNotVisible:
+    id: '^login-email-input$'
+- takeScreenshot: b-peer11-resources-entry
+- tapOn:
+    id: '^drafting-header-back$'
+- extendedWaitUntil:
+    visible:
+      id: ${output.assignmentRe}
+    timeout: 15000
+- tapOn:
+    id: '^stack-header-back$'
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-projects$'
+    timeout: 15000
+- assertNotVisible:
+    id: '^login-email-input$'

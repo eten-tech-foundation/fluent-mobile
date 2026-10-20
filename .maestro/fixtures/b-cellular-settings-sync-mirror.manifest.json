@@ -1,0 +1,71 @@
+{
+  "requirement": "C-0146-03",
+  "status": "BLOCKED_SYNC_NAVIGATION_NO_MIRROR_VALUE_FAILURE_OBSERVED",
+  "serial": "emulator-5556",
+  "userId": 11,
+  "originalUploadOverCellular": false,
+  "firstResult": {
+    "serial": "emulator-5556",
+    "userId": 11,
+    "originalUploadOverCellular": false,
+    "airplane": "0",
+    "wifi": "1",
+    "activeDownloadRows": "0",
+    "activeUploadRows": "0",
+    "user11LocalRecordingFiles": "0",
+    "idleUi": "Home with record-tab and source-audio-playing absent",
+    "query": "SELECT COUNT(*) FROM download_queue WHERE status='downloading'; SELECT COUNT(*) FROM recordings WHERE sync_status IN ('uploading','syncing'); SELECT COUNT(*) FROM recordings WHERE recorded_by_user_id=11 AND length(COALESCE(local_file_path,''))>0;",
+    "readonly": true,
+    "runnerExit": 1,
+    "runnerElapsedSeconds": 54.0,
+    "cleanupAdditionalPreferenceTap": true,
+    "originalOffRestored": true,
+    "finalHome": true,
+    "finalSyncLabel": "Online \u00b7 all synced. Open Sync page.",
+    "finalAirplane": "0",
+    "finalWifi": "1",
+    "osNetworkUnchanged": true,
+    "totalElapsedSeconds": 74.5
+  },
+  "singleCorrectedRetryResult": {
+    "serial": "emulator-5556",
+    "userId": 11,
+    "originalUploadOverCellular": false,
+    "airplane": "0",
+    "wifi": "1",
+    "activeDownloadRows": "0",
+    "activeUploadRows": "0",
+    "user11LocalRecordingFiles": "0",
+    "idleUi": "Home;noRecord/sourceplaying",
+    "query": "SELECT COUNT(*) FROM download_queue WHERE status='downloading'; SELECT COUNT(*) FROM recordings WHERE sync_status IN ('uploading','syncing'); SELECT COUNT(*) FROM recordings WHERE recorded_by_user_id=11 AND length(COALESCE(local_file_path,''))>0;",
+    "readonly": true,
+    "retryReason": "Singleparent-approvedSyncbuttonrelativepoint90%,50% correction afterFABintercept; firstfailurepreserved",
+    "runnerExit": 1,
+    "runnerElapsedSeconds": 59.4,
+    "cleanupAdditionalPreferenceTap": true,
+    "originalOffRestored": true,
+    "finalHome": true,
+    "finalSyncLabel": "Online \u00b7 all synced. Open Sync page.",
+    "finalAirplane": "0",
+    "finalWifi": "1",
+    "osNetworkUnchanged": true,
+    "totalElapsedSeconds": 83.5
+  },
+  "failedAssertion": "id ^sync-screen$ is visible; saved postflow UI still Home on both attempts",
+  "oneCorrection": "home-sync-button element-relative point90%,50% outside observeddevelopmentFAB; no further tries",
+  "unreachedAssertions": [
+    "Sync mirrors Settings ON",
+    "Sync OFF propagates back to Settings"
+  ],
+  "completedAssertions": [
+    "Settings OFF\u2192ON on actualswitch",
+    "Cleanup returns actualswitchOFF",
+    "Final Homeonline and radios0/1 unchanged"
+  ],
+  "defaultProvenanceBoundary": "Historical C-0146-02 defaultOFF proof predates these first preference writes; current device no longer has never-written preference history",
+  "evidenceRoots": [
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-cellular-mirror-first",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-cellular-mirror-retry"
+  ],
+  "productConclusion": "No product mirror failure inferred; navigation never reached Sync value checks"
+}

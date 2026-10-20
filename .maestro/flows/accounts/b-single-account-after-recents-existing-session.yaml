@@ -1,0 +1,68 @@
+# Run only after observed Fluent Recents card is selected, same PID/activity proven.
+# No launchApp/intent/reset; only assertions then verse1/Home restoration.
+appId: com.eten.fluent
+tags:
+  - accounts
+  - existing-session
+  - read-only
+  - guard
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SAME_PROCESS_ACTIVITY !== 'undefined' && MAESTRO_B_SAME_PROCESS_ACTIVITY === 'verified'}
+- assertVisible:
+    text: '^1 Peter 1$'
+- assertVisible:
+    id: '^drafting-tab-bible$'
+    selected: true
+- assertVisible:
+    id: '^bible-verse-row-2$'
+    text: '^Verse 2, selected$'
+- assertNotVisible:
+    id: '^drafting-account-initials$'
+- takeScreenshot: b-single-account11-bible2-preserved-genuine-resume
+- tapOn:
+    id: '^bible-verse-row-1$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-verse-reference$'
+      text: '^1 Peter 1:1$'
+    timeout: 15000
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^bible-verse-row-1$'
+    text: '^Verse 1, selected$'
+- tapOn:
+    id: '^drafting-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1183$'
+    timeout: 15000
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+# Cleanup correction AUTHORED/UNEXECUTED. The original 49.5s exit1 is retained.
+# Actual automatic PFO details Back -> project picker Back -> Home was observed.
+- runFlow:
+    when:
+      visible:
+        id: '^prepare-offline-screen$'
+    commands:
+      - tapOn:
+          id: '^stack-header-back$'
+          waitToSettleTimeoutMs: 500
+      - extendedWaitUntil:
+          visible:
+            id: '^project-row-12$'
+          timeout: 10000
+      - tapOn:
+          id: '^stack-header-back$'
+          waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-projects$'
+    timeout: 15000
+- assertNotVisible:
+    id: '^login-email-input$'

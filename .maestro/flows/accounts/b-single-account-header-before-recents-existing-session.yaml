@@ -1,0 +1,74 @@
+# A0019 single-cached-account negative + setup for genuine OS Recents resume.
+# Actual UI drawer preflight confirms only11. No auth/KV/account changes.
+appId: com.eten.fluent
+tags:
+  - accounts
+  - existing-session
+  - read-only
+  - guard
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556' && typeof MAESTRO_B_KNOWN_ACCOUNT_COUNT !== 'undefined' && MAESTRO_B_KNOWN_ACCOUNT_COUNT === '1'}
+- assertVisible:
+    id: '^home-tab-projects$'
+- assertNotVisible:
+    id: '^login-email-input$'
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^settings-menu-active-11$'
+    timeout: 15000
+- assertVisible:
+    id: '^settings-menu-account-11$'
+- assertNotVisible:
+    id: '^settings-menu-account-(?!11$)[0-9]+$'
+- tapOn:
+    id: '^settings-menu-account-11$'
+    waitToSettleTimeoutMs: 500
+- assertNotVisible:
+    id: '^settings-drawer-content$'
+- tapOn:
+    id: '^home-tab-projects$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^milestone-row-19$'
+    timeout: 15000
+- tapOn:
+    id: '^milestone-row-19$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1183$'
+    timeout: 15000
+- tapOn:
+    id: '^chapter-row-1183$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^drafting-tab-bible$'
+    timeout: 15000
+- assertVisible:
+    text: '^1 Peter 1$'
+- assertNotVisible:
+    id: '^drafting-account-initials$'
+- takeScreenshot: b-single-account11-header-no-initials
+- tapOn:
+    id: '^bible-verse-row-2$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-verse-reference$'
+      text: '^1 Peter 1:2$'
+    timeout: 15000
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^drafting-tab-bible$'
+    selected: true
+- assertVisible:
+    id: '^bible-verse-row-2$'
+    text: '^Verse 2, selected$'
+- takeScreenshot: b-bible2-before-genuine-recents

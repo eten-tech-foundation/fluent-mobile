@@ -1,0 +1,128 @@
+# SUPERSEDED DIAGNOSTIC: launchApp sends an intent; it does not prove OS resume.
+# Retained failed attempt and useful tab/header prefix; never acceptance resume proof.
+# Genuine Recents proof: accounts/b-single-account-{header-before,after}-recents flows
+# and b-device-evidence-checkpoint.manifest.json native PID/activity attestation.
+# No Start/Pause/Save/Delete/play/download or shared fixture changes.
+appId: com.eten.fluent
+tags:
+  - diagnostic
+  - superseded-intent-approach
+  - drafting
+  - existing-session
+  - read-only
+  - guard
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- assertVisible:
+    id: '^home-tab-projects$'
+- assertNotVisible:
+    id: '^login-email-input$'
+- tapOn:
+    id: '^milestone-row-19$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1183$'
+    timeout: 15000
+- tapOn:
+    id: '^chapter-row-1183$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^bible-verse-row-1$'
+    timeout: 15000
+- assertVisible:
+    text: '^1 Peter 1$'
+- assertVisible:
+    id: '^drafting-tab-bible$'
+    selected: true
+- assertVisible:
+    id: '^bible-verse-row-1$'
+    text: '^Verse 1, selected$'
+- tapOn:
+    id: '^bible-verse-row-2$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-verse-reference$'
+      text: '^1 Peter 1:2$'
+    timeout: 15000
+- assertVisible:
+    text: '^1 Peter 1$'
+- assertVisible:
+    id: '^drafting-tab-record$'
+    selected: true
+- tapOn:
+    id: '^drafting-tab-resources$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^resources-unit-1183-verse:2$'
+    timeout: 15000
+- assertVisible:
+    text: '^1 Peter 1:2$'
+- assertVisible:
+    id: '^drafting-tab-resources$'
+    selected: true
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^drafting-tab-bible$'
+    selected: true
+# Do not re-tap verse2: this assertion proves preservation across tab changes.
+- assertVisible:
+    id: '^bible-verse-row-2$'
+    text: '^Verse 2, selected$'
+- assertVisible:
+    text: '^1 Peter 1$'
+- takeScreenshot: b-header-tab-verse2-preserved-before-background
+- pressKey: HOME
+- launchApp:
+    appId: com.eten.fluent
+    stopApp: false
+    clearState: false
+    permissions: {}
+- extendedWaitUntil:
+    visible:
+      id: '^drafting-tab-bible$'
+      selected: true
+    timeout: 15000
+- assertVisible:
+    id: '^bible-verse-row-2$'
+    text: '^Verse 2, selected$'
+- assertVisible:
+    text: '^1 Peter 1$'
+- assertNotVisible:
+    id: '^login-email-input$'
+- takeScreenshot: b-header-tab-verse2-preserved-after-resume
+- tapOn:
+    id: '^bible-verse-row-1$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-verse-reference$'
+      text: '^1 Peter 1:1$'
+    timeout: 15000
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^bible-verse-row-1$'
+    text: '^Verse 1, selected$'
+- tapOn:
+    id: '^drafting-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1183$'
+    timeout: 15000
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-projects$'
+    timeout: 15000
+- assertNotVisible:
+    id: '^login-email-input$'

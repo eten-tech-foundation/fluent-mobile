@@ -1,0 +1,99 @@
+# C-0146-03 live reversible app-local preference mirror, original OFF.
+# Preflight receipt: active11, idle Home, WiFiON/airplaneOFF, no active transfers.
+# No SyncNow/Pause/Cancel/download/account/recording actions or OS network change.
+appId: com.eten.fluent
+tags:
+  - settings
+  - sync
+  - existing-session
+  - reversible-preference
+  - guard
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556' && typeof MAESTRO_B_CELLULAR_ORIGINAL !== 'undefined' && MAESTRO_B_CELLULAR_ORIGINAL === 'false' && typeof MAESTRO_B_IDLE_RECEIPT !== 'undefined' && MAESTRO_B_IDLE_RECEIPT === 'no-active-work'}
+- assertNotVisible:
+    id: '^login-email-input$'
+- scrollUntilVisible:
+    element:
+      id: '^settings-upload-cellular-switch$'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: '^settings-upload-cellular-switch$'
+    checked: false
+- tapOn:
+    id: '^settings-upload-cellular-switch$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-upload-cellular-switch$'
+    checked: true
+- takeScreenshot: b-cellular-settings-on
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-sync-button$'
+    timeout: 15000
+- tapOn:
+    id: '^home-sync-button$'
+    point: '90%,50%'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^sync-screen$'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: '^sync-upload-cellular-switch$'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: '^sync-upload-cellular-switch$'
+    checked: true
+- takeScreenshot: b-cellular-sync-mirrors-on
+- tapOn:
+    id: '^sync-upload-cellular-switch$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^sync-upload-cellular-switch$'
+    checked: false
+- takeScreenshot: b-cellular-sync-off
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 15000
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^settings-menu-active-11$'
+    timeout: 15000
+- tapOn:
+    id: '^settings-menu-more-settings$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^settings-ui-version$'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: '^settings-upload-cellular-switch$'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: '^settings-upload-cellular-switch$'
+    checked: false
+- takeScreenshot: b-cellular-settings-mirrors-off-restored
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-projects$'
+    timeout: 15000
+- assertNotVisible:
+    id: '^login-email-input$'

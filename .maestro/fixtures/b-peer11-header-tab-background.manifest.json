@@ -1,0 +1,36 @@
+{
+  "requirement": "A-0004 exact header/tab state subset",
+  "status": "SUPERSEDED_INTENT_DIAGNOSTIC_WITH_PASSED_HEADER_TAB_PREFIX",
+  "serial": "emulator-5556",
+  "userId": 11,
+  "assignmentId": 1183,
+  "runnerExit": 1,
+  "runnerSeconds": 92.9,
+  "completedLiveAssertions": [
+    "Exactchapterheader1Peter1",
+    "InitialBibleTabselectedandrow1a11yVerse1selected",
+    "SingleBible2selection→Recordselected/reference1Peter1:2",
+    "Resourcesselected/unit1183verse2/header1Peter1:2",
+    "ReturnBibleTabselected+Verse2selectedWITHOUTverse2retap",
+    "Exactchapterheaderremains1Peter1acrosstabs"
+  ],
+  "unreachedAssertions": [
+    "BibleTab+verse2selectionpreservedafterbackground/resume",
+    "Finalverse1restoreassertion"
+  ],
+  "backgroundAction": {
+    "pressKey": "HOME",
+    "launchApp": {
+      "appId": "com.eten.fluent",
+      "stopApp": false,
+      "clearState": false,
+      "permissions": {}
+    }
+  },
+  "actualResumeUi": "Prepare for Offline / Assignedchapters5 / loadingcatalog; notdrafting",
+  "classification": "launchApp may redirect the route; not a genuine OS resume and not a confirmed product failure",
+  "finalCleanup": "PFOBackonly→HomeOnlineallsynced;airplane0/WiFi1;nodownload/capture/play/prefmutation",
+  "artifactRoot": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-header-tab-background-first/2026-10-20_131959/b-peer11-header-tab-background-existing-session",
+  "resultReceipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-header-tab-background-first/result.json",
+  "genuineResumeEvidence": "b-device-evidence-checkpoint.manifest.json: singleAccountAndGenuineResume"
+}

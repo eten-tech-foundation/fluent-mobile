@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "sourceRevisionAtFinalBRun": "c4a1425e",
+  "serial": "emulator-5556",
+  "userId": 11,
+  "scope": "B-only harness packaging; no live reruns, app source, shared helpers, device or ledger operations",
+  "hierarchy": {
+    "result": "PASS",
+    "seconds": 76.6,
+    "artifactRoot": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-auth-hierarchy-first/2026-10-20_124058/b-isolated-hierarchy-existing-session"
+  },
+  "settings": {
+    "result": "PASS",
+    "seconds": 43.8,
+    "artifactRoot": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-auth-settings-first/2026-10-20_124233/b-peer11-settings-readonly-existing-session"
+  },
+  "unassignedPfo": {
+    "atomicAssertions": "PASS: unassigned outer accordion open, book collapsed, all five unchecked, zero selection, disabled Download",
+    "wholeOriginalCli": "EXIT1 at cleanup expected Settings after picker Back; 45.7 seconds",
+    "cleanupCorrection": "AUTHORED/UNEXECUTED; picker Back returns Home; retained native final Home/radios0/1",
+    "preferenceBoundary": "OFF checked in preflight; no preference/selection/download writes in this case",
+    "positiveEnabledBranch": "Not run; no extra manifest request",
+    "receipts": [
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/preconditions.json",
+        "sha256": "a4eac2b8e235064e0e8f257c19585e863f86f2a3bdf17c5998895a0d2dd6dae9"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/result.json",
+        "sha256": "515443a826a49390cbe52a4846d72051b580f4841d3456faa9372ee58f0b5144"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/initial-unassigned.xml",
+        "sha256": "5cca70412397e702bfa4a308d6f8c7bd157f79ff372cd8068a0c1798440c283c"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/cleanup-actual.xml",
+        "sha256": "db88e13f2bbb0cce3903ee9a17a94d672a3fdca40d91d36ff6382834c65f7ce4"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-unassigned-pfo-first/runner.log",
+        "sha256": "cf19d5cb6ae2ab0256e132180d5bdb5916d1bb69356619230f35ac90b579bc0a"
+      }
+    ]
+  },
+  "singleAccountAndGenuineResume": {
+    "singleAccountNegative": "PASS 56.1 seconds: actual drawer only11, exact 1 Peter 1 header, account initials absent",
+    "genuineResumeAssertions": "PASS: same process/activity/task, Bible tab and verse2 selected without retap, exact header; verse1 restoration passed",
+    "wholeOriginalPhase2": "EXIT1 at final Home cleanup; 49.5 seconds; actual automatic PFO details then picker; no downloads",
+    "cleanupCorrection": "AUTHORED/UNEXECUTED; conditionally handle observed PFO details -> picker -> Home",
+    "nativeAttestation": {
+      "pid": "19927",
+      "activityToken": "8bc7405",
+      "activity": ".MainActivity",
+      "taskId": "12",
+      "card": "Fluent logo/header and selected verse2 visually observed in settled-app-switch.png; one grounded card tap 540,800",
+      "route": "HOME; immediate APP_SWITCH showed launcher; parent-approved settled KEYCODE_APP_SWITCH187 opened actual Recents card; no launchApp/intent"
+    },
+    "drivers": "Historical case-specific drivers retain original outcomes and observed-coordinate handoff; not a portable blind Recents selector",
+    "receipts": [
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/run-b-single-account-recents-phase1.py",
+        "sha256": "94e27ae34793be054242af8a8543f4d7a3879347a7539ef8fa2e9d2961245f5c"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/run-b-single-account-recents-phase2.py",
+        "sha256": "c83cf0f8e70ca2d3a0febffb639c08da820fa26c3575ba3a274b46e72db003b3"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/phase1-result.json",
+        "sha256": "bf931888ded9b7394ebd8676ad4b06150ef372407276b5232ad787d7f172099b"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/result.json",
+        "sha256": "4c881745f60a3ae3137af545da5175edffe9190d02876c4eebcc17b620fc283c"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/settled-app-switch.png",
+        "sha256": "d11ee876c631f0963e6f6ec553d83ae5b2fd6ee77472d1517b60eb983374dc12"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/before-background.xml",
+        "sha256": "c11a45868c460b6cb8147f1f2d5de5af3bde383842c5aa1f99b7ef82281325f6"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/after-genuine-resume.xml",
+        "sha256": "c11a45868c460b6cb8147f1f2d5de5af3bde383842c5aa1f99b7ef82281325f6"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/final-home-after-pfo-project-list.xml",
+        "sha256": "db88e13f2bbb0cce3903ee9a17a94d672a3fdca40d91d36ff6382834c65f7ce4"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/phase1-cli/runner.log",
+        "sha256": "cd35dd40fa7432deedfabb820856c2b5ebe5468b11f37df7a1ffd26909fcef4d"
+      },
+      {
+        "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-single-account-header-first/phase2-cli/runner.log",
+        "sha256": "bf970b5c6fd8cf716506a3baffcb780c50e869ada1a13d48f5c1065fbc2ecd56"
+      }
+    ]
+  },
+  "mirror": "Blocked before Sync arrival; original54.0s and single corrected59.4s failures preserved in mirror manifest; OFF restored; no mirror value contradiction",
+  "image594": "Metadata provenance blocked; photo/fullscreen proof does not establish caption/attribution/thumbnail fields",
+  "supersededIntentDiagnostic": {
+    "flow": "../flows/drafting/b-peer11-header-tab-background-existing-session.yaml",
+    "receipt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-header-tab-background-first/result.json",
+      "sha256": "0ec0fc897134a9debea1d42d51143d16f8f349cd6568100b9293087bf475758f"
+    },
+    "acceptanceScope": "Header/tab prefix only; no genuine resume claim"
+  },
+  "cleanupRerunPolicy": "No passed criteria rerun for packaging; corrected cleanup source is unexecuted until an authorized final affected run"
+}

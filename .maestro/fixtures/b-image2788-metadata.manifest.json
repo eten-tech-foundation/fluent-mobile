@@ -1,0 +1,28 @@
+{
+  "requirement": "D-0594-01",
+  "status": "BLOCKED_METADATA_PROVENANCE_NOT_PRODUCT_DEFECT",
+  "serial": "emulator-5556",
+  "userId": 11,
+  "projectId": 12,
+  "assignmentId": 1183,
+  "unit": "verse:1",
+  "imageId": "img-api-2788",
+  "observedTitle": "Göreme Valley In Cappadocia",
+  "observedUi": "Loaded photo+title; no caption/attribution text in existing expanded image UI receipt. Does not prove absent API fields.",
+  "observedUiReceipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-resource-inspection/images-expanded.xml",
+  "actualPayloadFields": {
+    "caption": null,
+    "attribution": null,
+    "licenseInfo.title": null,
+    "licenseInfo.copyright.holder.name": null,
+    "licenseInfo.copyright.dates": null,
+    "thumbnailUrl": null,
+    "url": null
+  },
+  "nullMeans": "UNKNOWN_NOT_OBSERVED; never infer omitted/empty from this manifest",
+  "sourceProvenance": "src/services/imagesMaps.ts online getTranslationImages→parseTranslationImageItem response mapped into React state; no online-payload persistence here; local downloaded rows are separate img-local identities",
+  "neededReceipt": "Selected image2788 metadata fields only from authorized nonsecret response/cache/runtime receipt; do not read tokens/auth stores or copy whole databases",
+  "readyTestOnceReceiptAvailable": "Assert actual supplied caption/attribution and thumbnail selection; distinguish payload absence from rendering failure. Reuse existing photo/fullscreen receipt instead of rerunning viewer.",
+  "viewerScopeAlreadyPassed": "Fullscreen open/title/close only; does not close #594. Pinch/pan remains untested.",
+  "currentBState": "Home, active11 reverified after source boundary; no new tests or metadata mutations"
+}

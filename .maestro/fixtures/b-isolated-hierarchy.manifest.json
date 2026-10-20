@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "status": "UI_VERIFIED_READ_ONLY_READY",
+  "serial": "emulator-5556",
+  "credentials": "Never stored or read by this manifest/flow",
+  "requiredUiReceipt": [
+    "emulators/b-identity.xml",
+    "emulators/b-milestones-verified.xml",
+    "emulators/b-chapters-verified.xml",
+    "emulators/b-home.xml (PFO project-row-12)"
+  ],
+  "userId": 11,
+  "roleId": null,
+  "projectId": 12,
+  "projectName": "DISPOSABLE QA 717 2026-10-20 E2E",
+  "milestoneId": 19,
+  "milestoneName": "DISPOSABLE 717 NT checks",
+  "assignmentId": 1183,
+  "assignmentLabel": "1 Peter 1",
+  "roleRequirement": "UI-verified membership with visible traversable assignment; roleId remains unknown unless the supported UI exposes it. Do not infer roleId from user/project IDs.",
+  "projectIdRequirement": "UI verified project-row-12 in Prepare for Offline, then project title on milestone19/assignment1183 screen. No invented standalone Home project selector.",
+  "env": {
+    "MAESTRO_B_USER_ID": "11",
+    "MAESTRO_B_MILESTONE_ID": "19",
+    "MAESTRO_B_ASSIGNMENT_ID": "1183",
+    "MAESTRO_B_PROJECT_NAME": "DISPOSABLE QA 717 2026-10-20 E2E",
+    "MAESTRO_B_MILESTONE_NAME": "DISPOSABLE 717 NT checks",
+    "MAESTRO_B_ASSIGNMENT_LABEL": "1 Peter 1",
+    "MAESTRO_B_UI_FIXTURE_ATTESTATION": "ui-verified-b-member-assignment",
+    "MAESTRO_B_SERIAL": "emulator-5556"
+  },
+  "forbidden": [
+    "credential handling",
+    "auth/userdata copy",
+    "valid login/reset submission",
+    "fixture mutation",
+    "fallback IDs"
+  ],
+  "deviceExecution": {
+    "result": "PASS",
+    "runnerExit": 0,
+    "elapsedSeconds": 76.6,
+    "attempts": 1,
+    "artifactRoot": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-auth-hierarchy-first/2026-10-20_124058/b-isolated-hierarchy-existing-session",
+    "restored": "Home after exact hierarchy and Resources entry"
+  },
+  "role": "peerChecker",
+  "roleEvidence": "Parent verified web assignment drafter10/peer11; current Draft chapter UI says Assigned to another translator, consistent with drafter10. Email was not used as role evidence."
+}
