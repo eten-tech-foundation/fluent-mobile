@@ -72,6 +72,12 @@ function parseTagArg(value) {
 
 function parseFlowTags(yaml) {
   const tags = [];
+  const inline = String(yaml).match(/^tags:\s*\[([^\]]*)\]/m);
+  if (inline)
+    return inline[1]
+      .split(',')
+      .map(tag => tag.trim().replace(/^(['"])(.*)\1$/, '$2'))
+      .filter(Boolean);
   let inTags = false;
   for (const line of String(yaml).split(/\r?\n/)) {
     if (!inTags) {
@@ -250,6 +256,143 @@ function collectYamlFiles(target, fs, path) {
   return { ok: true, status: 'PASS', reason: '', files };
 }
 
+// Ordered journeys inspect every reachable static dependency, even conditional
+// children. Unknown/dynamic paths and fixture overrides fail closed; no JS runs.
+function collectJourneyDependencies(files, env, fs, path) {
+  const flows = [];
+  const visiting = new Set();
+  const visited = new Set();
+  function visit(file) {
+    file = path.resolve(file);
+    if (visiting.has(file))
+      throw new Error(`cyclic runFlow dependency: ${file}`);
+    if (visited.has(file)) return;
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      throw new Error(`nested flow path not found: ${file}`);
+    }
+    visiting.add(file);
+    const yaml = fs.readFileSync(file, 'utf8');
+    flows.push({ path: file, yaml });
+    const lines = yaml.split(/\r?\n/);
+    const tags = parseFlowTags(yaml);
+    // A reviewed readonly classification is explicit; arbitrary tap/input/script
+    // fragments are not silently treated as harmless because their tags omit
+    // "mutating". Capture/reset/recovery stay separate even with that tag.
+    if (
+      /^\s*-\s*(launchApp|clearState|clearKeychain|startRecording|stopRecording)\s*:/m.test(
+        yaml,
+      )
+    ) {
+      throw new Error(
+        `cold/capture/auth flow must remain independent: ${file}`,
+      );
+    }
+    if (
+      /^\s*-\s*(tapOn|longPressOn|inputText|eraseText|runScript|evalScript|setLocation|pressKey)\s*:/m.test(
+        yaml,
+      ) &&
+      !tags.includes('mutating') &&
+      !tags.includes('ordered-readonly')
+    ) {
+      throw new Error(
+        `unclassified action flow; declare reviewed ordered-readonly or mutating: ${file}`,
+      );
+    }
+    for (let i = 0; i < lines.length; i += 1) {
+      const action = lines[i].match(/^(\s*)-\s*(tapOn|longPressOn)\s*:/);
+      if (action) {
+        let block = lines[i];
+        for (let j = i + 1; j < lines.length; j += 1) {
+          if (
+            lines[j].trim() &&
+            lines[j].match(/^\s*/)[0].length <= action[1].length
+          )
+            break;
+          block += '\n' + lines[j];
+        }
+        if (
+          /record-(start|stop|pause|resume)-button|login-(email|password|submit)/.test(
+            block,
+          )
+        ) {
+          throw new Error(
+            `capture/auth action must remain independent: ${file}`,
+          );
+        }
+      }
+      if (lines[i].trim().startsWith('#')) continue;
+      if (/^\s*env\s*:\s*[^#\s]/.test(lines[i])) {
+        throw new Error(
+          `inline/dynamic env unsupported in ordered journeys: ${file}`,
+        );
+      }
+      if (/(^|:\s*|-\s*)[&*][A-Za-z_][\w-]*/.test(lines[i])) {
+        throw new Error(
+          `YAML anchors/aliases unsupported in ordered journeys: ${file}`,
+        );
+      }
+      const dependencyLine = /["']?(runFlow|runScript)["']?\s*:/.test(lines[i]);
+      const canonicalDependency = /^(\s*)-\s+(runFlow|runScript)\s*:/.test(
+        lines[i],
+      );
+      if (dependencyLine && !canonicalDependency) {
+        throw new Error(`unsupported dependency syntax in ${file}`);
+      }
+      const override = lines[i].match(
+        /^\s*["']?(MAESTRO_(?:FIXTURE|DISPOSABLE|INCOMPLETE|A|B)_[A-Z0-9_]+)["']?:\s*(.*?)\s*$/,
+      );
+      if (override) {
+        const value = override[2].replace(/^(['"])(.*)\1$/, '$2');
+        if (value !== env[override[1]] && value !== '${' + override[1] + '}') {
+          throw new Error(
+            `nested fixture override refused: ${override[1]} in ${file}`,
+          );
+        }
+      }
+      const command = lines[i].match(
+        /^(\s*)-\s+(runFlow|runScript)\s*:\s*(.*?)\s*$/,
+      );
+      if (!command) continue;
+      const kind = command[2];
+      let target = command[3];
+      if (!target || target.startsWith('#')) {
+        target = '';
+        const indent = command[1].length;
+        for (let j = i + 1; j < lines.length; j += 1) {
+          if (!lines[j].trim() || lines[j].trim().startsWith('#')) continue;
+          const nextIndent = lines[j].match(/^\s*/)[0].length;
+          if (nextIndent <= indent) break;
+          const fileField = lines[j].match(/^\s*file:\s*(.*?)\s*$/);
+          if (fileField) {
+            target = fileField[1];
+            break;
+          }
+        }
+      }
+      if (!target) continue; // Inline commands are scanned by this same loop.
+      target = target.replace(/\s+#.*$/, '').replace(/^(['"])(.*)\1$/, '$2');
+      if (
+        target.includes('${') ||
+        !(kind === 'runFlow' ? /\.ya?ml$/ : /\.js$/).test(target)
+      ) {
+        throw new Error(`unsupported ${kind} path in ${file}`);
+      }
+      const dependency = path.resolve(path.dirname(file), target);
+      if (kind === 'runFlow') visit(dependency);
+      else if (
+        !fs.existsSync(dependency) ||
+        !fs.statSync(dependency).isFile()
+      ) {
+        throw new Error(`nested script path not found: ${dependency}`);
+      }
+    }
+    visiting.delete(file);
+    visited.add(file);
+  }
+  for (const file of files) visit(file);
+  return flows;
+}
+
 function preflightFromArgv({
   chapterId,
   milestoneId,
@@ -257,6 +400,8 @@ function preflightFromArgv({
   allowlist,
   denylist,
   argv,
+  recursive = false,
+  fixtureEnv = {},
   cwd,
   fs,
   path,
@@ -274,6 +419,30 @@ function preflightFromArgv({
       flows.push({ path: file, yaml: nodeFs.readFileSync(file, 'utf8') });
     }
   }
+  if (recursive) {
+    try {
+      const nested = collectJourneyDependencies(
+        flows.map(flow => flow.path),
+        fixtureEnv,
+        nodeFs,
+        nodePath,
+      );
+      // Child tags are not CLI selection boundaries. Do not let tag filters hide
+      // a dependency that its selected parent executes.
+      return evaluateChapterPreflight({
+        chapterId,
+        milestoneId,
+        projectId,
+        allowlist,
+        denylist,
+        flows: nested,
+        includeTags: [],
+        excludeTags: [],
+      });
+    } catch (error) {
+      return { ok: false, status: 'BLOCKED', reason: error.message, flows: [] };
+    }
+  }
   return evaluateChapterPreflight({
     chapterId,
     milestoneId,
@@ -289,6 +458,8 @@ function preflightFromArgv({
 function runPreflightCli(argv, env, io) {
   const stderr = io && io.stderr ? io.stderr : console.error;
   const exit = io && io.exit ? io.exit : code => process.exit(code);
+  const recursive = argv[0] === '--recursive';
+  if (recursive) argv = argv.slice(1);
   const args = argv[0] === '--' ? argv.slice(1) : argv;
   const result = preflightFromArgv({
     chapterId: env.MAESTRO_FIXTURE_CHAPTER_ID,
@@ -297,6 +468,8 @@ function runPreflightCli(argv, env, io) {
     allowlist: env.MAESTRO_FIXTURE_PROJECT_ALLOWLIST,
     denylist: env.MAESTRO_FIXTURE_PROJECT_DENYLIST,
     argv: args,
+    recursive,
+    fixtureEnv: env,
   });
   if (!result.ok) {
     stderr(`BLOCKED: ${result.reason}`);

@@ -40,9 +40,80 @@ else
   fi
 fi
 
+# Optional ordered journey: literal paths relative to the list file, one per line.
+# Preflight the children, then give Maestro one parent flow so order is explicit.
+FLOW_LIST=""
+FORWARDED=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --flow-list)
+      if [[ -n "${FLOW_LIST}" || $# -lt 2 || -z "$2" ]]; then
+        echo "error: --flow-list requires exactly one list file" >&2
+        exit 2
+      fi
+      FLOW_LIST="$2"
+      shift 2
+      ;;
+    --flow-list=*)
+      echo "error: use --flow-list PATH" >&2
+      exit 2
+      ;;
+    *) FORWARDED+=("$1"); shift ;;
+  esac
+done
+JOURNEY_DIR=""
+cleanup_journey() {
+  if [[ -n "${JOURNEY_DIR}" ]]; then rm -rf "${JOURNEY_DIR}"; fi
+}
+trap cleanup_journey EXIT
+PREFLIGHT_ARGS=()
+if [[ -n "${FLOW_LIST}" ]]; then
+  JOURNEY_DIR="$(mktemp -d "${TMPDIR:-/tmp}/fluent-maestro-journey.XXXXXX")"
+  node - "${FLOW_LIST}" "${JOURNEY_DIR}" ${FORWARDED[@]+"${FORWARDED[@]}"} <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const { parseMaestroInvocation } = require('./scripts/maestro-fixture-guard.cjs');
+const [listFile, destination, ...args] = process.argv.slice(2);
+try {
+  if (args.some(arg => /^(--(include-tags|exclude-tags|device|platform|shard[^=]*)(=|$)|-p$)/.test(arg))) {
+    throw new Error('ordered journeys refuse tag filters, device/platform overrides and sharding');
+  }
+  if (parseMaestroInvocation(args).paths.length) {
+    throw new Error('--flow-list cannot be combined with positional flow paths');
+  }
+  const listPath = path.resolve(listFile);
+  const flows = fs.readFileSync(listPath, 'utf8').split(/\r?\n/)
+    .map(line => line.trim()).filter(line => line && !line.startsWith('#'))
+    .map(line => path.resolve(path.dirname(listPath), line));
+  if (!flows.length) throw new Error('flow list is empty');
+  if (new Set(flows).size !== flows.length) throw new Error('duplicate flow list entry');
+  for (const flow of flows) {
+    if (!/\.ya?ml$/.test(flow) || !fs.statSync(flow).isFile()) {
+      throw new Error('flow list entries must be existing YAML files');
+    }
+  }
+  fs.writeFileSync(path.join(destination, 'paths.txt'), flows.join('\n') + '\n');
+  fs.writeFileSync(path.join(destination, 'journey.yaml'),
+    'appId: com.eten.fluent\nname: Ordered Fluent journey\n---\n' +
+    flows.map(flow => '- runFlow: ' + JSON.stringify(flow)).join('\n') + '\n');
+} catch (error) {
+  console.error('error: ' + error.message);
+  process.exit(2);
+}
+NODE
+  while IFS= read -r flow; do PREFLIGHT_ARGS+=("${flow}"); done < "${JOURNEY_DIR}/paths.txt"
+  PREFLIGHT_ARGS=(${FORWARDED[@]+"${FORWARDED[@]}"} "${PREFLIGHT_ARGS[@]}")
+  set -- ${FORWARDED[@]+"${FORWARDED[@]}"} "${JOURNEY_DIR}/journey.yaml"
+else
+  PREFLIGHT_ARGS=(${FORWARDED[@]+"${FORWARDED[@]}"})
+  set -- ${FORWARDED[@]+"${FORWARDED[@]}"}
+fi
+
 # Missing fixture chapter is BLOCKED before adb start-server / device selection.
 set +e
-node "${ROOT}/scripts/maestro-fixture-guard.cjs" --preflight -- "$@"
+RECURSIVE=()
+if [[ -n "${FLOW_LIST}" ]]; then RECURSIVE=(--recursive); fi
+node "${ROOT}/scripts/maestro-fixture-guard.cjs" --preflight ${RECURSIVE[@]+"${RECURSIVE[@]}"} -- ${PREFLIGHT_ARGS[@]+"${PREFLIGHT_ARGS[@]}"}
 preflight_status=$?
 set -e
 if [[ "${preflight_status}" -ne 0 ]]; then
@@ -95,6 +166,7 @@ scrub_on_exit() {
   if [[ -d "${ROOT}/.maestro/test_output" ]]; then
     bash "${ROOT}/scripts/maestro-scrub-artifacts.sh" "${ROOT}/.maestro/test_output" || true
   fi
+  cleanup_journey
   exit "${code}"
 }
 trap scrub_on_exit EXIT

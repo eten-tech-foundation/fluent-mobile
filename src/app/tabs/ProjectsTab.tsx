@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MILESTONES_EMPTY_MESSAGE } from '../../constants/messages';
@@ -36,6 +36,21 @@ export function ProjectsTab({ refreshKey = 0 }: ProjectsTabProps) {
         styles.listContent,
         { paddingBottom: theme.spacing.lg + insets.bottom },
       ]}
+      ListFooterComponent={
+        <View
+          testID="milestone-list-end"
+          collapsable={false}
+          accessible={false}
+          style={styles.listEndMarker}
+        >
+          <View
+            testID={`milestone-list-count-${milestones.length}`}
+            collapsable={false}
+            accessible={false}
+            style={styles.listEndMarker}
+          />
+        </View>
+      }
       refreshing={refreshing}
       onRefresh={refresh}
       renderItem={({ item }) => (
@@ -60,4 +75,5 @@ export function ProjectsTab({ refreshKey = 0 }: ProjectsTabProps) {
 
 const styles = StyleSheet.create({
   listContent: theme.homeListContent,
+  listEndMarker: { height: 1 },
 });

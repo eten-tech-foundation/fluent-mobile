@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MY_WORK_EMPTY_MESSAGE } from '../../constants/messages';
@@ -42,6 +42,21 @@ export function MyWorkTab({
         styles.listContent,
         { paddingBottom: theme.spacing.lg + insets.bottom },
       ]}
+      ListFooterComponent={
+        <View
+          testID="my-work-list-end"
+          collapsable={false}
+          accessible={false}
+          style={styles.listEndMarker}
+        >
+          <View
+            testID={`my-work-list-count-${chapters.length}`}
+            collapsable={false}
+            accessible={false}
+            style={styles.listEndMarker}
+          />
+        </View>
+      }
       refreshing={refreshing}
       onRefresh={refresh}
       renderItem={({ item }) => (
@@ -66,4 +81,5 @@ export function MyWorkTab({
 
 const styles = StyleSheet.create({
   listContent: theme.homeListContent,
+  listEndMarker: { height: 1 },
 });
