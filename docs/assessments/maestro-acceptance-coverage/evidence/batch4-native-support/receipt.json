@@ -1,0 +1,323 @@
+{
+  "schema": "fluent-batch4-native-and-functional-support/v1",
+  "native_no_autoplay": {
+    "result": {
+      "serial": "emulator-5556",
+      "userId": 11,
+      "assignmentId": 1183,
+      "bibleId": 178,
+      "criterion": "D-0048-02 source-ready non-autoplay state only; not audibility/listening/feel",
+      "sourcePlayTapCount": 0,
+      "recordStartTapCount": 0,
+      "scope": "One grouped Verse and Pericope Bible-unit tap -> Record. Positive readyPlay+paused state before/after; no playing/error/loading. No sourcePlay/capture/stage/auth/download/fixture writes.",
+      "events": [
+        {
+          "elapsedSeconds": 24.7,
+          "event": "Verse source-ready precondition verified; no Play tap"
+        },
+        {
+          "elapsedSeconds": 31.1,
+          "event": "Verse1->2 opens Record2; readyPlay+paused persists after bounded settle"
+        },
+        {
+          "elapsedSeconds": 64.0,
+          "event": "Pericope1 source-ready and exact second-card1Peter1:3\u20135 observed; no Play tap"
+        },
+        {
+          "elapsedSeconds": 71.0,
+          "event": "Both source-ready non-autoplay variants passed without Play/capture actions"
+        }
+      ],
+      "originalRadios": {
+        "airplane_mode_on": "0",
+        "wifi_on": "1"
+      },
+      "originalPreferencesVerified": true,
+      "verse": {
+        "before": {
+          "controlId": "source-audio-play",
+          "enabled": true,
+          "a11y": "Play source audio",
+          "pausedMarker": true,
+          "playingMarker": false,
+          "caption": "WEB Source Audio \u00b7 Verse 1 / 25",
+          "uiContract": "SourceAudioPlayerBar ready branch; descriptor readiness only, no guest media request/audibility proof"
+        },
+        "recordReference": "1 Peter 1:2",
+        "after": {
+          "controlId": "source-audio-play",
+          "enabled": true,
+          "a11y": "Play source audio",
+          "pausedMarker": true,
+          "playingMarker": false,
+          "caption": "WEB Source Audio \u00b7 Verse 2 / 25",
+          "uiContract": "SourceAudioPlayerBar ready branch; descriptor readiness only, no guest media request/audibility proof"
+        },
+        "afterBoundedSettle": {
+          "controlId": "source-audio-play",
+          "enabled": true,
+          "a11y": "Play source audio",
+          "pausedMarker": true,
+          "playingMarker": false,
+          "caption": "WEB Source Audio \u00b7 Verse 2 / 25",
+          "uiContract": "SourceAudioPlayerBar ready branch; descriptor readiness only, no guest media request/audibility proof"
+        },
+        "result": "PASS_NON_AUTOPLAY_SOURCE_READY"
+      },
+      "pericope": {
+        "before": {
+          "controlId": "source-audio-play",
+          "enabled": true,
+          "a11y": "Play source audio",
+          "pausedMarker": true,
+          "playingMarker": false,
+          "caption": "WEB Source Audio \u00b7 Pericope 1 / 9",
+          "uiContract": "SourceAudioPlayerBar ready branch; descriptor readiness only, no guest media request/audibility proof"
+        },
+        "recordReference": "1 Peter 1:3\u20135",
+        "after": {
+          "controlId": "source-audio-play",
+          "enabled": true,
+          "a11y": "Play source audio",
+          "pausedMarker": true,
+          "playingMarker": false,
+          "caption": "WEB Source Audio \u00b7 Pericope 2 / 9",
+          "uiContract": "SourceAudioPlayerBar ready branch; descriptor readiness only, no guest media request/audibility proof"
+        },
+        "afterBoundedSettle": {
+          "controlId": "source-audio-play",
+          "enabled": true,
+          "a11y": "Play source audio",
+          "pausedMarker": true,
+          "playingMarker": false,
+          "caption": "WEB Source Audio \u00b7 Pericope 2 / 9",
+          "uiContract": "SourceAudioPlayerBar ready branch; descriptor readiness only, no guest media request/audibility proof"
+        },
+        "result": "PASS_NON_AUTOPLAY_SOURCE_READY"
+      },
+      "result": "PASS_BOTH_SOURCE_READY_NON_AUTOPLAY_VARIANTS",
+      "proofElapsedSeconds": 71.0,
+      "originalLegacyVerseCellularOffVerified": true,
+      "finalHomeVerified": true,
+      "active11Preserved": true,
+      "finalRadios": {
+        "airplane_mode_on": "0",
+        "wifi_on": "1"
+      },
+      "cleanupComplete": true,
+      "totalElapsedSeconds": 101.8
+    },
+    "method": "Guarded direct Android/native selectors, not Maestro",
+    "criterion_functional_evidence": "Both positive source-ready+paused before/after/settled; Verse1\u21922 and Pericope1\u21922 Recordrefs exact. No Play/Start.",
+    "durable_Maestro_gap": "Pericope source-ready/paused/settle assertions not yet executed in Maestro; prior Verse Maestro navigation plus native proof is not relabeled full MaestroPASS. D0048-02 remains partial.",
+    "not_proved": [
+      "D0048-01 selected-versus-playing playback comparison",
+      "audibility/media fetch/feel"
+    ]
+  },
+  "mic_permission": {
+    "result": {
+      "serial": "emulator-5556",
+      "userId": 11,
+      "assignmentId": 1183,
+      "criterion": "B-0002-01/#49 REQUEST/CANCEL partial only; no Deny/GoToSettings/full-criterion claim",
+      "startTapCount": 1,
+      "scope": "One permission request; OS Back only, then in-app Cancel only. No grant/deny/settings/security reset/record/play/stage/claim/file/session mutation.",
+      "events": [
+        {
+          "elapsedSeconds": 0.3,
+          "event": "Fresh native permission/source/owner11 files+rows/stage/radios guards pass"
+        },
+        {
+          "elapsedSeconds": 33.0,
+          "event": "Dispatching exactly one observed enabled Start tap while permission remains not granted"
+        },
+        {
+          "elapsedSeconds": 38.4,
+          "event": "Android system mic request canceled with OS Back only; no Grant/Deny button or Settings action"
+        },
+        {
+          "elapsedSeconds": 46.5,
+          "event": "Exact in-app required warning + Go to Settings/Cancel present; Cancel only"
+        },
+        {
+          "elapsedSeconds": 46.7,
+          "event": "Permission still not granted; no new owner11 row/file/claim/stage or audio file; no active capture"
+        }
+      ],
+      "reviewedSourceHashes": {
+        "src/app/tabs/RecordTab.tsx": "6e96ecf0556f93c62f8e60e069292b51d6ed2c92f569c8f8385a97543f8914eb",
+        "src/audio/micPermission.ts": "aa4b29d3073e8f4888566a52189b105be601994a99356097569fd922925ecaf9",
+        "src/hooks/useVerseAudio.ts": "4c9521747530b155f0d3df8808e360578fc37b620b56b20b0547e8c4f38892a1"
+      },
+      "beforePermission": "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]",
+      "beforeDatabase": {
+        "owner11Rows": 0,
+        "owner11LocalFileRows": 0,
+        "owner11Chapter1183ClaimQueueRows": 0,
+        "chapter1183IdentityStage": "1183|19|178|10|11|draft"
+      },
+      "beforeAudioFiles": {
+        "count": 0,
+        "pathListSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sourceScopedPath": "cache/Audio/recording-* (expo-audio AudioRecorder.kt createRecordingFilePath)"
+      },
+      "scopedReadonlyQuery": "SELECT COUNT(*) FROM recordings WHERE recorded_by_user_id=11; SELECT COUNT(*) FROM recordings WHERE recorded_by_user_id=11 AND length(COALESCE(local_file_path,''))>0; SELECT COUNT(*) FROM chapter_claim_queue WHERE chapter_assignment_id=1183 AND user_id=11; SELECT id,project_unit_id,bible_id,assigned_user_id,peer_checker_id,status FROM chapter_assignments WHERE id=1183;",
+      "originalRadios": {
+        "airplane_mode_on": "0",
+        "wifi_on": "1"
+      },
+      "startEnabled": true,
+      "immediatelyBeforeStartPermission": "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]",
+      "systemMicRequestObserved": true,
+      "actualSystemRequestTexts": [
+        "Allow Fluent to record audio?",
+        "While using the app",
+        "Only this time",
+        "Don\u2019t allow"
+      ],
+      "inAppMicrophoneRequiredObserved": true,
+      "noCaptureUi": true,
+      "afterPermission": "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]",
+      "permissionFlagsChanged": false,
+      "afterDatabase": {
+        "owner11Rows": 0,
+        "owner11LocalFileRows": 0,
+        "owner11Chapter1183ClaimQueueRows": 0,
+        "chapter1183IdentityStage": "1183|19|178|10|11|draft"
+      },
+      "afterAudioFiles": {
+        "count": 0,
+        "pathListSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sourceScopedPath": "cache/Audio/recording-* (expo-audio AudioRecorder.kt createRecordingFilePath)"
+      },
+      "result": "PASS_REQUEST_CANCEL_PARTIAL",
+      "cleanupError": "",
+      "totalElapsedSeconds": 57.2,
+      "active11Preserved": true,
+      "originalPreferencesPreserved": true,
+      "finalHomeVerified": true,
+      "finalPermission": "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]",
+      "finalDatabase": {
+        "owner11Rows": 0,
+        "owner11LocalFileRows": 0,
+        "owner11Chapter1183ClaimQueueRows": 0,
+        "chapter1183IdentityStage": "1183|19|178|10|11|draft"
+      },
+      "finalAudioFiles": {
+        "count": 0,
+        "pathListSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sourceScopedPath": "cache/Audio/recording-* (expo-audio AudioRecorder.kt createRecordingFilePath)"
+      },
+      "finalRadios": {
+        "airplane_mode_on": "0",
+        "wifi_on": "1"
+      },
+      "finalNoRowFileClaimStageMutation": true,
+      "originalCleanupIssue": "Initial native cleanup expected Home after chapter Back; actual automatic PFO screen retained in cleanup-home.xml",
+      "cleanupContinuation": "Only observed PFO Back route(s), then exact original settings/Home/11/permission/radios/no-mutation checks; no Start or mic testcase rerun",
+      "cleanupContinuationSeconds": 19.4,
+      "cleanupComplete": true
+    },
+    "scope": "OSrequest Back + exact appMicRequired/GoSettings+Cancel; Cancelonly. No explicitDeny/GoSettings execution. Permissionfalse/flagsunchanged; no capture/files/rows/claim/stage changes.",
+    "group": "B0002 partial only, no atomicmovement"
+  },
+  "Next_support": {
+    "B_drafting": {
+      "serial": "emulator-5556",
+      "userId": 11,
+      "projectId": 12,
+      "milestoneId": 19,
+      "assignmentId": 1183,
+      "originalUiVersion": "legacy",
+      "originalDraftingUnit": "verse",
+      "originalUploadOverCellular": false,
+      "originalRadios": {
+        "airplane_mode_on": "0",
+        "wifi_on": "1"
+      },
+      "scope": "Next Drafting conditional functional state only: Bible/Resources/Record refs, selectedtabs, no-accountinitials. No resource bodies/take rows/counts/capture/play/stage/fixture/auth writes. No Lovable pixel claim.",
+      "runnerExit": 0,
+      "cliElapsedSeconds": 82.4,
+      "active11VerifiedDuringCleanup": true,
+      "originalLegacyRestored": true,
+      "originalVerseAndCellularOffPreserved": true,
+      "finalHomeVerified": true,
+      "finalRadios": {
+        "airplane_mode_on": "0",
+        "wifi_on": "1"
+      },
+      "radiosUnchanged": true,
+      "totalElapsedSeconds": 133.2
+    },
+    "A_sync_PFO_storage": {
+      "outcome": "PASS",
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_s": 63.798,
+      "artifact_dir": "/tmp/maestro-a-next-surfaces-1792533095164767000",
+      "served_source_head": "945c2d1d42d76853d520944db61be9c4175c06c1",
+      "runtime_revision_attested": false,
+      "new_uncommitted_harness": true
+    },
+    "A_account_panel": {
+      "outcome": "INCOMPLETE",
+      "exit_code": -15,
+      "timed_out": true,
+      "elapsed_s": 90.008,
+      "artifact_dir": "/tmp/maestro-a-next-account-panel-1792532506807708000",
+      "served_source_head": "945c2d1d42d76853d520944db61be9c4175c06c1",
+      "runtime_revision_attested": false,
+      "new_uncommitted_harness": true
+    },
+    "A_panel_scope": "All observed proof/cleanup command records completed but wrapper90.008sTIMEOUT/-15 retained; no fullflowPASS",
+    "fidelity": "Functionalstate only; no Lovable/referencepixelmatching"
+  },
+  "native_script_snapshots": {
+    "purpose": "Exact historical executed guarded driver snapshots for reproducible audit review, not a new unapproved final execution entrypoint",
+    "files": [
+      {
+        "snapshot": "bible-navigation-no-autoplay.py",
+        "original": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/run-b-bible-navigation-no-autoplay.py",
+        "sha256": "22bdc7aba5f462baf16038d2b2c36c9a5edc1db4ad306ad753079fb76039ea85"
+      },
+      {
+        "snapshot": "mic-request-cancel.py",
+        "original": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/run-b-mic-request-cancel.py",
+        "sha256": "e23f7226d0692a0f98143f4e6487fe4d82fada13dd513e3a9e428a377778af86"
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-bible-navigation-no-autoplay-first/result.json",
+      "sha256": "033647647b6aedd033523cb6341e5aaef5be940a130ce4cd7def99690b0ef197"
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-mic-request-cancel-first/result.json",
+      "sha256": "d263b7e65b2c7132553ea9521aa3bdda99838e023585328aa64fbd7f7a673cb6"
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-next-drafting-state-first/result.json",
+      "sha256": "af90cf9de5ff6a39c4577623d89a110401158d5c7a82d0ac961c15aa52f6ec2b"
+    },
+    {
+      "path": "/tmp/fluent-a-next-surfaces-result.json",
+      "sha256": "631bd994daac4c4272ace0343676ec0dbbfc060125541bee8fbc74c232babd32"
+    },
+    {
+      "path": "/tmp/fluent-a-next-account-panel-result.json",
+      "sha256": "98bfa53ad9f8ac98337e1491b8f5ad94bc3f862dc9db83f709ed736e450d610b"
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/a-next-surfaces-postflight.json",
+      "sha256": "58a2851218156c99631996f436d9d431668059bf421ee064656b73a7760b29ca"
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/a-next-account-panel-postflight.json",
+      "sha256": "9b59ce01caa11aef0e535a43e538c21f3c782421f0f409699f9929fcf04d464a"
+    }
+  ],
+  "atomic_count_change": false,
+  "new_runs_by_reconciler": 0
+}

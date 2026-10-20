@@ -1,0 +1,91 @@
+# Next Drafting theme-conditional state variant, outside86atomic by default.
+# Initial Legacy/Verse/account11/native guards verified by driver; no take rows.
+# Driver finally restores Legacy/Verse/cellularOFF/Home/11/radios0/1.
+appId: com.eten.fluent
+tags: [drafting, existing-session, reversible-preference, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- assertVisible:
+    id: '^settings-ui-version-legacy$'
+    selected: true
+- assertVisible:
+    id: '^settings-drafting-unit-verse$'
+    selected: true
+- tapOn:
+    id: '^settings-ui-version-next$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-ui-version-next$'
+    selected: true
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^milestone-row-19$'
+    timeout: 15000
+- tapOn:
+    id: '^milestone-row-19$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1183$'
+    timeout: 15000
+- tapOn:
+    id: '^chapter-row-1183$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^drafting-tab-bible$'
+    timeout: 15000
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    text: '^1 Peter 1$'
+- assertVisible:
+    id: '^drafting-tab-bible$'
+    selected: true
+- assertVisible:
+    id: '^bible-verse-row-1$'
+    text: '^Verse 1, selected$'
+- assertNotVisible:
+    id: '^drafting-account-initials$'
+- takeScreenshot: b-next-drafting-bible-header-verse1-single-account
+- tapOn:
+    id: '^drafting-tab-resources$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^drafting-tab-resources$'
+    selected: true
+- assertVisible:
+    id: '^resources-unit-1183-verse:1$'
+- assertVisible: '^1 Peter 1:1$'
+- assertNotVisible:
+    id: '^drafting-account-initials$'
+- takeScreenshot: b-next-drafting-resources-active-unit-only
+- tapOn:
+    id: '^drafting-tab-record$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^drafting-tab-record$'
+    selected: true
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^1 Peter 1:1$'
+- assertNotVisible:
+    id: '^record-stop-button$'
+- assertNotVisible:
+    id: '^drafting-account-initials$'
+- takeScreenshot: b-next-drafting-record-header-unit-no-capture
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^drafting-tab-bible$'
+    selected: true
+- assertVisible:
+    id: '^bible-verse-row-1$'
+    text: '^Verse 1, selected$'
+- assertVisible: '^1 Peter 1$'
+- takeScreenshot: b-next-drafting-bible-verse-preserved-after-tabs

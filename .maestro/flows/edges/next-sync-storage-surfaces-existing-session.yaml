@@ -1,0 +1,118 @@
+# #724 Next surface functional variant; owner12emptyqueue/resources0.
+# No SyncNow/download/delete/prefs other than reversibleNext/Legacy switch.
+appId: com.eten.fluent
+tags: [existing-session, reversible-preference]
+---
+- assertTrue: ${MAESTRO_A_NEXT_SURFACES_VERIFIED === '1'}
+- assertVisible:
+    id: home-settings-button
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-12
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: true
+- tapOn:
+    id: settings-ui-version-next
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-next
+    selected: true
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    point: '95%,7%'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: sync-screen
+    timeout: 10000
+- assertVisible: '^All synced$'
+- assertNotVisible:
+    id: 'sync-action-(pause|resume|cancel|sync-now)'
+- assertVisible:
+    id: sync-upload-cellular-switch
+    checked: false
+- takeScreenshot: a-next-sync-emptyqueue-controls
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-12
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-next
+    selected: true
+- tapOn:
+    id: settings-prepare-offline
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: project-row-11
+    timeout: 10000
+- tapOn:
+    id: project-row-11
+    waitToSettleTimeoutMs: 500
+- assertVisible: '^Selected chapters [(]0[)]$'
+- scrollUntilVisible:
+    element:
+      id: storage-empty-other-projects
+    direction: DOWN
+    timeout: 10000
+    centerElement: true
+- assertVisible:
+    id: storage-fluent-used-bytes
+    text: '^0 B$'
+- assertVisible:
+    id: storage-empty-other-projects
+    text: '^No resources from other projects on this device[.]$'
+- assertNotVisible:
+    id: storage-delete-selected-button
+- takeScreenshot: a-next-pfo-storage-empty-controls
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: project-row-11
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-settings-button
+    timeout: 10000
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-12
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-next
+    selected: true
+- tapOn:
+    id: settings-ui-version-legacy
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: true
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-my-work
+- assertNotVisible:
+    id: login-email-input

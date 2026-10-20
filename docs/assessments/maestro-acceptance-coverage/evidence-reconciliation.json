@@ -35,9 +35,9 @@
       "PASS": 37
     },
     "canonical_execution_coverage": {
-      "partial": 47,
+      "partial": 48,
       "complete_for_requirement": 37,
-      "not_run": 118
+      "not_run": 117
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
@@ -141,7 +141,8 @@
       "B-0010-01",
       "A-0034-01",
       "C-0053-01",
-      "A-0012-01"
+      "A-0012-01",
+      "B-0002-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -724,6 +725,13 @@
           "flow": ".maestro/flows/edges/next-cached-accounts-existing-session.yaml",
           "relation": "partial_functional_mode_and_capped_switch_only",
           "reason": "Next actual3cachedrows/cap/AddUserabsent, switch9 and persistedNextSettings PASS50.438s; restoreLegacy/account12/Verse10/cellularOFF/sixmetadata/radios0/1/mobile1. No supplied visual-fidelity, underlimitAddAccount or role-semantic proof."
+        },
+        {
+          "receipt": "evidence/batch4-native-support/receipt.json",
+          "case_id": "Batch4_Next_surface_and_account_panel_support",
+          "flow": ".maestro/flows/edges/next-drafting-account-panel-existing-session.yaml",
+          "relation": "partial_conditional_functional_only",
+          "reason": "A NextSync/PFO/project11resource0/emptyStorage/noDelete fullPASS63.798s, BNextDrafting fullPASS82.4s. A3accountDraftingpanel proof/cleanup completed but wrapper90.008sTIMEOUT/-15 retained, not fullPASS. Nativepost restoresLegacy/Verse10/OFF/account12/cache/radios/sixmetadata. No Lovable/role/pixel-fidelity claim."
         }
       ],
       "isolated_status": "PASS",
@@ -1164,6 +1172,13 @@
           "flow": ".maestro/flows/edges/next-cached-accounts-existing-session.yaml",
           "relation": "partial_functional_mode_and_capped_switch_only",
           "reason": "Next actual3cachedrows/cap/AddUserabsent, switch9 and persistedNextSettings PASS50.438s; restoreLegacy/account12/Verse10/cellularOFF/sixmetadata/radios0/1/mobile1. No supplied visual-fidelity, underlimitAddAccount or role-semantic proof."
+        },
+        {
+          "receipt": "evidence/batch4-native-support/receipt.json",
+          "case_id": "Batch4_Next_surface_and_account_panel_support",
+          "flow": ".maestro/flows/edges/next-sync-storage-surfaces-existing-session.yaml",
+          "relation": "partial_conditional_functional_only",
+          "reason": "A NextSync/PFO/project11resource0/emptyStorage/noDelete fullPASS63.798s, BNextDrafting fullPASS82.4s. A3accountDraftingpanel proof/cleanup completed but wrapper90.008sTIMEOUT/-15 retained, not fullPASS. Nativepost restoresLegacy/Verse10/OFF/account12/cache/radios/sixmetadata. No Lovable/role/pixel-fidelity claim."
         }
       ],
       "isolated_status": "UNTESTED",
@@ -1836,15 +1851,24 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "System first-use prompt, deny prevention and Settings deep-link are independently falsifiable outcomes; preserve as an unsplit group.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "evidence/batch4-native-support/receipt.json",
+          "case_id": "B_native_mic_request_Back_appCancel_46.7s",
+          "flow": null,
+          "method": "guarded direct-device native UI, not Maestro",
+          "relation": "partial_request_and_cancel_only",
+          "reason": "Exactly1Start dispatched whilepermissionfalse\u2192actualAndroidrequest; OSBack only\u2192MicrophoneRequired with GoSettings/Cancel\u2192Cancelonly. 46.7sproof/57.2process plus19.4cleanupcontinuation; permissionfalse/flagsunchanged and exactrows/files/claim/stage unchanged. No explicitDeny/GoSettings/fullgroup or recording proof."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Fresh mic-deny state requires permission/session alteration; Settings route and no-capture assertions missing."
+        "Explicit system Deny prevention and Go to Settings route remain unexecuted; request/Back/app-Cancel proof does not establish those branches."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use an independently verified compatible permission/QA fixture for only missing explicit Deny and Go to Settings branches when assigned; preserve session/permission flags and do not reset security state to manufacture the fixture.",
       "source_title": "Mic permission dialog and deny path",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/49"
@@ -5542,15 +5566,23 @@
           "flow": ".maestro/flows/drafting/bible-verse-opens-record-existing-session.yaml",
           "relation": "partial",
           "reason": "My Work\u2192fixture484 drafting and direct Bible-row\u2192Record exact verse reference passed; Projects route, audio non-autoplay, and pericope title matrix are not asserted."
+        },
+        {
+          "receipt": "evidence/batch4-native-support/receipt.json",
+          "case_id": "B_native_both_source_ready_no_autoplay_71s",
+          "flow": null,
+          "method": "guarded direct-device native UI, not Maestro",
+          "relation": "partial_completion_method_gap_only",
+          "reason": "Both Verse and Pericope source-ready enabledPlay+paused before/after/settle, noPlaying/Pause/error/loading; BibleVerse2\u2192Record1Peter1:2 and BiblePericope2\u2192Record1Peter1:3\u20135 verified. Play/Start0;71sproof/101.8cleanup. Functional nonautoplay observed; no mediafetch/audibility/playingcomparison claim. Prior Verse Maestro navigation retained; full native variants not promoted as durable Maestro execution."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Direct verse tap proves selection/reference and Record opening, but no source-audio non-autoplay assertion exists."
+        "Both source-ready non-autoplay modes have complete native functional proof; corresponding positive-ready/paused and after-settle assertions are not yet executed in a durable Maestro flow."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Port the exact verified ready/paused-before/after/settle and Verse/Pericope unit-selection assertions to an existing-session Maestro flow, then one bounded native-preflight-backed verification. Never tap Play or Start; no new audio/audibility test is required for this navigation criterion.",
       "source_title": "Bible tap selects unit without auto-playing source audio",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/48"

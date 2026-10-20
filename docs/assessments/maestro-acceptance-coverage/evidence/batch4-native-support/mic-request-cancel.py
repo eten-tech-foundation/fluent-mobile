@@ -1,0 +1,47 @@
+import subprocess,pathlib,xml.etree.ElementTree as E,re,json,hashlib,shlex,time
+out=pathlib.Path('/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-mic-request-cancel-first');out.mkdir(exist_ok=True);repo=pathlib.Path('/Users/matt/Documents/Development/gloo/fluent-mobile');adb=['/opt/homebrew/Caskroom/android-platform-tools/37.0.1/platform-tools/adb','-H','127.0.0.1','-P','5037','-s','emulator-5556'];t=time.monotonic();j={'serial':'emulator-5556','userId':11,'assignmentId':1183,'criterion':'B-0002-01/#49 REQUEST/CANCEL partial only; no Deny/GoToSettings/full-criterion claim','startTapCount':0,'scope':'One permission request; OS Back only, then in-app Cancel only. No grant/deny/settings/security reset/record/play/stage/claim/file/session mutation.','events':[]}
+def event(s):j['events'].append({'elapsedSeconds':round(time.monotonic()-t,1),'event':s});save()
+def save():(out/'result.json').write_text(json.dumps(j,indent=2)+'\n')
+def r(*x):return subprocess.run(adb+list(x),check=True,capture_output=True,timeout=20).stdout
+def has(ns,id):return any(n.get('resource-id')==id for n in ns)
+def dump(name):
+ for attempt in range(3):
+  r('shell','uiautomator','dump','/sdcard/b-mic-cancel-receipt.xml');b=r('exec-out','cat','/sdcard/b-mic-cancel-receipt.xml');ns=list(E.fromstring(b).iter('node'))
+  if not has(ns,'loading-spinner'):break
+ (out/(name+'.xml')).write_bytes(b);return ns
+def tapnode(n):
+ v=list(map(int,re.findall(r'\d+',n.get('bounds'))));assert len(v)==4 and v[2]>v[0] and v[3]>v[1];r('shell','input','tap',str((v[0]+v[2])//2),str((v[1]+v[3])//2))
+def tap(ns,id):
+ xs=[n for n in ns if n.get('resource-id')==id];assert len(xs)==1,(id,len(xs));assert xs[0].get('enabled')=='true',('disabled',id);tapnode(xs[0])
+def permission():
+ raw=r('shell','dumpsys','package','com.eten.fluent').decode();xs=[s.strip() for s in raw.splitlines() if re.search(r'android\.permission\.RECORD_AUDIO: granted=',s)];assert len(xs)==1;return xs[0]
+def guardSource():
+ prior=json.loads((repo.parent.parent.parent/'Codex/2026-10-19/task-10/emulators/b-microphone-preflight/result.json').read_text()) if False else json.loads(pathlib.Path('/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-microphone-preflight/result.json').read_text());cur={p:hashlib.sha256((repo/p).read_bytes()).hexdigest() for p in prior['sourceHashes']};assert cur==prior['sourceHashes'],'Reviewed permission-before-side-effect source changed';return cur
+sql='SELECT COUNT(*) FROM recordings WHERE recorded_by_user_id=11; SELECT COUNT(*) FROM recordings WHERE recorded_by_user_id=11 AND length(COALESCE(local_file_path,\'\'))>0; SELECT COUNT(*) FROM chapter_claim_queue WHERE chapter_assignment_id=1183 AND user_id=11; SELECT id,project_unit_id,bible_id,assigned_user_id,peer_checker_id,status FROM chapter_assignments WHERE id=1183;'
+def db():
+ xs=r('shell','run-as com.eten.fluent /system/bin/sqlite3 -readonly databases/default/fluent.db '+shlex.quote(sql)).decode().strip().splitlines();assert len(xs)==4;return {'owner11Rows':int(xs[0]),'owner11LocalFileRows':int(xs[1]),'owner11Chapter1183ClaimQueueRows':int(xs[2]),'chapter1183IdentityStage':xs[3]}
+def audioFiles():
+ cmd="run-as com.eten.fluent sh -c 'if [ -d cache/Audio ]; then find cache/Audio -maxdepth 1 -type f -name \"recording-*\" -print; fi'";xs=sorted(r('shell',cmd).decode().strip().splitlines());return {'count':len(xs),'pathListSha256':hashlib.sha256('\n'.join(xs).encode()).hexdigest(),'sourceScopedPath':'cache/Audio/recording-* (expo-audio AudioRecorder.kt createRecordingFilePath)'}
+def prefguard(ns):
+ for id,k,v in [('settings-ui-version-legacy','selected','true'),('settings-ui-version-next','selected','false'),('settings-drafting-unit-verse','selected','true'),('settings-upload-cellular-switch','checked','false')]:assert any(n.get('resource-id')==id and n.get(k)==v for n in ns),(id,k,v)
+def cancelAppAlert(ns):
+ if not any(n.get('text')=='Microphone required' for n in ns):return ns
+ assert any(n.get('text')=='Allow microphone access in Settings to record drafts.' for n in ns);assert any(n.get('text','').lower()=='go to settings' for n in ns);xs=[n for n in ns if n.get('text','').lower()=='cancel' and n.get('resource-id','').startswith('android:id/button')];assert len(xs)==1;tapnode(xs[0]);return dump('after-app-cancel')
+try:
+ j['reviewedSourceHashes']=guardSource();j['beforePermission']=permission();assert 'granted=false' in j['beforePermission'];j['beforeDatabase']=db();assert j['beforeDatabase']['owner11LocalFileRows']==0;j['beforeAudioFiles']=audioFiles();assert j['beforeAudioFiles']['count']==0;j['scopedReadonlyQuery']=sql;j['originalRadios']={k:r('shell','settings','get','global',k).decode().strip() for k in ['airplane_mode_on','wifi_on']};assert j['originalRadios']=={'airplane_mode_on':'0','wifi_on':'1'};event('Fresh native permission/source/owner11 files+rows/stage/radios guards pass')
+ ns=dump('original-home');assert has(ns,'home-tab-projects');tap(ns,'home-settings-button');ns=dump('original-active11');assert has(ns,'settings-menu-active-11');assert [n.get('resource-id') for n in ns if re.fullmatch(r'settings-menu-account-\d+',n.get('resource-id',''))]==['settings-menu-account-11'];tap(ns,'settings-menu-more-settings');ns=dump('original-preferences');prefguard(ns);tap(ns,'stack-header-back');ns=dump('home-ready');tap(ns,'milestone-row-19');ns=dump('chapters-before');tap(ns,'chapter-row-1183');ns=dump('drafting-before');tap(ns,'drafting-tab-record');ns=dump('record-before-start');assert any(n.get('resource-id')=='record-verse-reference' and n.get('text')=='1 Peter 1:1' for n in ns);assert not has(ns,'record-stop-button') and not has(ns,'source-audio-playing');start=[n for n in ns if n.get('resource-id')=='record-start-button'];assert len(start)==1 and start[0].get('enabled')=='true','Start not enabled; no tap';j['startEnabled']=True;j['immediatelyBeforeStartPermission']=permission();assert 'granted=false' in j['immediatelyBeforeStartPermission'];guardSource();assert time.monotonic()-t<100,'Preflight timebox exceeded; no Start';j['startTapCount']=1;event('Dispatching exactly one observed enabled Start tap while permission remains not granted');tapnode(start[0])
+ ns=dump('actual-system-request');texts=[n.get('text','') for n in ns if n.get('text')];controller=any('permissioncontroller' in n.get('package','') for n in ns);mic=any(('record audio' in s.lower() or 'microphone' in s.lower()) for s in texts);j['systemMicRequestObserved']=controller and mic;j['actualSystemRequestTexts']=texts;(out/'actual-system-request.png').write_bytes(r('exec-out','screencap','-p'));save();assert j['systemMicRequestObserved'],'Expected Android mic request absent: no Start retry; inspect uncertain outcome'
+ r('shell','input','keyevent','KEYCODE_BACK');event('Android system mic request canceled with OS Back only; no Grant/Deny button or Settings action');ns=dump('after-system-back');j['inAppMicrophoneRequiredObserved']=any(n.get('text')=='Microphone required' for n in ns)
+ if j['inAppMicrophoneRequiredObserved']:(out/'in-app-microphone-required.png').write_bytes(r('exec-out','screencap','-p'));ns=cancelAppAlert(ns);event('Exact in-app required warning + Go to Settings/Cancel present; Cancel only')
+ assert has(ns,'record-tab') and not has(ns,'record-stop-button');j['noCaptureUi']=True;j['afterPermission']=permission();assert 'granted=false' in j['afterPermission'];j['permissionFlagsChanged']=j['afterPermission']!=j['beforePermission'];j['afterDatabase']=db();assert j['afterDatabase']==j['beforeDatabase'],'Scoped row/file/claim/stage snapshot changed';j['afterAudioFiles']=audioFiles();assert j['afterAudioFiles']==j['beforeAudioFiles'],'Audio temporary file inventory changed';j['result']='PASS_REQUEST_CANCEL_PARTIAL';event('Permission still not granted; no new owner11 row/file/claim/stage or audio file; no active capture')
+except Exception as e:j['error']=str(e);j['result']='BLOCKED_OR_FAILED_NO_RETRY';save()
+finally:
+ try:
+  ns=dump('cleanup-actual');ns=cancelAppAlert(ns);assert not has(ns,'record-stop-button'),'Unexpected active capture: leave untouched and report'
+  if any('permissioncontroller' in n.get('package','') for n in ns):raise AssertionError('System permission dialog remains; no guessed action')
+  if has(ns,'drafting-header-back'):tap(ns,'drafting-header-back');ns=dump('cleanup-chapters')
+  if has(ns,'chapter-row-1183'):tap(ns,'stack-header-back');ns=dump('cleanup-home')
+  assert has(ns,'home-settings-button');tap(ns,'home-settings-button');ns=dump('cleanup-active11');assert has(ns,'settings-menu-active-11');j['active11Preserved']=True;tap(ns,'settings-menu-more-settings');ns=dump('cleanup-preferences');prefguard(ns);j['originalPreferencesPreserved']=True;tap(ns,'stack-header-back');ns=dump('final-home');j['finalHomeVerified']=has(ns,'home-tab-projects');assert j['finalHomeVerified'];j['finalPermission']=permission();assert 'granted=false' in j['finalPermission'];j['finalDatabase']=db();j['finalAudioFiles']=audioFiles();j['finalRadios']={k:r('shell','settings','get','global',k).decode().strip() for k in ['airplane_mode_on','wifi_on']};assert j['finalRadios']==j['originalRadios'];assert j['finalDatabase']==j['beforeDatabase'] and j['finalAudioFiles']==j['beforeAudioFiles'];j['finalNoRowFileClaimStageMutation']=True
+ except Exception as e:j['cleanupError']=str(e)
+ j['totalElapsedSeconds']=round(time.monotonic()-t,1);save()
+print(json.dumps(j,indent=2))

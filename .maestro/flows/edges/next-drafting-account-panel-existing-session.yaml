@@ -1,0 +1,112 @@
+# #724 actual Next multi-account drafting panel, identity chrome not role proof.
+appId: com.eten.fluent
+tags: [existing-session, reversible-preference]
+---
+- assertVisible:
+    id: home-settings-button
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-10
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    id: settings-drafting-unit-verse
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-drafting-unit-verse
+    selected: true
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: true
+- tapOn:
+    id: settings-ui-version-next
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-next
+    selected: true
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- runFlow: ../../shared/nav/open-fixture-chapter-from-milestone.yaml
+- assertVisible:
+    id: drafting-account-initials
+- tapOn:
+    id: drafting-account-initials
+    waitToSettleTimeoutMs: 500
+- assertVisible: '^Accounts on this device$'
+- assertVisible:
+    id: account-switcher-row-10
+- assertVisible:
+    id: account-switcher-row-9
+- assertVisible:
+    id: account-switcher-row-12
+- assertVisible:
+    id: account-switcher-active-10
+- assertNotVisible:
+    id: account-switcher-active-9
+- assertNotVisible:
+    id: account-switcher-active-12
+- assertVisible: "^You've reached the 3-account limit[.]$"
+- assertNotVisible:
+    id: account-switcher-add-account
+- assertNotVisible:
+    text: '(?i)^.*(remove|delete|forget|sign out|log out).*$'
+- assertNotVisible:
+    id: account-switcher-error
+- takeScreenshot: a-next-drafting-three-account-panel
+- tapOn: '^Close account switcher$'
+- assertNotVisible: '^Accounts on this device$'
+- assertVisible:
+    id: drafting-tab-bar
+- tapOn:
+    id: drafting-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: chapter-row-1183
+    timeout: 10000
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-settings-button
+    timeout: 10000
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-10
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-next
+    selected: true
+- tapOn:
+    id: settings-ui-version-legacy
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-ui-version-legacy
+    selected: true
+- assertVisible:
+    id: settings-drafting-unit-verse
+    selected: true
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: settings-menu-active-10
+- tapOn:
+    id: settings-menu-account-12
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-my-work
+- assertNotVisible:
+    id: login-email-input
