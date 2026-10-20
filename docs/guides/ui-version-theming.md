@@ -1,7 +1,6 @@
 # UI version theming (Legacy / Next)
 
-Engineering theme contract (not product AC for recording/sync). Paths checked
-2026-10-19 against mobile HEAD `758d4b04a9ca81e1ed6228e9d30df1fc80014f5d`.
+Engineering theme contract (not product AC for recording/sync). Current matching-design phase updated 2026-10-20.
 Figma gap audit (dated): [theme-figma-audit.md](../features/next-ui-redesign/theme-figma-audit.md).
 
 Fluent Mobile supports a runtime-selectable **UI version** while the redesign
@@ -10,7 +9,13 @@ lands:
 | Version | Meaning |
 | --- | --- |
 | `legacy` | Current shipped design (default, safe) |
-| `next` | Redesign surface — evolves independently |
+| `next` | Current-design parity with independently owned tokens; future redesign evolves separately |
+
+Both versions currently use the same mobile design values while the current
+Lovable-match work proceeds. That is token parity with the existing mobile
+baseline, **not** evidence of rendered fidelity to the live Lovable reference.
+Next owns its baseline data independently: editing Legacy does not silently
+change Next, and editing one Next mode does not change another.
 
 This is **not** light/dark mode. Prefer structural/token changes over scattering
 `isNextUI ? … : …` checks.
@@ -21,10 +26,11 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 | --- | --- |
 | `src/theme/tokens.ts`, `layout.ts`, `iconSpecs.ts` | **Legacy** source tokens (frozen baseline) |
 | `src/theme/legacy.ts` | Assembled `legacyTheme` (+ static `theme` alias) |
-| `src/theme/nextPrimitives.ts` | Next color ramps (bone / blue / red) from Figma |
-| `src/theme/nextRoles.ts` | Canvas / Hardware / Accent semantic roles |
-| `src/theme/nextFoundation.ts` | Next spacing, radius, type scale, motion, opacity, control sizes |
-| `src/theme/next.ts` | Per-mode `nextThemes` (Canvas / Hardware / Accent) + deep-merge + layout derive |
+| `src/theme/nextBaseline.ts` | Independently owned current-look Next token data; no Legacy runtime imports |
+| `src/theme/nextPrimitives.ts` | Retained future Next color ramps (bone / blue / red) from Figma |
+| `src/theme/nextRoles.ts` | Retained future Canvas / Hardware / Accent semantic role inputs |
+| `src/theme/nextFoundation.ts` | Retained future Next spacing, radius, type, motion and control-size inputs |
+| `src/theme/next.ts` | Per-mode independent deep copies of `nextBaseline`; current modes share values, not object references |
 | `src/theme/legacyRoles.ts` | Nearest Legacy colors for the Foundations role names (`theme.roles` in Legacy) |
 | `src/theme/elevation.ts` | Effect styles as `boxShadow` strings, built from roles |
 | `src/theme/uiVersionTypes.ts` | `UiVersion`, `DEFAULT_UI_VERSION`, `isUiVersion`, `ColorMode`, `DEFAULT_COLOR_MODE` (no theme object imports) |
@@ -34,15 +40,15 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 
 Settings → **Interface → UI version** toggles the preference. No app restart.
 
-## Figma source (Next)
+## Figma source (future Next divergence)
 
 Foundations page: [ETEN × Fluent · Foundations](https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2308-6)
 
 | Mode | Use |
 | --- | --- |
-| **Hardware** (default) | App chrome — lists, settings, drawers. Mapped onto `Theme` via `nextTheme`. |
-| **Canvas** | Dark reading / drafting / recording surface — wrap the subtree in `<ColorModeScope value="canvas">` |
-| **Accent** | Blue note overlays — `<ColorModeScope value="accent">` |
+| **Hardware** (default) | Current-design app chrome; independent `nextThemes.hardware` |
+| **Canvas** | Current-design values today; retained API for a future reading / drafting surface |
+| **Accent** | Current-design values today; retained API for future note overlays |
 
 Do **not** import `src/theme/next*` from app/UI code (ESLint bans `theme/next`). Use `useTheme()` / `resolveTheme(version, mode)`. To render part of a screen in Canvas or Accent, wrap it in `ColorModeScope` (from `src/theme/useTheme`); everything below resolves that mode's `roles`, `elevation` and mapped `colors`. Hardware is the default, and Legacy ignores modes. Set status / nav bar icon style per screen to match (light icons on Canvas).
 
@@ -52,7 +58,8 @@ For Next components, `Theme` also carries `roles` (Foundations role names,
 Hardware by default, nearest Legacy colors in Legacy), `elevation` (effect
 styles as `boxShadow` strings built from roles), `motion`, `opacity`,
 `controlSizes` and `stroke`, plus `radius.xs` and `spacing.xxs`. They're
-added in `legacy.ts` and overridden in `next.ts`; `tokens.ts` is untouched.
+present in `legacy.ts` and independently represented in `nextBaseline.ts`;
+`tokens.ts` is untouched.
 
 ### Unmapped Foundations steps
 
@@ -83,20 +90,29 @@ Kept accessible on `nextSpace` / `nextRadiusScale` but not on `Theme` keys yet:
 
 ## Adding Next tokens
 
-1. Prefer updating `nextPrimitives` / `nextRoles` / `nextFoundation`, then the
-   Hardware map in `next.ts` — not `tokens.ts`.
-2. Overrides deep-merge into nested groups (`typography.sizes.lg` does not
-   require restating every sibling key). After merge, `homeListContent`,
-   `listCard`, and `headerLayout` are re-derived from the resolved
-   colors/spacing/radius so derived layout stays in sync.
-3. If you need a **new** `Theme` key, add it to the Legacy theme with today's
-   value first, then override in Next — keeps `Theme` one shape.
-4. `iconSizes` and stroke-width constants in `iconSpecs.ts` are still
-   Legacy-only (not on `Theme`). Add them to `Theme` before overriding for Next.
-5. Migrate any StyleSheet that must show the new value onto `useThemedStyles`
-   (module-level `StyleSheet.create({ …theme })` will not pick up Next).
+1. Change Next values in `nextBaseline.ts`, not Legacy `tokens.ts`.
+2. Keep `Theme` one shape: add a new key to Legacy with today's value and
+   explicitly add it to the independently owned Next baseline.
+3. Layout values in the current baseline are explicit. If changing spacing,
+   radius or colors, review corresponding `listCard`, `homeListContent` and
+   `headerLayout` values together; there is no implicit Legacy merge.
+4. Migrate StyleSheets that need runtime differences to `useThemedStyles`.
+   AppHeader, StackScreenHeader, header safe-area padding and ListCard now use
+   the resolved theme. Other static consumers remain Legacy-pinned until
+   deliberately migrated.
+5. To resume Figma mode differentiation, explicitly map the retained
+   primitives/roles/foundation inputs into the selected Next mode. Keep deep
+   object ownership separate from Legacy and the other modes; do not restore
+   runtime inheritance of Legacy data.
+   The current parity test deliberately pins matching values for this phase.
+   When Next deliberately diverges, update that assertion to the approved
+   Next values while retaining every nested ownership/isolation check.
+   Do not synchronize a Legacy edit into Next just to satisfy the parity test.
+6. `iconSizes` and stroke-width constants in `iconSpecs.ts` are still shared
+   current-design values, not independently configurable `Theme` keys. Add
+   them to the theme shape before intentionally varying them by UI version.
 
-## Building Next components from Figma
+## Future Next components from Figma
 
 Follow [figma-to-component.md](figma-to-component.md) (agents: the
 `figma-component` skill). Known gaps between this theme and Figma are tracked
@@ -104,13 +120,14 @@ in [theme-figma-audit.md](../features/next-ui-redesign/theme-figma-audit.md).
 
 ## Deleting Legacy later
 
-1. Fold Next overrides / primitives / roles / foundation into the token files
-   (`next.ts`, `nextPrimitives.ts`, `nextRoles.ts`, `nextFoundation.ts`).
+1. Fold the Next baseline / primitives / roles / foundation into the token files
+   (`nextBaseline.ts`, `nextPrimitives.ts`, `nextRoles.ts`, `nextFoundation.ts`).
 2. Remove `uiVersion` preference, Settings row, and dual resolution.
 3. Keep `useTheme()` as a thin alias of the single theme if useful, or delete it.
 
 ## Tests
 
-- `src/theme/legacyTheme.test.ts` — Legacy snapshot + Next mapping per mode + roles/elevation.
+- `src/theme/legacyTheme.test.ts` — unchanged Legacy snapshot, deliberate current parity, nested object isolation between Legacy/Next/modes, retained Figma inputs.
 - `src/theme/useTheme.test.tsx` — runtime switch + `useThemedStyles` + `ColorModeScope`.
+- `src/components/layout/SharedChromeTheme.test.tsx` — runtime chrome divergence without Legacy bleed.
 - `src/services/userPreferences.test.ts` — default / persist / invalid fallback.
