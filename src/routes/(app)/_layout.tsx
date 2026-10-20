@@ -12,7 +12,7 @@ import {
   DRAWER_MENU_ICON_SIZE,
   UserSettingsMenu,
   drawerMenuItemStyle,
-  drawerMenuLabelStyle,
+  useDrawerMenuLabelStyles,
 } from '../../components/ui/UserSettingsMenu';
 import { useTheme } from '../../theme/useTheme';
 import { logger } from '../../utils/logger';
@@ -39,6 +39,7 @@ function drawerIcon(name: React.ComponentProps<typeof Ionicons>['name']) {
 export default function AppDrawerLayout() {
   const { width } = useWindowDimensions();
   const theme = useTheme();
+  const drawerLabelStyles = useDrawerMenuLabelStyles();
   const router = useRouter();
 
   useLaunchRecoveryPrompt({
@@ -90,7 +91,7 @@ export default function AppDrawerLayout() {
         drawerActiveBackgroundColor: 'transparent',
         drawerInactiveBackgroundColor: 'transparent',
         drawerItemStyle: drawerMenuItemStyle,
-        drawerLabelStyle: drawerMenuLabelStyle,
+        drawerLabelStyle: drawerLabelStyles.label,
         drawerStyle: {
           width: drawerWidth,
           backgroundColor: theme.colors.cardBackground,
