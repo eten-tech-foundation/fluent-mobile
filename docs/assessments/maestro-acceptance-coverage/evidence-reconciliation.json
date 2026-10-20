@@ -342,22 +342,29 @@
           "flow": ".maestro/flows/accounts/cached-switch-existing-session.yaml",
           "relation": "partial",
           "reason": "Actual cached10-to12-to10 transition checks active chips, all three saved rows, scoped row/empty states, and usable Settings; no failed-switch fixture or complete list equality."
+        },
+        {
+          "receipt": "evidence/a12-empty-set/receipt.json",
+          "case_id": "A_account12_exact_empty_MyWork_set_22.292s",
+          "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-mywork-empty-set-prepared.yaml",
+          "relation": "partial_exact_empty_set_equality_pass",
+          "reason": "Freshstage-specificsource-matchedSQLbefore/aftereligibleIDsetempty; active12/MyWorkempty/noANYnumericmy-work-row MaestroPASS22.292s. Nativebefore/after9rows+fileshashunchanged; knownemptybranch complete. Nonemptypopulatedassigned/peer-stagefilterlist-equality andallroleclaimsnotexecuted; overallrowpartial."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Complete visible My Work ID set must equal independently known active-user assignment set, including absence of foreign/completed rows."
+        "Account12 exact EMPTY eligible-set equality is now verified. A populated active-user complete My Work ID-set comparison, including positive assigned/peer-stage eligibility and absence of foreign/completed rows, remains unexecuted."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use an existing verified populated account and fresh source-matched complete eligible-assignment ID set, then assert exact full visible/scrollable My Work set equality and absence of foreign/completed rows. Preserve all9takes/cache10,9,12; no fixture writes or additional login needed. Do not repeat the passed account12 empty branch.",
       "source_title": "My Work shows active-user assignments",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/31",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/104"
       ],
       "domain": "identity_navigation",
-      "current_scope_execution_blocker": "Requires independently verified current complete assignment-set oracle; no fixture hunting or backend extraction authorized in this batch."
+      "current_scope_execution_blocker": "Empty-account12 metadata and UI collectors succeeded; remaining populated-set oracle and exhaustive UI collector have not been executed/verified in this checkpoint."
     },
     {
       "id": "A-0002-01",

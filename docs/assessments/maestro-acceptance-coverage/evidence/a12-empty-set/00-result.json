@@ -1,0 +1,11 @@
+{
+  "criterion": "A-0001-01 account12 exact empty eligible MyWork set only",
+  "originalFlowSha": "0548d4ab61b6b90206883326686cce4d643ac027467d992073ab1e656d7e0817",
+  "parserGate": "INSTALLED_MAESTRO_PARSE_AND_INTERPOLATION_PASS commands=14",
+  "exitCode": 0,
+  "timedOut": false,
+  "elapsedSeconds": 22.292,
+  "nativeStateAndAllNineFilesUnchanged": true,
+  "postFocusExpectedSetStillEmpty": true,
+  "status": "PASS_EXACT_EMPTY_ACCOUNT12_ONLY"
+}

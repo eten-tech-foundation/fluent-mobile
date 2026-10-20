@@ -1,0 +1,110 @@
+{
+  "schema": "fluent-A0001-account12-exact-empty-support/v1",
+  "generated_utc": "2026-10-20T23:28:46.190807+00:00",
+  "case_outcome": "PASS_EXACT_EMPTY_ACCOUNT12_ONLY",
+  "CLI_s": 22.292,
+  "parser_gate": "INSTALLED_MAESTRO_PARSE_AND_INTERPOLATION_PASS commands=14",
+  "commands_all_completed": true,
+  "commands_record_count": 15,
+  "fixture": "Active12/cache10,9,12; source-matched stage-specific localassignmenteligibility SQLreturns0 before/after",
+  "UI": "Actualactive12 +MyWorkempty +absenceANYmy-work-row numericID; noforeign/completedrow canappear inthisemptyobservedset",
+  "preservation": "Nativebefore==after;9rows+fileSHAs exactunchanged, noaccount/pref/radios/capturechanges",
+  "scope_limits": [
+    "Validemptybranch directlyverified; not an empty list failure",
+    "No populated active-user complete-set equality or positiveassigned/peer-stage filter contrast",
+    "No orgrole/grant matrix or allaccounts/fullassignmentremotecompleteness claim",
+    "Freshaccount12milestone17/project11metadata known, but A0002UIcollector NOTexecuted; noA0002proof/promotion",
+    "No new runtimebundlehash attestation"
+  ],
+  "source_criterion_reasoning": "Scenario permits knownassignments ORemptyMyWork, so this is a valid exactcasePASS. The full existing requirement also describes assigned/peer/noncomplete filtering; emptyset alone cannot exercise positivebranch distinctions. Keep overall rowpartial, not blanketPASS.",
+  "recommended_row_status": {
+    "execution_coverage": "partial",
+    "live_status": "UNTESTED"
+  },
+  "files": [
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/result.json",
+      "snapshot": "00-result.json",
+      "sha256": "00561ff6419d0b61f1566564030dad9bf62ee3796e1d0fd832de98518153a9d6"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/native-before.json",
+      "snapshot": "01-native-before.json",
+      "sha256": "b84117e1883cd5b0983a33392e7b68a4b46e0f3c0ee439fa25d91b975cccd4ec"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/native-after.json",
+      "snapshot": "02-native-after.json",
+      "sha256": "b84117e1883cd5b0983a33392e7b68a4b46e0f3c0ee439fa25d91b975cccd4ec"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/cli/2026-10-20_162710/a12-mywork-empty-set-prepared/commands.json",
+      "snapshot": "03-commands.json",
+      "sha256": "fb7b219aac59e03c7928a380906517d434c66e523a816889ba2339f1a6c71f07"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-mywork-empty-set-prepared.yaml",
+      "snapshot": "04-a12-mywork-empty-set-prepared.yaml",
+      "sha256": "0548d4ab61b6b90206883326686cce4d643ac027467d992073ab1e656d7e0817"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-oracles.sql",
+      "snapshot": "05-a12-oracles.sql",
+      "sha256": "a35f97e2caf20cdb3dd2d06c354e58f5cf62989b58c4ffa85048c5b125a028d1"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-fresh-oracle.json",
+      "snapshot": "06-a12-fresh-oracle.json",
+      "sha256": "b6f0656cd01c2ab7503ee485381bafd03f1afbebcc827c346b2232c7e51d408a"
+    },
+    {
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/parser-proof.log",
+      "snapshot": "07-parser-proof.log",
+      "sha256": "00f190394137074f186de1b56258cf97beb4cf2cb380a170ab8d48f868e7b693"
+    }
+  ],
+  "new_runs_by_reconciler": 0,
+  "canonical_application": "Root reviewed exact A0001 test/replace; partial/live_status unchanged, supporting exactempty-case evidence only.",
+  "durable_repo_snapshots": [
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/a12-empty-set/00-result.json",
+      "sha256": "00561ff6419d0b61f1566564030dad9bf62ee3796e1d0fd832de98518153a9d6",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/result.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/a12-empty-set/01-native-before.json",
+      "sha256": "b84117e1883cd5b0983a33392e7b68a4b46e0f3c0ee439fa25d91b975cccd4ec",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/native-before.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/a12-empty-set/02-native-after.json",
+      "sha256": "b84117e1883cd5b0983a33392e7b68a4b46e0f3c0ee439fa25d91b975cccd4ec",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/native-after.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/a12-empty-set/03-commands.json",
+      "sha256": "fb7b219aac59e03c7928a380906517d434c66e523a816889ba2339f1a6c71f07",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/cli/2026-10-20_162710/a12-mywork-empty-set-prepared/commands.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/a12-empty-set/04-a12-mywork-empty-set-prepared.yaml.capture.txt",
+      "sha256": "0548d4ab61b6b90206883326686cce4d643ac027467d992073ab1e656d7e0817",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-mywork-empty-set-prepared.yaml"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/a12-empty-set/05-a12-oracles.sql",
+      "sha256": "a35f97e2caf20cdb3dd2d06c354e58f5cf62989b58c4ffa85048c5b125a028d1",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-oracles.sql"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/a12-empty-set/06-a12-fresh-oracle.json",
+      "sha256": "b6f0656cd01c2ab7503ee485381bafd03f1afbebcc827c346b2232c7e51d408a",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-fresh-oracle.json"
+    },
+    {
+      "repo_snapshot": "docs/assessments/maestro-acceptance-coverage/evidence/a12-empty-set/07-parser-proof.log",
+      "sha256": "00f190394137074f186de1b56258cf97beb4cf2cb380a170ab8d48f868e7b693",
+      "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/account-settings/a12-empty-executed/parser-proof.log"
+    }
+  ]
+}

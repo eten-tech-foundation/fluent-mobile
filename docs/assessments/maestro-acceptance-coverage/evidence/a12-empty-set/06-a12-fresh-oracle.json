@@ -1,0 +1,31 @@
+{
+  "accounts": [
+    {
+      "key": "active_user_id",
+      "value": "12"
+    },
+    {
+      "key": "known_user_ids",
+      "value": "10,9,12"
+    },
+    {
+      "key": "paused_take_markers_v1",
+      "value": "[]"
+    }
+  ],
+  "myWork12": [],
+  "milestones12": [
+    {
+      "milestone_id": "17",
+      "project_id": "11",
+      "name": "The Beginning",
+      "project_name": "TTS Configuration Test"
+    }
+  ],
+  "recordingStatuses": [
+    {
+      "sync_status": "uploaded",
+      "n": "9"
+    }
+  ]
+}

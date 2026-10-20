@@ -1,0 +1,36 @@
+# A-0001-01 empty-set case only. Root must attest fresh identity12 and complete
+# eligible assignment SQL count0 after any background metadata refresh settles.
+# Preparation only; this file has not been executed. No auth or preference writes.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - read-only
+---
+- assertTrue: ${MAESTRO_A12_MYWORK_EMPTY_SET_VERIFIED === '1'}
+- assertNotVisible:
+    id: '^login-email-input$'
+- assertVisible:
+    id: '^home-tab-my-work$'
+- tapOn:
+    id: '^home-settings-button$'
+- extendedWaitUntil:
+    visible:
+      id: '^settings-menu-active-12$'
+    timeout: 10000
+- assertVisible:
+    id: '^settings-menu-account-12$'
+- tapOn:
+    id: '^settings-menu-account-12$'
+- assertNotVisible:
+    id: '^settings-drawer-content$'
+- tapOn:
+    id: '^home-tab-my-work$'
+- extendedWaitUntil:
+    visible:
+      id: '^my-work-empty$'
+    timeout: 15000
+- assertNotVisible:
+    id: '^my-work-row-[0-9]+$'
+- assertNotVisible:
+    id: '^login-email-input$'
+- takeScreenshot: a12-mywork-complete-empty-set
