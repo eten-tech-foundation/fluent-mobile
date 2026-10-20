@@ -65,9 +65,15 @@ Legacy routes and screens don't change.
   `DraftingScreen` into shared hooks (stage advance, recording gates, takes,
   leave guard), with Legacy calling them unchanged and the existing tests
   proving it.
-- **App-wide pieces need v2 versions:** the crash-recovery prompt, the upload
-  notification's "open Sync" target, the drawer, and the 24 links in
-  `src/navigation/hrefs.ts`.
+- **App-wide pieces need v2 versions:** the upload notification's "open
+  Sync" target, the drawer, and the 24 links in `src/navigation/hrefs.ts`.
+  The crash-recovery prompt now runs at the root for both trees.
+- **Built (`jskager/feature/v2-route-tree`):** `src/routes/v2/`, registered
+  only when signed in on Next. Legacy Home hands off to v2 in Next, so every
+  "go home" lands there, and v1 screens still open on top of v2.
+- **Legacy Home behaviors v2 Home still needs:** the download-repair sync
+  (`needsDownloadSync`), the Prepare for offline auto-prompt, the reauth
+  banner, and the loading state after adding an account (`newUserLoading`).
 - **Cost:** two UIs until Legacy is deleted. Logic fixes land in both; UI
   fixes don't.
 
