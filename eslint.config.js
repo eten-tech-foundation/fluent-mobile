@@ -25,6 +25,12 @@ const handoffAntiPatternImports = {
       name: '@simform_solutions/react-native-audio-waveform',
       message: 'Use expo-audio.',
     },
+    {
+      name: 'phosphor-react-native',
+      allowTypeImports: true,
+      message:
+        'The package root bundles every icon. Import Next UI icons from src/components/ui/icons (one module per icon via phosphor-react-native/src/icons/<Name>).',
+    },
   ],
   patterns: [
     {
@@ -93,6 +99,27 @@ const uiLayerRestrictedImports = {
   ],
 };
 
+/** Next UI uses Figma's Phosphor set (src/components/ui/icons), not Legacy's icon libraries. */
+const nextUiFiles = [
+  'src/app/gallery/**/*.{ts,tsx}',
+  'src/app/v2/**/*.{ts,tsx}',
+];
+
+const nextUiRestrictedImports = {
+  paths: [
+    ...uiLayerRestrictedImports.paths,
+    {
+      name: 'lucide-react-native',
+      message: 'Next UI icons come from src/components/ui/icons (Phosphor).',
+    },
+    {
+      name: '@react-native-vector-icons/ionicons',
+      message: 'Next UI icons come from src/components/ui/icons (Phosphor).',
+    },
+  ],
+  patterns: uiLayerRestrictedImports.patterns,
+};
+
 export default [
   {
     ignores: [
@@ -158,6 +185,12 @@ export default [
         banUiGetDatabase,
         banUiExecuteSql,
       ],
+    },
+  },
+  {
+    files: nextUiFiles,
+    rules: {
+      'no-restricted-imports': ['error', nextUiRestrictedImports],
     },
   },
   {

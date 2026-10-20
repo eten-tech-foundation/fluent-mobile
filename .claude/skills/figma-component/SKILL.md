@@ -39,6 +39,10 @@ Read it fully before step 1; this file is how an agent executes it.
   inside `ColorModeScope`, which screens set and components never do), `t.elevation.*`
   (`boxShadow` strings), `t.motion.*`, `t.opacity.disabled`,
   `t.controlSizes.*`, plus the existing `t.spacing` / `t.radius`.
+- Icons: Phosphor (Figma's `Icon (Phosphor)`), from `src/components/ui/icons`.
+  Regular by default, Fill on hardware transport keys; check the weight by
+  matching the Figma SVG path to `phosphor-react-native/src/defs/<Name>.tsx`.
+  Add missing icons there with a per-icon import. Lucide is Legacy only.
 - Haptics: `useHaptics()` from `src/hooks/useHaptics.ts` (no-op in Legacy, silent
   for the whole take, recording or paused, via `src/audio/micActivity.ts`).
 - Reference implementations: `src/components/ui/Key.tsx` (pressable, latch),

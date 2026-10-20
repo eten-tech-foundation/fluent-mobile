@@ -17,6 +17,7 @@ the Legacy / Next split described there.
 | Motion | `theme.motion.pressMs` · `releaseMs` · `easeStandard` |
 | Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon24` / `icon32` |
 | Radius `xs` (4), space `2`, strokes | `theme.radius.xs`, `theme.spacing.xxs`, `theme.stroke[1]` / `[2]` |
+| Icons | Figma's Phosphor set from `src/components/ui/icons`: Regular, except Fill on hardware transport keys. Add a new icon there, one module per icon (`phosphor-react-native/src/icons/<Name>`); never import the package root or Lucide in Next UI |
 | Haptics | `useHaptics()` from `src/hooks/useHaptics.ts` |
 | Review screen | `/gallery` (`fluent://gallery`), entries in `src/app/gallery/entries/` |
 | Reference components | `src/components/ui/Key.tsx` (Figma Key, `2326:34`) in `KeyDeck.tsx` (Hardware panel keys, `2411:465`) · `src/components/ui/Switch.tsx` (Figma Switch, `2326:41`) · `src/components/ui/RoundButton.tsx` (Figma Round button, `2326:64`) · `src/components/ui/ProgressRing.tsx` (Figma Progress ring, `2400:302`) |
