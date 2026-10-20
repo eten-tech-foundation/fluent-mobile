@@ -5,6 +5,7 @@ import {
   setTranslationQuestionsLoadFailureForTests,
 } from './translationQuestions';
 import { FluentAPI } from './api';
+import { ApiError } from './apiError';
 import { findDownloadedRows, readDownloadedJson } from './offlineResources';
 import type { DownloadQueueItem } from '../types/download/types';
 
@@ -158,6 +159,22 @@ describe('loadTranslationQuestionsForUnit', () => {
       'eng',
     );
     expect(questions[0]?.question).toContain('chief priests');
+  });
+
+  it('rejects a 403 translation-questions fetch instead of resolving []', async () => {
+    getTranslationQuestions.mockRejectedValue(new ApiError(403, 'Forbidden'));
+
+    await expect(
+      loadTranslationQuestionsForUnit({
+        projectId: 7,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 2,
+      }),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 403,
+    });
   });
 
   it('throws when test failure injection is on', async () => {

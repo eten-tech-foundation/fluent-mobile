@@ -529,6 +529,76 @@ describe('resolvePeerCheckerAssignmentOnAdvance', () => {
   });
 });
 
+describe('open Peer Check when peerCheckerId is null', () => {
+  const openPeer = {
+    status: 'peer_check',
+    assignedUserId: 10,
+    peerCheckerId: null,
+  };
+
+  it('shows Send to Community Review to a non-drafter', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: openPeer,
+        currentUserId: 99,
+        hasChapterRecording: false,
+        hasConflict: false,
+        isOnLastUnit: true,
+      }),
+    ).toMatchObject({
+      visible: true,
+      disabled: false,
+      destination: { buttonLabel: 'Send to Community Review' },
+    });
+  });
+
+  it('hides Send from the drafter and blocks that drafter from capture', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: openPeer,
+        currentUserId: 10,
+        hasChapterRecording: true,
+        hasConflict: false,
+        isOnLastUnit: true,
+      }).visible,
+    ).toBe(false);
+    expect(isDrafterBlockedFromOpenPeerCheckCapture(openPeer, 10)).toBe(true);
+  });
+
+  it('allows capture for a non-drafter', () => {
+    expect(isDrafterBlockedFromOpenPeerCheckCapture(openPeer, 99)).toBe(false);
+  });
+
+  it('assigns the tapping non-drafter and not the drafter', () => {
+    expect(
+      resolvePeerCheckerAssignmentOnAdvance({
+        chapterData: openPeer,
+        currentUserId: 99,
+        nextStatus: 'community_review',
+      }),
+    ).toBe(99);
+    expect(
+      resolvePeerCheckerAssignmentOnAdvance({
+        chapterData: openPeer,
+        currentUserId: 10,
+        nextStatus: 'community_review',
+      }),
+    ).toBeUndefined();
+  });
+
+  it('hides Send when the drafter id is missing', () => {
+    expect(
+      getStageAdvanceVisibility({
+        chapterData: { status: 'peer_check', peerCheckerId: null },
+        currentUserId: 99,
+        hasChapterRecording: false,
+        hasConflict: false,
+        isOnLastUnit: true,
+      }).visible,
+    ).toBe(false);
+  });
+});
+
 describe('stageAdvanceConfirmBody', () => {
   it('builds the confirmation copy', () => {
     expect(stageAdvanceConfirmBody('Luke 4', 'Peer Check')).toBe(

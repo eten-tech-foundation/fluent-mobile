@@ -196,7 +196,8 @@ export interface ChapterAssignmentData {
   bookId: number;
   chapterNumber: number;
   assignedUserId?: number;
-  peerCheckerId?: number;
+  /** `null` is the server's open-slot value; omitted/`undefined` is not that contract. */
+  peerCheckerId?: number | null;
   status: string;
   submittedTime?: string | null;
   updatedAt?: string;

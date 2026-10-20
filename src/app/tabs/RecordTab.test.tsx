@@ -1094,7 +1094,7 @@ describe('RecordTab', () => {
       expect(headers[0]).toHaveTextContent('Maria Santos');
       expect(headers[1]).toHaveTextContent('John Doe');
 
-      const badges = screen.getAllByTestId('shared-take-badge');
+      const badges = screen.getAllByTestId(/^shared-take-badge-/);
       expect(badges).toHaveLength(3);
       expect(badges[1]).toHaveTextContent('Take 1 - Verse - v. 3');
       expect(badges[2]).toHaveTextContent('Take 2 - Verse - v. 3');
@@ -1125,7 +1125,9 @@ describe('RecordTab', () => {
       renderTab();
       fireEvent.press(screen.getByTestId('take-view-all'));
 
-      const canonicalButtons = screen.getAllByTestId('shared-take-canonical');
+      const canonicalButtons = screen.getAllByTestId(
+        /^shared-take-canonical-rec_/,
+      );
       fireEvent.press(canonicalButtons[1]!);
 
       expect(idleAudio.setCanonical).toHaveBeenCalledWith('rec_2');
@@ -1173,7 +1175,7 @@ describe('RecordTab', () => {
       expect(headers).toHaveLength(2);
       expect(headers[0]).toHaveTextContent('Maria Santos');
       expect(headers[1]).toHaveTextContent('John Doe');
-      expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
+      expect(screen.getAllByTestId(/^shared-take-row-/)).toHaveLength(2);
     });
   });
 
@@ -1302,13 +1304,14 @@ describe('RecordTab', () => {
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
   });
 
+  // Mocked RecordTab coverage only — not a live or emulator result.
   it('shows Send to Community Review without a taken banner on open Peer Check', async () => {
     renderTab(undefined, {
       chapterData: {
         ...chapterData,
         status: 'peer_check',
         assignedUserId: 99,
-        peerCheckerId: undefined,
+        peerCheckerId: null,
       },
     });
 
@@ -1326,7 +1329,7 @@ describe('RecordTab', () => {
         ...chapterData,
         status: 'peer_check',
         assignedUserId: 42,
-        peerCheckerId: undefined,
+        peerCheckerId: null,
       },
     });
 
@@ -1364,7 +1367,7 @@ describe('RecordTab', () => {
               ...chapterData,
               status: 'peer_check',
               assignedUserId: 99,
-              peerCheckerId: undefined,
+              peerCheckerId: null,
             }}
             userId={42}
           />
@@ -1552,9 +1555,11 @@ describe('RecordTab', () => {
       fireEvent.press(screen.getByTestId('take-view-all'));
 
       // Rows still render (so the assertions below aren't vacuous)...
-      expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
+      expect(screen.getAllByTestId(/^shared-take-row-/)).toHaveLength(2);
       // ...but no canonical control is pressable.
-      expect(screen.queryAllByTestId('shared-take-canonical')).toHaveLength(0);
+      expect(
+        screen.queryAllByTestId(/^shared-take-canonical-rec_/),
+      ).toHaveLength(0);
       expect(idleAudio.setCanonical).not.toHaveBeenCalled();
     });
   });

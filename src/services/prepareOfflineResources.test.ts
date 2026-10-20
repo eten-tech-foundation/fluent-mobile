@@ -1,4 +1,5 @@
 import { FluentAPI } from './api';
+import { ApiError } from './apiError';
 import {
   clearPrepareOfflineSessionInventory,
   fetchPrepareOfflineManifest,
@@ -278,6 +279,22 @@ describe('prepareOfflineResources', () => {
       const result = await fetchPrepareOfflineManifest(99, FULL_PARAMS);
 
       expect(result).toEqual([translationItem]);
+    });
+
+    it('rejects a 403 translation-resources manifest instead of an empty catalog', async () => {
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockRejectedValue(
+        new ApiError(403, 'Forbidden'),
+      );
+      mockSourceAudioManifest([]);
+
+      await expect(
+        fetchPrepareOfflineManifest(99, FULL_PARAMS),
+      ).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 403,
+      });
+
+      expect(FluentAPI.getChapterSourceAudio).not.toHaveBeenCalled();
     });
 
     it('rejects a truncated translation-resources manifest instead of returning a partial catalog', async () => {

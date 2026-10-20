@@ -119,4 +119,32 @@ describe('isChapterTakenByOther', () => {
       ),
     ).toBe(false);
   });
+
+  it('treats server null peerCheckerId as open Peer Check for a non-drafter', () => {
+    expect(
+      isChapterTakenByOther(
+        {
+          ...baseChapter,
+          status: 'peer_check',
+          assignedUserId: 99,
+          peerCheckerId: null,
+        },
+        currentUserId,
+      ),
+    ).toBe(false);
+  });
+
+  it('still hides the taken state for the drafter when peerCheckerId is null', () => {
+    expect(
+      isChapterTakenByOther(
+        {
+          ...baseChapter,
+          status: 'peer_check',
+          assignedUserId: currentUserId,
+          peerCheckerId: null,
+        },
+        currentUserId,
+      ),
+    ).toBe(false);
+  });
 });

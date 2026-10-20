@@ -6,6 +6,7 @@ import {
   setImagesMapsLoadFailureForTests,
 } from './imagesMaps';
 import { FluentAPI } from './api';
+import { ApiError } from './apiError';
 import { findDownloadedRows } from './offlineResources';
 import type { DownloadQueueItem } from '../types/download/types';
 
@@ -203,6 +204,22 @@ describe('loadImagesMapsForUnit', () => {
     ]);
 
     expect(getTranslationImages).toHaveBeenCalledWith(7, 'MRK', 1, 1, 'eng');
+  });
+
+  it('rejects a 403 images fetch instead of resolving []', async () => {
+    getTranslationImages.mockRejectedValue(new ApiError(403, 'Forbidden'));
+
+    await expect(
+      loadImagesMapsForUnit({
+        projectId: 7,
+        bookCode: 'MRK',
+        chapterNumber: 1,
+        verseNumber: 1,
+      }),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 403,
+    });
   });
 
   it('throws when failure injection is enabled', async () => {

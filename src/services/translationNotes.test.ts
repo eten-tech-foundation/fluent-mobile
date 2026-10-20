@@ -148,6 +148,22 @@ describe('loadTranslationNotesForUnit', () => {
     ).resolves.toEqual([]);
   });
 
+  it('rejects a 403 translation-notes fetch instead of resolving []', async () => {
+    getTranslationNotes.mockRejectedValue(new ApiError(403, 'Forbidden'));
+
+    await expect(
+      loadTranslationNotesForUnit({
+        projectId: 7,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 2,
+      }),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 403,
+    });
+  });
+
   it('propagates ApiError so the section can show retry', async () => {
     getTranslationNotes.mockRejectedValue(
       new ApiError(502, 'Aquifer service is unavailable'),
