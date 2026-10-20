@@ -1,0 +1,196 @@
+# READ-ONLY: chapter-list ownership / conflict status for one EXISTING fixture chapter.
+#
+# Adds issue-derived asserts (#267/#260/#268 UI state) beyond entry smoke:
+# env-declared expected ownership on a named project+chapter row, without
+# claim / record / stage-advance / reassign / Sync Now.
+#
+# Required env (fail if absent/invalid — no skip/auth fallback):
+# - MAESTRO_FIXTURE_PROJECT_NAME
+# - MAESTRO_FIXTURE_CHAPTER_LABEL
+# - MAESTRO_EXPECT_OWNERSHIP = mine | other | unassigned | conflict
+#
+# Optional env (omit/empty → none; typo FAILS — never silent skip):
+# - MAESTRO_EXPECT_RECORD_WARNING = none | taken | conflict
+#   When taken|conflict: open Record tab read-only to assert warning chrome,
+#   then back out. Never taps record-start / record-new-take.
+#
+# Exit: ViewProject uses StackScreenHeader testID stack-header-back
+# (ViewProject.tsx + StackScreenHeader.tsx). goto-home has no chapter-list
+# branch — do NOT call goto-home from chapter list (times out).
+#
+# Forbidden: clearState, ensure-on-login, login-*, ensure-warm-home,
+# ensure-warm-session, ownership-auto-claim, Sync, Discard recovery.
+appId: com.eten.fluent
+tags:
+  - ownership
+  - existing-session
+  - read-only
+---
+# Normalize + validate ALL enums (including optionals) before any UI work.
+# Complex selector values use external runScript (do NOT store functions on
+# output — Maestro contexts drop them).
+- runScript: ../../shared/scripts/ownership-status-values.js
+- assertTrue: ${output.fixtureProjectName.length > 0}
+- assertTrue: ${output.fixtureChapterLabel.length > 0}
+- assertTrue: ${['mine','other','unassigned','conflict'].indexOf(output.expectOwnership) >= 0}
+- assertTrue: ${['none','taken','conflict'].indexOf(output.expectRecordWarning) >= 0}
+- assertTrue: ${typeof output.projectNameRe === 'string' && output.projectNameRe.length > 0}
+- assertTrue: ${typeof output.chapterLabelRe === 'string' && output.chapterLabelRe.length > 0}
+
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'milestone-row-.*'
+    timeout: 60000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- scrollUntilVisible:
+    element:
+      text: ${output.projectNameRe}
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    text: ${output.projectNameRe}
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: ${output.chapterLabelRe}
+    direction: DOWN
+    timeout: 90000
+- assertVisible:
+    id: 'chapter-row-.*'
+    containsDescendants:
+      - text: ${output.chapterLabelRe}
+
+# mine — ownership id + a11y label scoped to the chosen chapter row
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'mine'}
+    commands:
+      - assertVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-ownership-mine'
+            - text: '^Assigned to you$'
+      - assertNotVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-conflict-indicator'
+
+# other
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'other'}
+    commands:
+      - assertVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-ownership-other'
+            - text: '^Assigned to another translator$'
+      - assertNotVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-conflict-indicator'
+
+# unassigned — no ownership icon / conflict on that row
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'unassigned'}
+    commands:
+      - assertNotVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-ownership-mine'
+      - assertNotVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-ownership-other'
+      - assertNotVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-conflict-indicator'
+
+# conflict — indicator + a11y label scoped to chosen row
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'conflict'}
+    commands:
+      - assertVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-conflict-indicator'
+            - text: '^Unresolved recording conflict$'
+      - assertNotVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-ownership-mine'
+      - assertNotVisible:
+          id: 'chapter-row-.*'
+          containsDescendants:
+            - text: ${output.chapterLabelRe}
+            - id: 'chapter-ownership-other'
+
+# Optional Record-tab warning inspect (read-only — no record/claim taps)
+- runFlow:
+    when:
+      true: ${output.expectRecordWarning == 'taken' || output.expectRecordWarning == 'conflict'}
+    commands:
+      - tapOn:
+          text: ${output.chapterLabelRe}
+      - extendedWaitUntil:
+          visible:
+            id: 'drafting-tab-bar'
+          timeout: 60000
+      - tapOn:
+          id: 'drafting-tab-record'
+      - assertVisible:
+          id: 'record-tab'
+      - runFlow:
+          when:
+            true: ${output.expectRecordWarning == 'taken'}
+          commands:
+            - assertVisible:
+                id: 'record-taken-warning'
+            - assertNotVisible:
+                id: 'record-conflict-warning'
+      - runFlow:
+          when:
+            true: ${output.expectRecordWarning == 'conflict'}
+          commands:
+            - assertVisible:
+                id: 'record-conflict-warning'
+      - tapOn:
+          id: 'drafting-header-back'
+      - extendedWaitUntil:
+          visible:
+            id: 'chapter-row-.*'
+          timeout: 30000
+
+# Leave ViewProject chapter list via stack header back (source-backed).
+- assertVisible:
+    id: 'stack-header-back'
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'

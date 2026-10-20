@@ -1,0 +1,426 @@
+{
+  "schema": "fluent-runtime-milestone/v1",
+  "generated_utc": "2026-10-20T06:56:24.158014+00:00",
+  "scope": "10 focused live variants across six flow files, separate from historical 21-case ledger; no global conformance percentage",
+  "runtime_pass_flow_files": 6,
+  "live_case_variants_pass": 10,
+  "passes": [
+    {
+      "source_receipt": "fluent-independent-home-tabs-user10-result.json",
+      "id": "home-tabs-existing-session_user10_positive",
+      "outcome": "PASS",
+      "execution_state": "ran",
+      "exit_code": 0,
+      "elapsed_s": 21.732,
+      "timed_out": false,
+      "kills": [],
+      "command_counts": {
+        "COMPLETED": 18
+      },
+      "command_total": 18,
+      "ui_assertCondition_visible_or_notVisible_COMPLETED": 13,
+      "ui_assertCondition_visible_or_notVisible_FAILED": 0,
+      "failed": [],
+      "artifact_dir": "/tmp/maestro-independent-home-tabs-user10",
+      "flow_sha256": "5ff8820a00eac16a84ac98860df318cffeb52fe0b9917805eca335cd7faf3007"
+    },
+    {
+      "source_receipt": "fluent-efficient-batch.json",
+      "id": "resources_empty_external",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/drafting/resources-empty-existing-session.yaml",
+      "cap_s": 75,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 67.835,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-resources_empty_external",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-resources_empty_external/2026-10-19_230818/resources-empty-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 61,
+        "SKIPPED": 15
+      },
+      "UI_assertions": {
+        "COMPLETED": 23
+      },
+      "failed": []
+    },
+    {
+      "source_receipt": "fluent-affected-retry-batch.json",
+      "id": "pfo_viewport_fixed",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/offline/pfo-download-button-persist.yaml",
+      "cap_s": 150,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 80.096,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-pfo_viewport_fixed",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-pfo_viewport_fixed/2026-10-19_232313/pfo-download-button-persist/commands.json",
+      "command_counts": {
+        "COMPLETED": 114,
+        "SKIPPED": 22
+      },
+      "UI_assertions": {
+        "COMPLETED": 37
+      },
+      "failed": []
+    },
+    {
+      "source_receipt": "fluent-affected-retry-batch.json",
+      "id": "cached_rows_viewport_fixed",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/accounts/cached-switch-existing-session.yaml",
+      "cap_s": 180,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 91.288,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-cached_rows_viewport_fixed",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-cached_rows_viewport_fixed/2026-10-19_232434/cached-switch-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 109,
+        "SKIPPED": 6
+      },
+      "UI_assertions": {
+        "COMPLETED": 53
+      },
+      "failed": []
+    },
+    {
+      "source_receipt": "fluent-distinct-behavior-batch.json",
+      "id": "verse_boundary_first_execution",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/recording/verse-bounds-existing-session.yaml",
+      "cap_s": 100,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 56.22,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-verse_boundary_first_execution",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-verse_boundary_first_execution/2026-10-19_234014/verse-bounds-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 75,
+        "SKIPPED": 15
+      },
+      "UI_assertions": {
+        "COMPLETED": 30
+      },
+      "failed": []
+    },
+    {
+      "source_receipt": "fluent-distinct-behavior-batch.json",
+      "id": "ownership_peer_checker_mine_first_execution",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/ownership/ownership-status-existing-session.yaml",
+      "cap_s": 110,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 43.042,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-ownership_peer_checker_mine_first_execution",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-ownership_peer_checker_mine_first_execution/2026-10-19_234111/ownership-status-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 64,
+        "SKIPPED": 19
+      },
+      "UI_assertions": {
+        "COMPLETED": 23
+      },
+      "failed": []
+    },
+    {
+      "source_receipt": "fluent-ownership-state-batch.json",
+      "id": "ownership_480_other",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/ownership/ownership-status-existing-session.yaml",
+      "cap_s": 100,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 41.859,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-ownership_480_other",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-ownership_480_other/2026-10-19_234748/ownership-status-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 64,
+        "SKIPPED": 19
+      },
+      "UI_assertions": {
+        "COMPLETED": 23
+      },
+      "failed": []
+    },
+    {
+      "source_receipt": "fluent-ownership-state-batch.json",
+      "id": "ownership_481_unassigned",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/ownership/ownership-status-existing-session.yaml",
+      "cap_s": 100,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 42.387,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-ownership_481_unassigned",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-ownership_481_unassigned/2026-10-19_234830/ownership-status-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 65,
+        "SKIPPED": 19
+      },
+      "UI_assertions": {
+        "COMPLETED": 24
+      },
+      "failed": []
+    },
+    {
+      "source_receipt": "fluent-ownership-state-batch.json",
+      "id": "ownership_487_unassigned",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/ownership/ownership-status-existing-session.yaml",
+      "cap_s": 100,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 41.637,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-ownership_487_unassigned",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-ownership_487_unassigned/2026-10-19_234913/ownership-status-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 65,
+        "SKIPPED": 19
+      },
+      "UI_assertions": {
+        "COMPLETED": 24
+      },
+      "failed": []
+    },
+    {
+      "source_receipt": "fluent-ownership-state-batch.json",
+      "id": "ownership_488_mine",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/ownership/ownership-status-existing-session.yaml",
+      "cap_s": 100,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 41.605,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-ownership_488_mine",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-ownership_488_mine/2026-10-19_234955/ownership-status-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 64,
+        "SKIPPED": 19
+      },
+      "UI_assertions": {
+        "COMPLETED": 23
+      },
+      "failed": []
+    }
+  ],
+  "final_identity": {
+    "app_pid": "7152",
+    "kv": {
+      "active_user_id": "12",
+      "known_user_ids": "10,9,12"
+    },
+    "auth_values_read": false
+  },
+  "fixture_proof": {
+    "project_id": 8,
+    "project_unit": 11,
+    "milestone": "Milestone Testing 2",
+    "active_user": 10,
+    "no_mutations": true,
+    "rows": [
+      {
+        "id": 480,
+        "chapter": "1 Peter 1",
+        "stage": "draft",
+        "drafter": 23,
+        "peer_checker": null,
+        "expected": "other"
+      },
+      {
+        "id": 481,
+        "chapter": "1 Peter 2",
+        "stage": "not_started",
+        "drafter": null,
+        "peer_checker": null,
+        "expected": "unassigned"
+      },
+      {
+        "id": 487,
+        "chapter": "2 Peter 3",
+        "stage": "complete",
+        "drafter": 11,
+        "peer_checker": null,
+        "expected": "unassigned"
+      },
+      {
+        "id": 488,
+        "chapter": "1 John 1",
+        "stage": "draft",
+        "drafter": 10,
+        "peer_checker": 11,
+        "expected": "mine"
+      }
+    ]
+  },
+  "remaining_blockers": [
+    "Sync in-memory state fixture",
+    "Populated Resources content marker",
+    "Multi-recorder takes: cached recordings count zero",
+    "Pericope boundary fixture",
+    "Live role grants unverified"
+  ],
+  "no_shared_mutations": true,
+  "historical_failures_preserved_in_source_receipts": true,
+  "source_receipt_sha256": {
+    "fluent-independent-home-tabs-user10-result.json": "2a7f3c726e574ae4414059ebe1e527c6c0b537452d73c00d1c113ce6c8975d3f",
+    "fluent-efficient-batch.json": "cc8a4da8726401d0d6c87f0e92ba44200d9bd69017368503b7aebe346a4a7efe",
+    "fluent-affected-retry-batch.json": "af277bfa679546ef7291c9ffc1bbd71bff27fe4ecf1b25066a570b4b3e610e28",
+    "fluent-distinct-behavior-batch.json": "1165fd09c3fb0a3155187065ba4c50fb91bbbca4bd67df27c121d39e37234d8f",
+    "fluent-ownership-state-batch.json": "1c90b996140516cd552164ac1a12b9aa2a770896dd42d135edf94de33c06a389"
+  }
+}

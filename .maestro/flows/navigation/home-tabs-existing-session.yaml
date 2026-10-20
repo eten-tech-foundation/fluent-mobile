@@ -1,0 +1,56 @@
+# Home My Work ↔ Projects tab roundtrip — existing session only.
+#
+# Preconditions (fail visibly if unmet — no skip/auth fallback):
+# - App already running with a logged-in session (not login screen).
+# - Home tabs visible; active user has ≥1 Projects milestone row AND ≥1 My Work row.
+#
+# Forbidden: clearState, ensure-on-login, login-*, ensure-warm-home,
+# ensure-warm-session, ensure-no-modal / Discard recovered-recording,
+# goto-home (calls ensure-no-modal), cold launch wipe.
+# Distinct from navigation/tab-switching.yaml (warm-home path).
+appId: com.eten.fluent
+tags:
+  - nav
+  - existing-session
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-tab-projects'
+
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'milestone-row-.*'
+    timeout: 60000
+- assertVisible:
+    id: 'milestone-row-.*'
+- assertNotVisible:
+    id: 'login-email-input'
+
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-\d+$'
+    timeout: 60000
+- assertVisible:
+    id: 'my-work-row-\d+$'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'
+
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'milestone-row-.*'
+    timeout: 60000
+- assertVisible:
+    id: 'milestone-row-.*'
+- assertNotVisible:
+    id: 'login-email-input'

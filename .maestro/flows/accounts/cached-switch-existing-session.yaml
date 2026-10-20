@@ -1,0 +1,373 @@
+# Cached account switch A→B→A — existing session only (no Add User / login).
+#
+# Preconditions (fail visibly if unmet — no auth fallback):
+# - App already running; login screen MUST NOT appear.
+# - Three accounts ALREADY saved on device (A/B under test + C preserved).
+# - Env (typeof-safe guards below — empty/undefined fails closed):
+#     MAESTRO_CACHED_ACCOUNT_{A,B,C}_ID     numeric userId (>0)
+#     MAESTRO_CACHED_ACCOUNT_{A,B,C}_EMAIL  exact drawer email
+#     MAESTRO_CACHED_ACCOUNT_{A,B}_EXPECT_MY_WORK_ROW
+#       → digits (chapter assignment id) OR literal empty
+#     MAESTRO_CACHED_EXPECT_A_ROW_EXCLUSIVE (optional)
+#       → "1" only when fixture proves A's row cannot appear under B;
+#         different A/B row IDs alone do NOT authorize absence asserts
+#         (assignments may overlap). Absence also allowed when B expect
+#         is empty (positive empty + A's numeric row not visible).
+#
+# Drawer a11y (UserSettingsMenu): accessibilityLabel=`Switch to ${email}`.
+# handleSwitchUser: tapping the already-active account only closeDrawer()
+# (normalize = unconditional tapOn account A — never conditional Back/when).
+#
+# After a real switch, auto PFO may push (ISO receipt). Dismiss ONLY via
+# bounded stack-header-back while prepare-offline-screen visible — never
+# system Back, ensure-no-modal, Discard, or auth helpers. Identity/My Work/
+# Settings asserts stay mandatory.
+#
+# Forbidden: clearState, ensure-on-login, login-*, ensure-warm-*, ensure-no-modal,
+# Add User, sync-now, shared drawer/settings helpers. No orgGrants/roleName proof.
+#
+# evalScript ternaries MUST use `evalScript: >-` block scalars (unquoted
+# inline ` : ` is invalid YAML — cross-lane parser pitfall).
+# Complex selector strings: external runScript only (installed engine leaves
+# inline concat/regex output.* undefined — see diagnostic). Do not re-inline.
+#
+# Tags: accounts+guard → excluded from ordinary sweeps; not smoke.
+# Distinct from accounts/multi-account-isolation.yaml (Add User + sync).
+appId: com.eten.fluent
+tags:
+  - accounts
+  - existing-session
+  - cached-switch
+  - guard
+---
+# --- typeof-safe env normalize + fail-closed guards (evalScript: >- avoids YAML ` : ` pitfall) ---
+# Do not assign helper functions on output.* for later assertTrue.
+# A/B/C ^Switch to EMAIL$ selectors: ONE runScript → shared/scripts/cached-switch-selectors.js
+# (platform constraint; plain JS exports primitive output.switchTo*Re). Inline
+# positive-integer / email / regex exact+near-false guards remain mandatory.
+- evalScript: >-
+    ${output.accountAId = (typeof MAESTRO_CACHED_ACCOUNT_A_ID === 'undefined' || MAESTRO_CACHED_ACCOUNT_A_ID === null) ? '' : String(MAESTRO_CACHED_ACCOUNT_A_ID).trim()}
+- evalScript: >-
+    ${output.accountBId = (typeof MAESTRO_CACHED_ACCOUNT_B_ID === 'undefined' || MAESTRO_CACHED_ACCOUNT_B_ID === null) ? '' : String(MAESTRO_CACHED_ACCOUNT_B_ID).trim()}
+- evalScript: >-
+    ${output.accountCId = (typeof MAESTRO_CACHED_ACCOUNT_C_ID === 'undefined' || MAESTRO_CACHED_ACCOUNT_C_ID === null) ? '' : String(MAESTRO_CACHED_ACCOUNT_C_ID).trim()}
+- evalScript: >-
+    ${output.accountAEmail = (typeof MAESTRO_CACHED_ACCOUNT_A_EMAIL === 'undefined' || MAESTRO_CACHED_ACCOUNT_A_EMAIL === null) ? '' : String(MAESTRO_CACHED_ACCOUNT_A_EMAIL).trim()}
+- evalScript: >-
+    ${output.accountBEmail = (typeof MAESTRO_CACHED_ACCOUNT_B_EMAIL === 'undefined' || MAESTRO_CACHED_ACCOUNT_B_EMAIL === null) ? '' : String(MAESTRO_CACHED_ACCOUNT_B_EMAIL).trim()}
+- evalScript: >-
+    ${output.accountCEmail = (typeof MAESTRO_CACHED_ACCOUNT_C_EMAIL === 'undefined' || MAESTRO_CACHED_ACCOUNT_C_EMAIL === null) ? '' : String(MAESTRO_CACHED_ACCOUNT_C_EMAIL).trim()}
+- evalScript: >-
+    ${output.expectA = (typeof MAESTRO_CACHED_ACCOUNT_A_EXPECT_MY_WORK_ROW === 'undefined' || MAESTRO_CACHED_ACCOUNT_A_EXPECT_MY_WORK_ROW === null) ? '' : String(MAESTRO_CACHED_ACCOUNT_A_EXPECT_MY_WORK_ROW).trim()}
+- evalScript: >-
+    ${output.expectB = (typeof MAESTRO_CACHED_ACCOUNT_B_EXPECT_MY_WORK_ROW === 'undefined' || MAESTRO_CACHED_ACCOUNT_B_EXPECT_MY_WORK_ROW === null) ? '' : String(MAESTRO_CACHED_ACCOUNT_B_EXPECT_MY_WORK_ROW).trim()}
+- evalScript: >-
+    ${output.aRowExclusiveRaw = (typeof MAESTRO_CACHED_EXPECT_A_ROW_EXCLUSIVE === 'undefined' || MAESTRO_CACHED_EXPECT_A_ROW_EXCLUSIVE === null) ? '' : String(MAESTRO_CACHED_EXPECT_A_ROW_EXCLUSIVE).trim()}
+- evalScript: >-
+    ${output.aRowExclusive = output.aRowExclusiveRaw === '1'}
+- runScript: ../../shared/scripts/cached-switch-selectors.js
+- assertTrue: ${typeof output.accountAId === 'string' && /^\d+$/.test(output.accountAId) && Number(output.accountAId) > 0 && typeof output.accountBId === 'string' && /^\d+$/.test(output.accountBId) && Number(output.accountBId) > 0 && typeof output.accountCId === 'string' && /^\d+$/.test(output.accountCId) && Number(output.accountCId) > 0}
+- assertTrue: ${output.accountAId !== output.accountBId && output.accountAId !== output.accountCId && output.accountBId !== output.accountCId}
+- assertTrue: ${typeof output.accountAEmail === 'string' && output.accountAEmail.length > 0 && output.accountAEmail.indexOf('@') > 0}
+- assertTrue: ${typeof output.accountBEmail === 'string' && output.accountBEmail.length > 0 && output.accountBEmail.indexOf('@') > 0}
+- assertTrue: ${typeof output.accountCEmail === 'string' && output.accountCEmail.length > 0 && output.accountCEmail.indexOf('@') > 0}
+- assertTrue: ${output.accountAEmail !== output.accountBEmail && output.accountAEmail !== output.accountCEmail && output.accountBEmail !== output.accountCEmail}
+- assertTrue: ${(output.expectA === 'empty' || (typeof output.expectA === 'string' && /^\d+$/.test(output.expectA) && Number(output.expectA) > 0)) && (output.expectB === 'empty' || (typeof output.expectB === 'string' && /^\d+$/.test(output.expectB) && Number(output.expectB) > 0))}
+- assertTrue: ${output.aRowExclusiveRaw === '' || output.aRowExclusiveRaw === '1'}
+- assertTrue: ${typeof output.switchToARe === 'string' && output.switchToARe.length > 0 && typeof output.switchToBRe === 'string' && output.switchToBRe.length > 0 && typeof output.switchToCRe === 'string' && output.switchToCRe.length > 0}
+- assertTrue: ${RegExp(output.switchToARe).test('Switch to ' + output.accountAEmail) === true}
+- assertTrue: ${RegExp(output.switchToBRe).test('Switch to ' + output.accountBEmail) === true}
+- assertTrue: ${RegExp(output.switchToCRe).test('Switch to ' + output.accountCEmail) === true}
+- assertTrue: ${RegExp(output.switchToARe).test('Switch to ' + output.accountAEmail + 'X') === false && RegExp(output.switchToARe).test('Switch to X' + output.accountAEmail) === false}
+- assertTrue: ${RegExp(output.switchToBRe).test('Switch to ' + output.accountBEmail + 'X') === false && RegExp(output.switchToBRe).test('Switch to X' + output.accountBEmail) === false}
+- assertTrue: ${RegExp(output.switchToCRe).test('Switch to ' + output.accountCEmail + 'X') === false && RegExp(output.switchToCRe).test('Switch to X' + output.accountCEmail) === false}
+- evalScript: >-
+    ${output.assertARowAbsentOnB = (output.expectB === 'empty' && typeof output.expectA === 'string' && /^\d+$/.test(output.expectA) && Number(output.expectA) > 0) || (output.aRowExclusive === true && typeof output.expectA === 'string' && /^\d+$/.test(output.expectA) && Number(output.expectA) > 0)}
+
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+
+# --- open drawer; prove three cached accounts preserved ---
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-${output.accountAId}'
+- assertVisible:
+    id: 'settings-menu-account-${output.accountBId}'
+- assertVisible:
+    id: 'settings-menu-account-${output.accountCId}'
+- assertVisible:
+    text: ${output.switchToARe}
+- assertVisible:
+    text: ${output.switchToBRe}
+- assertVisible:
+    text: ${output.switchToCRe}
+- assertNotVisible:
+    id: 'login-email-input'
+
+# Normalize to A: unconditional single tap while drawer open.
+# Already-active → closeDrawer only (UserSettingsMenu handleSwitchUser ~L149);
+# non-same account → real switch. No conditional Back/when — that closes the
+# drawer then falsely triggers notVisible→tap on a hidden row (harness bug).
+- tapOn:
+    id: 'settings-menu-account-${output.accountAId}'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+
+# Positive scoped My Work for A (always)
+- tapOn:
+    id: 'home-tab-my-work'
+- runFlow:
+    when:
+      true: ${output.expectA === 'empty'}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'my-work-empty'
+          timeout: 60000
+      - assertVisible:
+          id: 'my-work-empty'
+- runFlow:
+    when:
+      true: ${output.expectA !== 'empty'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'my-work-row-${output.expectA}'
+          direction: UP
+          timeout: 15000
+      - extendedWaitUntil:
+          visible:
+            id: 'my-work-row-${output.expectA}'
+          timeout: 60000
+      - assertVisible:
+          id: 'my-work-row-${output.expectA}'
+
+# ========== real switch A → B ==========
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-account-${output.accountBId}'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-${output.accountCId}'
+- tapOn:
+    id: 'settings-menu-account-${output.accountBId}'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- assertNotVisible:
+    id: 'login-email-input'
+
+# Active identity B + C still cached
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-active-${output.accountBId}'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-${output.accountBId}'
+- assertNotVisible:
+    id: 'settings-menu-active-${output.accountAId}'
+- assertVisible:
+    id: 'settings-menu-account-${output.accountAId}'
+- assertVisible:
+    id: 'settings-menu-account-${output.accountBId}'
+- assertVisible:
+    id: 'settings-menu-account-${output.accountCId}'
+- assertVisible:
+    text: ${output.switchToCRe}
+
+# Settings non-blank after real switch A→B
+- tapOn:
+    id: 'settings-menu-more-settings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-prepare-offline'
+    timeout: 30000
+- assertVisible:
+    id: 'settings-prepare-offline'
+- scrollUntilVisible:
+    element:
+      id: 'settings-log-out'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'settings-log-out'
+- assertNotVisible:
+    id: 'login-email-input'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+
+# Positive scoped My Work for B
+- tapOn:
+    id: 'home-tab-my-work'
+- runFlow:
+    when:
+      true: ${output.expectB === 'empty'}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'my-work-empty'
+          timeout: 60000
+      - assertVisible:
+          id: 'my-work-empty'
+- runFlow:
+    when:
+      true: ${output.expectB !== 'empty'}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'my-work-row-${output.expectB}'
+          timeout: 60000
+      - assertVisible:
+          id: 'my-work-row-${output.expectB}'
+# Absence of A's row: only when B empty (positive) or explicit exclusive marker
+- runFlow:
+    when:
+      true: ${output.assertARowAbsentOnB === true}
+    commands:
+      - assertNotVisible:
+          id: 'my-work-row-${output.expectA}'
+
+# ========== real switch B → A ==========
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-account-${output.accountAId}'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-${output.accountCId}'
+- tapOn:
+    id: 'settings-menu-account-${output.accountAId}'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- assertNotVisible:
+    id: 'login-email-input'
+
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-active-${output.accountAId}'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-${output.accountAId}'
+- assertNotVisible:
+    id: 'settings-menu-active-${output.accountBId}'
+- assertVisible:
+    id: 'settings-menu-account-${output.accountAId}'
+- assertVisible:
+    id: 'settings-menu-account-${output.accountBId}'
+- assertVisible:
+    id: 'settings-menu-account-${output.accountCId}'
+- assertVisible:
+    text: ${output.switchToCRe}
+
+# Settings non-blank after real switch B→A
+- tapOn:
+    id: 'settings-menu-more-settings'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-prepare-offline'
+    timeout: 30000
+- assertVisible:
+    id: 'settings-prepare-offline'
+- scrollUntilVisible:
+    element:
+      id: 'settings-log-out'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'settings-log-out'
+- assertNotVisible:
+    id: 'login-email-input'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+
+- tapOn:
+    id: 'home-tab-my-work'
+- runFlow:
+    when:
+      true: ${output.expectA === 'empty'}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'my-work-empty'
+          timeout: 60000
+      - assertVisible:
+          id: 'my-work-empty'
+- runFlow:
+    when:
+      true: ${output.expectA !== 'empty'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'my-work-row-${output.expectA}'
+          direction: UP
+          timeout: 15000
+      - extendedWaitUntil:
+          visible:
+            id: 'my-work-row-${output.expectA}'
+          timeout: 60000
+      - assertVisible:
+          id: 'my-work-row-${output.expectA}'
+
+- assertNotVisible:
+    id: 'login-email-input'

@@ -30,6 +30,67 @@ describe('FluentAPI translation-resources', () => {
     });
   }
 
+  it.each([
+    {
+      kind: 'notes',
+      load: FluentAPI.getTranslationNotes,
+      body: {
+        items: [
+          {
+            id: 101,
+            name: 'Translation Note',
+            localizedName: 'Note title',
+            content: {
+              type: 'doc',
+              content: [{ type: 'text', text: 'Populated note body' }],
+            },
+          },
+        ],
+      },
+    },
+    {
+      kind: 'questions',
+      load: FluentAPI.getTranslationQuestions,
+      body: {
+        items: [
+          {
+            id: 102,
+            name: 'Translation Question',
+            localizedName: 'Question title',
+            content: {
+              type: 'doc',
+              content: [
+                { type: 'text', text: 'Populated question and answer' },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      kind: 'images',
+      load: FluentAPI.getTranslationImages,
+      body: {
+        items: [
+          {
+            id: 103,
+            title: 'Reference map',
+            localizedName: 'Map title',
+            url: 'https://example.invalid/map.png',
+            thumbnailUrl: 'https://example.invalid/map-thumb.png',
+            caption: 'Map caption',
+            attribution: 'Map author',
+            licenseInfo: { title: 'CC BY 4.0' },
+          },
+        ],
+      },
+    },
+  ])('preserves a populated $kind response intact', async ({ load, body }) => {
+    mockOkJson(body);
+
+    await expect(load(42, 'MRK', 1, 1, 'eng')).resolves.toEqual(body);
+  });
+
   it('getTranslationNotes calls the notes path with languageCode', async () => {
     mockOkJson({ items: [] });
 

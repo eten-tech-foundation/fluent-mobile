@@ -5,9 +5,19 @@
 # leaves the app and lands on the Android launcher (breaks ensure-on-login).
 appId: com.eten.fluent
 ---
+# Existing-session runs can explicitly require the Dev Menu to be absent.
+# These strict negative assertions fail if either menu marker appears; they do
+# not assume the app was launched in E2E mode or dismiss an unexpected modal.
+# They avoid the fixed missing-element lookup of optional when.visible probes.
 - runFlow:
     when:
-      true: "${(typeof EXPO_PUBLIC_E2E_MODE === 'undefined' ? '' : String(EXPO_PUBLIC_E2E_MODE)).toLowerCase() != '1' && (typeof EXPO_PUBLIC_E2E_MODE === 'undefined' ? '' : String(EXPO_PUBLIC_E2E_MODE)).toLowerCase() != 'true'}"
+      true: "${(typeof MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT === 'undefined' ? '' : String(MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT)) === '1'}"
+    commands:
+      - assertNotVisible: 'Toggle performance monitor'
+      - assertNotVisible: 'Reload'
+- runFlow:
+    when:
+      true: "${(typeof MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT === 'undefined' ? '' : String(MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT)) !== '1' && (typeof EXPO_PUBLIC_E2E_MODE === 'undefined' ? '' : String(EXPO_PUBLIC_E2E_MODE)).toLowerCase() != '1' && (typeof EXPO_PUBLIC_E2E_MODE === 'undefined' ? '' : String(EXPO_PUBLIC_E2E_MODE)).toLowerCase() != 'true'}"
     commands:
       - runFlow:
           when:

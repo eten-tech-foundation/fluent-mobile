@@ -1,0 +1,92 @@
+# Maestro acceptance coverage — runtime receipt
+
+Dated runtime record for the existing-session flow packet. Scope is 10 live case variants across six new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
+
+Sources (read-only verified receipts):
+
+- `/tmp/fluent-independent-home-tabs-user10-result.json`
+- `/tmp/fluent-efficient-batch.json`
+- `/tmp/fluent-affected-retry-batch.json`
+- `/tmp/fluent-distinct-behavior-batch.json`
+
+Recorded PASS artifact directories (exact receipt values):
+
+- Home-tabs: `/tmp/maestro-independent-home-tabs-user10`
+- Resources-empty: `/tmp/maestro-efficient-resources_empty_external`
+- PFO viewport-fixed: `/tmp/maestro-efficient-pfo_viewport_fixed`
+- Cached-switch viewport-fixed: `/tmp/maestro-efficient-cached_rows_viewport_fixed`
+- Verse-boundary: `/tmp/maestro-efficient-verse_boundary_first_execution`
+- Ownership peer-checker mine: `/tmp/maestro-efficient-ownership_peer_checker_mine_first_execution`
+
+The source receipts retain their exact dated `commands_artifact` paths; Home-tabs records its `artifact_dir`.
+
+## New distinct flow PASSes (6)
+
+Each: exit 0, no timeout, no kills, `auth_values_read: false`, app PID 7152 unchanged.
+
+| # | Flow | Source receipt | Elapsed | UI asserts | Result |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `navigation/home-tabs-existing-session.yaml` (user 10) | `fluent-independent-home-tabs-user10-result.json` | 21.732s | 13 | PASS |
+| 2 | `drafting/resources-empty-existing-session.yaml` | `fluent-efficient-batch.json` | 67.835s | 23 | PASS |
+| 3 | `offline/pfo-download-button-persist.yaml` (viewport-fixed) | `fluent-affected-retry-batch.json` | 80.096s | 37 | PASS |
+| 4 | `accounts/cached-switch-existing-session.yaml` (viewport-fixed) | `fluent-affected-retry-batch.json` | 91.288s | 53 | PASS |
+| 5 | `recording/verse-bounds-existing-session.yaml` | `fluent-distinct-behavior-batch.json` | 56.22s | 30 | PASS |
+| 6 | `ownership/ownership-status-existing-session.yaml` (peer-checker mine) | `fluent-distinct-behavior-batch.json` | 43.042s | 23 | PASS |
+
+Navigation/tabs new YAMLs (`my-work-to-drafting`, `drafting/tabs`, `sync/status`, etc.) have migration/static checks only and are **not** counted as runtime PASSes here. Home-tabs is the only navigation runtime PASS above and is counted once.
+
+## Additional ownership variants (same flow, four new cases)
+
+Source: `/tmp/fluent-ownership-state-batch.json`; durable aggregate: [runtime-evidence.json](runtime-evidence.json). All exit 0, no timeout, app PID 7152 preserved.
+
+| Assignment | Stage / expected owner | Elapsed | UI asserts | Result |
+| --- | --- | --- | --- | --- |
+| 480, 1 Peter 1 | draft / other | 41.859s | 23 | PASS |
+| 481, 1 Peter 2 | not_started / unassigned | 42.387s | 24 | PASS |
+| 487, 2 Peter 3 | complete / unassigned | 41.637s | 24 | PASS |
+| 488, 1 John 1 | draft / mine | 41.605s | 23 | PASS |
+
+All use existing project 8 / Milestone Testing 2 with user 10. No assignment, stage, claim, or recording mutations. Final Home proof and account-12 restore both PASS; cached 10/9/12 preserved. These add variants, not flow files.
+
+## Fixtures
+
+- **Resources (484):** `none_for_verse`; empty-state fixture for `resources-empty`.
+- **PFO:** project 8, book `1 Peter`, selection-only; no download.
+- **Cached accounts:** 10/12 preserved; 9 remains known. Final active user 12.
+- **Verse and ownership:** assignment 484, project 8, `1 Peter 5`, 14 verses, zero recordings, stage `peer_check`, peer_checker 10, drafter 11, `has_conflict` 0. Verse mode is default (not pericope).
+
+## Historical failed attempts (preserved, not erased)
+
+- PFO first attempt (`fluent-efficient-batch.json`): FAIL — `prepare-offline-download-button` not visible; harness/viewport issue, fixed by viewport-fixed rerun above.
+- Cached-switch first attempt (`fluent-efficient-batch.json`): FAIL — `my-work-row-2` not visible; viewport issue, fixed by viewport-fixed rerun above.
+- Home-after-PFO-failure (`fluent-efficient-batch.json`): INTERRUPTED — exec-server connection ended; no exit captured.
+
+## Cleanup and state
+
+- Distinct-behavior run finished with restore to account 12: `new_behavior_restore12` exit 0; final active 12, cached 10, 9, 12; app PID 7152.
+- Home-tabs run identity: start 12, after prep 10, final 12; `cached_retry` NOT_RUN (informational).
+
+## Remaining blockers (not PASS)
+
+- Sync-status: no independently proven in-memory UI-state fixture.
+- Resources populated: no proven section/body content marker.
+- Take view: no multi-recorder recordings (known 484 recordings 0); not run.
+- Pericope boundary: unproven; not run.
+- 944: forbidden; not used.
+
+## Hashes (flow SHA256 from receipts)
+
+| Flow | SHA256 | Receipt |
+| --- | --- | --- |
+| `navigation/home-tabs-existing-session.yaml` | `5ff8820a00eac16a84ac98860df318cffeb52fe0b9917805eca335cd7faf3007` | home-tabs-user10 |
+| `drafting/resources-empty-existing-session.yaml` | `3c4e7139ed95d103ba136e1de817cf570d9df738d1206b84a42ff2dc8676a67f` | efficient-batch |
+| `offline/pfo-download-button-persist.yaml` (viewport-fixed) | `d239623de8d55e8a5986b659eebb6832417b8e6f90b3a32847fcc100c97a144f` | affected-retry-batch |
+| `accounts/cached-switch-existing-session.yaml` (viewport-fixed) | `7327c2ffe2857c687b8df8f1f3b9c0e4af575bbac4b32cf9350c58dc7af76da3` | affected-retry-batch |
+| `recording/verse-bounds-existing-session.yaml` | `9e4d99b717833e8c1eb338cd8dad9fc9e1022528aa5deee5581c45b8c80b1b10` | distinct-behavior-batch |
+| `ownership/ownership-status-existing-session.yaml` | `ce0ebbd5faab0bf7aade5d91b5a4a0a096fb59bc85b1f472ab143973b9c510c5` | distinct-behavior-batch |
+
+Note: the efficient-batch PFO hash (`5e53c0c5…`) is the pre-fix file and is superseded by the viewport-fixed hash above.
+
+## Checkpoint metadata
+
+Sync status is tagged `fixture-blocked` so ordinary sweeps exclude it until its required state is independently established. No runtime verdict is inferred. No production files changed. Full PR gates were not run for this local harness checkpoint; this is not a PR-ready or completed-AC claim.

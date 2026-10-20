@@ -1,0 +1,115 @@
+# Record verse prev/next — existing session only (read-only chrome).
+#
+# Preconditions (fail visibly if unmet — no skip/auth fallback):
+# - App already running with a logged-in session (not login screen).
+# - Home reachable; My Work contains my-work-row for fixture chapter id.
+# - MAESTRO_FIXTURE_CHAPTER_ID: nonempty digits /^[1-9][0-9]*$/, MUST NOT be 944
+#   (typeof-safe guard below; no bare undefined dereference).
+# - MAESTRO_FIXTURE_VERSE_REF_FIRST / MAESTRO_FIXTURE_VERSE_REF_NEXT: required
+#   exact reference labels for the first unit and the unit after next
+#   (must differ). Used as anchored ^…$ escaped text waits so the same
+#   record-verse-reference testID cannot pass on stale copyTextFrom.
+# - Fixture opens Record on the FIRST navigable unit so record-prev-verse is
+#   disabled and record-next-verse is enabled.
+#
+# Forbidden (command nodes — not this comment): clearState, ensure-on-login,
+# login-*, ensure-warm-home, ensure-warm-session, Discard, record-start /
+# new-take / stop / play / delete, mic launch helpers, sync mutations.
+# Distinct from recording/verse-bounds.yaml (warm-home / smoke path).
+#
+# Tags: record, existing-session, fixture-blocked (accurate). Root owns adding
+# fixture-blocked to default shared-runner excludes — do not mis-tag accounts.
+#
+# Complex selector values use an external runScript. Primitive exports avoid
+# the installed engine's undefined inline concat/regex output; guards stay strict.
+appId: com.eten.fluent
+tags:
+  - record
+  - existing-session
+  - fixture-blocked
+---
+# Normalize + validate env before any UI (typeof-safe; block scalar for : / regex).
+- runScript: ../../shared/scripts/verse-bounds-values.js
+- assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId) && output.fixtureChapterId !== '944'}
+- assertTrue: ${typeof output.verseRefFirst === 'string' && output.verseRefFirst.length > 0 && typeof output.verseRefNext === 'string' && output.verseRefNext.length > 0 && output.verseRefFirst !== output.verseRefNext}
+- assertTrue: ${typeof output.verseRefFirstRe === 'string' && output.verseRefFirstRe.length > 0 && typeof output.verseRefNextRe === 'string' && output.verseRefNextRe.length > 0 && typeof output.myWorkRowIdRe === 'string' && output.myWorkRowIdRe.length > 0}
+- assertTrue: ${RegExp(output.verseRefFirstRe).test(output.verseRefFirst) === true}
+- assertTrue: ${RegExp(output.verseRefNextRe).test(output.verseRefNext) === true}
+- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId) === true}
+- assertTrue: ${RegExp(output.verseRefFirstRe).test(output.verseRefFirst + 'X') === false && RegExp(output.verseRefFirstRe).test('X' + output.verseRefFirst) === false}
+- assertTrue: ${RegExp(output.verseRefNextRe).test(output.verseRefNext + 'X') === false && RegExp(output.verseRefNextRe).test('X' + output.verseRefNext) === false}
+- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId + '0') === false && RegExp(output.myWorkRowIdRe).test('my-work-row-0' + output.fixtureChapterId) === false}
+
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: ${output.myWorkRowIdRe}
+    direction: DOWN
+    timeout: 30000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- tapOn:
+    id: ${output.myWorkRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 30000
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'record-verse-reference'
+# Boundary at first unit + next available (fixture contract) — do not weaken.
+- assertVisible:
+    id: 'record-prev-verse'
+    enabled: false
+- assertVisible:
+    id: 'record-next-verse'
+    enabled: true
+# Anchored exact FIRST reference (not copyTextFrom-only).
+- extendedWaitUntil:
+    visible:
+      text: ${output.verseRefFirstRe}
+    timeout: 15000
+- tapOn:
+    id: 'record-next-verse'
+# Wait for NEXT label so stale same-testID text cannot pass.
+- extendedWaitUntil:
+    visible:
+      text: ${output.verseRefNextRe}
+    timeout: 15000
+- assertVisible:
+    id: 'record-verse-reference'
+# After leaving first unit, prev must be enabled.
+- assertVisible:
+    id: 'record-prev-verse'
+    enabled: true
+- tapOn:
+    id: 'record-prev-verse'
+- extendedWaitUntil:
+    visible:
+      text: ${output.verseRefFirstRe}
+    timeout: 15000
+- assertVisible:
+    id: 'record-verse-reference'
+# Boundary restored.
+- assertVisible:
+    id: 'record-prev-verse'
+    enabled: false
+- assertVisible:
+    id: 'record-next-verse'
+    enabled: true
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'

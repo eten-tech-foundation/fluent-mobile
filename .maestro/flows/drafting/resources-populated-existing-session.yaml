@@ -1,0 +1,120 @@
+# READ-ONLY: Resources tab POPULATED section expand → content marker → collapse.
+# Existing session only. Populated fixture is UNPROVEN — tagged fixture-blocked.
+# Do not claim runtime PASS until a known populated chapter + marker are approved.
+#
+# Source (actual IDs — ResourcesTab.tsx SECTION_META + ResourceSectionAccordion):
+# - resources-tab host; resources-tab-loading while NetInfo unresolved
+# - Section accordion testID=resources-section-${id}
+# - Toggle testID=resources-section-${id}-toggle
+# - Body children mount only when expanded; unmount on collapse
+# - Source section ids: translationNotes | translationQuestions | imagesMaps
+# - Nested TN/TQ titles / Images title Text are body content (not chrome labels)
+#
+# Required env (fail if absent/invalid — no skip/auth/network/download fallback):
+# - MAESTRO_EXPECT_RESOURCES_POPULATED_FIXTURE
+#     Chapter assignment id for my-work-row-${…} (positive digits). NOT the
+#     empty-authoring fixture 484 unless that chapter is separately proven
+#     populated for the chosen section (currently unproven).
+# - MAESTRO_EXPECT_RESOURCES_POPULATED_SECTION
+#     Enum (snake): translation_notes | translation_questions | images_maps
+#     Mapped to source ids: translationNotes | translationQuestions | imagesMaps
+# - MAESTRO_EXPECT_RESOURCES_CONTENT_MARKER
+#     Required nonempty exact body text visible only when the chosen section is
+#     expanded (TN/TQ item title, Images item.title, etc.). Must NOT equal
+#     chrome labels ("Translation Notes" / "Translation Questions" /
+#     "Images & Maps") — those remain visible while collapsed.
+#
+# Forbidden (command nodes): clearState, login/warm-session, airplane/network
+# toggles, Prepare for Offline download, capture/screenshot, optional when:
+# skip-green branches, wildcards that pass on empty chrome.
+#
+# Distinct from drafting/resources-sections.yaml (warm-home + wildcards) and
+# drafting/resources-empty-existing-session.yaml (empty host + copy).
+#
+# Tags: drafting, existing-session, fixture-blocked (accurate). Root owns
+# default shared-runner --exclude-tags fixture-blocked — do not mis-tag accounts.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - fixture-blocked
+---
+# Normalize + validate env before any UI (typeof-safe; block scalar for : / regex).
+# Complex values use an external runScript; primitive output fields are
+# available to every unchanged guard and UI assertion below.
+- runScript: ../../shared/scripts/resources-populated-values.js
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.populatedFixture)}
+- assertTrue: ${['translation_notes','translation_questions','images_maps'].indexOf(output.sectionEnum) >= 0}
+- assertTrue: ${output.sectionId.length > 0 && output.sectionToggleId.length > 0}
+- assertTrue: ${typeof output.contentMarker === 'string' && output.contentMarker.length > 0}
+- assertTrue: ${output.contentMarker !== 'Translation Notes' && output.contentMarker !== 'Translation Questions' && output.contentMarker !== 'Images & Maps'}
+- assertTrue: ${typeof output.sectionToggleId === 'string' && output.sectionToggleId.length > 0}
+- assertTrue: ${typeof output.sectionHostId === 'string' && output.sectionHostId.length > 0}
+- assertTrue: ${typeof output.contentMarkerRe === 'string' && output.contentMarkerRe.length > 0}
+- assertTrue: ${typeof output.myWorkRowIdRe === 'string' && output.myWorkRowIdRe.length > 0}
+
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: ${output.myWorkRowIdRe}
+    direction: DOWN
+    timeout: 30000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- tapOn:
+    id: ${output.myWorkRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 30000
+- tapOn:
+    id: 'drafting-tab-resources'
+# Wait out resources-tab-loading (#592) then require populated section chrome.
+- extendedWaitUntil:
+    notVisible:
+      id: 'resources-tab-loading'
+    timeout: 30000
+- assertVisible:
+    id: 'resources-tab'
+- extendedWaitUntil:
+    visible:
+      id: ${output.sectionToggleId}
+    timeout: 30000
+- assertVisible:
+    id: ${output.sectionHostId}
+# Section must start collapsed so body marker is absent (fail-closed if restored open).
+- assertNotVisible:
+    text: ${output.contentMarkerRe}
+- tapOn:
+    id: ${output.sectionToggleId}
+# Expanded: body mounts — known populated content marker required (no optional skip).
+- extendedWaitUntil:
+    visible:
+      text: ${output.contentMarkerRe}
+    timeout: 30000
+- assertVisible:
+    id: ${output.sectionHostId}
+- tapOn:
+    id: ${output.sectionToggleId}
+# Collapsed: body unmounts — marker must be absent.
+- extendedWaitUntil:
+    notVisible:
+      text: ${output.contentMarkerRe}
+    timeout: 15000
+- assertNotVisible:
+    text: ${output.contentMarkerRe}
+- assertVisible:
+    id: ${output.sectionToggleId}
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'

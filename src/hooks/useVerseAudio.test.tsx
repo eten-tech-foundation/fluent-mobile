@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { getConnectivitySnapshot } from '../services/connectivity';
 import { useVerseAudio } from './useVerseAudio';
-import type { Recording } from '../types/db/types';
+import type { Recording, RecordingWithOwner } from '../types/db/types';
 
 const mockRecordingStart = jest.fn();
 const mockRecordingStop = jest.fn();
@@ -791,6 +791,53 @@ describe('useVerseAudio', () => {
     expect(result.current.state).toBe('error');
     expect(result.current.errorMessage).toMatch(/missing on disk/i);
     expect(result.current.playingTakeId).toBeNull();
+  });
+
+  it('keeps the current verse All Takes and recorder flag when an older verse response arrives late', async () => {
+    const previousVerseTake: RecordingWithOwner = {
+      ...makeTake({ id: 'rec_previous', bibleTextId: 42, recordedByUserId: 2 }),
+      ownerDisplayName: 'Previous verse recorder',
+    };
+    const currentVerseTake: RecordingWithOwner = {
+      ...makeTake({ id: 'rec_current', bibleTextId: 43, recordedByUserId: 1 }),
+      ownerDisplayName: 'Current verse recorder',
+    };
+    let releasePreviousVerse!: (takes: RecordingWithOwner[]) => void;
+    const previousVerseResponse = new Promise<RecordingWithOwner[]>(resolve => {
+      releasePreviousVerse = resolve;
+    });
+    const loadAllTakes = jest.fn((id: number) =>
+      id === 42 ? previousVerseResponse : Promise.resolve([currentVerseTake]),
+    );
+    const checkMultipleRecorders = jest.fn((id: number) =>
+      Promise.resolve(id === 42),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ bibleTextId }: { bibleTextId: number }) =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          bibleTextId,
+          loadAllTakes,
+          checkMultipleRecorders,
+        }),
+      { initialProps: { bibleTextId: 42 } },
+    );
+    await waitFor(() => expect(loadAllTakes).toHaveBeenCalledWith(42));
+
+    rerender({ bibleTextId: 43 });
+    await waitFor(() => {
+      expect(result.current.allTakes).toEqual([currentVerseTake]);
+      expect(result.current.hasMultipleRecorders).toBe(false);
+    });
+
+    await act(async () => {
+      releasePreviousVerse([previousVerseTake]);
+      await previousVerseResponse;
+    });
+
+    expect(result.current.allTakes).toEqual([currentVerseTake]);
+    expect(result.current.hasMultipleRecorders).toBe(false);
   });
 
   it('does not overwrite the new verse takes when setCanonical resolves for a stale verse (regression)', async () => {

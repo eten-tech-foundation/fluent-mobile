@@ -1,0 +1,107 @@
+# Take view mine/all toggle — existing session only (read-only chrome).
+#
+# Preconditions (fail visibly if unmet — no optional skip / fake pass):
+# - App already running with a logged-in session (not login screen).
+# - Home reachable; My Work contains my-work-row for fixture chapter id.
+# - MAESTRO_FIXTURE_CHAPTER_ID: nonempty digits /^[1-9][0-9]*$/, MUST NOT be 944
+#   (typeof-safe guard below).
+# - EXISTING multi-recorder data on that chapter's current Record unit so
+#   take-view-toggle is visible (hasMultipleRecorders). If toggle absent → FAIL.
+# - MAESTRO_FIXTURE_TAKE_VIEW_ALL_MARKER: required nonempty typeof-safe string;
+#   non-sensitive All Takes label (typically take-group-header-name text).
+#   Asserted as anchored ^…$ escaped exact text; must not show under My Takes.
+#
+# Forbidden (command nodes — not this comment): clearState, ensure-on-login,
+# login-*, ensure-warm-home, ensure-warm-session, Discard, record-start /
+# new-take / stop / play / delete, mic launch helpers, sync mutations.
+# Distinct from recording/take-view-toggle.yaml (warm-home path).
+#
+# Tags: record, existing-session, fixture-blocked, multi-recorder (accurate).
+# Root owns default fixture-blocked excludes — do not mis-tag accounts.
+#
+# Complex selector values use an external runScript. Primitive exports avoid
+# the installed engine's undefined inline concat/regex output; guards stay strict.
+appId: com.eten.fluent
+tags:
+  - record
+  - existing-session
+  - fixture-blocked
+  - multi-recorder
+---
+# Normalize + validate env before any UI (typeof-safe; block scalar for : / regex).
+- runScript: ../../shared/scripts/take-view-values.js
+- assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId) && output.fixtureChapterId !== '944'}
+- assertTrue: ${typeof output.takeViewAllMarker === 'string' && output.takeViewAllMarker.length > 0}
+- assertTrue: ${typeof output.takeViewAllMarkerRe === 'string' && output.takeViewAllMarkerRe.length > 0 && typeof output.myWorkRowIdRe === 'string' && output.myWorkRowIdRe.length > 0}
+- assertTrue: ${RegExp(output.takeViewAllMarkerRe).test(output.takeViewAllMarker) === true}
+- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId) === true}
+- assertTrue: ${RegExp(output.takeViewAllMarkerRe).test(output.takeViewAllMarker + 'X') === false && RegExp(output.takeViewAllMarkerRe).test('X' + output.takeViewAllMarker) === false}
+- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId + '0') === false && RegExp(output.myWorkRowIdRe).test('my-work-row-0' + output.fixtureChapterId) === false}
+
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: ${output.myWorkRowIdRe}
+    direction: DOWN
+    timeout: 30000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- tapOn:
+    id: ${output.myWorkRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 30000
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+# Hard fail if multi-recorder fixture missing (no when/skip).
+- extendedWaitUntil:
+    visible:
+      id: 'take-view-toggle'
+    timeout: 20000
+- assertVisible:
+    id: 'take-view-mine'
+- assertVisible:
+    id: 'take-view-all'
+# Default mine: All list + fixture marker must not show.
+- tapOn:
+    id: 'take-view-mine'
+- assertNotVisible:
+    id: 'record-all-take-list'
+- assertNotVisible:
+    text: ${output.takeViewAllMarkerRe}
+# Switch to All: list + non-sensitive marker from fixture.
+- tapOn:
+    id: 'take-view-all'
+- assertVisible:
+    id: 'record-all-take-list'
+- assertVisible:
+    id: 'take-group-header'
+- extendedWaitUntil:
+    visible:
+      text: ${output.takeViewAllMarkerRe}
+    timeout: 15000
+- assertNotVisible:
+    id: 'record-take-list'
+# Back to mine: All chrome gone; marker gone.
+- tapOn:
+    id: 'take-view-mine'
+- assertNotVisible:
+    id: 'record-all-take-list'
+- assertNotVisible:
+    text: ${output.takeViewAllMarkerRe}
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'
