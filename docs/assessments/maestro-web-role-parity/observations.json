@@ -1,0 +1,137 @@
+{
+  "assessment": "maestro-web-role-parity",
+  "authored_utc": "2026-10-20T02:56:43Z",
+  "revised_utc": "2026-10-20T03:00:00Z",
+  "status": "evidence_checkpoint_addendum",
+  "nightly_signoff": false,
+  "replaces_visual_audit_pdf": false,
+  "duplicate_audit_pdf": false,
+  "existing_visual_report_note": "task-11/output/pdf/fluent-mobile-audit-visual-report.pdf (v2 Library receipt); report owner updates later",
+  "frozen_audit_corpus_untouched": true,
+  "evidence_hierarchy": {
+    "1_mobile_intent": "fluent_mobile_github_issues_comments_decisions_implementing_prs",
+    "2_mobile_runtime": "preserved_mobile_terminal_receipts",
+    "3_api_contract_pin": "4336602df77ce86a4d46dfd45a7840cc3c64ebc0",
+    "4_web_supporting_only": "qa_web_ui_and_web_checkout_never_one_to_one_mobile_spec",
+    "hard_rule": "web_only_controls_and_intentional_platform_differences_are_not_mobile_defects"
+  },
+  "mobile": {
+    "branch": "mrace/chore/717-build-out-full-maestro-e2e-coverage",
+    "head": "c9d400b4ddab5e64a1ccf798ac4f46c5c305ed8e"
+  },
+  "pins": {
+    "fluent_api": "4336602df77ce86a4d46dfd45a7840cc3c64ebc0",
+    "fluent_web_local_checkout": "e5fa478b6345505b998d789532b67b827068663a",
+    "note": "source_checkout_neq_deployed_qa_proof"
+  },
+  "hosts": {
+    "qa_web": "https://qa.app.fluent.bible/",
+    "qa_api": "https://qa.api.fluent.bible"
+  },
+  "inputs": {
+    "pm_mobile_receipt": "/tmp/fluent-pm-qa-final.md",
+    "observer_mobile_receipt": "/tmp/fluent-observer-qa-final.md",
+    "source_review": "/tmp/fluent-web-parity-source-review.md",
+    "grant_readback_options": "/tmp/fluent-grant-readback-options.md",
+    "root_observations_web_supporting": "/tmp/fluent-web-parity-observations.md"
+  },
+  "project_specific_role_proof": {
+    "tier": "web_supporting",
+    "project_id": 11,
+    "surface": "qa_web_project_team_read_only",
+    "viewer_session": "pm_profile",
+    "rows_required_for_parity": [
+      { "handle": "qa-obs", "displayed_role": "Observer", "maps_to_user_id": 12 },
+      { "handle": "qa-pm", "displayed_role": "Project Manager", "maps_to_user_id": 9 },
+      { "handle": "qa-t1", "displayed_role": "Translator", "maps_to_user_id": 10 }
+    ],
+    "proves": ["project11_roleName_labels_for_three_parity_principals"],
+    "does_not_prove": [
+      "complete_orgGrants",
+      "permission_bitsets",
+      "live_http_allow_deny",
+      "superadmin_grants",
+      "mobile_must_mirror_web_project_team_ui"
+    ]
+  },
+  "accounts": [
+    {
+      "label": "translator",
+      "user_id": 10,
+      "handle": "qa-t1",
+      "mobile_receipt_primary": {
+        "user_projects": [1, 8, 11],
+        "my_work_unique_row_ids": 9
+      },
+      "web_supporting": {
+        "projects_visible": ["TTS Configuration Test", "Mobile Testing", "Hindi IRV"],
+        "my_work_dashboard_count": 18,
+        "chapter_entry": {
+          "route_shape": "/translation/…",
+          "editable_field": true,
+          "note": "not_edited; web_route_not_mobile_spec"
+        }
+      },
+      "my_work_web18_vs_mobile9": {
+        "classification": "UNPROVEN_count_delta",
+        "mobile_bug_asserted": false,
+        "product_bug_asserted": false
+      }
+    },
+    {
+      "label": "pm",
+      "user_id": 9,
+      "handle": "qa-pm",
+      "mobile_receipt_primary": {
+        "user_projects": [11],
+        "my_work": "empty",
+        "claim_ui": false
+      },
+      "web_supporting": {
+        "projects_visible": ["TTS Configuration Test"],
+        "project_team_and_admin_chrome": "web_only_not_mobile_defect",
+        "chapter_entry": {
+          "route_shape": "/view/…",
+          "editable_field": false,
+          "note": "first_visible_row_not_identical_fixture_to_translator"
+        }
+      },
+      "classification": "mobile_membership_empty_my_work_aligned_fixture_slot"
+    },
+    {
+      "label": "observer",
+      "user_id": 12,
+      "handle": "qa-obs",
+      "mobile_receipt_primary": {
+        "user_projects": [11],
+        "my_work": "empty",
+        "mutation_ui": false
+      },
+      "web_supporting": {
+        "dashboard": "Observer Dashboard — web_only_not_mobile_defect",
+        "projects_visible": ["TTS Configuration Test"],
+        "project_team_controls_visible": false,
+        "chapter_entry": {
+          "route_shape": "/view/…",
+          "editable_field": false,
+          "plain_text_translation": true
+        }
+      },
+      "classification": "mobile_membership_aligned; observer_mobile_ux_tracked_by_452_505_508_not_web_parity"
+    }
+  ],
+  "ticket_mapping": {
+    "open_mobile": [452, 505, 508, 722],
+    "closed_mobile_backdrop": [104, 675],
+    "new_issues_filed": []
+  },
+  "explicit_non_claims": [
+    "nightly_signoff",
+    "full_orgGrants",
+    "live_server_denials",
+    "populated_resources_content",
+    "web18_vs_mobile9_as_confirmed_defect",
+    "web_as_one_to_one_mobile_specification",
+    "web_only_controls_as_mobile_defects"
+  ]
+}
