@@ -1,5 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { getConnectivitySnapshot } from '../services/connectivity';
+import { emitUploadSessionEvent } from '../services/syncEvents';
+import { emitRecordingDataChanged } from '../services/recordingDataEvents';
 import { useVerseAudio } from './useVerseAudio';
 import type { Recording, RecordingWithOwner } from '../types/db/types';
 
@@ -986,6 +988,108 @@ describe('useVerseAudio', () => {
 
     expect(result.current.allTakes).toEqual([currentVerseTake]);
     expect(result.current.hasMultipleRecorders).toBe(false);
+  });
+
+  it('refreshes uploaded take badges from upload completion without interrupting playback', async () => {
+    const pending = makeTake({ syncStatus: 'pending' });
+    const uploaded = {
+      ...pending,
+      syncStatus: 'uploaded' as const,
+      blobKey: 'unit-19/text-34844',
+      versionToken: 2,
+    };
+    const loadAllTakes = jest
+      .fn()
+      .mockResolvedValue([{ ...pending, ownerDisplayName: 'Recorder' }]);
+    loadTakes.mockResolvedValue([pending]);
+    const { result } = renderHook(() =>
+      useVerseAudio({ ...verseAudioArgs(), loadAllTakes }),
+    );
+    await waitFor(() => expect(result.current.allTakes).toHaveLength(1));
+    await act(async () => {
+      await result.current.playTake(pending);
+    });
+    expect(result.current.state).toBe('playing');
+    mockPlaybackStop.mockClear();
+    mockPlaybackPlay.mockClear();
+    mockPlaybackLoad.mockClear();
+    loadTakes.mockResolvedValue([uploaded]);
+    loadAllTakes.mockResolvedValue([
+      { ...uploaded, ownerDisplayName: 'Recorder' },
+    ]);
+
+    act(() => {
+      emitUploadSessionEvent({ type: 'complete' });
+    });
+
+    await waitFor(() => expect(result.current.takes).toEqual([uploaded]));
+    await waitFor(() =>
+      expect(result.current.allTakes[0]?.syncStatus).toBe('uploaded'),
+    );
+    expect(result.current.state).toBe('playing');
+    expect(result.current.playingTakeId).toBe(pending.id);
+    expect(result.current.loadedTakeId).toBe(pending.id);
+    expect(mockPlaybackStop).not.toHaveBeenCalled();
+    expect(mockPlaybackPlay).not.toHaveBeenCalled();
+    expect(mockPlaybackLoad).not.toHaveBeenCalled();
+  });
+
+  it('refreshes take data on recording mutation and unsubscribes after unmount', async () => {
+    const pending = makeTake();
+    const updated = { ...pending, syncStatus: 'failed' as const };
+    loadTakes.mockResolvedValue([pending]);
+    const { result, unmount } = renderHook(() =>
+      useVerseAudio(verseAudioArgs()),
+    );
+    await waitFor(() => expect(result.current.takes).toEqual([pending]));
+    loadTakes.mockResolvedValue([updated]);
+    act(() => {
+      emitRecordingDataChanged();
+    });
+    await waitFor(() => expect(result.current.takes).toEqual([updated]));
+    unmount();
+    loadTakes.mockClear();
+
+    act(() => {
+      emitRecordingDataChanged();
+      emitUploadSessionEvent({ type: 'complete' });
+    });
+    await act(async () => {});
+    expect(loadTakes).not.toHaveBeenCalled();
+  });
+
+  it('ignores an old-verse status refresh after navigation to a different verse', async () => {
+    const oldTake = makeTake();
+    const nextTake = makeTake({ id: 'next', bibleTextId: 43 });
+    loadTakes.mockImplementation((id: number) =>
+      Promise.resolve(id === 42 ? [oldTake] : [nextTake]),
+    );
+    const { result, rerender } = renderHook(
+      ({ bibleTextId }: { bibleTextId: number }) =>
+        useVerseAudio({ ...verseAudioArgs(), bibleTextId }),
+      { initialProps: { bibleTextId: 42 } },
+    );
+    await waitFor(() => expect(result.current.takes).toEqual([oldTake]));
+    let finishOldRefresh!: (takes: Recording[]) => void;
+    loadTakes.mockImplementationOnce(
+      () =>
+        new Promise<Recording[]>(resolve => {
+          finishOldRefresh = resolve;
+        }),
+    );
+    const before = loadTakes.mock.calls.length;
+    act(() => {
+      emitUploadSessionEvent({ type: 'complete' });
+    });
+    await waitFor(() =>
+      expect(loadTakes.mock.calls.length).toBeGreaterThan(before),
+    );
+    rerender({ bibleTextId: 43 });
+    await waitFor(() => expect(result.current.takes).toEqual([nextTake]));
+    await act(async () => {
+      finishOldRefresh([{ ...oldTake, syncStatus: 'uploaded' }]);
+    });
+    expect(result.current.takes).toEqual([nextTake]);
   });
 
   it('does not overwrite the new verse takes when setCanonical resolves for a stale verse (regression)', async () => {
