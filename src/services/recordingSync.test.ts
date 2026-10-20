@@ -879,4 +879,28 @@ describe('recordingSync', () => {
     expect(JSON.stringify(call)).not.toMatch(/recordings\/sync/);
     expect(JSON.stringify(call)).not.toMatch(/R2_/);
   });
+
+  it('does not send a PUT when cancellation arrives during the local version-token lookup', async () => {
+    const controller = new AbortController();
+    let finishVersion!: (value: number) => void;
+    const version = new Promise<number>(resolve => {
+      finishVersion = resolve;
+    });
+    mockGetLatestVersionToken.mockImplementationOnce(() => version);
+    const pass = syncPendingRecordings('pass-token', {
+      delay,
+      signal: controller.signal,
+    });
+    await waitFor(() =>
+      expect(mockGetLatestVersionToken).toHaveBeenCalledTimes(1),
+    );
+    controller.abort();
+    finishVersion(2);
+
+    await expect(pass).rejects.toMatchObject({ name: 'AbortError' });
+    expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith('rec-1', 'pending');
+    expect(mockMarkRecordingUploaded).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
 });

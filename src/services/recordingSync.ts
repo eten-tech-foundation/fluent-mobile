@@ -231,6 +231,9 @@ async function uploadOneRecording(
         recording.bibleTextId,
       );
 
+      // Cancellation can arrive while local preflight is awaiting the DB.
+      throwIfAborted(signal);
+
       const response = await FluentAPI.uploadVerseAudio(
         {
           projectUnitId: recording.projectUnitId,
