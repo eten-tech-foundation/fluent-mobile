@@ -1,0 +1,77 @@
+# C0053 filesystem-backed EMPTY branch only, not whole storage/delete group.
+# MAESTRO_PROJECT11_EMPTY_STORAGE_VERIFIED=1 attests active12/cache10,9,12,
+# explicit project11 TTS Configuration Test PFO detail, assigned0/selected0 and completed
+# download_inventory local files0; all six takes preserved/no active transfer.
+# Selected0 prevents manifest fetch. Root independently compares native free-space
+# and retained file metadata; UI labels alone do not prove filesystem accuracy.
+# No Download/selection/delete/clearcache/logout/prefs/accounts/network actions.
+# Source ManageDeviceStorageSection empty branch omits Delete selected entirely
+# (initialLoaded && groups.length>0 is required for delete footer).
+# Prepared phase, no catalogue retry. Root90s cap and failure cleanup ownership.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - prepared-phase
+  - read-only
+  - storage-empty
+---
+- runScript: ../../shared/scripts/project11-empty-storage-context.js
+- assertVisible:
+    id: prepare-offline-screen
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    text: '^Selected chapters \(0\)$'
+- scrollUntilVisible:
+    element:
+      id: storage-empty-other-projects
+    direction: DOWN
+    timeout: 15000
+    speed: 70
+    centerElement: true
+- assertVisible:
+    id: manage-device-storage-section
+- assertVisible:
+    text: '^MANAGE DEVICE STORAGE$'
+- assertVisible:
+    text: '^Available on device$'
+- assertVisible:
+    id: storage-available-bytes
+    text: '^[0-9]+([.][0-9]+)? (B|KB|MB|GB)( of [0-9]+([.][0-9]+)? (B|KB|MB|GB))?$'
+- assertVisible:
+    text: '^Used by Fluent$'
+- assertVisible:
+    id: storage-fluent-used-bytes
+    text: '^0 B$'
+- assertVisible:
+    id: storage-empty-other-projects
+    text: '^No resources from other projects on this device\.$'
+- assertNotVisible:
+    id: 'storage-project-[0-9]+'
+- assertNotVisible:
+    id: 'storage-resource-row-.+'
+- assertNotVisible:
+    id: storage-delete-selected-button
+- assertNotVisible:
+    id: storage-bytes-to-free
+- takeScreenshot: project11-active12-empty-storage-summary
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: project-row-11
+    timeout: 10000
+- assertVisible:
+    id: prepare-offline-screen
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 10000
+- assertNotVisible:
+    id: prepare-offline-screen
+- assertNotVisible:
+    id: login-email-input

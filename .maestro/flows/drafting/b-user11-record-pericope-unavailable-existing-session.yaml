@@ -1,0 +1,101 @@
+# Record-only follow-up to retained Bible fallback timeout: same native-guarded fixture.
+# No Start/record/play/stage/download/auth/assignment writes; preference restored Verse.
+appId: com.eten.fluent
+tags: [drafting, existing-session, reversible-preference, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556' && typeof MAESTRO_B_PERICOPE_ROWS !== 'undefined' && MAESTRO_B_PERICOPE_ROWS === '0'}
+- assertVisible:
+    id: '^record-tab$'
+- assertVisible:
+    id: '^drafting-tab-record$'
+    selected: true
+- extendedWaitUntil:
+    visible:
+      id: '^record-pericope-unavailable$'
+    timeout: 15000
+- assertVisible: "^Pericopes aren't available for this project\\. Showing verses instead\\.$"
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^Psalms 1:1$'
+- assertNotVisible:
+    id: '^record-verse-reference-subtitle$'
+- assertNotVisible:
+    id: '^record-stop-button$'
+- takeScreenshot: b-record-pericope-unavailable-resolved-verse1-no-capture
+- tapOn:
+    id: '^record-next-verse$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-verse-reference$'
+      text: '^Psalms 1:2$'
+    timeout: 10000
+- assertVisible:
+    id: '^record-pericope-unavailable$'
+- assertNotVisible:
+    id: '^record-stop-button$'
+- tapOn:
+    id: '^record-prev-verse$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-verse-reference$'
+      text: '^Psalms 1:1$'
+    timeout: 10000
+- takeScreenshot: b-record-verse-fallback-navigation-roundtrip-no-capture
+- tapOn:
+    id: '^drafting-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1033$'
+    timeout: 10000
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- runFlow:
+    when:
+      visible:
+        id: '^prepare-offline-screen$'
+    commands:
+      - tapOn:
+          id: '^stack-header-back$'
+          waitToSettleTimeoutMs: 500
+      - extendedWaitUntil:
+          visible:
+            id: '^project-row-1$'
+          timeout: 10000
+      - tapOn:
+          id: '^stack-header-back$'
+          waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 15000
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-menu-active-11$'
+- tapOn:
+    id: '^settings-menu-more-settings$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^settings-drafting-unit-verse$'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: '^settings-drafting-unit-verse$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-drafting-unit-verse$'
+    selected: true
+- takeScreenshot: b-user11-original-verse-preference-restored
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-projects$'
+    timeout: 15000

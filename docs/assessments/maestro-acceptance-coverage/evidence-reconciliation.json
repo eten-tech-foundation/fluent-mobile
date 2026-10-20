@@ -31,24 +31,24 @@
     },
     "canonical_live_status": {
       "UNTESTED": 27,
-      "BLOCKED": 145,
-      "PASS": 30
+      "BLOCKED": 144,
+      "PASS": 31
     },
     "canonical_execution_coverage": {
-      "partial": 47,
-      "complete_for_requirement": 30,
-      "not_run": 125
+      "partial": 48,
+      "complete_for_requirement": 31,
+      "not_run": 123
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 57,
-      "PASS": 22
+      "BLOCKED": 56,
+      "PASS": 23
     },
     "eligible_current_atomic_execution_coverage": {
       "partial": 19,
-      "complete_for_requirement": 22,
-      "not_run": 45
+      "complete_for_requirement": 23,
+      "not_run": 44
     },
     "full_live_PASS_eligible_ids": [
       "A-0015-01",
@@ -72,7 +72,8 @@
       "D-0540-01",
       "D-0540-02",
       "D-0564-01",
-      "D-0579-02"
+      "D-0579-02",
+      "D-0588-01"
     ],
     "any_partial_live_evidence_candidate_ids": [
       "A-0001-01",
@@ -132,7 +133,8 @@
       "B-0018-01",
       "D-0578-01",
       "B-0010-01",
-      "A-0034-01"
+      "A-0034-01",
+      "C-0053-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -3873,10 +3875,18 @@
       "applicability_review": "current",
       "unit_review": "group",
       "additive_scope": "nonadditive_parent",
-      "review_reason": "Storage summaries, cross-project selection, deletion confirmation and empty state are distinct; deletion is outside current scope.",
+      "review_reason": "Storage summaries, cross-project selection, deletion confirmation and empty state are distinct; the verified empty branch does not establish populated inventory or deletion.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-storage-fallback-reconciliation.json",
+          "case_id": "project11_empty_storage_native_agreement_21.47s",
+          "flow": ".maestro/flows/edges/project11-empty-storage-prepared.yaml",
+          "relation": "partial_empty_resources_and_summary_only",
+          "reason": "Actual user12/project11 TTS Configuration Test empty storage PASS21.47s. Completed localdownload0 and UI resourcesUsed0B; native df available4287372KiB/total6082144KiB rounds to UI4.1GB/5.8GB. Exact empty-other-project message, no resource rows/delete control; Back/Home. Pre/post six take metadata identical, active12/cache10,9,12/radios0/1. Not deletion/account-switch/recording-storage proof."
+        }
+      ],
       "isolated_status": "PASS",
       "isolated_evidence": [
         {
@@ -3913,18 +3923,17 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Delete Selected + confirm dialog",
-        "other-project accordion select",
-        "empty state copy",
-        "Necessary safe fixture/authorization not established: other-project downloaded resources on device"
+        "Known disposable populated downloaded resources across projects for inventory selection and correct byte totals.",
+        "Delete Selected confirmation/cancel/success and retained unselected resources remain unverified; existing six takes must stay untouched."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Use a verified separately owned populated resource catalogue/local-file fixture to verify selection and Delete Selected confirmation/cancel then scoped deletion outcome. Catalogue project12 truncated_manifest/API431 currently blocks downloads; empty summary proof needs no rerun.",
       "source_title": "Prepare for Offline manage device storage",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/53"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "current_scope_execution_blocker": "Populated resource inventory/catalogue availability; ordinary synthetic data/downloads authorized, but no prepared downloaded fixture yet."
     },
     {
       "id": "C-0077-01",
@@ -6552,21 +6561,28 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-storage-fallback-reconciliation.json",
+          "case_id": "record_local_pericope_unavailable_fallback_103.2s",
+          "flow": ".maestro/flows/drafting/b-user11-record-pericope-unavailable-existing-session.yaml",
+          "relation": "complete_exact_local_missing_behavior",
+          "reason": "Native guarded user11/project1/milestone18/assignment1033 localpericope0. Pericope preference shows exact unavailable/Showing verses warning, Record fallback Psalms1:1\u2192Next1:2\u2192Prev1:1 works; no pericope subtitle/activecapture. FullRecordPASS103.2s; Verse/Home11/radios0/1 restored. Prior BibleTIMEOUT120s with completed assertions retained separately. No remote missing bundle/set-level hydration, APK seed or product-approved copy wording claim."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Need a project with verified missing local pericope data plus warning and functioning fallback navigation."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "UI explains when project has no local pericope data",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/588"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact current local-missing UI explanation and functional verse fallback only; no remote/bundle/hydration or catalogue acceptance."
     },
     {
       "id": "D-0589-01",
