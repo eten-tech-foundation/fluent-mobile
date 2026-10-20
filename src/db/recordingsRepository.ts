@@ -678,7 +678,10 @@ export async function selectRecordingTake(id: string): Promise<void> {
 
 /**
  * Delete a take by id. If it was selected, promote the highest remaining
- * `take_number` for that verse + owner (or leave none latest if empty).
+ * `take_number` for that verse + owner (or leave none latest if empty) and
+ * mark that promotion pending so the server's active take follows — unless a
+ * canonical take supersedes it on that verse (#701, same rule as
+ * `selectRecordingTake`).
  *
  * No-ops (without error) if `id` doesn't exist or is owned by a different
  * user than the active account (#259). Unattributed rows
@@ -744,7 +747,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
     const candidates = await tx.execute(
       `SELECT r.id, r.bible_text_id, r.start_chapter, r.start_verse,
-              r.end_chapter, r.end_verse, r.take_number
+              r.end_chapter, r.end_verse, r.take_number, r.blob_key
        FROM recordings r
        INNER JOIN bible_texts anchor_bt ON anchor_bt.id = r.bible_text_id
        INNER JOIN bible_texts deleted_bt ON deleted_bt.id = ?
@@ -757,7 +760,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
          AND ${unit.sql}`,
       [bibleTextId, ...owner.params, ...unit.params],
     );
-    const priorId = (
+    const promoted = (
       (candidates.rows ?? []) as {
         id: string;
         bible_text_id: number;
@@ -766,6 +769,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
         end_chapter: number | null;
         end_verse: number | null;
         take_number: number;
+        blob_key: string | null;
       }[]
     )
       .filter(candidate =>
@@ -779,11 +783,37 @@ export async function deleteRecordingTake(id: string): Promise<void> {
           }),
         ),
       )
-      .sort((a, b) => b.take_number - a.take_number)[0]?.id;
-    if (priorId) {
+      .sort((a, b) => b.take_number - a.take_number)[0];
+    if (promoted) {
+      // #701 PM rule (mirrors selectRecordingTake): while the promoted
+      // take's verse (+unit) has a canonical take, canonical is what syncs
+      // as the server's selected take — promoting an already-uploaded take
+      // adds no sync marker of its own. Otherwise flip 'uploaded' →
+      // 'pending' so the next sync re-sends it as the active take.
+      const canonUnit = projectUnitClause(
+        normalizeProjectUnitId(row.project_unit_id),
+      );
+      const canonicalRows = await tx.execute(
+        `SELECT id FROM recordings
+         WHERE bible_text_id = ? AND is_canonical = 1 AND ${canonUnit.sql}
+         LIMIT 1`,
+        [promoted.bible_text_id, ...canonUnit.params],
+      );
+      const selectionSupersededByCanonical =
+        (canonicalRows.rows?.length ?? 0) > 0 && promoted.blob_key !== null;
+
       await tx.execute(
-        `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,
-        [now, priorId],
+        selectionSupersededByCanonical
+          ? `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`
+          : `UPDATE recordings
+       SET is_selected = 1,
+           sync_status = CASE
+             WHEN sync_status = 'uploaded' THEN 'pending'
+             ELSE sync_status
+           END,
+           updated_at = ?
+       WHERE id = ?`,
+        [now, promoted.id],
       );
     }
   });

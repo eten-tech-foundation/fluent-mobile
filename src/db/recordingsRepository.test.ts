@@ -503,6 +503,7 @@ async function mockExecute(
           end_chapter: r.end_chapter,
           end_verse: r.end_verse,
           take_number: r.take_number,
+          blob_key: r.blob_key ?? null,
         })),
     };
   }
@@ -1071,6 +1072,101 @@ describe('recordingsRepository multi-take', () => {
 
       await setCanonicalTake('bump-a'); // already canonical — no-op
       expect(getRecordingDataVersion()).toBe(versionBefore + 1);
+    });
+  });
+
+  describe('deleting the selected take syncs the promotion (#701)', () => {
+    const markUploaded = (id: string) => {
+      rows = rows.map(r =>
+        r.id === id
+          ? {
+              ...r,
+              sync_status: 'uploaded' as const,
+              blob_key: `unit-12/text-${r.bible_text_id}`,
+              version_token: 3,
+            }
+          : r,
+      );
+    };
+    const syncStatus = (id: string) =>
+      __getRecordingRows().find(r => r.id === id)?.sync_status;
+
+    it('marks the promoted take pending when its bytes are already on the server', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'del-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'del-b',
+      });
+      markUploaded('del-a');
+      markUploaded('del-b');
+
+      await deleteRecordingTake('del-b'); // selected — a is promoted
+
+      expect(
+        __getRecordingRows().find(r => r.id === 'del-a')?.is_selected,
+      ).toBe(1);
+      // The server's active take still points at the deleted audio — the
+      // promotion has to re-send so the server's selected take follows.
+      expect(syncStatus('del-a')).toBe('pending');
+    });
+
+    it('does not mark the promoted take pending while a canonical take exists', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'delcan-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'delcan-mid',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///c.m4a',
+        id: 'delcan-sel',
+      });
+      markUploaded('delcan-a');
+      markUploaded('delcan-mid');
+      markUploaded('delcan-sel');
+      await setCanonicalTake('delcan-a');
+      markUploaded('delcan-a'); // designation synced
+
+      await deleteRecordingTake('delcan-sel'); // mid is promoted
+
+      // PM rule: canonical (a) is what syncs as the selected take — the
+      // already-uploaded promotion adds no sync marker of its own.
+      expect(
+        __getRecordingRows().find(r => r.id === 'delcan-mid')?.is_selected,
+      ).toBe(1);
+      expect(syncStatus('delcan-mid')).toBe('uploaded');
+      expect(syncStatus('delcan-a')).toBe('uploaded');
+    });
+
+    it('does not override conflicted or failed state on promotion', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'delstate-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'delstate-b',
+      });
+      rows = rows.map(r =>
+        r.id === 'delstate-a' ? { ...r, sync_status: 'failed' as const } : r,
+      );
+
+      await deleteRecordingTake('delstate-b'); // a is promoted
+
+      // 'failed' / 'conflicted' are left for their own retry flows.
+      expect(syncStatus('delstate-a')).toBe('failed');
     });
   });
 
