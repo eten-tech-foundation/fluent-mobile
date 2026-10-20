@@ -1,0 +1,109 @@
+{
+  "visible": [
+    [
+      "",
+      "Fluent",
+      ""
+    ],
+    [
+      "",
+      "Development Build",
+      ""
+    ],
+    [
+      "",
+      "DEVELOPMENT SERVERS",
+      ""
+    ],
+    [
+      "",
+      "INFO",
+      ""
+    ],
+    [
+      "",
+      "Start a local development server with:",
+      ""
+    ],
+    [
+      "",
+      "npx expo start",
+      ""
+    ],
+    [
+      "",
+      "Then, select the local server when it appears here.",
+      ""
+    ],
+    [
+      "",
+      "http://",
+      ""
+    ],
+    [
+      "",
+      "Connect",
+      ""
+    ],
+    [
+      "",
+      "Or",
+      ""
+    ],
+    [
+      "",
+      "Fetch development servers",
+      ""
+    ],
+    [
+      "",
+      "RECENTLY OPENED",
+      ""
+    ],
+    [
+      "",
+      "RESET",
+      ""
+    ],
+    [
+      "",
+      "Fluent",
+      ""
+    ],
+    [
+      "",
+      "http://10.0.2.2:8081?disableOnboarding=1",
+      ""
+    ],
+    [
+      "",
+      "Fluent",
+      ""
+    ],
+    [
+      "",
+      "http://10.0.2.2:8081",
+      ""
+    ],
+    [
+      "",
+      "Home",
+      ""
+    ],
+    [
+      "",
+      "Updates",
+      ""
+    ],
+    [
+      "",
+      "Settings",
+      ""
+    ]
+  ],
+  "account": {
+    "active_user_id": "10",
+    "known_user_ids": "10,9,12"
+  },
+  "force_stop_and_MainActivity_start": true
+}

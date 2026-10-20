@@ -2147,6 +2147,11 @@
           "receipt": "evidence/recording-followup/summary.json",
           "relation": "partial",
           "reason": "Actualpause/resume, leaveprompt preservation, MetroJSreload recoveredprompt->paused->saved. OSprocesskill/crash anddrawerSettingsguard unproved."
+        },
+        {
+          "receipt": "evidence/process-network/summary.json",
+          "relation": "partial",
+          "reason": "Actualsafelypersistedpausedcapture recoveredafterappOSprocessstop/relaunch andsavedsame66646ms; backgroundautopauseanddrawerSettingsvariantsremainunverified."
         }
       ],
       "isolated_status": "PASS",
@@ -2165,10 +2170,10 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "OSprocessrestart andbackgroundauto-pause remain unverified; use verified disposable1183 andpersistedmarker preconditions."
+        "Backgroundauto-pause anddrawerSettingsspecificguards remainunverified; processrestartrecovery nowdirectPASS."
       ],
       "executable_now": true,
-      "next_test": "Persist a fresh disposable pausedcapture and verify segmentfile, then supported non-destructive OSprocessrestart, resume/save; no uncertainupload termination.",
+      "next_test": "Background an active disposable capture and verify auto-pause; use a confirmed drawer-specific gesture/menu route for guard matrix.",
       "source_title": "Kill-safe pause recovery and leave prompt",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/567",
@@ -6588,5 +6593,19 @@
       "runtime patch application and badge transition"
     ]
   },
-  "latest_direct_recording_followup": "evidence/recording-followup/summary.json"
+  "latest_direct_recording_followup": "evidence/recording-followup/summary.json",
+  "latest_process_network_milestone": {
+    "receipt": "evidence/process-network/summary.json",
+    "new_issue733": "https://github.com/eten-tech-foundation/fluent-mobile/issues/733",
+    "issue733_live_fix_verified": "evidence/issue733-live/summary.json",
+    "issue732_live_retained_transition_verified": true,
+    "no_atomic_count_promotions": true,
+    "new_Maestro_group": "1CLIrunPASS/2newcheckpointstates,32completed4skipped19.348s; existing17/13unchangedhistoricalmeasure",
+    "audio_label_correction": "Hostmicdisabled does not prove digital silence; savedverse2decodednonzerosignal; audible/inputprovenanceunverified",
+    "next_checks": [
+      "Drawer/Settingsspecificlock remainsunproved: currentedgegesturesinvokeAndroidBack",
+      "Mid-uploadPauseRetryDrop requirescontrolledlongertransferwindow; emulatornetspeedcapabilityexistsbutWiFiapplicabilityunverified",
+      "Independentserverreadback remainsunverified"
+    ]
+  }
 }

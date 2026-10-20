@@ -1,0 +1,207 @@
+{
+  "issue": 733,
+  "commit": "14238a4",
+  "steps": [
+    {
+      "step": "offline",
+      "utc": "2026-10-20T18:29:47.584863+00:00",
+      "result": "OK: airplane mode enabled\n"
+    },
+    {
+      "step": "offline_saved",
+      "utc": "2026-10-20T18:29:54.288161+00:00",
+      "db": [
+        {
+          "id": "rec_mvgyi6ut_qg018vsu",
+          "bible_text_id": "34844",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "95675",
+          "file_size_bytes": "1168949",
+          "sync_status": "uploaded",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh032ch_05antbde",
+          "bible_text_id": "34845",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "36999",
+          "file_size_bytes": "453302",
+          "sync_status": "uploaded",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh0ef5x_qaz9pxhq",
+          "bible_text_id": "34846",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "66646",
+          "file_size_bytes": "815929",
+          "sync_status": "uploaded",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh0ps18_z1xxf0n7",
+          "bible_text_id": "34847",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "24192",
+          "file_size_bytes": "297851",
+          "sync_status": "pending",
+          "version_token": ""
+        }
+      ]
+    },
+    {
+      "step": "grouped_Maestro_started",
+      "utc": "2026-10-20T18:29:54.288870+00:00",
+      "assertions": "new savedtake checkpoint + fixedofflineSync checkpoint",
+      "artifact_dir": "/tmp/maestro-733-group-1792520994288853000"
+    },
+    {
+      "step": "grouped_Maestro_finished",
+      "utc": "2026-10-20T18:30:13.637441+00:00",
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_s": 19.348,
+      "outcome": "PASS"
+    },
+    {
+      "step": "fixed_runtime_offline_label_PASS",
+      "utc": "2026-10-20T18:30:15.694451+00:00",
+      "visible": [
+        [
+          "stack-header-back",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Sync",
+          "true"
+        ],
+        [
+          "sync-screen",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Offline \u00b7 upload pending",
+          "true"
+        ],
+        [
+          "",
+          "Saved on this device. Will sync when Fluent is reachable.",
+          "true"
+        ],
+        [
+          "",
+          "Can't reach Fluent",
+          "true"
+        ],
+        [
+          "sync-action-controls-pending",
+          "",
+          "true"
+        ],
+        [
+          "sync-action-sync-now",
+          "",
+          "false"
+        ],
+        [
+          "",
+          "Sync Now",
+          "true"
+        ],
+        [
+          "sync-action-sync-now-disabled-hint",
+          "Connect to the internet to upload and download.",
+          "true"
+        ],
+        [
+          "sync-upload-cellular",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Upload/Download over cellular",
+          "true"
+        ],
+        [
+          "",
+          "Use mobile data to upload recordings and download resources when WiFi isn't available.",
+          "true"
+        ],
+        [
+          "sync-upload-cellular-switch",
+          "",
+          "true"
+        ]
+      ]
+    },
+    {
+      "step": "restore_online",
+      "utc": "2026-10-20T18:30:15.822079+00:00",
+      "result": "OK: airplane mode disabled\n"
+    },
+    {
+      "step": "restoration",
+      "utc": "2026-10-20T18:30:20.133893+00:00",
+      "airplane_mode_on": "0",
+      "wifi_status": "Wifi is enabled\nWifi scanning is always available\n==== Primary ClientModeManager instance ====\nWifi is connected to \"AndroidWifi\"\nWifiInfo: SSID: \"AndroidWifi\", BSSID: 00:13:10:85:fe:01, MAC: 02:15:b2:00:00:00, IP: /10.0.2.16, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 1, RSSI: -50, Link speed: 1Mbps, Tx Link speed: 1Mbps, Max Supported Tx Link speed: 11Mbps, Rx Link speed: -1Mbps, Max Supported Rx Link speed: 11Mbps, Frequency: 2447MHz, Net ID: 0, Metered hint: false, score: 60, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none>\"AndroidWifi\"openMLO Information: , AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>\nsuccessfulTxPackets: 874486\nsuccessfulTxPacketsPerSecond: 0.33277839454767255\nretriedTxPackets: 0\nretriedTxPacketsPerSecond: 0.0\nlostTxPackets: 0\nlostTxPacketsPerSecond: 0.0\nsuccessfulRxPackets: 1869054\nsuccessfulRxPacketsPerSecond: 0.0\n",
+      "restored": true
+    },
+    {
+      "step": "after_reconnect_db",
+      "utc": "2026-10-20T18:30:20.176223+00:00",
+      "db": [
+        {
+          "id": "rec_mvgyi6ut_qg018vsu",
+          "bible_text_id": "34844",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "95675",
+          "file_size_bytes": "1168949",
+          "sync_status": "uploaded",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh032ch_05antbde",
+          "bible_text_id": "34845",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "36999",
+          "file_size_bytes": "453302",
+          "sync_status": "uploaded",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh0ef5x_qaz9pxhq",
+          "bible_text_id": "34846",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "66646",
+          "file_size_bytes": "815929",
+          "sync_status": "uploaded",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh0ps18_z1xxf0n7",
+          "bible_text_id": "34847",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "24192",
+          "file_size_bytes": "297851",
+          "sync_status": "pending",
+          "version_token": ""
+        }
+      ]
+    }
+  ],
+  "new_take": "rec_mvh0ps18_z1xxf0n7",
+  "maestro_artifacts": "/tmp/maestro-733-group-1792520994288853000"
+}

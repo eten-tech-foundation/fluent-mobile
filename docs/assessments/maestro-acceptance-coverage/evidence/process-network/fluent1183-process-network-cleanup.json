@@ -1,0 +1,39 @@
+{
+  "active_account": 12,
+  "cached": [
+    10,
+    9,
+    12
+  ],
+  "Home": true,
+  "no_capture_or_playback_active": true,
+  "all_three_takes_preserved": [
+    {
+      "id": "rec_mvgyi6ut_qg018vsu",
+      "recorded_by_user_id": "10",
+      "duration_ms": "95675",
+      "file_size_bytes": "1168949",
+      "sync_status": "uploaded",
+      "version_token": "2"
+    },
+    {
+      "id": "rec_mvh032ch_05antbde",
+      "recorded_by_user_id": "10",
+      "duration_ms": "36999",
+      "file_size_bytes": "453302",
+      "sync_status": "uploaded",
+      "version_token": "2"
+    },
+    {
+      "id": "rec_mvh0ef5x_qaz9pxhq",
+      "recorded_by_user_id": "10",
+      "duration_ms": "66646",
+      "file_size_bytes": "815929",
+      "sync_status": "uploaded",
+      "version_token": "2"
+    }
+  ],
+  "paused_markers_cleared_after_save": true,
+  "airplane_mode_on": "0",
+  "wifi_connected_AndroidWifi": true
+}

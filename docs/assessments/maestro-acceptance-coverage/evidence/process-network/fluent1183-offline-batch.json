@@ -1,0 +1,338 @@
+{
+  "steps": [
+    {
+      "step": "offline_helper",
+      "utc": "2026-10-20T18:20:57.717143+00:00",
+      "result": "OK: airplane mode enabled\n"
+    },
+    {
+      "step": "offline_header",
+      "utc": "2026-10-20T18:21:00.990571+00:00",
+      "desc": [
+        "Offline \u00b7 nothing pending. Open Sync page."
+      ]
+    },
+    {
+      "step": "saved_offline_pending",
+      "utc": "2026-10-20T18:21:04.578687+00:00",
+      "db": [
+        {
+          "id": "rec_mvgyi6ut_qg018vsu",
+          "bible_text_id": "34844",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "95675",
+          "file_size_bytes": "1168949",
+          "sync_status": "uploaded",
+          "blob_key": "unit-19/text-34844",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh032ch_05antbde",
+          "bible_text_id": "34845",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "36999",
+          "file_size_bytes": "453302",
+          "sync_status": "uploaded",
+          "blob_key": "unit-19/text-34845",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh0ef5x_qaz9pxhq",
+          "bible_text_id": "34846",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "66646",
+          "file_size_bytes": "815929",
+          "sync_status": "pending",
+          "blob_key": "",
+          "version_token": ""
+        }
+      ],
+      "UI": [
+        [
+          "record-take-sync-rec_mvh0ef5x_qaz9pxhq",
+          "pending"
+        ]
+      ]
+    },
+    {
+      "step": "offline_Sync_controls",
+      "utc": "2026-10-20T18:21:06.876238+00:00",
+      "visible": [
+        [
+          "stack-header-back",
+          "",
+          "Go back",
+          "true"
+        ],
+        [
+          "",
+          "Sync",
+          "",
+          "true"
+        ],
+        [
+          "sync-screen",
+          "",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Offline \u00b7 upload pending",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Saved on this device. Will sync when Fluent is reachable.",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Can't reach Fluent",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Uploading",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "0%",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "0 of 1 chapters uploaded",
+          "",
+          "true"
+        ],
+        [
+          "sync-action-controls-pending",
+          "",
+          "",
+          "true"
+        ],
+        [
+          "sync-action-sync-now",
+          "",
+          "Sync Now",
+          "false"
+        ],
+        [
+          "",
+          "Sync Now",
+          "",
+          "true"
+        ],
+        [
+          "sync-action-sync-now-disabled-hint",
+          "Connect to the internet to upload and download.",
+          "",
+          "true"
+        ],
+        [
+          "sync-upload-cellular",
+          "",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Upload/Download over cellular",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Use mobile data to upload recordings and download resources when WiFi isn't available.",
+          "",
+          "true"
+        ],
+        [
+          "sync-upload-cellular-switch",
+          "",
+          "Upload/Download over cellular",
+          "true"
+        ]
+      ]
+    },
+    {
+      "step": "online_helper",
+      "utc": "2026-10-20T18:21:07.039468+00:00",
+      "result": "OK: airplane mode disabled\n"
+    },
+    {
+      "step": "reconnect_screen",
+      "utc": "2026-10-20T18:21:09.207685+00:00",
+      "visible": [
+        [
+          "stack-header-back",
+          "",
+          "Go back",
+          "true"
+        ],
+        [
+          "",
+          "Sync",
+          "",
+          "true"
+        ],
+        [
+          "sync-screen",
+          "",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Offline \u00b7 upload pending",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Saved on this device. Will sync when Fluent is reachable.",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Can't reach Fluent",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Uploading",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "0%",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "0 of 1 chapters uploaded",
+          "",
+          "true"
+        ],
+        [
+          "sync-action-controls-pending",
+          "",
+          "",
+          "true"
+        ],
+        [
+          "sync-action-sync-now",
+          "",
+          "Sync Now",
+          "false"
+        ],
+        [
+          "",
+          "Sync Now",
+          "",
+          "true"
+        ],
+        [
+          "sync-action-sync-now-disabled-hint",
+          "Connect to the internet to upload and download.",
+          "",
+          "true"
+        ],
+        [
+          "sync-upload-cellular",
+          "",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Upload/Download over cellular",
+          "",
+          "true"
+        ],
+        [
+          "",
+          "Use mobile data to upload recordings and download resources when WiFi isn't available.",
+          "",
+          "true"
+        ],
+        [
+          "sync-upload-cellular-switch",
+          "",
+          "Upload/Download over cellular",
+          "true"
+        ]
+      ],
+      "db": [
+        {
+          "id": "rec_mvgyi6ut_qg018vsu",
+          "bible_text_id": "34844",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "95675",
+          "file_size_bytes": "1168949",
+          "sync_status": "uploaded",
+          "blob_key": "unit-19/text-34844",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh032ch_05antbde",
+          "bible_text_id": "34845",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "36999",
+          "file_size_bytes": "453302",
+          "sync_status": "uploaded",
+          "blob_key": "unit-19/text-34845",
+          "version_token": "2"
+        },
+        {
+          "id": "rec_mvh0ef5x_qaz9pxhq",
+          "bible_text_id": "34846",
+          "recorded_by_user_id": "10",
+          "project_unit_id": "19",
+          "duration_ms": "66646",
+          "file_size_bytes": "815929",
+          "sync_status": "pending",
+          "blob_key": "",
+          "version_token": ""
+        }
+      ]
+    },
+    {
+      "step": "restore_original_airplane",
+      "utc": "2026-10-20T18:21:09.315783+00:00",
+      "result": "OK: airplane mode disabled\n"
+    },
+    {
+      "step": "connectivity_restoration",
+      "utc": "2026-10-20T18:21:09.410779+00:00",
+      "airplane_mode_on": "0",
+      "wifi_status": "Wifi is enabled\nWifi scanning is always available\n==== Primary ClientModeManager instance ====\nWifi is not connected\n",
+      "restored": false
+    }
+  ],
+  "original_connectivity": {
+    "airplane_mode_on": "0",
+    "wifi_status": "Wifi is enabled\nWifi scanning is always available\n==== Primary ClientModeManager instance ====\nWifi is connected to \"AndroidWifi\"\nWifiInfo: SSID: \"AndroidWifi\", BSSID: 00:13:10:85:fe:01, MAC: 02:15:b2:00:00:00, IP: /10.0.2.16, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 1, RSSI: -50, Link speed: 1Mbps, Tx Link speed: 1Mbps, Max Supported Tx Link speed: 11Mbps, Rx Link speed: 2Mbps, Max Supported Rx Link speed: 11Mbps, Frequency: 2447MHz, Net ID: 0, Metered hint: false, score: 60, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none>\"AndroidWifi\"openMLO Information: , AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>\nsuccessfulTxPackets: 860919\nsuccessfulTxPacketsPerSecond: 7.485243321187916\nretriedTxPackets: 0\nretriedTxPacketsPerSecond: 0.0\nlostTxPackets: 0\nlostTxPacketsPerSecond: 0.0\nsuccessfulRxPackets: 1836347\nsuccessfulRxPacketsPerSecond: 8.858834773769123\n",
+    "target": "emulator-5554",
+    "network_mutation_started": false
+  },
+  "network_scope": "emulator-5554 only; explicitly approved",
+  "new_take": "rec_mvh0ef5x_qaz9pxhq",
+  "completed_current_stage": true
+}

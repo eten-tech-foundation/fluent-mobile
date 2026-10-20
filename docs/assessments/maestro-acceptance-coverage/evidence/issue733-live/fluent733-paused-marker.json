@@ -1,0 +1,20 @@
+[
+  {
+    "sessionKey": "1183:4",
+    "segments": [
+      "file:///data/user/0/com.eten.fluent/files/Audio/recording-af80aa21-2ced-4cba-93de-217e781c0b46.aac"
+    ],
+    "elapsedMs": 24192,
+    "startedAt": "2026-10-20T18:28:10.485Z",
+    "chapterAssignmentId": 1183,
+    "verseNumber": 4,
+    "capture": {
+      "bibleTextId": 34847,
+      "granularity": "verse",
+      "startChapter": 1,
+      "startVerse": 4,
+      "endChapter": 1,
+      "endVerse": 4
+    }
+  }
+]

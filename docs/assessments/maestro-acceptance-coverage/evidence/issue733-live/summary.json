@@ -1,0 +1,35 @@
+{
+  "issue733": {
+    "commit": "14238a4",
+    "new_tests": 3,
+    "existing_tests": 22,
+    "total_PASS": 25,
+    "runtime_fixed_offline_label_PASS": true
+  },
+  "issue732": {
+    "commit": "f643d30",
+    "runtime_retained_pending_to_uploaded_PASS": true,
+    "receipt": "fluent732-runtime-transition-pass.json"
+  },
+  "new_take": "rec_mvh0ps18_z1xxf0n7",
+  "duration_ms": 24192,
+  "bytes": 297851,
+  "Maestro": {
+    "grouped_CLI_runs_PASS": 1,
+    "new_checkpoint_states_PASS": 2,
+    "phases": [
+      "saved",
+      "offline-pending"
+    ],
+    "commands_COMPLETED": 32,
+    "commands_SKIPPED": 4,
+    "elapsed_s": 19.348,
+    "harness_commit": "abbad55",
+    "other_phases_not_executed": true
+  },
+  "cleanup": "cleanup.json",
+  "no_Mac_network_changes": true,
+  "network_speed_unchanged": true,
+  "independent_server_readback": false,
+  "whole_app_percentage": null
+}

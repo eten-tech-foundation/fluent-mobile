@@ -1,0 +1,54 @@
+{
+  "schema": "fluent-local-media-analysis/v1",
+  "take": "rec_mvh032ch_05antbde",
+  "file": "/Users/matt/Documents/Codex/2026-10-19/task-10/live-results/20261020/media-analysis/synthetic-recovered-verse2.m4a",
+  "sha256": "66a49ccda656e7d28324ee1b6cf3e1fb05de3a847290af1e41ea2cc0afe8a248",
+  "bytes": 453302,
+  "expected_db_bytes": 453302,
+  "expected_db_duration_ms": 36999,
+  "probe": {
+    "container": "mov,mp4,m4a,3gp,3g2,mj2",
+    "duration_seconds": 36.919728,
+    "codec": "aac",
+    "profile": "LC",
+    "sample_rate_hz": 44100,
+    "channels": 1
+  },
+  "duration_delta_from_db_ms": -79.2719999999972,
+  "strict_decode": {
+    "exit_code": 0,
+    "errors_log_empty": true
+  },
+  "decoded_float_signal": {
+    "rms_dbfs": -3.043506,
+    "peak_dbfs": 0.978308,
+    "min": -1.11922,
+    "max": 1.112783,
+    "samples": 1628160.0,
+    "nan": 0.0,
+    "inf": 0.0
+  },
+  "silence_detection": {
+    "threshold_db": -60,
+    "minimum_duration_seconds": 0.1,
+    "reported_intervals": 0
+  },
+  "conclusion": "Strong nonzero decoded digital signal; input provenance unknown despite host microphone reported disabled. Do not label this file digital silence. No actual audible playback or microphone provenance claim.",
+  "emulator_capabilities": {
+    "installed_proto": "/Users/matt/Library/Android/sdk/emulator/lib/emulator_controller.proto",
+    "input": "injectAudio(stream AudioPacket): PCM sample bytes plus AudioFormat; WAV must be decoded to supported PCM, not streamed as WAV-container bytes. Format U8/S16LE,Mono/Stereo,default44100Hz;300msbuffer,one microphone only. MODE_UNSPECIFIED blocks with emulator demand; REAL_TIME experimental overwrites.",
+    "output": "streamAudio(AudioFormat)->stream AudioPacket: digital output frames every20\u201330ms; can block if no generated audio.",
+    "console_binary_evidence": "Installed qemu binary contains wavcapture/stopcapture and avd rewindaudio (wav input driver); strings alone do not establish active console support or precise input backend setup.",
+    "host_mic_off_evidence": "Installed console help string says avd hostmicoff sends zeroes regardless of host microphone signals; -allow-host-audio help says otherwise zeroes. No installed source explains observed nonzero recording; do not infer cause.",
+    "runtime_readiness": "Not checked: no console/gRPC connection, endpoint/auth read or device action. grpcurl not on PATH; no installs. gRPC capability supported by installed proto, callable session readiness unproved.",
+    "help_probe_note": "Read-only emulator help printed crashpad sandbox bootstrap errors; no AVD was launched. -help-audio-in/out unsupported. -help-audio works."
+  },
+  "constraints": [
+    "Private workspace only",
+    "No ambient host microphone access",
+    "No device/browser/network actions",
+    "No Library upload",
+    "No audible playback",
+    "Only authorized local file decoded"
+  ]
+}

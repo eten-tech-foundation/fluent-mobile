@@ -107,8 +107,19 @@
       "failure": "Retained take UI badge stayed pending after native DB recorded uploaded.",
       "fail_before": "3new regression cases FAIL",
       "pass_after": "55PASS=52existing+3new;lint/typecheck/formatPASS",
-      "status": "Fixed locally and isolated tests verified; runtime patch application and live transition unverified",
+      "status": "Locallyfixed;directruntimepending-to-uploadedretainedbadgeagreementverified;independentserverreadbackunverified",
       "receipt": "take-badge-checkpoint.json"
+    },
+    {
+      "issue": 733,
+      "url": "https://github.com/eten-tech-foundation/fluent-mobile/issues/733",
+      "commits": [
+        "14238a4"
+      ],
+      "fail_before": "3newcasesFAIL",
+      "pass_after": "22existing+3new=25PASS;staticchecksPASS",
+      "status": "Locallyfixed;liveofflinependinglabelverifiedbygroupedMaestro;notpushedmerged",
+      "receipt": "issue733-live/summary.json"
     }
   ],
   "combined_sync_validation": {
@@ -228,5 +239,7 @@
     "Known non-silent capture/playback and controlled capture resume/recovery require next disposable-capture scope; preserve existing saved take",
     "Controlled queued upload pause/retry/offline/reconnect and independent server agreement remain unverified",
     "Populated resource fixture and verified additional role states remain required"
-  ]
+  ],
+  "latest_direct_and_Maestro_receipt": "issue733-live/summary.json",
+  "audio_integrity_receipt": "saved-audio-digital-analysis.json"
 }

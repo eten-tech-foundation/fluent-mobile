@@ -1,0 +1,12 @@
+{
+  "recovered_prompt_after_process_restart": true,
+  "Resume_restores_paused_verse3": true,
+  "account": {
+    "active_user_id": "10",
+    "known_user_ids": "10,9,12"
+  },
+  "visible_duration": [
+    "1:06"
+  ],
+  "no_reset_reinstall": true
+}

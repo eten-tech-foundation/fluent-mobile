@@ -1,0 +1,30 @@
+{
+  "marker": {
+    "sessionKey": "1183:3",
+    "segments": [
+      "file:///data/user/0/com.eten.fluent/files/Audio/recording-9cc39144-1199-4fae-9e29-f7d71eca30d7.aac"
+    ],
+    "elapsedMs": 66646,
+    "startedAt": "2026-10-20T18:18:36.949Z",
+    "chapterAssignmentId": 1183,
+    "verseNumber": 3,
+    "capture": {
+      "bibleTextId": 34846,
+      "granularity": "verse",
+      "startChapter": 1,
+      "startVerse": 3,
+      "endChapter": 1,
+      "endVerse": 3
+    }
+  },
+  "segment_sizes": [
+    820643
+  ],
+  "capturePaused": true,
+  "uploading_count": 0,
+  "account": {
+    "active_user_id": "10",
+    "known_user_ids": "10,9,12"
+  },
+  "edge_swipes_proof": "Android Back leaveprompt; cannot claim drawer-specificlock"
+}

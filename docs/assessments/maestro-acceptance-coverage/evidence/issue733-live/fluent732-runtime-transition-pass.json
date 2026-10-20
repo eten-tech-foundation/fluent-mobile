@@ -1,0 +1,19 @@
+{
+  "same_retained_Record_view": true,
+  "pending_before": "fluent733-live-batch.json offline_saved and savedMaestrocheckpoint",
+  "db": [
+    {
+      "id": "rec_mvh0ps18_z1xxf0n7",
+      "duration_ms": "24192",
+      "file_size_bytes": "297851",
+      "sync_status": "uploaded",
+      "version_token": "2"
+    }
+  ],
+  "UI_status": [
+    "uploaded"
+  ],
+  "runtime_pending_to_uploaded_agreement": true,
+  "no_Bible_reopen_no_recording_reset": true,
+  "independent_server_proof": false
+}

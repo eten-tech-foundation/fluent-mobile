@@ -1123,6 +1123,20 @@
       "dependencies": [],
       "context_dependencies": "QA packet may reference separately reviewed726/728/729/730/731/732/724 fix PRs. Evidence records originating branch snapshots; documentation/test context is not a reason to combine fixes. When constructing against target base, apply only required test scaffolding or declare explicit stacked test dependency if an isolated test fails without a separately landed fix.",
       "scope": "Harness, generic regression coverage, documentation hygiene and bounded acceptance evidence. No duplication of separately owned product fixes; no inflation of86atomic denominator or Maestro PASS count. Prior grouped-fix descriptions in consolidated evidence are provenance, not a grouped PR proposal."
+    },
+    {
+      "issue": 733,
+      "commits": [
+        "14238a4"
+      ],
+      "files": [
+        "src/app/screens/SyncScreen.tsx",
+        "src/app/screens/SyncScreen.test.tsx"
+      ],
+      "scope": "Hideactiveprogressforidlequeuedpendingwork;noqueue/networkchanges",
+      "validation": "3newred->25green;lint/typecheck/formatPASS;liveofflinependingMaestroPASS",
+      "dependencies": "No semantic dependency on other core fixes; sharedscreenfile contextualbase must be reviewed",
+      "separate_QA_commit": "abbad55 belongs717, do not bundle unrelatedharnessinto733PR"
     }
   ],
   "issue725": {
@@ -1143,5 +1157,7 @@
     }
   },
   "future_per_pr_validation": "After authorized clean PR construction: exact staged review/secret check, focused issue suites, typecheck/lint/format; applicable repository CI before ready claim. Existing branch results are supporting evidence, not clean split validation. No runs performed for this plan.",
-  "remaining_uncertainty": "Existing commit list is a bounded inspected separation map, not a whole-branch audit. Root reconciles later workspace-only evidence files and publication metadata before final QA packet."
+  "remaining_uncertainty": "Existing commit list is a bounded inspected separation map, not a whole-branch audit. Root reconciles later workspace-only evidence files and publication metadata before final QA packet.",
+  "latest_live_evidence": "issue733-live/summary.json",
+  "no_push_merge": true
 }
