@@ -1,6 +1,6 @@
 # Maestro acceptance coverage — runtime receipt
 
-Dated runtime record for the existing-session flow packet. Scope is 14 live case variants across ten new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
+Dated runtime record for the existing-session flow packet. Scope is 15 live case variants across eleven new flow files. This receipt is separate from the historical 21-case ledger and from setup/assertion counts. It is **not** a whole-app coverage percentage, a live grant, audio-fidelity, human Nightly, or disposable-target claim.
 
 Sources (read-only verified receipts):
 
@@ -110,3 +110,9 @@ These add two live variants and two flow files. Broader compound role, stage, an
 Two new read-only cases each ran once: PFO flow FAIL after exact header/instruction assertions completed; incorrect return-to-Settings check failed because captured hierarchy showed Home. Elapsed 36.942s (11 UI assertions); empty Resources relative tab order PASS 31.827s (19 UI assertions). Sources `/tmp/fluent-next-assertion-batch.json` (PFO) and `/tmp/fluent-resources-order-only-batch.json` (Resources); frozen hashes and exact commands paths retained in runtime-evidence.json. PFO required-copy evidence is complete despite the separate harness return failure. Corrected flow now asserts Home after Back; correction was not rerun. Resources ran only after safe cleanup and account restoration. No download, recording, playback, preference, credential or shared-state changes. Final Home cleanup and cached12 restoration PASS; PID 7152, cached 10/9/12 preserved. Relocated Expo Tools control remains clear of header.
 
 D-0235-02 also upgrades using already successful Projects and My Work navigation evidence, with no new run. Current bounded 86 candidates: 8 complete, 14 partial, 64 absent; 8 PASS / 70 BLOCKED / 8 UNTESTED. Historical 5/17/64 above describes the earlier milestone. The remaining eight UNTESTED rows retain explicit oracle/scope limits in evidence-reconciliation.json; no app-wide percentage. Existing pericope seed contracts already cover lookup/version behavior, so no duplicate isolated test was added or rerun.
+
+## Approved user10 preference persistence
+
+D-0407-02 PASS: 68.111s, 33 UI assertions, exit0, no timeout. Source `/tmp/fluent-preference-persistence-batch.json`. Initially active12, cached10/9/12, user10 preference override absent (effective Verse); UI selected Verse required before mutation. Changed only user10 drafting unit to Pericope, reopened drafting with Pericope-driven UI, then reopened Settings and asserted Pericope remained selected. Restored Verse through UI, reopened drafting with verse rows and no pericope warning; Home cleanup and active12 restore PASS. Other cached-user preference keys unchanged. The initially absent override is now explicit `verse` with the normal preference dirty flag; no direct storage edits. No other setting, recording, playback, sync, auth, reset, rebuild or sharedQA action.
+
+Current bounded86: 9 complete / 14 partial / 63 absent; 9 PASS / 70 BLOCKED / 7 UNTESTED. Total successful live variants15 across11 flow files. Historical milestones above remain dated evidence. Pericope cards-or-unavailable fallback verifies preference application, not populated pericope segmentation or seed provenance. PFO required-copy PASS remains separate from its failed return-harness execution.

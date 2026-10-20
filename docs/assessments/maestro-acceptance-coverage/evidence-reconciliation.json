@@ -1,6 +1,6 @@
 {
   "schema": "fluent-acceptance-evidence-reconciliation/v1",
-  "generated_utc": "2026-10-20T08:10:08.596574+00:00",
+  "generated_utc": "2026-10-20T10:35:07.441883+00:00",
   "scope": "Bounded reconciliation of existing issue-derived candidate ledger, not fresh complete acceptance extraction or app-wide denominator",
   "summary": {
     "raw_candidates_reviewed": 204,
@@ -31,23 +31,23 @@
     },
     "canonical_live_status": {
       "BLOCKED": 162,
-      "PASS": 9,
-      "UNTESTED": 31
+      "PASS": 10,
+      "UNTESTED": 30
     },
     "canonical_execution_coverage": {
-      "complete_for_requirement": 9,
-      "not_run": 155,
+      "complete_for_requirement": 10,
+      "not_run": 154,
       "partial": 38
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "BLOCKED": 70,
-      "PASS": 8,
-      "UNTESTED": 8
+      "PASS": 9,
+      "UNTESTED": 7
     },
     "eligible_current_atomic_execution_coverage": {
-      "complete_for_requirement": 8,
-      "not_run": 64,
+      "complete_for_requirement": 9,
+      "not_run": 63,
       "partial": 14
     },
     "full_live_PASS_eligible_ids": [
@@ -58,6 +58,7 @@
       "D-0189-02",
       "D-0190-02",
       "D-0235-02",
+      "D-0407-02",
       "D-0564-01"
     ],
     "any_partial_live_evidence_candidate_ids": [
@@ -126,10 +127,10 @@
       "D-0594-01"
     ],
     "new_selected_live_cases": {
-      "latest_PASS": 14,
-      "flow_files": 10,
+      "latest_PASS": 15,
+      "flow_files": 11,
       "repeat_green_cases_this_reconciliation": 0,
-      "new_executions_this_reconciliation": 2,
+      "new_executions_this_reconciliation": 1,
       "frozen_initial_milestone_PASS": 11
     },
     "new_isolated_contract_cases": {
@@ -165,8 +166,8 @@
       "cleanup": "PASS single502Dismiss/Home28.086s + cached12restore23.863s"
     },
     "new_attempts_since_11_PASS_milestone": {
-      "attempts": 8,
-      "PASS": 3,
+      "attempts": 9,
+      "PASS": 4,
       "FAIL": 5,
       "notes": "Earlierfailed viewport/error-obstructed attempts andguardedretry retained. Latestcap+CompleteattemptsPASSafterobserveddebugoverlaydrag. Helpers/prep/cleanupnotcasecounts."
     },
@@ -194,16 +195,21 @@
         "A-0006-01": "Current preserved viewport overflow remains unproven; no viewport/font changes or forced scroll loops.",
         "C-0038-01": "Sole-entry/obsolete-inline absence lacks a defined exhaustive UI oracle; existing one-press Sync entry proof does not establish exclusivity.",
         "D-0188-03": "Centered geometry and independently established online-empty response precondition remain missing.",
-        "D-0407-02": "Preference persistence needs a preference change, outside current read-only UI scope.",
         "D-0447-01": "Installed APK bundled-seed provenance cannot be established by Metro source/unit tests; no rebuild authorized. Existing isolated lookup tests cover defined version behavior; hash validation is not an implemented contract.",
         "D-0702-01": "Available download or explanatory unavailable path needs a known resource-catalog oracle; no fixture hunting or download authorized."
       }
+    },
+    "approved_preference_milestone": {
+      "new_live_PASS": 1,
+      "requirement": "D-0407-02",
+      "case_elapsed_s": 68.111,
+      "restored_verse_and_active12": true
     }
   },
   "source_sha256": {
     "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/coverage.json": "e07d044693a4dfa69bfdc2758e12f7d0a23b4d9d75f990b306990a1cda70e746",
     "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/unit-review.json": "04271677a4ee7cb2d44a10662b002d3fa3f17c3b4ccde14e6efd9eecd16ab1c4",
-    "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/runtime-evidence.json": "e7c254fe3297f8c7abd7e57de6a06325dac4b5d131fdbd1d2223ef60c316bcad",
+    "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/runtime-evidence.json": "6ba55723638a5bbac3fc0ed75f066352a3ab1503e35055b4dabf26616b74ef75",
     "/tmp/fluent-resource-take-contract-result.json": "c51e1552923d56c385df534292d26391043ebf5cda8d250fe8a0c6c5b26e560c",
     "/tmp/fluent-visual-page-state-inventory.json": "3cb2b07b78cf2bb7c92a12b5c9607d508a7973ef9d3e4f3310acd8ea49c627d4"
   },
@@ -5187,22 +5193,29 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "UNTESTED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
+      "live_evidence": [
+        {
+          "receipt": "/tmp/fluent-preference-persistence-batch.json",
+          "case_id": "user10_drafting_unit_persistence_first_execution",
+          "flow": ".maestro/flows/drafting/settings-unit-persist-existing-session.yaml",
+          "commands_artifact": "/tmp/maestro-efficient-user10_drafting_unit_persistence_first_execution/2026-10-20_033234/settings-unit-persist-existing-session/commands.json",
+          "relation": "full",
+          "reason": "User10 Settings selected Verse before mutation; Pericope selected, left Settings and reopened fixture484 Bible; Pericope-driven cards or explicit unavailable fallback asserted. Reopened same-user Settings retained selected Pericope. Restored Verse via UI and reopened drafting with verse rows and no pericope warning. No recording/playback or other setting actions.",
+          "scope_limit": "Pericope fallback qualifies preference persistence; this does not prove populated pericope boundaries or APK seed provenance."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Need a demonstrated preference change and later same-user restoration; existing default Verse state is insufficient."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Drafting unit preference persists per user",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/407"
       ],
-      "domain": "reference_platform",
-      "current_scope_execution_blocker": "Preference persistence needs a preference change, outside current read-only UI scope."
+      "domain": "reference_platform"
     },
     {
       "id": "D-0407-03",
@@ -6436,11 +6449,6 @@
   "seed_contract_gap_assessment": "No useful independent test gap; existing pericopeSets.test.ts covers lookup/version; no test rerun. No installed-bundle or runtime hash-validation claim.",
   "prioritized_unblock_inputs": [
     {
-      "priority": 1,
-      "requirement": "D-0407-02",
-      "input": "Authorize local user10 drafting-unit preference Verse\u2192Pericope, leave/reopen same-user drafting to verify persistence, then restore Verse and active user12. No recording or shared-QA writes."
-    },
-    {
       "priority": 2,
       "requirements": [
         "A-0001-01",
@@ -6465,5 +6473,6 @@
       ],
       "input": "Provide verified installed-release APK seed/version provenance; a legal document known to overflow the preserved viewport; and explicit obsolete/alternative Home Sync entry labels for exhaustive negative assertions. No rebuild or viewport changes."
     }
-  ]
+  ],
+  "latest_preference_receipt": "/tmp/fluent-preference-persistence-batch.json"
 }

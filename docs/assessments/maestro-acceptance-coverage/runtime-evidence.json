@@ -1,9 +1,9 @@
 {
   "schema": "fluent-runtime-milestone/v1",
-  "generated_utc": "2026-10-20T08:10:08.596574+00:00",
-  "scope": "14 focused live variants across ten flow files; historical21caseledger separate; no whole-app percentage",
-  "runtime_pass_flow_files": 10,
-  "live_case_variants_pass": 14,
+  "generated_utc": "2026-10-20T10:35:07.441883+00:00",
+  "scope": "15 focused live PASS variants across eleven flow files; historical21caseledger separate; no whole-app percentage",
+  "runtime_pass_flow_files": 11,
+  "live_case_variants_pass": 15,
   "passes": [
     {
       "source_receipt": "fluent-independent-home-tabs-user10-result.json",
@@ -503,6 +503,43 @@
       "failed": [],
       "source_receipt": "fluent-resources-order-only-batch.json",
       "flow_sha256": "9e67a10758b2a8e4dc5546af4b484e6da6b0bb85bc752fca67935c8c5ebbc3a4"
+    },
+    {
+      "id": "user10_drafting_unit_persistence_first_execution",
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/.maestro/flows/drafting/settings-unit-persist-existing-session.yaml",
+      "cap_s": 170,
+      "outcome": "PASS",
+      "identity_before": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "exit_code": 0,
+      "elapsed_s": 68.111,
+      "timed_out": false,
+      "kills": [],
+      "artifact_dir": "/tmp/maestro-efficient-user10_drafting_unit_persistence_first_execution",
+      "identity_after": {
+        "app_pid": "7152",
+        "kv": {
+          "active_user_id": "10",
+          "known_user_ids": "10,9,12"
+        },
+        "auth_values_read": false
+      },
+      "commands_artifact": "/tmp/maestro-efficient-user10_drafting_unit_persistence_first_execution/2026-10-20_033234/settings-unit-persist-existing-session/commands.json",
+      "command_counts": {
+        "COMPLETED": 55
+      },
+      "UI_assertions": {
+        "COMPLETED": 33
+      },
+      "failed": [],
+      "source_receipt": "fluent-preference-persistence-batch.json",
+      "flow_sha256": "264b430b70b3db081b54ecc8a0c918398b12466c48e1d01751a4deb9c3e14a4c"
     }
   ],
   "final_identity": {
@@ -573,9 +610,10 @@
     "fluent-after-tools-drag-batch.json": "738e13c2e46e7d671ffbaed372bbda96918dda6dae7c97052b2d23762148543b",
     "/tmp/fluent-resources-order-only-batch.json": "ac2391d5b872017624e179393b5d06d26e88ab050cc4bd2e362c5d503ec1da4f",
     "/tmp/fluent-resources-order-preflight-aborted.json": "8afafb9356a36e0f194a376a1fe8062e5545776e448167ac5565104de624da81",
-    "/tmp/fluent-next-assertion-batch.json": "bf9aa905597e300a1e425ee136b0c6e4a85832616fe27eb5bba5d4595dfee0bd"
+    "/tmp/fluent-next-assertion-batch.json": "bf9aa905597e300a1e425ee136b0c6e4a85832616fe27eb5bba5d4595dfee0bd",
+    "fluent-preference-persistence-batch.json": "2604ce944c4bba331bfbc8e871942dd1633ec1a65a8efe4cb0404168d6b6d17f"
   },
-  "latest_finished_utc": "2026-10-20T08:09:59.149949+00:00",
+  "latest_finished_utc": "2026-10-20T10:34:36.919578+00:00",
   "developer_overlay_fix": {
     "method": "ObservedUI drag only from1010,170 to1010,560",
     "settings_product_auth_changes": false,
@@ -642,5 +680,20 @@
     "rerun": false,
     "current_sha256": "f530406d721d5197b4f95b2688ea8b1a6832060c3e5751744599bcb1b3b9c0b8",
     "executed_sha256": "bd5078ae03230d7732ddb8394421668e1dc8091bb0fd596c2b5295e25a1b9f7e"
+  },
+  "latest_preference_batch": "/tmp/fluent-preference-persistence-batch.json",
+  "authorized_preference_mutation": {
+    "user_id": "10",
+    "initial_effective": "verse",
+    "initial_stored_override": null,
+    "sequence": [
+      "verse",
+      "pericope",
+      "verse"
+    ],
+    "final_stored": "verse",
+    "dirty_flag": "true",
+    "note": "Effective Verse restored via UI; initially absent override becomes explicit verse and normal dirty flag. No direct storage edits or other setting changes.",
+    "other_cached_user_preferences_unchanged": true
   }
 }

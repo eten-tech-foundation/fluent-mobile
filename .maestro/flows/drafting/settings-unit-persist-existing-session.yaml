@@ -1,0 +1,157 @@
+# D-0407-02. User-approved user10 Verse→Pericope→Verse. No other settings/actions.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - fixture-blocked
+  - preference-mutation-approved
+---
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    id: home-tab-my-work
+- tapOn:
+    id: home-settings-button
+- extendedWaitUntil:
+    visible:
+      id: settings-menu-active-10
+    timeout: 15000
+- tapOn:
+    id: settings-menu-more-settings
+- extendedWaitUntil:
+    visible:
+      text: '^Settings$'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: settings-drafting-unit-pericope
+    direction: DOWN
+    timeout: 15000
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+- assertVisible:
+    id: settings-drafting-unit-verse
+    selected: true
+- assertVisible:
+    id: settings-drafting-unit-pericope
+    selected: false
+- tapOn:
+    id: settings-drafting-unit-pericope
+- assertVisible:
+    id: settings-drafting-unit-pericope
+    selected: true
+- tapOn:
+    id: stack-header-back
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 15000
+- tapOn:
+    id: home-tab-my-work
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-484$'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: '^my-work-row-484$'
+- extendedWaitUntil:
+    visible:
+      id: drafting-tab-bar
+    timeout: 20000
+- tapOn:
+    id: drafting-tab-bible
+- extendedWaitUntil:
+    visible:
+      id: bible-tab
+    timeout: 20000
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+# Both mapped pericope cards and explicit unavailable fallback require persisted Pericope preference.
+# This assertion does not claim that fixture484 has populated pericope segmentation.
+- assertVisible:
+    id: '^bible-pericope-(?!expand-).+$'
+- tapOn:
+    id: drafting-header-back
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 15000
+- assertNotVisible:
+    id: login-email-input
+- assertVisible:
+    id: home-tab-my-work
+- tapOn:
+    id: home-settings-button
+- extendedWaitUntil:
+    visible:
+      id: settings-menu-active-10
+    timeout: 15000
+- tapOn:
+    id: settings-menu-more-settings
+- extendedWaitUntil:
+    visible:
+      text: '^Settings$'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: settings-drafting-unit-pericope
+    direction: DOWN
+    timeout: 15000
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+- assertVisible:
+    id: settings-drafting-unit-pericope
+    selected: true
+- assertVisible:
+    id: settings-drafting-unit-verse
+    selected: false
+- tapOn:
+    id: settings-drafting-unit-verse
+- assertVisible:
+    id: settings-drafting-unit-verse
+    selected: true
+- tapOn:
+    id: stack-header-back
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 15000
+- tapOn:
+    id: home-tab-my-work
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-484$'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: '^my-work-row-484$'
+- extendedWaitUntil:
+    visible:
+      id: drafting-tab-bar
+    timeout: 20000
+- tapOn:
+    id: drafting-tab-bible
+- extendedWaitUntil:
+    visible:
+      id: bible-tab
+    timeout: 20000
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+- assertVisible:
+    id: '^bible-verse-row-[0-9]+$'
+- assertNotVisible:
+    id: bible-pericope-unavailable
+- tapOn:
+    id: drafting-header-back
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 15000
