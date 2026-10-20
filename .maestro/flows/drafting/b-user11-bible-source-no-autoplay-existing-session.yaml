@@ -1,0 +1,150 @@
+# D0048-02 durable layer corresponding to retained native proof; no Play/Start taps.
+# Native driver verifies original11/Legacy/Verse/cellularOFF/mic/radios and prepares
+# selected Verse1 Bible. Finally restores exact original preferences/Home/11/radios.
+appId: com.eten.fluent
+tags: [drafting, existing-session, source-non-autoplay, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- assertVisible:
+    id: '^bible-verse-row-1$'
+    text: '^Verse 1, selected$'
+- extendedWaitUntil:
+    visible:
+      id: '^source-audio-play$'
+      text: '^Play source audio$'
+      enabled: true
+    timeout: 12000
+- assertVisible:
+    id: '^source-audio-paused$'
+- assertNotVisible:
+    id: '^source-audio-playing$'
+- assertVisible:
+    id: '^source-audio-label$'
+    text: '^WEB Source Audio · Verse 1 / 25$'
+- tapOn:
+    id: '^bible-verse-row-2$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^1 Peter 1:2$'
+- waitForAnimationToEnd:
+    timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: '^source-audio-play$'
+      text: '^Play source audio$'
+      enabled: true
+    timeout: 12000
+- assertVisible:
+    id: '^source-audio-paused$'
+- assertNotVisible:
+    id: '^source-audio-playing$'
+- assertVisible:
+    id: '^source-audio-label$'
+    text: '^WEB Source Audio · Verse 2 / 25$'
+- takeScreenshot: b-maestro-verse2-source-ready-paused-no-autoplay
+- tapOn:
+    id: '^drafting-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1183$'
+    timeout: 10000
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- runFlow:
+    when:
+      visible:
+        id: '^prepare-offline-screen$'
+    commands:
+      - tapOn:
+          id: '^stack-header-back$'
+          waitToSettleTimeoutMs: 500
+      - extendedWaitUntil:
+          visible:
+            id: '^project-row-12$'
+          timeout: 10000
+      - tapOn:
+          id: '^stack-header-back$'
+          waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 10000
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-menu-active-11$'
+- tapOn:
+    id: '^settings-menu-more-settings$'
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    id: '^settings-drafting-unit-pericope$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-drafting-unit-pericope$'
+    selected: true
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^milestone-row-19$'
+    timeout: 10000
+- tapOn:
+    id: '^milestone-row-19$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1183$'
+    timeout: 10000
+- tapOn:
+    id: '^chapter-row-1183$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^drafting-tab-bible$'
+    timeout: 10000
+- tapOn:
+    id: '^drafting-tab-bible$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^source-audio-play$'
+      text: '^Play source audio$'
+      enabled: true
+    timeout: 12000
+- assertVisible:
+    id: '^source-audio-paused$'
+- assertNotVisible:
+    id: '^source-audio-playing$'
+- assertVisible:
+    id: '^source-audio-label$'
+    text: '^WEB Source Audio · Pericope 1 / 9$'
+# Actual native cardMainPress a11y from previous proof, not chevron/Record Next.
+- tapOn:
+    text: '^1 Peter 1:3–5$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^1 Peter 1:3–5$'
+- waitForAnimationToEnd:
+    timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: '^source-audio-play$'
+      text: '^Play source audio$'
+      enabled: true
+    timeout: 12000
+- assertVisible:
+    id: '^source-audio-paused$'
+- assertNotVisible:
+    id: '^source-audio-playing$'
+- assertVisible:
+    id: '^source-audio-label$'
+    text: '^WEB Source Audio · Pericope 2 / 9$'
+- assertNotVisible:
+    id: '^record-stop-button$'
+- takeScreenshot: b-maestro-pericope2-source-ready-paused-no-autoplay

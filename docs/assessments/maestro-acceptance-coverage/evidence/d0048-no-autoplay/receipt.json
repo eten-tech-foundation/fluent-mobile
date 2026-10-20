@@ -1,0 +1,54 @@
+{
+  "schema": "fluent-d0048-02-durable-closure/v1",
+  "result": {
+    "serial": "emulator-5556",
+    "userId": 11,
+    "assignmentId": 1183,
+    "bibleId": 178,
+    "criterion": "D-0048-02 source-ready non-autoplay state only; not audibility/listening/feel",
+    "sourcePlayTapCount": 0,
+    "recordStartTapCount": 0,
+    "scope": "One grouped Verse and Pericope Bible-unit tap -> Record. Positive readyPlay+paused state before/after; no playing/error/loading. No sourcePlay/capture/stage/auth/download/fixture writes.",
+    "events": [],
+    "execution": "Durable Maestro layer; prior native result not rerun",
+    "originalRadios": {
+      "airplane_mode_on": "0",
+      "wifi_on": "1"
+    },
+    "originalPreferencesVerified": true,
+    "originalMicPermission": [
+      "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+    ],
+    "originalObservedSelectedVerse": [
+      "Verse 1, selected"
+    ],
+    "cliProcessPid": 59418,
+    "runnerExit": 0,
+    "cliElapsedSeconds": 107.7,
+    "originalLegacyVerseCellularOffVerified": true,
+    "finalHomeVerified": true,
+    "active11Preserved": true,
+    "finalRadios": {
+      "airplane_mode_on": "0",
+      "wifi_on": "1"
+    },
+    "finalMicPermission": [
+      "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+    ],
+    "micPermissionUnchanged": true,
+    "cleanupComplete": true,
+    "totalElapsedSeconds": 150.0
+  },
+  "result_sha256": "362f2956b92a3bfecc269a7e785bebd6c214bb482cb4d167f2d6f1350a81d1a8",
+  "commands": "/Users/matt/Documents/Codex/2026-10-19/task-10/emulators/b-bible-noautoplay-maestro-first/cli/2026-10-20_150607/b-user11-bible-source-no-autoplay-existing-session/commands.json",
+  "commands_sha256": "892f560a44f94efb0004c37b45d257ec0adbf5771bfbea2ee868b7698dca5c0d",
+  "flow": ".maestro/flows/drafting/b-user11-bible-source-no-autoplay-existing-session.yaml",
+  "flow_sha256": "2bce54c7c26b977450ff8feaa0453d991c01d1d9cb12ee75304acd62b59284d2",
+  "method": "Durable Maestro both-mode navigation with independent native preflight and final restoration",
+  "prior_native_receipt": "evidence/batch4-native-support/receipt.json",
+  "scope": "Ready enabled Play plus paused/noPlaying before and after Bible unit selection, Verse2 and Pericope2 exact Record references. No Play/Start taps.",
+  "limitations": [
+    "No audibility/listening, selected-versus-playing comparison, D-0048-01 closure, or all-Bible feature verdict",
+    "Source/runtime bundle hash not attested; final source cohort remains separately gated"
+  ]
+}

@@ -31,23 +31,23 @@
     },
     "canonical_live_status": {
       "UNTESTED": 26,
-      "BLOCKED": 138,
-      "PASS": 38
+      "BLOCKED": 137,
+      "PASS": 39
     },
     "canonical_execution_coverage": {
-      "partial": 47,
-      "complete_for_requirement": 38,
+      "partial": 46,
+      "complete_for_requirement": 39,
       "not_run": 117
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 6,
-      "BLOCKED": 50,
-      "PASS": 30
+      "BLOCKED": 49,
+      "PASS": 31
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 16,
-      "complete_for_requirement": 30,
+      "partial": 15,
+      "complete_for_requirement": 31,
       "not_run": 40
     },
     "full_live_PASS_eligible_ids": [
@@ -64,6 +64,7 @@
       "C-0146-04",
       "C-0151-04",
       "C-0151-05",
+      "D-0048-02",
       "D-0188-01",
       "D-0188-02",
       "D-0189-01",
@@ -5564,8 +5565,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-bible-record-direct-batch.json",
@@ -5581,20 +5582,26 @@
           "method": "guarded direct-device native UI, not Maestro",
           "relation": "partial_completion_method_gap_only",
           "reason": "Both Verse and Pericope source-ready enabledPlay+paused before/after/settle, noPlaying/Pause/error/loading; BibleVerse2\u2192Record1Peter1:2 and BiblePericope2\u2192Record1Peter1:3\u20135 verified. Play/Start0;71sproof/101.8cleanup. Functional nonautoplay observed; no mediafetch/audibility/playingcomparison claim. Prior Verse Maestro navigation retained; full native variants not promoted as durable Maestro execution."
+        },
+        {
+          "receipt": "evidence/d0048-no-autoplay/receipt.json",
+          "case_id": "B_Maestro_both_mode_source_ready_non_autoplay_107.7s",
+          "flow": ".maestro/flows/drafting/b-user11-bible-source-no-autoplay-existing-session.yaml",
+          "relation": "complete_for_exact_navigation_non_autoplay_criterion",
+          "reason": "Single durable Maestro PASS107.7s: enabledPlay+paused/noPlaying and exact WEB captions before/after Verse1\u2192BibleVerse2\u2192Record1Peter1:2 and Pericope1\u2192BiblePericope2\u2192Record1Peter1:3\u20135, bounded settle. No Play/Start; originalLegacy/Verse/OFF/Home11/radios0/1/micflags restored natively; total150s. Prior native proof retained separately. No audibility or D0048-01 selected-vs-playing claim."
         }
       ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Both source-ready non-autoplay modes have complete native functional proof; corresponding positive-ready/paused and after-settle assertions are not yet executed in a durable Maestro flow."
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
-      "next_test": "Port the exact verified ready/paused-before/after/settle and Verse/Pericope unit-selection assertions to an existing-session Maestro flow, then one bounded native-preflight-backed verification. Never tap Play or Start; no new audio/audibility test is required for this navigation criterion.",
+      "next_test": null,
       "source_title": "Bible tap selects unit without auto-playing source audio",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/48"
       ],
-      "domain": "reference_platform"
+      "domain": "reference_platform",
+      "closure_scope_note": "Exact Bible-unit navigation without source auto-play in both supported modes; no audio-quality or whole-feature claim."
     },
     {
       "id": "D-0188-01",
