@@ -17,7 +17,7 @@ tags:
 - runScript: ../../shared/scripts/disposable-session-values.js
 - assertNotVisible:
     id: 'login-email-input'
-- assertTrue: ${['paused-before-reload','recovery-prompt','paused-after-reload','saved'].indexOf(output.disposablePhase) >= 0}
+- assertTrue: ${['paused-before-reload','recovery-prompt','paused-after-reload','background-paused','saved'].indexOf(output.disposablePhase) >= 0}
 - runFlow:
     when:
       true: ${output.disposablePhase === 'recovery-prompt'}
@@ -41,7 +41,7 @@ tags:
           text: ${output.disposableReferenceRe}
 - runFlow:
     when:
-      true: ${['paused-before-reload','paused-after-reload'].indexOf(output.disposablePhase) >= 0}
+      true: ${['paused-before-reload','paused-after-reload','background-paused'].indexOf(output.disposablePhase) >= 0}
     commands:
       - assertVisible:
           id: 'record-resume-button'
@@ -63,4 +63,13 @@ tags:
           id: 'record-new-take-button'
       - assertNotVisible:
           id: 'record-stop-button'
+# Root supplies the frozen display value after native background pause; this
+# checkpoint proves rendered paused state only, not AppState/file persistence.
+- runFlow:
+    when:
+      true: ${output.disposablePhase === 'background-paused'}
+    commands:
+      - assertVisible:
+          id: 'record-duration'
+          text: ${output.disposablePausedTimeRe}
 - takeScreenshot: ${output.disposableScreenshot}

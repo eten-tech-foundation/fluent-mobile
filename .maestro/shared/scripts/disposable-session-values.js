@@ -29,6 +29,10 @@ var env = {
     typeof MAESTRO_DISPOSABLE_TAKE_ID === 'undefined'
       ? ''
       : String(MAESTRO_DISPOSABLE_TAKE_ID),
+  pausedTime:
+    typeof MAESTRO_DISPOSABLE_PAUSED_TIME === 'undefined'
+      ? ''
+      : String(MAESTRO_DISPOSABLE_PAUSED_TIME),
   consent:
     typeof MAESTRO_DISPOSABLE_CONTEXT_VERIFIED === 'undefined'
       ? ''
@@ -50,6 +54,7 @@ var phases = [
   'paused-before-reload',
   'recovery-prompt',
   'paused-after-reload',
+  'background-paused',
   'saved',
   'offline-pending',
   'uploading',
@@ -62,6 +67,17 @@ if (
   !/^rec_[a-z0-9]+_[a-z0-9]+$/.test(env.take)
 )
   throw new Error('Requires exact saved take ID');
+if (
+  env.phase === 'background-paused' &&
+  (!/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(env.pausedTime) ||
+    Number(env.pausedTime.split(':')[0]) > 59 ||
+    env.pausedTime === '0:00')
+)
+  throw new Error(
+    'Requires exact nonzero frozen paused time m:ss, below 60 minutes',
+  );
+output.disposablePausedTimeRe =
+  '^' + env.pausedTime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$';
 output.disposablePhase = env.phase;
 output.disposableReferenceRe = '^1 Peter 1:' + env.verse + '$';
 output.disposableTakeSyncRe = '^record-take-sync-' + env.take + '$';

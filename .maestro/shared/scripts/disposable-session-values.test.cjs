@@ -16,6 +16,7 @@ const fixture = {
   MAESTRO_DISPOSABLE_CONTEXT_VERIFIED: '1',
   MAESTRO_DISPOSABLE_VERSE: '2',
   MAESTRO_DISPOSABLE_PHASE: 'paused-after-reload',
+  MAESTRO_DISPOSABLE_PAUSED_TIME: '0:15',
   MAESTRO_DISPOSABLE_TAKE_ID: 'rec_fixture_take',
 };
 function run(values) {
@@ -51,6 +52,7 @@ test('all supported checkpoint phases resolve exact bounded selectors; saved/upl
     'paused-before-reload',
     'recovery-prompt',
     'paused-after-reload',
+    'background-paused',
     'saved',
     'offline-pending',
     'uploading',
@@ -81,6 +83,33 @@ test('all supported checkpoint phases resolve exact bounded selectors; saved/upl
         MAESTRO_DISPOSABLE_TAKE_ID: '',
       }),
     );
+  for (const pausedTime of [
+    undefined,
+    '',
+    '0:00',
+    '00:15',
+    '0:60',
+    '60:00',
+    '0:15.*',
+    ' 0:15',
+    '0:1',
+  ])
+    assert.throws(() =>
+      run({
+        ...fixture,
+        MAESTRO_DISPOSABLE_PHASE: 'background-paused',
+        MAESTRO_DISPOSABLE_PAUSED_TIME: pausedTime,
+      }),
+    );
+  const background = run({
+    ...fixture,
+    MAESTRO_DISPOSABLE_PHASE: 'background-paused',
+  });
+  assert.equal(background.disposablePausedTimeRe, '^0:15$');
+  assert.equal(
+    new RegExp(background.disposablePausedTimeRe).test('0:150'),
+    false,
+  );
   for (const verse of ['0', '26', '2.*', '02'])
     assert.throws(() => run({ ...fixture, MAESTRO_DISPOSABLE_VERSE: verse }));
   assert.throws(() =>
@@ -131,6 +160,27 @@ test('offline and recovered checkpoints retain required negative/positive contro
   const record = docs(flowPaths[0])[1];
   const sync = docs(flowPaths[1])[1];
   assert.match(JSON.stringify(record), /record-resume-button/);
+  assert.ok(
+    record
+      .find(command => command.assertTrue)
+      ?.assertTrue.includes('background-paused'),
+  );
+  const pausedControls = record.find(command =>
+    command.runFlow?.when.true.includes("['paused-before-reload'"),
+  );
+  assert.ok(pausedControls.runFlow.when.true.includes('background-paused'));
+  const backgroundTime = record.find(command =>
+    command.runFlow?.when.true.includes("=== 'background-paused'"),
+  );
+  assert.deepEqual(backgroundTime.runFlow.commands, [
+    {
+      assertVisible: {
+        id: 'record-duration',
+        text: '${output.disposablePausedTimeRe}',
+      },
+    },
+  ]);
+
   assert.match(JSON.stringify(record), /Recovered recording/);
   const prompt = record.find(command =>
     command.runFlow?.when.true.includes("=== 'recovery-prompt'"),
