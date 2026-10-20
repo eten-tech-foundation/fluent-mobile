@@ -18,6 +18,13 @@ tags:
     id: 'home-tab-my-work'
 - tapOn:
     id: 'home-settings-button'
+# Wait for full drawer geometry; a mid-slide node was clipped to x0..62.
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      text: '^Terms of Use$'
+    timeout: 5000
 - tapOn:
     id: 'settings-menu-terms-of-use'
 - extendedWaitUntil:
