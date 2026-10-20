@@ -9,11 +9,12 @@ lands:
 | Version | Meaning |
 | --- | --- |
 | `legacy` | Current shipped design (default, safe) |
-| `next` | Current-design parity with independently owned tokens; future redesign evolves separately |
+| `next` | Temporary Legacy-appearance placeholder with independently owned tokens; future redesign evolves separately |
 
-Both versions currently use the same mobile design values while the current
-Lovable-match work proceeds. That is token parity with the existing mobile
-baseline, **not** evidence of rendered fidelity to the live Lovable reference.
+Next currently uses the Legacy appearance as a temporary placeholder, including
+its Hardware, Canvas and Accent modes. Matching values describe this phase,
+not a permanent requirement that the themes match or evidence of rendered
+fidelity to the live Lovable reference.
 Next owns its baseline data independently: editing Legacy does not silently
 change Next, and editing one Next mode does not change another.
 
@@ -55,7 +56,7 @@ Foundations page: [ETEN × Fluent · Foundations](https://www.figma.com/design/V
 | **Canvas** | Current-design values today; retained API for a future reading / drafting surface |
 | **Accent** | Current-design values today; retained API for future note overlays |
 
-Do **not** import `src/theme/next*` from app/UI code (ESLint bans `theme/next`). Use `useTheme()` / `resolveTheme(version, mode)`. To render part of a screen in Canvas or Accent, wrap it in `ColorModeScope` (from `src/theme/useTheme`); everything below resolves that mode's `roles`, `elevation` and mapped `colors`. Hardware is the default, and Legacy ignores modes. Set status / nav bar icon style per screen to match (light icons on Canvas).
+Do **not** import `src/theme/next*` from app/UI code (ESLint bans `theme/next`). Use `useTheme()` / `resolveTheme(version, mode)`. To render part of a screen in Canvas or Accent, wrap it in `ColorModeScope` (from `src/theme/useTheme`); everything below resolves that mode's `roles`, `elevation` and mapped `colors`. Hardware is the default, and Legacy ignores modes. Set status / nav bar icon style to match the resolved surface; do not assume Canvas is dark while it uses the Legacy placeholder.
 
 ### Foundations groups on `Theme`
 
