@@ -336,6 +336,33 @@ describe('useVerseAudio', () => {
     expect(result.current.takes).toEqual([saved]);
   });
 
+  it('queues an upload pass after a selection change (#701)', async () => {
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.selectTake('rec_1');
+    });
+
+    expect(selectTake).toHaveBeenCalledWith('rec_1');
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues an upload pass after a canonical designation (#701)', async () => {
+    const designateCanonical = jest.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useVerseAudio({ ...verseAudioArgs(), designateCanonical }),
+    );
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.setCanonical('rec_1');
+    });
+
+    expect(designateCanonical).toHaveBeenCalledWith('rec_1');
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+  });
+
   it('writes a paused-take marker when recording is paused', async () => {
     const { result } = renderHook(() =>
       useVerseAudio({

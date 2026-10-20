@@ -121,6 +121,33 @@ function matchesWriteUnitScope(
   return true;
 }
 
+/**
+ * #701 SQL CASE emulators — selection/canonical changes flip an
+ * already-uploaded take to 'pending'; losing canonical (or selection) reverts
+ * a pending take whose bytes are on the server (blob_key set). Under the PM
+ * rule the canonical take is what syncs as the selected take, so losing the
+ * designation reverts the marker even when the take is still the draft.
+ */
+function designateRevertStatus(row: Row): Row['sync_status'] {
+  return row.sync_status === 'uploaded' ? 'pending' : row.sync_status;
+}
+
+function deselectRevertStatus(row: Row): Row['sync_status'] {
+  return row.sync_status === 'pending' &&
+    row.blob_key !== null &&
+    row.is_canonical === 0
+    ? 'uploaded'
+    : row.sync_status;
+}
+
+function canonicalDeselectRevertStatus(row: Row): Row['sync_status'] {
+  // #701 PM rule: canonical is what syncs as the selected take, so losing
+  // the designation reverts any pending marker (bytes on the server).
+  return row.sync_status === 'pending' && row.blob_key !== null
+    ? 'uploaded'
+    : row.sync_status;
+}
+
 function matchesSameBibleBookSelection(
   row: Row,
   incomingBibleTextId: number,
@@ -180,7 +207,14 @@ async function mockExecute(
     if (normalized.includes('WHERE id = ?')) {
       const id = params[1] as string;
       rows = rows.map(r =>
-        r.id === id ? { ...r, is_selected: 0, updated_at: updatedAt } : r,
+        r.id === id
+          ? {
+              ...r,
+              is_selected: 0,
+              sync_status: deselectRevertStatus(r),
+              updated_at: updatedAt,
+            }
+          : r,
       );
       return { rows: [] };
     }
@@ -328,7 +362,22 @@ async function mockExecute(
 
   if (
     normalized.startsWith(
-      'SELECT id, bible_text_id, recorded_by_user_id, is_selected, start_chapter',
+      'SELECT id FROM recordings WHERE bible_text_id = ? AND is_canonical = 1',
+    )
+  ) {
+    const bibleTextId = params[0] as number;
+    const match = rows.find(
+      r =>
+        r.bible_text_id === bibleTextId &&
+        r.is_canonical === 1 &&
+        matchesWriteUnitScope(r, normalized, params),
+    );
+    return { rows: match ? [{ id: match.id }] : [] };
+  }
+
+  if (
+    normalized.startsWith(
+      'SELECT id, bible_text_id, recorded_by_user_id, is_selected, blob_key, start_chapter',
     ) ||
     (normalized.startsWith(
       'SELECT bible_text_id, recorded_by_user_id, is_selected',
@@ -345,6 +394,7 @@ async function mockExecute(
               bible_text_id: match.bible_text_id,
               recorded_by_user_id: match.recorded_by_user_id,
               is_selected: match.is_selected,
+              blob_key: match.blob_key ?? null,
               start_chapter: match.start_chapter,
               start_verse: match.start_verse,
               end_chapter: match.end_chapter,
@@ -381,7 +431,28 @@ async function mockExecute(
       r.bible_text_id === bibleTextId &&
       r.is_canonical === 1 &&
       matchesWriteUnitScope(r, normalized, params)
-        ? { ...r, is_canonical: 0, updated_at: updatedAt }
+        ? {
+            ...r,
+            is_canonical: 0,
+            sync_status: canonicalDeselectRevertStatus(r),
+            updated_at: updatedAt,
+          }
+        : r,
+    );
+    return { rows: [] };
+  }
+
+  if (normalized.startsWith("UPDATE recordings SET sync_status = 'uploaded'")) {
+    const updatedAt = params[0] as string;
+    const bibleTextId = params[1] as number;
+    rows = rows.map(r =>
+      r.bible_text_id === bibleTextId &&
+      r.is_canonical === 0 &&
+      r.is_selected === 1 &&
+      r.sync_status === 'pending' &&
+      r.blob_key !== null &&
+      matchesWriteUnitScope(r, normalized, params)
+        ? { ...r, sync_status: 'uploaded' as const, updated_at: updatedAt }
         : r,
     );
     return { rows: [] };
@@ -391,7 +462,14 @@ async function mockExecute(
     const updatedAt = params[0] as string;
     const id = params[1] as string;
     rows = rows.map(r =>
-      r.id === id ? { ...r, is_canonical: 1, updated_at: updatedAt } : r,
+      r.id === id
+        ? {
+            ...r,
+            is_canonical: 1,
+            sync_status: designateRevertStatus(r),
+            updated_at: updatedAt,
+          }
+        : r,
     );
     return { rows: [] };
   }
@@ -430,10 +508,24 @@ async function mockExecute(
   }
 
   if (normalized.startsWith('UPDATE recordings SET is_selected = 1')) {
+    // #701 PM rule: when canonical supersedes the selection, the write skips
+    // the 'uploaded' → 'pending' flip (no CASE in the SQL).
+    const flipsToPending = normalized.includes(
+      "WHEN sync_status = 'uploaded' THEN 'pending'",
+    );
     const updatedAt = params[0] as string;
     const id = params[1] as string;
     rows = rows.map(r =>
-      r.id === id ? { ...r, is_selected: 1, updated_at: updatedAt } : r,
+      r.id === id
+        ? {
+            ...r,
+            is_selected: 1,
+            sync_status: flipsToPending
+              ? designateRevertStatus(r)
+              : r.sync_status,
+            updated_at: updatedAt,
+          }
+        : r,
     );
     return { rows: [] };
   }
@@ -645,6 +737,341 @@ describe('recordingsRepository multi-take', () => {
     expect(canonical('u473')).toBe(1);
     expect(canonical('u12')).toBe(0);
     expect(canonical('u12-b')).toBe(1);
+  });
+
+  describe('selection change marks a pending sync (#701)', () => {
+    const markUploaded = (id: string) => {
+      rows = rows.map(r =>
+        r.id === id
+          ? {
+              ...r,
+              sync_status: 'uploaded' as const,
+              blob_key: `unit-12/text-${r.bible_text_id}`,
+              version_token: 3,
+            }
+          : r,
+      );
+    };
+    const syncStatus = (id: string) =>
+      __getRecordingRows().find(r => r.id === id)?.sync_status;
+
+    it('selecting an already-uploaded take marks it pending (online or offline)', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'sel-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'sel-b',
+      });
+      markUploaded('sel-a');
+      markUploaded('sel-b');
+
+      await selectRecordingTake('sel-a');
+
+      expect(syncStatus('sel-a')).toBe('pending');
+      // Deselected take whose bytes are on the server is not re-sent.
+      expect(syncStatus('sel-b')).toBe('uploaded');
+    });
+
+    it('only the latest selection stays pending when the choice changes repeatedly', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'multi-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'multi-b',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///c.m4a',
+        id: 'multi-c',
+      });
+      markUploaded('multi-a');
+      markUploaded('multi-b');
+      markUploaded('multi-c');
+
+      await selectRecordingTake('multi-a'); // a pending
+      await selectRecordingTake('multi-b'); // b pending, a reverted
+      await selectRecordingTake('multi-c'); // c pending, b reverted
+
+      expect(syncStatus('multi-c')).toBe('pending');
+      expect(syncStatus('multi-a')).toBe('uploaded');
+      expect(syncStatus('multi-b')).toBe('uploaded');
+    });
+
+    it('keeps never-uploaded takes pending when they lose selection', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'fresh-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'fresh-b',
+      });
+
+      await selectRecordingTake('fresh-a');
+
+      expect(syncStatus('fresh-a')).toBe('pending');
+      expect(syncStatus('fresh-b')).toBe('pending');
+    });
+
+    it('does not override conflicted or failed state on selection change', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'state-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'state-b',
+      });
+      rows = rows.map(r =>
+        r.id === 'state-a'
+          ? { ...r, sync_status: 'conflicted' as const }
+          : r.id === 'state-b'
+          ? { ...r, sync_status: 'failed' as const }
+          : r,
+      );
+
+      await selectRecordingTake('state-a');
+      expect(syncStatus('state-a')).toBe('conflicted');
+
+      await selectRecordingTake('state-b');
+      expect(syncStatus('state-b')).toBe('failed');
+    });
+  });
+
+  describe('canonical designation marks a pending sync (#701)', () => {
+    const markUploaded = (id: string) => {
+      rows = rows.map(r =>
+        r.id === id
+          ? {
+              ...r,
+              sync_status: 'uploaded' as const,
+              blob_key: `unit-12/text-${r.bible_text_id}`,
+              version_token: 3,
+            }
+          : r,
+      );
+    };
+    const syncStatus = (id: string) =>
+      __getRecordingRows().find(r => r.id === id)?.sync_status;
+
+    it('designating an uploaded take marks it pending, even cross-account', async () => {
+      __setMockActiveUserId('2');
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///peer.m4a',
+        id: 'peer-take',
+      });
+      __setMockActiveUserId('1');
+      markUploaded('peer-take');
+
+      await setCanonicalTake('peer-take');
+
+      expect(syncStatus('peer-take')).toBe('pending');
+    });
+
+    it('moving canonical reverts the prior take to uploaded', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'canon-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'canon-b',
+      });
+      markUploaded('canon-a');
+      markUploaded('canon-b');
+
+      await setCanonicalTake('canon-a');
+      await setCanonicalTake('canon-b');
+
+      expect(syncStatus('canon-b')).toBe('pending');
+      expect(syncStatus('canon-a')).toBe('uploaded');
+    });
+
+    it('reverts the prior canonical take to uploaded when designation moves, even while still selected (#701)', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'staysel-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'staysel-b',
+      });
+      markUploaded('staysel-a');
+      markUploaded('staysel-b');
+      await selectRecordingTake('staysel-a'); // a is the active draft
+      markUploaded('staysel-a'); // selection synced before designation
+
+      await setCanonicalTake('staysel-a');
+      await setCanonicalTake('staysel-b');
+
+      // PM rule: canonical (b) is what syncs as the selected take. The
+      // selection-sync marker on a is superseded — bytes are already on the
+      // server, so a re-send would only push stale audio.
+      expect(syncStatus('staysel-a')).toBe('uploaded');
+      expect(syncStatus('staysel-b')).toBe('pending');
+    });
+
+    it('clears a superseded cross-account selection sync when canonical is designated (#701)', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'sup-a',
+      });
+      __setMockActiveUserId('2');
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///peer-old.m4a',
+        id: 'sup-peer',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///peer-new.m4a',
+        id: 'sup-peer-new',
+      });
+      __setMockActiveUserId('1');
+      markUploaded('sup-a');
+      markUploaded('sup-peer');
+      markUploaded('sup-peer-new');
+      // Peer account selects its older take — selection change marks it pending.
+      __setMockActiveUserId('2');
+      await selectRecordingTake('sup-peer');
+      __setMockActiveUserId('1');
+      expect(syncStatus('sup-peer')).toBe('pending');
+
+      // Canonical designation supersedes that pending selection sync.
+      await setCanonicalTake('sup-a');
+
+      expect(syncStatus('sup-peer')).toBe('uploaded');
+      expect(syncStatus('sup-a')).toBe('pending');
+    });
+
+    it('clears a superseded same-account selection sync when designation lands (#701)', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'defer-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'defer-b',
+      });
+      markUploaded('defer-a');
+      markUploaded('defer-b');
+      await selectRecordingTake('defer-b'); // b pending (selection change)
+
+      await setCanonicalTake('defer-a');
+
+      // Designation clears the superseded marker immediately (both on server).
+      expect(syncStatus('defer-b')).toBe('uploaded');
+      expect(syncStatus('defer-a')).toBe('pending');
+    });
+
+    it('does not mark a selection change pending while a canonical take exists (#701)', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'canon-exists-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'canon-exists-b',
+      });
+      markUploaded('canon-exists-a');
+      markUploaded('canon-exists-b');
+      await setCanonicalTake('canon-exists-a');
+      markUploaded('canon-exists-a'); // designation synced
+      await selectRecordingTake('canon-exists-a'); // a is active draft
+      markUploaded('canon-exists-a'); // selection synced
+
+      await selectRecordingTake('canon-exists-b');
+
+      // Canonical (a) is the take that syncs as selected — a selection flip
+      // onto an already-uploaded take adds no sync work of its own.
+      expect(
+        __getRecordingRows().find(r => r.id === 'canon-exists-b')?.is_selected,
+      ).toBe(1);
+      expect(syncStatus('canon-exists-b')).toBe('uploaded');
+    });
+
+    it('still marks a never-uploaded selected take pending while canonical exists (#701)', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'fresh-canon-a',
+      });
+      markUploaded('fresh-canon-a');
+      await setCanonicalTake('fresh-canon-a');
+      markUploaded('fresh-canon-a'); // designation synced
+
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///new.m4a',
+        id: 'fresh-canon-new',
+      });
+
+      // New audio must still upload (its bytes are only on the device).
+      expect(syncStatus('fresh-canon-new')).toBe('pending');
+    });
+
+    it('does not override conflicted or failed state on designation', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'canon-state-a',
+      });
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///b.m4a',
+        id: 'canon-state-b',
+      });
+      rows = rows.map(r =>
+        r.id === 'canon-state-a'
+          ? { ...r, sync_status: 'conflicted' as const }
+          : r.id === 'canon-state-b'
+          ? { ...r, sync_status: 'failed' as const }
+          : r,
+      );
+
+      await setCanonicalTake('canon-state-a');
+      expect(syncStatus('canon-state-a')).toBe('conflicted');
+
+      await setCanonicalTake('canon-state-b');
+      expect(syncStatus('canon-state-b')).toBe('failed');
+    });
+
+    it('bumps the recording data version on designation (#701)', async () => {
+      await addRecordingTake({
+        bibleTextId: 10,
+        localFilePath: 'file:///a.m4a',
+        id: 'bump-a',
+      });
+      const versionBefore = getRecordingDataVersion();
+
+      await setCanonicalTake('bump-a');
+      expect(getRecordingDataVersion()).toBe(versionBefore + 1);
+
+      await setCanonicalTake('bump-a'); // already canonical — no-op
+      expect(getRecordingDataVersion()).toBe(versionBefore + 1);
+    });
   });
 
   it('deleting a selected take promotes only a take from the same unit (#613)', async () => {

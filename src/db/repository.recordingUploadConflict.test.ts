@@ -15,6 +15,7 @@ type RecordingRow = {
   duration_ms: number | null;
   recorded_by_user_id: number | null;
   is_selected: number;
+  is_canonical?: number;
   sync_status: string;
   blob_key: string | null;
   version_token: number | null;
@@ -132,10 +133,19 @@ function createRecordingConflictTestDb() {
       sql.includes('JOIN bible_texts bt') &&
       sql.includes("sync_status NOT IN ('uploaded', 'conflicted')")
     ) {
+      // #701 PM rule: canonical is what syncs as the selected take. A
+      // selected-only row is deferred while the same verse has a canonical
+      // take (all fixture rows share a unit — the real SQL also matches on
+      // project_unit_id).
+      const hasCanonical = (bibleTextId: number) =>
+        recordings.some(
+          c => c.bible_text_id === bibleTextId && c.is_canonical === 1,
+        );
       const rows = recordings
         .filter(
           r =>
-            r.is_selected === 1 &&
+            (r.is_canonical === 1 ||
+              (r.is_selected === 1 && !hasCanonical(r.bible_text_id))) &&
             r.sync_status !== 'uploaded' &&
             r.sync_status !== 'conflicted' &&
             r.bible_text_id > 0 &&
@@ -241,6 +251,7 @@ function createRecordingConflictTestDb() {
       await fn({ execute });
     },
     __recordings: recordings,
+    __bibleTexts: bibleTexts,
     __chapterAssignments: chapterAssignments,
   };
 }
@@ -280,6 +291,63 @@ describe('recording upload conflict repository helpers (#256)', () => {
 
     const pending = await getPendingRecordings();
     expect(pending.map(r => r.id)).toEqual(['rec-pending']);
+  });
+
+  it('getPendingRecordings includes canonical-only takes pending designation sync (#701)', async () => {
+    const db = createRecordingConflictTestDb();
+    db.__recordings.push({
+      id: 'rec-canonical',
+      bible_text_id: 43,
+      local_file_path: '/canon.m4a',
+      duration_ms: 1000,
+      recorded_by_user_id: 2,
+      is_selected: 0,
+      is_canonical: 1,
+      sync_status: 'pending',
+      blob_key: 'unit-12/text-43',
+      version_token: 3,
+      upload_error: null,
+      updated_at: '2026-01-06T00:00:00.000Z',
+    });
+    db.__bibleTexts.push({
+      id: 43,
+      bible_id: 1,
+      book_id: 40,
+      chapter_number: 1,
+    });
+    setDatabase(db as never);
+
+    const pending = await getPendingRecordings();
+    // Canonical (different verse) is included alongside the selected row.
+    expect(pending.map(r => r.id)).toEqual(
+      expect.arrayContaining(['rec-pending', 'rec-canonical']),
+    );
+    expect(pending.map(r => r.id)).not.toContain('rec-uploaded');
+  });
+
+  it('getPendingRecordings defers a pending selected take while the verse has a canonical take (#701)', async () => {
+    const db = createRecordingConflictTestDb();
+    // rec-pending (bible_text 42, selected, pending) exists in the fixture.
+    db.__recordings.push({
+      id: 'rec-canonical',
+      bible_text_id: 42,
+      local_file_path: '/canon.m4a',
+      duration_ms: 1000,
+      recorded_by_user_id: 2,
+      is_selected: 0,
+      is_canonical: 1,
+      sync_status: 'pending',
+      blob_key: 'unit-12/text-42',
+      version_token: 3,
+      upload_error: null,
+      updated_at: '2026-01-06T00:00:00.000Z',
+    });
+    setDatabase(db as never);
+
+    const pending = await getPendingRecordings();
+    // Canonical is the take sent as the selected take; the selected-only row
+    // is deferred until the designation moves.
+    expect(pending.map(r => r.id)).toEqual(['rec-canonical']);
   });
 
   it('getPendingRecordings includes pericope takes (#584)', async () => {

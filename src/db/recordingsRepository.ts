@@ -273,8 +273,20 @@ async function clearOverlappingSelectedTakes(
     ) {
       continue;
     }
+    // #701: a take deselected after a selection-only sync marker (pending
+    // with bytes already on the server) goes back to 'uploaded' — only the
+    // latest selection is sent. Pending takes without blob_key stay pending
+    // (never uploaded); canonical keeps its own marker.
     await tx.execute(
-      `UPDATE recordings SET is_selected = 0, updated_at = ? WHERE id = ?`,
+      `UPDATE recordings
+       SET is_selected = 0,
+           sync_status = CASE
+             WHEN sync_status = 'pending' AND blob_key IS NOT NULL AND is_canonical = 0
+               THEN 'uploaded'
+             ELSE sync_status
+           END,
+           updated_at = ?
+       WHERE id = ?`,
       [now, row.id],
     );
   }
@@ -501,20 +513,57 @@ export async function setCanonicalTake(id: string): Promise<void> {
     // Canonical is per unit: another unit's canonical take on the same bible
     // text must stay canonical (#613).
     const unit = projectUnitClause(normalizeProjectUnitId(row.project_unit_id));
+    // #701: the prior canonical take loses its selection-sync marker — with
+    // the PM rule (canonical is what syncs as the selected take), its bytes
+    // are on the server and a pending status would only re-send stale audio.
     await tx.execute(
-      `UPDATE recordings SET is_canonical = 0, updated_at = ?
+      `UPDATE recordings
+       SET is_canonical = 0,
+           sync_status = CASE
+             WHEN sync_status = 'pending' AND blob_key IS NOT NULL
+               THEN 'uploaded'
+             ELSE sync_status
+           END,
+           updated_at = ?
        WHERE bible_text_id = ? AND is_canonical = 1 AND ${unit.sql}`,
       [now, row.bible_text_id, ...unit.params],
     );
+    // #701: designation alone is a change that must sync (replaces #279,
+    // where canonical was sent only with the owning account's upload).
+    // 'conflicted' / 'failed' are left for their own retry flows.
     await tx.execute(
-      `UPDATE recordings SET is_canonical = 1, updated_at = ? WHERE id = ?`,
+      `UPDATE recordings
+       SET is_canonical = 1,
+           sync_status = CASE
+             WHEN sync_status = 'uploaded' THEN 'pending'
+             ELSE sync_status
+           END,
+           updated_at = ?
+       WHERE id = ?`,
       [now, id],
+    );
+    // #701 PM rule: canonical wins the server's selected-take slot. Other
+    // accounts' pending selection changes on this verse (+unit) are
+    // superseded — with bytes already on the server they clear to 'uploaded'
+    // instead of pending forever. Never-uploaded takes keep their marker
+    // (their audio is still local) but are deferred by the upload queries.
+    await tx.execute(
+      `UPDATE recordings
+       SET sync_status = 'uploaded',
+           updated_at = ?
+       WHERE bible_text_id = ? AND ${unit.sql}
+         AND is_canonical = 0 AND is_selected = 1
+         AND sync_status = 'pending' AND blob_key IS NOT NULL`,
+      [now, row.bible_text_id, ...unit.params],
     );
     applied = true;
   });
 
   if (applied) {
     log.info('Canonical take designated', { id });
+    // A designation can create a pending upload on its own (#701) — refresh
+    // pending/failed counts everywhere immediately.
+    emitRecordingDataChanged();
   }
 }
 /**
@@ -535,7 +584,7 @@ export async function selectRecordingTake(id: string): Promise<void> {
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
-      `SELECT id, bible_text_id, recorded_by_user_id, is_selected,
+      `SELECT id, bible_text_id, recorded_by_user_id, is_selected, blob_key,
               start_chapter, start_verse, end_chapter, end_verse, project_unit_id
        FROM recordings WHERE id = ?`,
       [id],
@@ -546,6 +595,7 @@ export async function selectRecordingTake(id: string): Promise<void> {
           bible_text_id: number;
           recorded_by_user_id: number | null;
           is_selected: number;
+          blob_key: string | null;
           start_chapter: number | null;
           start_verse: number | null;
           end_chapter: number | null;
@@ -572,6 +622,22 @@ export async function selectRecordingTake(id: string): Promise<void> {
 
     const owner = recordedByClause(row.recorded_by_user_id);
 
+    // #701 PM rule: the canonical take is what syncs as the server's
+    // selected take. While this verse (+unit) has a canonical take, a
+    // selection onto a take whose bytes are already on the server is
+    // superseded — no sync marker. Never-uploaded takes keep their pending
+    // marker (their audio still has to reach the server) but the upload
+    // queries defer them until the canonical designation moves.
+    const unit = projectUnitClause(normalizeProjectUnitId(row.project_unit_id));
+    const canonicalRows = await tx.execute(
+      `SELECT id FROM recordings
+       WHERE bible_text_id = ? AND is_canonical = 1 AND ${unit.sql}
+       LIMIT 1`,
+      [row.bible_text_id, ...unit.params],
+    );
+    const selectionSupersededByCanonical =
+      (canonicalRows.rows?.length ?? 0) > 0 && row.blob_key !== null;
+
     await clearOverlappingSelectedTakes(
       tx,
       owner,
@@ -583,8 +649,20 @@ export async function selectRecordingTake(id: string): Promise<void> {
       },
       now,
     );
+    // #701: moving the selection onto an already-uploaded take marks it
+    // pending so the next sync re-sends it and the server's active take
+    // follows. 'conflicted' / 'failed' are left for their own retry flows.
     await tx.execute(
-      `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,
+      selectionSupersededByCanonical
+        ? `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`
+        : `UPDATE recordings
+       SET is_selected = 1,
+           sync_status = CASE
+             WHEN sync_status = 'uploaded' THEN 'pending'
+             ELSE sync_status
+           END,
+           updated_at = ?
+       WHERE id = ?`,
       [now, id],
     );
     applied = true;
