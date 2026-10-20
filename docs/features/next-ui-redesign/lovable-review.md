@@ -38,7 +38,7 @@ original here; this PR preserves the original textual review and evidence.
 
 | Original finding / remaining obligation | Tracking and current evidence boundary |
 | --- | --- |
-| A: shared consumers pinned to Legacy despite runtime Next selection | [#724](https://github.com/eten-tech-foundation/fluent-mobile/issues/724). Local reviewed checkpoints below migrate shared consumers and isolate token objects; no rendered fidelity follows. |
+| A: shared consumers pinned to Legacy despite runtime Next selection | [#724](https://github.com/eten-tech-foundation/fluent-mobile/issues/724). Local reviewed checkpoints below migrate shared consumers and isolate token objects; [draft PR #749](https://github.com/eten-tech-foundation/fluent-mobile/pull/749) publishes that separate packet. It is not merged or proved visually faithful; #698/#699/#727 reconciliation gates remain explicit. |
 | B: mostly unused `appStyles` keys | [#739](https://github.com/eten-tech-foundation/fluent-mobile/issues/739) / [draft PR #743](https://github.com/eten-tech-foundation/fluent-mobile/pull/743), checkpoint `d84fbe5`. Fresh-main TypeScript AST reference analysis found 105 keys: 7 live keys retained with unchanged initializers, 98 unused keys removed. This is source hygiene, not rendered fidelity; the original historical review below remains unchanged. |
 | B/E: identical AccountSwitcherPanel overlay literal | Already included in #724 checkpoint `0566f4c`; do not repeat it in #739. |
 | C: competing sync/status and workflow color families | #738 comparison/decision checklist; no canonical visual family inferred solely from CSS declarations. No palette change implemented by this document. |
@@ -106,3 +106,57 @@ all findings are implemented, that every potential mismatch has been found,
 or that every page/state has passed visual comparison. Newly demonstrated
 mismatches should get focused follow-ups after duplicate checks. Mobile/web
 feature parity is outside this comparison.
+
+
+## First rendered reference and bounded Android pair
+
+The original review above remains source-only. A later, separate bounded check
+now establishes **one initial reference render**, followed by a shared-surface
+comparison with an existing Android screenshot. It does not establish all
+reference pages or acceptance of the theme implementation.
+
+- [Public reference: Home/Milestones](lovable-review/reference-home-milestones.png)
+- [Existing Android: Home/Milestones](lovable-review/android-home-milestones.png)
+- [Measured evidence, hashes and exclusions](lovable-review/initial-render-comparison.json)
+
+The reference was loaded without authentication or control clicks in the
+already installed Chrome, headless, with a fresh temporary profile. CDP set
+mobile metrics **before navigation**; the page reported inner width 412,
+height 915 and pixel ratio 1. The screenshot is 412×915. The isolated process
+stopped and its profile was removed. An earlier CLI capture had a clipped
+layout; it is not used as a visual-defect oracle.
+
+The existing Android image is 1080×2400. The sole device owner reports 420 dpi,
+so density normalization uses 2.625 pixels/dp, giving approximately 411.43×914.29 dp.
+Both show Home with Milestones selected and populated cards, but the reference
+has four sample cards while Android has one QA fixture card. The screenshot
+does not attest a runtime/source revision and is not proof that draft #749's
+code is running.
+
+| Common surface | Bounded observation |
+| --- | --- |
+| Primary blue | Sampled RGB 11,80,208 (`#0B50D0`) matches exactly. |
+| Tab/card fill | Sampled RGB 234,238,245 (`#EAEEF5`) matches exactly. |
+| Content background / card border | Sampled white and RGB 195,201,213 (`#C3C9D5`) match exactly. |
+| First-card left inset / gap below tabs | Both are 16 reference pixels versus 42 Android pixels, or 16 normalized dp. |
+| Tab band | Reference 51 px versus Android 123 px / 2.625 ≈ 46.86 dp, about 4.14 units shorter in this capture. Boundaries include rule/border; native text/inset/component measurements are still needed before attribution. |
+| First-card footprint | Reference 74 px versus Android 187 px / 2.625 ≈ 71.24 dp. Text fixtures and platform font/line metrics differ, so this is an observation, not an identical-content failure. |
+
+These measurements use the unchanged original screenshots; no visual was
+rescaled, cropped or edited. Coordinate samples and observed row intervals
+are retained in the JSON. Matching samples do not mean every pixel or whole
+component matches.
+
+Native Android status/navigation bars differ from the reference's simulated
+status bar and are excluded. The Android developer Tools gear occludes the
+first card's right area, and a generic HTTP 502 toast occludes lower content;
+both are excluded, as is the reference Lovable edit badge. Different fixture
+titles/counts, per-row upload icons and sync state are not treated as defects.
+There is no blanket visual PASS or FAIL from this pair.
+
+#738 still needs matched unobstructed component/state captures, reference
+version approval, runtime/build attribution, typography/radius/interaction
+state checks and the remaining page/state inventory. Investigate the measured
+height differences with actual component bounds and safe-area/text metrics
+before deciding whether a design change is appropriate. No new product issue
+is filed from an unproven platform or fixture difference.
