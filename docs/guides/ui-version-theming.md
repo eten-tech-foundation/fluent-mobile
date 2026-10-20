@@ -39,6 +39,11 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 | `src/services/userPreferences.ts` | Device-level `pref_ui_version` (default `legacy`) |
 
 Settings → **Interface → UI version** toggles the preference. No app restart.
+`UiVersionPreferenceProvider` at the application root bridges persistent
+preferences into the presentation context. Shared components import only the
+storage-free `useTheme` hooks; standalone components without a provider default
+to Legacy. Subtree `UiVersionOverride` values take precedence within that root.
+Preference-driven integration tests should mount the real root provider.
 
 ## Figma source (future Next divergence)
 

@@ -1,10 +1,11 @@
 import React from 'react';
-import { renderHook } from '@testing-library/react-native';
+import { renderHook as renderHookBase } from '@testing-library/react-native';
 import * as Haptics from 'expo-haptics';
 import { useHaptics } from './useHaptics';
 import { setMicActive } from '../audio/micActivity';
 import { setUiVersion } from '../services/userPreferences';
 import { UiVersionOverride } from '../theme/useTheme';
+import { UiVersionPreferenceProvider } from '../theme/UiVersionPreferenceProvider';
 import { mockPreferenceStore } from '../test/mocks/preferenceStore';
 
 jest.mock('expo-haptics', () => ({
@@ -22,6 +23,19 @@ jest.mock('../services/storage', () => ({
     setItemSync: jest.fn(),
   },
 }));
+
+function renderHook<T>(
+  callback: () => T,
+  options?: { wrapper: React.ComponentType<{ children: React.ReactNode }> },
+) {
+  const Scope = options?.wrapper;
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <UiVersionPreferenceProvider>
+      {Scope ? <Scope>{children}</Scope> : children}
+    </UiVersionPreferenceProvider>
+  );
+  return renderHookBase(callback, { wrapper });
+}
 
 const perform = jest.mocked(Haptics.performAndroidHapticsAsync);
 

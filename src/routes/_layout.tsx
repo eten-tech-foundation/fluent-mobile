@@ -12,6 +12,7 @@ import { NavigationBar } from 'expo-navigation-bar';
 import { queryClient } from '../services/queryClient';
 import { appStyles } from '../app/appStyles';
 import { useTheme } from '../theme/useTheme';
+import { UiVersionPreferenceProvider } from '../theme/UiVersionPreferenceProvider';
 import { isComponentGalleryEnabled } from '../config/componentGallery';
 import {
   AuthSessionProvider,
@@ -95,7 +96,9 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={appStyles.appRoot}>
-        <RootLayoutNav />
+        <UiVersionPreferenceProvider>
+          <RootLayoutNav />
+        </UiVersionPreferenceProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );
