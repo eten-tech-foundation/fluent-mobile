@@ -1,0 +1,62 @@
+# ASSERTION CHECKPOINT ONLY: root exclusively prepares verified existing session/state.
+# No capture/reload/OS/network/login/reset/delete/stage actions. No automatic fallback.
+# Required MAESTRO_DISPOSABLE_{PROJECT_ID=12,ASSIGNMENT_ID=1183,USER_ID=10,
+# CACHED_IDS=10,9,12,CONTEXT_VERIFIED=1,VERSE=1..25,PHASE}; TAKE_ID for saved/uploaded.
+# Env context is a prerequisite, not independent identity/DB proof. Root preserves
+# original takes and restores account12/cache10,9,12 after the whole device batch.
+# Run ONE prepared phase at a time. No blind idle/animation polling or repeated
+# recording. Screenshot follows strict phase assertions; no prior directQA result
+# counts as Maestro PASS. These new flows have static validation only until run.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - fixture-blocked
+  - disposable-checkpoint
+  - sync
+---
+- runScript: ../../shared/scripts/disposable-session-values.js
+- assertNotVisible:
+    id: 'login-email-input'
+- assertTrue: ${['offline-pending','uploading','uploaded'].indexOf(output.disposablePhase) >= 0}
+- runFlow:
+    when:
+      true: ${output.disposablePhase === 'offline-pending'}
+    commands:
+      - assertVisible:
+          id: 'sync-screen'
+      - assertVisible: 'Offline · upload pending'
+      - assertVisible: 'Saved on this device. Will sync when Fluent is reachable.'
+      - assertVisible:
+          id: 'sync-action-sync-now'
+          enabled: false
+      - assertNotVisible: 'Uploading'
+      - assertNotVisible:
+          id: 'sync-action-pause'
+      - assertNotVisible:
+          id: 'sync-action-cancel'
+- runFlow:
+    when:
+      true: ${output.disposablePhase === 'uploading'}
+    commands:
+      - assertVisible:
+          id: 'sync-screen'
+      - assertVisible: 'Uploading'
+      - assertVisible:
+          id: 'sync-action-pause'
+      - assertVisible:
+          id: 'sync-action-cancel'
+- runFlow:
+    when:
+      true: ${output.disposablePhase === 'uploaded'}
+    commands:
+      - assertVisible:
+          id: 'record-tab'
+      - assertVisible:
+          id: 'record-verse-reference'
+          text: ${output.disposableReferenceRe}
+      - assertVisible:
+          id: ${output.disposableTakeSyncRe}
+          text: '^uploaded$'
+      - assertNotVisible:
+          id: 'record-stop-button'
+- takeScreenshot: ${output.disposableScreenshot}

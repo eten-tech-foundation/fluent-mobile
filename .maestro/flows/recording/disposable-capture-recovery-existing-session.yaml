@@ -1,0 +1,66 @@
+# ASSERTION CHECKPOINT ONLY: root exclusively prepares verified existing session/state.
+# No capture/reload/OS/network/login/reset/delete/stage actions. No automatic fallback.
+# Required MAESTRO_DISPOSABLE_{PROJECT_ID=12,ASSIGNMENT_ID=1183,USER_ID=10,
+# CACHED_IDS=10,9,12,CONTEXT_VERIFIED=1,VERSE=1..25,PHASE}; TAKE_ID for saved/uploaded.
+# Env context is a prerequisite, not independent identity/DB proof. Root preserves
+# original takes and restores account12/cache10,9,12 after the whole device batch.
+# Run ONE prepared phase at a time. No blind idle/animation polling or repeated
+# recording. Screenshot follows strict phase assertions; no prior directQA result
+# counts as Maestro PASS. These new flows have static validation only until run.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - fixture-blocked
+  - disposable-checkpoint
+  - record
+---
+- runScript: ../../shared/scripts/disposable-session-values.js
+- assertNotVisible:
+    id: 'login-email-input'
+- assertTrue: ${['paused-before-reload','recovery-prompt','paused-after-reload','saved'].indexOf(output.disposablePhase) >= 0}
+- runFlow:
+    when:
+      true: ${output.disposablePhase === 'recovery-prompt'}
+    commands:
+      - assertVisible: 'Recovered recording'
+      - assertVisible: 'A paused recording was recovered. Resume it or discard it?'
+      - assertVisible:
+          id: 'android:id/button1'
+          text: '^RESUME$'
+      - assertVisible:
+          id: 'android:id/button2'
+          text: '^DISCARD$'
+- runFlow:
+    when:
+      true: ${output.disposablePhase !== 'recovery-prompt'}
+    commands:
+      - assertVisible:
+          id: 'record-tab'
+      - assertVisible:
+          id: 'record-verse-reference'
+          text: ${output.disposableReferenceRe}
+- runFlow:
+    when:
+      true: ${['paused-before-reload','paused-after-reload'].indexOf(output.disposablePhase) >= 0}
+    commands:
+      - assertVisible:
+          id: 'record-resume-button'
+      - assertVisible:
+          id: 'record-stop-button'
+      - assertNotVisible:
+          id: 'record-pause-button'
+      - assertNotVisible:
+          id: 'record-start-button'
+      - assertNotVisible:
+          id: 'record-new-take-button'
+- runFlow:
+    when:
+      true: ${output.disposablePhase === 'saved'}
+    commands:
+      - assertVisible:
+          id: ${output.disposableTakeSyncRe}
+      - assertVisible:
+          id: 'record-new-take-button'
+      - assertNotVisible:
+          id: 'record-stop-button'
+- takeScreenshot: ${output.disposableScreenshot}
