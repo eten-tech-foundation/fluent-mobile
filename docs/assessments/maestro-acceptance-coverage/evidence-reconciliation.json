@@ -31,23 +31,23 @@
     },
     "canonical_live_status": {
       "UNTESTED": 27,
-      "BLOCKED": 142,
-      "PASS": 33
+      "BLOCKED": 141,
+      "PASS": 34
     },
     "canonical_execution_coverage": {
-      "partial": 48,
-      "complete_for_requirement": 33,
+      "partial": 47,
+      "complete_for_requirement": 34,
       "not_run": 121
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
       "UNTESTED": 7,
-      "BLOCKED": 54,
-      "PASS": 25
+      "BLOCKED": 53,
+      "PASS": 26
     },
     "eligible_current_atomic_execution_coverage": {
-      "partial": 19,
-      "complete_for_requirement": 25,
+      "partial": 18,
+      "complete_for_requirement": 26,
       "not_run": 42
     },
     "full_live_PASS_eligible_ids": [
@@ -59,6 +59,7 @@
       "C-0050-03",
       "C-0050-04",
       "C-0146-02",
+      "C-0146-03",
       "C-0146-04",
       "C-0151-04",
       "D-0188-01",
@@ -4217,8 +4218,8 @@
       "unit_review": "atomic",
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Sync switch presence is proven, but cross-surface placement and propagation after a preference change are not.",
-      "live_status": "BLOCKED",
-      "execution_coverage": "partial",
+      "live_status": "PASS",
+      "execution_coverage": "complete_for_requirement",
       "live_evidence": [
         {
           "receipt": "/tmp/fluent-sync721-maestro-correction.md",
@@ -4226,14 +4227,18 @@
           "flow": ".maestro/flows/qa-warm-temp/sync-once.yaml",
           "relation": "partial",
           "reason": "Only Sync screen and cellular switch presence; no phase/progress/preference-change matrix."
+        },
+        {
+          "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/batch3-A-cellular-mirror-reconciliation.json",
+          "case_id": "A_empty12_cellular_mirror_30.596s",
+          "flow": ".maestro/flows/edges/account12-cellular-mirror-prepared.yaml",
+          "relation": "complete_bidirectional_preference_mirror",
+          "reason": "SettingsOFF\u2192ON; Sync observedON\u2192OFF; Settings observedOFF; Home allPASS30.596s. User12pending0/noactivework; all6owner10 metadata intact, preference false and active12/cache10,9,12/radios0/1/mobile1 restored. B54.0s/59.4s navigation failures retained, never reached mirror checks. Runtimehash unattested; normalized durable A guard retains strict preflight/UI assertions without rerun."
         }
       ],
       "isolated_status": "NOT_APPLICABLE",
       "isolated_evidence": [],
-      "missing_assertions_or_fixture": [
-        "Sync toggle mirrors Settings",
-        "Necessary safe fixture/authorization not established: existing session"
-      ],
+      "missing_assertions_or_fixture": [],
       "executable_now": false,
       "next_test": null,
       "source_title": "Sync page cellular toggle mirrors Settings preference",
@@ -4241,7 +4246,8 @@
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/146",
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/546"
       ],
-      "domain": "sync_offline"
+      "domain": "sync_offline",
+      "closure_scope_note": "Exact Settings\u2194Sync local preference mirror only; no cellular transfer/server delivery or controlled-race live proof."
     },
     {
       "id": "C-0146-04",
