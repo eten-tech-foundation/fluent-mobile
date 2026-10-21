@@ -221,21 +221,34 @@ class AdbBridge:
         log_path = out_dir / "run.log"
         cmd = build_maestro_test_sh_cmd(flow=flow, out_dir=out_dir)
         with log_path.open("w") as log:
+            # Own session so timeout can SIGTERM/SIGKILL the whole process group
+            # (bash + Maestro JVM), not only the wrapper bash PID.
             proc = subprocess.Popen(
                 cmd,
                 cwd=self.repo,
                 env=env,
                 stdout=log,
                 stderr=subprocess.STDOUT,
+                start_new_session=True,
             )
             try:
                 return proc.wait(timeout=900)
             except subprocess.TimeoutExpired:
-                proc.terminate()
+                try:
+                    os.killpg(proc.pid, 15)  # SIGTERM
+                except ProcessLookupError:
+                    pass
                 try:
                     proc.wait(timeout=15)
                 except subprocess.TimeoutExpired:
-                    proc.kill()
+                    try:
+                        os.killpg(proc.pid, 9)  # SIGKILL
+                    except ProcessLookupError:
+                        pass
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
                 return 124
 
 
@@ -516,7 +529,12 @@ def normalize_to_closed_home(
     sleep = sleep_fn or time.sleep
     log: list[str] = []
     for step in range(max_steps):
-        nodes = dump_nodes(bridge, f"{label}-{step}")
+        try:
+            nodes = dump_nodes(bridge, f"{label}-{step}")
+        except Exception as exc:  # noqa: BLE001 — transient dump/idle failures
+            log.append(f"dump_fail_step_{step}:{type(exc).__name__}")
+            sleep(0.35)
+            continue
         if is_capture_active(nodes):
             return {
                 "ok": False,
@@ -766,10 +784,21 @@ def run(
         _write(evidence, result)
         return result
 
-    # Cache / active account soft check from KV
+    # Cache / active account gate from KV — finally always restores to 12, so a
+    # wrong baseline would look like CLEANUP_UNCERTAIN after a correct restore.
     active = str(before_prefs.get("active_user_id", ""))
     known = str(before_prefs.get("known_user_ids", ""))
     result["cacheProbe"] = {"active_user_id": active, "known_user_ids": known}
+    known_ids = {p.strip() for p in re.findall(r"\d+", known)}
+    if active != "12" or not {"10", "9", "12"}.issubset(known_ids):
+        result["outcome"] = "BASELINE_FAIL"
+        result["error"] = (
+            f"cacheProbe requires active_user_id=12 and known 10/9/12; "
+            f"got active={active!r} known={known!r}"
+        )
+        result["runtime_pass_claimed"] = False
+        _write(evidence, result)
+        return result
 
     # Preflight: drawer/Settings must not be open (Home IDs behind drawer ≠ ready).
     preflight = normalize_to_closed_home(

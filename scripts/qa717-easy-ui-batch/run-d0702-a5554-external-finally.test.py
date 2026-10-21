@@ -236,6 +236,47 @@ class D0702ExternalFinallyTests(unittest.TestCase):
         nodes = self.m.dump_nodes(bridge, "after")
         self.assertTrue(self.m.is_closed_home(nodes))
 
+    def test_normalize_continues_after_transient_dump_failure(self):
+        bridge = self.m.FakeBridge(drawer_open=True)
+        calls = {"n": 0}
+        original = bridge.shell
+
+        def flaky_shell(*a, timeout=40):
+            joined = " ".join(a)
+            if "uiautomator" in joined or joined.startswith("cat "):
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    raise RuntimeError("could not get idle state")
+            return original(*a, timeout=timeout)
+
+        bridge.shell = flaky_shell  # type: ignore[method-assign]
+        result = self.m.normalize_to_closed_home(
+            bridge, sleep_fn=lambda _s: None, label="t"
+        )
+        self.assertTrue(result["ok"], result)
+        self.assertTrue(
+            any(x.startswith("dump_fail_step_0:") for x in result["log"]),
+            result["log"],
+        )
+
+    def test_wrong_active_user_is_baseline_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = self.m.parse_args(
+                ["--repo", str(ROOT), "--evidence-dir", tmp, "--execute"]
+            )
+            args.dry_run = False
+            bridge = self.m.FakeBridge()
+            bridge.kv_csv = (
+                "key,value\n"
+                "active_user_id,9\n"
+                "known_user_ids,\"[10,9,12]\"\n"
+                "ui_version,legacy\n"
+            )
+            result = self.m.run(args, bridge=bridge, sleep_fn=lambda _s: None)
+            self.assertEqual(result["outcome"], "BASELINE_FAIL")
+            self.assertEqual(bridge.maestro_calls, [])
+            self.assertFalse(result["runtime_pass_claimed"])
+
     def test_finally_leaves_closed_home_not_drawer_open(self):
         bridge = self.m.FakeBridge(drawer_open=True)
         result = self.m.bounded_ui_restore(bridge, sleep_fn=lambda _s: None)
