@@ -1,0 +1,555 @@
+{
+  "schema": "fluent-visual-page-state-inventory/v1",
+  "generated_utc": "2026-10-20T07:07:35.729533+00:00",
+  "source_root": "repository root (original absolute workstation path omitted)",
+  "scope": "source-only inventory; no edits to repo, device, model, network or reference browsing",
+  "verification": {
+    "live_mobile_screenshots": "UNVERIFIED",
+    "lovable_reference_rendering": "UNVERIFIED",
+    "visual_fidelity": "NOT_ASSESSED",
+    "source_presence": "VERIFIED"
+  },
+  "route_source": {
+    "file": "src/navigation/hrefs.ts",
+    "line": 1
+  },
+  "registered_route_files": [
+    "(app)/(stack)/add-user.tsx",
+    "(app)/(stack)/chapters.tsx",
+    "(app)/(stack)/forgot-password.tsx",
+    "(app)/(stack)/index.tsx",
+    "(app)/(stack)/prepare-for-offline.tsx",
+    "(app)/(stack)/reauth.tsx",
+    "(app)/(stack)/sync.tsx",
+    "(app)/(stack)/verse-detail.tsx",
+    "(app)/privacy-policy.tsx",
+    "(app)/settings.tsx",
+    "(app)/terms-of-use.tsx",
+    "(auth)/forgot-password.tsx",
+    "(auth)/login.tsx",
+    "(auth)/privacy-policy.tsx",
+    "(auth)/terms-of-use.tsx",
+    "gallery.tsx",
+    "index.tsx"
+  ],
+  "route_notes": [
+    "src/routes/index.tsx is a redirect/gate entry, not a separate designed page",
+    "_layout.tsx files are navigation/auth wrappers, not separate content pages",
+    "auth/app legal and forgot-password routes reuse screen components",
+    "Home Projects lists milestone rows; Prepare Offline has a distinct project picker",
+    "Gallery route registration is gated by isComponentGalleryEnabled()"
+  ],
+  "normalized_content_surfaces": [
+    {
+      "id": "login",
+      "routes": [
+        "/(auth)/login"
+      ],
+      "files": [
+        {
+          "file": "src/app/tabs/LoginScreen.tsx",
+          "line": 43
+        }
+      ],
+      "states": [
+        "default",
+        "email/password validation errors",
+        "global authentication error",
+        "submitting spinner and disabled inputs/button",
+        "password visibility toggle"
+      ],
+      "reuse": "LoginScreen reused by add-account and reauthentication"
+    },
+    {
+      "id": "add-account",
+      "routes": [
+        "/(app)/(stack)/add-user"
+      ],
+      "files": [
+        {
+          "file": "src/routes/(app)/(stack)/add-user.tsx",
+          "line": 10
+        }
+      ],
+      "states": [
+        "same form states as login",
+        "add-account title/copy and app legal links"
+      ],
+      "reuse": "LoginScreen variant=addAccount"
+    },
+    {
+      "id": "reauthentication",
+      "routes": [
+        "/(app)/(stack)/reauth"
+      ],
+      "files": [
+        {
+          "file": "src/routes/(app)/(stack)/reauth.tsx",
+          "line": 42
+        }
+      ],
+      "states": [
+        "locked existing email",
+        "reauth title/subtitle",
+        "submitting/error",
+        "back returns to original Home or Settings"
+      ],
+      "reuse": "LoginScreen variant=reauth"
+    },
+    {
+      "id": "forgot-password",
+      "routes": [
+        "/(auth)/forgot-password",
+        "/(app)/(stack)/forgot-password"
+      ],
+      "files": [
+        {
+          "file": "src/app/tabs/ForgotPasswordScreen.tsx",
+          "line": 22
+        }
+      ],
+      "states": [
+        "email input",
+        "field/global error",
+        "sending and disabled submit",
+        "success confirmation"
+      ],
+      "reuse": "same screen under auth/app route groups"
+    },
+    {
+      "id": "privacy-policy",
+      "routes": [
+        "/(auth)/privacy-policy",
+        "/(app)/privacy-policy"
+      ],
+      "files": [
+        {
+          "file": "src/app/tabs/PrivacyPolicyPage.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/components/layout/LegalDocumentLayout.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "scrollable legal document",
+        "back navigation"
+      ],
+      "reuse": "shared legal layout/styles"
+    },
+    {
+      "id": "terms-of-use",
+      "routes": [
+        "/(auth)/terms-of-use",
+        "/(app)/terms-of-use"
+      ],
+      "files": [
+        {
+          "file": "src/app/tabs/TermsOfUsePage.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/app/tabs/legalDocumentStyles.ts",
+          "line": 1
+        }
+      ],
+      "states": [
+        "scrollable legal document",
+        "back navigation"
+      ],
+      "reuse": "shared legal layout/styles"
+    },
+    {
+      "id": "home",
+      "routes": [
+        "/(app)/(stack)"
+      ],
+      "files": [
+        {
+          "file": "src/app/screens/HomeScreen.tsx",
+          "line": 368
+        },
+        {
+          "file": "src/app/tabs/MyWorkTab.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/app/tabs/ProjectsTab.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "initial/post-login sync loading",
+        "My Work populated/empty/refreshing",
+        "Projects milestone list populated/empty/loading/refreshing",
+        "reauth banner",
+        "header Sync state",
+        "active My Work/Projects tabs"
+      ],
+      "subsurfaces": [
+        "My Work",
+        "Projects (milestones, not project picker)"
+      ]
+    },
+    {
+      "id": "chapter-list",
+      "routes": [
+        "/(app)/(stack)/chapters"
+      ],
+      "files": [
+        {
+          "file": "src/app/tabs/ViewProject.tsx",
+          "line": 29
+        }
+      ],
+      "states": [
+        "loading",
+        "populated chapter rows",
+        "error with retry",
+        "removed-from-project message",
+        "empty milestone",
+        "refreshing",
+        "ownership mine/other/unassigned, conflict, stage and sync indicators"
+      ]
+    },
+    {
+      "id": "drafting-workspace",
+      "routes": [
+        "/(app)/(stack)/verse-detail"
+      ],
+      "files": [
+        {
+          "file": "src/app/screens/DraftingScreen.tsx",
+          "line": 78
+        },
+        {
+          "file": "src/app/tabs/BibleTab.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/app/tabs/ResourcesTab.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/app/tabs/RecordTab.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "chapter loading",
+        "no chapter data",
+        "Bible/Resources/Record active tab",
+        "Verse versus Pericope preference",
+        "capture-active navigation guard",
+        "recovered session entry"
+      ],
+      "subsurfaces": [
+        {
+          "id": "Bible",
+          "states": [
+            "verse rows selected/currently-playing/recorded/partial",
+            "pericope cards expanded/collapsed",
+            "unit loading",
+            "pericope unavailable warning"
+          ]
+        },
+        {
+          "id": "Resources",
+          "states": [
+            "connectivity loading",
+            "empty inventory",
+            "none-for-current-unit empty",
+            "populated translation notes/questions/images",
+            "section/item accordions expanded/collapsed",
+            "section loading/error/empty hiding",
+            "full-screen images/maps"
+          ]
+        },
+        {
+          "id": "Record",
+          "states": [
+            "idle/no takes",
+            "source text syncing/unavailable hint",
+            "recording/paused/review/playback/error",
+            "My Takes versus All Takes with grouped authors",
+            "selected/canonical take rows",
+            "range/take-cap/ownership/stage disabled controls",
+            "first/last navigation disabled",
+            "pericope unavailable warning",
+            "stage advance enabled/disabled and submitting"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sync",
+      "routes": [
+        "/(app)/(stack)/sync"
+      ],
+      "files": [
+        {
+          "file": "src/app/screens/SyncScreen.tsx",
+          "line": 38
+        },
+        {
+          "file": "src/components/ui/SyncActionControls.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/components/ui/DownloadProgressSection.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "online/offline all-synced",
+        "upload pending",
+        "syncing progress",
+        "paused",
+        "counts unknown",
+        "unuploadable takes",
+        "failed uploads",
+        "metadata/retry errors",
+        "download queue absent/present/progress",
+        "pending/syncing/paused/hidden controls",
+        "cellular preference and connection-dependent disabled controls"
+      ]
+    },
+    {
+      "id": "prepare-for-offline",
+      "routes": [
+        "/(app)/(stack)/prepare-for-offline"
+      ],
+      "files": [
+        {
+          "file": "src/app/screens/PrepareForOfflineScreen.tsx",
+          "line": 35
+        },
+        {
+          "file": "src/app/prepare-offline/ProjectPickerStep.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/app/prepare-offline/PrepareOfflineDownloadFooter.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/app/prepare-offline/ManageDeviceStorageSection.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "project picker loading/empty/populated",
+        "selected project chapters loading/error/retry",
+        "assigned/unassigned accordion collapsed/expanded",
+        "book/chapter selected/deselected",
+        "resource catalog loading/error/empty/tiers",
+        "customize resources expanded/collapsed",
+        "download idle/disabled/downloading/paused/progress",
+        "manage device storage loading/empty/populated and expandable rows"
+      ],
+      "subsurfaces": [
+        "project picker",
+        "project chapter/resource selection",
+        "device-storage management"
+      ]
+    },
+    {
+      "id": "settings",
+      "routes": [
+        "/(app)/settings"
+      ],
+      "files": [
+        {
+          "file": "src/app/screens/SettingsScreen.tsx",
+          "line": 42
+        }
+      ],
+      "states": [
+        "reauth required/banner",
+        "Legacy/Next UI version switch",
+        "conditional gallery entry",
+        "cellular toggle",
+        "Verse/Pericope toggle",
+        "account limit disables Add User",
+        "clear cache confirmation/success",
+        "sign-out confirmation"
+      ]
+    },
+    {
+      "id": "component-gallery",
+      "routes": [
+        "/gallery"
+      ],
+      "files": [
+        {
+          "file": "src/app/gallery/ComponentGalleryScreen.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/app/gallery/entries/index.ts",
+          "line": 1
+        }
+      ],
+      "states": [
+        "feature-gated route",
+        "always Next UI override",
+        "mode switch",
+        "simulated microphone/recording indicator",
+        "interactive Key/Switch/RoundButton/ProgressRing examples"
+      ],
+      "note": "development/review surface; verify inclusion in product screenshot scope"
+    }
+  ],
+  "cross_page_modal_and_shared_surfaces": [
+    {
+      "id": "settings-drawer",
+      "files": [
+        {
+          "file": "src/components/ui/UserSettingsMenu.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "open/closed",
+        "accounts loading",
+        "active/saved accounts",
+        "switch in progress/error",
+        "three-account limit",
+        "sign-out/recording-in-progress alerts"
+      ]
+    },
+    {
+      "id": "account-switcher-sheet",
+      "files": [
+        {
+          "file": "src/components/ui/AccountSwitcherPanel.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "modal open/closed",
+        "loading",
+        "switch pending/error",
+        "active account",
+        "add-user limit"
+      ]
+    },
+    {
+      "id": "stage-advance-confirmation",
+      "files": [
+        {
+          "file": "src/components/ui/StageAdvanceConfirmSheet.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "open/closed",
+        "submitting primary/cancel disabled"
+      ]
+    },
+    {
+      "id": "full-screen-image-map",
+      "files": [
+        {
+          "file": "src/app/tabs/resources/FullscreenImageViewer.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "open/closed",
+        "title/attribution",
+        "image loaded/error",
+        "pinch zoom/pan",
+        "close affordance"
+      ]
+    },
+    {
+      "id": "source-audio-dock",
+      "files": [
+        {
+          "file": "src/components/layout/SourceAudioShell.tsx",
+          "line": 1
+        },
+        {
+          "file": "src/components/layout/SourceAudioPlayerBar.tsx",
+          "line": 1
+        }
+      ],
+      "states": [
+        "empty",
+        "loading",
+        "error/retry",
+        "ready paused/playing",
+        "play loading/disabled",
+        "waveform position/duration and unit caption"
+      ],
+      "reuse": "shared Bible/Record shell surface"
+    },
+    {
+      "id": "native-capture-and-audio-alerts",
+      "files": [
+        {
+          "file": "src/app/tabs/RecordTab.tsx",
+          "line": 778
+        },
+        {
+          "file": "src/app/screens/DraftingScreen.tsx",
+          "line": 111
+        }
+      ],
+      "states": [
+        "microphone denied",
+        "audio error",
+        "recording-active leave/resume/discard",
+        "selected-take delete",
+        "pericope-take delete",
+        "stage-advance failure"
+      ]
+    },
+    {
+      "id": "launch-recovery-and-signout-alerts",
+      "files": [
+        {
+          "file": "src/services/useLaunchRecoveryPrompt.ts",
+          "line": 1
+        },
+        {
+          "file": "src/services/confirmUnsyncedSignOut.ts",
+          "line": 1
+        }
+      ],
+      "states": [
+        "recover paused take/resume/discard",
+        "sign-out retained/unsynced work confirmation"
+      ]
+    },
+    {
+      "id": "clear-cache-alerts",
+      "files": [
+        {
+          "file": "src/app/screens/SettingsScreen.tsx",
+          "line": 90
+        }
+      ],
+      "states": [
+        "confirmation",
+        "success"
+      ]
+    }
+  ],
+  "cross_cutting_visual_matrix": [
+    "Legacy versus Next preference where implemented",
+    "typography/palette/spacing/radius/icon-size tokens",
+    "ScreenContainer, page/stack/drafting headers, legal layout and safe areas",
+    "loading/empty/error/disabled/pressed/selected states",
+    "portrait/landscape and viewport/scroll-dependent controls",
+    "bottom/keyboard insets and long text",
+    "accessibility labels/states and touch targets"
+  ],
+  "counts": {
+    "normalized_content_surfaces": 13,
+    "shared_modal_or_alert_groups": 8,
+    "route_files_excluding_layouts": 17
+  }
+}
