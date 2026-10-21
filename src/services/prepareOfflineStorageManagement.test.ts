@@ -8,6 +8,7 @@ import {
 const mockGetVerifiedInventory = jest.fn();
 const mockGetProjectNamesByIds = jest.fn();
 const mockDeleteDownloadItem = jest.fn();
+let mockActiveUserId: string | null = '7';
 
 jest.mock('./downloadInventory', () => ({
   getVerifiedDownloadedResourcesInventory: () => mockGetVerifiedInventory(),
@@ -22,7 +23,7 @@ jest.mock('../db/repository', () => ({
 }));
 
 jest.mock('./storage', () => ({
-  getActiveUserId: () => '7',
+  getActiveUserId: () => mockActiveUserId,
 }));
 
 import {
@@ -34,6 +35,7 @@ import {
 describe('prepareOfflineStorageManagement', () => {
   beforeEach(() => {
     resetFileSystemMock();
+    mockActiveUserId = '7';
     mockGetVerifiedInventory.mockReset();
     mockGetProjectNamesByIds.mockReset();
     mockDeleteDownloadItem.mockReset();
@@ -175,6 +177,46 @@ describe('prepareOfflineStorageManagement', () => {
       expect(mockDeleteDownloadItem).toHaveBeenCalledWith('b');
       expect((await FileSystem.getInfoAsync(path)).exists).toBe(false);
     });
+
+    it.each(['99', null])(
+      'preserves later resources when active account changes to %s during deletion',
+      async nextUserId => {
+        let finishFirst!: () => void;
+        mockDeleteDownloadItem.mockImplementationOnce(
+          () =>
+            new Promise<void>(resolve => {
+              finishFirst = resolve;
+            }),
+        );
+        const firstPath = `${FileSystem.documentDirectory}downloads/2/first.mp3`;
+        const secondPath = `${FileSystem.documentDirectory}downloads/2/second.mp3`;
+        await FileSystem.writeAsStringAsync(firstPath, 'first');
+        await FileSystem.writeAsStringAsync(secondPath, 'second');
+        const pending = deleteSelectedDownloadResources(
+          [firstPath, secondPath].map((localFilePath, index) => ({
+            id: index === 0 ? 'first' : 'second',
+            projectId: 2,
+            userId: 7,
+            label: 'Saved resource',
+            resourceName: 'Saved resource',
+            kind: 'audio' as const,
+            bytes: 5,
+            localFilePath,
+          })),
+          1,
+        );
+        expect(mockDeleteDownloadItem).toHaveBeenCalledTimes(1);
+        mockActiveUserId = nextUserId;
+        finishFirst();
+        const result = await pending;
+        expect(result.deletedIds).toEqual(['first']);
+        expect(result.failed).toEqual([
+          { id: 'second', reason: 'Not owned by active account' },
+        ]);
+        expect(mockDeleteDownloadItem.mock.calls).toEqual([['first']]);
+        expect((await FileSystem.getInfoAsync(secondPath)).exists).toBe(true);
+      },
+    );
 
     it('does not delete resources from the current project', async () => {
       const result = await deleteSelectedDownloadResources(

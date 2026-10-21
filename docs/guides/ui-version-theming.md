@@ -3,6 +3,10 @@
 Engineering theme contract (not product AC for recording/sync). Current matching-design phase updated 2026-10-20.
 Figma gap audit (dated): [theme-figma-audit.md](../features/next-ui-redesign/theme-figma-audit.md).
 
+Original Lovable source review and current issue ownership:
+[dated review and evidence map](../features/next-ui-redesign/lovable-review.md).
+Source/token evidence does not establish rendered visual fidelity.
+
 Fluent Mobile supports a runtime-selectable **UI version** while the redesign
 lands:
 
