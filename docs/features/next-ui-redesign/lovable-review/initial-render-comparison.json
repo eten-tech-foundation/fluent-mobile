@@ -1,0 +1,198 @@
+{
+  "schema": "fluent-bounded-visual-pair/v1",
+  "scope": "One existing populated Home/Milestones pair; common header/tab/card surfaces only; no full-page or whole-app acceptance",
+  "reference": {
+    "artifact": "reference-home-milestones.png",
+    "url": "https://fluent-test1.lovable.app/",
+    "sha256": "c3d5d451ab91161cd7f9d2e88998e7e38d94b65eb1b8f1cdf79d6ffa4abe6eef",
+    "raster_pixels": [
+      412,
+      915
+    ],
+    "actual_inner_width": 412,
+    "actual_inner_height": 915,
+    "device_pixel_ratio": 1,
+    "mobile_metrics_override": true,
+    "capture_utc": "2026-10-20T21:47:38.878Z",
+    "capture_policy": "ExistingChrome headless; fresh isolated profile, no auth/cookies/copied sessions, no clicks or foreground. Own profile removed.",
+    "dom_sha256": "0f7609fab7b2dcd3333b32b6188b814d579edad573eae0fa3ae89b121470d364",
+    "state": "Home Milestones selected, populated four cards Gospel of Mark/Gospel of Luke/Genesis/Color Combo Sandbox"
+  },
+  "android": {
+    "artifact": "android-home-milestones.png",
+    "sha256": "fbd54a1acf11a539ca5bb14364ac8be6fe22f430251b7c3162ba8124751f35dc",
+    "raster_pixels": [
+      1080,
+      2400
+    ],
+    "density_dpi_reported_by_sole_device_owner": 420,
+    "pixels_per_dp": 2.625,
+    "logical_dimensions_dp": [
+      411.42857142857144,
+      914.2857142857143
+    ],
+    "state": "Root-provided Legacy Home/Milestones selected, populated one The Beginning / TTS Configuration Test card",
+    "runtime_source_revision": "Not attested by this screenshot; not proof that draft PR #749 implementation is running",
+    "device_execution_by_this_lane": false,
+    "publication_safety_review": "Screenshot visually reviewed: no credentials, emails, private recording content or file paths; QA project fixture title and generic HTTP502 toast are visible."
+  },
+  "comparison_policy": "Read-only Pillow pixel analysis; no rescaling/cropping/editing of published images; normalize Android geometric observations by reported density. Different data and platform insets remain explicit.",
+  "observed_exact_rgb_samples": [
+    {
+      "surface": "primary header blue",
+      "hex": "#0B50D0",
+      "reference_sample_xy": [
+        10,
+        60
+      ],
+      "android_sample_xy": [
+        10,
+        160
+      ],
+      "reference_rgb": [
+        11,
+        80,
+        208
+      ],
+      "android_rgb": [
+        11,
+        80,
+        208
+      ],
+      "sample_match": true
+    },
+    {
+      "surface": "tab/card fill",
+      "hex": "#EAEEF5",
+      "reference_sample_xy": [
+        24,
+        240
+      ],
+      "android_sample_xy": [
+        100,
+        610
+      ],
+      "reference_rgb": [
+        234,
+        238,
+        245
+      ],
+      "android_rgb": [
+        234,
+        238,
+        245
+      ],
+      "sample_match": true
+    },
+    {
+      "surface": "white content background",
+      "hex": "#FFFFFF",
+      "reference_sample_xy": [
+        10,
+        600
+      ],
+      "android_sample_xy": [
+        100,
+        1000
+      ],
+      "reference_rgb": [
+        255,
+        255,
+        255
+      ],
+      "android_rgb": [
+        255,
+        255,
+        255
+      ],
+      "sample_match": true
+    },
+    {
+      "surface": "card border",
+      "hex": "#C3C9D5",
+      "reference_sample_xy": [
+        16,
+        200
+      ],
+      "android_sample_xy": [
+        42,
+        470
+      ],
+      "reference_rgb": [
+        195,
+        201,
+        213
+      ],
+      "android_rgb": [
+        195,
+        201,
+        213
+      ],
+      "sample_match": true
+    }
+  ],
+  "geometry_observations": [
+    {
+      "feature": "first card left inset",
+      "reference_px": 16,
+      "android_px": 42,
+      "android_dp": 16,
+      "interpretation": "Same16-unit inset observed in this pair; right edge occlusion excluded."
+    },
+    {
+      "feature": "gap between tab bottom and first card top",
+      "reference_px": 16,
+      "android_px": 42,
+      "android_dp": 16,
+      "coordinates": "Reference tab ends159/card begins175; Android tab ends396/card begins438.",
+      "interpretation": "Same16-unit gap observed."
+    },
+    {
+      "feature": "tab band including rule/border",
+      "reference_y_interval_px": [
+        108,
+        159
+      ],
+      "reference_height_px": 51,
+      "android_y_interval_px": [
+        273,
+        396
+      ],
+      "android_height_px": 123,
+      "android_height_dp": 46.857142857142854,
+      "observed_android_minus_reference_units": -4.142857142857146,
+      "interpretation": "Approx4.14 normalized-unit height difference in this capture. Pixel row boundaries include rule/border and text/platform metrics; a layout observation requiring component/inset verification, not a declared product FAIL."
+    },
+    {
+      "feature": "first card vertical footprint",
+      "reference_y_interval_px": [
+        175,
+        249
+      ],
+      "reference_height_px": 74,
+      "android_y_interval_px": [
+        438,
+        625
+      ],
+      "android_height_px": 187,
+      "android_height_dp": 71.23809523809524,
+      "observed_android_minus_reference_units": -2.761904761904759,
+      "interpretation": "Approx2.76 normalized-unit difference; titles/subtitles/fonts/line metrics differ. Not an identical-content component oracle."
+    }
+  ],
+  "excluded_regions": [
+    "Android native status/navigation bars versus reference simulated9:30statusbar; no header-height comparison inferred from mergedblueOS/appband",
+    "Android developer Tools gear occludes first card right region; no comparison of that chevron/occluded geometry",
+    "Android generic HTTP502toast overlays lower empty area; not design chrome or a visual-fidelity verdict",
+    "Lovable edit badge near reference bottom-right",
+    "Different card titles/counts/row-specific upload icons, sync state and sample data; no matching content/count assertion"
+  ],
+  "findings_status": "OBSERVED_COMMON_SURFACES_ONLY_NO_BLANKET_PASS_OR_FAIL",
+  "remaining_checks": [
+    "Attest actual Android runtime/build revision for future implementation-specific visual verification",
+    "Capture matched content/state and unobstructed components for typography/radius/disabled/pressed and precise height deltas",
+    "Measure component bounds and native safe-area/text metrics before attributing tab/card differences to a design defect",
+    "Map and compare remaining routes/loading/empty/error/disabled and relevant interaction states; this pair is not every page/state",
+    "Reference version approval and justified mobile adaptations remain open in #738"
+  ]
+}

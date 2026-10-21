@@ -879,4 +879,36 @@ describe('recordingSync', () => {
     expect(JSON.stringify(call)).not.toMatch(/recordings\/sync/);
     expect(JSON.stringify(call)).not.toMatch(/R2_/);
   });
+
+  it('does not retry a server-accepted conflict when its local atomic marker fails', async () => {
+    mockUploadVerseAudio.mockResolvedValue(
+      successResponse({ conflictStatus: 'conflict', versionToken: 4 }),
+    );
+    mockMarkRecordingAndChapterConflicted.mockRejectedValueOnce(
+      new Error('local transaction unavailable'),
+    );
+
+    const result = await syncPendingRecordings('pass-token', { delay });
+
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+    expect(mockMarkRecordingAndChapterConflicted).toHaveBeenCalledTimes(1);
+    expect(delay).not.toHaveBeenCalled();
+    expect(mockMarkRecordingUploaded).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat an accepted clean PUT when the local uploaded marker fails', async () => {
+    mockMarkRecordingUploaded.mockRejectedValue(
+      new Error('local uploaded marker unavailable'),
+    );
+
+    const result = await syncPendingRecordings('pass-token', { delay });
+
+    expect(result).toEqual({ uploaded: 0, conflicted: 0, failed: 1 });
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+    expect(mockMarkRecordingUploaded).toHaveBeenCalledTimes(1);
+    expect(delay).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
 });
