@@ -391,9 +391,24 @@ describe('SyncScreen', () => {
       expect(screen.queryByText('Uploading')).toBeNull();
       expect(screen.queryByText('0%')).toBeNull();
       expect(screen.queryByText(/of .* chapters uploaded/)).toBeNull();
+      expect(screen.queryByTestId('sync-upload-section')).toBeNull();
       expect(mockSyncNowFromHook).not.toHaveBeenCalled();
     },
   );
+
+  it('keeps the upload section while pending and an upload session is active', () => {
+    mockPageStatus = 'pending';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      isUploading: true,
+    };
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-upload-section')).toBeTruthy();
+    expect(screen.getByText('Uploading')).toBeTruthy();
+    // progressUploaded/progressTotal come from the session mock (0/3).
+    expect(screen.getByText('0 of 3 chapters uploaded')).toBeTruthy();
+  });
 
   it('does not show the transport-offline hint when only Fluent health is down', () => {
     mockIsOnline = false;
