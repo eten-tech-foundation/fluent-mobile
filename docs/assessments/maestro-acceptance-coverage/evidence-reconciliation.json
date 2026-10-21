@@ -37,8 +37,8 @@
     },
     "canonical_execution_coverage": {
       "complete_for_requirement": 41,
-      "partial": 45,
-      "not_run": 116
+      "partial": 46,
+      "not_run": 115
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
@@ -148,7 +148,8 @@
       "C-0053-01",
       "A-0012-01",
       "B-0002-01",
-      "B-0013-01"
+      "B-0013-01",
+      "A-0021-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -290,8 +291,8 @@
       "review_inventory_200_is_execution_denominator": false,
       "current_review_execution_statuses_nonadditive": {
         "complete_for_requirement": 41,
-        "partial": 43,
-        "not_run": 91
+        "partial": 44,
+        "not_run": 90
       },
       "atomic_execution_statuses": {
         "complete_for_requirement": 33,
@@ -1343,15 +1344,24 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Capture attribution and upload owner-token selection are separate layers/outcomes; not inferred from displaying existing take metadata.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "evidence/a0021-capture-attribution-reconciliation.json",
+          "case_id": "V7_capture_owner10_then_active12_native_readback",
+          "relation": "partial_local_capture_attribution_only",
+          "reason": "V7 active10 new take recorded_by_user_id10; later native active12 readback preserves exact same row/file SHA. V8 later flow failure retained. Native ownership evidence only: no live owner-token credential choice, UI author-label or independent server attribution; whole runtime revision unattested."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "No safe disposable capture target or approved upload; known cached recording count zero and 944 prohibited."
+        "Live owner-token selection while another account is active has no independent safe attestation in these receipts. Do not inspect/copy credentials to establish it.",
+        "Independent server-side attribution is unverified; device sync_status=uploaded is only device acknowledgment.",
+        "No UI author-label assertion is retained; native recorded_by_user_id provides local ownership evidence."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Prepare safe non-secret attestation of owner-token selection with another account active, and independent authorized server attribution readback. Reuse retained capture/after-switch native evidence; do not recapture or inspect/copy credentials.",
       "source_title": "Recordings attributed to active user at capture",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/105"

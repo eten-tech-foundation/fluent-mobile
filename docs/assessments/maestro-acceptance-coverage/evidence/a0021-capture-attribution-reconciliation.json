@@ -1,0 +1,68 @@
+{
+  "criterion": "A-0021-01 / #105",
+  "scope": "Retained evidence reconciliation only; no device/test execution and no canonical ledger edit",
+  "recommendedStatus": "partial candidate for reporting owner review; do not mark complete",
+  "proved": {
+    "captureOwner": "Account10 selected and native active-user KV asserted before sole capture dispatch; new native row recorded_by_user_id=10",
+    "afterSwitch": "V7 cleanup selected account12 and asserted native active12/known10,9,12/Home; later V8 fresh preflight asserted active12 before reading same V7 row",
+    "newRecording": {
+      "id": "rec_mvh9zald_ts5k8ma8",
+      "bible_text_id": "34850",
+      "recorded_by_user_id": "10",
+      "project_unit_id": "19",
+      "duration_ms": "17594",
+      "file_size_bytes": "217581",
+      "sync_status": "pending"
+    },
+    "file": {
+      "sha256": "46fc0ff1cde164dc4cec9247d20767c74338a2f86458b85d1fb154c4e66052ef",
+      "bytes": 217581
+    },
+    "laterReadbackUtc": "2026-10-20T22:58:53.708211+00:00",
+    "laterRowAndFileExactlyMatchCapture": true,
+    "cachedAccountMixing": "Observed new take owner10 remained10 after switching to12, with cached IDs10,9,12. Does not prove exhaustive multi-account isolation."
+  },
+  "sourcePolicy": {
+    "file": "src/services/recordingSync.ts",
+    "lines": "112-137",
+    "ownerCredentials": "resolveUploadTokenForRecording requests getCredentials(String(recording.recordedByUserId)); prefers owner token",
+    "fallback": "Missing/invalid owner or unavailable owner credentials falls back to supplied active pass token; no runtime credential inspection performed"
+  },
+  "remaining": [
+    "Live owner-token selection while another account is active has no independent safe attestation in these receipts. Do not inspect/copy credentials to establish it.",
+    "Independent server-side attribution is unverified; device sync_status=uploaded is only device acknowledgment.",
+    "No UI author-label assertion is retained; native recorded_by_user_id provides local ownership evidence."
+  ],
+  "obsoleteBlockers": [
+    "No disposable capture target",
+    "Known cached recordings zero"
+  ],
+  "qualifications": {
+    "runtimeRevisionAttested": false,
+    "productSourceFreeze": "d2f27fe82bef307e062844716a0c8d0fa5105420",
+    "firstFailuresPreserved": "V8 preflight readback is usable despite its later flow failure; do not promote that flow to PASS. Historical lifecycle timeouts and later Resume harness failures remain retained.",
+    "sqlReopenTest": "Isolated a28d037 provides actual Node SQLite supporting evidence only; not native capture/server proof."
+  },
+  "receipts": [
+    {
+      "path": "live-results/20261020/final-v7-lifecycle/result.json",
+      "sha256": "dabfe961e37b1b87d9e9d498d99437ab429a26e985c7f4e4b795a6ecc63c4ade"
+    },
+    {
+      "path": "live-results/20261020/final-v8-explicit-resume/result.json",
+      "sha256": "276405d678f565b947ee7f2e605271da86353fa3357dec69586bd2a209aff2b1"
+    },
+    {
+      "path": "lifecycle-v7-review-draft/root-v7-executor.py",
+      "sha256": "13120c8b2f21d9eb60655d5fcb9cad0dbac8c992a1a1a339d2bcde247510e895"
+    },
+    {
+      "path": "resume-v8-review-draft/root-v8-resume-executor.py",
+      "sha256": "77ae590f8eaad9b089da66cf9a07340dc9a89f8a00eaecaab31e6bc5aa89e937"
+    },
+    {
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/src/services/recordingSync.ts",
+      "sha256": "41df80b438e6f5a48e335b1b0d084b73179adcba54d8a2854e1ebefebbf8d63f"
+    }
+  ]
+}
