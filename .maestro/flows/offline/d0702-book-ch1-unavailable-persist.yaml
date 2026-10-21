@@ -1,12 +1,16 @@
 # D-0702-01 nested book probe (chapter-1 only).
 # Preconditions: already on project13 PFO detail with Selected chapters + footer
-# (not prepare-offline-resources-section — absent from live uiautomator hierarchies).
-# Env (full anchored regex / labels — no JS):
+# at zero selection (resources-section is conditional — appears only after
+# selection+hydration, not at zero).
+# Env (full anchored regex / labels):
 #   D0702_BOOK_ZERO / D0702_BOOK_ONE  e.g. ^Matthew, 0 of 28 chapters selected$
 #   D0702_EXPAND / D0702_COLLAPSE     e.g. ^Expand Matthew$
-# Labels are accessibility content-desc in retained XML; Maestro text: matches them.
-# Selection UI only — NEVER tap prepare-offline-download-button / Pause / Resume /
-# Cancel. No available-download size arithmetic claim. Tolerate Download size suffix.
+# After 0→1, bounded scroll-wait for a stable hydration terminal (not footer-first
+# poll — resources-section can sit above the footer viewport):
+#   (A) available — scrollIntoView prepare-offline-resources-section
+#   (B) unavailable — scrollIntoView exact couldn’t-load message
+# Loading / disabled-Download alone is NOT a terminal PASS; timeout → assertTrue fail.
+# NEVER tap Download / Pause / Resume / Cancel. No size arithmetic claim.
 appId: com.eten.fluent
 tags:
   - offline
@@ -68,9 +72,12 @@ tags:
     checked: true
 - assertVisible:
     text: '^Selected chapters \([1-9][0-9]*\)$'
+# Footer may sit below an expanded chapter grid — confirm via scroll, then return
+# to Chapter 1 so the resources-section DOWN wait is not starting from the CTA
+# (section lives between books and footer; footer-first leaves it off-screen).
 - scrollUntilVisible:
     element:
-      id: 'prepare-offline-download-button'
+      id: 'prepare-offline-download-footer'
     direction: DOWN
     timeout: 15000
 - assertVisible:
@@ -78,22 +85,83 @@ tags:
 - assertVisible:
     text: '^Total download$'
 - assertVisible:
-    id: 'prepare-offline-total-bytes'
-- assertVisible:
     id: 'prepare-offline-download-button'
-    enabled: false
-# Tolerate legitimate size suffix; never bare ^Download$. Matches content-desc "Download 0 B".
 - assertVisible:
     text: '^Download .+$'
-# Unavailable branch: wait past loading; hint testID present when selected (retained XML).
-- extendedWaitUntil:
-    visible:
-      text: '^Couldn''t load downloadable resources for the selected chapters\. Check your connection and try again\.$'
-    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: '^Chapter 1$'
+    direction: UP
+    timeout: 15000
+# Bounded scroll-wait A then B (scrollUntilVisible timeout is real, not N×animation).
+- evalScript: ${output.d0702HydrationBranch = ''}
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-resources-section'
+    direction: DOWN
+    timeout: 45000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: 'prepare-offline-resources-section'
+    commands:
+      - evalScript: ${output.d0702HydrationBranch = 'available'}
+- runFlow:
+    when:
+      true: ${output.d0702HydrationBranch == ''}
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: '^Couldn''t load downloadable resources for the selected chapters\. Check your connection and try again\.$'
+          direction: DOWN
+          timeout: 45000
+          optional: true
+      - runFlow:
+          when:
+            visible:
+              text: '^Couldn''t load downloadable resources for the selected chapters\. Check your connection and try again\.$'
+          commands:
+            - evalScript: ${output.d0702HydrationBranch = 'unavailable'}
+      # Available may hydrate while B waited near footer — scroll back UP.
+      - runFlow:
+          when:
+            true: ${output.d0702HydrationBranch == ''}
+          commands:
+            - scrollUntilVisible:
+                element:
+                  id: 'prepare-offline-resources-section'
+                direction: UP
+                timeout: 15000
+                optional: true
+            - runFlow:
+                when:
+                  visible:
+                    id: 'prepare-offline-resources-section'
+                commands:
+                  - evalScript: ${output.d0702HydrationBranch = 'available'}
+- assertTrue: ${output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable'}
+# Full branch suites — when:true gates file; neither is optional/skip-able on match.
+- runFlow:
+    when:
+      true: ${output.d0702HydrationBranch == 'available'}
+    file: d0702-assert-hydration-available.yaml
+- runFlow:
+    when:
+      true: ${output.d0702HydrationBranch == 'unavailable'}
+    file: d0702-assert-hydration-unavailable.yaml
+# Shared footer persistence after terminal (both branches).
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-download-footer'
+    direction: DOWN
+    timeout: 15000
 - assertVisible:
-    id: 'prepare-offline-footer-hint'
-- assertNotVisible:
-    text: '^Loading resources for the selected chapters…$'
+    id: 'prepare-offline-download-footer'
+- assertVisible:
+    text: '^Total download$'
+- assertVisible:
+    text: '^Download .+$'
 - assertNotVisible:
     id: 'prepare-offline-download-controls-downloading'
 # 1 → 0 (restore this book's selection)
@@ -112,6 +180,8 @@ tags:
 - assertVisible:
     text: '^Chapter 1$'
     checked: false
+- assertVisible:
+    text: '^Selected chapters \(0\)$'
 - scrollUntilVisible:
     element:
       id: 'prepare-offline-download-button'

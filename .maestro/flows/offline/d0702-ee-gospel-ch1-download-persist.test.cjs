@@ -29,12 +29,21 @@ const ordered = path.join(
   'd0702-ee-gospel-ch1-download-persist-existing-session.yaml',
 );
 const nested = path.join(__dirname, 'd0702-book-ch1-unavailable-persist.yaml');
+const availableAssert = path.join(
+  __dirname,
+  'd0702-assert-hydration-available.yaml',
+);
+const unavailableAssert = path.join(
+  __dirname,
+  'd0702-assert-hydration-unavailable.yaml',
+);
 const fixture = path.join(
   root,
   '.maestro/fixtures/d0702-ee-gospel-project13.manifest.json',
 );
 const guardPath = path.join(root, 'scripts/maestro-fixture-guard.cjs');
 const guardPresent = fs.existsSync(guardPath);
+const allFlowYaml = [ordered, nested, availableAssert, unavailableAssert];
 
 const UNAVAILABLE =
   "Couldn't load downloadable resources for the selected chapters. Check your connection and try again.";
@@ -96,36 +105,66 @@ describe('D-0702-01 durable wrapper static contract', () => {
     assert.ok(!/^\s*-\s*mutating\s*$/m.test(nText));
   });
 
-  it('maps exact unavailable criterion and forbids bare Download', () => {
-    const body = fs.readFileSync(nested, 'utf8');
+  it('maps A/B hydration terminals (not unavailable-only) and forbids bare Download', () => {
+    const nestedBody = fs.readFileSync(nested, 'utf8');
+    const avail = fs.readFileSync(availableAssert, 'utf8');
+    const unavail = fs.readFileSync(unavailableAssert, 'utf8');
+    assert.ok(nestedBody.includes('d0702-assert-hydration-available.yaml'));
+    assert.ok(nestedBody.includes('d0702-assert-hydration-unavailable.yaml'));
+    assert.ok(nestedBody.includes('output.d0702HydrationBranch'));
+    // Bounded scrollUntilVisible waits (not N×animation busy-loop).
+    assert.ok(nestedBody.includes('scrollUntilVisible:'));
+    assert.ok(nestedBody.includes("id: 'prepare-offline-resources-section'"));
+    assert.ok(/timeout:\s*45000/.test(nestedBody));
     assert.ok(
-      body.includes('load downloadable resources for the selected chapters'),
+      !/times:\s*90/.test(nestedBody),
+      'must not use 90× animation poll',
     );
-    assert.ok(body.includes("Couldn''t load downloadable resources"));
-    assert.ok(body.includes("'^Download .+$'"));
-    assert.ok(!/text:\s*'?\^Download\$'?/.test(body));
-    assert.ok(body.includes('enabled: false'));
-    assert.ok(body.includes("'^Total download$'"));
-    assert.ok(body.includes("'^Chapter 1$'"));
-    assert.ok(body.includes('prepare-offline-footer-hint'));
+    assert.ok(nestedBody.includes("'^Chapter 1$'"));
+    assert.ok(nestedBody.includes("'^Total download$'"));
+    assert.ok(nestedBody.includes("'^Download .+$'"));
+    assert.ok(!/text:\s*'?\^Download\$'?/.test(nestedBody + avail + unavail));
+    // Available branch: scroll-ordered full suite, not one weak element.
+    assert.ok(avail.includes('scrollUntilVisible:'));
+    assert.ok(avail.includes("id: 'prepare-offline-resources-section'"));
+    assert.ok(avail.includes("'^RESOURCES TO DOWNLOAD$'"));
+    assert.ok(avail.includes("id: 'prepare-offline-resource-summary'"));
+    assert.ok(avail.includes("id: 'resource-tier-1'"));
+    assert.ok(avail.includes("'^Source Bible$'"));
+    assert.ok(avail.includes("'^Translation Notes$'"));
+    assert.ok(avail.includes('enabled: true'));
+    assert.ok(avail.includes("'^Download (?!0 B$).+$'"));
+    assert.ok(avail.includes("id: 'prepare-offline-footer-hint'"));
+    // Resources asserts appear before footer CTA scroll in the available file.
     assert.ok(
-      body.includes('Loading resources for the selected chapters'),
-      'must wait out loading settlement before unavailable assert',
+      avail.indexOf("id: 'prepare-offline-resources-section'") <
+        avail.indexOf("id: 'prepare-offline-download-button'"),
+    );
+    // Unavailable branch: exact message + disabled + 0 B + no resources section.
+    assert.ok(unavail.includes("Couldn''t load downloadable resources"));
+    assert.ok(unavail.includes("id: 'prepare-offline-footer-hint'"));
+    assert.ok(unavail.includes("'^Download 0 B$'"));
+    assert.ok(unavail.includes("'^0 B$'"));
+    assert.ok(unavail.includes('enabled: false'));
+    assert.ok(
+      /assertNotVisible:\s*\n\s*id: 'prepare-offline-resources-section'/m.test(
+        unavail,
+      ),
     );
     try {
       const yaml = require('js-yaml');
-      const docs = yaml.loadAll(body);
+      const docs = yaml.loadAll(unavail);
       const texts = [];
       (function walk(o) {
         if (typeof o === 'string') texts.push(o);
         else if (Array.isArray(o)) o.forEach(walk);
         else if (o && typeof o === 'object') Object.values(o).forEach(walk);
       })(docs);
-      const unavailableAssert = texts.find(t =>
+      const msg = texts.find(t =>
         t.includes('load downloadable resources for the selected chapters'),
       );
-      assert.ok(unavailableAssert);
-      assert.ok(new RegExp(unavailableAssert).test(UNAVAILABLE));
+      assert.ok(msg);
+      assert.ok(new RegExp(msg).test(UNAVAILABLE));
     } catch (err) {
       if (err && err.code === 'MODULE_NOT_FOUND') return;
       throw err;
@@ -153,7 +192,7 @@ describe('D-0702-01 durable wrapper static contract', () => {
   });
 
   it('forbids hardware/auth/download mutation commands in authored YAML', () => {
-    for (const file of [ordered, nested]) {
+    for (const file of allFlowYaml) {
       const body = fs.readFileSync(file, 'utf8');
       assert.ok(!/^\s*-\s*clearState\b/m.test(body));
       assert.ok(!/^\s*-\s*launchApp\b/m.test(body));
@@ -183,34 +222,35 @@ describe('D-0702-01 durable wrapper static contract', () => {
     const deps = collectRunFlowDeps(ordered);
     assert.ok(deps.has(path.resolve(ordered)));
     assert.ok(deps.has(path.resolve(nested)));
+    assert.ok(deps.has(path.resolve(availableAssert)));
+    assert.ok(deps.has(path.resolve(unavailableAssert)));
     for (const file of deps) {
       assert.ok(fs.existsSync(file), file);
     }
   });
 
-  it('rejects source-only prepare-offline-resources-section; keeps hierarchy oracles', () => {
-    for (const file of [ordered, nested]) {
-      const body = fs.readFileSync(file, 'utf8');
-      assert.ok(
-        !/prepare-offline-resources-section/.test(
-          body.replace(/^#.*$/gm, ''),
-        ),
-        `${path.basename(file)} must not assert source-only resources-section`,
-      );
-    }
+  it('resources-section is conditional (zero vs available); zero oracle stays footer/books', () => {
     const o = fs.readFileSync(ordered, 'utf8');
     const n = fs.readFileSync(nested, 'utf8');
+    const avail = fs.readFileSync(availableAssert, 'utf8');
+    // Parent zero-selection readiness must not wait on resources-section.
+    const oCommands = o.replace(/^#.*$/gm, '');
+    assert.ok(
+      !/extendedWaitUntil:[\s\S]*?prepare-offline-resources-section/.test(
+        oCommands,
+      ),
+      'ordered must not wait resources-section at zero selection',
+    );
     assert.ok(o.includes("id: 'prepare-offline-download-footer'"));
-    // Single-quoted YAML: \( → regex \( (not \\( which fails to match labels).
     assert.ok(o.includes("'^Selected chapters \\(0\\)$'"));
     assert.ok(o.includes("'^Matthew, 0 of 28 chapters selected$'"));
     assert.ok(o.includes("'^Mark, 0 of 16 chapters selected$'"));
     assert.ok(o.includes("'^Luke, 0 of 24 chapters selected$'"));
-    assert.ok(n.includes("id: 'prepare-offline-download-footer'"));
-    assert.ok(n.includes("'^Selected chapters \\([0-9]+\\)$'"));
+    // Nested polls section as available terminal; available assert requires it.
+    assert.ok(n.includes("id: 'prepare-offline-resources-section'"));
+    assert.ok(avail.includes("id: 'prepare-offline-resources-section'"));
     assert.ok(n.includes('checked: false'));
     assert.ok(n.includes('checked: true'));
-    // Over-escape in single-quoted YAML is `\\(` (two backslashes in file).
     assert.ok(
       !o.includes("'^Selected chapters \\\\(") &&
         !n.includes("'^Selected chapters \\\\("),
@@ -219,8 +259,8 @@ describe('D-0702-01 durable wrapper static contract', () => {
   });
 
   it('authored regexes match retained hierarchy labels (exact strings)', () => {
-    // Exact labels from retained uiautomator dumps (Codex d0702-*-hierarchy.xml /
-    // mark|luke-ch1-*.xml) + reconciliation unavailable message. Not imitation.
+    // Exact labels from retained dumps + step-066 available hierarchy +
+    // reconciliation unavailable message. Not imitation.
     const retainedByPattern = [
       ['^Selected chapters \\(0\\)$', 'Selected chapters (0)'],
       ['^Selected chapters \\([0-9]+\\)$', 'Selected chapters (0)'],
@@ -241,6 +281,17 @@ describe('D-0702-01 durable wrapper static contract', () => {
       ['^Chapter 1$', 'Chapter 1'],
       ['^Total download$', 'Total download'],
       ['^Download .+$', 'Download 0 B'],
+      ['^Download .+$', 'Download 2.4 MB'],
+      ['^Download (?!0 B$).+$', 'Download 2.4 MB'],
+      ['^Download 0 B$', 'Download 0 B'],
+      ['^0 B$', '0 B'],
+      ['^RESOURCES TO DOWNLOAD$', 'RESOURCES TO DOWNLOAD'],
+      ['^Source Bible$', 'Source Bible'],
+      ['^Translation Notes$', 'Translation Notes'],
+      ['^TIER 1 — REQUIRED$', 'TIER 1 — REQUIRED'],
+      ['^\\d+(\\.\\d+)? (KB|MB)$', '1.7 MB'],
+      ['^\\d+(\\.\\d+)? (KB|MB)$', '70 KB'],
+      ['^(?!0 B$)\\d+(\\.\\d+)? (B|KB|MB|GB)$', '2.4 MB'],
       [
         '^Loading resources for the selected chapters…$',
         'Loading resources for the selected chapters…',
@@ -250,6 +301,8 @@ describe('D-0702-01 durable wrapper static contract', () => {
     const docs = [
       ...yaml.loadAll(fs.readFileSync(ordered, 'utf8')),
       ...yaml.loadAll(fs.readFileSync(nested, 'utf8')),
+      ...yaml.loadAll(fs.readFileSync(availableAssert, 'utf8')),
+      ...yaml.loadAll(fs.readFileSync(unavailableAssert, 'utf8')),
     ];
     const patterns = [];
     (function walk(o) {
@@ -268,6 +321,7 @@ describe('D-0702-01 durable wrapper static contract', () => {
     assert.ok(unavailablePat);
     assert.ok(new RegExp(unavailablePat).test(UNAVAILABLE));
     assert.ok(!new RegExp('^Download .+$').test('Download'));
+    assert.ok(!new RegExp('^Download (?!0 B$).+$').test('Download 0 B'));
     assert.ok(
       !new RegExp('^Selected chapters \\(0\\)$').test('Selected chapters (1)'),
     );
@@ -276,13 +330,15 @@ describe('D-0702-01 durable wrapper static contract', () => {
         'Selected chapters (0)',
       ),
     );
-    // Catch over-escaping: parsed pattern must not contain literal \\ before (
     for (const p of patterns.filter(x => x.includes('Selected chapters'))) {
       assert.ok(
         !p.includes('\\\\('),
         `over-escaped Selected chapters pattern: ${JSON.stringify(p)}`,
       );
-      assert.ok(new RegExp(p).test('Selected chapters (0)') || new RegExp(p).test('Selected chapters (1)'));
+      assert.ok(
+        new RegExp(p).test('Selected chapters (0)') ||
+          new RegExp(p).test('Selected chapters (1)'),
+      );
     }
   });
 });

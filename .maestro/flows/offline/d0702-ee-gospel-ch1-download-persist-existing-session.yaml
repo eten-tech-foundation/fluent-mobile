@@ -96,9 +96,9 @@ tags:
     timeout: 30000
 - tapOn:
     id: '^project-row-13$'
-# Project-detail readiness: prepare-offline-resources-section is source-only —
-# absent from retained uiautomator / PR755 step-029 hierarchy. Oracle = footer +
-# Selected chapters (0) + gospel book accessibility rows (Matthew/Mark/Luke).
+# Project-detail readiness at zero selection: resources-section is conditional
+# (appears only after selection+hydration — see step-066 available hierarchy).
+# Zero-selection oracle = footer + Selected chapters (0) + gospel book rows.
 - extendedWaitUntil:
     visible:
       id: 'prepare-offline-download-footer'
