@@ -54,7 +54,7 @@
   "staticGuard": {
     "ok": false,
     "exit": 2,
-    "stderr": "BLOCKED: pfo-download sizeCompleteness=incomplete-unknown-images is not all-known-complete (fail closed; UI aggregate alone is not admission)\n  /Users/matt/Documents/Development/gloo/fluent-mobile/worktrees/pfo51-small-download-test/.maestro/flows/offline/c0051-matthew1-small-download-existing-session.yaml\n",
+    "stderr": "BLOCKED: pfo-download sizeCompleteness=incomplete-unknown-images is not all-known-complete (fail closed; UI aggregate alone is not admission)\n  .maestro/flows/offline/c0051-matthew1-small-download-existing-session.yaml\n",
     "env": {
       "MAESTRO_PFO_DOWNLOAD_ADMISSION": "c0051-matthew1-small",
       "MAESTRO_PFO_DOWNLOAD_MANIFEST": ".maestro/fixtures/c0051-matthew1-small-download.manifest.json",
@@ -63,5 +63,5 @@
     }
   },
   "outcome": "STATIC_GUARD_BLOCKED",
-  "visible": "STOP \u2014 static fixture-guard blocked: BLOCKED: pfo-download sizeCompleteness=incomplete-unknown-images is not all-known-complete (fail closed; UI aggregate alone is not admission)\n  /Users/matt/Documents/Development/gloo/fluent-mobile/worktrees/pfo51-small-download-test/.maestro/flows/offline/c0051-matthew1-small-download-existing-session.yaml\n"
+  "visible": "STOP \u2014 static fixture-guard blocked: BLOCKED: pfo-download sizeCompleteness=incomplete-unknown-images is not all-known-complete (fail closed; UI aggregate alone is not admission)\n  .maestro/flows/offline/c0051-matthew1-small-download-existing-session.yaml\n"
 }

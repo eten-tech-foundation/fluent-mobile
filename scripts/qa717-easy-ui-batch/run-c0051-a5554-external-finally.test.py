@@ -95,8 +95,8 @@ class C0051AdmissionTests(unittest.TestCase):
             "https://x/a.mp3",
         )
 
-    def test_runtime_admit_exact_baseline_passes_without_manifest(self):
-        """Baseline-only path (no size/oracle contract) still matches protected state."""
+    def test_runtime_admit_exact_baseline_blocked_without_manifest(self):
+        """Missing manifest fail-closes size/oracle gates (not a baseline-only PASS)."""
         snap = self._matching_snapshots()
         adm = self.m.admit_runtime_from_snapshots(
             queue=snap["queue"],
@@ -105,8 +105,12 @@ class C0051AdmissionTests(unittest.TestCase):
             prefs=snap["prefs"],
             baselines=self.baselines,
         )
-        self.assertTrue(adm["ok"], adm)
-        self.assertEqual(adm["status"], "PASS")
+        self.assertFalse(adm["ok"], adm)
+        self.assertEqual(adm["status"], "BLOCKED")
+        self.assertTrue(
+            any("manifest_missing_fail_closed" in r for r in adm["reasons"]),
+            adm["reasons"],
+        )
 
     def test_runtime_admit_original_manifest_nonadmissible(self):
         snap = self._matching_snapshots()
@@ -167,6 +171,38 @@ class C0051AdmissionTests(unittest.TestCase):
         self.assertFalse(adm["ok"])
         self.assertTrue(
             any("predownload_oracle_unavailable" in r for r in adm["reasons"]),
+            adm["reasons"],
+        )
+
+    def test_runtime_admit_blank_completeness_incomplete_labels_fail_closed(self):
+        """Blank sizeCompleteness + Unknown/Included 0 B must not PASS via oracle.complete."""
+        snap = self._matching_snapshots()
+        manifest = {
+            "admission": {
+                "requireCompleteKnownSizes": True,
+                # blank / missing completeness
+            },
+            "payload": {
+                "observedGroups": [
+                    {"name": "Reference Images", "items": ["Image Unknown"]},
+                    {"name": "Also", "items": ["Image Included 0 B"]},
+                ],
+                "predownloadSizeOracle": {"complete": True, "kind": "unit-stub"},
+            },
+        }
+        adm = self.m.admit_runtime_from_snapshots(
+            queue=snap["queue"],
+            takes=snap["takes"],
+            cache=snap["cache"],
+            prefs=snap["prefs"],
+            baselines=self.baselines,
+            manifest=manifest,
+        )
+        self.assertFalse(adm["ok"])
+        joined = " ".join(adm["reasons"])
+        self.assertIn("size_completeness_nonadmissible", joined)
+        self.assertTrue(
+            any("unknown_zero_size_label" in r for r in adm["reasons"]),
             adm["reasons"],
         )
 
@@ -256,6 +292,27 @@ class C0051AdmissionTests(unittest.TestCase):
             self.assertFalse(result["runtime_pass_claimed"])
             self.assertFalse(result["staticGuard"]["ok"])
 
+    def test_dry_run_default_evidence_does_not_clobber_tracked_receipt(self):
+        """Default --dry-run must not overwrite tracked host-runner-result.json."""
+        tracked = (
+            ROOT
+            / "docs/assessments/maestro-acceptance-coverage/run-evidence/"
+            / "20261021-easy-ui-batch/c0051-matthew1-download"
+            / "host-runner-result.json"
+        )
+        before = tracked.read_bytes()
+        before_mtime = tracked.stat().st_mtime_ns
+        args = self.m.parse_args(["--repo", str(ROOT), "--dry-run"])
+        result = self.m.run(args, bridge=self.d0702.FakeBridge())
+        self.assertEqual(result["outcome"], "STATIC_GUARD_BLOCKED")
+        after = tracked.read_bytes()
+        self.assertEqual(after, before)
+        self.assertEqual(tracked.stat().st_mtime_ns, before_mtime)
+        resolved = self.m.resolve_evidence_dir(args, ROOT.resolve())
+        tracked_dir = (ROOT / self.m.EVIDENCE_REL).resolve()
+        self.assertNotEqual(resolved, tracked_dir)
+        self.assertTrue((resolved / "host-runner-result.json").is_file())
+
     def test_execute_blocked_by_static_nonadmissible_original_fixture(self):
         with tempfile.TemporaryDirectory() as tmp:
             args = self.m.parse_args(
@@ -340,11 +397,39 @@ class C0051AdmissionTests(unittest.TestCase):
         self.assertEqual(failed["state"], "TRANSFER_FAILED")
         self.assertTrue(failed["uiRestoreSafe"])
 
-    def test_classify_paused_uncertain_no_autoresume(self):
+    def test_classify_paused_not_settled_keeps_polling(self):
         paused = self.m.classify_queue_settle([self._p13_row("paused")])
-        self.assertTrue(paused["settled"])
+        self.assertFalse(paused["settled"])
         self.assertEqual(paused["state"], "PAUSED")
         self.assertFalse(paused["uiRestoreSafe"])
+
+    def test_wait_paused_polls_until_deadline(self):
+        polls = {"n": 0}
+        t = {"v": 0.0}
+
+        def clock():
+            cur = t["v"]
+            t["v"] += 100.0
+            return cur
+
+        def poll():
+            polls["n"] += 1
+            return {
+                "ok": True,
+                "rows": [self._p13_row("paused")],
+                "rowCount": 1,
+            }
+
+        settle = self.m.wait_for_queue_settle(
+            poll_queue=poll,
+            sleep_fn=lambda _s: None,
+            poll_s=0,
+            deadline_s=10,
+            clock_fn=clock,
+        )
+        self.assertEqual(settle["state"], "DEADLINE_EXHAUSTED")
+        self.assertTrue(settle["deadlineExhausted"])
+        self.assertGreaterEqual(polls["n"], 1)
 
     def test_wait_pending_to_completed(self):
         polls = [

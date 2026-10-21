@@ -21,6 +21,7 @@ const root = path.resolve(__dirname, '..');
 const {
   preflightFromArgv,
   evaluateChapterPreflight,
+  evaluateObservedSizeCompleteness,
   loadPfoDownloadManifest,
 } = require('./maestro-fixture-guard.cjs');
 
@@ -209,6 +210,25 @@ describe('pfo-download admission — negatives (default deny)', () => {
     assert.match(result.reason, /actor account 9/);
   });
 
+  it('BLOCKED tap of non-admitted account while actor account present', () => {
+    const yaml =
+      fs.readFileSync(flow, 'utf8') +
+      "\n- tapOn:\n    id: 'settings-menu-account-12'\n";
+    const result = evaluateChapterPreflight({
+      chapterId: '',
+      projectId: '13',
+      allowlist: '13',
+      denylist: '',
+      flows: [{ path: 'non-admitted-account-tap.yaml', yaml }],
+      includeTags: [],
+      excludeTags: [],
+      fixtureEnv: goodEnv,
+      cwd: root,
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /non-admitted account/);
+  });
+
   it('BLOCKED other chapter tap', () => {
     const yaml = fs
       .readFileSync(flow, 'utf8')
@@ -222,6 +242,25 @@ describe('pfo-download admission — negatives (default deny)', () => {
       allowlist: '13',
       denylist: '',
       flows: [{ path: 'wrong-chapter.yaml', yaml }],
+      includeTags: [],
+      excludeTags: [],
+      fixtureEnv: goodEnv,
+      cwd: root,
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /Chapter 2/);
+  });
+
+  it('BLOCKED double-quoted other chapter tap', () => {
+    const yaml =
+      fs.readFileSync(flow, 'utf8') +
+      '\n- tapOn:\n    text: "^Chapter 2$"\n';
+    const result = evaluateChapterPreflight({
+      chapterId: '',
+      projectId: '13',
+      allowlist: '13',
+      denylist: '',
+      flows: [{ path: 'double-quoted-chapter.yaml', yaml }],
       includeTags: [],
       excludeTags: [],
       fixtureEnv: goodEnv,
@@ -357,6 +396,33 @@ describe('pfo-download admission — negatives (default deny)', () => {
     } finally {
       if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
     }
+  });
+
+  it('NONADMISSIBLE: Image Included 0 B before Included skip', () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(root, knownCompleteManifestRel), 'utf8'),
+    );
+    manifest.payload.observedGroups = [
+      { name: 'Source Bible', items: ['Text Included', 'Audio 1.7 MB'], tier: 1 },
+      { name: 'Reference Images', items: ['Image Included 0 B'], tier: 3 },
+    ];
+    const result = evaluateObservedSizeCompleteness(manifest);
+    assert.equal(result.ok, false, JSON.stringify(result));
+    assert.equal(result.status, 'NONADMISSIBLE');
+    assert.match(result.reason, /0 B|unknown|Image Included 0 B/i);
+  });
+
+  it('NONADMISSIBLE: non-Included label without positive size token', () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(root, knownCompleteManifestRel), 'utf8'),
+    );
+    manifest.payload.observedGroups = [
+      { name: 'Source Bible', items: ['Text Included', 'Audio'], tier: 1 },
+    ];
+    const result = evaluateObservedSizeCompleteness(manifest);
+    assert.equal(result.ok, false, JSON.stringify(result));
+    assert.equal(result.status, 'NONADMISSIBLE');
+    assert.match(result.reason, /no known size/i);
   });
 
   it('BLOCKED unknown-size / removed exact assert', () => {

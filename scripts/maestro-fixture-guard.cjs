@@ -204,11 +204,12 @@ function evaluateObservedSizeCompleteness(manifest) {
     const items = Array.isArray(group && group.items) ? group.items : [];
     for (const raw of items) {
       const label = String(raw || '');
-      if (/\bIncluded\b/i.test(label)) {
-        continue;
-      }
-      // Downloadable network rows labeled 0 B are UNKNOWN, not free.
-      if (/\b0\s*B\b/i.test(label)) {
+      // Incomplete tokens before Included skip — "Image Included 0 B" must BLOCK.
+      const incomplete =
+        /\b0\s*B\b/i.test(label) ||
+        /\bUnknown\b/i.test(label) ||
+        /\bSize incomplete\b/i.test(label);
+      if (incomplete) {
         return {
           ok: false,
           status: 'NONADMISSIBLE',
@@ -216,12 +217,14 @@ function evaluateObservedSizeCompleteness(manifest) {
             `pfo-download observed group advertises unknown/zero size (${label}) — not free; refuse transfer admission`,
         };
       }
-      if (/\bUnknown\b/i.test(label) || /\bSize incomplete\b/i.test(label)) {
+      if (/\bIncluded\b/i.test(label)) {
+        continue;
+      }
+      if (!/\b\d+(?:\.\d+)?\s*(?:B|KB|MB|GB)\b/i.test(label)) {
         return {
           ok: false,
           status: 'NONADMISSIBLE',
-          reason:
-            `pfo-download observed group has incomplete size label (${label})`,
+          reason: `pfo-download observed group has no known size (${label})`,
         };
       }
     }
@@ -442,6 +445,18 @@ function scanPfoDownloadFlowBody(yaml, adm, flowPath) {
       flows: [flowPath],
     };
   }
+  if (
+    new RegExp(
+      String.raw`(?:tapOn|longPressOn):\s*\n\s*id:\s*['"]?settings-menu-account-(?!${adm.actorUserId}\b)\d+`,
+    ).test(body)
+  ) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download flow taps a non-admitted account in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
   // Other gospel expands / multi-chapter selection.
   if (/Expand (Mark|Luke|John|Acts|Romans)\b/.test(body)) {
     return {
@@ -461,7 +476,7 @@ function scanPfoDownloadFlowBody(yaml, adm, flowPath) {
   }
   // Tap other chapters (Chapter 2+) — allow text asserts but block tapOn Chapter N≠1.
   const chapterTaps = body.matchAll(
-    /tapOn:\s*\n\s*text:\s*'?\^?Chapter\s+(\d+)/g,
+    /tapOn:\s*\n\s*text:\s*['"]?\^?Chapter\s+(\d+)/g,
   );
   for (const m of chapterTaps) {
     if (Number(m[1]) !== 1) {

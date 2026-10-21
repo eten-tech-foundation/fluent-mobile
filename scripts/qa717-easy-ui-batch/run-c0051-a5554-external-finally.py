@@ -19,6 +19,7 @@ import re
 import shlex
 import subprocess
 import sys
+import tempfile
 import urllib.parse
 from typing import Any
 
@@ -160,7 +161,7 @@ def classify_queue_settle(
 
     Policy (DownloadQueueStatus):
       - active: queued|downloading → still settling
-      - paused: CLEANUP_UNCERTAIN (no auto-Resume in this case)
+      - paused: not settled (auto-resume may continue); poll until terminal/deadline → CLEANUP_UNCERTAIN
       - any failed|cancelled → TRANSFER_FAILED (do not claim complete)
       - all completed (and ≥1 row) → TRANSFER_COMPLETED
       - no project13 rows → NO_PROJECT13_ROWS (uncertain after Download)
@@ -209,9 +210,10 @@ def classify_queue_settle(
             "uiRestoreSafe": False,
         }
     if QUEUE_PAUSED_STATUS in statuses:
+        # Auto-resume may continue paused rows — keep polling until terminal/deadline.
         return {
             **summary,
-            "settled": True,
+            "settled": False,
             "ok": False,
             "state": "PAUSED",
             "uiRestoreSafe": False,
@@ -367,27 +369,34 @@ def admit_runtime_from_snapshots(
     payload = (manifest or {}).get("payload") or {}
 
     # Unknown/incomplete catalog sizes are never admissible (#756).
+    # Missing manifest / non all-known-complete / incomplete labels / incomplete
+    # oracle → fail closed (do not skip gates when manifest is absent).
     completeness = str(
         adm.get("sizeCompleteness") or payload.get("sizeCompleteness") or ""
     ).strip()
-    if completeness and completeness != "all-known-complete":
-        reasons.append(f"size_completeness_nonadmissible:{completeness}")
-    if adm.get("requireCompleteKnownSizes") is not True and manifest is not None:
+    if manifest is None:
+        reasons.append("manifest_missing_fail_closed")
+    elif completeness != "all-known-complete":
+        reasons.append(
+            f"size_completeness_nonadmissible:{completeness or '(missing)'}"
+        )
+    if manifest is not None and adm.get("requireCompleteKnownSizes") is not True:
         reasons.append("requireCompleteKnownSizes_missing")
     for group in payload.get("observedGroups") or []:
         for raw in group.get("items") or []:
             label = str(raw)
+            if re.search(r"\b0\s*B\b|\bUnknown\b|\bSize incomplete\b", label, re.I):
+                reasons.append(f"unknown_zero_size_label:{label}")
+                continue
             if "Included" in label:
                 continue
-            if re.search(r"\b0\s*B\b", label, re.I):
-                reasons.append(f"unknown_zero_size_label:{label}")
+            if not re.search(r"\b\d+(?:\.\d+)?\s*(?:B|KB|MB|GB)\b", label, re.I):
+                reasons.append(f"size_label_not_known:{label}")
     # Never treat after-download bytes as a pre-download oracle.
     if payload.get("afterDownloadBytesUsedForAdmission") is True:
         reasons.append("after_download_bytes_backfill_forbidden")
     oracle = payload.get("predownloadSizeOracle")
-    if manifest is not None and (
-        not isinstance(oracle, dict) or oracle.get("complete") is not True
-    ):
+    if manifest is None or not isinstance(oracle, dict) or oracle.get("complete") is not True:
         reasons.append("predownload_oracle_unavailable_fail_closed")
 
     row_count = int(queue.get("rowCount") or 0)
@@ -656,6 +665,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
+def resolve_evidence_dir(args: argparse.Namespace, repo: pathlib.Path) -> pathlib.Path:
+    """Tracked EVIDENCE_REL only when explicitly requested; dry-run defaults to temp."""
+    if args.evidence_dir:
+        return args.evidence_dir.resolve()
+    cached = getattr(args, "_resolved_evidence_dir", None)
+    if cached is not None:
+        return cached
+    if args.dry_run:
+        path = pathlib.Path(tempfile.mkdtemp(prefix="c0051-dry-run-"))
+    else:
+        path = (repo / EVIDENCE_REL).resolve()
+    setattr(args, "_resolved_evidence_dir", path)
+    return path
+
+
 def run_readonly_smoke(
     args: argparse.Namespace,
     *,
@@ -665,11 +689,7 @@ def run_readonly_smoke(
     """Exclusive read-only probe: queue / 19 cache / 11 takes / prefs. No UI."""
     d0702 = d0702 or load_d0702()
     repo = args.repo.resolve()
-    evidence = (
-        args.evidence_dir.resolve()
-        if args.evidence_dir
-        else (repo / EVIDENCE_REL)
-    )
+    evidence = resolve_evidence_dir(args, repo)
     evidence.mkdir(parents=True, exist_ok=True)
     manifest = load_manifest(repo)
     baselines = load_baselines(repo, manifest)
@@ -788,11 +808,7 @@ def run(
 ) -> dict[str, Any]:
     d0702 = d0702 or load_d0702()
     repo = args.repo.resolve()
-    evidence = (
-        args.evidence_dir.resolve()
-        if args.evidence_dir
-        else (repo / EVIDENCE_REL)
-    )
+    evidence = resolve_evidence_dir(args, repo)
     evidence.mkdir(parents=True, exist_ok=True)
     manifest = manifest_override if manifest_override is not None else load_manifest(repo)
     baselines = load_baselines(repo, manifest)
@@ -1049,7 +1065,7 @@ def run(
         result["outcome"] = "CLEANUP_UNCERTAIN"
         result["runtime_pass_claimed"] = False
         result["visible"] = (
-            "CLEANUP_UNCERTAIN — queue paused; no auto-Resume; statuses="
+            "CLEANUP_UNCERTAIN — queue still paused after settle wait; statuses="
             + ",".join(settle.get("statuses") or [])
         )
     elif settle_state in ("NO_PROJECT13_ROWS", "UNKNOWN_STATUSES", "ACTIVE"):

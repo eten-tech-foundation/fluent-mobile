@@ -9,11 +9,11 @@
 
 Original selected catalog showed Total/CTA **2.4 MB** with Reference Images **Image 0 B** (unknown). That transfer completed **205** queue rows / **26,957,219** bytes (images **24,491,361**). Fixture project13 content is retained; **do not re-run** Download from the stale aggregate.
 
-- **Packaging docs publication READY** after ordinary approved Shell gates (prior hold resolved). Observed: guard **23**/23 in idle session `756c54fb` (not re-run); Node C-0051 flow **13**/13; Python host unit **27**/27; `--dry-run` exit **2** with `STATIC_GUARD_BLOCKED` before ADB (safe expected refuse; not runtime PASS).
-- Optional Write of external `task-10/.../remaining-gates-measured.md` was `Rejected:` — **held**; do not retry/copy/recreate. CLI result JSON already retains measured results.
-- `host-runner-result.json` remains `derived_static_expectation_not_executed` — historical unexecuted expectation snapshot; **not** overwritten with measured dry-run.
+- **Packaging docs publication READY** after ordinary approved Shell gates. Focused (Jonathan 5604977791 correction): Node guard **27**/27; Node C-0051 flow **13**/13; Python host unit **30**/30; `--dry-run` exit **2** with `STATIC_GUARD_BLOCKED` before ADB (safe expected refuse; not runtime PASS). Default dry-run evidence writes to a **temp** dir (does not clobber tracked receipt).
+- Optional Write of external `task-10/.../remaining-gates-measured.md` was `Rejected:` — **held**; do not retry/copy/recreate.
+- `host-runner-result.json` is a measured **`STATIC_GUARD_BLOCKED`** refusal (repo-relative flow path; no local absolute user path) — not a null/unexecuted snapshot and not a runtime PASS.
 - Device/`--execute` still **BLOCKED** (original fixture NONADMISSIBLE; queue205 refuse-rerun; no predownload oracle).
-- Known-complete bounded manifest is **structural unit only** (execute stays fail-closed). **Does not** prove general 5 MB safety.
+- Known-complete bounded manifest is **structural unit only** (execute stays fail-closed). **Does not** prove a universal transfer byte cap. Default-deny retained for unrelated mutating flows.
 - Preserve historically: 11 recordings + 19 prior cache paths; new project13 files retained. No further device runs from this packet.
 - `readonly-smoke-result.json` remains **historical** (untouched). Prior task10/artifacts runtime evidence remains untouched.
 - Guard baseline verified: `d2da6fece7e5b7e0bc0dd8cb19836ec992db36b1`. Root stages **2** commits and publishes **#758** stack on PR755 base after these docs are accurate.
@@ -25,7 +25,7 @@ SQL never selects `resume_data` / tokens. URLs stripped of query/fragment.
 | State | Host action |
 |-------|-------------|
 | `queued` / `downloading` | Poll until clear (deadline 180s) |
-| `paused` | `CLEANUP_UNCERTAIN` — no auto-Resume; no account switch |
+| `paused` | not settled (auto-resume may continue); poll until terminal/deadline → `CLEANUP_UNCERTAIN`; no account switch |
 | `failed` / `cancelled` | `TRANSFER_FAILED` — UI restore OK; never claim complete |
 | all `completed` (≥1 project13) | Success path after preserve checks |
 | deadline exhausted | `CLEANUP_UNCERTAIN` + exact statuses; no blind cancel/kill |

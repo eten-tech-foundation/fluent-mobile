@@ -13,15 +13,16 @@
 - Optional external receipt Write (`task-10/.../remaining-gates-measured.md`) `Rejected:` — **held**; no retry/copy/recreate. Existing CLI result JSON retains measured results.
 - Prior review-session Shell `Rejected:` / MCP `get_file_contents` denials are superseded for gate execution only; they do not authorize device run.
 
-## host-runner-result.json labeling (unchanged this edit)
+## host-runner-result.json labeling (measured static refusal)
 
 | Field | Status |
 |-------|--------|
-| `evidenceKind` | remains `derived_static_expectation_not_executed` (historical unexecuted expectation) |
-| `staticGuard` / `outcome` / `visible` | remain `null` in that file — **not** edited to match measured dry-run |
-| `expectedStaticGuard` / `expected_outcome` | predicted-only snapshot retained |
-| Measured dry-run | observed elsewhere (CLI JSON); file left as expectation historical |
-| `historicalCapFailure` | retained as prior audited transfer facts |
+| `outcome` | **`STATIC_GUARD_BLOCKED`** — measured static refusal of the incomplete original fixture |
+| `staticGuard.ok` | `false` (exit `2`) |
+| `staticGuard.stderr` / `visible` | fail-closed incompleteness reason + **repo-relative** flow path (no local absolute user path) |
+| `runtime_pass_claimed` | `false` |
+| Not a null/unexecuted snapshot | Do **not** describe this file as null `staticGuard`/`outcome`; it is a committed measured refusal |
+| Default `--dry-run` evidence | temp directory (does **not** overwrite this tracked receipt) |
 | `readonly-smoke-result.json` | **untouched** |
 | task10/artifacts historical runtime | **untouched** |
 | external `remaining-gates-measured.md` | Write held (`Rejected:`); not recreated |
@@ -81,11 +82,12 @@
 
 ## Explicit non-claims
 
-- Not a general 5 MB safety / universal cap guarantee.  
+- Not a general 5 MB safety / universal byte-cap guarantee.  
+- Default-deny retained for unrelated mutating flows; this packet only admits the scoped PFO fixture contract.  
 - Known-complete fixture ≠ execute authorization.  
 - Original cap failure retained (2.4 MB + Images 0 B → 205 / ~27 MB).  
 - C-0051-06 / C-0052-02 not closed by this packet.  
-- Derived `host-runner-result.json` expectation fields remain **not** measured output.
+- Tracked `host-runner-result.json` is a measured `STATIC_GUARD_BLOCKED` refusal, not a runtime PASS.
 
 ## CI correction (PR759 Unit Tests — dual-runner registration)
 
@@ -121,6 +123,14 @@
 
 - All **23** guard assertions / default-deny inventory unchanged.
 - Historical CI fail (zero Jest tests) and prior Rejected focused-Jest attempt retained above.
-- Cap-failure facts / `host-runner-result.json` historical expectation / external held receipt: **untouched**.
-- No device/network/download/install; no source edits beyond dual-runner harness + this receipt append.
-- Root: stage `scripts/maestro-fixture-guard.pfo-download.test.cjs` + this receipt only; **never** stage worktree `node_modules` symlink or `__pycache__/`.
+- Cap-failure facts retained; tracked `host-runner-result.json` corrected to describe measured `STATIC_GUARD_BLOCKED` (paths scrubbed).
+- No device/network/download/install/live transfer in this human-review correction.
+- Never stage worktree `node_modules` symlink or `__pycache__/`.
+
+## Human review correction (Jonathan 5604977791 — Refs #758)
+
+- Incomplete labels (`0 B` / `Unknown` / `Size incomplete`) evaluated **before** Included skip; `Image Included 0 B` BLOCK; else positive size token required.
+- Runtime admit fail-closed: missing manifest, non `all-known-complete`, incomplete labels, incomplete oracle.
+- Reject non-admitted account taps; chapter tap regex accepts `'`/`"`; paused queue not settled (bounded poll to deadline).
+- Default `--dry-run` evidence → temp (no tracked receipt clobber).
+- Focused regressions added for those holes + dry-run clobber guard (no framework rewrite; no live transfer).
