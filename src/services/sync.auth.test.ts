@@ -31,8 +31,15 @@ import {
   setUserSync,
   isBibleTextsServerIdRemapPending,
   clearBibleTextsServerIdRemapPending,
+  getPericopeBookVersion,
+  setPericopeBookVersion,
 } from './storage';
 import { getDatabase } from '../db/db';
+import {
+  loadBundledPericopeSet,
+  getBundledPericopeSetVersion,
+} from './pericopeSets';
+import { FIA_SET_ID } from '../../assets/pericope-sets/pericopeSetVersions';
 
 jest.mock('./authToken', () => ({
   authToken: {
@@ -1349,10 +1356,14 @@ describe('syncAllData progressive login (#670)', () => {
     });
 
     // Tier 1 unblocked: My Work pericopes persisted; catalogue PSA not yet.
-    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
-      bookCode: 'MRK',
-      etag: null,
-    });
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      99,
+      {
+        bookCode: 'MRK',
+        etag: null,
+      },
+      undefined,
+    );
     expect(upsertPericopeSet).toHaveBeenCalledWith(
       99,
       'MRK',
@@ -1385,10 +1396,14 @@ describe('syncAllData progressive login (#670)', () => {
     );
     expect(onTier1Complete).toHaveBeenCalledTimes(1);
     // After Tier 2 assignments, catalogue PSA pericopes are fetched + persisted.
-    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
-      bookCode: 'PSA',
-      etag: null,
-    });
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      99,
+      {
+        bookCode: 'PSA',
+        etag: null,
+      },
+      undefined,
+    );
     expect(upsertPericopeSet).toHaveBeenCalledWith(
       99,
       'PSA',
@@ -1476,10 +1491,14 @@ describe('syncAllData progressive login (#670)', () => {
 
     // Catalogue must not have finished before Tier 1 unblocked Home.
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
-    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
-      bookCode: 'MRK',
-      etag: null,
-    });
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      99,
+      {
+        bookCode: 'MRK',
+        etag: null,
+      },
+      undefined,
+    );
     expect(FluentAPI.getPericopeSet).not.toHaveBeenCalledWith(
       99,
       expect.objectContaining({ bookCode: 'PSA' }),
@@ -1494,10 +1513,14 @@ describe('syncAllData progressive login (#670)', () => {
       undefined,
       'relogin-token',
     );
-    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
-      bookCode: 'PSA',
-      etag: null,
-    });
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      99,
+      {
+        bookCode: 'PSA',
+        etag: null,
+      },
+      undefined,
+    );
     expect(FluentAPI.getBibleTexts).toHaveBeenLastCalledWith(
       10,
       [{ bookId: 19, chapterNumber: 1 }],
@@ -1561,5 +1584,157 @@ describe('syncAllData progressive login (#670)', () => {
 describe('sync public API', () => {
   it('does not export a misleading switchUser stub', () => {
     expect(sync).not.toHaveProperty('switchUser');
+  });
+});
+
+/**
+ * Metadata refresh must hydrate pericopes for newly imported chapters
+ * (warm All-synced sessions have no Sync Now). Uses the real FIA (#447)
+ * bundled loader for set id 2 / 1PE — not a disconnected syncPericopes spy.
+ */
+describe('refreshChapterMetadataIfOnline pericope hydration after metadata import', () => {
+  const fia1peVerses = loadBundledPericopeSet(FIA_SET_ID, '1PE');
+  const bundledFiaVersion = getBundledPericopeSetVersion(FIA_SET_ID);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+    userNeedsAssigneeRepair.mockResolvedValue(false);
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+    (FluentAPI.getUserMilestones as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-10-21T12:00:00.000Z',
+      data: [],
+    });
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockResolvedValue({
+      assignedChapters: [],
+      peerCheckChapters: [],
+    });
+    (FluentAPI.getPericopeSet as jest.Mock).mockResolvedValue({
+      status: 304,
+      etag: null,
+    });
+    // Simulate chapters that just landed via the metadata assignment pull.
+    getChaptersNeedingPericopeSync.mockResolvedValue([
+      {
+        projectId: 15,
+        bookId: 60,
+        bookCode: '1PE',
+        chapterNumber: 1,
+      },
+      {
+        projectId: 15,
+        bookId: 60,
+        bookCode: '1PE',
+        chapterNumber: 2,
+      },
+    ]);
+    getProjectPericopeSetId.mockResolvedValue(FIA_SET_ID);
+    (getPericopeBookVersion as jest.Mock).mockReturnValue('');
+  });
+
+  it('hydrates bundled FIA set2 1PE boundaries after ordinary metadata refresh', async () => {
+    expect(fia1peVerses).not.toBeNull();
+    expect(fia1peVerses).toHaveLength(105);
+    const ch1Groups = new Set(
+      fia1peVerses!
+        .filter(v => v.chapterNumber === 1)
+        .map(v => v.pericopeNumber),
+    );
+    expect(ch1Groups.size).toBe(4);
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalled();
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalled();
+    expect(upsertPericopeSet).toHaveBeenCalledTimes(1);
+    expect(upsertPericopeSet).toHaveBeenCalledWith(
+      FIA_SET_ID,
+      '1PE',
+      fia1peVerses,
+    );
+    expect(setPericopeBookVersion).toHaveBeenCalledWith(
+      FIA_SET_ID,
+      '1PE',
+      bundledFiaVersion,
+    );
+    // Bundled path — no set-level HTTP, and never chapter-pericope HTTP.
+    expect(FluentAPI.getPericopeSet).not.toHaveBeenCalled();
+  });
+
+  it('skips upsert when the imported project has a null pericope set', async () => {
+    getProjectPericopeSetId.mockResolvedValue(null);
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(upsertPericopeSet).not.toHaveBeenCalled();
+    expect(FluentAPI.getPericopeSet).not.toHaveBeenCalled();
+  });
+
+  it('does not hydrate pericopes when the user is no longer active', async () => {
+    (getActiveUserId as jest.Mock).mockReturnValue('9');
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+    expect(upsertPericopeSet).not.toHaveBeenCalled();
+  });
+
+  it('keeps metadata refresh non-blocking when pericope hydrate throws', async () => {
+    upsertPericopeSet.mockRejectedValueOnce(new Error('pericope write failed'));
+
+    await expect(refreshChapterMetadataIfOnline(2)).resolves.toBeUndefined();
+  });
+
+  it('skips reseed when the bundled FIA book version is already current', async () => {
+    (getPericopeBookVersion as jest.Mock).mockReturnValue(bundledFiaVersion);
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(upsertPericopeSet).not.toHaveBeenCalled();
+    expect(FluentAPI.getPericopeSet).not.toHaveBeenCalled();
+  });
+
+  it('passes the captured session token for unbundled pericope set GETs (#294)', async () => {
+    getProjectPericopeSetId.mockResolvedValue(99);
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'user-2-metadata-token',
+    });
+    (FluentAPI.getPericopeSet as jest.Mock).mockResolvedValue({
+      status: 200,
+      etag: '"etag-99"',
+      data: [
+        {
+          bookCode: '1PE',
+          pericopeNumber: '1',
+          pericopeTitle: null,
+          verses: [{ chapterNumber: 1, verseNumber: 1 }],
+        },
+      ],
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      99,
+      {
+        bookCode: '1PE',
+        etag: null,
+      },
+      'user-2-metadata-token',
+    );
+    expect(authToken.set).not.toHaveBeenCalled();
   });
 });
