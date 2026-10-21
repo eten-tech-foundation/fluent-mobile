@@ -248,6 +248,88 @@ describe('mergeQueueIntoPrepareOfflineCatalog', () => {
     expect(merged.items[0].bytes).toBe(0);
   });
 
+  it('fail-before/pass-after: known-zero no-sourceUrl + positive recovery stays exact (#756 CR)', () => {
+    // Intended case for CodeRabbit 4337223293: placeholder known-zero member
+    // (no sourceUrl) must not force "At least" when the other member recovers.
+    const mixed = row(
+      {
+        id: 'Bundle:mixed',
+        kind: 'text',
+        groupName: 'Bundle',
+        label: 'Text',
+        bytes: 0,
+        sizeKnown: false,
+        status: 'selected',
+        required: false,
+        removable: true,
+      },
+      [
+        member('placeholder', 0, {
+          kind: 'text',
+          resourceName: 'Bundle',
+          fileExt: 'json',
+          sourceUrl: undefined,
+        }),
+        member('remote-img', 0, {
+          kind: 'image',
+          resourceName: 'Bundle',
+          fileExt: 'jpg',
+        }),
+      ],
+    );
+    const mixedCatalog: PrepareOfflineCatalog = {
+      items: [mixed],
+      groups: [],
+    };
+
+    const merged = mergeQueueIntoPrepareOfflineCatalog(
+      mixedCatalog,
+      [
+        queueRow('placeholder', 'completed', 1, 1, 1, 0),
+        queueRow('remote-img', 'completed', 1, 1, 1, 4096),
+      ],
+      1,
+      1,
+    );
+
+    expect(merged.items[0].status).toBe('completed');
+    expect(merged.items[0].bytes).toBe(4096);
+    expect(merged.items[0].sizeKnown).toBe(true);
+  });
+
+  it('fail-before/pass-after: queue zero does not erase positive known manifest (#756 CR)', () => {
+    const knownAudio = row(
+      {
+        id: 'Source Bible:audio',
+        kind: 'audio',
+        groupName: 'Source Bible',
+        label: 'Audio',
+        bytes: 2048,
+        sizeKnown: true,
+        status: 'selected',
+        required: true,
+        removable: false,
+      },
+      [member('audio-1', 2048)],
+    );
+    const knownCatalog: PrepareOfflineCatalog = {
+      items: [knownAudio],
+      groups: [],
+    };
+
+    // Worker reported 0 (missing/empty info) but manifest already knows 2048.
+    const merged = mergeQueueIntoPrepareOfflineCatalog(
+      knownCatalog,
+      [queueRow('audio-1', 'completed', 1, 1, 1, 0)],
+      1,
+      1,
+    );
+
+    expect(merged.items[0].status).toBe('completed');
+    expect(merged.items[0].bytes).toBe(2048);
+    expect(merged.items[0].sizeKnown).toBe(true);
+  });
+
   it('keeps catalog baseline with weighted progress while members finish between transfers', () => {
     // m1 completed, m2 not yet picked up by the worker (still queued).
     const merged = mergeQueueIntoPrepareOfflineCatalog(
