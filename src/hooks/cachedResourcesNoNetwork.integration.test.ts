@@ -106,6 +106,10 @@ const TQ_CONTENT = [
   },
 ];
 
+/** Minimal 1×1 PNG (base64) — offline image fixture for IMG_URI. */
+const MINIMAL_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
 function queueRow(
   overrides: Partial<DownloadQueueItem> = {},
 ): DownloadQueueItem {
@@ -115,8 +119,87 @@ function queueRow(
     label: 'Mark 14:2',
     progress: 1,
     status: 'completed',
+    projectId: PROJECT_ID,
+    userId: USER_ID,
+    bookCode: BOOK,
+    startChapter: CHAPTER,
+    endChapter: CHAPTER,
     ...overrides,
   };
+}
+
+/** Mirrors getDownloadedResourcesForChapter WHERE (all six lookup args). */
+function rowMatchesLookup(
+  row: DownloadQueueItem,
+  projectId: number,
+  userId: number,
+  resourceName: string,
+  kind: 'text' | 'audio' | 'image',
+  bookCode: string,
+  chapter: number,
+): boolean {
+  return (
+    row.projectId === projectId &&
+    row.userId === userId &&
+    row.resourceName === resourceName &&
+    row.kind === kind &&
+    row.bookCode === bookCode &&
+    typeof row.startChapter === 'number' &&
+    typeof row.endChapter === 'number' &&
+    row.startChapter <= chapter &&
+    row.endChapter >= chapter
+  );
+}
+
+function cachedFixtureRows(): DownloadQueueItem[] {
+  return [
+    queueRow({
+      id: '42-7-tn-mrk-14-2',
+      resourceId: 'local-tn',
+      resourceName: 'Translation Notes',
+      kind: 'text',
+      label: 'Mark 14:2',
+      localFilePath: TN_URI,
+      verseStart: 2,
+      verseEnd: 2,
+    }),
+    queueRow({
+      id: '42-7-tq-mrk-14-2',
+      resourceId: 'local-tq',
+      tier: 2,
+      resourceName: 'Translation Questions',
+      kind: 'text',
+      label: 'Mark 14:2',
+      localFilePath: TQ_URI,
+      verseStart: 2,
+      verseEnd: 2,
+    }),
+    queueRow({
+      id: '42-7-img-mrk-14',
+      tier: 3,
+      resourceName: 'Reference Images',
+      kind: 'image',
+      label: 'Jerusalem region map',
+      localFilePath: IMG_URI,
+    }),
+  ];
+}
+
+function mockInventoryFromFixtures(rows: DownloadQueueItem[]): void {
+  mockGetRows.mockImplementation(
+    async (projectId, userId, resourceName, kind, bookCode, chapter) =>
+      rows.filter(row =>
+        rowMatchesLookup(
+          row,
+          projectId,
+          userId,
+          resourceName,
+          kind,
+          bookCode,
+          chapter,
+        ),
+      ),
+  );
 }
 
 function stubRemoteMustNotBeReached(): void {
@@ -128,6 +211,14 @@ function stubRemoteMustNotBeReached(): void {
   getTranslationImages.mockImplementation(boom);
 }
 
+async function seedLocalResourceFiles(): Promise<void> {
+  await FileSystem.writeAsStringAsync(TN_URI, JSON.stringify(TN_CONTENT));
+  await FileSystem.writeAsStringAsync(TQ_URI, JSON.stringify(TQ_CONTENT));
+  await FileSystem.writeAsStringAsync(IMG_URI, MINIMAL_PNG_BASE64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+}
+
 describe('cached Resources path — no network (#192, ISOLATED)', () => {
   beforeEach(() => {
     resetFileSystemMock();
@@ -136,55 +227,11 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
   });
 
   it('TN/TQ/Images load from inventory+local files offline without FluentAPI', async () => {
-    await FileSystem.writeAsStringAsync(TN_URI, JSON.stringify(TN_CONTENT));
-    await FileSystem.writeAsStringAsync(TQ_URI, JSON.stringify(TQ_CONTENT));
+    await seedLocalResourceFiles();
+    const imgInfo = await FileSystem.getInfoAsync(IMG_URI);
+    expect(imgInfo.exists).toBe(true);
 
-    mockGetRows.mockImplementation(
-      async (_projectId, _userId, resourceName, kind) => {
-        if (resourceName === 'Translation Notes' && kind === 'text') {
-          return [
-            queueRow({
-              id: '42-7-tn-mrk-14-2',
-              resourceId: 'local-tn',
-              resourceName: 'Translation Notes',
-              kind: 'text',
-              label: 'Mark 14:2',
-              localFilePath: TN_URI,
-              verseStart: 2,
-              verseEnd: 2,
-            }),
-          ];
-        }
-        if (resourceName === 'Translation Questions' && kind === 'text') {
-          return [
-            queueRow({
-              id: '42-7-tq-mrk-14-2',
-              resourceId: 'local-tq',
-              tier: 2,
-              resourceName: 'Translation Questions',
-              kind: 'text',
-              label: 'Mark 14:2',
-              localFilePath: TQ_URI,
-              verseStart: 2,
-              verseEnd: 2,
-            }),
-          ];
-        }
-        if (resourceName === 'Reference Images' && kind === 'image') {
-          return [
-            queueRow({
-              id: '42-7-img-mrk-14',
-              tier: 3,
-              resourceName: 'Reference Images',
-              kind: 'image',
-              label: 'Jerusalem region map',
-              localFilePath: IMG_URI,
-            }),
-          ];
-        }
-        return [];
-      },
-    );
+    mockInventoryFromFixtures(cachedFixtureRows());
 
     const unit = {
       projectId: PROJECT_ID,
@@ -237,9 +284,115 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
       },
     ]);
 
-    expect(mockGetRows).toHaveBeenCalled();
+    expect(mockGetRows).toHaveBeenCalledWith(
+      PROJECT_ID,
+      USER_ID,
+      'Translation Notes',
+      'text',
+      BOOK,
+      CHAPTER,
+    );
+    expect(mockGetRows).toHaveBeenCalledWith(
+      PROJECT_ID,
+      USER_ID,
+      'Translation Questions',
+      'text',
+      BOOK,
+      CHAPTER,
+    );
+    expect(mockGetRows).toHaveBeenCalledWith(
+      PROJECT_ID,
+      USER_ID,
+      'Reference Images',
+      'image',
+      BOOK,
+      CHAPTER,
+    );
     expect(getTranslationNotes).not.toHaveBeenCalled();
     expect(getTranslationQuestions).not.toHaveBeenCalled();
+    expect(getTranslationImages).not.toHaveBeenCalled();
+  });
+
+  it('inventory mismatch on project/user/book/chapter returns no cached rows', async () => {
+    await seedLocalResourceFiles();
+    mockInventoryFromFixtures(cachedFixtureRows());
+
+    await expect(
+      mockGetRows(
+        PROJECT_ID + 1,
+        USER_ID,
+        'Translation Notes',
+        'text',
+        BOOK,
+        CHAPTER,
+      ),
+    ).resolves.toEqual([]);
+    await expect(
+      mockGetRows(
+        PROJECT_ID,
+        USER_ID + 1,
+        'Translation Notes',
+        'text',
+        BOOK,
+        CHAPTER,
+      ),
+    ).resolves.toEqual([]);
+    await expect(
+      mockGetRows(
+        PROJECT_ID,
+        USER_ID,
+        'Translation Notes',
+        'text',
+        'MAT',
+        CHAPTER,
+      ),
+    ).resolves.toEqual([]);
+    await expect(
+      mockGetRows(
+        PROJECT_ID,
+        USER_ID,
+        'Translation Notes',
+        'text',
+        BOOK,
+        CHAPTER + 1,
+      ),
+    ).resolves.toEqual([]);
+    await expect(
+      mockGetRows(
+        PROJECT_ID,
+        USER_ID,
+        'Translation Notes',
+        'text',
+        BOOK,
+        CHAPTER,
+      ),
+    ).resolves.toHaveLength(1);
+
+    const mismatchedUnit = {
+      projectId: PROJECT_ID + 1,
+      userId: USER_ID,
+      isOnline: false as const,
+      bookCode: BOOK,
+      chapterNumber: CHAPTER,
+      verseNumber: VERSE,
+    };
+    const tn = renderHook(() => useTranslationNotesForUnit(mismatchedUnit));
+    const img = renderHook(() => useImagesMapsForUnit(mismatchedUnit));
+
+    await waitFor(() => {
+      expect(tn.result.current.state.status).toBe('ready');
+      expect(img.result.current.state.status).toBe('ready');
+    });
+
+    if (tn.result.current.state.status !== 'ready') {
+      throw new Error('expected TN ready');
+    }
+    if (img.result.current.state.status !== 'ready') {
+      throw new Error('expected Images ready');
+    }
+    expect(tn.result.current.state.notes).toEqual([]);
+    expect(img.result.current.state.items).toEqual([]);
+    expect(getTranslationNotes).not.toHaveBeenCalled();
     expect(getTranslationImages).not.toHaveBeenCalled();
   });
 
