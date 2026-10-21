@@ -1,0 +1,504 @@
+/**
+ * Pure checks for Maestro fixture scope. No network and no filesystem writes.
+ * Mutating lanes may name only allowlisted project ids. Denylisted ids
+ * (demo projects) are refused even if someone also allowlists them.
+ */
+
+function parseIdList(value) {
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return [];
+  }
+  return String(value)
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean);
+}
+
+function assertProjectAllowed(projectId, allowlistRaw, denylistRaw) {
+  const id = String(projectId ?? '').trim();
+  if (!id) {
+    return { ok: false, status: 'BLOCKED', reason: 'project id is empty' };
+  }
+  const denylist = parseIdList(denylistRaw);
+  if (denylist.includes(id)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `project ${id} is denylisted (demo or protected data)`,
+    };
+  }
+  const allowlist = parseIdList(allowlistRaw);
+  if (allowlist.length === 0) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'MAESTRO_FIXTURE_PROJECT_ALLOWLIST is empty',
+    };
+  }
+  if (!allowlist.includes(id)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `project ${id} is not on the allowlist`,
+    };
+  }
+  return { ok: true, status: 'PASS', reason: '' };
+}
+
+const FIXTURE_CHAPTER_HELPER = 'open-my-work-chapter.yaml';
+const nodePath = require('path');
+const MILESTONE_FIXTURE_HELPER = nodePath.resolve(
+  __dirname,
+  '../.maestro/shared/nav/open-fixture-chapter-from-milestone.yaml',
+);
+
+const VALUE_FLAGS = new Set([
+  '--config',
+  '--include-tags',
+  '--exclude-tags',
+  '--test-output-dir',
+  '--device',
+  '--format',
+  '--debug-output',
+  '--driver-host-port',
+  '--shard-split',
+  '--env',
+  '-e',
+]);
+
+function parseTagArg(value) {
+  return parseIdList(value);
+}
+
+function parseFlowTags(yaml) {
+  const tags = [];
+  const inline = String(yaml).match(/^tags:\s*\[([^\]]*)\]/m);
+  if (inline)
+    return inline[1]
+      .split(',')
+      .map(tag => tag.trim().replace(/^(['"])(.*)\1$/, '$2'))
+      .filter(Boolean);
+  let inTags = false;
+  for (const line of String(yaml).split(/\r?\n/)) {
+    if (!inTags) {
+      if (/^tags:\s*$/.test(line)) inTags = true;
+      continue;
+    }
+    const item = line.match(/^  - (\S+)\s*$/);
+    if (item) {
+      tags.push(item[1]);
+      continue;
+    }
+    if (/^\S/.test(line)) break;
+  }
+  return tags;
+}
+
+function referencesFixtureChapter(yaml) {
+  return String(yaml).includes(FIXTURE_CHAPTER_HELPER);
+}
+
+// This alternative accepts only an actual unconditional scalar runFlow command
+// resolving to the repository helper, never a filename in comments or strings.
+function referencesMilestoneFixture(yaml, flowPath) {
+  const body = String(yaml).split(/^---\s*$/m)[1] || '';
+  return body.split(/\r?\n/).some(line => {
+    const command = line.match(
+      /^- runFlow:\s+(?:"([^"\r\n]+)"|'([^'\r\n]+)'|([^\s#'"]+))\s*$/,
+    );
+    if (!command) return false;
+    const target = command[1] || command[2] || command[3];
+    return (
+      nodePath.resolve(nodePath.dirname(flowPath), target) ===
+      MILESTONE_FIXTURE_HELPER
+    );
+  });
+}
+
+function flowSelected(tags, includeTags, excludeTags) {
+  if (excludeTags.some(tag => tags.includes(tag))) return false;
+  if (includeTags.length === 0) return true;
+  return includeTags.some(tag => tags.includes(tag));
+}
+
+function parseMaestroInvocation(argv) {
+  const includeTags = [];
+  const excludeTags = [];
+  const paths = [];
+  const args = Array.isArray(argv) ? argv : [];
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === '--') continue;
+    const inline = arg.match(/^--([^=]+)=(.*)$/);
+    if (inline) {
+      const flag = `--${inline[1]}`;
+      if (flag === '--include-tags')
+        includeTags.push(...parseTagArg(inline[2]));
+      else if (flag === '--exclude-tags') {
+        excludeTags.push(...parseTagArg(inline[2]));
+      }
+      continue;
+    }
+    if (VALUE_FLAGS.has(arg)) {
+      const value = args[i + 1];
+      i += 1;
+      if (arg === '--include-tags') includeTags.push(...parseTagArg(value));
+      else if (arg === '--exclude-tags')
+        excludeTags.push(...parseTagArg(value));
+      continue;
+    }
+    if (arg.startsWith('-')) continue;
+    paths.push(arg);
+  }
+  return { includeTags, excludeTags, paths };
+}
+
+function evaluateChapterPreflight({
+  chapterId,
+  milestoneId,
+  projectId,
+  allowlist,
+  denylist,
+  flows,
+  includeTags,
+  excludeTags,
+}) {
+  const include = includeTags || [];
+  const exclude = excludeTags || [];
+  const needingChapter = [];
+  const needingMilestone = [];
+  const mutating = [];
+  const unpinned = [];
+  for (const flow of flows || []) {
+    const tags = parseFlowTags(flow.yaml);
+    if (!flowSelected(tags, include, exclude)) continue;
+    const milestonePinned = referencesMilestoneFixture(flow.yaml, flow.path);
+    const pinned = referencesFixtureChapter(flow.yaml) || milestonePinned;
+    if (milestonePinned) needingMilestone.push(flow.path);
+    if (pinned) needingChapter.push(flow.path);
+    if (!tags.includes('mutating')) continue;
+    mutating.push(flow.path);
+    if (!pinned) unpinned.push(flow.path);
+  }
+  if (unpinned.length > 0) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'mutating flow does not target MAESTRO_FIXTURE_CHAPTER_ID',
+      flows: unpinned,
+    };
+  }
+  if (mutating.length > 0) {
+    const project = assertProjectAllowed(projectId, allowlist, denylist);
+    if (!project.ok) return { ...project, flows: mutating };
+  }
+  if (needingChapter.length === 0) {
+    return { ok: true, status: 'PASS', reason: '', flows: [] };
+  }
+  if (!String(chapterId ?? '').trim()) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'MAESTRO_FIXTURE_CHAPTER_ID is empty',
+      flows: needingChapter,
+    };
+  }
+  if (
+    needingMilestone.length > 0 &&
+    (!/^[1-9][0-9]*$/.test(String(milestoneId ?? '')) ||
+      !/^[1-9][0-9]*$/.test(String(chapterId ?? '')))
+  ) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason:
+        'milestone fixture requires positive MAESTRO_FIXTURE_MILESTONE_ID and MAESTRO_FIXTURE_CHAPTER_ID',
+      flows: needingMilestone,
+    };
+  }
+  return { ok: true, status: 'PASS', reason: '', flows: needingChapter };
+}
+
+function collectYamlFiles(target, fs, path) {
+  if (!fs.existsSync(target)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `flow path not found: ${target}`,
+      files: [],
+    };
+  }
+  const stat = fs.statSync(target);
+  if (stat.isFile()) {
+    const yaml = target.endsWith('.yaml') || target.endsWith('.yml');
+    return {
+      ok: true,
+      status: 'PASS',
+      reason: '',
+      files: yaml ? [target] : [],
+    };
+  }
+  const files = [];
+  for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === 'test_output') continue;
+    const full = path.join(target, entry.name);
+    if (entry.isDirectory()) {
+      const nested = collectYamlFiles(full, fs, path);
+      if (!nested.ok) return nested;
+      files.push(...nested.files);
+    } else if (
+      entry.isFile() &&
+      (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))
+    ) {
+      files.push(full);
+    }
+  }
+  return { ok: true, status: 'PASS', reason: '', files };
+}
+
+// Ordered journeys inspect every reachable static dependency, even conditional
+// children. Unknown/dynamic paths and fixture overrides fail closed; no JS runs.
+function collectJourneyDependencies(files, env, fs, path) {
+  const flows = [];
+  const visiting = new Set();
+  const visited = new Set();
+  function visit(file) {
+    file = path.resolve(file);
+    if (visiting.has(file))
+      throw new Error(`cyclic runFlow dependency: ${file}`);
+    if (visited.has(file)) return;
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      throw new Error(`nested flow path not found: ${file}`);
+    }
+    visiting.add(file);
+    const yaml = fs.readFileSync(file, 'utf8');
+    flows.push({ path: file, yaml });
+    const lines = yaml.split(/\r?\n/);
+    const tags = parseFlowTags(yaml);
+    // A reviewed readonly classification is explicit; arbitrary tap/input/script
+    // fragments are not silently treated as harmless because their tags omit
+    // "mutating". Capture/reset/recovery stay separate even with that tag.
+    if (
+      /^\s*-\s*(launchApp|clearState|clearKeychain|startRecording|stopRecording)\s*:/m.test(
+        yaml,
+      )
+    ) {
+      throw new Error(
+        `cold/capture/auth flow must remain independent: ${file}`,
+      );
+    }
+    if (
+      /^\s*-\s*(tapOn|longPressOn|inputText|eraseText|runScript|evalScript|setLocation|pressKey)\s*:/m.test(
+        yaml,
+      ) &&
+      !tags.includes('mutating') &&
+      !tags.includes('ordered-readonly')
+    ) {
+      throw new Error(
+        `unclassified action flow; declare reviewed ordered-readonly or mutating: ${file}`,
+      );
+    }
+    for (let i = 0; i < lines.length; i += 1) {
+      const action = lines[i].match(/^(\s*)-\s*(tapOn|longPressOn)\s*:/);
+      if (action) {
+        let block = lines[i];
+        for (let j = i + 1; j < lines.length; j += 1) {
+          if (
+            lines[j].trim() &&
+            lines[j].match(/^\s*/)[0].length <= action[1].length
+          )
+            break;
+          block += '\n' + lines[j];
+        }
+        if (
+          /record-(start|stop|pause|resume)-button|login-(email|password|submit)/.test(
+            block,
+          )
+        ) {
+          throw new Error(
+            `capture/auth action must remain independent: ${file}`,
+          );
+        }
+      }
+      if (lines[i].trim().startsWith('#')) continue;
+      if (/^\s*env\s*:\s*[^#\s]/.test(lines[i])) {
+        throw new Error(
+          `inline/dynamic env unsupported in ordered journeys: ${file}`,
+        );
+      }
+      if (/(^|:\s*|-\s*)[&*][A-Za-z_][\w-]*/.test(lines[i])) {
+        throw new Error(
+          `YAML anchors/aliases unsupported in ordered journeys: ${file}`,
+        );
+      }
+      const dependencyLine = /["']?(runFlow|runScript)["']?\s*:/.test(lines[i]);
+      const canonicalDependency = /^(\s*)-\s+(runFlow|runScript)\s*:/.test(
+        lines[i],
+      );
+      if (dependencyLine && !canonicalDependency) {
+        throw new Error(`unsupported dependency syntax in ${file}`);
+      }
+      const override = lines[i].match(
+        /^\s*["']?(MAESTRO_(?:FIXTURE|DISPOSABLE|INCOMPLETE|A|B)_[A-Z0-9_]+)["']?:\s*(.*?)\s*$/,
+      );
+      if (override) {
+        const value = override[2].replace(/^(['"])(.*)\1$/, '$2');
+        if (value !== env[override[1]] && value !== '${' + override[1] + '}') {
+          throw new Error(
+            `nested fixture override refused: ${override[1]} in ${file}`,
+          );
+        }
+      }
+      const command = lines[i].match(
+        /^(\s*)-\s+(runFlow|runScript)\s*:\s*(.*?)\s*$/,
+      );
+      if (!command) continue;
+      const kind = command[2];
+      let target = command[3];
+      if (!target || target.startsWith('#')) {
+        target = '';
+        const indent = command[1].length;
+        for (let j = i + 1; j < lines.length; j += 1) {
+          if (!lines[j].trim() || lines[j].trim().startsWith('#')) continue;
+          const nextIndent = lines[j].match(/^\s*/)[0].length;
+          if (nextIndent <= indent) break;
+          const fileField = lines[j].match(/^\s*file:\s*(.*?)\s*$/);
+          if (fileField) {
+            target = fileField[1];
+            break;
+          }
+        }
+      }
+      if (!target) continue; // Inline commands are scanned by this same loop.
+      target = target.replace(/\s+#.*$/, '').replace(/^(['"])(.*)\1$/, '$2');
+      if (
+        target.includes('${') ||
+        !(kind === 'runFlow' ? /\.ya?ml$/ : /\.js$/).test(target)
+      ) {
+        throw new Error(`unsupported ${kind} path in ${file}`);
+      }
+      const dependency = path.resolve(path.dirname(file), target);
+      if (kind === 'runFlow') visit(dependency);
+      else if (
+        !fs.existsSync(dependency) ||
+        !fs.statSync(dependency).isFile()
+      ) {
+        throw new Error(`nested script path not found: ${dependency}`);
+      }
+    }
+    visiting.delete(file);
+    visited.add(file);
+  }
+  for (const file of files) visit(file);
+  return flows;
+}
+
+function preflightFromArgv({
+  chapterId,
+  milestoneId,
+  projectId,
+  allowlist,
+  denylist,
+  argv,
+  recursive = false,
+  fixtureEnv = {},
+  cwd,
+  fs,
+  path,
+}) {
+  const nodeFs = fs || require('fs');
+  const nodePath = path || require('path');
+  const parsed = parseMaestroInvocation(argv);
+  const base = cwd || process.cwd();
+  const flows = [];
+  for (const raw of parsed.paths) {
+    const target = nodePath.resolve(base, raw);
+    const collected = collectYamlFiles(target, nodeFs, nodePath);
+    if (!collected.ok) return { ...collected, flows: [] };
+    for (const file of collected.files) {
+      flows.push({ path: file, yaml: nodeFs.readFileSync(file, 'utf8') });
+    }
+  }
+  if (recursive) {
+    try {
+      const nested = collectJourneyDependencies(
+        flows.map(flow => flow.path),
+        fixtureEnv,
+        nodeFs,
+        nodePath,
+      );
+      // Child tags are not CLI selection boundaries. Do not let tag filters hide
+      // a dependency that its selected parent executes.
+      return evaluateChapterPreflight({
+        chapterId,
+        milestoneId,
+        projectId,
+        allowlist,
+        denylist,
+        flows: nested,
+        includeTags: [],
+        excludeTags: [],
+      });
+    } catch (error) {
+      return { ok: false, status: 'BLOCKED', reason: error.message, flows: [] };
+    }
+  }
+  return evaluateChapterPreflight({
+    chapterId,
+    milestoneId,
+    projectId,
+    allowlist,
+    denylist,
+    flows,
+    includeTags: parsed.includeTags,
+    excludeTags: parsed.excludeTags,
+  });
+}
+
+function runPreflightCli(argv, env, io) {
+  const stderr = io && io.stderr ? io.stderr : console.error;
+  const exit = io && io.exit ? io.exit : code => process.exit(code);
+  const recursive = argv[0] === '--recursive';
+  if (recursive) argv = argv.slice(1);
+  const args = argv[0] === '--' ? argv.slice(1) : argv;
+  const result = preflightFromArgv({
+    chapterId: env.MAESTRO_FIXTURE_CHAPTER_ID,
+    milestoneId: env.MAESTRO_FIXTURE_MILESTONE_ID,
+    projectId: env.MAESTRO_FIXTURE_PROJECT_ID,
+    allowlist: env.MAESTRO_FIXTURE_PROJECT_ALLOWLIST,
+    denylist: env.MAESTRO_FIXTURE_PROJECT_DENYLIST,
+    argv: args,
+    recursive,
+    fixtureEnv: env,
+  });
+  if (!result.ok) {
+    stderr(`BLOCKED: ${result.reason}`);
+    for (const file of result.flows || []) stderr(`  ${file}`);
+    exit(2);
+    return;
+  }
+  exit(0);
+}
+
+if (require.main === module) {
+  const argv = process.argv.slice(2);
+  if (argv[0] !== '--preflight') {
+    console.error(
+      'usage: node scripts/maestro-fixture-guard.cjs --preflight -- [maestro args]',
+    );
+    process.exit(1);
+  }
+  runPreflightCli(argv.slice(1), process.env);
+}
+
+module.exports = {
+  parseIdList,
+  assertProjectAllowed,
+  parseFlowTags,
+  parseMaestroInvocation,
+  referencesFixtureChapter,
+  flowSelected,
+  evaluateChapterPreflight,
+  preflightFromArgv,
+  runPreflightCli,
+};
