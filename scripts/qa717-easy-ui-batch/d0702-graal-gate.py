@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Gate D-0702 inline Maestro JS predicates under installed Maestro 2.10 Graal jars.
+"""Gate D-0702 inline Maestro JS predicates under installed Maestro Graal jars.
 
-Extracts actual ${...} / evalScript expressions from the nested book YAML (not
-imitations). Does NOT claim Node d0702-hydration-branch.cjs validates runtime
-predicates — that classifier is static/model-only.
+Extracts actual ${...} expressions from the nested book YAML (not imitations)
+and eng.eval's each fragment under Graal.js. Does NOT claim Node
+d0702-hydration-branch.cjs validates runtime predicates — that classifier is
+static/model-only.
 """
 from __future__ import annotations
 
@@ -19,27 +20,39 @@ NESTED = (
     WORKTREE
     / ".maestro/flows/offline/d0702-book-ch1-unavailable-persist.yaml"
 )
-LIB = pathlib.Path("/Users/matt/.maestro/lib")
-CP = ":".join(sorted(str(p) for p in LIB.glob("*.jar")))
+
+
+def maestro_lib() -> pathlib.Path:
+    return pathlib.Path.home() / ".maestro" / "lib"
+
+
+def classpath(lib: pathlib.Path) -> str:
+    jars = sorted(lib.glob("*.jar"))
+    if not jars:
+        raise FileNotFoundError(f"no Maestro jars under {lib}")
+    return ":".join(str(p) for p in jars)
 
 
 def extract_js_fragments(yaml_text: str) -> list[str]:
-    """Pull Maestro-interpolated JS from ${...} and assertTrue / evalScript / when true."""
+    """Pull Maestro-interpolated JS from ${...} (dedupe, preserve order)."""
     frags: list[str] = []
-    # ${ ... } including nested quotes; non-greedy per expression
-    for m in re.finditer(r"\$\{([^}]+)\}", yaml_text):
-        frags.append(m.group(1).strip())
-    # dedupe preserve order
-    out: list[str] = []
     seen: set[str] = set()
-    for f in frags:
-        if f not in seen:
-            seen.add(f)
-            out.append(f)
-    return out
+    for m in re.finditer(r"\$\{([^}]+)\}", yaml_text):
+        frag = m.group(1).strip()
+        if frag and frag not in seen:
+            seen.add(frag)
+            frags.append(frag)
+    return frags
 
 
 def main() -> int:
+    lib = maestro_lib()
+    try:
+        cp = classpath(lib)
+    except FileNotFoundError as exc:
+        print(f"NO_MAESTRO_JARS={exc}")
+        return 2
+
     body = NESTED.read_text(encoding="utf-8")
     frags = extract_js_fragments(body)
     required_substrings = [
@@ -56,104 +69,145 @@ def main() -> int:
         print("MISSING_FRAGMENTS=" + repr(missing))
         print("FOUND=" + repr(frags))
         return 2
+    if not frags:
+        print("NO_FRAGMENTS_EXTRACTED")
+        return 2
 
-    # Emit a small script that exercises each runtime predicate under Graal.
-    script = textwrap.dedent(
-        """
-        // Extracted D-0702 runtime predicates — Graal gate
-        var D0702_BOOK_ZERO = '^Matthew, 0 of 28 chapters selected$';
-        var D0702_BOOK_ONE = '^Matthew, 1 of 28 chapters selected$';
-        var D0702_EXPAND = '^Expand Matthew$';
-        var D0702_COLLAPSE = '^Collapse Matthew$';
+    # Pass extracted fragments to Java; eng.eval each real YAML expression.
+    # Env identifiers used by typeof / bare ${D0702_*} fragments are bound first.
+    frags_literal = "\n".join(
+        "      FRAGS.add(" + _java_string_literal(f) + ");" for f in frags
+    )
+    java = textwrap.dedent(
+        f"""
+        import javax.script.*;
+        import java.util.*;
+        public class D0702Graal {{
+          static final List<String> FRAGS = new ArrayList<>();
+          static {{
+{frags_literal}
+          }}
+          public static void main(String[] a) throws Exception {{
+            ScriptEngine eng = new ScriptEngineManager().getEngineByName("js");
+            if (eng == null) eng = new ScriptEngineManager().getEngineByName("graal.js");
+            if (eng == null) {{ System.out.println("NO_JS_ENGINE"); System.exit(2); }}
+            Bindings b = eng.createBindings();
+            b.put("output", eng.eval("new Object()"));
+            // Env strings required by extracted typeof / bare-identifier fragments.
+            b.put("D0702_BOOK_ZERO", "^Matthew, 0 of 28 chapters selected$");
+            b.put("D0702_BOOK_ONE", "^Matthew, 1 of 28 chapters selected$");
+            b.put("D0702_EXPAND", "^Expand Matthew$");
+            b.put("D0702_COLLAPSE", "^Collapse Matthew$");
+            eng.setBindings(b, ScriptContext.ENGINE_SCOPE);
 
-        function assertEnv(name, val) {
-          if (!(typeof val === 'string' && val.length > 0)) {
-            throw new Error('env_fail_' + name);
-          }
-        }
-        assertEnv('ZERO', D0702_BOOK_ZERO);
-        assertEnv('ONE', D0702_BOOK_ONE);
-        assertEnv('EXPAND', D0702_EXPAND);
-        assertEnv('COLLAPSE', D0702_COLLAPSE);
+            int evaluated = 0;
+            for (String frag : FRAGS) {{
+              try {{
+                eng.eval(frag);
+                evaluated++;
+              }} catch (ScriptException se) {{
+                // Bare identifiers (env text interpolation) are values, not statements.
+                Object val = b.get(frag);
+                if (val == null && !b.containsKey(frag)) {{
+                  System.out.println("EVAL_FAIL=" + frag);
+                  System.out.println("ERR=" + se.getMessage());
+                  System.exit(3);
+                }}
+                evaluated++;
+              }}
+            }}
 
-        // Empty env must fail (same typeof/length predicate)
-        var empty = '';
-        if (typeof empty === 'string' && empty.length > 0) {
-          throw new Error('empty_env_should_fail');
-        }
+            // Drive hydration terminal scenarios using ONLY extracted assignment /
+            // condition fragment strings (no handwritten predicate copies).
+            String assignEmpty = null, assignAvail = null, assignUnavail = null;
+            String condEmpty = null, condAvail = null, condUnavail = null, condTerminal = null;
+            String typeofZero = null;
+            for (String frag : FRAGS) {{
+              if (frag.equals("output.d0702HydrationBranch = ''")) assignEmpty = frag;
+              else if (frag.equals("output.d0702HydrationBranch = 'available'")) assignAvail = frag;
+              else if (frag.equals("output.d0702HydrationBranch = 'unavailable'")) assignUnavail = frag;
+              else if (frag.equals("output.d0702HydrationBranch == ''")) condEmpty = frag;
+              else if (frag.equals("output.d0702HydrationBranch == 'available'")) condAvail = frag;
+              else if (frag.equals("output.d0702HydrationBranch == 'unavailable'")) condUnavail = frag;
+              else if (frag.equals(
+                  "output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable'"))
+                condTerminal = frag;
+              else if (frag.startsWith("typeof D0702_BOOK_ZERO")) typeofZero = frag;
+            }}
+            if (assignEmpty == null || assignAvail == null || assignUnavail == null
+                || condEmpty == null || condAvail == null || condUnavail == null
+                || condTerminal == null || typeofZero == null) {{
+              System.out.println("MISSING_NAMED_EXTRACTED");
+              System.exit(4);
+            }}
 
-        output.d0702HydrationBranch = '';
-        if (output.d0702HydrationBranch != '') throw new Error('init_not_empty');
+            Object t0 = eng.eval(typeofZero);
+            if (!Boolean.TRUE.equals(t0)) {{ System.out.println("TYPEOF_FAIL"); System.exit(5); }}
 
-        // Terminal when: empty → keep polling (true)
-        if (!(output.d0702HydrationBranch == '')) throw new Error('empty_when');
+            // Empty env must fail the same typeof/length predicate.
+            b.put("D0702_BOOK_ZERO", "");
+            Object tEmpty = eng.eval(typeofZero);
+            if (Boolean.TRUE.equals(tEmpty)) {{
+              System.out.println("EMPTY_ENV_SHOULD_FAIL");
+              System.exit(5);
+            }}
+            b.put("D0702_BOOK_ZERO", "^Matthew, 0 of 28 chapters selected$");
 
-        // Simulate available selection
-        output.d0702HydrationBranch = 'available';
-        if (!(output.d0702HydrationBranch == 'available')) throw new Error('avail_when');
-        if (!(output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable')) {
-          throw new Error('avail_assertTrue');
-        }
-        if (output.d0702HydrationBranch == 'unavailable') throw new Error('avail_not_unavail');
+            eng.eval(assignEmpty);
+            if (!Boolean.TRUE.equals(eng.eval(condEmpty))) {{
+              System.out.println("EMPTY_WHEN_FAIL"); System.exit(6);
+            }}
+            if (Boolean.TRUE.equals(eng.eval(condTerminal))) {{
+              System.out.println("EMPTY_MUST_FAIL_TERMINAL"); System.exit(6);
+            }}
 
-        // Simulate unavailable selection
-        output.d0702HydrationBranch = 'unavailable';
-        if (!(output.d0702HydrationBranch == 'unavailable')) throw new Error('unavail_when');
-        if (!(output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable')) {
-          throw new Error('unavail_assertTrue');
-        }
-        if (output.d0702HydrationBranch == 'available') throw new Error('unavail_not_avail');
+            eng.eval(assignAvail);
+            if (!Boolean.TRUE.equals(eng.eval(condAvail))) {{
+              System.out.println("AVAIL_WHEN_FAIL"); System.exit(6);
+            }}
+            if (!Boolean.TRUE.equals(eng.eval(condTerminal))) {{
+              System.out.println("AVAIL_TERMINAL_FAIL"); System.exit(6);
+            }}
+            if (Boolean.TRUE.equals(eng.eval(condUnavail))) {{
+              System.out.println("AVAIL_NOT_UNAVAIL_FAIL"); System.exit(6);
+            }}
 
-        // Timeout / no-terminal: assertTrue must fail
-        output.d0702HydrationBranch = '';
-        if (output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable') {
-          throw new Error('empty_must_fail_assertTrue');
-        }
-        // Arbitrary disabled-transient marker must not satisfy terminal assertTrue
-        output.d0702HydrationBranch = 'loading';
-        if (output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable') {
-          throw new Error('loading_must_fail_assertTrue');
-        }
+            eng.eval(assignUnavail);
+            if (!Boolean.TRUE.equals(eng.eval(condUnavail))) {{
+              System.out.println("UNAVAIL_WHEN_FAIL"); System.exit(6);
+            }}
+            if (!Boolean.TRUE.equals(eng.eval(condTerminal))) {{
+              System.out.println("UNAVAIL_TERMINAL_FAIL"); System.exit(6);
+            }}
+            if (Boolean.TRUE.equals(eng.eval(condAvail))) {{
+              System.out.println("UNAVAIL_NOT_AVAIL_FAIL"); System.exit(6);
+            }}
 
-        output.d0702GraalGate = 'OK';
+            // Non-terminal marker must not satisfy extracted terminal assertTrue.
+            eng.eval("output.d0702HydrationBranch = 'loading'");
+            if (Boolean.TRUE.equals(eng.eval(condTerminal))) {{
+              System.out.println("LOADING_MUST_FAIL_TERMINAL"); System.exit(6);
+            }}
+
+            System.out.println("ENGINE=" + eng.getFactory().getEngineName());
+            System.out.println("OK_GATE=OK");
+            System.out.println("EVALUATED=" + evaluated);
+            System.out.println("FRAGMENTS=" + FRAGS.size());
+          }}
+        }}
         """
     ).strip()
 
-    java = textwrap.dedent(
-        """
-        import javax.script.*;
-        import java.nio.file.*;
-        public class D0702Graal {
-          public static void main(String[] a) throws Exception {
-            ScriptEngine eng = new ScriptEngineManager().getEngineByName("js");
-            if (eng == null) eng = new ScriptEngineManager().getEngineByName("graal.js");
-            if (eng == null) { System.out.println("NO_JS_ENGINE"); System.exit(2); }
-            Bindings b = eng.createBindings();
-            b.put("output", eng.eval("new Object()"));
-            eng.setBindings(b, ScriptContext.ENGINE_SCOPE);
-            eng.eval(Files.readString(Path.of(a[0])));
-            Object gate = eng.eval("output.d0702GraalGate");
-            System.out.println("ENGINE=" + eng.getFactory().getEngineName());
-            System.out.println("OK_GATE=" + gate);
-            System.out.println("FRAGMENTS=" + a[1]);
-          }
-        }
-        """
-    )
     td = pathlib.Path(tempfile.mkdtemp(prefix="d0702-graal-"))
     (td / "D0702Graal.java").write_text(java, encoding="utf-8")
-    script_path = td / "d0702-predicates.js"
-    script_path.write_text(script, encoding="utf-8")
-    subprocess.check_call(["javac", "-cp", CP, str(td / "D0702Graal.java")])
+    subprocess.check_call(["javac", "-cp", cp, str(td / "D0702Graal.java")])
     r = subprocess.run(
         [
             "java",
             "-cp",
-            f"{td}:{CP}",
+            f"{td}:{cp}",
             "-Dpolyglot.engine.WarnInterpreterOnly=false",
             "D0702Graal",
-            str(script_path),
-            str(len(frags)),
         ],
         capture_output=True,
         text=True,
@@ -165,8 +219,19 @@ def main() -> int:
     if "OK_GATE=OK" not in r.stdout:
         print("FAIL_MISSING_OK_GATE")
         return 3
+    print("LIB=" + str(lib))
     print("EXTRACTED=" + "|".join(frags))
     return 0
+
+
+def _java_string_literal(s: str) -> str:
+    escaped = (
+        s.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    )
+    return f'"{escaped}"'
 
 
 if __name__ == "__main__":

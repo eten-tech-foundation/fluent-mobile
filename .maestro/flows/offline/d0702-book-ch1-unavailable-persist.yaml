@@ -123,6 +123,23 @@ tags:
               text: '^Couldn''t load downloadable resources for the selected chapters\. Check your connection and try again\.$'
           commands:
             - evalScript: ${output.d0702HydrationBranch = 'unavailable'}
+      # Successful empty catalog (no resources section) — terminal, not a fail.
+      - runFlow:
+          when:
+            true: ${output.d0702HydrationBranch == ''}
+          commands:
+            - scrollUntilVisible:
+                element:
+                  text: '^No downloadable resources are available for the selected chapters\.$'
+                direction: DOWN
+                timeout: 15000
+                optional: true
+            - runFlow:
+                when:
+                  visible:
+                    text: '^No downloadable resources are available for the selected chapters\.$'
+                commands:
+                  - evalScript: ${output.d0702HydrationBranch = 'empty'}
       # Available may hydrate while B waited near footer — scroll back UP.
       - runFlow:
           when:
@@ -140,7 +157,7 @@ tags:
                     id: 'prepare-offline-resources-section'
                 commands:
                   - evalScript: ${output.d0702HydrationBranch = 'available'}
-- assertTrue: ${output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable'}
+- assertTrue: ${output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable' || output.d0702HydrationBranch == 'empty'}
 # Full branch suites — when:true gates file; neither is optional/skip-able on match.
 - runFlow:
     when:

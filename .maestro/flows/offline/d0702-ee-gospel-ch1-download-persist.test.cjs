@@ -1,7 +1,7 @@
 /**
  * D-0702-01 offline static checks — no device, no Maestro run, no ADB.
  *
- * Dual-runner registration (same file, same 7 contract assertions):
+ * Dual-runner registration (same file, same 10 contract `it` blocks + 1 optional skip):
  *   - Jest CI (`npm test`): uses Jest globals so the suite is not empty
  *   - Standalone: `node --test .maestro/flows/offline/d0702-ee-gospel-ch1-download-persist.test.cjs`
  *
@@ -182,6 +182,15 @@ describe('D-0702-01 durable wrapper static contract', () => {
       /assertNotVisible:\s*\n\s*id: 'settings-drawer-content'/m.test(body),
       'entry must require drawer closed before gear tap',
     );
+    // Both post-switch gear taps (active9 + restore12) require drawer closed first.
+    const postSwitchGear =
+      /extendedWaitUntil:\s*\n\s*visible:\s*\n\s*id: 'home-tab-my-work'[\s\S]*?assertNotVisible:\s*\n\s*id: 'settings-drawer-content'\s*\n- assertNotVisible:\s*\n\s*id: 'settings-menu-more-settings'\s*\n- tapOn:\s*\n\s*id: 'home-settings-button'/g;
+    const postSwitchMatches = body.match(postSwitchGear) || [];
+    assert.equal(
+      postSwitchMatches.length,
+      2,
+      'both post-switch gear taps must assert drawer closed first',
+    );
     assert.ok(body.includes('Expand Matthew'));
     assert.ok(body.includes('Expand Mark'));
     assert.ok(body.includes('Expand Luke'));
@@ -256,6 +265,11 @@ describe('D-0702-01 durable wrapper static contract', () => {
     );
     assert.ok(manifest.outOfScope.some(s => /arithmetic|API431|C51/i.test(s)));
     assert.equal(manifest.chrome.unavailableHint, UNAVAILABLE);
+    const evidence = JSON.stringify(manifest.retainedBehaviorEvidence || {});
+    assert.ok(
+      !/\/Users\//.test(evidence),
+      'fixture must not embed absolute /Users/ paths',
+    );
   });
 
   it('nested runFlow closure resolves on disk (device-free)', () => {

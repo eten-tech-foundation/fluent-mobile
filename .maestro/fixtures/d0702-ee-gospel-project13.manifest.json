@@ -51,13 +51,15 @@
     "project12 / 1183 / 1184 / 1185 mutation"
   ],
   "retainedBehaviorEvidence": {
-    "reconciliation": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0702-direct-behavior-reconciliation-20261021.md",
-    "availableRuntime": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0702-pr755-selector-preflight-runtime-20261021/",
+    "reconciliation": "task-10/artifacts/d0702-direct-behavior-reconciliation-20261021.md",
+    "availableRuntime": "task-10/artifacts/d0702-pr755-selector-preflight-runtime-20261021/",
     "hierarchies": [
-      "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0702-mark-ch1-selected.xml",
-      "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0702-mark-ch1-deselected.xml",
-      "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0702-luke-ch1-selected.xml",
-      "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0702-luke-ch1-deselected.xml"
-    ]
+      "task-10/artifacts/d0702-mark-ch1-selected.xml",
+      "task-10/artifacts/d0702-mark-ch1-deselected.xml",
+      "task-10/artifacts/d0702-luke-ch1-selected.xml",
+      "task-10/artifacts/d0702-luke-ch1-deselected.xml"
+    ],
+    "devicePassHead": "753aecd816e85abf146e6401386710254555f250",
+    "note": "Absolute local Codex paths omitted; receipts live under task-10 artifacts outside this repo."
   }
 }

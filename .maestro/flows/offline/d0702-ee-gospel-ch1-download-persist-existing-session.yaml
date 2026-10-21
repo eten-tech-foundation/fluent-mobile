@@ -68,6 +68,11 @@ tags:
     visible:
       id: 'home-tab-my-work'
     timeout: 90000
+# Home ids stay visible behind an open drawer — require drawer closed before gear.
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertNotVisible:
+    id: 'settings-menu-more-settings'
 - tapOn:
     id: 'home-settings-button'
 - extendedWaitUntil:
@@ -197,6 +202,11 @@ tags:
     visible:
       id: 'home-tab-my-work'
     timeout: 90000
+# Same: closed drawer before gear after switch back to account 12.
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertNotVisible:
+    id: 'settings-menu-more-settings'
 - tapOn:
     id: 'home-settings-button'
 - extendedWaitUntil:

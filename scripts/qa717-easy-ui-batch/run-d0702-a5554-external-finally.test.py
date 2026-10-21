@@ -270,7 +270,7 @@ class D0702ExternalFinallyTests(unittest.TestCase):
                 "key,value\n"
                 "active_user_id,9\n"
                 "known_user_ids,\"[10,9,12]\"\n"
-                "ui_version,legacy\n"
+                "pref_ui_version,legacy\n"
             )
             result = self.m.run(args, bridge=bridge, sleep_fn=lambda _s: None)
             self.assertEqual(result["outcome"], "BASELINE_FAIL")
@@ -300,6 +300,70 @@ class D0702ExternalFinallyTests(unittest.TestCase):
         )
         self.assertTrue(legacy_ok)
         self.assertFalse(self.m.is_closed_home(nodes))
+
+    def test_pref_ui_version_in_allowlist_and_fakebridge(self):
+        self.assertIn("pref_ui_version", self.m.PREF_KEYS)
+        self.assertNotIn("ui_version", self.m.PREF_KEYS)
+        self.assertIn("pref_ui_version,legacy", self.m.FakeBridge.kv_csv)
+
+    def test_missing_sha256_is_hash_drift(self):
+        before = {
+            "rows": [
+                {"id": "t1", "sha256": "abc"},
+                {"id": "t2", "sha256": ""},
+            ]
+        }
+        after = {
+            "rows": [
+                {"id": "t1", "sha256": "abc"},
+                {"id": "t2", "sha256": ""},
+            ]
+        }
+        cmp = self.m.compare_snapshots(before, after)
+        self.assertIn("t2", cmp["hash_drift_ids"])
+        self.assertFalse(cmp["ok"])
+        after_ok = {
+            "rows": [
+                {"id": "t1", "sha256": "abc"},
+                {"id": "t2", "sha256": "def"},
+            ]
+        }
+        before_ok = {
+            "rows": [
+                {"id": "t1", "sha256": "abc"},
+                {"id": "t2", "sha256": "def"},
+            ]
+        }
+        self.assertTrue(self.m.compare_snapshots(before_ok, after_ok)["ok"])
+
+    def test_skipped_maestro_main_exits_2(self):
+        """--execute that never runs Maestro must not exit 0."""
+        self.assertEqual(
+            self.m.decide_outcome(
+                execute=True,
+                maestro_exit=None,
+                baseline_ok=True,
+                finally_ok=True,
+                takes_ok=True,
+                prefs_ok=True,
+                cleanup_error=None,
+            ),
+            "SKIPPED_MAESTRO",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            original_run = self.m.run
+
+            def fake_run(args, bridge=None, sleep_fn=None):
+                return {"outcome": "SKIPPED_MAESTRO", "execute": True}
+
+            self.m.run = fake_run  # type: ignore[method-assign]
+            try:
+                code = self.m.main(
+                    ["--repo", str(ROOT), "--evidence-dir", tmp, "--execute"]
+                )
+            finally:
+                self.m.run = original_run  # type: ignore[method-assign]
+            self.assertEqual(code, 2)
 
 
 if __name__ == "__main__":

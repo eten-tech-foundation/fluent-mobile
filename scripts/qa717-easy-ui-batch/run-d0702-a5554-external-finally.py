@@ -51,7 +51,7 @@ PREF_KEYS = (
     "10:drafting_unit",
     "12:drafting_unit",
     "9:drafting_unit",
-    "ui_version",
+    "pref_ui_version",
 )
 
 TAKES_SQL = (
@@ -120,7 +120,7 @@ class FakeBridge:
         "10:drafting_unit,verse\n"
         "12:drafting_unit,verse\n"
         "9:drafting_unit,verse\n"
-        "ui_version,legacy\n"
+        "pref_ui_version,legacy\n"
     )
     file_hashes: dict[str, str] = field(
         default_factory=lambda: {f"t{i}": f"hash{i:02d}" for i in range(1, 12)}
@@ -677,10 +677,13 @@ def compare_snapshots(before: dict[str, Any], after: dict[str, Any]) -> dict[str
     after_ids = {r["id"]: r.get("sha256") for r in after.get("rows", [])}
     missing = sorted(set(before_ids) - set(after_ids))
     added = sorted(set(after_ids) - set(before_ids))
+    # Missing/empty sha256 is drift (do not treat blank digests as matching).
     hash_drift = sorted(
         rid
         for rid in set(before_ids) & set(after_ids)
-        if before_ids[rid] and after_ids[rid] and before_ids[rid] != after_ids[rid]
+        if (not before_ids[rid])
+        or (not after_ids[rid])
+        or before_ids[rid] != after_ids[rid]
     )
     return {
         "missing_ids": missing,
@@ -898,10 +901,13 @@ def main(argv: list[str] | None = None) -> int:
     result = run(args)
     print(json.dumps({"outcome": result.get("outcome"), "execute": result.get("execute")}))
     outcome = result.get("outcome")
-    if outcome in {"AUTHORING_ONLY", "MAESTRO_OK_CLEANUP_OK", "SKIPPED_MAESTRO"}:
-        return 0 if outcome != "AUTHORING_ONLY" or not args.execute else 0
     if outcome == "AUTHORING_ONLY":
         return 0
+    if outcome == "MAESTRO_OK_CLEANUP_OK":
+        return 0
+    if outcome == "SKIPPED_MAESTRO":
+        # --execute promised a Maestro run but none ran.
+        return 2
     if outcome == "MAESTRO_FAIL_CLEANUP_OK":
         return 1
     if outcome in {
