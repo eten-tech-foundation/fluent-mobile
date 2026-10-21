@@ -1,13 +1,21 @@
 /**
  * Focused PFO download admission regressions — default deny retained.
  * No device. Uses vendored guard in this worktree.
+ *
+ * Dual-runner: Jest CI + `node --test` standalone (same pattern as
+ * `.maestro/flows/offline/*-download*.test.cjs`).
  */
 'use strict';
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { describe, it } = require('node:test');
+
+const runningUnderJest = typeof jest !== 'undefined';
+const harness = runningUnderJest
+  ? { describe: global.describe, it: global.it }
+  : require('node:test');
+const { describe, it } = harness;
 
 const root = path.resolve(__dirname, '..');
 const {

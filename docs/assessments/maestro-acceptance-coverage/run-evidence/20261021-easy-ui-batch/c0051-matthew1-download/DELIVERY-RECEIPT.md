@@ -86,3 +86,41 @@
 - Original cap failure retained (2.4 MB + Images 0 B → 205 / ~27 MB).  
 - C-0051-06 / C-0052-02 not closed by this packet.  
 - Derived `host-runner-result.json` expectation fields remain **not** measured output.
+
+## CI correction (PR759 Unit Tests — dual-runner registration)
+
+- **CI fail (run 39619211495 / job 119287811317):** `scripts/maestro-fixture-guard.pfo-download.test.cjs` — Jest: "Your test suite must contain at least one test." Suites: 1 failed, 1 skipped, 250 passed; tests: 2145 passed. Cause: file imported `describe`/`it` from `node:test` only; Jest discovered the file but registered zero tests. `node --test` still sees all **23**.
+- **Fix (worktree, uncommitted by this agent):** same dual-runner harness as `.maestro/flows/offline/c0051-matthew1-small-download.test.cjs` / `d0702-ee-gospel-ch1-download-persist.test.cjs` — under Jest use `global.describe`/`global.it`; else `require('node:test')`. Assertions and default-deny unchanged; no Jest config exclude; no app behavior change.
+- **Local verify (prior attempt):** Shell tool returned verbatim `Rejected:` on pre-fix focused Jest — stopped; no retry. Prior full-suite attempt: guard path OK but **3** layer-boundary failures from missing local ESLint path (worktree had no `node_modules`).
+
+## Final local verification (this continuation — measured)
+
+### Dependency provenance (local only; do not commit)
+
+| Item | Value |
+|------|-------|
+| Worktree `node_modules` before | **absent** |
+| Action | `ln -s` only (reversible); never replaced existing path |
+| Symlink target | `/Users/matt/Documents/Development/gloo/fluent-mobile/node_modules` |
+| Confirmed binary | `/Users/matt/Documents/Development/gloo/fluent-mobile/node_modules/eslint/bin/eslint.js` (exists, executable) |
+| Install/npx/network | **not used** |
+| Publication | **none** (root handles commit/push) |
+
+### Measured gates (exact)
+
+| Suite | Count / result | Exit | Command |
+|-------|----------------|-----:|---------|
+| Node pfo-download guard | **23** pass / **0** fail (suites **2**) | **0** | `node --test scripts/maestro-fixture-guard.pfo-download.test.cjs` |
+| Full Jest CI | Suites: **1** skipped, **251** passed, **251** of **252** total; Tests: **1** skipped, **2168** passed, **2169** total; Snapshots: **1** passed | **0** | `npm test -- --ci --maxWorkers=4` |
+| Jest discovery of dual-runner file | `PASS scripts/maestro-fixture-guard.pfo-download.test.cjs` (included in suite totals above) | (same) | (same full suite) |
+| `architecture-guard` | `architecture-guard: ok` | **0** | `npm run architecture-guard` |
+| `lint` | **0** errors, **13** warnings (pre-existing; unrelated files) | **0** | `npm run lint` |
+| `format:check` | All matched files use Prettier code style | **0** | `npm run format:check` |
+
+### Unchanged claims
+
+- All **23** guard assertions / default-deny inventory unchanged.
+- Historical CI fail (zero Jest tests) and prior Rejected focused-Jest attempt retained above.
+- Cap-failure facts / `host-runner-result.json` historical expectation / external held receipt: **untouched**.
+- No device/network/download/install; no source edits beyond dual-runner harness + this receipt append.
+- Root: stage `scripts/maestro-fixture-guard.pfo-download.test.cjs` + this receipt only; **never** stage worktree `node_modules` symlink or `__pycache__/`.
