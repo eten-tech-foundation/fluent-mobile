@@ -43,6 +43,7 @@ function createHarness(options?: {
   /** Throw once when upload reaches this chapterNumber, before drop (stays pending). */
   networkInterruptOnChapter?: number;
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
+  getPendingUploadChapters?: UploadOrchestratorDeps['getPendingUploadChapters'];
   pushPendingClaimsBeforeUpload?: UploadOrchestratorDeps['pushPendingClaimsBeforeUpload'];
 }) {
   let connListener: ConnListener | null = null;
@@ -152,7 +153,8 @@ function createHarness(options?: {
       };
     },
     // Copy so in-loop dropChapter cannot skip later chapters in the session list.
-    getPendingUploadChapters: async () => [...chapters],
+    getPendingUploadChapters:
+      options?.getPendingUploadChapters ?? (async () => [...chapters]),
     getPausedUntilMs: () => pausedUntilMs,
     setPausedUntilMs: ms => {
       pausedUntilMs = ms;
@@ -1100,4 +1102,88 @@ describe('uploadOrchestrator', () => {
     expect(h.pendingTimers()).toEqual([]);
     expect(h.uploaded.some(chapter => chapter.chapterNumber === 2)).toBe(true);
   });
+
+  it.each(['pause', 'cancel', 'offline'] as const)(
+    'honors %s while the initial pending-queue read is unresolved, then drains once after recovery',
+    async control => {
+      const pending = [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ];
+      let finishRead!: (chapters: PendingUploadChapter[]) => void;
+      const read = new Promise<PendingUploadChapter[]>(resolve => {
+        finishRead = resolve;
+      });
+      let calls = 0;
+      const getPendingUploadChapters = jest.fn(
+        async (): Promise<PendingUploadChapter[]> => {
+          calls += 1;
+          if (calls === 1) return read;
+          return pending.filter(
+            chapter =>
+              !h.uploaded.some(
+                uploaded =>
+                  uploaded.bookId === chapter.bookId &&
+                  uploaded.chapterNumber === chapter.chapterNumber,
+              ),
+          );
+        },
+      );
+      const h: ReturnType<typeof createHarness> = createHarness({
+        getPendingUploadChapters,
+      });
+      try {
+        h.emitConnectivity(true, true);
+        await h.waitFor(() => getPendingUploadChapters.mock.calls.length === 1);
+        if (control === 'pause') await h.orchestrator.pause();
+        else if (control === 'cancel') await h.orchestrator.cancel();
+        else h.emitConnectivity(false, false);
+        await h.flush();
+
+        finishRead(pending);
+        await h.flush();
+        await h.flush();
+        expect(h.uploaded).toEqual([]);
+        expect(h.events.some(event => event.type === 'start')).toBe(false);
+        expect(h.orchestrator.getSnapshot().phase).toBe(
+          control === 'pause'
+            ? 'paused'
+            : control === 'offline'
+            ? 'offline'
+            : 'idle',
+        );
+
+        if (control === 'pause') {
+          expect(h.getPausedUntilMs()).toBe(1_000_000 + PAUSE_WINDOW_MS);
+          await h.orchestrator.syncNow();
+        } else {
+          if (control === 'cancel') {
+            h.emitConnectivity(true, true);
+            h.orchestrator.notifyPendingWork();
+            await h.flush();
+            expect(h.uploaded).toEqual([]);
+            h.emitConnectivity(false, false);
+            await h.flush();
+          }
+          h.emitConnectivity(true, true);
+          await h.flush();
+          await h.flush();
+        }
+        expect(h.uploaded).toEqual(pending);
+        expect(
+          h.events.filter(event => event.type === 'complete'),
+        ).toHaveLength(1);
+        expect(h.pendingTimers()).toEqual([]);
+        expect(h.orchestrator.getSnapshot()).toMatchObject({
+          phase: 'idle',
+          completedChapters: 0,
+          totalChapters: 0,
+        });
+      } finally {
+        finishRead([]);
+        h.orchestrator.stop();
+        await h.flush();
+      }
+    },
+  );
 });
