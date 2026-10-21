@@ -177,7 +177,7 @@ export function BibleTab({ onOpenRecord }: BibleTabProps = {}) {
           accessibilityRole="button"
           accessibilityLabel={`Verse ${item.anchorVerse}${
             isSelected ? ', selected' : ''
-          }`}
+          }${isPlaying ? ', playing' : ''}`}
           testID={`bible-verse-row-${item.anchorVerse}`}
         >
           <View style={styles.iconColumn}>

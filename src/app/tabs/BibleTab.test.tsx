@@ -495,6 +495,99 @@ describe('BibleTab', () => {
     });
   });
 
+  describe('verse-row accessibility selected vs playing (#48 / D-0048-01 observability)', () => {
+    it('exposes selected-only, playing-only, both, and neither labels', async () => {
+      render(
+        <DraftingProvider
+          verses={verses}
+          initialVerse={1}
+          chapterName="Mark 14"
+          bookName="Mark"
+        >
+          <SetPlayingVerseButton verse={1} />
+          <SetPlayingVerseButton verse={2} />
+          <BibleTab />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Verse 1, selected')).toBeTruthy();
+      });
+      expect(screen.getByLabelText('Verse 2')).toBeTruthy();
+      expect(screen.queryByLabelText('Verse 1, selected, playing')).toBeNull();
+      expect(screen.queryByLabelText('Verse 2, playing')).toBeNull();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('set-playing-2'));
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Verse 2, playing')).toBeTruthy();
+      });
+      expect(screen.getByLabelText('Verse 1, selected')).toBeTruthy();
+      expect(screen.queryByLabelText('Verse 2, selected')).toBeNull();
+      expect(screen.queryByLabelText('Verse 1, selected, playing')).toBeNull();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('set-playing-1'));
+      });
+      await waitFor(() => {
+        expect(
+          screen.getByLabelText('Verse 1, selected, playing'),
+        ).toBeTruthy();
+      });
+      expect(screen.getByLabelText('Verse 2')).toBeTruthy();
+      expect(screen.queryByLabelText('Verse 2, playing')).toBeNull();
+    });
+
+    it('updates playing a11y when currentlyPlayingVerse changes without changing selection', async () => {
+      const threeVerses = [
+        ...verses,
+        {
+          bibleId: 1,
+          bookId: 1,
+          chapterNumber: 14,
+          verseNumber: 3,
+          text: 'Third verse text',
+        },
+      ];
+
+      render(
+        <DraftingProvider
+          verses={threeVerses}
+          initialVerse={1}
+          chapterName="Mark 14"
+          bookName="Mark"
+        >
+          <SetPlayingVerseButton verse={2} />
+          <SetPlayingVerseButton verse={3} />
+          <BibleTab />
+        </DraftingProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Verse 1, selected')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('set-playing-2'));
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Verse 2, playing')).toBeTruthy();
+      });
+      expect(screen.getByLabelText('Verse 1, selected')).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('set-playing-3'));
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Verse 3, playing')).toBeTruthy();
+      });
+      expect(screen.getByLabelText('Verse 1, selected')).toBeTruthy();
+      expect(screen.queryByLabelText('Verse 2, playing')).toBeNull();
+      expect(screen.queryByLabelText('Verse 1, selected, playing')).toBeNull();
+    });
+  });
+
   it('scrolls the playing verse into view when currentlyPlayingVerse changes (#595)', async () => {
     const scrollToIndex = jest.fn();
     const spy = jest

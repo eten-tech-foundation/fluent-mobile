@@ -17,6 +17,7 @@ the Legacy / Next split described there.
 | Motion | `theme.motion.pressMs` · `releaseMs` · `easeStandard` |
 | Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon24` / `icon32` |
 | Radius `xs` (4), space `2`, strokes | `theme.radius.xs`, `theme.spacing.xxs`, `theme.stroke[1]` / `[2]` |
+| Type styles | `theme.type.reading` … `meta` (spread into a style); layer `theme.typeTelugu.*` for Telugu; Reading text gets `maxFontSizeMultiplier={theme.fontScale.readingMax}`, which caps the glyphs but not `lineHeight` (Android scales it by the full font scale), so pass `lineHeight: type.reading.lineHeight * Math.min(scale, readingMax) / scale` with `scale = PixelRatio.getFontScale()` |
 | Haptics | `useHaptics()` from `src/hooks/useHaptics.ts` |
 | Review screen | `/gallery` (`fluent://gallery`), entries in `src/app/gallery/entries/` |
 | Reference components | `src/components/ui/Key.tsx` (Figma Key, `2326:34`) in `KeyDeck.tsx` (Hardware panel keys, `2411:465`) · `src/components/ui/Switch.tsx` (Figma Switch, `2326:41`) · `src/components/ui/RoundButton.tsx` (Figma Round button, `2326:64`) · `src/components/ui/ProgressRing.tsx` (Figma Progress ring, `2400:302`) |
