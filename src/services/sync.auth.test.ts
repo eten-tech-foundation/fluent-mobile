@@ -33,6 +33,7 @@ import {
   clearBibleTextsServerIdRemapPending,
 } from './storage';
 import { getDatabase } from '../db/db';
+import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
 
 jest.mock('./authToken', () => ({
   authToken: {
@@ -751,6 +752,10 @@ describe('syncAllData auth handling', () => {
     await syncAllData(true);
 
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '2',
+      'valid-token',
+    );
   });
 
   it('continues chapter assignment sync after pending claim soft-fail', async () => {
@@ -836,6 +841,14 @@ describe('syncAllUsers auth handling', () => {
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(1, 'user-1-token');
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '1',
+      'user-1-token',
+    );
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '2',
+      'user-2-token',
+    );
     expect(authToken.set).not.toHaveBeenCalled();
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('1', expect.any(String));
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));

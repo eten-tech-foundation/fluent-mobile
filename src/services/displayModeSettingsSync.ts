@@ -74,6 +74,7 @@ function captureStillCurrent(capture: DisplayModePushCapture): boolean {
 /**
  * Apply a GET/PUT settings blob for `userId` when local is clean.
  * Missing/null displayMode → Verse default only when capabilities are supported.
+ * Present non-enum displayMode (e.g. `VERSE`) is ignored (noop), not defaulted.
  * Never clobbers dirty locals. Unsupported servers do not apply omission defaults.
  */
 export function applyUserSettingsDisplayMode(
@@ -83,10 +84,23 @@ export function applyUserSettingsDisplayMode(
   if (!userId) return 'noop';
   if (isDraftingUnitDirty(userId)) return 'skipped_dirty';
 
-  const raw = response?.settings?.displayMode;
-  const parsed = parseDisplayMode(raw);
+  const settings = response?.settings;
+  const keyPresent =
+    settings !== null &&
+    settings !== undefined &&
+    typeof settings === 'object' &&
+    Object.prototype.hasOwnProperty.call(settings, 'displayMode');
+  const parsed = parseDisplayMode(
+    keyPresent ? settings.displayMode : undefined,
+  );
   if (parsed === 'verse' || parsed === 'pericope') {
     return applyRemoteDraftingUnit(userId, parsed);
+  }
+
+  // Present but not a recognized enum (and not null) — do not fall through to
+  // the capable Verse default; treat as unreadable input.
+  if (keyPresent && parsed !== null) {
+    return 'noop';
   }
 
   if (!hasDisplayModeSettingsCapabilities(response)) {
@@ -241,10 +255,11 @@ export async function syncDisplayModeSettingsForUser(
 ): Promise<void> {
   if (!userId) return;
 
+  let acknowledged = false;
   try {
     const capture = await resolveDisplayModePushCapture(userId, sessionToken);
     if (capture) {
-      await pushDirtyDisplayMode(capture);
+      acknowledged = await pushDirtyDisplayMode(capture);
     }
   } catch (error) {
     log.warn('displayMode push failed; leaving dirty for retry', {
@@ -253,6 +268,10 @@ export async function syncDisplayModeSettingsForUser(
     });
     return;
   }
+
+  // ACK does not bump revision; skip the follow-up GET so a stale Verse probe
+  // body cannot overwrite the value we just pushed.
+  if (acknowledged) return;
 
   try {
     if (!isDraftingUnitDirty(userId)) {

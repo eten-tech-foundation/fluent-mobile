@@ -178,6 +178,48 @@ describe('displayModeSettingsSync', () => {
       ).toBe('applied');
       expect(getDraftingUnit('userA')).toBe('pericope');
     });
+
+    it('present non-enum displayMode noops; omitted/null still default Verse when capable', () => {
+      expect(
+        applyUserSettingsDisplayMode(
+          'userA',
+          capableGet({ displayMode: 'pericope' }),
+        ),
+      ).toBe('applied');
+      expect(getDraftingUnit('userA')).toBe('pericope');
+
+      // Present invalid enum must not fall through to Verse default.
+      expect(
+        applyUserSettingsDisplayMode(
+          'userA',
+          capableGet({ displayMode: 'VERSE' }),
+        ),
+      ).toBe('noop');
+      expect(getDraftingUnit('userA')).toBe('pericope');
+      expect(isDraftingUnitDirty('userA')).toBe(false);
+
+      // Explicit null on a capable server still means Verse default.
+      expect(
+        applyUserSettingsDisplayMode(
+          'userA',
+          capableGet({ displayMode: null }),
+        ),
+      ).toBe('applied');
+      expect(getDraftingUnit('userA')).toBe('verse');
+
+      // Omitted key (already covered above for default-verse local) — from
+      // pericope, capable omit also defaults Verse.
+      expect(
+        applyUserSettingsDisplayMode(
+          'userA',
+          capableGet({ displayMode: 'pericope' }),
+        ),
+      ).toBe('applied');
+      expect(applyUserSettingsDisplayMode('userA', capableGet({}))).toBe(
+        'applied',
+      );
+      expect(getDraftingUnit('userA')).toBe('verse');
+    });
   });
 
   describe('pushDirtyDisplayMode capability gate', () => {
@@ -237,10 +279,13 @@ describe('displayModeSettingsSync', () => {
 
       await syncDisplayModeSettingsForUser('userA', 'token-A');
       expect(isDraftingUnitDirty('userA')).toBe(false);
+      expect(getDraftingUnit('userA')).toBe('pericope');
       expect(mockPutSelfSettings).toHaveBeenCalledWith(
         { settings: { displayMode: 'pericope' } },
         'token-A',
       );
+      // Capability probe only — post-ACK pull skipped so stubbed Verse cannot win.
+      expect(mockGetSelfSettings).toHaveBeenCalledTimes(1);
     });
 
     it('wrong ACK value keeps dirty after capability-bearing PUT', async () => {
