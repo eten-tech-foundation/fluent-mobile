@@ -83,6 +83,41 @@ describe('createPrepareOfflineAutoPromptController', () => {
     expect(controller.getState().shownThisAppOpen).toBe(true);
   });
 
+  it('does not present after Home loses focus during an assignment read, and retries on return', async () => {
+    let focused = true;
+    const assignment = deferred<boolean>();
+    const deps = createDeps({
+      isFocused: () => focused,
+      isAssigned: jest
+        .fn()
+        .mockImplementationOnce(() => assignment.promise)
+        .mockResolvedValue(true),
+    });
+    const controller = createPrepareOfflineAutoPromptController(deps);
+
+    controller.request();
+    await flushMicrotasks();
+    expect(deps.isAssigned).toHaveBeenCalledTimes(1);
+    expect(controller.getState().inFlight).toBe(true);
+
+    focused = false;
+    assignment.resolve(true);
+    await flushMicrotasks();
+
+    expect(deps.present).not.toHaveBeenCalled();
+    expect(controller.getState()).toMatchObject({
+      shownThisAppOpen: false,
+      inFlight: false,
+    });
+
+    focused = true;
+    controller.request();
+    await flushMicrotasks();
+    expect(deps.present).toHaveBeenCalledTimes(1);
+    expect(deps.present).toHaveBeenCalledWith(qualifyingProject);
+    expect(controller.getState().shownThisAppOpen).toBe(true);
+  });
+
   it('defers while settling and retries once settling ends', async () => {
     let settling = true;
     const deps = createDeps({
