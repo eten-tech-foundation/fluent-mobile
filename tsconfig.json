@@ -4,7 +4,10 @@
     "types": ["jest"],
     "typeRoots": ["./src/types", "./node_modules/@types"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "phosphor-react-native/src/icons/*": [
+        "./node_modules/phosphor-react-native/lib/typescript/icons/*"
+      ]
     }
   },
   "include": [
