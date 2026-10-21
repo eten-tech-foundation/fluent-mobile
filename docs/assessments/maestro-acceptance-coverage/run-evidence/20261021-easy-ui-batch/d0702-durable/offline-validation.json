@@ -15,9 +15,14 @@
   "results": {
     "node_test": {
       "command": "node --test .maestro/flows/offline/d0702-ee-gospel-ch1-download-persist.test.cjs",
-      "result": "PASS 8/8",
+      "result": "PASS 7 + 1 SKIP (fixture-guard absent on packaged main)",
       "core_contract": "7",
-      "optional_fixture_guard": "1 (when scripts/maestro-fixture-guard.cjs present)"
+      "optional_fixture_guard": "explicit it.skip when scripts/maestro-fixture-guard.cjs absent"
+    },
+    "jest_ci": {
+      "command": "npm test -- --ci --testPathPattern=d0702-ee-gospel-ch1-download-persist --no-coverage",
+      "result": "PASS 7 + 1 skipped",
+      "note": "Dual-runner: Jest globals under CI; node:test standalone. Fixes empty-suite failure on head b4743b5f / run 39580725446."
     },
     "runner_unit": {
       "command": "python3 scripts/qa717-easy-ui-batch/run-d0702-a5554-external-finally.test.py",

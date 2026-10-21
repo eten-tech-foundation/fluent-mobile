@@ -78,6 +78,9 @@ python3 scripts/qa717-easy-ui-batch/run-d0702-a5554-external-finally.py --execut
 ## Offline validation commands
 
 ```bash
+# Jest CI path (dual-runner — same 7 contract assertions)
+npm test -- --ci --testPathPattern='d0702-ee-gospel-ch1-download-persist' --no-coverage
+# Standalone node:test path
 node --test .maestro/flows/offline/d0702-ee-gospel-ch1-download-persist.test.cjs
 python3 scripts/qa717-easy-ui-batch/run-d0702-a5554-external-finally.test.py
 maestro check-syntax .maestro/flows/offline/d0702-ee-gospel-ch1-download-persist-existing-session.yaml
@@ -89,7 +92,7 @@ node scripts/maestro-fixture-guard.cjs --preflight --recursive -- \
 
 ### Explicit dependency note
 
-`scripts/maestro-fixture-guard.cjs` is **not** on `origin/main`. Recursive guard was validated on the authoring checkout when present. Packaged node tests walk nested `runFlow` paths without that module. Do **not** pull 717-tooling-cleanup / unpublished guard into this PR.
+`scripts/maestro-fixture-guard.cjs` is **not** on `origin/main`. The optional suite uses **`it.skip`** when absent (not a fake PASS). Recursive LIVE admission still requires the guard on an authoring checkout / future tooling land — not weakened here. Do **not** pull 717-tooling-cleanup / unpublished guard into this PR.
 
 ---
 

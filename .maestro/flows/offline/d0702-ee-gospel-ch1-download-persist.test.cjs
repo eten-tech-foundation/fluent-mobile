@@ -1,14 +1,27 @@
 /**
  * D-0702-01 offline static checks — no device, no Maestro run, no ADB.
- * Self-contained: does not require unpublished maestro-fixture-guard on main.
- * When guard is present (authoring checkout), recursive preflight is also asserted.
  *
- * node --test .maestro/flows/offline/d0702-ee-gospel-ch1-download-persist.test.cjs
+ * Dual-runner registration (same file, same 7 contract assertions):
+ *   - Jest CI (`npm test`): uses Jest globals so the suite is not empty
+ *   - Standalone: `node --test .maestro/flows/offline/d0702-ee-gospel-ch1-download-persist.test.cjs`
+ *
+ * Optional authoring-only fixture-guard: explicit SKIP when absent (not a fake PASS).
  */
+'use strict';
+
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { describe, it } = require('node:test');
+
+const runningUnderJest = typeof jest !== 'undefined';
+const harness = runningUnderJest
+  ? { describe: global.describe, it: global.it }
+  : require('node:test');
+const { describe, it } = harness;
+const itSkip =
+  typeof it.skip === 'function'
+    ? it.skip.bind(it)
+    : (name, fn) => it(name, { skip: true }, fn);
 
 const root = path.resolve(__dirname, '../../..');
 const ordered = path.join(
@@ -20,13 +33,13 @@ const fixture = path.join(
   root,
   '.maestro/fixtures/d0702-ee-gospel-project13.manifest.json',
 );
+const guardPath = path.join(root, 'scripts/maestro-fixture-guard.cjs');
+const guardPresent = fs.existsSync(guardPath);
 
 const UNAVAILABLE =
   "Couldn't load downloadable resources for the selected chapters. Check your connection and try again.";
 
 function loadYamlDocs(file) {
-  // Prefer js-yaml when installed; otherwise split on --- and JSON-incompatible
-  // Maestro docs are validated via string contracts below.
   try {
     const yaml = require('js-yaml');
     return yaml.loadAll(fs.readFileSync(file, 'utf8'));
@@ -53,7 +66,6 @@ function collectRunFlowDeps(entryFile, seen = new Set()) {
     if (!target.endsWith('.yaml') && !target.endsWith('.yml')) continue;
     collectRunFlowDeps(path.resolve(dir, target), seen);
   }
-  // Nested form: file: under runFlow block
   const fileRe = /^\s+file:\s+["']?([^"'#\n]+\.ya?ml)["']?\s*$/gm;
   while ((m = fileRe.exec(body))) {
     collectRunFlowDeps(path.resolve(dir, m[1].trim()), seen);
@@ -172,21 +184,19 @@ describe('D-0702-01 durable wrapper static contract', () => {
   });
 });
 
-describe('D-0702-01 optional fixture-guard when present', () => {
-  it('recursive preflight PASS if maestro-fixture-guard.cjs exists', () => {
-    const guardPath = path.join(root, 'scripts/maestro-fixture-guard.cjs');
-    if (!fs.existsSync(guardPath)) {
-      // Explicit dependency: guard is not on origin/main; authoring checkout may have it.
-      return;
-    }
-    const { preflightFromArgv } = require(guardPath);
-    const result = preflightFromArgv({
-      argv: ['--device', 'emulator-5554', ordered],
-      recursive: true,
-      fixtureEnv: {},
-      cwd: root,
-    });
-    assert.equal(result.ok, true, result.reason || JSON.stringify(result));
-    assert.equal(result.status, 'PASS');
-  });
+describe('D-0702-01 optional fixture-guard (authoring-only)', () => {
+  (guardPresent ? it : itSkip)(
+    'recursive preflight PASS when maestro-fixture-guard.cjs present',
+    () => {
+      const { preflightFromArgv } = require(guardPath);
+      const result = preflightFromArgv({
+        argv: ['--device', 'emulator-5554', ordered],
+        recursive: true,
+        fixtureEnv: {},
+        cwd: root,
+      });
+      assert.equal(result.ok, true, result.reason || JSON.stringify(result));
+      assert.equal(result.status, 'PASS');
+    },
+  );
 });
