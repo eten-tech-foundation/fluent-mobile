@@ -187,6 +187,104 @@ describe('D-0702-01 durable wrapper static contract', () => {
       assert.ok(fs.existsSync(file), file);
     }
   });
+
+  it('rejects source-only prepare-offline-resources-section; keeps hierarchy oracles', () => {
+    for (const file of [ordered, nested]) {
+      const body = fs.readFileSync(file, 'utf8');
+      assert.ok(
+        !/prepare-offline-resources-section/.test(
+          body.replace(/^#.*$/gm, ''),
+        ),
+        `${path.basename(file)} must not assert source-only resources-section`,
+      );
+    }
+    const o = fs.readFileSync(ordered, 'utf8');
+    const n = fs.readFileSync(nested, 'utf8');
+    assert.ok(o.includes("id: 'prepare-offline-download-footer'"));
+    // Single-quoted YAML: \( → regex \( (not \\( which fails to match labels).
+    assert.ok(o.includes("'^Selected chapters \\(0\\)$'"));
+    assert.ok(o.includes("'^Matthew, 0 of 28 chapters selected$'"));
+    assert.ok(o.includes("'^Mark, 0 of 16 chapters selected$'"));
+    assert.ok(o.includes("'^Luke, 0 of 24 chapters selected$'"));
+    assert.ok(n.includes("id: 'prepare-offline-download-footer'"));
+    assert.ok(n.includes("'^Selected chapters \\([0-9]+\\)$'"));
+    assert.ok(n.includes('checked: false'));
+    assert.ok(n.includes('checked: true'));
+    // Over-escape in single-quoted YAML is `\\(` (two backslashes in file).
+    assert.ok(
+      !o.includes("'^Selected chapters \\\\(") &&
+        !n.includes("'^Selected chapters \\\\("),
+      'Selected chapters must not use double-backslash paren escapes',
+    );
+  });
+
+  it('authored regexes match retained hierarchy labels (exact strings)', () => {
+    // Exact labels from retained uiautomator dumps (Codex d0702-*-hierarchy.xml /
+    // mark|luke-ch1-*.xml) + reconciliation unavailable message. Not imitation.
+    const retainedByPattern = [
+      ['^Selected chapters \\(0\\)$', 'Selected chapters (0)'],
+      ['^Selected chapters \\([0-9]+\\)$', 'Selected chapters (0)'],
+      ['^Selected chapters \\([0-9]+\\)$', 'Selected chapters (1)'],
+      ['^Selected chapters \\([1-9][0-9]*\\)$', 'Selected chapters (1)'],
+      ['^Matthew, 0 of 28 chapters selected$', 'Matthew, 0 of 28 chapters selected'],
+      ['^Matthew, 1 of 28 chapters selected$', 'Matthew, 1 of 28 chapters selected'],
+      ['^Mark, 0 of 16 chapters selected$', 'Mark, 0 of 16 chapters selected'],
+      ['^Mark, 1 of 16 chapters selected$', 'Mark, 1 of 16 chapters selected'],
+      ['^Luke, 0 of 24 chapters selected$', 'Luke, 0 of 24 chapters selected'],
+      ['^Luke, 1 of 24 chapters selected$', 'Luke, 1 of 24 chapters selected'],
+      ['^Expand Matthew$', 'Expand Matthew'],
+      ['^Collapse Matthew$', 'Collapse Matthew'],
+      ['^Expand Mark$', 'Expand Mark'],
+      ['^Collapse Mark$', 'Collapse Mark'],
+      ['^Expand Luke$', 'Expand Luke'],
+      ['^Collapse Luke$', 'Collapse Luke'],
+      ['^Chapter 1$', 'Chapter 1'],
+      ['^Total download$', 'Total download'],
+      ['^Download .+$', 'Download 0 B'],
+      [
+        '^Loading resources for the selected chapters…$',
+        'Loading resources for the selected chapters…',
+      ],
+    ];
+    const yaml = require('js-yaml');
+    const docs = [
+      ...yaml.loadAll(fs.readFileSync(ordered, 'utf8')),
+      ...yaml.loadAll(fs.readFileSync(nested, 'utf8')),
+    ];
+    const patterns = [];
+    (function walk(o) {
+      if (typeof o === 'string' && o.startsWith('^') && o.endsWith('$')) {
+        patterns.push(o);
+      } else if (Array.isArray(o)) o.forEach(walk);
+      else if (o && typeof o === 'object') Object.values(o).forEach(walk);
+    })(docs);
+    for (const [re, label] of retainedByPattern) {
+      assert.ok(patterns.includes(re), `YAML missing pattern ${re}`);
+      assert.ok(new RegExp(re).test(label), `${re} !~ ${JSON.stringify(label)}`);
+    }
+    const unavailablePat = patterns.find(p =>
+      p.includes('load downloadable resources for the selected chapters'),
+    );
+    assert.ok(unavailablePat);
+    assert.ok(new RegExp(unavailablePat).test(UNAVAILABLE));
+    assert.ok(!new RegExp('^Download .+$').test('Download'));
+    assert.ok(
+      !new RegExp('^Selected chapters \\(0\\)$').test('Selected chapters (1)'),
+    );
+    assert.ok(
+      !new RegExp('^Selected chapters \\([1-9][0-9]*\\)$').test(
+        'Selected chapters (0)',
+      ),
+    );
+    // Catch over-escaping: parsed pattern must not contain literal \\ before (
+    for (const p of patterns.filter(x => x.includes('Selected chapters'))) {
+      assert.ok(
+        !p.includes('\\\\('),
+        `over-escaped Selected chapters pattern: ${JSON.stringify(p)}`,
+      );
+      assert.ok(new RegExp(p).test('Selected chapters (0)') || new RegExp(p).test('Selected chapters (1)'));
+    }
+  });
 });
 
 describe('D-0702-01 optional fixture-guard (authoring-only)', () => {

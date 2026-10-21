@@ -96,19 +96,30 @@ tags:
     timeout: 30000
 - tapOn:
     id: '^project-row-13$'
-- extendedWaitUntil:
-    visible:
-      id: 'prepare-offline-resources-section'
-    timeout: 60000
+# Project-detail readiness: prepare-offline-resources-section is source-only —
+# absent from retained uiautomator / PR755 step-029 hierarchy. Oracle = footer +
+# Selected chapters (0) + gospel book accessibility rows (Matthew/Mark/Luke).
 - extendedWaitUntil:
     visible:
       id: 'prepare-offline-download-footer'
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      text: '^Selected chapters \(0\)$'
     timeout: 30000
 - assertVisible:
-    text: '^Selected chapters \\(0\\)$'
+    text: '^Matthew, 0 of 28 chapters selected$'
+- assertVisible:
+    text: '^Mark, 0 of 16 chapters selected$'
+- assertVisible:
+    text: '^Luke, 0 of 24 chapters selected$'
 - assertVisible:
     id: 'prepare-offline-download-button'
     enabled: false
+- assertVisible:
+    text: '^Download .+$'
+- assertVisible:
+    text: '^Total download$'
 # Sequential per-book results; each nested flow restores its own ch1 to 0.
 - runFlow:
     file: d0702-book-ch1-unavailable-persist.yaml
@@ -133,7 +144,7 @@ tags:
       D0702_COLLAPSE: '^Collapse Luke$'
 # All books back at zero selection.
 - assertVisible:
-    text: '^Selected chapters \\(0\\)$'
+    text: '^Selected chapters \(0\)$'
 - assertVisible:
     text: '^Matthew, 0 of 28 chapters selected$'
 - assertVisible:

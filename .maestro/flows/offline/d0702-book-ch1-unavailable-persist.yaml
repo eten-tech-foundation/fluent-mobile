@@ -1,8 +1,10 @@
 # D-0702-01 nested book probe (chapter-1 only).
-# Preconditions: already on project13 PFO detail (prepare-offline-resources-section).
+# Preconditions: already on project13 PFO detail with Selected chapters + footer
+# (not prepare-offline-resources-section — absent from live uiautomator hierarchies).
 # Env (full anchored regex / labels — no JS):
 #   D0702_BOOK_ZERO / D0702_BOOK_ONE  e.g. ^Matthew, 0 of 28 chapters selected$
 #   D0702_EXPAND / D0702_COLLAPSE     e.g. ^Expand Matthew$
+# Labels are accessibility content-desc in retained XML; Maestro text: matches them.
 # Selection UI only — NEVER tap prepare-offline-download-button / Pause / Resume /
 # Cancel. No available-download size arithmetic claim. Tolerate Download size suffix.
 appId: com.eten.fluent
@@ -18,18 +20,23 @@ tags:
 - assertTrue: ${typeof D0702_BOOK_ONE === 'string' && D0702_BOOK_ONE.length > 0}
 - assertTrue: ${typeof D0702_EXPAND === 'string' && D0702_EXPAND.length > 0}
 - assertTrue: ${typeof D0702_COLLAPSE === 'string' && D0702_COLLAPSE.length > 0}
+# Project-detail oracle (hierarchy-evidenced): footer + selection chrome + book row.
 - assertVisible:
-    id: 'prepare-offline-resources-section'
+    id: 'prepare-offline-screen'
 - assertVisible:
     id: 'prepare-offline-download-footer'
 - assertVisible:
     id: 'prepare-offline-download-button'
     enabled: false
 - assertVisible:
+    text: '^Selected chapters \([0-9]+\)$'
+- assertVisible:
+    text: ${D0702_BOOK_ZERO}
+- assertVisible:
     text: '^Total download$'
 - assertVisible:
     id: 'prepare-offline-total-bytes'
-# Expand target book (chapter circles hidden while collapsed).
+# Expand target book (chapter circles hidden while collapsed; content-desc Expand X).
 - scrollUntilVisible:
     element:
       text: ${D0702_EXPAND}
@@ -44,6 +51,7 @@ tags:
     timeout: 15000
 - assertVisible:
     text: ${D0702_BOOK_ZERO}
+# Chapter 1 checkbox: text="" content-desc="Chapter 1" checkable; unique while this book expanded.
 - assertVisible:
     text: '^Chapter 1$'
     checked: false
@@ -56,7 +64,10 @@ tags:
       text: ${D0702_BOOK_ONE}
     timeout: 15000
 - assertVisible:
-    text: '^Selected chapters \\([1-9][0-9]*\\)$'
+    text: '^Chapter 1$'
+    checked: true
+- assertVisible:
+    text: '^Selected chapters \([1-9][0-9]*\)$'
 - scrollUntilVisible:
     element:
       id: 'prepare-offline-download-button'
@@ -71,9 +82,10 @@ tags:
 - assertVisible:
     id: 'prepare-offline-download-button'
     enabled: false
-# Tolerate legitimate size suffix; never bare ^Download$.
+# Tolerate legitimate size suffix; never bare ^Download$. Matches content-desc "Download 0 B".
 - assertVisible:
     text: '^Download .+$'
+# Unavailable branch: wait past loading; hint testID present when selected (retained XML).
 - extendedWaitUntil:
     visible:
       text: '^Couldn''t load downloadable resources for the selected chapters\. Check your connection and try again\.$'
@@ -97,6 +109,9 @@ tags:
     visible:
       text: ${D0702_BOOK_ZERO}
     timeout: 15000
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: false
 - scrollUntilVisible:
     element:
       id: 'prepare-offline-download-button'
