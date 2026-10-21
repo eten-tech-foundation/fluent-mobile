@@ -1,5 +1,9 @@
 # UI version theming (Legacy / Next)
 
+Original Lovable source review and current issue ownership:
+[dated review and evidence map](../features/next-ui-redesign/lovable-review.md).
+Source/token evidence does not establish rendered visual fidelity.
+
 Fluent Mobile supports a runtime-selectable **UI version** while the redesign
 lands:
 

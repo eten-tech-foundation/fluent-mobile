@@ -86,15 +86,15 @@ export async function clearOrphanedPausedTakes(
     !isPausedTakeOrphaned(marker),
 ): Promise<number> {
   const markers = readAll();
-  const kept: PausedTakeMarker[] = [];
+  const removedVersions = new Set<string>();
   let removed = 0;
 
   for (const marker of markers) {
     if (resolveNavigable(marker)) {
-      kept.push(marker);
       continue;
     }
     removed += 1;
+    removedVersions.add(JSON.stringify(marker));
     for (const uri of marker.segments) {
       try {
         await deleteFile(uri);
@@ -107,7 +107,11 @@ export async function clearOrphanedPausedTakes(
     });
   }
 
-  writeAll(kept);
+  // File deletion yields to ongoing captures. Remove only the versions scanned
+  // above; a new or updated marker must not be overwritten by this snapshot.
+  writeAll(
+    readAll().filter(marker => !removedVersions.has(JSON.stringify(marker))),
+  );
   return removed;
 }
 

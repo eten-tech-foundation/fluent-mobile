@@ -157,6 +157,7 @@ export async function deleteSelectedDownloadResources(
 
     if (
       activeUserId === null ||
+      parseActiveUserId() !== activeUserId ||
       (resource.userId !== undefined && resource.userId !== activeUserId)
     ) {
       failed.push({
