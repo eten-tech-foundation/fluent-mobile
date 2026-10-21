@@ -1,0 +1,28 @@
+# D-0235-03 empty presentation slice, already on owner-verified state.
+# Zero taps; no Play/Retry. Missing other branches keep whole criterion partial.
+appId: com.eten.fluent
+tags: [existing-session, read-only]
+---
+- assertTrue: ${typeof MAESTRO_SOURCE_AUDIO_CHROME_STATE_VERIFIED !== 'undefined' && MAESTRO_SOURCE_AUDIO_CHROME_STATE_VERIFIED === 'empty'}
+- assertVisible:
+    id: '^source-audio-bar$'
+- assertVisible:
+    id: '^source-audio-label$'
+    text: '^No source audio$'
+- assertNotVisible:
+    id: '^source-audio-loading$'
+- assertNotVisible:
+    id: '^source-audio-play$'
+- assertNotVisible:
+    id: '^source-audio-waveform$'
+- assertNotVisible:
+    id: '^source-audio-playing$'
+- assertNotVisible:
+    id: '^source-audio-paused$'
+- assertNotVisible:
+    text: "^Couldn't load source audio$"
+- assertNotVisible:
+    text: '^Retry loading source audio$'
+- assertNotVisible:
+    id: '^login-email-input$'
+- takeScreenshot: d0235-source-audio-empty-chrome

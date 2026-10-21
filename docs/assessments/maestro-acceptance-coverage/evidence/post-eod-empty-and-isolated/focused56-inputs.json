@@ -1,0 +1,11 @@
+{
+  "HEAD": "ac7ac90336a7ee3eede858b238ce906fbb7bdaaf",
+  "command": "node24 node_modules/jest/bin/jest.js --runInBand --runTestsByPath src/services/connectivity.test.ts src/services/sync.auth.test.ts --json --outputFile <workspace>/jest-result.json",
+  "source_test_hashes": {
+    "src/services/connectivity.ts": "501d0c31899805fde4f8fb752c8737faf55a01a113073e50961ee60479c1923c",
+    "src/services/connectivity.test.ts": "7ab4ddd51da1bd8b43e7517950d43813c91232cab0cab01cc065c74410084a52",
+    "src/services/sync.ts": "8a708648da97539efa0ce5fb58f2eab59054d85795f8601fae8a17d8693215bd",
+    "src/services/sync.auth.test.ts": "9172f02a3fe27949a8864b84b4a7ee425a958905d352997369904f672269dba3"
+  },
+  "scope": "isolated mocked dependencies; no app/device/build/network command"
+}

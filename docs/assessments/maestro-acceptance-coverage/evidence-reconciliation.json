@@ -37,8 +37,8 @@
     },
     "canonical_execution_coverage": {
       "complete_for_requirement": 41,
-      "partial": 47,
-      "not_run": 114
+      "partial": 48,
+      "not_run": 113
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
@@ -48,8 +48,8 @@
     },
     "eligible_current_atomic_execution_coverage": {
       "complete_for_requirement": 33,
-      "partial": 14,
-      "not_run": 39
+      "partial": 15,
+      "not_run": 38
     },
     "full_live_PASS_eligible_ids": [
       "A-0001-01",
@@ -150,7 +150,8 @@
       "B-0002-01",
       "B-0013-01",
       "A-0021-01",
-      "C-0613-01"
+      "C-0613-01",
+      "D-0235-03"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -172,7 +173,11 @@
       "D-0189-01",
       "D-0190-01",
       "D-0191-01",
-      "D-0594-01"
+      "D-0594-01",
+      "C-0620-01",
+      "C-0294-01",
+      "C-0601-01",
+      "C-0612-01"
     ],
     "new_selected_live_cases": {
       "latest_PASS": 17,
@@ -270,8 +275,8 @@
     "review_inventory_minus_gallery_count": 200,
     "review_inventory_minus_gallery_execution_statuses": {
       "complete_for_requirement": 41,
-      "partial": 45,
-      "not_run": 114
+      "partial": 46,
+      "not_run": 113
     },
     "review_inventory_minus_gallery_live_statuses": {
       "PASS": 41,
@@ -292,13 +297,13 @@
       "review_inventory_200_is_execution_denominator": false,
       "current_review_execution_statuses_nonadditive": {
         "complete_for_requirement": 41,
-        "partial": 45,
-        "not_run": 89
+        "partial": 46,
+        "not_run": 88
       },
       "atomic_execution_statuses": {
         "complete_for_requirement": 33,
-        "partial": 14,
-        "not_run": 39
+        "partial": 15,
+        "not_run": 38
       },
       "rationale": "175 applicable current rows +21 excluded +6 unresolved =202 retained inventory. The200 comparison only subtracts2 Gallery rows and still includes19 previously out-of-scope and6 unresolved rows; it is not required execution scope. Neither175 nor200 is an additive whole-app completion percentage."
     }
@@ -5092,8 +5097,14 @@
       "live_status": "BLOCKED",
       "execution_coverage": "not_run",
       "live_evidence": [],
-      "isolated_status": "NOT_APPLICABLE",
-      "isolated_evidence": [],
+      "isolated_status": "PASS",
+      "isolated_evidence": [
+        {
+          "receipt": "evidence/post-eod-empty-and-isolated/focused56-receipt.json",
+          "relation": "partial_isolated_contract_only",
+          "reason": "Existing sync.auth suite47PASS in combined56: explicit test passes stored user token to sync calls without global authToken mutation. Mock sentinel credentials only; no live cross-account HTTP race/token capture proof."
+        }
+      ],
       "missing_assertions_or_fixture": [
         "per-request token no global mutate race under switch",
         "Necessary safe fixture/authorization not established: two accounts"
@@ -5346,8 +5357,14 @@
       "live_status": "BLOCKED",
       "execution_coverage": "not_run",
       "live_evidence": [],
-      "isolated_status": "UNTESTED",
-      "isolated_evidence": [],
+      "isolated_status": "PASS",
+      "isolated_evidence": [
+        {
+          "receipt": "evidence/post-eod-empty-and-isolated/focused56-receipt.json",
+          "relation": "partial_isolated_contract_only",
+          "reason": "Existing connectivity9PASS in combined56: stale probe completion rejected, reconnect failed probes retry until success, retry stops on link drop. Mock NetInfo/fetch/delay; no live guest/cold-start qualification."
+        }
+      ],
       "missing_assertions_or_fixture": [
         "stale /health probe drop",
         "retry after network change",
@@ -5568,8 +5585,14 @@
       "live_status": "BLOCKED",
       "execution_coverage": "not_run",
       "live_evidence": [],
-      "isolated_status": "UNTESTED",
-      "isolated_evidence": [],
+      "isolated_status": "PASS",
+      "isolated_evidence": [
+        {
+          "receipt": "evidence/post-eod-empty-and-isolated/focused56-receipt.json",
+          "relation": "partial_isolated_contract_only",
+          "reason": "Existing sync.auth47PASS in combined56: overlapping sync single-flight, pending claims start before master, per-user incremental cursor and metadata refresh. Full warm SyncNow actual request traffic/double-tap/cursor behavior not live attested."
+        }
+      ],
       "missing_assertions_or_fixture": [
         "warm Sync Now skips full catalogue",
         "double-tap single-flight",
@@ -5623,8 +5646,14 @@
       "live_status": "BLOCKED",
       "execution_coverage": "not_run",
       "live_evidence": [],
-      "isolated_status": "UNTESTED",
-      "isolated_evidence": [],
+      "isolated_status": "PASS",
+      "isolated_evidence": [
+        {
+          "receipt": "evidence/post-eod-empty-and-isolated/c0620-execution-receipt.json",
+          "relation": "partial_isolated_contract_only",
+          "reason": "Six existing suites93PASS: mocked pending-count query rejection/unknown propagation, not-all-synced/uploadComplete and sign-out confirmation paths. Native SQLite failure/UI sign-out not executed."
+        }
+      ],
       "missing_assertions_or_fixture": [
         "pending-count query failure \u2192 not All synced",
         "sign-out warn on unknown",
@@ -6170,15 +6199,22 @@
       "additive_scope": "eligible_current_atomic",
       "review_reason": "Current falsifiable criterion; all stated conditions must be demonstrated together.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "evidence/post-eod-empty-and-isolated/d0235-result.json",
+          "case_id": "B_source_dock_empty_14.5s",
+          "relation": "partial_empty_chrome_only",
+          "reason": "Actual Maestro empty dock PASS14.5s/62.2total, exact NoSourceAudio and no spinner/Play/waveform/playing/paused/error/Retry; native protected state/restoration equal. Loading and error branches unproved. Source freeze d2da6fe parent-reported, inherited d2f27fe qualified, runtime hash unattested. Raw radio receipt covers airplane/WiFi only; mobile-data restoration not independently asserted here."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Need controlled loading, missing and failed source-audio states with the corresponding dock assertions."
+        "Empty dock branch verified. Loading and actual supported error dock chrome remain unverified."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Prepare independent loading/error state oracle and bounded assertion-only fragments; reuse passed empty branch without rerun. No forced endpoint failure or Retry outside separately reviewed fixture contract.",
       "source_title": "Source audio dock loading / empty / error chrome",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/235",

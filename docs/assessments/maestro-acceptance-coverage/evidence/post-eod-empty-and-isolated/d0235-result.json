@@ -1,0 +1,46 @@
+{
+  "serial": "emulator-5556",
+  "userId": 11,
+  "productFreezeParentReported": "d2f27fe",
+  "runtimeRevision": "UNATTESTED",
+  "claimBoundary": "Functional regression only, not integrated-repair proof",
+  "profiles": [
+    {
+      "profile": "empty-chrome",
+      "flow": "/Users/matt/Documents/Codex/2026-10-19/task-10/queue-preparation/source-audio/d0235-empty-chrome-fragment.yaml",
+      "pid": 94187,
+      "exit": 0,
+      "elapsedSeconds": 14.5
+    }
+  ],
+  "purpose": "D0235_EMPTY_CHROME_ONLY",
+  "sourceFreezeParentReported": "d2da6fe",
+  "noPlayRetryCapture": true,
+  "networkApproval": "Existing parent-forwarded emulator-only temporary offline/reconnect approval",
+  "originalRadios": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1"
+  },
+  "originalMic": [
+    "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+  ],
+  "beforeRows": "1183|12|19|10|11|draft\n1184|12|19|11|10|draft\n0\n0\n1184|draft|25|0",
+  "offlineToggleAttempted": true,
+  "authoritativeEmptyPrecondition": {
+    "freshHookRemountOffline": true,
+    "activeUser11Project12DownloadRows": 0,
+    "actualNativeEmptyLabel": true,
+    "noReadyControls": true
+  },
+  "finalRadios": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1"
+  },
+  "finalHome11LegacyVerseOffVerified": true,
+  "finalMic": [
+    "android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+  ],
+  "afterRows": "1183|12|19|10|11|draft\n1184|12|19|11|10|draft\n0\n0\n1184|draft|25|0",
+  "cleanupComplete": true,
+  "totalElapsedSeconds": 62.2
+}

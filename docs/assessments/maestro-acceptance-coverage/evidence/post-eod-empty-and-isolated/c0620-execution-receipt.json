@@ -1,0 +1,23 @@
+{
+  "utc": "2026-10-21T00:13:02.117656+00:00",
+  "head": "ac7ac90336a7ee3eede858b238ce906fbb7bdaaf",
+  "criterion": "C-0620-01",
+  "execution": "isolated mocked database failures, existing assertions only",
+  "exit_code": 0,
+  "suites": 6,
+  "passed": 93,
+  "failed": 0,
+  "skipped": 0,
+  "planned_test_hashes_match_after_run": true,
+  "test_hashes": {
+    "src/db/queries.pendingUpload.test.ts": "dffe6cf6c27c8689827d56fa09e4d76541e11cabcf7963b669b3cc5692073282",
+    "src/hooks/usePendingUploads.test.ts": "83cbb714eca950f84cf49fab84c171df9af1c9bca319c565dc791edb21e2ed64",
+    "src/hooks/useSyncStatus.test.ts": "6fcb3ceb3db1d96d1344974b46284621cfd57d44881b4e91f329b29a9af603bf",
+    "src/hooks/useUploadSessionState.test.ts": "d137b0846ebf8d86f84b2ce2a20afa7a69cabd870e5b70fed954ff00ab10e3ef",
+    "src/services/confirmUnsyncedSignOut.test.ts": "7f8ff04087199330b5a60c22651648ff40c9f0990224228a9c11059f025bf531",
+    "src/utils/deriveSyncPageStatus.test.ts": "cfd8ab50e254dc8c7683d1f8f1795e59408c575d8a29394b7c6a5ce44ab8d7c3"
+  },
+  "results_sha256": "8a1f9057b7aff2f65bacfb21a3ab6b3a4e118cfc51d82d6409c7674de764626c",
+  "live_device_or_server_proof": false,
+  "new_tests_written": false
+}

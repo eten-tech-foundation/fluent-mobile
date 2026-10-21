@@ -1,0 +1,253 @@
+{
+  "exit_code": 0,
+  "success": true,
+  "passed_suites": 2,
+  "passed_tests": 56,
+  "failed_tests": 0,
+  "pending_tests": 0,
+  "input_hashes_unchanged_after_run": true,
+  "suites": [
+    {
+      "file": "/Users/matt/Documents/Development/gloo/fluent-mobile/src/services/connectivity.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "connectivity getConnectivitySnapshot reports wifi when NetInfo type is wifi",
+          "status": "passed"
+        },
+        {
+          "name": "connectivity getTransferTransportSnapshot uses link connectivity without server health",
+          "status": "passed"
+        },
+        {
+          "name": "connectivity getTransferTransportSnapshot reports ethernet",
+          "status": "passed"
+        },
+        {
+          "name": "connectivity getConnectivitySnapshot reports non-wifi cellular as isWifi false",
+          "status": "passed"
+        },
+        {
+          "name": "connectivity subscribeToConnectivity forwards isOnline and isWifi",
+          "status": "passed"
+        },
+        {
+          "name": "connectivity drops a stale /health probe that finishes after a newer one",
+          "status": "passed"
+        },
+        {
+          "name": "connectivity retries a failed /health probe after reconnect until it succeeds",
+          "status": "passed"
+        },
+        {
+          "name": "connectivity stops retrying when the link drops",
+          "status": "passed"
+        },
+        {
+          "name": "connectivity subscribeToTransferTransport emits link state without waiting on /health",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "/Users/matt/Documents/Development/gloo/fluent-mobile/src/services/sync.auth.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "syncProjects / syncUserChapterWork reconciliation shape guard runs project reconciliation with an empty list when the response is validly empty",
+          "status": "passed"
+        },
+        {
+          "name": "syncProjects / syncUserChapterWork reconciliation shape guard skips project reconciliation when the response shape is malformed",
+          "status": "passed"
+        },
+        {
+          "name": "syncProjects / syncUserChapterWork reconciliation shape guard runs project reconciliation with populated ids on a valid response",
+          "status": "passed"
+        },
+        {
+          "name": "syncProjects / syncUserChapterWork reconciliation shape guard pushes pending claims before chapter assignment refresh (#611)",
+          "status": "passed"
+        },
+        {
+          "name": "syncProjects / syncUserChapterWork reconciliation shape guard runs chapter-work reconciliation with empty lists when the response is validly empty",
+          "status": "passed"
+        },
+        {
+          "name": "syncProjects / syncUserChapterWork reconciliation shape guard skips chapter-work reconciliation when the response shape is malformed",
+          "status": "passed"
+        },
+        {
+          "name": "syncProjects / syncUserChapterWork reconciliation shape guard skips chapter-work reconciliation when the response is missing entirely",
+          "status": "passed"
+        },
+        {
+          "name": "refreshChapterMetadataIfOnline does not skip a later metadata refresh after the previous one completes",
+          "status": "passed"
+        },
+        {
+          "name": "refreshChapterMetadataIfOnline sets chapter assignment sync error when user chapter work is fully FK-skipped",
+          "status": "passed"
+        },
+        {
+          "name": "refreshChapterMetadataIfOnline applies partial FK skip warnings after chapter metadata refresh",
+          "status": "passed"
+        },
+        {
+          "name": "refreshChapterMetadataIfOnline shares an in-flight metadata refresh for the same user",
+          "status": "passed"
+        },
+        {
+          "name": "refreshChapterMetadataIfOnline does not call the server when offline",
+          "status": "passed"
+        },
+        {
+          "name": "refreshChapterMetadataIfOnline passes this user's stored token to sync calls without mutating global authToken",
+          "status": "passed"
+        },
+        {
+          "name": "refreshChapterMetadataIfOnline marks reauth required and skips the refresh when no credentials exist for this user",
+          "status": "passed"
+        },
+        {
+          "name": "refreshChapterMetadataIfOnline skips the refresh without calling the server when userId is not the active user",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling sets reauth required when incremental sync has no stored token",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling sets reauth required when full sync has no stored token after user sync",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling sets reauth required for the syncing user when project sync returns 401",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling sets reauth required and emits soft reauth when active user project sync returns 401",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling does not set reauth required when project sync fails with a non-auth error",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling keeps a getUserProjects 403 forbidden: no reauth and no empty project reconcile",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling emits sync complete when incremental sync fails",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling forces full assignment sync when local assignments are empty but KV cursor exists",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling registers a new user without switching active user during add-account sync",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling forces full assignment sync for a new user on a shared device despite peer-checker rows",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling forces full assignment sync for a new user on a shared device despite peer-checker rows when user is fetched",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling stores a per-user sync cursor after syncAllData succeeds",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData auth handling continues chapter assignment sync after pending claim soft-fail",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling syncs every known user on the device",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling sets reauth required when the active user has no stored token",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling marks non-active users for reauth but continues syncing",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling runs full bible text sync when any user had a full assignment sync",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling forces full assignment sync when user has projects but no local assignments",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling forces full assignment sync when user has no per-user cursor despite local peer-checker rows",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling rethrows the active user first non-auth sync failure",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling full-fetches bible texts when assigned chapters have zero local verses (#177)",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling keeps incremental bible-text cursor when local verses already exist",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling does not advance per-user cursors when bible text sync fails",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling starts pending claim sync without waiting for master data",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling enforces single-flight across overlapping syncAllUsers calls",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling joins syncAllData into an in-flight syncAllUsers pass",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling runs a login/add-account syncAllData after an in-flight syncAllUsers instead of joining it",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllUsers auth handling still runs the next full sync after the in-flight pass fails",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData progressive login (#670) unblocks Tier 1 before full project assignments and scopes bible texts to My Work",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData progressive login (#670) re-login unblocks My Work before full catalogue when there is no cursor",
+          "status": "passed"
+        },
+        {
+          "name": "syncAllData progressive login (#670) My-Work-only login preserves bible count and clears remap without Tier 1 refetch",
+          "status": "passed"
+        },
+        {
+          "name": "sync public API does not export a misleading switchUser stub",
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "qualification": "New focused isolated mock-backed test proof only. Not part of historical387gate, not live device/E2E/server proof. No source edits or retries.",
+  "artifact_sha256": {
+    "jest-result.json": "26fbe71ff8c4adaa8dd4579dbc30e9ce8772e01a046302c055f3c065178ea677",
+    "jest.log": "0697ed993e5c35223eba6bfdfcece10ec04456158045937a51b639bbcfc5674b",
+    "execution-inputs.json": "937ff019d4a4b482c4c97bd5c45c74e450360ffc511ae2ec9046e5313399ce7b"
+  }
+}

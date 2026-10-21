@@ -1,0 +1,44 @@
+{
+  "criterion": "D-0235-03",
+  "status": "EMPTY_SLICE_PASS_ONLY",
+  "cliPid": 94187,
+  "cliSeconds": 14.5,
+  "cleanupComplete": true,
+  "totalSeconds": 62.2,
+  "rawReceipt": "emulators/b-d0235-empty-chrome/first-run/result.json",
+  "rawReceiptSha256": "74f2ab0955be95e73b94f5d5bcaf31c2d8740f71ceb8d3b66f17465fddc9114d",
+  "flow": "queue-preparation/source-audio/d0235-empty-chrome-fragment.yaml",
+  "flowSha256": "183d5829908dd19ba3ac602fcc144a8afb841740e44c46fabb2c33a06789de92",
+  "currentSourceFreezeParentReported": "d2da6fe",
+  "inheritedBaselineField": "productFreezeParentReported d2f27fe copied by baseline driver; raw receipt retained unchanged",
+  "wholeRuntimeHash": "UNATTESTED",
+  "newAssertions": "Exact empty dock label plus no spinner, Play, waveform, playing/paused ready markers, error or Retry; owner-established offline/no-localfile precondition. Not audible-output/no-autoplay acceptance.",
+  "remaining": [
+    "Naturally observed loading chrome under bounded applicable entry",
+    "Actual supported online-error fixture; no forced request failure or Retry"
+  ],
+  "protectedState": "Home11 Legacy Verse cellularOFF; recorded airplane_mode_on0/wifi_on1 restored; micdenied flags unchanged;1183/1184 scopedroles unchanged;1184draft25/0 user11takes0 project12downloads0",
+  "fixtureMutations": false,
+  "audioActions": false,
+  "networkCleanupAudit": {
+    "scope": "Retained driver/action inspection only; no additional device command/test/mutation",
+    "driver": "emulators/run-b-d0235-empty-chrome.py",
+    "actions": [
+      "line61 cmd connectivity airplane-mode enable",
+      "line72 cmd connectivity airplane-mode disable",
+      "line73 conditional svc wifi enable"
+    ],
+    "recordedBefore": {
+      "airplane_mode_on": "0",
+      "wifi_on": "1"
+    },
+    "recordedAfter": {
+      "airplane_mode_on": "0",
+      "wifi_on": "1"
+    },
+    "mobileDataDirectSettingAction": "NONE: no mobile_data read/write or svc data command",
+    "mobileDataBefore": "NOT_RECORDED",
+    "mobileDataAfter": "NOT_RECORDED",
+    "limit": "Airplane mode transitions were used, not WiFi-only. System effects on mobile data were not independently recorded; cannot claim original/restored mobile_data equality or all-radio restoration."
+  }
+}

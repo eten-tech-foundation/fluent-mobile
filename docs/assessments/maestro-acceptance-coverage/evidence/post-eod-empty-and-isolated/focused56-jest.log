@@ -1,0 +1,4825 @@
+PASS src/services/connectivity.test.ts
+PASS src/services/sync.auth.test.ts (7.326 s)
+  ● Console
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.warn
+      [SyncService] Skipping project reconciliation — unexpected response shape { userId: 2 }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:354:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 1, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 1, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.warn
+      [SyncService] Skipping chapter work reconciliation — unexpected response shape { userId: 2 }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:621:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.warn
+      [SyncService] Skipping chapter work reconciliation — unexpected response shape { userId: 2 }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:621:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.warn
+      [SyncService] User chapter work sync failed, retrying {
+        attempt: 1,
+        maxAttempts: 3,
+        error: 'Skipped all 1 chapter assignment(s) — missing FK parents'
+      }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [SyncService] User chapter work sync failed, retrying {
+        attempt: 2,
+        maxAttempts: 3,
+        error: 'Skipped all 1 chapter assignment(s) — missing FK parents'
+      }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] User chapter work sync failed after 3 attempts { error: 'Skipped all 1 chapter assignment(s) — missing FK parents' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:204:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [SyncService] Chapter metadata refresh failed (non-blocking) {
+        userId: 2,
+        error: 'Skipped all 1 chapter assignment(s) — missing FK parents'
+      }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:1667:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Chapter assignments synced { fetched: 2, inserted: 1, skipped: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.warn
+      [SyncService] Skipping background metadata refresh — user is no longer active { userId: 2 }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:1629:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.error
+      [SyncService] Sync failed { error: 'No session token. Please sign in again.' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1577:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User synced { email: 'user2@test.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.error
+      [SyncService] Sync failed { error: 'No session token for synced user.' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1577:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.error
+      [SyncService] Project sync failed: session invalid { error: 'Invalid or revoked session token' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:192:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] Sync failed { error: 'Invalid or revoked session token' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1577:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.error
+      [SyncService] Project sync failed: session invalid { error: 'Invalid or revoked session token' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:192:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] Sync failed { error: 'Invalid or revoked session token' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1577:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.warn
+      [SyncService] Project sync failed, retrying { attempt: 1, maxAttempts: 3, error: 'Network timeout' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.warn
+      [SyncService] Project sync failed, retrying { attempt: 2, maxAttempts: 3, error: 'Network timeout' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.error
+      [SyncService] Project sync failed after 3 attempts { error: 'Network timeout' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:204:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] Sync failed { error: 'Network timeout' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1577:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.warn
+      [SyncService] Project sync failed, retrying { attempt: 1, maxAttempts: 3, error: 'Forbidden' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.warn
+      [SyncService] Project sync failed, retrying { attempt: 2, maxAttempts: 3, error: 'Forbidden' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.error
+      [SyncService] Project sync failed after 3 attempts { error: 'Forbidden' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:204:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] Sync failed { error: 'Forbidden' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1577:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.error
+      [SyncService] Project sync failed: session invalid { error: 'Invalid or revoked session token' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:192:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] Sync failed { error: 'Invalid or revoked session token' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1577:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Forcing full chapter assignment sync — local assignments incomplete { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 2, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 0,
+        books: 0,
+        bibles: 0,
+        projects: 0,
+        projectUnits: 0,
+        chapterAssignments: 0,
+        bibleTexts: 0,
+        userProjects: 0
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:44.091Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User credentials already persisted at login { userId: 247 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User synced { email: 'b@example.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 247 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 247 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Login Tier 2: remaining assignments + bible texts
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 247, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 0,
+        books: 0,
+        bibles: 0,
+        projects: 0,
+        projectUnits: 0,
+        chapterAssignments: 0,
+        bibleTexts: 0,
+        userProjects: 0
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:44.094Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User credentials already persisted at login { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User synced { email: 'user2@test.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Login Tier 2: remaining assignments + bible texts
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 2, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 0,
+        books: 0,
+        bibles: 0,
+        projects: 0,
+        projectUnits: 0,
+        chapterAssignments: 0,
+        bibleTexts: 0,
+        userProjects: 0
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:44.096Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User lookup using temp credentials token { userEmail: 'user2@test.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User credentials already persisted at login { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User synced { email: 'user2@test.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Login Tier 2: remaining assignments + bible texts
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 2, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 0,
+        books: 0,
+        bibles: 0,
+        projects: 0,
+        projectUnits: 0,
+        chapterAssignments: 0,
+        bibleTexts: 0,
+        userProjects: 0
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:44.099Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 0,
+        books: 0,
+        bibles: 0,
+        projects: 0,
+        projectUnits: 0,
+        chapterAssignments: 0,
+        bibleTexts: 0,
+        userProjects: 0
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:44.101Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.warn
+      [SyncService] Pending chapter claim sync failed, retrying {
+        attempt: 1,
+        maxAttempts: 3,
+        error: 'Failed to sync 1 pending chapter claim(s)'
+      }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.warn
+      [SyncService] Pending chapter claim sync failed, retrying {
+        attempt: 2,
+        maxAttempts: 3,
+        error: 'Failed to sync 1 pending chapter claim(s)'
+      }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] Pending chapter claim sync failed after 3 attempts { error: 'Failed to sync 1 pending chapter claim(s)' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:204:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 0,
+        books: 0,
+        bibles: 0,
+        projects: 0,
+        projectUnits: 0,
+        chapterAssignments: 0,
+        bibleTexts: 0,
+        userProjects: 0
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:45.601Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '1' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 1,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.error
+      [SyncService] Sync all users failed { error: 'No session token. Please sign in again.' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1327:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '1' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.error
+      [SyncService] Project sync failed: session invalid { error: 'Invalid or revoked session token' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:192:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.warn
+      [SyncService] Expired session credentials for user { userId: '1' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:1280:21)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] Sync failed for user { userId: '1', error: 'Invalid or revoked session token' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1288:17)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at Generator.throw (<anonymous>)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '1' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 1,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 2, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 1, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 1, chunkIndex: 0, chunkSize: 1, incremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Chunk synced { bibleId: 1, chunkIndex: 0, versesInserted: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Bible texts sync completed { textsInserted: 0, uniqueBiblesInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '1' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Forcing full chapter assignment sync — local assignments incomplete { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 1, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Forcing full chapter assignment sync — local assignments incomplete { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 2, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '1' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 1,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Forcing full chapter assignment sync — user has no per-user sync cursor { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 2, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '1' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 1,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.warn
+      [SyncService] Project sync failed, retrying { attempt: 1, maxAttempts: 3, error: 'Project sync exploded' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.warn
+      [SyncService] Project sync failed, retrying { attempt: 2, maxAttempts: 3, error: 'Project sync exploded' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.error
+      [SyncService] Project sync failed after 3 attempts { error: 'Project sync exploded' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:204:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] Sync failed for user { userId: '2', error: 'Project sync exploded' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1288:17)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.warn
+      [SyncService] Sync finished with errors for the active user
+
+      18 |     console[logMethod](prefix, message, context);
+      19 |   } else {
+    > 20 |     console[logMethod](prefix, message);
+         |                       ^
+      21 |   }
+      22 | };
+      23 |
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:1316:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      [SyncService] Sync all users failed { error: 'Project sync exploded' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1327:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '1' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 1,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-05-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 1, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.warn
+      [SyncService] Chapter missing local bible_texts; full-fetching without cursor { bibleId: 1, bookId: 1, chapterNumber: 1 }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:845:21)
+          at _loop2.next (<anonymous>)
+      at _loop2 (src/services/sync.ts:819:36)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 1, chunkIndex: 0, chunkSize: 1, incremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Chunk synced { bibleId: 1, chunkIndex: 0, versesInserted: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Bible texts sync completed { textsInserted: 0, uniqueBiblesInDb: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '1' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 1,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-05-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 1, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 1, chunkIndex: 0, chunkSize: 1, incremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Chunk synced { bibleId: 1, chunkIndex: 0, versesInserted: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Bible texts sync completed { textsInserted: 0, uniqueBiblesInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '1' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 1,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 1, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 1, chunkIndex: 0, chunkSize: 1, incremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.warn
+      [SyncService] Bible text sync failed, retrying { attempt: 1, maxAttempts: 3, error: 'Bible text sync failed' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 1, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 1, chunkIndex: 0, chunkSize: 1, incremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.warn
+      [SyncService] Bible text sync failed, retrying { attempt: 2, maxAttempts: 3, error: 'Bible text sync failed' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 1, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 1, chunkIndex: 0, chunkSize: 1, incremental: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.error
+      [SyncService] Bible text sync failed after 3 attempts { error: 'Bible text sync failed' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:204:13)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.error
+      [SyncService] Sync all users failed { error: 'Bible text sync failed' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as error] (src/utils/logger.ts:35:7)
+      at error (src/services/sync.ts:1327:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] syncAllUsers joined in-flight full sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] syncAllData joined in-flight full sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] syncAllData waiting for in-flight full sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at async Promise.all (index 1)
+
+    console.log
+      [SyncService] User credentials already persisted at login { userId: 3 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User synced { email: 'new@example.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 3 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 3 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Login Tier 2: remaining assignments + bible texts
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 3,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 12,
+        books: 12,
+        bibles: 12,
+        projects: 12,
+        projectUnits: 12,
+        chapterAssignments: 12,
+        bibleTexts: 12,
+        userProjects: 12
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:47.417Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing all users...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing user { userId: '2' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] syncAllData waiting for in-flight full sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.warn
+      [SyncService] Project sync failed, retrying { attempt: 1, maxAttempts: 3, error: 'boom' }
+
+      16 |
+      17 |   if (context !== undefined) {
+    > 18 |     console[logMethod](prefix, message, context);
+         |                       ^
+      19 |   } else {
+      20 |     console[logMethod](prefix, message);
+      21 |   }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:213:11)
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 2,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] All users synced successfully!
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User credentials already persisted at login { userId: 3 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User synced { email: 'new@example.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 3 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 3 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Login Tier 2: remaining assignments + bible texts
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... {
+        userId: 3,
+        updatedAfter: '2026-06-01T00:00:00.000Z',
+        excludeProjectIds: undefined
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 12,
+        books: 12,
+        bibles: 12,
+        projects: 12,
+        projectUnits: 12,
+        chapterAssignments: 12,
+        bibleTexts: 12,
+        userProjects: 12
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:47.987Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User credentials already persisted at login { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User synced { email: 'user2@test.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 10, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 10, chunkIndex: 0, chunkSize: 1, incremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Chunk synced { bibleId: 10, chunkIndex: 0, versesInserted: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Bible texts sync completed { textsInserted: 0, uniqueBiblesInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Login Tier 2: project assignments + remaining bible texts
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 2, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 10, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 10, chunkIndex: 0, chunkSize: 1, incremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Chunk synced { bibleId: 10, chunkIndex: 0, versesInserted: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Bible texts sync completed { textsInserted: 0, uniqueBiblesInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 12,
+        books: 12,
+        bibles: 12,
+        projects: 12,
+        projectUnits: 12,
+        chapterAssignments: 12,
+        bibleTexts: 12,
+        userProjects: 12
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:48.046Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User credentials already persisted at login { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User synced { email: 'user2@test.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 10, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 10, chunkIndex: 0, chunkSize: 1, incremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Chunk synced { bibleId: 10, chunkIndex: 0, versesInserted: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Bible texts sync completed { textsInserted: 0, uniqueBiblesInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Login Tier 2: remaining assignments + bible texts
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 2, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 10, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 10, chunkIndex: 0, chunkSize: 1, incremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Chunk synced { bibleId: 10, chunkIndex: 0, versesInserted: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Bible texts sync completed { textsInserted: 0, uniqueBiblesInDb: 12 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 12,
+        books: 12,
+        bibles: 12,
+        projects: 12,
+        projectUnits: 12,
+        chapterAssignments: 12,
+        bibleTexts: 12,
+        userProjects: 12
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:48.104Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Starting sync... { isIncremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User credentials already persisted at login { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] User synced { email: 'user2@test.com' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing master data... { incremental: false, updatedAfter: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data fetched {
+        languagesCount: 0,
+        booksCount: 0,
+        biblesCount: 0,
+        incremental: false
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Master data sync completed
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Pericope sets synced { count: 0 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing projects... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Projects synced { fetched: 0, userProjectsInDb: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing milestones... { userId: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Milestones fetched { count: 0, isArray: true }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.warn
+      [SyncService] Bible texts server-id remap pending; full-fetching without cursor
+
+      18 |     console[logMethod](prefix, message, context);
+      19 |   } else {
+    > 20 |     console[logMethod](prefix, message);
+         |                       ^
+      21 |   }
+      22 | };
+      23 |
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:766:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at operation (src/services/sync.ts:184:28)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/services/sync.ts:174:29)
+      at retrySyncStep (src/services/sync.ts:755:10)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/services/sync.ts:751:37)
+      at syncBibleTexts (src/services/sync.ts:1438:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] Chapters to sync grouped by bible { bibleCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Syncing chapters for bible { bibleId: 10, chapterCount: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Fetching chunk { bibleId: 10, chunkIndex: 0, chunkSize: 1, incremental: false }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Chunk synced { bibleId: 10, chunkIndex: 0, versesInserted: 1 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+          at _loop2.next (<anonymous>)
+
+    console.log
+      [SyncService] Bible texts sync completed { textsInserted: 1, uniqueBiblesInDb: 2 }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Login Tier 2: project assignments + remaining bible texts
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing chapter assignments... { userId: 2, updatedAfter: undefined, excludeProjectIds: undefined }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] No chapter assignment changes
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] No chapters need pericope sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] Syncing bible texts...
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.warn
+      [SyncService] Bible texts server-id remap pending; full-fetching without cursor
+
+      18 |     console[logMethod](prefix, message, context);
+      19 |   } else {
+    > 20 |     console[logMethod](prefix, message);
+         |                       ^
+      21 |   }
+      22 | };
+      23 |
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+      at Object.transport [as warn] (src/utils/logger.ts:33:7)
+      at warn (src/services/sync.ts:766:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at operation (src/services/sync.ts:184:28)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/services/sync.ts:174:29)
+      at retrySyncStep (src/services/sync.ts:755:10)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at apply (src/services/sync.ts:751:37)
+      at syncBibleTexts (src/services/sync.ts:1461:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.log
+      [SyncService] No chapters to sync
+
+      at defaultTransport (src/utils/logger.ts:20:23)
+
+    console.log
+      [SyncService] DB row counts after sync {
+        languages: 2,
+        books: 2,
+        bibles: 2,
+        projects: 2,
+        projectUnits: 2,
+        chapterAssignments: 2,
+        bibleTexts: 2,
+        userProjects: 2
+      }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+    console.log
+      [SyncService] Sync completed successfully! { timestamp: '2026-10-21T00:10:48.111Z' }
+
+      at defaultTransport (src/utils/logger.ts:18:23)
+
+
+Test Suites: 2 passed, 2 total
+Tests:       56 passed, 56 total
+Snapshots:   0 total
+Time:        9.26 s, estimated 10 s
+Ran all test suites within paths "src/services/connectivity.test.ts", "src/services/sync.auth.test.ts".
+Test results written to: ../../../Codex/2026-10-19/task-10/core-results/20261021/connectivity-sync-focused/jest-result.json

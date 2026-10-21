@@ -1,0 +1,13 @@
+PASS src/hooks/usePendingUploads.test.ts
+PASS src/hooks/useUploadSessionState.test.ts
+PASS src/hooks/useSyncStatus.test.ts
+PASS src/db/queries.pendingUpload.test.ts
+PASS src/utils/deriveSyncPageStatus.test.ts
+PASS src/services/confirmUnsyncedSignOut.test.ts
+
+Test Suites: 6 passed, 6 total
+Tests:       93 passed, 93 total
+Snapshots:   0 total
+Time:        3.335 s
+Ran all test suites within paths "src/db/queries.pendingUpload.test.ts", "src/hooks/usePendingUploads.test.ts", "src/hooks/useSyncStatus.test.ts", "src/hooks/useUploadSessionState.test.ts", "src/services/confirmUnsyncedSignOut.test.ts", "src/utils/deriveSyncPageStatus.test.ts".
+Test results written to: ../../../Codex/2026-10-19/task-10/queue-preparation/isolated-sync/c0620-existing-suites-result.json
