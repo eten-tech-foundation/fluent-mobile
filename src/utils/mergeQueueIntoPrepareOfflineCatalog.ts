@@ -4,6 +4,7 @@ import {
   PrepareOfflineResourceItem,
   PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
+import { isManifestItemSizeKnown } from './prepareOfflineSizeSemantics';
 
 function overlayStatusFromQueue(
   catalogStatus: PrepareOfflineResourceStatus,
@@ -121,7 +122,38 @@ function aggregateOverlayItem(
   }
 
   if (status === 'completed') {
-    return { ...item, status };
+    // Worker may persist on-disk size via markDownloadItemCompleted(info.size).
+    // Pair each queue row with its manifest member (#756 / CR 4337223293):
+    // - positive queue bytes win (actual download)
+    // - queue 0/missing keeps manifest knowledge only when
+    //   isManifestItemSizeKnown already says known (incl. known-zero, no
+    //   sourceUrl) — never invent zero for remote wire-0 + sourceUrl
+    let recoveredBytes = 0;
+    let recoveredKnownCount = 0;
+    for (let index = 0; index < members.length; index += 1) {
+      const manifestMember = members[index]!;
+      const queueBytes = rows[index]?.bytesTotal;
+      if (typeof queueBytes === 'number' && queueBytes > 0) {
+        recoveredBytes += queueBytes;
+        recoveredKnownCount += 1;
+        continue;
+      }
+      if (isManifestItemSizeKnown(manifestMember)) {
+        recoveredBytes += manifestMember.bytesTotal;
+        recoveredKnownCount += 1;
+      }
+    }
+
+    if (recoveredKnownCount === 0) {
+      return { ...item, status };
+    }
+
+    return {
+      ...item,
+      status,
+      bytes: recoveredBytes,
+      sizeKnown: recoveredKnownCount === members.length,
+    };
   }
 
   if (status === item.status && (!progress || progress <= 0)) {
