@@ -1,0 +1,57 @@
+{
+  "status": "PASS_TWO_NEW_PEERCHECK_BRANCHES",
+  "cliPid": 95343,
+  "cliSeconds": 30.4,
+  "totalSeconds": 83.1,
+  "cleanupComplete": true,
+  "flow": "emulators/b-peercheck-readiness/b-user11-peercheck-owner-resolution.yaml",
+  "flowSha256": "c816626fe728f4250a0b701a487bbd365ad5c1e57550bbcc56618f3c018c1d2d",
+  "rawReceipt": "emulators/b-peercheck-readiness/first-run/result.json",
+  "rawReceiptSha256": "a7c22dae8ffca175c5885f3b752d26752e9952800e33eeaf1b3647fc47987e8e",
+  "currentSourceFreezeParentReported": "d2da6fe",
+  "inheritedBaselineQualification": "Raw productFreezeParentReported d2f27fe is copied baseline; current source freeze d2da6fe. Raw receipt preserved.",
+  "wholeRuntimeHash": "UNATTESTED",
+  "newAssertions": [
+    {
+      "chapter": 484,
+      "stage": "peer_check",
+      "drafter": 11,
+      "peer": 10,
+      "active": 11,
+      "expected": "other; no mine/conflict; exact1Peter5+PeerCheck rowcontext"
+    },
+    {
+      "chapter": 742,
+      "stage": "peer_check",
+      "drafter": 10,
+      "peer": null,
+      "active": 11,
+      "expected": "no mine/other/conflict; exactEsther2+PeerCheck rowcontext"
+    }
+  ],
+  "notRepeated": [
+    "HistoricalPeerCheckmine active10/peer10 PASS43.042s",
+    "Draft branches",
+    "Conflictprecedence",
+    "Community/Advanced laterstage absence"
+  ],
+  "c0428Limit": "Only cached-account UI11 guard and correct foreign-peer10 role storage/OTHER generic label observed; no foreign-user display-name UI, initial-sync provenance or never-signed-in global-history claim.",
+  "radioEvidence": {
+    "airplane_mode_on": [
+      "0",
+      "0"
+    ],
+    "wifi_on": [
+      "1",
+      "1"
+    ],
+    "mobile_data": [
+      "1",
+      "1"
+    ],
+    "networkMutation": false
+  },
+  "roleFixtureBeforeAfterEqual": true,
+  "protected1184": "drafter11 peer10 draft25/0 and user11recordings0 preserved",
+  "fullB0020Scope": "Report exact source-branch additions; do not automatically promote full laterstage/role matrix without canonical reviewer assessment."
+}

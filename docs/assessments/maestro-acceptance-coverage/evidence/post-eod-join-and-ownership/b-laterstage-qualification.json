@@ -1,0 +1,15 @@
+{
+  "status": "EXECUTED_PASS_24.2S_CLEANUP_TRUE",
+  "flow": "emulators/b-conflict-precedence-readiness/b-user11-later-stage-ownership.proposed.yaml",
+  "flowSha256": "bcdb1a11d7bc8bf3f7459efa9b8a4f4de3814d536a44ca7f17cf5b26eaeab95b",
+  "rawReceipt": "emulators/b-later-stage-ownership/first-run/result.json",
+  "rawReceiptSha256": "b0c1efdca4ec4df38e3d6af20d8191249f3544d424d876be863fdf9a5145d88d",
+  "baselineFieldQualification": "productFreezeParentReported d2f27fe is an inherited product baseline field; current parent-reported source freeze is d2da6fe. Raw receipt preserved.",
+  "wholeRuntimeHash": "UNATTESTED",
+  "newSupportingBranch": "B0020 Community/Advanced later-stage ownership suppression despite populated assignees; not complete later-stage/role matrix",
+  "firstTransportFailure": "CreateProcess transport disconnected; absent first-run directory verified before sole actual driver retry. No risk denial.",
+  "device": "B5556 idle after verified cleanup",
+  "protectedState": "Home11 Legacy Verse cellularOFF mic-denied flags unchanged radios0/1; selected rows unchanged;1184draft25/0 user11recordings0",
+  "noChapterEntry": true,
+  "noCapturePlayStageActions": true
+}

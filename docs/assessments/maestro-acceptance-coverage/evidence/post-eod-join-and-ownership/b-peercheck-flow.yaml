@@ -1,0 +1,89 @@
+# NEW PeerCheck other-peer/null-peer branches; never enter chapters.
+appId: com.eten.fluent
+tags: [ordered-readonly, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_PEER_ORACLE !== 'undefined' && MAESTRO_B_PEER_ORACLE === '484-peer10-other-742-null-unassigned' && MAESTRO_B_USER_ID === '11' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- assertVisible:
+    id: '^home-settings-button$'
+- tapOn:
+    id: '^home-tab-projects$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-11$'
+    direction: UP
+    speed: 80
+    timeout: 15000
+- tapOn:
+    id: '^milestone-row-11$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-484$'
+    timeout: 15000
+- assertVisible:
+    id: '^chapter-row-484$'
+    containsDescendants:
+      - text: '^1 Peter 5$'
+      - text: '^Peer Check$'
+- assertVisible:
+    id: '^chapter-row-484$'
+    containsDescendants:
+      - id: '^chapter-ownership-other$'
+      - text: '^Assigned to another translator$'
+- assertNotVisible:
+    id: '^chapter-row-484$'
+    containsDescendants:
+      - id: '^chapter-ownership-mine$'
+- assertNotVisible:
+    id: '^chapter-row-484$'
+    containsDescendants:
+      - id: '^chapter-conflict-indicator$'
+- takeScreenshot: b-peercheck-484-other
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-16$'
+    direction: UP
+    speed: 80
+    timeout: 15000
+- tapOn:
+    id: '^milestone-row-16$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-742$'
+    timeout: 15000
+- assertVisible:
+    id: '^chapter-row-742$'
+    containsDescendants:
+      - text: '^Esther 2$'
+      - text: '^Peer Check$'
+- assertNotVisible:
+    id: '^chapter-row-742$'
+    containsDescendants:
+      - id: '^chapter-ownership-(mine|other)$'
+- assertNotVisible:
+    id: '^chapter-row-742$'
+    containsDescendants:
+      - id: '^chapter-conflict-indicator$'
+- takeScreenshot: b-peercheck-742-unassigned
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 15000
+- tapOn:
+    id: '^home-tab-my-work$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^home-tab-my-work$'
+    selected: true

@@ -1,0 +1,27 @@
+{
+  "status": "PASS_PRODUCTION_JOIN_AND_AGGREGATE_BRANCH_ONLY",
+  "owners": {
+    "10": {
+      "recordingCount": 9,
+      "pendingCount": 0,
+      "lastActivity": "2026-10-20T23:17:38.260Z",
+      "productionJoinedIDsMatchIndependentOracle": true
+    },
+    "12": {
+      "recordingCount": 0,
+      "pendingCount": 0,
+      "lastActivity": null,
+      "productionJoinedIDsMatchIndependentOracle": true
+    }
+  },
+  "migrationSurvivalProven": false,
+  "fullMyWorkQueryAndUIProven": false,
+  "utc": "2026-10-21T00:20:27.986082+00:00",
+  "serial": "emulator-5554",
+  "allNineRowsAndFilesUnchanged": true,
+  "active12AndCacheIntact": true,
+  "queriesExecuted": 12,
+  "readonly": true,
+  "sourceHashMatched": true,
+  "foreignKeyViolationCount": 0
+}

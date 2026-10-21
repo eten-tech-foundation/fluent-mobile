@@ -37,8 +37,8 @@
     },
     "canonical_execution_coverage": {
       "complete_for_requirement": 41,
-      "partial": 48,
-      "not_run": 113
+      "partial": 50,
+      "not_run": 111
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
@@ -151,7 +151,9 @@
       "B-0013-01",
       "A-0021-01",
       "C-0613-01",
-      "D-0235-03"
+      "D-0235-03",
+      "C-0260-01",
+      "B-0005-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -275,8 +277,8 @@
     "review_inventory_minus_gallery_count": 200,
     "review_inventory_minus_gallery_execution_statuses": {
       "complete_for_requirement": 41,
-      "partial": 46,
-      "not_run": 113
+      "partial": 48,
+      "not_run": 111
     },
     "review_inventory_minus_gallery_live_statuses": {
       "PASS": 41,
@@ -297,8 +299,8 @@
       "review_inventory_200_is_execution_denominator": false,
       "current_review_execution_statuses_nonadditive": {
         "complete_for_requirement": 41,
-        "partial": 46,
-        "not_run": 88
+        "partial": 48,
+        "not_run": 86
       },
       "atomic_execution_statuses": {
         "complete_for_requirement": 33,
@@ -2305,15 +2307,22 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Recording joins, restored foreign keys/indexes and non-wiping migration are separate query/schema/retention outcomes.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "evidence/post-eod-join-and-ownership/join-native-execution-proof.json",
+          "case_id": "A_native_production_join_and_aggregate_owners10_12",
+          "relation": "partial_native_SQL_expression_only",
+          "reason": "12read-onlySELECT/PRAGMA: extracted production join/aggregate matches independent primitive oracle; owner10exact9IDs/pending0/MAXtimestamp, owner12zero/pending0/null. All nine rows/file hashes and active12/cache unchanged; source hash matched, FKviolations0. Not whole TS query/UI invocation or migration survival."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "Pre/post migration data fixture and recording-backed aggregate assertions; no reset/migration allowed."
+        "Production SQL-expression branch verified on native retained data. Whole TS query/MyWork UI aggregate integration and pre/post non-wiping migration survival with restored FK/index behavior remain unverified."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Reuse verified native SQL-expression/primitive oracle. Prepare isolated retained-data old-schema migration fixture and full production query/UI integration oracle without resetting shared app.",
       "source_title": "Recordings join via bible_text_id",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/99",
@@ -3116,6 +3125,18 @@
           "case_id": "B_conflict_precedence_747_vs_993_21.5s",
           "relation": "supporting_branch_only_no_status_promotion",
           "reason": "MyWork993 mine/noConflict,747 conflict/noOwnership and milestone16 chapter747 conflict/noOwnership PASS21.5s; cleanupComplete49.8s, rows/prefs/mic/radios restored. Full later-stage matrix and conflict/cloud coexistence remain unverified. Original raw freeze tag retained; source freeze d2da6fe parent-reported. Both cases whole runtime revision unattested."
+        },
+        {
+          "receipt": "evidence/post-eod-join-and-ownership/b-laterstage-result.json",
+          "case_id": "B_laterstage_743_744_24.2s",
+          "relation": "partial_source_branch_support_no_whole_closure",
+          "reason": "CommunityCheck743/AdvancedCheck744 exact title/badges; no ownership/conflict despite populated drafter/peer; rows,1184zero takes,prefs,mic,radios preserved; cleanup70.5s. Sourcefreeze d2da6fe parent-reported; inherited baseline qualified; whole runtime unattested."
+        },
+        {
+          "receipt": "evidence/post-eod-join-and-ownership/b-peercheck-result.json",
+          "case_id": "B_peercheck_other_null_30.4s",
+          "relation": "partial_source_branch_support_no_whole_closure",
+          "reason": "PeerCheck484drafter11peer10active11 shows OTHER/noMine/conflict;742drafter10peerNULL shows noMine/Other/conflict, exact titles/badges. Independent native rows equal before/after; cleanup83.1s allstate restored. HistoricalPeerCheckmine43.042s reused, not rerun. Sourcefreeze d2da6fe parent-reported; inherited baseline qualified; whole runtime unattested."
         }
       ],
       "isolated_status": "PASS",
@@ -3128,10 +3149,10 @@
         }
       ],
       "missing_assertions_or_fixture": [
-        "Conflict-over-ownership precedence verified on MyWork and ViewProject747 versus clean993; remaining later-stage/role combinations remain unverified."
+        "Drafting mine/other/unassigned, historical PeerCheck mine plus new other/null, conflict precedence and Community/Advanced suppression now have supporting receipts. Full source-required matrix closure awaits exact historical fixture-oracle/command mapping review; do not invent extra role requirements or rerun passed branches."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Reconcile retained historical Drafting and PeerCheckmine fixture+assertion provenance with new peer other/null, conflict and later-stage receipts; decide source-exact whole criterion closure only after that mapping. No new runtime execution presumed necessary.",
       "source_title": "Current-stage assignment indicator",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/476"
@@ -4928,9 +4949,9 @@
       "applicability_review": "current",
       "unit_review": "group",
       "additive_scope": "nonadditive_parent",
-      "review_reason": "Conflict icon on My Work and chapter-list surfaces needs actual conflict fixture; all observed ownership rows were nonconflicting.",
+      "review_reason": "Conflict indicator verified on MyWork and ViewProject747 from independent has_conflict1; cloud coexistence remains unverified.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
+      "execution_coverage": "partial",
       "live_evidence": [
         {
           "receipt": "evidence/final-readonly-branch-checks/b-result.json",
@@ -4945,7 +4966,7 @@
         "Conflict indicator both MyWork and ViewProject verified; conflict/cloud-sync icon coexistence remains unverified. Requires independently prepared disposable user11 selected-take+conflict fixture; do not mutate shared747."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Prepare independently owned disposable selected-take+conflict fixture for coexistence; reuse passed747/993 branch and do not mutate shared747.",
       "source_title": "Chapter list shows conflict indicator when has_conflict",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/260"

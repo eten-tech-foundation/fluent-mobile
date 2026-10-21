@@ -1,0 +1,67 @@
+{
+  "criterion": "B-0005-01/#99 recording join and non-wiping migrations",
+  "status": "PREPARED_READONLY_NOT_EXECUTED",
+  "productionExtraction": {
+    "path": "src/db/queries.ts",
+    "sha256": "78b27f5bf05f88e867b899369a209814b20090bb1a3403f66fc15d7d9f97b9fb",
+    "joinLines": "84-92",
+    "aggregateLines": "94-101",
+    "actualCallSites": "getMilestoneChapters:684-724 and getMyWorkChapters:741-783",
+    "exactExpansion": "Only interpolate existing RECORDING_IN_ASSIGNMENT_UNIT and bind owner ? to10/12; source aggregate expressions unchanged. WHERE ca.id1183 isolates assignment for oracle.",
+    "boundary": "This executes production join/aggregate expressions, not the whole UI query or mapping; membership and MyWork assignment filters are separate. No direct-row SELECT substituted for join proof."
+  },
+  "collectorContract": [
+    "Root-only existing read-only sqlite collector; no new device action by preparing agent. Execute queries.json statements; all SELECT/PRAGMA read-only.",
+    "Save output JSON object keyed by query name; independently retained original nine IDs/SHA remain protected. Read selected flags and updated_at freshly; retained rows alone lack those columns.",
+    "Expected prerequisites: ca1183 owner10/unit19/178/60/ch1 draft peer11, Bible texts exactly25 unique verse1..25, exactly retainednine owner10 rows uploaded, all nine selected; no take added. Do not modify fixture if guard fails.",
+    "aggregateOwner10 expected recording_count9/pending_count0/last_recording_activity max freshly read selected updated_at; owner12 expected0/0/null. matchedRows returns25 chapter verse rows with nine nonnull IDs for10 and zero nonnull for12.",
+    "Use oracle.py on collector JSON: independent Python matching of CA keys\u2192verse IDs\u2192recordings with selected/owner/unit checks; compare matched ID set/count/pending/max to actual production query result.",
+    "PRAGMA integrity/FK/index readback only supports current schema health; it cannot prove historical migration preserved rows."
+  ],
+  "coverageLimits": [
+    "Nine uploaded selected rows exercise positive linkage/owner10, foreignowner12 exclusion, pending zero and max timestamp. Nonselected exclusion, wrong-unit/null-unit branches, positive pending count and conflicted exclusion are not newly exercised by this fixture.",
+    "Original nine no extra take after denied mutating action; do not infer second-take behavior.",
+    "No migration execution against live/default/native DB, no DB copy or wipe."
+  ],
+  "existingTests": {
+    "queries.recordingsJoin.test.ts": "2 static string assertions, not SQL execution",
+    "queries.recordingUnitScope.test.ts": "unit predicate string/parameter checks and mocked execute; not actual native join",
+    "migrations.test.ts": "Explicit minimal SQLite stand-in; old CA rebuild preserves one seeded row, assigned-user FK/index and orphan nulling; v6 attribution and v7 rename seeded-value tests. These are existing coverage, do not duplicate.",
+    "isolatedCheckpoint": "a28d037 owner/reopen actual NodeSQLite support isolated, not current-native migration proof"
+  },
+  "migrationFixture": {
+    "status": "DESIGN_ONLY_NOT_RUN_NO_NEW_TEST",
+    "target": "An ephemeral newly created temporary SQLite file; never open/copy default/fluent.db or user data",
+    "minimalFocusedFunction": "restoreChapterAssignmentAssignedUserIntegrity via real SQLite SqlExecutor adapter, or existing isolated executor adapter if already available; no need new broad runMigrations duplicate",
+    "seed": "Synthetic users10 and11 plus required project/unit19/bible178/book60 parent rows. Old-shape chapter_assignments lacks assigned_user FK/index; retain valid ca1183 assigned10, orphan-ca synthetic assigned999. Keep separate synthetic recordings linked bible_text_id, payload sentinel IDs/counts.",
+    "assertions": [
+      "Snapshot all valid CA/sentinel rows and row counts before. Invoke exact production rebuild helper within isolated transaction only.",
+      "After helper: valid ca row unchanged; orphan assigned user nulled by existing documented contract, no CA loss; unrelated recording sentinel byte-for-byte unchanged.",
+      "PRAGMA foreign_key_list verifies assigned_user_id\u2192users(id); idx_ca_project_unit and idx_ca_assigned_user exist; foreign_key_check empty; invalid assigned-user insert rejected.",
+      "Run helper again only if its existing contract supports idempotence; do not assume version runner helper equivalence. Reopen ephemeral file to verify durability then remove only generated temporary file."
+    ],
+    "blocker": "No new test/adapter authorized in this preparation; actual real-SQLite migration fixture remains unexecuted. Existing tests use fake DB. Read-only live schema inspection does not close migration survival requirement."
+  },
+  "offlineChecks": [
+    "oracle.py py_compile PASS",
+    "12 statements restricted SELECT/PRAGMA; no DDL/DML",
+    "expanded join and source aggregate preserved; no chapter_assignment_id reference"
+  ],
+  "hashes": {
+    "foreignKeyCheck.sql": "5b231e1dcf26f67c20d30e84a24030804b20771b814581b4e067e1f8ef0e97f2",
+    "schemaVersion.sql": "575cffa48f6e2b51c4f08e70d8f07f6a05f51eb5bc65cdaacc3f5979d6b3e92e",
+    "aggregateOwner10.sql": "35f9b1b958760b6d7d166753d7612a49b02d0a032b53843efdf8c84fef43c3b0",
+    "recordingOracle.sql": "251830155fb7fde135fb7909f8ef4bcf5589ecf7b82e5443d983572ee212165b",
+    "aggregateOwner12.sql": "1e4ab0cf3b2ffa1564c48d439e95261a55cca8875dad68cb1302ef04cce31b18",
+    "recordingColumns.sql": "51b29af0efd9e4ea09bf1d089ee2be0ce6e89266ccf589e0fcb70e99417a0d40",
+    "assignmentForeignKeys.sql": "2ac8460342d9ae56faffd29f6b5e4b40c4dcc4c3c354713ae21acbb04e58915b",
+    "queries.json": "b95ff75c990c20dd686557c00181e12ddef2d3e8208475f1486e2421e6364987",
+    "assignmentIndexes.sql": "ba7eb453d0c6aa38ecf6d7a2885066b9ebc6a3d43c3e1ac62824deba1330cfcd",
+    "matchedRowsOwner10.sql": "4e044ba3c20a68bdae1d40bbd3e1acaa29102bf8b1bc1d8a88bb570591724ff3",
+    "chapterVerses.sql": "55d6c781ebd64401642723949ec99b2f25bda47ac95846145604566acfea797b",
+    "matchedRowsOwner12.sql": "ca7e023690e96a5ccaed7d526d34825cef50fac6ff0ec631bcba6f660fb153f3",
+    "oracle.py": "c37962c406bd7d5f2ee2c9aa86657d114ef80a3051e347c43833c67ada07cc78",
+    "protected-nine-ids.json": "cd32b6cf0b7fa86022bd8af5a043f2894de2b80650a1096b381c9d8564ba8edd",
+    "role.sql": "eb9bee14378faa9b8bef9678851706b42a39c435fa30a79d9ec45051cb9f91f8"
+  }
+}

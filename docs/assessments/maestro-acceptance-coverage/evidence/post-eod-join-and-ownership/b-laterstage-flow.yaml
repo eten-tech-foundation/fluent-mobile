@@ -1,0 +1,64 @@
+# NEW later-stage ownership suppression only; no chapter entry.
+# AUTHORED / UNEXECUTED; requires fresh native row-context/fixture guard.
+appId: com.eten.fluent
+tags: [ordered-readonly, existing-session, read-only, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_LATER_STAGE_ORACLE !== 'undefined' && MAESTRO_B_LATER_STAGE_ORACLE === '743-community-review-744-linguist-check-clean' && MAESTRO_B_USER_ID === '11' && MAESTRO_B_SERIAL === 'emulator-5556'}
+- assertVisible:
+    id: '^home-settings-button$'
+- tapOn:
+    id: '^home-tab-projects$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-16$'
+    direction: UP
+    speed: 80
+    timeout: 15000
+- tapOn:
+    id: '^milestone-row-16$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-743$'
+    timeout: 15000
+- assertVisible:
+    id: '^chapter-row-743$'
+    containsDescendants:
+      - text: '^Esther 3$'
+      - text: '^Community Check$'
+- assertNotVisible:
+    id: '^chapter-row-743$'
+    containsDescendants:
+      - id: '^chapter-ownership-(mine|other)$'
+- assertNotVisible:
+    id: '^chapter-row-743$'
+    containsDescendants:
+      - id: '^chapter-conflict-indicator$'
+- assertVisible:
+    id: '^chapter-row-744$'
+    containsDescendants:
+      - text: '^Esther 4$'
+      - text: '^Advanced Check$'
+- assertNotVisible:
+    id: '^chapter-row-744$'
+    containsDescendants:
+      - id: '^chapter-ownership-(mine|other)$'
+- assertNotVisible:
+    id: '^chapter-row-744$'
+    containsDescendants:
+      - id: '^chapter-conflict-indicator$'
+- takeScreenshot: b-later-stage743744-no-ownership
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 15000
+- tapOn:
+    id: '^home-tab-my-work$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^home-tab-my-work$'
+    selected: true
