@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
+import { ArrowRightIcon } from 'phosphor-react-native/src/icons/ArrowRight';
 import { PlayIcon } from 'phosphor-react-native/src/icons/Play';
 import * as icons from './icons';
 
@@ -26,5 +27,13 @@ describe('Next UI icons', () => {
     );
     expect(filled).toEqual(JSON.stringify(fillDirect()));
     expect(filled).not.toEqual(JSON.stringify(regular()));
+
+    const { toJSON: arrow } = render(
+      <icons.ArrowRight color="#000" size={24} />,
+    );
+    const { toJSON: arrowRegular } = render(
+      <ArrowRightIcon color="#000" size={24} weight="regular" />,
+    );
+    expect(JSON.stringify(arrow())).toEqual(JSON.stringify(arrowRegular()));
   });
 });
