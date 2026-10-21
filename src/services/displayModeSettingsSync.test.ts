@@ -379,6 +379,42 @@ describe('displayModeSettingsSync', () => {
     });
   });
 
+  describe('stale pull discard (revision gate)', () => {
+    it('discards pull when revision moved mid-GET after edit+ACK; other account revision ignored', async () => {
+      let resolveStalePull!: (value: unknown) => void;
+      const stalePullGet = new Promise(resolve => {
+        resolveStalePull = resolve;
+      });
+
+      mockGetSelfSettings.mockReturnValueOnce(stalePullGet);
+      const pullPromise = pullDisplayModeSettings('userA', 'token-A');
+
+      // Concurrent edit on another account must not discard userA apply by itself.
+      setDraftingUnit('verse', 'userB');
+
+      // Mid-flight: local edit + capability GET/PUT ACK clears dirty for userA.
+      setDraftingUnit('pericope', 'userA');
+      mockGetSelfSettings.mockResolvedValue(capableGet());
+      mockPutSelfSettings.mockResolvedValue(
+        capablePut({ displayMode: 'pericope' }),
+      );
+      const capture = await resolveDisplayModePushCapture('userA', 'token-A');
+      expect(await pushDirtyDisplayMode(capture!)).toBe(true);
+      expect(isDraftingUnitDirty('userA')).toBe(false);
+      expect(getDraftingUnit('userA')).toBe('pericope');
+      const revisionAfterAck = getDraftingUnitRevision('userA');
+      expect(revisionAfterAck).toBeGreaterThan(0);
+
+      // Older pull resolves with pre-edit server value.
+      resolveStalePull(capableGet({ displayMode: 'verse' }));
+      await pullPromise;
+
+      expect(getDraftingUnit('userA')).toBe('pericope');
+      expect(getDraftingUnitRevision('userA')).toBe(revisionAfterAck);
+      expect(getDraftingUnit('userB')).toBe('verse');
+    });
+  });
+
   describe('capture deferral via pull', () => {
     it('defers pull apply during active capture then applies after', async () => {
       setRecordCaptureGate(true);

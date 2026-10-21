@@ -204,7 +204,20 @@ export async function pullDisplayModeSettings(
   }
   if (!token) return;
 
+  // Per-account revision at GET start. An edit+ACK while in flight bumps this
+  // and clears dirty — discard the stale response so it cannot overwrite the
+  // newly acknowledged value (dirty-only checks miss that race).
+  const revisionBefore = getDraftingUnitRevision(userId);
   const response = await FluentAPI.getSelfSettings(token);
+
+  if (getDraftingUnitRevision(userId) !== revisionBefore) {
+    log.info('displayMode pull discarded; local revision moved mid-flight', {
+      userId,
+      revisionBefore,
+      revisionAfter: getDraftingUnitRevision(userId),
+    });
+    return;
+  }
 
   // Conservative: if the active user changed mid-flight, still apply only to
   // the captured userId's KV (never into a different user's keys).
