@@ -116,6 +116,8 @@ export function createPrepareOfflineAutoPromptController(
         });
 
         if (present && !deps.hasDownloadStarted(String(userId), project.id)) {
+          // Project/assignment reads yield; Home may have blurred meanwhile.
+          if (!deps.isFocused()) return;
           shownThisAppOpen = true;
           deps.present(project);
           return;
