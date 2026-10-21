@@ -4,7 +4,6 @@ import { PrepareOfflineChapterRow } from '../types/prepareOffline/types';
 import {
   buildPrepareOfflineCatalog,
   buildEffectiveCatalog,
-  catalogHasUnknownSizes,
   computePendingBytes,
   computeTotalBytes,
   getEffectiveItems,
@@ -79,11 +78,6 @@ export function usePrepareOfflineResources({
     [catalog, deselectedItemIds],
   );
 
-  const totalBytesIncomplete = useMemo(
-    () => catalogHasUnknownSizes(catalog, deselectedItemIds),
-    [catalog, deselectedItemIds],
-  );
-
   const pendingBytes = useMemo(
     () => computePendingBytes(catalog, deselectedItemIds),
     [catalog, deselectedItemIds],
@@ -144,7 +138,6 @@ export function usePrepareOfflineResources({
     effectiveCatalog,
     deselectedItemIds,
     totalBytes,
-    totalBytesIncomplete,
     pendingBytes,
     selectedItems,
     canDownload,

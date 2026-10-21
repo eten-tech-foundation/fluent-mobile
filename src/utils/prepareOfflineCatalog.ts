@@ -123,12 +123,9 @@ export function getRemainingBytesForItem(
   if (item.status === 'completed') {
     return 0;
   }
-  // Unknown remote sizes do not contribute known pending bytes; callers that
-  // enable Download must also check hasPendingDownloadWork (#756).
-  if (item.sizeKnown === false) {
-    return 0;
-  }
-
+  // Keep known lower-bound bytes on mixed unknown rows (e.g. 4096 + unknown).
+  // Fully unknown zero still returns 0; callers enable Download via
+  // hasPendingDownloadWork (#756).
   return item.bytes;
 }
 

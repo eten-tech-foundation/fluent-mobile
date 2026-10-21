@@ -379,6 +379,37 @@ describe('prepareOfflineCatalog', () => {
     expect(imageRow.sizeKnown).toBe(false);
     expect(imageRow.bytes).toBe(4096);
     expect(formatResourceSizeLabel(imageRow)).toBe('At least 4 KB');
+    // Total/pending must retain the known subset (not drop to 0 / Size incomplete).
+    expect(computeTotalBytes(catalog, new Set())).toBe(4096);
+    expect(catalogHasUnknownSizes(catalog, new Set())).toBe(true);
+    expect(computePendingBytes(catalog, new Set())).toBe(4096);
+    expect(hasPendingDownloadWork(catalog.items)).toBe(true);
+  });
+
+  it('fail-before/pass-after: getRemainingBytesForItem keeps mixed unknown lower bound (#756 r4340953936)', () => {
+    const mixedUnknown = {
+      id: 'Reference Images:image',
+      tier: 3 as const,
+      kind: 'image' as const,
+      groupName: 'Reference Images',
+      label: 'Image',
+      bytes: 4096,
+      sizeKnown: false,
+      status: 'selected' as const,
+      required: false,
+      removable: true,
+      manifestMembers: [],
+    };
+    const fullyUnknownZero = {
+      ...mixedUnknown,
+      id: 'Reference Images:fully-unknown',
+      bytes: 0,
+    };
+
+    expect(getRemainingBytesForItem(mixedUnknown)).toBe(4096);
+    expect(getRemainingBytesForItem(fullyUnknownZero)).toBe(0);
+    expect(hasPendingDownloadWork([fullyUnknownZero])).toBe(true);
+    expect(computeRemainingBytes([mixedUnknown, fullyUnknownZero])).toBe(4096);
   });
 
   it('subtracts deselected tier 2/3 rows from totals', () => {

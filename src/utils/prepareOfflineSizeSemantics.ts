@@ -36,7 +36,10 @@ export interface DownloadSizeSummary {
   hasUnknown: boolean;
 }
 
-/** Sum only known sizes; flag when any selected row is size-unknown. */
+/**
+ * Sum known subset bytes (including lower bounds already stored on
+ * size-unknown rows); flag when any selected row is size-unknown.
+ */
 export function summarizeDownloadSizes(
   items: PrepareOfflineResourceItem[],
 ): DownloadSizeSummary {
@@ -45,7 +48,6 @@ export function summarizeDownloadSizes(
   for (const item of items) {
     if (!isResourceItemSizeKnown(item)) {
       hasUnknown = true;
-      continue;
     }
     knownBytes += item.bytes;
   }

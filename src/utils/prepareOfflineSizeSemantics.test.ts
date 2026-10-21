@@ -144,4 +144,23 @@ describe('prepareOfflineSizeSemantics (#756)', () => {
     );
     expect(hasPendingDownloadWork([unknown])).toBe(true);
   });
+
+  it('fail-before/pass-after: mixed unknown row keeps At least 4 KB total/footer/CTA (#756 r4340953912)', () => {
+    // Aggregated row: one known member (4096) + one unknown (0) → sizeKnown
+    // false but bytes already store the known subset ("At least 4 KB" on row).
+    const mixedImages = item({
+      id: 'Reference Images:image',
+      bytes: 4096,
+      sizeKnown: false,
+    });
+    const summary = summarizeDownloadSizes([mixedImages]);
+
+    expect(summary.knownBytes).toBe(4096);
+    expect(summary.hasUnknown).toBe(true);
+    expect(formatResourceSizeLabel(mixedImages)).toBe('At least 4 KB');
+    expect(formatDownloadTotalLabel(summary)).toBe('At least 4 KB');
+    expect(formatDownloadTotalLabel(summary)).not.toBe('Size incomplete');
+    expect(formatDownloadButtonLabel(summary)).toBe('Download at least 4 KB');
+    expect(hasPendingDownloadWork([mixedImages])).toBe(true);
+  });
 });
