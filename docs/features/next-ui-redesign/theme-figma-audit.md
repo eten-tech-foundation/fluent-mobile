@@ -20,7 +20,8 @@ two-value role mismatch, typography that had drifted, and Foundations tokens
 **Now (after #638 and #692):** all 48 role values match, the roles,
 elevation, motion, disabled opacity, icon sizes, strokes, `radius.xs` and
 `space/2` are on `Theme` in all three modes, and components reach them
-through `useTheme()`. Still open: typography, gradients and `space/48`.
+through `useTheme()`. The named type styles are on `Theme` too. Still open:
+the font family, gradients and `space/48`.
 
 ## What matches
 
@@ -45,7 +46,7 @@ through `useTheme()`. Still open: typography, gradients and `space/48`.
 | Hardware | `red/600` `#E11825` | `red[600]` | `red[600]` |
 | Accent | `red/300` `#FDA298` | `red[600]` | `red[300]` |
 
-### 2. Typography has drifted (open, decision needed)
+### 2. Typography had drifted (styles encoded; family still open)
 
 - **Family.** Figma styles now use Google Sans Flex (sans), DM Mono (mono) and
   Noto Sans Telugu, still labeled "Family is TBD … placeholders". Code uses
@@ -54,18 +55,20 @@ through `useTheme()`. Still open: typography, gradients and `space/48`.
   we load fonts. If they are, note that RN on Android doesn't drive variable
   font axes, so Google Sans Flex needs static weight files (400/500/600/700)
   registered as separate families through `expo-font`.
-- **Missing styles.** Figma has 9 styles plus 6 Telugu. Code encodes 4
-  (`reading`, `title`, `label`, `overline`). Missing: `reading-strong` 42/52
-  700, `heading` 42/48 700, `lead` 32/40 400, `body` 18/24 400, `meta` (mono)
-  14/20 400, and all `telugu/*` styles (which use taller line heights, e.g.
-  reading 42/64).
-- **`overline` is mono.** It's mapped onto `typography.sizes.xl` and
-  `weights.medium`, so any Legacy-keyed text using `xl` turns into a 20px
-  "overline" in Next without being monospaced. It reads better as its own
-  named style than as a size-scale override.
-- **Figma-side rules not in code:** `includeFontPadding: false` on every style,
-  `maxFontSizeMultiplier: 1.3` on Reading, casing lives in the style (overline,
-  meta) rather than typed caps.
+- **Missing styles (resolved).** All 9 styles are on `Theme` as
+  `theme.type.*` (`reading`, `readingStrong`, `heading`, `lead`, `title`,
+  `body`, `label`, `overline`, `meta`), built in `src/theme/typeStyles.ts`,
+  with the Telugu line heights as `theme.typeTelugu.*`. Sans styles set no
+  family (a named but unloaded family drops 500/600 to regular on Android),
+  and mono uses `monospace`, which only renders 400 and 700 until DM Mono is
+  loaded.
+- **Figma-side rules (resolved):** every style sets `includeFontPadding:
+  false`, overline and meta carry `textTransform: 'uppercase'`, and Reading's
+  1.3× cap is `theme.fontScale.readingMax` (a `Text` prop, not a style).
+- **`overline` still overrides `typography.sizes.xl`** in Next, so Legacy-keyed
+  text using `xl` becomes a 20px overline without being monospaced. New code
+  should use `theme.type.overline`; the old mapping can go once nothing reads
+  it.
 
 ### 3. Foundations tokens that weren't encoded (mostly resolved in #638)
 
@@ -107,8 +110,6 @@ components never branch.
 ### 5. Minor (open)
 
 - `Theme.spacing.xl` (20) has no Foundations step. Already documented.
-- `nextFoundation.ts` comment says "Inter placeholder". Stale; fix it with the
-  typography work once families are confirmed.
 - Next `radius.md` is 16 and `lg` is 24 (Legacy 12 / 16). Intended, but any
   Legacy-keyed component flipped to Next will round more than it does today.
 
@@ -116,9 +117,8 @@ components never branch.
 
 In dependency order:
 
-1. **Typography: confirm families, then encode the full style set.** Named
-   styles (`reading`, `title`, `label`, `body`, `meta`, …) with
-   `includeFontPadding` and `maxFontSizeMultiplier` baked in, Telugu variants,
-   fonts via `expo-font`. Blocked on the family decision.
+1. **Typography family.** The named styles are encoded; confirm the families
+   (Google Sans Flex / DM Mono / Noto Sans Telugu are placeholders), then load
+   them with `expo-font` and change `nextFontFamilies` in `nextFoundation.ts`.
 2. **Gradients.** `fade/reading`, `gradient/accent`, `Fluent Gradient`, plus
    `space/48`.

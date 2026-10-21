@@ -18,3 +18,9 @@ in fluent-platform for the full rationale.
   (includes `AGENT_ONBOARDING.md`, `ci.md`, `issue-tracking.md`, which
   stay here rather than moving into `guides/` since they're heavily
   linked from agent entrypoints and read as repo-wide reference material).
+
+## Existing visual review
+
+[Original Lovable source review and issue map](features/next-ui-redesign/lovable-review.md)
+preserves the dated source findings and original artifact provenance. Rendered
+reference/device fidelity remains unverified and is tracked separately in #738.
