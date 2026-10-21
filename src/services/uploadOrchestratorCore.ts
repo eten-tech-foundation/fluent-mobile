@@ -107,6 +107,8 @@ export function createUploadOrchestrator(
   let isWifi = false;
   let connectionType = '';
   let started = false;
+  // Invalidate preflight work across stop/start, before an AbortController exists.
+  let lifecycleVersion = 0;
   let unsubConnectivity: (() => void) | null = null;
   let unsubPrefs: (() => void) | null = null;
   let sessionAbort: AbortController | null = null;
@@ -177,18 +179,19 @@ export function createUploadOrchestrator(
   };
 
   const abortActiveSession = async (): Promise<void> => {
-    if (sessionAbort) {
-      sessionAbort.abort();
-    }
-    if (sessionPromise) {
+    const abort = sessionAbort;
+    const promise = sessionPromise;
+    abort?.abort();
+    if (promise) {
       try {
-        await sessionPromise;
+        await promise;
       } catch {
         // aborted / failed sessions are expected
       }
     }
-    sessionAbort = null;
-    sessionPromise = null;
+    // A stopped lifecycle may already have been replaced while this unwinds.
+    if (sessionAbort === abort) sessionAbort = null;
+    if (sessionPromise === promise) sessionPromise = null;
   };
 
   const applyFreshTransportSnapshot = async (): Promise<void> => {
@@ -196,7 +199,9 @@ export function createUploadOrchestrator(
       return;
     }
 
+    const version = lifecycleVersion;
     const snapshot = await deps.getSessionTransportSnapshot();
+    if (!started || version !== lifecycleVersion) return;
     isOnline = snapshot.isOnline;
     isWifi = snapshot.isWifi;
     connectionType = snapshot.connectionType;
@@ -266,6 +271,8 @@ export function createUploadOrchestrator(
   }
 
   const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
+    if (!started) return;
+    const version = lifecycleVersion;
     if (sessionPromise || sessionOpen) {
       rerunAfterSession = true;
       return;
@@ -286,6 +293,7 @@ export function createUploadOrchestrator(
       }
 
       await applyFreshTransportSnapshot();
+      if (!started || version !== lifecycleVersion) return;
 
       const uploadOverCellular = deps.getUploadOverCellular();
       const gate = transportAllowsTransfer({
@@ -314,6 +322,7 @@ export function createUploadOrchestrator(
       }
 
       const chapters = await deps.getPendingUploadChapters();
+      if (!started || version !== lifecycleVersion) return;
       // Controls and connectivity may change while the queue read is pending,
       // before there is an AbortController for pause/cancel/offline to abort.
       if (isUserPaused()) {
@@ -321,7 +330,9 @@ export function createUploadOrchestrator(
         armPauseTimer();
         return;
       }
-      if (suppressAutoUntilOnlineEdge) return;
+      if (suppressAutoUntilOnlineEdge) {
+        return;
+      }
       const currentGate = transportAllowsTransfer({
         isOnline,
         isWifi,
@@ -329,8 +340,10 @@ export function createUploadOrchestrator(
         uploadOverCellular: deps.getUploadOverCellular(),
       });
       if (currentGate !== 'ok') {
+        const enteredWaitingWifi =
+          currentGate === 'waiting_wifi' && phase !== 'waiting_wifi';
         phase = currentGate;
-        if (currentGate === 'waiting_wifi') {
+        if (enteredWaitingWifi) {
           deps.emit({ type: 'waiting_wifi' });
         }
         return;
@@ -421,8 +434,12 @@ export function createUploadOrchestrator(
             if (abort.signal.aborted) {
               return;
             }
+            const pending = await deps.getPendingUploadChapters();
+            if (abort.signal.aborted || version !== lifecycleVersion) {
+              return;
+            }
             const before = completedChapters;
-            applyPendingChapters(await deps.getPendingUploadChapters());
+            applyPendingChapters(pending);
             if (completedChapters > before) {
               deps.emit({
                 type: 'progress',
@@ -477,15 +494,18 @@ export function createUploadOrchestrator(
 
       await sessionPromise;
     } finally {
-      sessionOpen = false;
-      const shouldRerun = rerunAfterSession;
-      rerunAfterSession = false;
-      const retryArmed =
-        sessionResult.followUp === 'retry' ? scheduleSessionRetry() : false;
-      // A retry timer already covers work saved during the session. If the
-      // budget is spent, that timer is not armed — still start the save.
-      if (shouldRerun && !retryArmed) {
-        evaluateAuto();
+      // Late preflight results must not unlock or schedule a newer lifecycle.
+      if (version === lifecycleVersion) {
+        sessionOpen = false;
+        const shouldRerun = rerunAfterSession;
+        rerunAfterSession = false;
+        const retryArmed =
+          sessionResult.followUp === 'retry' ? scheduleSessionRetry() : false;
+        // A retry timer already covers work saved during the session. If the
+        // budget is spent, that timer is not armed — still start the save.
+        if (shouldRerun && !retryArmed) {
+          evaluateAuto();
+        }
       }
     }
   };
@@ -493,6 +513,7 @@ export function createUploadOrchestrator(
   const evaluateAuto = (): void => {
     evaluateChain = evaluateChain
       .then(async () => {
+        if (!started) return;
         const gate = transportAllowsTransfer({
           isOnline,
           isWifi,
@@ -580,6 +601,7 @@ export function createUploadOrchestrator(
         return;
       }
       started = true;
+      lifecycleVersion += 1;
       unsubConnectivity = deps.subscribeToConnectivity(onConnectivity);
       unsubPrefs = deps.subscribeToUploadOverCellular(() => {
         evaluateAuto();
@@ -593,6 +615,7 @@ export function createUploadOrchestrator(
         return;
       }
       started = false;
+      lifecycleVersion += 1;
       unsubConnectivity?.();
       unsubPrefs?.();
       unsubConnectivity = null;
@@ -602,6 +625,10 @@ export function createUploadOrchestrator(
       sessionFailures = 0;
       rerunAfterSession = false;
       void abortActiveSession();
+      // Detach the old lifecycle immediately, including unresolved preflight.
+      sessionAbort = null;
+      sessionPromise = null;
+      sessionOpen = false;
       phase = 'idle';
       log.info('Upload orchestrator stopped');
     },
