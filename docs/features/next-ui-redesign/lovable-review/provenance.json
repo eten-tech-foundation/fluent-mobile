@@ -1,0 +1,26 @@
+{
+  "schema": "fluent-lovable-original-review-provenance/v1",
+  "original_review_date_utc": "2026-10-20",
+  "source_result_basename": "fluent-opus-visual-audit-result.json",
+  "source_result_sha256": "760be58143668e7cc1d73c9956725547caab9278bc203c509253c36af5997494",
+  "retained_body_sha256_utf8": "eaeb7502ddd924cab7a4ef03d71769b854f6a883a55444f5faf8d69e7ba10723",
+  "retention": "Result text from first scope statement through end retained verbatim; only preliminary progress narration and raw tool/model envelope omitted. Published Markdown adds an explicit historical-status preface.",
+  "execution": {
+    "requested_model": "claude-opus-5-5-high",
+    "verified_label": "Claude Opus5.5 1M High",
+    "mode": "ask read-only",
+    "model_selection": "explicit CLI flag; no Auto/Fast",
+    "started_utc": "2026-10-20T07:06:51.873769+00:00",
+    "finished_utc": "2026-10-20T07:10:54.882716+00:00",
+    "exit_code": 0,
+    "elapsed_s": 243.007,
+    "prompt_sha256": "356cfb403a2ac0a1c5e5dfaeb6fa4a4f5a326357746373749f85f912e5205b55"
+  },
+  "source_inventory_sha256": "3cb2b07b78cf2bb7c92a12b5c9607d508a7973ef9d3e4f3310acd8ea49c627d4",
+  "inventory_transform": "Only source_root absolute workstation path replaced; all route/page/state content retained.",
+  "source_asset_receipt_sha256": "cdc1f0d3863c6fd94b073065acbb278ef239cfdc229805521c650743247f4100",
+  "asset_receipt_transform": "None; public reference URL, asset hashes and explicit unverified-render boundary retained.",
+  "rendered_reference_verified": false,
+  "rendered_mobile_comparison_verified": false,
+  "pdf_identity": "No PDF included or represented as the original review. Workspace audit-visual-report.pdf is a later composite report with changing versions; original source review preserved here is the original textual result."
+}
