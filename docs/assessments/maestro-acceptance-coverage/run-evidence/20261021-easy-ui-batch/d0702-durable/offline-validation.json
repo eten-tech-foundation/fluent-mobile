@@ -26,7 +26,17 @@
     },
     "runner_unit": {
       "command": "python3 scripts/qa717-easy-ui-batch/run-d0702-a5554-external-finally.test.py",
-      "result": "PASS 9/9"
+      "result": "PASS 12/12",
+      "includes_device_argv_regression": true
+    },
+    "root_execute_161f14ae": {
+      "outcome": "MAESTRO_FAIL_CLEANUP_OK",
+      "maestroExit": 2,
+      "run_log_error": "option '--device' (<deviceId>) should be specified only once",
+      "flow_actions_ran": false,
+      "baseline_takes_prefs_home12": "preserved",
+      "artifact_dir": "host-runner/ (local evidence; not committed)",
+      "fix": "AdbBridge omits --device; ANDROID_SERIAL + maestro-test.sh single inject"
     },
     "fixture_guard_cli": {
       "command": "node scripts/maestro-fixture-guard.cjs --preflight --recursive -- .maestro/flows/offline/d0702-ee-gospel-ch1-download-persist-existing-session.yaml",

@@ -169,6 +169,51 @@ class D0702ExternalFinallyTests(unittest.TestCase):
             self.assertEqual(saved["outcome"], result["outcome"])
             self.assertEqual(saved["expectedTakeCounts"]["total"], 11)
 
+    def test_maestro_test_sh_cmd_omits_device_and_udid(self):
+        cmd = self.m.build_maestro_test_sh_cmd(
+            flow=self.m.FLOW_REL,
+            out_dir="/tmp/d0702-out",
+        )
+        self.assertEqual(cmd[0:2], ["bash", "scripts/maestro-test.sh"])
+        self.assertNotIn("--device", cmd)
+        self.assertNotIn("--udid", cmd)
+        self.assertIn("--test-output-dir", cmd)
+        self.assertIn(self.m.FLOW_REL, cmd)
+
+    def test_wrapper_injected_device_appears_exactly_once_for_5554(self):
+        """Regression for root run.log: option '--device' should be specified only once.
+
+        AdbBridge previously forwarded --device into maestro-test.sh, which always
+        injects --device from ANDROID_SERIAL — yielding a duplicate on emulator-5554.
+        """
+        serial = "emulator-5554"
+        runner_cmd = self.m.build_maestro_test_sh_cmd(
+            flow=self.m.FLOW_REL,
+            out_dir="/tmp/d0702-out",
+        )
+        # Precondition: runner argv must not already carry --device
+        self.assertEqual(self.m.count_cli_option(runner_cmd, "--device"), 0)
+        effective = self.m.simulate_maestro_test_sh_device_injection(
+            runner_cmd, serial
+        )
+        self.assertEqual(self.m.count_cli_option(effective, "--device"), 1)
+        idx = effective.index("--device")
+        self.assertEqual(effective[idx + 1], serial)
+        self.assertEqual(effective[0:4], ["maestro", "test", "-p", "android"])
+
+    def test_duplicate_device_in_runner_argv_would_fail_wrapper_contract(self):
+        """Guard: if someone re-adds --device to runner cmd, simulation shows 2."""
+        serial = "emulator-5554"
+        bad = self.m.build_maestro_test_sh_cmd(
+            flow=self.m.FLOW_REL,
+            out_dir="/tmp/d0702-out",
+        )
+        # Intentionally corrupt a copy the way the failed head did
+        bad_dup = bad[:2] + ["--device", serial] + bad[2:]
+        self.assertEqual(self.m.count_cli_option(bad_dup, "--device"), 1)
+        effective = self.m.simulate_maestro_test_sh_device_injection(bad_dup, serial)
+        self.assertEqual(self.m.count_cli_option(effective, "--device"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

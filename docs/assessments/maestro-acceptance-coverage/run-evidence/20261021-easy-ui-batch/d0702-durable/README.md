@@ -66,11 +66,27 @@ python3 scripts/qa717-easy-ui-batch/run-d0702-a5554-external-finally.py --dry-ru
 python3 scripts/qa717-easy-ui-batch/run-d0702-a5554-external-finally.py --execute --serial emulator-5554
 ```
 
+### Root `--execute` attempt (head `161f14ae`) — preserved failure
+
+Artifact (not committed): `host-runner/host-runner-result.json` + `host-runner/maestro-run/run.log`.
+
+| Field | Actual |
+| --- | --- |
+| outcome | `MAESTRO_FAIL_CLEANUP_OK` |
+| maestroExit | `2` |
+| flow actions | **none** (CLI rejected before launch) |
+| run.log | `option '--device' (<deviceId>) should be specified only once` |
+| baselineOk / prefs / 11 takes / Home12 cache | preserved (`true` / no drift) |
+
+**Cause:** `AdbBridge.run_maestro` passed `--device emulator-5554` into `scripts/maestro-test.sh`, which already injects `--device "$SERIAL"` from `ANDROID_SERIAL`.
+
+**Fix (static, this branch):** runner builds wrapper argv **without** `--device`/`--udid`; serial via `ANDROID_SERIAL` only. Argv-level unit tests simulate wrapper injection and require exactly one `--device emulator-5554`.
+
 ### Remaining root run (live admission)
 
 1. Confirm A5554 trusted session, cache 10/9/12, project13 hydrated, 11 takes intact.  
-2. Invoke `--execute` (external finally guaranteed even on Maestro failure).  
-3. Accept only `MAESTRO_OK_CLEANUP_OK` with `runtime_pass_claimed: false` still meaning automation green — product behavior already retained-PASS.  
+2. Re-invoke `--execute` on the fixed runner (do not overwrite preserved `host-runner/` failure artifacts — write a new stamp dir if needed).  
+3. Accept only `MAESTRO_OK_CLEANUP_OK` with `runtime_pass_claimed: false` — product behavior already retained-PASS.  
 4. Any `CLEANUP_UNCERTAIN` → stop; do not claim PASS.
 
 ---

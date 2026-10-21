@@ -184,21 +184,12 @@ class AdbBridge:
         adb_dir = str(pathlib.Path(self.adb_bin).parent)
         maestro_bin = pathlib.Path.home() / ".maestro" / "bin"
         env["PATH"] = f"{adb_dir}:{maestro_bin}:{env.get('PATH', '')}"
+        # Serial selection contract: ANDROID_SERIAL only. scripts/maestro-test.sh
+        # resolves it and injects a single --device — do not pass --device here.
         env["ANDROID_SERIAL"] = self.serial
         env["ADB_SERVER_SOCKET"] = f"tcp:{self.host}:{self.port}"
         log_path = out_dir / "run.log"
-        # Prefer committed maestro-test.sh on main; no unpublished maestro-test-qa.sh.
-        cmd = [
-            "bash",
-            "scripts/maestro-test.sh",
-            "--config",
-            ".maestro/config.yaml",
-            "--device",
-            self.serial,
-            "--test-output-dir",
-            str(out_dir),
-            flow,
-        ]
+        cmd = build_maestro_test_sh_cmd(flow=flow, out_dir=out_dir)
         with log_path.open("w") as log:
             proc = subprocess.Popen(
                 cmd,
@@ -216,6 +207,47 @@ class AdbBridge:
                 except subprocess.TimeoutExpired:
                     proc.kill()
                 return 124
+
+
+def build_maestro_test_sh_cmd(
+    *,
+    flow: str,
+    out_dir: pathlib.Path | str,
+    config: str = ".maestro/config.yaml",
+) -> list[str]:
+    """Argv for scripts/maestro-test.sh — never includes --device/--udid.
+
+    The wrapper always appends ``maestro test -p android --device "$SERIAL"``
+    after resolving SERIAL from ANDROID_SERIAL (see scripts/maestro-test.sh).
+    Passing --device here yields: option '--device' should be specified only once.
+    """
+    return [
+        "bash",
+        "scripts/maestro-test.sh",
+        "--config",
+        config,
+        "--test-output-dir",
+        str(out_dir),
+        flow,
+    ]
+
+
+def simulate_maestro_test_sh_device_injection(
+    runner_cmd: list[str], serial: str
+) -> list[str]:
+    """Effective ``maestro test`` argv after maestro-test.sh injects --device once.
+
+    Mirrors scripts/maestro-test.sh line: maestro test -p android --device SERIAL ARGS...
+    where ARGS are the runner-supplied tokens after the script path.
+    """
+    if len(runner_cmd) < 2 or runner_cmd[1] != "scripts/maestro-test.sh":
+        raise ValueError(f"expected maestro-test.sh wrapper cmd, got {runner_cmd!r}")
+    forwarded = list(runner_cmd[2:])
+    return ["maestro", "test", "-p", "android", "--device", serial, *forwarded]
+
+
+def count_cli_option(argv: list[str], option: str) -> int:
+    return sum(1 for a in argv if a == option)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
