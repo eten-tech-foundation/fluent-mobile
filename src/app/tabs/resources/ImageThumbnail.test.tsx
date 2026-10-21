@@ -50,4 +50,20 @@ describe('ImageThumbnail', () => {
       screen.queryByTestId(`images-maps-image-loading-${SAMPLE_ITEM.id}`),
     ).toBeNull();
   });
+
+  it('prefers thumbnailUri for the list preview (#594)', () => {
+    const item: ImagesMapsItem = {
+      ...SAMPLE_ITEM,
+      uri: 'https://cdn.example/full.png',
+      thumbnailUri: 'https://cdn.example/thumb.png',
+    };
+
+    render(<ImageThumbnail item={item} onOpenFullscreen={() => undefined} />);
+
+    expect(mockZoomableImage.mock.calls[0]?.[0]?.uri).toBe(
+      'https://cdn.example/thumb.png',
+    );
+    expect(screen.getByText(item.caption!)).toBeTruthy();
+    expect(screen.getByText(item.attribution!)).toBeTruthy();
+  });
 });
