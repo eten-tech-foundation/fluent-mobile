@@ -25,6 +25,7 @@ jest.mock('./api', () => ({
 
 jest.mock('./offlineSourceAudio', () => ({
   persistSourceAudioChapterMeta: jest.fn(async () => undefined),
+  SOURCE_BIBLE_RESOURCE_NAME: 'Source Bible Audio',
 }));
 
 jest.mock('../db/downloadQueueRepository', () => ({
@@ -101,6 +102,13 @@ describe('prepareOfflineResources', () => {
         bytesTotal: 1024,
         fileExt: 'json',
         languageCode: 'eng',
+        scope: {
+          bookCode: 'MRK',
+          startChapter: 2,
+          endChapter: 2,
+          verseStart: 4,
+          verseEnd: 7,
+        },
       };
       mockTranslationManifest([translationItem]);
       mockSourceAudioManifest([
@@ -108,7 +116,7 @@ describe('prepareOfflineResources', () => {
           id: 'sa1',
           tier: 1,
           kind: 'audio',
-          resourceName: 'Source Bible',
+          resourceName: 'Source Bible Audio',
           label: 'Audio',
           required: true,
           removable: false,
@@ -119,6 +127,7 @@ describe('prepareOfflineResources', () => {
           bookCode: 'MRK',
           startChapter: 1,
           endChapter: 3,
+          scope: { bookCode: 'MRK', startChapter: 2, endChapter: 2 },
         },
       ]);
 
@@ -138,6 +147,12 @@ describe('prepareOfflineResources', () => {
       );
       // Source Bible text is handled by sync, never by the manifest.
       expect(result.map(item => item.id)).toEqual(['sa1', 'r1']);
+      expect(result[0].scope).toEqual({
+        bookCode: 'MRK',
+        startChapter: 2,
+        endChapter: 2,
+      });
+      expect(result[1].scope).toEqual(translationItem.scope);
       // Successful-manifest path must not fan out chapter-audio meta fetches
       // during catalog load — that happens at download time (#579 review).
       expect(FluentAPI.getChapterSourceAudio).not.toHaveBeenCalled();
@@ -233,10 +248,11 @@ describe('prepareOfflineResources', () => {
         id: 'source-bible-audio-MRK-1',
         tier: 1,
         kind: 'audio',
-        resourceName: 'Source Bible',
+        resourceName: 'Source Bible Audio',
         bytesTotal: 1234,
         sourceUrl: 'https://example.com/ch1.mp3',
         fileExt: 'mp3',
+        scope: { bookCode: 'MRK', startChapter: 1, endChapter: 1 },
       });
     });
 

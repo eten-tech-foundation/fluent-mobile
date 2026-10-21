@@ -27,6 +27,7 @@ import {
   insertMasterData,
   insertProjects,
   insertUserProjects,
+  reconcileUserMilestones,
   reconcileUserProjects,
   ensureUserProjectMembership,
 } from '../db/repository';
@@ -117,6 +118,7 @@ jest.mock('../db/repository', () => ({
   insertProjects: jest.fn().mockResolvedValue(undefined),
   insertUserProjects: jest.fn().mockResolvedValue(undefined),
   upsertProjectUnits: jest.fn().mockResolvedValue(undefined),
+  reconcileUserMilestones: jest.fn().mockResolvedValue(undefined),
   reconcileUserProjects: jest.fn().mockResolvedValue(undefined),
   reconcileUserChapterWork: jest.fn().mockResolvedValue(undefined),
   ensureUserProjectMembership: jest.fn().mockResolvedValue(undefined),
@@ -145,6 +147,7 @@ jest.mock('../db/db', () => ({
 const insertMasterDataMock = jest.mocked(insertMasterData);
 const insertProjectsMock = jest.mocked(insertProjects);
 const insertUserProjectsMock = jest.mocked(insertUserProjects);
+const reconcileUserMilestonesMock = jest.mocked(reconcileUserMilestones);
 const reconcileUserProjectsMock = jest.mocked(reconcileUserProjects);
 const ensureUserProjectMembershipMock = jest.mocked(
   ensureUserProjectMembership,
@@ -374,10 +377,24 @@ describe('sync step orchestration', () => {
         }),
       ]);
       expect(insertUserProjectsMock).toHaveBeenCalledWith(2, [7]);
+      expect(reconcileUserMilestonesMock).not.toHaveBeenCalled();
       expect(reconcileUserProjectsMock).toHaveBeenCalledWith(2, [7]);
       expect(ensureUserProjectMembershipMock).toHaveBeenCalledWith(2);
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_projects', 1);
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_projects');
+    });
+
+    it('clears local milestones before membership when the project list is empty', async () => {
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+
+      await syncProjects(2);
+
+      expect(reconcileUserMilestonesMock).toHaveBeenCalledWith(2, []);
+      expect(reconcileUserProjectsMock).toHaveBeenCalledWith(2, []);
+      expect(
+        reconcileUserMilestonesMock.mock.invocationCallOrder[0],
+      ).toBeLessThan(reconcileUserProjectsMock.mock.invocationCallOrder[0]);
+      expect(ensureUserProjectMembershipMock).not.toHaveBeenCalled();
     });
   });
 

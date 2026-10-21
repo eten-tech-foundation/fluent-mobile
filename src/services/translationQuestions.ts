@@ -3,6 +3,7 @@ import type { TranslationQuestionItem } from '../types/resources/translationQues
 import { tipTapToPlainText } from '../utils/aquiferTipTapText';
 import {
   loadResourcesForVerseRange,
+  normalizeVerseRefs,
   verseRefsFromChapter,
   type ResourceVerseRef,
 } from '../utils/loadResourcesForVerseRange';
@@ -96,10 +97,25 @@ export function parseTranslationQuestionsItem(
   return questions;
 }
 
-/** Reads downloaded Translation Questions. Null = nothing downloaded. */
-async function loadLocalTranslationQuestions(
+function resolveTranslationQuestionsRefs(
+  params: LoadTranslationQuestionsParams,
+): ResourceVerseRef[] {
+  return normalizeVerseRefs(
+    params.verseRefs && params.verseRefs.length > 0
+      ? params.verseRefs
+      : verseRefsFromChapter(
+          params.chapterNumber,
+          params.verseNumber,
+          params.verseNumbers,
+        ),
+  );
+}
+
+/** Reads downloaded Translation Questions for one verse. Null = nothing downloaded. */
+async function loadLocalTranslationQuestionsForRef(
   params: LoadTranslationQuestionsParams,
   bookCode: string,
+  ref: ResourceVerseRef,
 ): Promise<TranslationQuestionItem[] | null> {
   const rows = await findDownloadedRows({
     projectId: params.projectId,
@@ -107,8 +123,8 @@ async function loadLocalTranslationQuestions(
     resourceName: 'Translation Questions',
     kind: 'text',
     bookCode,
-    chapterNumber: params.chapterNumber,
-    verseNumber: params.verseNumber,
+    chapterNumber: ref.chapterNumber,
+    verseNumber: ref.verseNumber,
   });
   if (rows === null) return null;
 
@@ -133,12 +149,24 @@ async function loadLocalTranslationQuestions(
   return readAnyRow ? questions : null;
 }
 
+function mergeQuestionsById(
+  into: TranslationQuestionItem[],
+  next: TranslationQuestionItem[],
+  seenIds: Set<string>,
+): void {
+  for (const question of next) {
+    if (seenIds.has(question.id)) continue;
+    seenIds.add(question.id);
+    into.push(question);
+  }
+}
+
 /**
  * Load uW Translation Questions for a drafting unit. Downloaded rows are
- * used first (even online); the fluent-api translation-resources call
- * (fluent-api #274) only runs when nothing usable is downloaded and the
- * device is online. Online pericope units fan out across their verse refs
- * (#593).
+ * used first (even online) for every verseRef in the unit; the fluent-api
+ * translation-resources call (fluent-api #274) only runs for refs with no
+ * usable local row, and only when online. Offline returns whatever was
+ * downloaded without calling the API (#578 / #593).
  */
 export async function loadTranslationQuestionsForUnit(
   params: LoadTranslationQuestionsParams,
@@ -156,27 +184,36 @@ export async function loadTranslationQuestionsForUnit(
     return [];
   }
 
-  const local = await loadLocalTranslationQuestions(params, bookCode);
-  if (local !== null) {
-    return local;
+  const refs = resolveTranslationQuestionsRefs(params);
+  const localQuestions: TranslationQuestionItem[] = [];
+  const missingRefs: ResourceVerseRef[] = [];
+  const seenIds = new Set<string>();
+
+  for (const ref of refs) {
+    const local = await loadLocalTranslationQuestionsForRef(
+      params,
+      bookCode,
+      ref,
+    );
+    if (local !== null) {
+      mergeQuestionsById(localQuestions, local, seenIds);
+    } else {
+      missingRefs.push(ref);
+    }
   }
-  // Offline and nothing downloaded: show empty, do not call the API.
+
+  // Offline: return whatever was downloaded; never call the API.
   if (params.isOnline === false) {
-    return [];
+    return localQuestions;
+  }
+
+  if (missingRefs.length === 0) {
+    return localQuestions;
   }
 
   const languageCode = params.languageCode?.trim() || DEFAULT_TQ_LANGUAGE_CODE;
   const projectId = params.projectId;
-  const refs =
-    params.verseRefs && params.verseRefs.length > 0
-      ? params.verseRefs
-      : verseRefsFromChapter(
-          params.chapterNumber,
-          params.verseNumber,
-          params.verseNumbers,
-        );
-
-  return loadResourcesForVerseRange(refs, async ref => {
+  const remote = await loadResourcesForVerseRange(missingRefs, async ref => {
     const response = await FluentAPI.getTranslationQuestions(
       projectId,
       bookCode,
@@ -187,4 +224,6 @@ export async function loadTranslationQuestionsForUnit(
     const items = Array.isArray(response?.items) ? response.items : [];
     return items.flatMap(parseTranslationQuestionsItem);
   });
+  mergeQuestionsById(localQuestions, remote, seenIds);
+  return localQuestions;
 }

@@ -1,70 +1,70 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
+import { Circle, Headphones, Speech } from 'lucide-react-native';
+import { Key, type KeyIconProps } from '../../../components/ui/Key';
 import { Switch } from '../../../components/ui/Switch';
-import { useThemedStyles } from '../../../theme/useTheme';
+import { useTheme, useThemedStyles } from '../../../theme/useTheme';
+
+/** Figma Mode toggle icons are Icon/md. */
+const MODE_ICON_SIZE = 20;
+
+function RecordIcon({ color, size }: KeyIconProps) {
+  return <Circle color={color} fill={color} size={size} />;
+}
 
 /**
- * Playback options: "Loop this verse" is disabled while auto-play is on, so
- * Off, On and Disabled all show up through real use.
+ * Mode toggle from the Hardware panel (Figma 2409:538): the Switch picks
+ * Listen (off) or Record (on). While a take is recording the mode is locked,
+ * so Off, On and Disabled all show up the way they do in the app.
  */
 export function SwitchEntry() {
-  const [autoPlay, setAutoPlay] = useState(false);
-  const [loop, setLoop] = useState(false);
+  const theme = useTheme();
+  const [recordMode, setRecordMode] = useState(false);
+  const [recording, setRecording] = useState(false);
   const styles = useThemedStyles(t => ({
-    rows: { gap: t.spacing.xs },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: t.spacing.lg,
-      paddingVertical: t.spacing.sm,
-    },
-    label: { flex: 1, gap: t.spacing.xs },
-    title: {
-      color: t.roles.fgPrimary,
-      fontSize: t.typography.sizes.md,
-      includeFontPadding: false,
-    },
-    hint: {
+    demo: { gap: t.spacing.md },
+    toggle: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
+    status: {
       color: t.roles.fgSecondary,
       fontSize: t.typography.sizes.sm,
       includeFontPadding: false,
     },
+    // Hardware panel key width (Figma Keys row, 2411:465).
+    recordKey: { width: 135 },
   }));
 
-  const toggleAutoPlay = (on: boolean) => {
-    setAutoPlay(on);
-    if (on) {
-      setLoop(false);
-    }
-  };
+  const iconColor = theme.roles.fgSecondary;
+  const status = recording
+    ? 'Recording a take · stop to switch to Listen'
+    : recordMode
+    ? 'Record mode'
+    : 'Listen mode';
 
   return (
-    <View style={styles.rows}>
-      <View style={styles.row}>
-        <Text style={[styles.label, styles.title]}>Auto-play next verse</Text>
+    <View style={styles.demo}>
+      <View style={styles.toggle}>
+        <Headphones color={iconColor} size={MODE_ICON_SIZE} />
         <Switch
-          value={autoPlay}
-          onValueChange={toggleAutoPlay}
-          accessibilityLabel="Auto-play next verse"
-          testID="gallery-switch-autoplay"
+          value={recordMode}
+          onValueChange={setRecordMode}
+          accessibilityLabel="Record mode"
+          disabled={recording}
+          testID="gallery-mode-toggle"
         />
+        <Speech color={iconColor} size={MODE_ICON_SIZE} />
       </View>
-      <View style={styles.row}>
-        <View style={styles.label}>
-          <Text style={styles.title}>Loop this verse</Text>
-          {autoPlay ? (
-            <Text style={styles.hint}>Turn off auto-play to loop.</Text>
-          ) : null}
-        </View>
-        <Switch
-          value={loop}
-          onValueChange={setLoop}
-          accessibilityLabel="Loop this verse"
-          disabled={autoPlay}
-          testID="gallery-switch-loop"
+      <Text style={styles.status}>{status}</Text>
+      {recordMode ? (
+        <Key
+          icon={RecordIcon}
+          accessibilityLabel={recording ? 'Stop recording' : 'Record'}
+          announceLatched={false}
+          active={recording}
+          onPress={() => setRecording(r => !r)}
+          style={styles.recordKey}
+          testID="gallery-record-key"
         />
-      </View>
+      ) : null}
     </View>
   );
 }

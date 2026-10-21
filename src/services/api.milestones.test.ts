@@ -30,7 +30,7 @@ describe('FluentAPI.getUserMilestones', () => {
     });
   }
 
-  it('GETs /users/{userId}/milestones with the session bearer', async () => {
+  it('GETs /self/milestones with the session bearer', async () => {
     const payload = [
       {
         id: 12,
@@ -46,8 +46,8 @@ describe('FluentAPI.getUserMilestones', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain('/users/247/milestones');
-    expect(url).not.toContain('/projects');
+    expect(url).toContain('/self/milestones');
+    expect(url).not.toContain('/users/');
     expect(init.method ?? 'GET').toBe('GET');
     expect(init.headers).toEqual(
       expect.objectContaining({

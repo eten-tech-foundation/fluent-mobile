@@ -27,6 +27,8 @@ export const nextOpacity = { disabled: 0.4 } as const;
 
 export const nextControlSizes = { icon24: 24, icon32: 32 } as const;
 
+export const nextStroke = { 1: 1, 2: 2 } as const;
+
 /**
  * Map onto existing `Theme.spacing` keys.
  * Unmapped Figma steps: `space-32` (use `nextSpace` directly when needed);
