@@ -1,0 +1,67 @@
+{
+  "criterion": "C-0051-06",
+  "companionObserve": [
+    "C-0052-02"
+  ],
+  "flowRel": ".maestro/flows/offline/c0051-matthew1-small-download-existing-session.yaml",
+  "stackBase": {
+    "branch": "mrace/test/702-gospel-download-persist",
+    "head": "753aecd816e85abf146e6401386710254555f250",
+    "dependency": "PR755 D-0702 durable wrapper + external finally (selection/hydration/restore12)"
+  },
+  "packaging": {
+    "guardBaseline": {
+      "commit": "d2da6fece7e5b7e0bc0dd8cb19836ec992db36b1",
+      "short": "d2da6fece",
+      "baselineLines": 504,
+      "path": "scripts/maestro-fixture-guard.cjs",
+      "note": "Absent from 755 head. Issue #51 PR must either (a) land 717 guard prerequisite d2da6fece (504 lines) first then apply only the pfo-download admission delta, or (b) include this vendored baseline+delta with explicit provenance \u2014 never silent full 717 tooling bundle."
+    },
+    "admissionDelta": "pfo-download tag path + manifest/env admission (default deny retained for other mutating flows)"
+  },
+  "admission": {
+    "id": "c0051-matthew1-small",
+    "kind": "pfo-project-download",
+    "projectId": "13",
+    "actorUserId": "9",
+    "restoreUserId": "12",
+    "book": "Matthew",
+    "chaptersExact": [
+      1
+    ],
+    "maxBytes": 5242880,
+    "observedUiTotalLabel": "2.4 MB",
+    "requireKnownPositiveTotal": true,
+    "requireCompleteKnownSizes": true,
+    "sizeCompleteness": "incomplete-unknown-images",
+    "admissionStatus": "NONADMISSIBLE",
+    "requireEmptyQueue": true,
+    "requirePreserveTakes": 11,
+    "requirePreserveCacheFiles": 19,
+    "allowGenericUnlimitedDownload": false,
+    "pauseCancel": "only-if-control-surface-visible-for-this-queue; not mandatory if complete",
+    "nonAdmissibleReason": "Observed Reference Images Image 0 B is UNKNOWN remote size (measured ~24.5 MB after transfer), not free. Stale 2.4 MB Total/CTA aggregate must not admit a transfer (#756). No independent predownload size oracle available \u2014 fail closed; never backfill from after-download bytes."
+  },
+  "serial": "emulator-5554",
+  "execute": false,
+  "expectedTakes": {
+    "owner10": 10,
+    "owner9": 1,
+    "total": 11
+  },
+  "runtime_pass_claimed": false,
+  "c52_pause_cancel_mandatory": false,
+  "staticGuard": {
+    "ok": false,
+    "exit": 2,
+    "stderr": "BLOCKED: pfo-download sizeCompleteness=incomplete-unknown-images is not all-known-complete (fail closed; UI aggregate alone is not admission)\n  /Users/matt/Documents/Development/gloo/fluent-mobile/worktrees/pfo51-small-download-test/.maestro/flows/offline/c0051-matthew1-small-download-existing-session.yaml\n",
+    "env": {
+      "MAESTRO_PFO_DOWNLOAD_ADMISSION": "c0051-matthew1-small",
+      "MAESTRO_PFO_DOWNLOAD_MANIFEST": ".maestro/fixtures/c0051-matthew1-small-download.manifest.json",
+      "MAESTRO_FIXTURE_PROJECT_ID": "13",
+      "MAESTRO_FIXTURE_PROJECT_ALLOWLIST": "13"
+    }
+  },
+  "outcome": "STATIC_GUARD_BLOCKED",
+  "visible": "STOP \u2014 static fixture-guard blocked: BLOCKED: pfo-download sizeCompleteness=incomplete-unknown-images is not all-known-complete (fail closed; UI aggregate alone is not admission)\n  /Users/matt/Documents/Development/gloo/fluent-mobile/worktrees/pfo51-small-download-test/.maestro/flows/offline/c0051-matthew1-small-download-existing-session.yaml\n"
+}

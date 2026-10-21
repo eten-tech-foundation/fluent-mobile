@@ -153,6 +153,461 @@ function parseMaestroInvocation(argv) {
   return { includeTags, excludeTags, paths };
 }
 
+const PFO_DOWNLOAD_TAG = 'pfo-download';
+
+/** Strip full-line YAML comments before mutation / admission scans. */
+function stripYamlComments(yaml) {
+  return String(yaml)
+    .split(/\r?\n/)
+    .filter(line => !/^\s*#/.test(line))
+    .join('\n');
+}
+
+/**
+ * Reject manifests whose observed catalog advertises unknown/incomplete
+ * network sizes (e.g. Reference Images `0 B`). Aggregate UI totals alone
+ * (2.4 MB) are not sufficient — unknown is not free (#756 / #51 harness).
+ */
+function evaluateObservedSizeCompleteness(manifest) {
+  const adm = manifest && manifest.admission;
+  const payload = (manifest && manifest.payload) || {};
+  if (!adm || typeof adm !== 'object') {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download manifest missing admission object',
+    };
+  }
+  if (adm.requireCompleteKnownSizes !== true) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason:
+        'pfo-download admission requireCompleteKnownSizes must be true (unknown/incomplete sizes are NONADMISSIBLE)',
+    };
+  }
+  const completeness = String(
+    adm.sizeCompleteness || payload.sizeCompleteness || '',
+  ).trim();
+  if (completeness !== 'all-known-complete') {
+    return {
+      ok: false,
+      status: 'NONADMISSIBLE',
+      reason:
+        `pfo-download sizeCompleteness=${completeness || '(missing)'} is not all-known-complete (fail closed; UI aggregate alone is not admission)`,
+    };
+  }
+  const groups = Array.isArray(payload.observedGroups)
+    ? payload.observedGroups
+    : [];
+  for (const group of groups) {
+    const items = Array.isArray(group && group.items) ? group.items : [];
+    for (const raw of items) {
+      const label = String(raw || '');
+      if (/\bIncluded\b/i.test(label)) {
+        continue;
+      }
+      // Downloadable network rows labeled 0 B are UNKNOWN, not free.
+      if (/\b0\s*B\b/i.test(label)) {
+        return {
+          ok: false,
+          status: 'NONADMISSIBLE',
+          reason:
+            `pfo-download observed group advertises unknown/zero size (${label}) — not free; refuse transfer admission`,
+        };
+      }
+      if (/\bUnknown\b/i.test(label) || /\bSize incomplete\b/i.test(label)) {
+        return {
+          ok: false,
+          status: 'NONADMISSIBLE',
+          reason:
+            `pfo-download observed group has incomplete size label (${label})`,
+        };
+      }
+    }
+  }
+  if (groups.length === 0) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason:
+        'pfo-download admission requires payload.observedGroups with known-complete sizes (no predownload oracle backfill)',
+    };
+  }
+  return { ok: true, status: 'PASS', reason: '' };
+}
+
+/**
+ * Narrow PFO project-download admission (default deny).
+ * Mutating flows tagged pfo-download may skip chapter-fixture pin only when
+ * MAESTRO_PFO_DOWNLOAD_ADMISSION + MAESTRO_PFO_DOWNLOAD_MANIFEST name a
+ * reviewed manifest whose static constraints match the flow body.
+ * Runtime device predicates remain host-side (not claimed here).
+ */
+function loadPfoDownloadManifest(env, fs, path, cwd) {
+  const admissionId = String(env.MAESTRO_PFO_DOWNLOAD_ADMISSION || '').trim();
+  const manifestRel = String(env.MAESTRO_PFO_DOWNLOAD_MANIFEST || '').trim();
+  if (!admissionId && !manifestRel) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason:
+        'pfo-download mutating flow requires MAESTRO_PFO_DOWNLOAD_ADMISSION and MAESTRO_PFO_DOWNLOAD_MANIFEST',
+    };
+  }
+  if (!admissionId || !manifestRel) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason:
+        'pfo-download admission requires both MAESTRO_PFO_DOWNLOAD_ADMISSION and MAESTRO_PFO_DOWNLOAD_MANIFEST',
+    };
+  }
+  const base = cwd || process.cwd();
+  const manifestPath = path.resolve(base, manifestRel);
+  if (!fs.existsSync(manifestPath) || !fs.statSync(manifestPath).isFile()) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download manifest not found: ${manifestRel}`,
+    };
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  } catch (error) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download manifest parse failed: ${error.message}`,
+    };
+  }
+  const adm = manifest && manifest.admission;
+  if (!adm || typeof adm !== 'object') {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download manifest missing admission object',
+    };
+  }
+  if (String(adm.id || '') !== admissionId) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download admission id mismatch (env=${admissionId}, manifest=${adm.id})`,
+    };
+  }
+  if (String(adm.kind || '') !== 'pfo-project-download') {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download admission kind refused: ${adm.kind}`,
+    };
+  }
+  const maxBytes = Number(adm.maxBytes);
+  if (!Number.isFinite(maxBytes) || maxBytes <= 0 || maxBytes > 5242880) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download admission maxBytes must be in (0, 5242880]',
+    };
+  }
+  if (String(adm.projectId || '') !== '13') {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download admission projectId must be 13 for this capability',
+    };
+  }
+  if (String(adm.actorUserId || '') !== '9') {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download admission actorUserId must be 9 (cached PM9)',
+    };
+  }
+  if (String(adm.book || '') !== 'Matthew') {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download admission book must be Matthew',
+    };
+  }
+  const chapters = Array.isArray(adm.chaptersExact) ? adm.chaptersExact : null;
+  if (
+    !chapters ||
+    chapters.length !== 1 ||
+    Number(chapters[0]) !== 1
+  ) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download admission chaptersExact must be [1] only',
+    };
+  }
+  if (adm.requireKnownPositiveTotal !== true) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download admission requireKnownPositiveTotal must be true',
+    };
+  }
+  if (adm.requireEmptyQueue !== true) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download admission requireEmptyQueue must be true',
+    };
+  }
+  if (adm.allowGenericUnlimitedDownload === true) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: 'pfo-download refuses allowGenericUnlimitedDownload',
+    };
+  }
+  const sizeCheck = evaluateObservedSizeCompleteness(manifest);
+  if (!sizeCheck.ok) {
+    return {
+      ok: false,
+      status: sizeCheck.status || 'BLOCKED',
+      reason: sizeCheck.reason,
+      manifest,
+      manifestPath,
+      adm,
+    };
+  }
+  return { ok: true, status: 'PASS', reason: '', manifest, manifestPath, adm };
+}
+
+function scanPfoDownloadFlowBody(yaml, adm, flowPath) {
+  const body = stripYamlComments(yaml);
+  const forbiddenCommand = [
+    [/^\s*-\s*clearState\b/m, 'clearState'],
+    [/^\s*-\s*clearKeychain\b/m, 'clearKeychain'],
+    [/^\s*-\s*startRecording\b/m, 'startRecording'],
+    [/^\s*-\s*stopRecording\b/m, 'stopRecording'],
+    [/^\s*-\s*setAirplaneMode\b/m, 'setAirplaneMode'],
+    [/^\s*-\s*toggleAirplaneMode\b/m, 'toggleAirplaneMode'],
+    [/^\s*-\s*setLocation\b/m, 'setLocation'],
+    [/^\s*-\s*inputText\b/m, 'inputText'],
+    [/^\s*-\s*eraseText\b/m, 'eraseText'],
+    [/open-my-work-chapter\.yaml/, 'open-my-work-chapter'],
+    [
+      /open-fixture-chapter-from-milestone\.yaml/,
+      'open-fixture-chapter-from-milestone',
+    ],
+    // Action taps only — assertNotVisible login-email-input is allowed.
+    [
+      /^\s*-\s*(tapOn|longPressOn)\s*:\s*\n(?:\s+[^\n]*\n)*?\s*id:\s*['"]?record-(start|stop|pause|resume)-button/m,
+      'record-control-tap',
+    ],
+    [
+      /^\s*-\s*(tapOn|longPressOn|inputText)\s*:\s*\n(?:\s+[^\n]*\n)*?\s*id:\s*['"]?login-(email|password|submit)/m,
+      'login-control-mutation',
+    ],
+  ];
+  for (const [re, label] of forbiddenCommand) {
+    if (re.test(body)) {
+      return {
+        ok: false,
+        status: 'BLOCKED',
+        reason: `pfo-download flow refuses forbidden mutation/capability: ${label} in ${flowPath}`,
+        flows: [flowPath],
+      };
+    }
+  }
+  // Wrong project row (any project-row that is not 13).
+  if (/project-row-(?!13\b)\d+/.test(body)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download flow targets non-admitted project row in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  if (!/project-row-13/.test(body)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download flow missing project-row-13 in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  if (!new RegExp(`settings-menu-account-${adm.actorUserId}`).test(body)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download flow missing actor account ${adm.actorUserId} in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  // Other gospel expands / multi-chapter selection.
+  if (/Expand (Mark|Luke|John|Acts|Romans)\b/.test(body)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download flow expands non-Matthew book in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  if (!/Expand Matthew/.test(body) || !/Chapter 1/.test(body)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download flow must select Matthew chapter 1 in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  // Tap other chapters (Chapter 2+) — allow text asserts but block tapOn Chapter N≠1.
+  const chapterTaps = body.matchAll(
+    /tapOn:\s*\n\s*text:\s*'?\^?Chapter\s+(\d+)/g,
+  );
+  for (const m of chapterTaps) {
+    if (Number(m[1]) !== 1) {
+      return {
+        ok: false,
+        status: 'BLOCKED',
+        reason: `pfo-download flow taps Chapter ${m[1]} (only 1 admitted) in ${flowPath}`,
+        flows: [flowPath],
+      };
+    }
+  }
+  if (/Assigned|Select all chapters|Select-all/i.test(body)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download refuses bulk/assigned select-all in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  if (!/prepare-offline-download-button/.test(body)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download flow missing prepare-offline-download-button in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  // Bare Download text tap forbidden; id tap required.
+  if (/tapOn:\s*\n\s*text:\s*'?\^?Download\$?'?/.test(body)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download refuses bare Download text tap in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  const downloadTaps = body.match(
+    /tapOn:\s*\n\s*id:\s*'prepare-offline-download-button'/g,
+  );
+  if (!downloadTaps || downloadTaps.length !== 1) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download requires exactly one download-button tap in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  // Exact observed fixture size literals BEFORE the Download tap (not merely
+  // non-zero / wildcard). Drawn from manifest observedUi* labels (2.4 MB).
+  const tapMatch = body.match(
+    /tapOn:\s*\n\s*id:\s*'prepare-offline-download-button'/,
+  );
+  if (!tapMatch) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download missing download-button tap in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  const beforeTap = body.slice(0, tapMatch.index);
+  const hasExactTotal =
+    /id:\s*'prepare-offline-total-bytes'\s*\n\s*text:\s*'\^2\\\.4 MB\$'/.test(
+      beforeTap,
+    );
+  const hasExactDownload =
+    /id:\s*'prepare-offline-download-button'\s*\n\s*enabled:\s*true\s*\n\s*text:\s*'\^Download 2\\\.4 MB\$'/.test(
+      beforeTap,
+    );
+  if (!hasExactTotal || !hasExactDownload) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason:
+        `pfo-download must assert exact total ^2\\.4 MB$ and enabled Download ^Download 2\\.4 MB$ before tap in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  // Reject oversized / unknown wildcard size asserts ahead of tap.
+  if (
+    /prepare-offline-total-bytes[\s\S]{0,120}999/.test(beforeTap) ||
+    /Download 999/.test(beforeTap) ||
+    /prepare-offline-total-bytes[\s\S]{0,160}\\d\+\(\\\.\\d\+\)\?/.test(
+      beforeTap,
+    ) ||
+    /Download \(\?!0 B\$\)/.test(beforeTap)
+  ) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download refuses non-exact or oversized size assert before tap in ${flowPath}`,
+      flows: [flowPath],
+    };
+  }
+  return { ok: true, status: 'PASS', reason: '' };
+}
+
+function evaluatePfoDownloadAdmission({
+  flows,
+  projectId,
+  allowlist,
+  denylist,
+  fixtureEnv,
+  cwd,
+  fs,
+  path,
+}) {
+  const nodeFs = fs || require('fs');
+  const nodePath = path || require('path');
+  const env = fixtureEnv || {};
+  const loaded = loadPfoDownloadManifest(env, nodeFs, nodePath, cwd);
+  if (!loaded.ok) return { ...loaded, flows: (flows || []).map(f => f.path) };
+
+  const project = assertProjectAllowed(projectId, allowlist, denylist);
+  if (!project.ok) return { ...project, flows: (flows || []).map(f => f.path) };
+  if (String(projectId) !== String(loaded.adm.projectId)) {
+    return {
+      ok: false,
+      status: 'BLOCKED',
+      reason: `pfo-download projectId env ${projectId} != admission ${loaded.adm.projectId}`,
+      flows: (flows || []).map(f => f.path),
+    };
+  }
+
+  for (const flow of flows || []) {
+    const tags = parseFlowTags(flow.yaml);
+    if (!tags.includes('mutating') || !tags.includes(PFO_DOWNLOAD_TAG)) {
+      return {
+        ok: false,
+        status: 'BLOCKED',
+        reason: `pfo-download admission requires mutating+${PFO_DOWNLOAD_TAG} tags: ${flow.path}`,
+        flows: [flow.path],
+      };
+    }
+    const scan = scanPfoDownloadFlowBody(flow.yaml, loaded.adm, flow.path);
+    if (!scan.ok) return scan;
+  }
+  return {
+    ok: true,
+    status: 'PASS',
+    reason: '',
+    flows: (flows || []).map(f => f.path),
+    admission: loaded.adm.id,
+  };
+}
+
 function evaluateChapterPreflight({
   chapterId,
   milestoneId,
@@ -162,6 +617,10 @@ function evaluateChapterPreflight({
   flows,
   includeTags,
   excludeTags,
+  fixtureEnv,
+  cwd,
+  fs,
+  path,
 }) {
   const include = includeTags || [];
   const exclude = excludeTags || [];
@@ -169,6 +628,7 @@ function evaluateChapterPreflight({
   const needingMilestone = [];
   const mutating = [];
   const unpinned = [];
+  const pfoDownloadFlows = [];
   for (const flow of flows || []) {
     const tags = parseFlowTags(flow.yaml);
     if (!flowSelected(tags, include, exclude)) continue;
@@ -178,7 +638,12 @@ function evaluateChapterPreflight({
     if (pinned) needingChapter.push(flow.path);
     if (!tags.includes('mutating')) continue;
     mutating.push(flow.path);
-    if (!pinned) unpinned.push(flow.path);
+    if (pinned) continue;
+    if (tags.includes(PFO_DOWNLOAD_TAG)) {
+      pfoDownloadFlows.push(flow);
+      continue;
+    }
+    unpinned.push(flow.path);
   }
   if (unpinned.length > 0) {
     return {
@@ -188,9 +653,24 @@ function evaluateChapterPreflight({
       flows: unpinned,
     };
   }
+  // ALWAYS enforce project allow/deny for any mutating flow. PFO admission
+  // adds a stricter path; it must never replace this gate.
   if (mutating.length > 0) {
     const project = assertProjectAllowed(projectId, allowlist, denylist);
     if (!project.ok) return { ...project, flows: mutating };
+  }
+  if (pfoDownloadFlows.length > 0) {
+    const admitted = evaluatePfoDownloadAdmission({
+      flows: pfoDownloadFlows,
+      projectId,
+      allowlist,
+      denylist,
+      fixtureEnv,
+      cwd,
+      fs,
+      path,
+    });
+    if (!admitted.ok) return admitted;
   }
   if (needingChapter.length === 0) {
     return { ok: true, status: 'PASS', reason: '', flows: [] };
@@ -438,6 +918,10 @@ function preflightFromArgv({
         flows: nested,
         includeTags: [],
         excludeTags: [],
+        fixtureEnv,
+        cwd: base,
+        fs: nodeFs,
+        path: nodePath,
       });
     } catch (error) {
       return { ok: false, status: 'BLOCKED', reason: error.message, flows: [] };
@@ -452,6 +936,10 @@ function preflightFromArgv({
     flows,
     includeTags: parsed.includeTags,
     excludeTags: parsed.excludeTags,
+    fixtureEnv,
+    cwd: base,
+    fs: nodeFs,
+    path: nodePath,
   });
 }
 
@@ -498,7 +986,13 @@ module.exports = {
   parseMaestroInvocation,
   referencesFixtureChapter,
   flowSelected,
+  stripYamlComments,
+  loadPfoDownloadManifest,
+  evaluateObservedSizeCompleteness,
+  scanPfoDownloadFlowBody,
+  evaluatePfoDownloadAdmission,
   evaluateChapterPreflight,
   preflightFromArgv,
   runPreflightCli,
+  PFO_DOWNLOAD_TAG,
 };
