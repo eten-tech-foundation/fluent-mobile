@@ -502,6 +502,65 @@ describe('refreshChapterMetadataIfOnline', () => {
     expect(authToken.set).not.toHaveBeenCalled();
   });
 
+  it('retains the captured per-request token after an account switch during metadata refresh (#294)', async () => {
+    const initialToken = 'C0294_USER_2_SENTINEL';
+    const otherToken = 'C0294_USER_3_SENTINEL';
+    let releaseProjects!: (value: { data: [] }) => void;
+    (getCredentials as jest.Mock).mockImplementation(
+      async (userId: string) => ({
+        token: userId === '2' ? initialToken : otherToken,
+      }),
+    );
+    (authToken.get as jest.Mock).mockReturnValue('C0294_GLOBAL_INITIAL');
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          releaseProjects = resolve;
+        }),
+    );
+
+    const refresh = refreshChapterMetadataIfOnline(2);
+    try {
+      await waitFor(() => {
+        expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, initialToken);
+      });
+      expect(FluentAPI.getUserMilestones).not.toHaveBeenCalled();
+
+      // Change only mocks while account2's project request is still pending.
+      // Actual account/session/credential stores are never accessed.
+      (getActiveUserId as jest.Mock).mockReturnValue('3');
+      (authToken.get as jest.Mock).mockReturnValue('C0294_GLOBAL_OTHER');
+      releaseProjects({ data: [] });
+      await refresh;
+
+      expect(getCredentials).toHaveBeenCalledTimes(1);
+      expect(getCredentials).toHaveBeenCalledWith('2');
+      // A safe abort after the switch is valid. Any request that does run
+      // must retain the original account and its captured token.
+      for (const call of (FluentAPI.getUserProjects as jest.Mock).mock.calls) {
+        expect(call).toEqual([2, initialToken]);
+      }
+      for (const call of (FluentAPI.getUserMilestones as jest.Mock).mock
+        .calls) {
+        expect(call).toEqual([2, initialToken]);
+      }
+      for (const call of (FluentAPI.getChapterAssignments as jest.Mock).mock
+        .calls) {
+        expect(call[0]).toBe(2);
+        expect(call[3]).toBe(initialToken);
+      }
+      for (const call of (FluentAPI.getUserChapterAssignments as jest.Mock).mock
+        .calls) {
+        expect(call).toEqual([2, initialToken]);
+      }
+      expect(authToken.set).not.toHaveBeenCalled();
+      expect(authToken.get).not.toHaveBeenCalled();
+    } finally {
+      releaseProjects?.({ data: [] });
+      await refresh;
+    }
+  });
+
   it('marks reauth required and skips the refresh when no credentials exist for this user', async () => {
     (getCredentials as jest.Mock).mockResolvedValue(null);
 
