@@ -1,5 +1,8 @@
 # v2 feature manifest
 
+> **Working draft.** This plan changes as we prototype, review and test on
+> devices. See the [Next UI README](README.md) for the current approach.
+
 What the app does today (v1, "Legacy"), what v2 has designs for, what the
 backend supports, and roughly what it takes to move each piece to v2. Built
 2026-10-15 from `origin/main` at `fd4b966`, the fluent-api OpenAPI (v26.10.00,
@@ -35,9 +38,10 @@ Ranked by how much they block a full switch to v2.
    from the comment tickets already filed (#451, #703; Q21–Q23).
 3. **One architecture call blocks the Now playing bar.** An app-level player
    so audio survives navigation (Q9). Where v2 branches from Legacy (Q8) is
-   settled: separate v2 routes, chosen once at the root.
-4. **Recording rules live inside the v1 screen.** v2 gets new routes and Legacy
-   stays frozen (see [v2 routes](#v2-routes)), so the 76 Legacy-styled files
+   settled: one signed-in shell, with route files picking the Legacy or Next
+   screen.
+4. **Recording rules live inside the v1 screen.** v2 gets its own screens and
+   Legacy screens stay frozen (see [v2 routes](#v2-routes)), so the 76 Legacy-styled files
    don't need migrating. But `RecordTab.tsx` (1,785 lines, 17 effects, 6
    alerts) holds the stage-advance rules, recording gates and take handling,
    and `DraftingScreen` holds the leave-while-recording guard. Those move into
@@ -53,25 +57,24 @@ Moving them to v2 is wiring the new screens to the hooks v1 already has.
 
 ## v2 routes
 
-v2 gets its own route tree (for example `src/routes/(app)/(v2)/…`), chosen
-once at the root from the UI version setting, so only one tree is mounted.
-Legacy routes and screens don't change.
+One signed-in shell, the existing `(app)` drawer and stack. v2 screens live in
+`src/app/v2/screens/`, and route files pick the Legacy or Next screen by UI
+version at the same path, so params, back stack and every "go home" keep
+working. Screens only v2 has (the chapter's passages, the player) get new
+route files under `(app)` that only Next links to. Legacy screens don't change.
+This follows the #727 review; a separate `/v2` route tree was tried and dropped.
 
-- **Shared logic, not shared UI.** Both trees call the same hooks and services
-  (auth, sync, uploads, recording engine, source audio, downloads). That's
-  where the backend is wired today, so v2 screens get it for free. Bible,
-  Resources, My Work and Prepare for Offline are already thin over hooks.
+- **Shared logic, not shared UI.** Both versions call the same hooks and
+  services (auth, sync, uploads, recording engine, source audio, downloads).
+  That's where the backend is wired today, so v2 screens get it for free.
+  Bible, Resources, My Work and Prepare for Offline are already thin over hooks.
 - **The one Legacy change:** lift the rules inside `RecordTab` and
   `DraftingScreen` into shared hooks (stage advance, recording gates, takes,
   leave guard), with Legacy calling them unchanged and the existing tests
   proving it.
-- **App-wide pieces need v2 versions:** the upload notification's "open
-  Sync" target, the drawer, and the 24 links in `src/navigation/hrefs.ts`.
-  The crash-recovery prompt now runs at the root for both trees.
-- **Built (`jskager/feature/v2-route-tree`):** `src/routes/v2/`, registered
-  only when signed in on Next. Legacy Home hands off to v2 in Next, so every
-  "go home" lands there, and v1 screens still open on top of v2.
-- **Legacy Home behaviors v2 Home still needs:** the download-repair sync
+- **Shared destinations stay as they are** (Settings, Sync, Prepare for
+  offline, the drawer) until a v2 version replaces that route's screen.
+- **Legacy Home behaviors v2 Home needs too:** the download-repair sync
   (`needsDownloadSync`), the Prepare for offline auto-prompt, the reauth
   banner, and the loading state after adding an account (`newUserLoading`).
 - **Cost:** two UIs until Legacy is deleted. Logic fixes land in both; UI
@@ -286,7 +289,7 @@ versions of Settings, Sync and Prepare for offline.
 | When | What |
 | --- | --- |
 | Oct 15–16 | Merge the foundations (#698 → #699 → #700 → #693). Pick the demo project and language. Raise the pre-freeze blockers below with the devs |
-| Oct 19–21 | v2 route tree, Home, pericope list, player on real source audio |
+| Oct 19–21 | v2 Home as a route-leaf swap, pericope list, player on real source audio |
 | Oct 22–23 | Word, recorder and takes, Hardware panel wiring, avatar links into v1 screens |
 | Oct 26–28 | Device QA on the nightly, fixes, polish |
 | Oct 29–30 | Buffer for last merges. Freeze |
@@ -367,7 +370,7 @@ connectors can land a little at a time.
 - **Connectors land on `main` behind the toggle**, one small PR each: the
   endpoints mobile can adopt today first, then the API work as it ships.
 - **Unfinished areas** link to the v1 screen rather than show an empty v2 one.
-- **Review contract:** PRs that only touch v2 routes, `src/components/ui`, the
+- **Review contract:** PRs that only touch v2 screens, `src/components/ui`, the
   gallery or docs get a light review, since Legacy users can't reach them.
   PRs that touch shared hooks or services get the normal review. Needs the
   team's OK.

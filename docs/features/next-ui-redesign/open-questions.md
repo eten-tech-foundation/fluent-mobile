@@ -30,7 +30,7 @@ The token-level detail is in the
   Noto Sans Telugu are placeholders. Code renders the named type styles in
   the system sans and `monospace` until this is decided; then it's loading the
   fonts and changing `nextFontFamilies` in `src/theme/nextFoundation.ts` (on
-  `jskager/feature/next-type-styles`; on `main` the only knob is
+  `jskager/feature/696-named-type-styles`; on `main` the only knob is
   `nextTypography.fontFamily`).
   Google Sans Flex would need static weight files, since RN on Android doesn't
   drive variable font axes.
@@ -152,10 +152,10 @@ Rows marked — were decided before this doc had IDs.
 
 | ID | Question | Answer | Date | Where |
 | --- | --- | --- | --- | --- |
-| Q8 | Where Next screens branch on UI version | New v2 routes, chosen once at the root; Legacy routes stay frozen. Both trees share hooks and services, and the rules inside `RecordTab` / `DraftingScreen` move into shared hooks | 2026-10-15 | `v2-feature-manifest.md` (local branch `jskager/chore/v2-feature-manifest`) |
+| Q8 | Where Next screens branch on UI version | One signed-in shell: route files under `(app)` pick the Legacy or Next screen; v2 screens live in `src/app/v2/screens/`. Both share hooks and services, and the rules inside `RecordTab` / `DraftingScreen` move into shared hooks. A separate `/v2` route tree was dropped in the #727 review | 2026-10-21 | [v2-feature-manifest.md](v2-feature-manifest.md#v2-routes) |
 | — | Header progress dots on the Pericope screen | They're a resting waveform: Level wave, short variant | 2026-10-13 | Figma Level wave `2595:772` |
 | — | Speaker grill hole color | `surface/inverse` (was the `bone/800` primitive) | 2026-10-14 | Figma Speaker grill `2409:533` |
-| — | Icon/md size | `theme.controlSizes.icon20` | 2026-10-14 | `jskager/feature/hardware-panel` |
+| — | Icon/md size | `theme.controlSizes.icon20` | 2026-10-14 | `jskager/feature/695-hardware-panel` |
 
 ## Screen notes
 
@@ -166,7 +166,7 @@ Scrubbed 2026-10-14 against `origin/main` at `fecd07d`. Figma:
 
 **Proposed v1:** the Source Text player only, with verse-level highlighting,
 the waveform clipped to the pericope with verse chips, page dots, and the
-Hardware panel, as a new v2 route on the hooks `DraftingScreen` uses today (Q8).
+Hardware panel, as a v2 screen on the hooks `DraftingScreen` uses today (Q8).
 
 **How you get here today:** a chapter row in `ViewProject`
 (`src/app/tabs/ViewProject.tsx:76`) or `MyWorkTab`
@@ -191,5 +191,5 @@ The source player is docked under the Bible and Record tabs there.
 | Page dots | Static (derived) | Would be computed from `bodyVerses` | No | Yes | Q16 |
 | Play / Pause | Wired | `SourceAudioShell` `handlePlayPause` (`SourceAudioShell.tsx:125`) | Yes | Yes when downloaded | Keep the draft/source exclusivity bridge (`SourceAudioShell.tsx:263`) |
 | Previous / Next | Wired (as unit nav) | `RecordTab.tsx:427-450` pericope prev/next; selecting a verse seeks to its start | Yes (Record tab) | Yes | Q17 |
-| Mode toggle (Listen / Record) | Wired (equivalent) | Hardware panel `recordMode` / `modeLocked` (on `jskager/feature/hardware-panel`); Legacy is the Bible → Record tab switch (`DraftingScreen.tsx:471`) with the capture-leave guard (`:110`) | Yes (as tabs) | Yes | Lock while capturing, same as today |
+| Mode toggle (Listen / Record) | Wired (equivalent) | Hardware panel `recordMode` / `modeLocked` (on `jskager/feature/695-hardware-panel`); Legacy is the Bible → Record tab switch (`DraftingScreen.tsx:471`) with the capture-leave guard (`:110`) | Yes (as tabs) | Yes | Lock while capturing, same as today |
 | Understanding variant notes | Wired | `useTranslationNotesForUnit` → `GET /projects/{projectId}/translation-resources/notes/{bookCode}/{chapter}/{verse}` | Yes (Resources tab) | Partial (#578 still open) | Q19 |
