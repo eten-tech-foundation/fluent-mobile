@@ -4,6 +4,13 @@ module.exports = {
   // Reanimated setUpTests() needs the Jest env (Jest ≥28 → setupFilesAfterEnv).
   setupFilesAfterEnv: ['<rootDir>/jest.setup.reanimated.cjs'],
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
+  // jest-expo's list plus phosphor-react-native, whose per-icon modules
+  // (src/components/ui/icons) ship as TypeScript source.
+  transformIgnorePatterns: [
+    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|phosphor-react-native))',
+    '/node_modules/react-native-reanimated/plugin/',
+    '/node_modules/@react-native/babel-preset/',
+  ],
   // `.cjs` is not in Jest's default testMatch; CI/workflow scripts under
   // .github must stay CommonJS because the root package.json is "type": "module".
   testMatch: [

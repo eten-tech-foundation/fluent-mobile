@@ -34,6 +34,12 @@ const handoffAntiPatternImports = {
   ],
   patterns: [
     {
+      // Any subpath except a single icon module (the src barrel bundles all).
+      regex: '^phosphor-react-native/(?!src/icons/[A-Za-z0-9]+$)',
+      message:
+        'Import Phosphor icons one module at a time via src/components/ui/icons.',
+    },
+    {
       group: ['@react-navigation', '@react-navigation/*'],
       message:
         'Do not import @react-navigation/* in app code. Use expo-router or expo-router/drawer only (SDK 56+ Metro rejects direct imports).',
