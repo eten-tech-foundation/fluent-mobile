@@ -1,15 +1,30 @@
 import React from 'react';
 import type { IconProps, IconWeight } from 'phosphor-react-native';
-import { ArrowDownIcon } from 'phosphor-react-native/src/icons/ArrowDown';
-import { ArrowRightIcon } from 'phosphor-react-native/src/icons/ArrowRight';
-import { CircleIcon } from 'phosphor-react-native/src/icons/Circle';
-import { HeadphonesIcon } from 'phosphor-react-native/src/icons/Headphones';
-import { PauseIcon } from 'phosphor-react-native/src/icons/Pause';
-import { PlayIcon } from 'phosphor-react-native/src/icons/Play';
-import { SkipBackIcon } from 'phosphor-react-native/src/icons/SkipBack';
-import { SkipForwardIcon } from 'phosphor-react-native/src/icons/SkipForward';
-import { UserSoundIcon } from 'phosphor-react-native/src/icons/UserSound';
-import { WaveformIcon } from 'phosphor-react-native/src/icons/Waveform';
+
+type PhosphorIcon = React.ComponentType<IconProps>;
+
+// One module per icon, since the root bundles every icon. Typed requires so
+// TypeScript skips the package's raw source, which fails strict checks in CI.
+const ArrowDownIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/ArrowDown').ArrowDownIcon;
+const ArrowRightIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/ArrowRight').ArrowRightIcon;
+const CircleIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Circle').CircleIcon;
+const HeadphonesIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Headphones').HeadphonesIcon;
+const PauseIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Pause').PauseIcon;
+const PlayIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Play').PlayIcon;
+const SkipBackIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/SkipBack').SkipBackIcon;
+const SkipForwardIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/SkipForward').SkipForwardIcon;
+const UserSoundIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/UserSound').UserSoundIcon;
+const WaveformIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Waveform').WaveformIcon;
 
 /** What Next components pass to an `icon` prop. */
 export type NextIconProps = { color: string; size: number };

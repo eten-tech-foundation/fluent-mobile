@@ -1,8 +1,13 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
-import { ArrowRightIcon } from 'phosphor-react-native/src/icons/ArrowRight';
-import { PlayIcon } from 'phosphor-react-native/src/icons/Play';
+import type { IconProps } from 'phosphor-react-native';
 import * as icons from './icons';
+
+type PhosphorIcon = React.ComponentType<IconProps>;
+const PlayIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Play').PlayIcon;
+const ArrowRightIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/ArrowRight').ArrowRightIcon;
 
 describe('Next UI icons', () => {
   it.each(Object.entries(icons))(
