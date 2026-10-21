@@ -37,8 +37,8 @@
     },
     "canonical_execution_coverage": {
       "complete_for_requirement": 41,
-      "partial": 46,
-      "not_run": 115
+      "partial": 47,
+      "not_run": 114
     },
     "eligible_current_atomic_count": 86,
     "eligible_current_atomic_live_status": {
@@ -149,7 +149,8 @@
       "A-0012-01",
       "B-0002-01",
       "B-0013-01",
-      "A-0021-01"
+      "A-0021-01",
+      "C-0613-01"
     ],
     "candidate_ids_with_isolated_evidence": [
       "A-0002-01",
@@ -291,8 +292,8 @@
       "review_inventory_200_is_execution_denominator": false,
       "current_review_execution_statuses_nonadditive": {
         "complete_for_requirement": 41,
-        "partial": 44,
-        "not_run": 90
+        "partial": 45,
+        "not_run": 89
       },
       "atomic_execution_statuses": {
         "complete_for_requirement": 33,
@@ -5590,16 +5591,23 @@
       "additive_scope": "nonadditive_parent",
       "review_reason": "Capture-time project-unit routing plus migration of existing locals has distinct creation and migration cases.",
       "live_status": "BLOCKED",
-      "execution_coverage": "not_run",
-      "live_evidence": [],
+      "execution_coverage": "partial",
+      "live_evidence": [
+        {
+          "receipt": "evidence/c0613-capture-unit-storage-review.json",
+          "case_id": "V7_capture_assignment1183_project12_unit19_stored",
+          "relation": "partial_native_capture_unit_storage_only",
+          "reason": "Independent V7 assignment1183\u2192project12/unit19 oracle, exact Bible verse7/text34850, and new owner10 take project_unit_id19 verified. V9 text34852 row also retained unit19; historical failures preserved. No two-project same-Bible/book disambiguation, upload request/server destination, existing-local migration, or whole-runtime revision proof."
+        }
+      ],
       "isolated_status": "UNTESTED",
       "isolated_evidence": [],
       "missing_assertions_or_fixture": [
-        "two projects sharing bible+book \u2192 upload to capture unit only",
-        "Necessary safe fixture/authorization not established: two projects same bible+book; record in A"
+        "Two projects sharing Bible/book require capture-unit upload routing disambiguation and independent authorized destination/request metadata proof.",
+        "Existing-local project-unit migration and retention remain unverified; device uploaded acknowledgment does not establish destination."
       ],
       "executable_now": false,
-      "next_test": null,
+      "next_test": "Prepare independently verified same-Bible/book two-project fixture and safe non-secret request-unit/server metadata oracle; reuse retained capture-unit19 evidence and preserve all nine takes. Test existing-local migration only in an isolated retained-data fixture.",
       "source_title": "Uploads target the project unit recorded at capture time",
       "source_issue_urls": [
         "https://github.com/eten-tech-foundation/fluent-mobile/issues/613"

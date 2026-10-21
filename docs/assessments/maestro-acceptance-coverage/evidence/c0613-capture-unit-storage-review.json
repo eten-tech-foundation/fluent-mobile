@@ -1,0 +1,17 @@
+{
+  "criterion": "C-0613-01",
+  "scope": "Retained native capture-unit storage branch only",
+  "proven": "Assignment1183/project12/unit19 independent preflight; new V7 owner10/text34850 stores project_unit_id19; V9 row34852 also19",
+  "missing": [
+    "Two projects sharing Bible/book require capture-unit upload routing disambiguation and independent authorized destination/request metadata proof.",
+    "Existing-local project-unit migration and retention remain unverified; device uploaded acknowledgment does not establish destination."
+  ],
+  "runtime_revision_attested": false,
+  "historical_failures_retained": true,
+  "source_sha256": {
+    "live-results/20261020/final-v7-lifecycle/result.json": "dabfe961e37b1b87d9e9d498d99437ab429a26e985c7f4e4b795a6ecc63c4ade",
+    "lifecycle-v7-review-draft/root-v7-executor.py": "13120c8b2f21d9eb60655d5fcb9cad0dbac8c992a1a1a339d2bcde247510e895",
+    "live-results/20261020/final-v9-parser-verified-resume/cleanup-continuation.json": "7b233ccc186c41094e2436c0f356d16a8f2fa8dbc8eae6ef5f439c8b49cfb187"
+  },
+  "recommendation": "partial only; live_status remains BLOCKED"
+}
