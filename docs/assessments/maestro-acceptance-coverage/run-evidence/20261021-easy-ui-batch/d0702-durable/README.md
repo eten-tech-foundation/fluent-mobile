@@ -82,12 +82,18 @@ Artifact (not committed): `host-runner/host-runner-result.json` + `host-runner/m
 
 **Fix (static, this branch):** runner builds wrapper argv **without** `--device`/`--udid`; serial via `ANDROID_SERIAL` only. Argv-level unit tests simulate wrapper injection and require exactly one `--device emulator-5554`.
 
+### Drawer false-positive (root live route 2026-10-21)
+
+Preserved Codex dumps: `d0702-live-start-drawer-*` (drawer open + Home behind) → Android Back → closed Home → gear opens drawer. Prior finally treated Home+active12 **menus** as success while drawer stayed open; next gear tap hit `settings-menu-more-settings`.
+
+**Fix:** Home readiness = closed Home (`settings-drawer-content` absent). Preflight/finally dismiss drawer via Android Back; finally re-checks active12/cache then **must** leave drawer closed. Flow entry asserts drawer closed before gear tap.
+
 ### Remaining root run (live admission)
 
-1. Confirm A5554 trusted session, cache 10/9/12, project13 hydrated, 11 takes intact.  
-2. Re-invoke `--execute` on the fixed runner (do not overwrite preserved `host-runner/` failure artifacts — write a new stamp dir if needed).  
+1. Confirm A5554 trusted session, cache 10/9/12, project13 hydrated, 11 takes intact; start from **closed** Home.  
+2. Re-invoke `--execute` on the fixed runner (do not overwrite preserved `host-runner*` failure artifacts — use a new stamp dir).  
 3. Accept only `MAESTRO_OK_CLEANUP_OK` with `runtime_pass_claimed: false` — product behavior already retained-PASS.  
-4. Any `CLEANUP_UNCERTAIN` → stop; do not claim PASS.
+4. Any `CLEANUP_UNCERTAIN` / `PREFLIGHT_FAIL` → stop; do not claim PASS.
 
 ---
 

@@ -29,6 +29,12 @@ tags:
 ---
 - assertNotVisible:
     id: 'login-email-input'
+# Drawer must be closed — Home IDs remain visible behind an open drawer; tapping
+# gear coords then hits settings-menu-more-settings (root live route 2026-10-21).
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertNotVisible:
+    id: 'settings-menu-more-settings'
 - assertVisible:
     id: 'home-tab-my-work'
 - assertVisible:
@@ -194,8 +200,11 @@ tags:
     id: 'settings-menu-account-9'
 - assertVisible:
     id: 'settings-menu-account-12'
+# Dismiss drawer — do not leave Home-behind-drawer for the host finally / next case.
 - tapOn:
     id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'settings-drawer-content'
 - assertVisible:
     id: 'home-tab-my-work'
 - assertNotVisible:

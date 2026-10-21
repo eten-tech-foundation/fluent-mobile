@@ -138,6 +138,11 @@ describe('D-0702-01 durable wrapper static contract', () => {
     assert.ok(body.includes('settings-menu-account-9'));
     assert.ok(body.includes('settings-menu-account-12'));
     assert.ok(body.includes('settings-menu-active-12'));
+    assert.ok(body.includes("id: 'settings-drawer-content'"));
+    assert.ok(
+      /assertNotVisible:\s*\n\s*id: 'settings-drawer-content'/m.test(body),
+      'entry must require drawer closed before gear tap',
+    );
     assert.ok(body.includes('Expand Matthew'));
     assert.ok(body.includes('Expand Mark'));
     assert.ok(body.includes('Expand Luke'));

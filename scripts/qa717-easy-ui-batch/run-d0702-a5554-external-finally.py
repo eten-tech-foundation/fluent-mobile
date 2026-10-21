@@ -73,6 +73,29 @@ class Bridge(Protocol):
     def run_maestro(self, flow: str, out_dir: pathlib.Path) -> int: ...
 
 
+# Hierarchies mirrored from root live dumps (2026-10-21): closed Home vs open drawer
+# with Home IDs still present behind the drawer (false-positive trap).
+FAKE_CLOSED_HOME_XML = (
+    '<?xml version="1.0"?><hierarchy>'
+    '<node resource-id="home-tab-my-work" bounds="[0,200][200,300]"/>'
+    '<node resource-id="home-settings-button" bounds="[40,140][120,200]"/>'
+    '<node resource-id="home-tab-projects" bounds="[200,200][400,300]"/>'
+    "</hierarchy>"
+)
+FAKE_OPEN_DRAWER_XML = (
+    '<?xml version="1.0"?><hierarchy>'
+    '<node resource-id="home-tab-my-work" bounds="[0,200][200,300]"/>'
+    '<node resource-id="home-settings-button" bounds="[40,140][120,200]"/>'
+    '<node resource-id="settings-drawer-content" bounds="[0,0][800,2000]"/>'
+    '<node resource-id="settings-menu-active-12" bounds="[20,400][400,480]"/>'
+    '<node resource-id="settings-menu-account-10" bounds="[20,500][400,580]"/>'
+    '<node resource-id="settings-menu-account-9" bounds="[20,600][400,680]"/>'
+    '<node resource-id="settings-menu-account-12" bounds="[20,700][400,780]"/>'
+    '<node resource-id="settings-menu-more-settings" bounds="[20,800][400,880]"/>'
+    "</hierarchy>"
+)
+
+
 @dataclass
 class FakeBridge:
     """Unit-test / authoring bridge — no device calls."""
@@ -102,20 +125,19 @@ class FakeBridge:
     file_hashes: dict[str, str] = field(
         default_factory=lambda: {f"t{i}": f"hash{i:02d}" for i in range(1, 12)}
     )
-    hierarchy_xml: str = (
-        '<?xml version="1.0"?><hierarchy>'
-        '<node resource-id="home-tab-my-work"/>'
-        '<node resource-id="home-settings-button"/>'
-        '<node resource-id="settings-menu-active-12"/>'
-        '<node resource-id="settings-menu-account-10"/>'
-        '<node resource-id="settings-menu-account-9"/>'
-        '<node resource-id="settings-menu-account-12"/>'
-        "</hierarchy>"
-    )
+    # Default = closed Home. Open-drawer false-positive must set drawer_open=True
+    # or hierarchy_override=FAKE_OPEN_DRAWER_XML explicitly.
+    drawer_open: bool = False
+    hierarchy_override: str | None = None
     maestro_exit: int = 0
     shell_calls: list[tuple] = field(default_factory=list)
     maestro_calls: list[str] = field(default_factory=list)
     fail_shell_prefix: str | None = None
+
+    def current_hierarchy(self) -> str:
+        if self.hierarchy_override is not None:
+            return self.hierarchy_override
+        return FAKE_OPEN_DRAWER_XML if self.drawer_open else FAKE_CLOSED_HOME_XML
 
     def shell(self, *args: str, timeout: int = 40) -> str:
         self.shell_calls.append(args)
@@ -127,16 +149,25 @@ class FakeBridge:
         if "sqlite3" in joined and "storage" in joined:
             return self.kv_csv.strip()
         if "sha256sum" in joined:
-            # path ends with files/X.m4a — map by take letter order via basename
             m = re.search(r"files/([a-z])\.m4a", joined)
             if m:
                 idx = ord(m.group(1)) - ord("a") + 1
                 return f"{self.file_hashes.get(f't{idx}', 'unknown')}  -\n"
             return "deadbeef  -\n"
+        # Android Back closes the settings drawer (root-proven route).
+        if "keyevent" in joined and re.search(r"\b4\b", joined):
+            if self.hierarchy_override is None:
+                self.drawer_open = False
+            return ""
+        # Gear tap opens drawer from closed Home; do not auto-switch accounts.
+        if len(args) >= 2 and args[0] == "input" and args[1] == "tap":
+            if self.hierarchy_override is None and not self.drawer_open:
+                self.drawer_open = True
+            return ""
         if "uiautomator" in joined or "/sdcard/d0702-" in joined or joined.startswith(
             "cat "
         ):
-            return self.hierarchy_xml
+            return self.current_hierarchy()
         if joined.startswith("settings get"):
             return "0" if "airplane" in joined else "1"
         return ""
@@ -146,7 +177,6 @@ class FakeBridge:
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "run.log").write_text(f"fake maestro exit={self.maestro_exit}\n")
         return self.maestro_exit
-
 
 @dataclass
 class AdbBridge:
@@ -392,8 +422,55 @@ def dump_nodes(bridge: Bridge, label: str) -> list[dict[str, str]]:
     return nodes
 
 
+SETTINGS_SCREEN_IDS = (
+    "settings-prepare-offline",
+    "settings-ui-version",
+    "settings-drafting-unit-verse",
+    "settings-drafting-unit-pericope",
+)
+CAPTURE_BLOCK_IDS = ("record-stop-button", "record-pause-button")
+
+
 def has_id(nodes: list[dict[str, str]], rid: str) -> bool:
     return any(n.get("resource-id") == rid for n in nodes)
+
+
+def is_drawer_open(nodes: list[dict[str, str]]) -> bool:
+    return has_id(nodes, "settings-drawer-content")
+
+
+def is_settings_screen(nodes: list[dict[str, str]]) -> bool:
+    return any(has_id(nodes, rid) for rid in SETTINGS_SCREEN_IDS)
+
+
+def is_capture_active(nodes: list[dict[str, str]]) -> bool:
+    return any(has_id(nodes, rid) for rid in CAPTURE_BLOCK_IDS)
+
+
+def is_closed_home(nodes: list[dict[str, str]]) -> bool:
+    """Home chrome with drawer closed and Settings stack absent.
+
+    Open drawer still exposes home-tab / home-settings behind it — that must
+    NOT count as ready (root live route 2026-10-21).
+    """
+    return (
+        has_id(nodes, "home-tab-my-work")
+        and has_id(nodes, "home-settings-button")
+        and not is_drawer_open(nodes)
+        and not is_settings_screen(nodes)
+        and not has_id(nodes, "settings-menu-active-12")
+        and not has_id(nodes, "settings-menu-more-settings")
+    )
+
+
+def drawer_shows_active12_cache(nodes: list[dict[str, str]]) -> bool:
+    return (
+        is_drawer_open(nodes)
+        and has_id(nodes, "settings-menu-active-12")
+        and has_id(nodes, "settings-menu-account-10")
+        and has_id(nodes, "settings-menu-account-9")
+        and has_id(nodes, "settings-menu-account-12")
+    )
 
 
 def _bounds_center(bounds: str) -> tuple[int, int] | None:
@@ -422,42 +499,42 @@ def _tap_resource(
     return False
 
 
-def bounded_ui_restore(
+def press_android_back(bridge: Bridge, log: list[str]) -> None:
+    """Supported drawer dismiss (root: Android Back closes settings drawer)."""
+    bridge.shell("input", "keyevent", "4")
+    log.append("android_back")
+
+
+def normalize_to_closed_home(
     bridge: Bridge,
     *,
-    max_steps: int = 24,
+    max_steps: int = 16,
     sleep_fn: Callable[[float], None] | None = None,
+    label: str = "normalize",
 ) -> dict[str, Any]:
-    """Best-effort Home + active12 restore. No network/mic toggle, no DB writes."""
+    """Close drawer / leave Settings / leave PFO until closed Home. No account taps."""
     sleep = sleep_fn or time.sleep
     log: list[str] = []
     for step in range(max_steps):
-        nodes = dump_nodes(bridge, f"restore-{step}")
-        if (
-            has_id(nodes, "home-tab-my-work")
-            and has_id(nodes, "settings-menu-active-12")
-            and has_id(nodes, "settings-menu-account-10")
-            and has_id(nodes, "settings-menu-account-9")
-            and has_id(nodes, "settings-menu-account-12")
-        ):
-            log.append("verified_home_active12_cache")
+        nodes = dump_nodes(bridge, f"{label}-{step}")
+        if is_capture_active(nodes):
+            return {
+                "ok": False,
+                "steps": step + 1,
+                "log": log,
+                "error": "ACTIVE_CAPTURE",
+            }
+        if is_closed_home(nodes):
+            log.append("closed_home")
             return {"ok": True, "steps": step + 1, "log": log}
+        if is_drawer_open(nodes) or is_settings_screen(nodes):
+            press_android_back(bridge, log)
+            sleep(0.35)
+            continue
         if has_id(nodes, "prepare-offline-screen") and has_id(
             nodes, "stack-header-back"
         ):
             _tap_resource(bridge, nodes, "stack-header-back", log)
-            sleep(0.4)
-            continue
-        if has_id(nodes, "settings-menu-account-12") and not has_id(
-            nodes, "settings-menu-active-12"
-        ):
-            _tap_resource(bridge, nodes, "settings-menu-account-12", log)
-            sleep(0.5)
-            continue
-        if has_id(nodes, "home-settings-button") and not has_id(
-            nodes, "settings-menu-account-12"
-        ):
-            _tap_resource(bridge, nodes, "home-settings-button", log)
             sleep(0.4)
             continue
         if has_id(nodes, "stack-header-back"):
@@ -466,8 +543,117 @@ def bounded_ui_restore(
             continue
         log.append(f"no_progress_step_{step}")
         sleep(0.3)
-    return {"ok": False, "steps": max_steps, "log": log, "error": "RESTORE_TIMEOUT"}
+    return {
+        "ok": False,
+        "steps": max_steps,
+        "log": log,
+        "error": "CLOSED_HOME_TIMEOUT",
+    }
 
+
+def verify_active12_cache_then_close(
+    bridge: Bridge,
+    *,
+    sleep_fn: Callable[[float], None] | None = None,
+) -> dict[str, Any]:
+    """From closed Home: open drawer, assert active12+cache, Back to closed Home.
+
+    Never taps settings-menu-account-9/10 (no accidental active12→9).
+    """
+    sleep = sleep_fn or time.sleep
+    log: list[str] = []
+    nodes = dump_nodes(bridge, "cache-pre")
+    if not is_closed_home(nodes):
+        return {
+            "ok": False,
+            "log": log,
+            "error": "CACHE_VERIFY_REQUIRES_CLOSED_HOME",
+        }
+    if not _tap_resource(bridge, nodes, "home-settings-button", log):
+        return {"ok": False, "log": log, "error": "GEAR_TAP_FAILED"}
+    sleep(0.4)
+    nodes = dump_nodes(bridge, "cache-drawer")
+    if not drawer_shows_active12_cache(nodes):
+        return {
+            "ok": False,
+            "log": log,
+            "error": "ACTIVE12_CACHE_MISSING",
+            "drawer_open": is_drawer_open(nodes),
+        }
+    log.append("verified_active12_cache_in_drawer")
+    press_android_back(bridge, log)
+    sleep(0.35)
+    nodes = dump_nodes(bridge, "cache-post")
+    if not is_closed_home(nodes):
+        return {
+            "ok": False,
+            "log": log,
+            "error": "DRAWER_STILL_OPEN_AFTER_BACK",
+        }
+    log.append("verified_closed_home_after_cache")
+    return {"ok": True, "log": log}
+
+
+def bounded_ui_restore(
+    bridge: Bridge,
+    *,
+    max_steps: int = 24,
+    sleep_fn: Callable[[float], None] | None = None,
+) -> dict[str, Any]:
+    """External finally: reach closed Home, prove active12/cache, leave drawer closed."""
+    sleep = sleep_fn or time.sleep
+    log: list[str] = []
+    norm = normalize_to_closed_home(
+        bridge, max_steps=max_steps, sleep_fn=sleep, label="finally-norm"
+    )
+    log.extend(norm.get("log") or [])
+    if not norm.get("ok"):
+        return {
+            "ok": False,
+            "steps": norm.get("steps"),
+            "log": log,
+            "error": norm.get("error", "FINALLY_NORMALIZE_FAIL"),
+        }
+
+    cache = verify_active12_cache_then_close(bridge, sleep_fn=sleep)
+    log.extend(cache.get("log") or [])
+    if not cache.get("ok") and cache.get("error") == "ACTIVE12_CACHE_MISSING":
+        # Wrong active account: open drawer and tap account-12 only (never 9/10).
+        nodes = dump_nodes(bridge, "finally-switch-open")
+        if is_closed_home(nodes):
+            _tap_resource(bridge, nodes, "home-settings-button", log)
+            sleep(0.4)
+            nodes = dump_nodes(bridge, "finally-switch-drawer")
+        if is_drawer_open(nodes) and has_id(nodes, "settings-menu-account-12"):
+            if not has_id(nodes, "settings-menu-active-12"):
+                _tap_resource(bridge, nodes, "settings-menu-account-12", log)
+                sleep(0.5)
+                log.append("switched_to_account_12")
+        norm2 = normalize_to_closed_home(
+            bridge, max_steps=12, sleep_fn=sleep, label="finally-post-switch"
+        )
+        log.extend(norm2.get("log") or [])
+        if not norm2.get("ok"):
+            return {
+                "ok": False,
+                "log": log,
+                "error": norm2.get("error", "POST_SWITCH_HOME_FAIL"),
+            }
+        cache = verify_active12_cache_then_close(bridge, sleep_fn=sleep)
+        log.extend(cache.get("log") or [])
+
+    if not cache.get("ok"):
+        return {
+            "ok": False,
+            "log": log,
+            "error": cache.get("error", "CACHE_VERIFY_FAIL"),
+        }
+
+    nodes = dump_nodes(bridge, "finally-done")
+    if not is_closed_home(nodes):
+        return {"ok": False, "log": log, "error": "HOME_BEHIND_DRAWER"}
+    log.append("verified_closed_home_active12_cache")
+    return {"ok": True, "log": log}
 def compare_snapshots(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
     before_ids = {r["id"]: r.get("sha256") for r in before.get("rows", [])}
     after_ids = {r["id"]: r.get("sha256") for r in after.get("rows", [])}
@@ -495,6 +681,7 @@ def decide_outcome(
     takes_ok: bool,
     prefs_ok: bool,
     cleanup_error: str | None,
+    preflight_ok: bool = True,
 ) -> str:
     if not execute:
         return "AUTHORING_ONLY"
@@ -502,13 +689,14 @@ def decide_outcome(
         return "CLEANUP_UNCERTAIN"
     if not baseline_ok:
         return "BASELINE_FAIL"
+    if not preflight_ok:
+        return "PREFLIGHT_FAIL"
     if maestro_exit is None:
         return "SKIPPED_MAESTRO"
     if maestro_exit == 0:
         # Verified cleanup + maestro green — still not a product "PASS" claim for C51.
         return "MAESTRO_OK_CLEANUP_OK"
     return "MAESTRO_FAIL_CLEANUP_OK"
-
 
 def run(
     args: argparse.Namespace,
@@ -550,6 +738,7 @@ def run(
             bridge = FakeBridge()
 
     result["bridge"] = type(bridge).__name__
+    sleep = sleep_fn or (lambda _s: None)
 
     try:
         before_takes = snapshot_takes(bridge)
@@ -582,9 +771,27 @@ def run(
     known = str(before_prefs.get("known_user_ids", ""))
     result["cacheProbe"] = {"active_user_id": active, "known_user_ids": known}
 
+    # Preflight: drawer/Settings must not be open (Home IDs behind drawer ≠ ready).
+    preflight = normalize_to_closed_home(
+        bridge, sleep_fn=sleep, label="preflight"
+    )
+    result["preflight"] = {
+        "ok": preflight.get("ok"),
+        "error": preflight.get("error"),
+        "log": preflight.get("log"),
+    }
+    skip_maestro_for_preflight = False
+    if not preflight.get("ok"):
+        skip_maestro_for_preflight = True
+        result["preflightError"] = preflight.get("error")
+
     maestro_exit: int | None = None
     maestro_error: str | None = None
-    if execute and not args.skip_maestro:
+    if (
+        not skip_maestro_for_preflight
+        and execute
+        and not args.skip_maestro
+    ):
         try:
             maestro_exit = bridge.run_maestro(
                 FLOW_REL, evidence / "maestro-run"
@@ -592,17 +799,15 @@ def run(
         except Exception as exc:  # noqa: BLE001
             maestro_error = repr(exc)
             maestro_exit = 1
-    elif not execute:
-        # dry-run simulates invoke path without device
-        if not args.skip_maestro:
-            maestro_exit = bridge.run_maestro(
-                FLOW_REL, evidence / "maestro-run-dry"
-            )
+    elif not execute and not args.skip_maestro and not skip_maestro_for_preflight:
+        maestro_exit = bridge.run_maestro(
+            FLOW_REL, evidence / "maestro-run-dry"
+        )
     result["maestroExit"] = maestro_exit
     if maestro_error:
         result["maestroError"] = maestro_error
 
-    # EXTERNAL FINALLY — always attempted after Maestro (or dry-run invoke)
+    # EXTERNAL FINALLY — always attempted after Maestro (or dry-run / preflight fail)
     cleanup_error: str | None = None
     finally_report: dict[str, Any] = {}
     after_takes: dict[str, Any] = {}
@@ -610,21 +815,18 @@ def run(
     takes_cmp: dict[str, Any] = {"ok": False}
     prefs_ok = False
     try:
-        finally_report = bounded_ui_restore(bridge, sleep_fn=sleep_fn or (lambda _s: None))
+        finally_report = bounded_ui_restore(bridge, sleep_fn=sleep)
         after_takes = snapshot_takes(bridge)
         after_prefs = snapshot_prefs(bridge)
         takes_cmp = compare_snapshots(before_takes, after_takes)
         prefs_ok = after_prefs == before_prefs
-        # selections: ephemeral UI; flow restores ch1 to 0 — host cannot SQL-assert
-        # chapter selection. Record UI restore result only.
         result["selectionsNote"] = (
             "Chapter selections are UI-ephemeral; nested flow restores each book "
-            "to 0. Host finally guarantees Home/active12/prefs/takes, not PFO SQL."
+            "to 0. Host finally guarantees closed Home/active12/prefs/takes."
         )
     except Exception as exc:  # noqa: BLE001
         cleanup_error = repr(exc)
         finally_report = {"ok": False, "error": cleanup_error}
-
     result["finally"] = finally_report
     result["afterTakes"] = {
         "counts": after_takes.get("counts"),
@@ -643,11 +845,14 @@ def run(
         takes_ok=bool(takes_cmp.get("ok")),
         prefs_ok=prefs_ok,
         cleanup_error=cleanup_error,
+        preflight_ok=bool(preflight.get("ok")),
     )
     result["outcome"] = outcome
     result["runtime_pass_claimed"] = False
     if outcome == "CLEANUP_UNCERTAIN":
         result["visible"] = "CLEANUP_UNCERTAIN — do not treat as PASS"
+    if outcome == "PREFLIGHT_FAIL":
+        result["visible"] = "PREFLIGHT_FAIL — drawer/Settings not normalized; no PASS"
     _write(evidence, result)
     return result
 
@@ -670,7 +875,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if outcome == "MAESTRO_FAIL_CLEANUP_OK":
         return 1
-    if outcome in {"CLEANUP_UNCERTAIN", "BASELINE_FAIL", "SNAPSHOT_FAIL", "MISSING_FLOW"}:
+    if outcome in {
+        "CLEANUP_UNCERTAIN",
+        "BASELINE_FAIL",
+        "SNAPSHOT_FAIL",
+        "MISSING_FLOW",
+        "PREFLIGHT_FAIL",
+    }:
         return 2
     return 1
 

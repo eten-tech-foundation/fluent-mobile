@@ -86,8 +86,8 @@ class D0702ExternalFinallyTests(unittest.TestCase):
             )
             args.dry_run = False
             bridge = self.m.FakeBridge()
-            # Hierarchy never reaches active12 / home together
-            bridge.hierarchy_xml = (
+            # Stuck hierarchy — never closed Home / never drawer cache
+            bridge.hierarchy_override = (
                 '<?xml version="1.0"?><hierarchy>'
                 '<node resource-id="prepare-offline-screen"/>'
                 "</hierarchy>"
@@ -213,6 +213,52 @@ class D0702ExternalFinallyTests(unittest.TestCase):
         self.assertEqual(self.m.count_cli_option(bad_dup, "--device"), 1)
         effective = self.m.simulate_maestro_test_sh_device_injection(bad_dup, serial)
         self.assertEqual(self.m.count_cli_option(effective, "--device"), 2)
+
+    def test_open_drawer_with_home_behind_is_not_closed_home(self):
+        """Reproduce root false-positive: Home IDs + open drawer ≠ ready."""
+        bridge = self.m.FakeBridge(drawer_open=True)
+        nodes = self.m.dump_nodes(bridge, "open-drawer")
+        self.assertTrue(self.m.is_drawer_open(nodes))
+        self.assertTrue(self.m.has_id(nodes, "home-tab-my-work"))
+        self.assertTrue(self.m.has_id(nodes, "home-settings-button"))
+        self.assertTrue(self.m.has_id(nodes, "settings-menu-active-12"))
+        self.assertFalse(self.m.is_closed_home(nodes))
+
+    def test_normalize_closes_open_drawer_via_android_back(self):
+        bridge = self.m.FakeBridge(drawer_open=True)
+        result = self.m.normalize_to_closed_home(
+            bridge, sleep_fn=lambda _s: None, label="t"
+        )
+        self.assertTrue(result["ok"], result)
+        self.assertFalse(bridge.drawer_open)
+        self.assertIn("android_back", result["log"])
+        self.assertIn("closed_home", result["log"])
+        nodes = self.m.dump_nodes(bridge, "after")
+        self.assertTrue(self.m.is_closed_home(nodes))
+
+    def test_finally_leaves_closed_home_not_drawer_open(self):
+        bridge = self.m.FakeBridge(drawer_open=True)
+        result = self.m.bounded_ui_restore(bridge, sleep_fn=lambda _s: None)
+        self.assertTrue(result["ok"], result)
+        self.assertFalse(bridge.drawer_open)
+        self.assertIn("verified_closed_home_active12_cache", result["log"])
+        nodes = self.m.dump_nodes(bridge, "end")
+        self.assertTrue(self.m.is_closed_home(nodes))
+        self.assertFalse(self.m.is_drawer_open(nodes))
+
+    def test_legacy_false_positive_condition_rejected(self):
+        """Old success: home + active12 menus without requiring drawer closed."""
+        bridge = self.m.FakeBridge(drawer_open=True)
+        nodes = self.m.dump_nodes(bridge, "legacy")
+        legacy_ok = (
+            self.m.has_id(nodes, "home-tab-my-work")
+            and self.m.has_id(nodes, "settings-menu-active-12")
+            and self.m.has_id(nodes, "settings-menu-account-10")
+            and self.m.has_id(nodes, "settings-menu-account-9")
+            and self.m.has_id(nodes, "settings-menu-account-12")
+        )
+        self.assertTrue(legacy_ok)
+        self.assertFalse(self.m.is_closed_home(nodes))
 
 
 if __name__ == "__main__":
