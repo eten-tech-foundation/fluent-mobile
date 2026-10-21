@@ -1,0 +1,9 @@
+{
+  "url": "https://fluent-test1.lovable.app/",
+  "http_status": 200,
+  "visual_render_verified": false,
+  "html_sha256": "72b5ca5d5bb989dd86a07c0c4e0e1731c766eba92908a5381a26466e45526e3c",
+  "stylesheet_url": "https://fluent-test1.lovable.app/assets/index-CUqA7nXA.css",
+  "stylesheet_sha256": "d7fdd97c1648a76f1e8b7cc53a87ddda97465cf586b6e51f72a1e61e3e0a10df",
+  "note": "Public source assets only; no screen/browser comparison"
+}
