@@ -1,3 +1,5 @@
+import { buildTypeStyles, systemFontFamilies } from './typeStyles';
+
 /**
  * Next spacing / radius / type scale from Figma Foundations
  * (03 Typography · 04 Spacing · 05 Radius).
@@ -63,32 +65,35 @@ export const nextRadius = {
   full: nextRadiusScale.full,
 } as const;
 
-/** Figma type styles (Inter placeholder; family TBD). */
-export const nextTypeStyles = {
-  reading: { size: 42, lineHeight: 52, weight: '400' as const },
-  title: { size: 18, lineHeight: 24, weight: '600' as const },
-  label: { size: 14, lineHeight: 20, weight: '600' as const },
-  overline: { size: 20, lineHeight: 24, weight: '500' as const },
-} as const;
+/**
+ * Font families for the named type styles. Figma's are placeholders (Google
+ * Sans Flex, DM Mono). Sans stays unset so Android keeps numeric weights.
+ */
+export const nextFontFamilies = systemFontFamilies;
+
+/** Figma named type styles for Next (`Theme.type`). */
+export const nextTypeStyles = buildTypeStyles(
+  nextFontFamilies.sans,
+  nextFontFamilies.mono,
+);
 
 /**
- * Partial `Theme.typography` overrides.
+ * Partial `Theme.typography` overrides, read from the named styles.
  * `sm`/`lg`/`xl` ← label/title/overline.
  * Do **not** map Figma `reading` (42) onto `sizes.display` — that key is the
- * record capture timer in Legacy. Keep `nextTypeStyles.reading` for a future
- * reading/Canvas surface key.
+ * record capture timer in Legacy. New text should use `Theme.type` instead.
  * `md` (16) and `xs` (12) have no Foundations style — left to Legacy via merge.
  */
 export const nextTypography = {
   fontFamily: 'System',
   sizes: {
-    sm: nextTypeStyles.label.size,
-    lg: nextTypeStyles.title.size,
-    xl: nextTypeStyles.overline.size,
+    sm: nextTypeStyles.label.fontSize,
+    lg: nextTypeStyles.title.fontSize,
+    xl: nextTypeStyles.overline.fontSize,
   },
   weights: {
-    medium: nextTypeStyles.overline.weight,
-    semibold: nextTypeStyles.title.weight,
+    medium: nextTypeStyles.overline.fontWeight,
+    semibold: nextTypeStyles.title.fontWeight,
   },
   lineHeights: {
     tight: nextTypeStyles.label.lineHeight,
