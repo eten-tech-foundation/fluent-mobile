@@ -66,7 +66,19 @@ jest.mock('./api', () => ({
       peerCheckChapters: [],
     }),
     getBibleTexts: jest.fn(),
+    getSelfSettings: jest.fn().mockResolvedValue({
+      settings: null,
+      updatedAt: null,
+    }),
+    putSelfSettings: jest.fn().mockResolvedValue({
+      settings: null,
+      updatedAt: null,
+    }),
   },
+}));
+
+jest.mock('./displayModeSettingsSync', () => ({
+  syncDisplayModeSettingsForUser: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('./keychain', () => ({
