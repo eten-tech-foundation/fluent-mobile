@@ -1,0 +1,202 @@
+# D-0702-01 durable wrapper — project13 English→English gospels (Matthew/Mark/Luke).
+# Authors permanent automation for ALREADY-OBSERVED Android behavior (PM9 / A5554).
+# Does NOT claim a new Maestro runtime PASS. Does NOT re-run device behavior here.
+#
+# Why not runFlow pfo-download-button-persist.yaml:
+#   That flow requires Assigned-chapters chrome + Select-all book toggle via
+#   pfo-selector-values.js. Observed project13/PM9 hierarchy uses Selected chapters
+#   + chapter-1 circles + unavailable footer hint. Adapting the shared helper would
+#   require .maestro/shared/scripts/pfo-selector-values.js (out of allowlist) — STOP.
+#
+# Criterion map (issue #702 / D-0702-01):
+#   - open disposable project13 PFO as cached PM9
+#   - each of Matthew/Mark/Luke: chapter1 select 0→1→0
+#   - selected count + Total download + Download (size suffix OK) remain visible
+#   - unavailable: "Couldn't load downloadable resources..." + Download disabled
+#   - no bare ^Download$; no available-download arithmetic; no Download tap
+#   - restore selections 0; Home; active12 with cache 10/9/12
+#
+# Forbidden: clearState, login, permission/network toggle, Download tap, record/
+# playback/delete, blind sleep timeouts, Maestro-hook-only restore.
+# In-flow restore12 is happy-path only — EXTERNAL finally (host) still required.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+  - ordered-readonly
+  - d0702
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+# Cached switch → PM9 (matches retained runtime actor on project13).
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-9'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-9'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-prepare-offline'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-prepare-offline'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: '^project-row-13$'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: '^project-row-13$'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-resources-section'
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-download-footer'
+    timeout: 30000
+- assertVisible:
+    text: '^Selected chapters \\(0\\)$'
+- assertVisible:
+    id: 'prepare-offline-download-button'
+    enabled: false
+# Sequential per-book results; each nested flow restores its own ch1 to 0.
+- runFlow:
+    file: d0702-book-ch1-unavailable-persist.yaml
+    env:
+      D0702_BOOK_ZERO: '^Matthew, 0 of 28 chapters selected$'
+      D0702_BOOK_ONE: '^Matthew, 1 of 28 chapters selected$'
+      D0702_EXPAND: '^Expand Matthew$'
+      D0702_COLLAPSE: '^Collapse Matthew$'
+- runFlow:
+    file: d0702-book-ch1-unavailable-persist.yaml
+    env:
+      D0702_BOOK_ZERO: '^Mark, 0 of 16 chapters selected$'
+      D0702_BOOK_ONE: '^Mark, 1 of 16 chapters selected$'
+      D0702_EXPAND: '^Expand Mark$'
+      D0702_COLLAPSE: '^Collapse Mark$'
+- runFlow:
+    file: d0702-book-ch1-unavailable-persist.yaml
+    env:
+      D0702_BOOK_ZERO: '^Luke, 0 of 24 chapters selected$'
+      D0702_BOOK_ONE: '^Luke, 1 of 24 chapters selected$'
+      D0702_EXPAND: '^Expand Luke$'
+      D0702_COLLAPSE: '^Collapse Luke$'
+# All books back at zero selection.
+- assertVisible:
+    text: '^Selected chapters \\(0\\)$'
+- assertVisible:
+    text: '^Matthew, 0 of 28 chapters selected$'
+- assertVisible:
+    text: '^Mark, 0 of 16 chapters selected$'
+- assertVisible:
+    text: '^Luke, 0 of 24 chapters selected$'
+- assertVisible:
+    id: 'prepare-offline-download-footer'
+- assertVisible:
+    id: 'prepare-offline-download-button'
+    enabled: false
+# Leave PFO → Home (happy-path nav restore). Do not runFlow goto-home:
+# that pulls ensure-no-modal (untagged) and fails ordered-journey fixture-guard.
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- assertVisible:
+    id: 'home-tab-my-work'
+# Happy-path active12 restore (EXTERNAL host finally still required on failure).
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-12'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

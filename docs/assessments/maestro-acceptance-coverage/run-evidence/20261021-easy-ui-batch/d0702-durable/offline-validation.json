@@ -1,0 +1,45 @@
+{
+  "schema": "d0702-01-offline-validation/v1",
+  "generated_utc": "2026-10-21T10:05:00Z",
+  "criterion": "D-0702-01",
+  "admission_status": "WRAPPER_AND_HOST_RUNNER_ELIGIBLE_LIVE_EXECUTE_REMAINING",
+  "admission_note": "YAML/fixture/static + host external-finally unit-tested. No device Maestro --execute. Prior retained behavior PASS not repeated. C51 arithmetic not_run.",
+  "device_ops": "NONE",
+  "runtime_pass_claimed": false,
+  "prior_retained_behavior_pass": {
+    "actor": "PM9",
+    "device": "emulator-5554",
+    "projectId": "13",
+    "receipt": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0702-direct-behavior-reconciliation-20261021.md"
+  },
+  "results": {
+    "node_test": {
+      "command": "node --test .maestro/flows/offline/d0702-ee-gospel-ch1-download-persist.test.cjs",
+      "result": "PASS 8/8",
+      "core_contract": "7",
+      "optional_fixture_guard": "1 (when scripts/maestro-fixture-guard.cjs present)"
+    },
+    "runner_unit": {
+      "command": "python3 scripts/qa717-easy-ui-batch/run-d0702-a5554-external-finally.test.py",
+      "result": "PASS 9/9"
+    },
+    "fixture_guard_cli": {
+      "command": "node scripts/maestro-fixture-guard.cjs --preflight --recursive -- .maestro/flows/offline/d0702-ee-gospel-ch1-download-persist-existing-session.yaml",
+      "result": "PASS",
+      "exit": 0,
+      "note": "Present on authoring checkout; not on origin/main — not packaged"
+    },
+    "maestro_check_syntax": {
+      "ordered": "OK",
+      "nested": "OK"
+    },
+    "graal": {
+      "result": "N/A",
+      "reason": "no new JavaScript Maestro runScript"
+    }
+  },
+  "expected_take_baseline": { "owner10": 10, "owner9": 1, "total": 11 },
+  "external_finally": "scripts/qa717-easy-ui-batch/run-d0702-a5554-external-finally.py",
+  "live_execute_remaining": "root: python3 .../run-d0702-a5554-external-finally.py --execute --serial emulator-5554",
+  "counts_changed": false
+}
