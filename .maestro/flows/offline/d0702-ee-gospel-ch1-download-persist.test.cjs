@@ -191,6 +191,46 @@ describe('D-0702-01 durable wrapper static contract', () => {
     assert.ok(!/^\s*-\s*runFlow:.*goto-home/m.test(body));
   });
 
+  it('final teardown: identity in drawer → Back → drawer absent → Home (no Home-tab dismiss)', () => {
+    const body = fs.readFileSync(ordered, 'utf8');
+    // Only one dismiss-at-end pattern: active12/cache asserts, then Back.
+    const activeIdx = body.lastIndexOf("id: 'settings-menu-active-12'");
+    const backIdx = body.lastIndexOf('pressKey: Back');
+    const drawerGoneIdx = body.lastIndexOf(
+      "id: 'settings-drawer-content'",
+    );
+    // Last settings-drawer-content mention should be assertNotVisible after Back.
+    assert.ok(activeIdx > 0, 'active12 identity check required');
+    assert.ok(backIdx > activeIdx, 'Back must follow active12/cache identity');
+    const afterIdentity = body.slice(activeIdx);
+    assert.ok(
+      /settings-menu-active-12[\s\S]*settings-menu-account-10[\s\S]*settings-menu-account-9[\s\S]*settings-menu-account-12[\s\S]*pressKey:\s*Back/m.test(
+        afterIdentity,
+      ),
+      'identity (active12+cache) then Back',
+    );
+    assert.ok(
+      /pressKey:\s*Back[\s\S]*assertNotVisible:\s*\n\s*id: 'settings-drawer-content'[\s\S]*assertVisible:\s*\n\s*id: 'home-tab-my-work'/m.test(
+        afterIdentity,
+      ),
+      'Back → drawer absent → Home visible',
+    );
+    // Forbidden: dismiss open drawer by tapping Home chrome behind it.
+    assert.ok(
+      !/settings-menu-active-12[\s\S]*tapOn:\s*\n\s*id: 'home-tab-my-work'[\s\S]*assertNotVisible:\s*\n\s*id: 'settings-drawer-content'/m.test(
+        body,
+      ),
+      'must not dismiss drawer via background home-tab-my-work tap',
+    );
+    // No reopen of drawer after final Back (would leave open for host/next case).
+    const afterBack = body.slice(backIdx);
+    assert.ok(
+      !/tapOn:\s*\n\s*id: 'home-settings-button'/.test(afterBack),
+      'must not reopen drawer after final Back',
+    );
+    void drawerGoneIdx;
+  });
+
   it('forbids hardware/auth/download mutation commands in authored YAML', () => {
     for (const file of allFlowYaml) {
       const body = fs.readFileSync(file, 'utf8');

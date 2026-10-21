@@ -211,12 +211,15 @@ tags:
     id: 'settings-menu-account-9'
 - assertVisible:
     id: 'settings-menu-account-12'
-# Dismiss drawer — do not leave Home-behind-drawer for the host finally / next case.
-- tapOn:
-    id: 'home-tab-my-work'
+# Identity proven while drawer open. Dismiss with Android Back (root-proven) —
+# do NOT tap home-tab-my-work behind the drawer (retained 71999: tap fails to
+# dismiss; assertNotVisible drawer fails). Do not reopen drawer after Back.
+- pressKey: Back
 - assertNotVisible:
     id: 'settings-drawer-content'
 - assertVisible:
     id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
 - assertNotVisible:
     id: 'login-email-input'
