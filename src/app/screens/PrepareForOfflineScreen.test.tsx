@@ -98,6 +98,9 @@ jest.mock('../../hooks/usePrepareOfflineDownload', () => ({
       busy: false,
       catalogWithProgress: catalog,
       downloadButtonLabel: canDownload ? 'Download 18 MB' : 'Download 0 B',
+      // Footer totals come from the download hook's merged selected summary (#756).
+      totalBytes: canDownload ? 4096 : 0,
+      totalBytesIncomplete: false,
       canDownload,
       inventoryRefreshSignal: '0',
       handleDownload: mockHandleDownload,

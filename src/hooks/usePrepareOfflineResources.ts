@@ -4,9 +4,11 @@ import { PrepareOfflineChapterRow } from '../types/prepareOffline/types';
 import {
   buildPrepareOfflineCatalog,
   buildEffectiveCatalog,
+  catalogHasUnknownSizes,
   computePendingBytes,
   computeTotalBytes,
   getEffectiveItems,
+  hasPendingDownloadWork,
   isItemCustomizeLocked,
 } from '../utils/prepareOfflineCatalog';
 
@@ -77,6 +79,11 @@ export function usePrepareOfflineResources({
     [catalog, deselectedItemIds],
   );
 
+  const totalBytesIncomplete = useMemo(
+    () => catalogHasUnknownSizes(catalog, deselectedItemIds),
+    [catalog, deselectedItemIds],
+  );
+
   const pendingBytes = useMemo(
     () => computePendingBytes(catalog, deselectedItemIds),
     [catalog, deselectedItemIds],
@@ -96,8 +103,16 @@ export function usePrepareOfflineResources({
       return false;
     }
 
-    return pendingBytes > 0;
-  }, [catalog.items.length, isAssignedUser, pendingBytes, selectedCount]);
+    // Unknown-size remote rows still need download even when known pending
+    // bytes sum to 0 (#756 measured Reference Images as 0 B).
+    return pendingBytes > 0 || hasPendingDownloadWork(selectedItems);
+  }, [
+    catalog.items.length,
+    isAssignedUser,
+    pendingBytes,
+    selectedCount,
+    selectedItems,
+  ]);
 
   const isItemSelected = useCallback(
     (itemId: string) => !deselectedItemIds.has(itemId),
@@ -129,6 +144,7 @@ export function usePrepareOfflineResources({
     effectiveCatalog,
     deselectedItemIds,
     totalBytes,
+    totalBytesIncomplete,
     pendingBytes,
     selectedItems,
     canDownload,

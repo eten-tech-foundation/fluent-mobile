@@ -121,7 +121,29 @@ function aggregateOverlayItem(
   }
 
   if (status === 'completed') {
-    return { ...item, status };
+    // Worker persists real on-disk size via markDownloadItemCompleted(info.size).
+    // Recover only positive per-member bytesTotal — API/wire 0 cannot distinguish
+    // an empty remote asset from a missing size, so do not claim known zero (#756).
+    let recoveredBytes = 0;
+    let recoveredKnownCount = 0;
+    for (const row of rows) {
+      const queueBytes = row?.bytesTotal;
+      if (typeof queueBytes === 'number' && queueBytes > 0) {
+        recoveredBytes += queueBytes;
+        recoveredKnownCount += 1;
+      }
+    }
+
+    if (recoveredKnownCount === 0) {
+      return { ...item, status };
+    }
+
+    return {
+      ...item,
+      status,
+      bytes: recoveredBytes,
+      sizeKnown: recoveredKnownCount === members.length,
+    };
   }
 
   if (status === item.status && (!progress || progress <= 0)) {

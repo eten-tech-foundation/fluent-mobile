@@ -70,7 +70,6 @@ export default function PrepareForOfflineScreen() {
 
   const {
     catalog,
-    totalBytes,
     selectedItems,
     canDownload,
     manifestLoading,
@@ -104,6 +103,8 @@ export default function PrepareForOfflineScreen() {
     busy,
     catalogWithProgress,
     downloadButtonLabel,
+    totalBytes,
+    totalBytesIncomplete,
     canDownload: canDownloadNow,
     inventoryRefreshSignal,
     handleDownload,
@@ -228,6 +229,7 @@ export default function PrepareForOfflineScreen() {
           {showDownloadFooter ? (
             <PrepareOfflineDownloadFooter
               totalBytes={totalBytes}
+              totalBytesIncomplete={totalBytesIncomplete}
               canDownload={canDownloadNow}
               downloadButtonLabel={downloadButtonLabel}
               session={session}

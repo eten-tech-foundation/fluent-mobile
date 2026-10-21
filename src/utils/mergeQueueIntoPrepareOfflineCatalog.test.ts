@@ -61,6 +61,7 @@ function queueRow(
   progress: number,
   projectId = 1,
   userId = 1,
+  bytesTotal?: number,
 ): DownloadQueueItem {
   return {
     id: `${projectId}-${userId}-${resourceId}`,
@@ -71,6 +72,7 @@ function queueRow(
     status,
     projectId,
     userId,
+    ...(bytesTotal !== undefined ? { bytesTotal } : {}),
   };
 }
 
@@ -110,6 +112,140 @@ describe('mergeQueueIntoPrepareOfflineCatalog', () => {
     );
     expect(full.items[0].status).toBe('completed');
     expect(full.items[0].progress).toBeUndefined();
+  });
+
+  it('fail-before/pass-after: recovers positive completed queue bytesTotal (#756)', () => {
+    // Catalog wire-0 unknown images; worker persists real info.size on complete.
+    const unknownImages = row(
+      {
+        id: 'Reference Images:image',
+        kind: 'image',
+        groupName: 'Reference Images',
+        label: 'Image',
+        bytes: 0,
+        sizeKnown: false,
+        status: 'selected',
+        required: false,
+        removable: true,
+      },
+      [
+        member('img-a', 0, {
+          kind: 'image',
+          resourceName: 'Reference Images',
+          fileExt: 'jpg',
+        }),
+        member('img-b', 0, {
+          kind: 'image',
+          resourceName: 'Reference Images',
+          fileExt: 'jpg',
+        }),
+      ],
+    );
+    const unknownCatalog: PrepareOfflineCatalog = {
+      items: [unknownImages],
+      groups: [{ groupName: 'Reference Images', items: [unknownImages] }],
+    };
+
+    const merged = mergeQueueIntoPrepareOfflineCatalog(
+      unknownCatalog,
+      [
+        queueRow('img-a', 'completed', 1, 1, 1, 4096),
+        queueRow('img-b', 'completed', 1, 1, 1, 2048),
+      ],
+      1,
+      1,
+    );
+
+    expect(merged.items[0].status).toBe('completed');
+    expect(merged.items[0].bytes).toBe(6144);
+    expect(merged.items[0].sizeKnown).toBe(true);
+  });
+
+  it('fail-before/pass-after: mixed completed recovery stays incomplete / At least (#756)', () => {
+    const unknownImages = row(
+      {
+        id: 'Reference Images:image',
+        kind: 'image',
+        groupName: 'Reference Images',
+        label: 'Image',
+        bytes: 0,
+        sizeKnown: false,
+        status: 'selected',
+        required: false,
+        removable: true,
+      },
+      [
+        member('img-a', 0, {
+          kind: 'image',
+          resourceName: 'Reference Images',
+          fileExt: 'jpg',
+        }),
+        member('img-b', 0, {
+          kind: 'image',
+          resourceName: 'Reference Images',
+          fileExt: 'jpg',
+        }),
+      ],
+    );
+    const unknownCatalog: PrepareOfflineCatalog = {
+      items: [unknownImages],
+      groups: [],
+    };
+
+    // One member recovered positive size; other completed without usable bytes
+    // (wire 0 / missing info.size) — keep incomplete with partial known sum.
+    const merged = mergeQueueIntoPrepareOfflineCatalog(
+      unknownCatalog,
+      [
+        queueRow('img-a', 'completed', 1, 1, 1, 4096),
+        queueRow('img-b', 'completed', 1, 1, 1, 0),
+      ],
+      1,
+      1,
+    );
+
+    expect(merged.items[0].status).toBe('completed');
+    expect(merged.items[0].bytes).toBe(4096);
+    expect(merged.items[0].sizeKnown).toBe(false);
+  });
+
+  it('fail-before/pass-after: completed wire-0 queue bytes do not claim known zero (#756)', () => {
+    const unknownImages = row(
+      {
+        id: 'Reference Images:image',
+        kind: 'image',
+        groupName: 'Reference Images',
+        label: 'Image',
+        bytes: 0,
+        sizeKnown: false,
+        status: 'selected',
+        required: false,
+        removable: true,
+      },
+      [
+        member('img-a', 0, {
+          kind: 'image',
+          resourceName: 'Reference Images',
+          fileExt: 'jpg',
+        }),
+      ],
+    );
+    const unknownCatalog: PrepareOfflineCatalog = {
+      items: [unknownImages],
+      groups: [],
+    };
+
+    const merged = mergeQueueIntoPrepareOfflineCatalog(
+      unknownCatalog,
+      [queueRow('img-a', 'completed', 1, 1, 1, 0)],
+      1,
+      1,
+    );
+
+    expect(merged.items[0].status).toBe('completed');
+    // No positive recovery evidence — do not flip sizeKnown or invent knowledge.
+    expect(merged.items[0].sizeKnown).toBe(false);
+    expect(merged.items[0].bytes).toBe(0);
   });
 
   it('keeps catalog baseline with weighted progress while members finish between transfers', () => {
