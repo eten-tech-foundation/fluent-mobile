@@ -1356,13 +1356,20 @@ export async function getLatestVersionToken(
   bibleTextId: number,
 ): Promise<number | undefined> {
   const db = getDatabase();
+  // Server version tokens increase monotonically per verse, so the newest
+  // server token is the MAX — not the token on the most recently *updated*
+  // row. Selecting an already-uploaded take (#701) bumps its updated_at
+  // without refreshing version_token; ordering by updated_at would return
+  // that stale token as baseVersionToken and the server 409s the CAS, so the
+  // selection change never lands.
   const result = await db.execute(
-    `SELECT version_token FROM recordings
-     WHERE bible_text_id = ? AND version_token IS NOT NULL
-     ORDER BY updated_at DESC LIMIT 1`,
+    `SELECT MAX(version_token) AS version_token FROM recordings
+     WHERE bible_text_id = ? AND version_token IS NOT NULL`,
     [bibleTextId],
   );
-  const row = (result?.rows as { version_token: number }[] | undefined)?.[0];
+  const row = (
+    result?.rows as { version_token: number | null }[] | undefined
+  )?.[0];
   return row?.version_token ?? undefined;
 }
 

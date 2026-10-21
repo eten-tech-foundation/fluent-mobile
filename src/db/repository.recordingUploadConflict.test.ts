@@ -109,16 +109,17 @@ function createRecordingConflictTestDb() {
     const sql = query.replace(/\s+/g, ' ').trim();
 
     if (
-      sql.includes('SELECT version_token FROM recordings') &&
-      sql.includes('ORDER BY updated_at DESC LIMIT 1')
+      sql.includes('SELECT MAX(version_token) AS version_token') &&
+      sql.includes('FROM recordings')
     ) {
       const [bibleTextId] = params as [number];
-      const row = recordings
+      const tokens = recordings
         .filter(
           r => r.bible_text_id === bibleTextId && r.version_token !== null,
         )
-        .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
-      return { rows: row ? [{ version_token: row.version_token }] : [] };
+        .map(r => r.version_token as number);
+      const max = tokens.length > 0 ? Math.max(...tokens) : null;
+      return { rows: [{ version_token: max }] };
     }
 
     if (
@@ -257,11 +258,25 @@ function createRecordingConflictTestDb() {
 }
 
 describe('recording upload conflict repository helpers (#256)', () => {
-  it('getLatestVersionToken returns the most recently updated token for a verse', async () => {
+  it('getLatestVersionToken returns the highest token for a verse, not the most recently updated row (#701)', async () => {
     const db = createRecordingConflictTestDb();
     setDatabase(db as never);
 
-    await expect(getLatestVersionToken(42)).resolves.toBe(3);
+    // rec-uploaded has the newest updated_at (token 3) but rec-conflicted
+    // holds the higher server token (4). Re-selecting an uploaded take bumps
+    // its updated_at without a new token, so ordering by recency would send a
+    // stale baseVersionToken and the server 409s the CAS.
+    await expect(getLatestVersionToken(42)).resolves.toBe(4);
+  });
+
+  it('getLatestVersionToken returns undefined when no row has a token', async () => {
+    const db = createRecordingConflictTestDb();
+    db.__recordings.forEach(r => {
+      r.version_token = null;
+    });
+    setDatabase(db as never);
+
+    await expect(getLatestVersionToken(42)).resolves.toBeUndefined();
   });
 
   it('getPendingRecordings excludes uploaded and conflicted rows', async () => {
