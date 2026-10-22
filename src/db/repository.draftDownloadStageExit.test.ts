@@ -284,6 +284,7 @@ describe('repository stage-exit draft download purge hooks', () => {
         peer_checker_id: null,
         submitted_time: null,
         updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: '2025-04-01T15:30:00.000Z',
       },
     ]);
     setDatabase(db as never);
@@ -296,6 +297,8 @@ describe('repository stage-exit draft download purge hooks', () => {
     );
 
     expect(db.__rows[0].status).toBe('community_review');
+    // #505: actual status change clears stage_entered_at; #508 purges on pair.
+    expect(db.__rows[0].stage_entered_at).toBeNull();
     expect(db.__queue).toEqual([
       {
         chapter_assignment_id: 9,
@@ -482,6 +485,7 @@ describe('repository stage-exit draft download purge hooks', () => {
   });
 
   it('local same-status write still reports actual persisted pair (gating is in purge helper)', async () => {
+    const stamp = '2025-04-01T15:30:00.000Z';
     const db = createStageExitTestDb([
       {
         id: 9,
@@ -490,12 +494,15 @@ describe('repository stage-exit draft download purge hooks', () => {
         peer_checker_id: null,
         submitted_time: null,
         updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: stamp,
       },
     ]);
     setDatabase(db as never);
 
     await updateChapterAssignmentStatusLocally(9, 'peer_check', undefined, 7);
 
+    // Repeat: preserve timestamp; purge helper sees same pair (no forward exit).
+    expect(db.__rows[0].stage_entered_at).toBe(stamp);
     expect(mockMaybePurge).toHaveBeenCalledWith(
       expect.objectContaining({
         fromStatus: 'peer_check',
@@ -505,6 +512,7 @@ describe('repository stage-exit draft download purge hooks', () => {
   });
 
   it('pending queue preserves status on sync upsert — purge sees actual same from/to', async () => {
+    const stamp = '2025-04-01T15:30:00.000Z';
     const db = createStageExitTestDb([
       {
         id: 9,
@@ -513,6 +521,7 @@ describe('repository stage-exit draft download purge hooks', () => {
         peer_checker_id: 20,
         submitted_time: null,
         updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: stamp,
         bible_id: 4,
         book_id: 12,
         chapter_number: 1,
@@ -540,6 +549,7 @@ describe('repository stage-exit draft download purge hooks', () => {
           chapterNumber: 1,
           chapterStatus: 'draft',
           assignedUserId: 5,
+          stageEnteredAt: '2026-01-01T00:00:00.000Z',
         },
       ],
       7,
@@ -547,6 +557,8 @@ describe('repository stage-exit draft download purge hooks', () => {
 
     expect(db.__rows[0].status).toBe('peer_check');
     expect(db.__rows[0].peer_checker_id).toBe(20);
+    // #505 SAQ guard protects timestamp with status/peer; #508 sees same pair.
+    expect(db.__rows[0].stage_entered_at).toBe(stamp);
     expect(mockMaybePurge).toHaveBeenCalledWith({
       projectId: 100,
       userId: 7,
@@ -565,6 +577,7 @@ describe('repository stage-exit draft download purge hooks', () => {
         peer_checker_id: null,
         submitted_time: null,
         updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: '2025-04-01T15:30:00.000Z',
         bible_id: 4,
         book_id: 12,
         chapter_number: 1,
@@ -582,12 +595,15 @@ describe('repository stage-exit draft download purge hooks', () => {
           bookId: 12,
           chapterNumber: 1,
           chapterStatus: 'linguist_check',
+          stageEnteredAt: '2026-02-01T00:00:00.000Z',
         },
       ],
       7,
     );
 
     expect(db.__rows[0].status).toBe('linguist_check');
+    // Server restamp accepted when not SAQ-protected; purge uses status pair only.
+    expect(db.__rows[0].stage_entered_at).toBe('2026-02-01T00:00:00.000Z');
     expect(mockMaybePurge).toHaveBeenCalledWith({
       projectId: 100,
       userId: 7,
@@ -607,6 +623,7 @@ describe('repository stage-exit draft download purge hooks', () => {
         peer_checker_id: null,
         submitted_time: null,
         updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: '2025-04-01T15:30:00.000Z',
       },
     ]);
     setDatabase(db as never);
@@ -615,6 +632,7 @@ describe('repository stage-exit draft download purge hooks', () => {
       updateChapterAssignmentStatusLocally(9, 'community_review', undefined, 7),
     ).resolves.toBeUndefined();
     expect(db.__rows[0].status).toBe('community_review');
+    expect(db.__rows[0].stage_entered_at).toBeNull();
     expect(db.__queue).toHaveLength(1);
   });
 });
