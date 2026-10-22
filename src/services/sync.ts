@@ -41,6 +41,7 @@ import {
   syncPendingChapterClaims,
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
+import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import {
   flattenApiPericopeSetGroups,
@@ -1258,6 +1259,7 @@ export async function syncAllUsers(): Promise<void> {
             : undefined;
 
           try {
+            await syncDisplayModeSettingsForUser(userId, token);
             await syncProjects(userIdNum, token);
             await syncMilestones(userIdNum, token);
             const { didFullSync, partialSkipWarning } =
@@ -1414,6 +1416,7 @@ export async function syncAllData(
         await syncPendingChapterClaimsForUser(userId);
         await masterPromise;
         await syncPericopeSets(sessionToken);
+        await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
         await syncProjects(userId, sessionToken);
         await syncMilestones(userId, sessionToken);
 

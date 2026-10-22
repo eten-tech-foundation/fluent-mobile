@@ -40,6 +40,7 @@ import {
   getBundledPericopeSetVersion,
 } from './pericopeSets';
 import { FIA_SET_ID } from '../../assets/pericope-sets/pericopeSetVersions';
+import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
 
 jest.mock('./authToken', () => ({
   authToken: {
@@ -64,7 +65,19 @@ jest.mock('./api', () => ({
     getBibleTexts: jest.fn(),
     getPericopeSets: jest.fn().mockResolvedValue([]),
     getPericopeSet: jest.fn().mockResolvedValue({ status: 304, etag: null }),
+    getSelfSettings: jest.fn().mockResolvedValue({
+      settings: null,
+      updatedAt: null,
+    }),
+    putSelfSettings: jest.fn().mockResolvedValue({
+      settings: null,
+      updatedAt: null,
+    }),
   },
+}));
+
+jest.mock('./displayModeSettingsSync', () => ({
+  syncDisplayModeSettingsForUser: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('./connectivity', () => ({
@@ -805,6 +818,10 @@ describe('syncAllData auth handling', () => {
     await syncAllData(true);
 
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '2',
+      'valid-token',
+    );
   });
 
   it('continues chapter assignment sync after pending claim soft-fail', async () => {
@@ -890,6 +907,14 @@ describe('syncAllUsers auth handling', () => {
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(1, 'user-1-token');
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '1',
+      'user-1-token',
+    );
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '2',
+      'user-2-token',
+    );
     expect(authToken.set).not.toHaveBeenCalled();
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('1', expect.any(String));
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));

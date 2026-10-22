@@ -15,12 +15,17 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react-native';
-import { formatByteSize } from '../../utils/formatByteSize';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import type { PrepareOfflineDownloadSession } from '../../hooks/usePrepareOfflineDownload';
+import {
+  formatDownloadTotalLabel,
+  type DownloadSizeSummary,
+} from '../../utils/prepareOfflineSizeSemantics';
 
 interface PrepareOfflineDownloadFooterProps {
   totalBytes: number;
+  /** When true, Total must not claim an exact complete byte total (#756). */
+  totalBytesIncomplete?: boolean;
   canDownload: boolean;
   downloadButtonLabel: string;
   session: PrepareOfflineDownloadSession;
@@ -37,6 +42,7 @@ interface PrepareOfflineDownloadFooterProps {
 
 export function PrepareOfflineDownloadFooter({
   totalBytes,
+  totalBytesIncomplete = false,
   canDownload,
   downloadButtonLabel,
   session,
@@ -56,13 +62,17 @@ export function PrepareOfflineDownloadFooter({
   const footerHint = transportBlocked
     ? transportBlockedMessage
     : downloadErrorMessage;
+  const totalSummary: DownloadSizeSummary = {
+    knownBytes: totalBytes,
+    hasUnknown: totalBytesIncomplete,
+  };
 
   return (
     <View style={styles.footer} testID="prepare-offline-download-footer">
       <View style={styles.totalRow}>
         <Text style={styles.totalLabel}>Total download</Text>
         <Text style={styles.totalValue} testID="prepare-offline-total-bytes">
-          {formatByteSize(totalBytes)}
+          {formatDownloadTotalLabel(totalSummary)}
         </Text>
       </View>
 
