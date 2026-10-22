@@ -1,0 +1,46 @@
+{
+  "$schemaComment": "Structural known-complete bounded positive for pfo-download static admission unit tests only. Not an execute authorization and not a general 5MB safety claim — predownloadSizeOracle is absent (fail closed). Never backfill sizes from after-download bytes.",
+  "version": 1,
+  "criterion": "C-0051-06-known-complete-structural",
+  "sourceIssues": [51, 756],
+  "admission": {
+    "id": "c0051-matthew1-known-complete",
+    "kind": "pfo-project-download",
+    "projectId": "13",
+    "actorUserId": "9",
+    "restoreUserId": "12",
+    "book": "Matthew",
+    "chaptersExact": [1],
+    "maxBytes": 5242880,
+    "observedUiTotalLabel": "2.4 MB",
+    "requireKnownPositiveTotal": true,
+    "requireCompleteKnownSizes": true,
+    "sizeCompleteness": "all-known-complete",
+    "requireEmptyQueue": true,
+    "requirePreserveTakes": 11,
+    "requirePreserveCacheFiles": 19,
+    "allowGenericUnlimitedDownload": false
+  },
+  "payload": {
+    "strategy": "known-complete-no-unknown-images",
+    "maxBytesSafetyBound": 5242880,
+    "sizeCompleteness": "all-known-complete",
+    "observedUiTotalLabel": "2.4 MB",
+    "observedUiDownloadLabel": "Download 2.4 MB",
+    "observedGroups": [
+      { "name": "Source Bible", "items": ["Text Included", "Audio 1.7 MB"], "tier": 1 },
+      { "name": "Translation Notes", "items": ["Text 70 KB"], "tier": 1 },
+      { "name": "Translation Words", "items": ["Text 337 KB"], "tier": 2 },
+      { "name": "Translation Questions", "items": ["Text 3 KB"], "tier": 2 },
+      { "name": "Bible Commentary", "items": ["Text 222 KB"], "tier": 3 }
+    ],
+    "predownloadSizeOracle": null,
+    "predownloadOracleGap": "Structural admission may PASS static guard; execute remains fail-closed until an independent pre-download size oracle exists (not after-download bytes)."
+  },
+  "baseline": {
+    "queueRowsBefore": 0,
+    "cacheFileCount": 19,
+    "prefsActive": "12",
+    "prefsKnown": ["10", "9", "12"]
+  }
+}
