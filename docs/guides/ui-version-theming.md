@@ -67,8 +67,9 @@ Do **not** import `src/theme/next*` from app/UI code (ESLint bans `theme/next`).
 For Next components, `Theme` also carries `roles` (Foundations role names,
 Hardware by default, nearest Legacy colors in Legacy), `elevation` (effect
 styles as `boxShadow` strings built from roles), `motion`, `opacity`,
-`controlSizes` and `stroke`, plus `radius.xs` and `spacing.xxs`. They're
-present in `legacy.ts` and independently represented in `nextBaseline.ts`;
+`controlSizes`, `stroke`, the named type styles (`type`, `typeTelugu`,
+`fontScale`), plus `radius.xs` and `spacing.xxs`. They're present in
+`legacy.ts` and independently represented in `nextBaseline.ts`;
 `tokens.ts` is untouched.
 
 ### Unmapped Foundations steps

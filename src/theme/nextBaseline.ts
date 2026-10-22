@@ -153,6 +153,89 @@ export const nextBaseline = {
     '1': 1,
     '2': 2,
   },
+  type: {
+    body: {
+      fontSize: 18,
+      fontWeight: '400',
+      includeFontPadding: false,
+      lineHeight: 24,
+    },
+    heading: {
+      fontSize: 42,
+      fontWeight: '700',
+      includeFontPadding: false,
+      lineHeight: 48,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      includeFontPadding: false,
+      lineHeight: 20,
+    },
+    lead: {
+      fontSize: 32,
+      fontWeight: '400',
+      includeFontPadding: false,
+      lineHeight: 40,
+    },
+    meta: {
+      fontFamily: 'monospace',
+      fontSize: 14,
+      fontWeight: '400',
+      includeFontPadding: false,
+      lineHeight: 20,
+      textTransform: 'uppercase',
+    },
+    overline: {
+      fontFamily: 'monospace',
+      fontSize: 20,
+      fontWeight: '500',
+      includeFontPadding: false,
+      lineHeight: 24,
+      textTransform: 'uppercase',
+    },
+    reading: {
+      fontSize: 42,
+      fontWeight: '400',
+      includeFontPadding: false,
+      lineHeight: 52,
+    },
+    readingStrong: {
+      fontSize: 42,
+      fontWeight: '700',
+      includeFontPadding: false,
+      lineHeight: 52,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '600',
+      includeFontPadding: false,
+      lineHeight: 24,
+    },
+  },
+  typeTelugu: {
+    body: {
+      lineHeight: 28,
+    },
+    heading: {
+      lineHeight: 64,
+    },
+    lead: {
+      lineHeight: 48,
+    },
+    reading: {
+      lineHeight: 64,
+    },
+    readingStrong: {
+      lineHeight: 64,
+    },
+    title: {
+      lineHeight: 28,
+    },
+  },
+  fontScale: {
+    readingMax: 1.3,
+  },
   typography: {
     fontFamily: 'System',
     lineHeights: {
