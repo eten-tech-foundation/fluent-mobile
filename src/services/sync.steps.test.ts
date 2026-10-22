@@ -1119,14 +1119,28 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
     __resetFullSyncSingleFlightForTests();
   });
 
-  it('does not call /self/settings for displayMode during syncAllUsers', async () => {
-    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
-      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
-    );
+  it.each([
+    ['verse', { displayMode: 'verse', suppressTooltip: true }],
+    ['pericope', { displayMode: 'pericope', suppressTooltip: true }],
+    ['null', { displayMode: null, suppressTooltip: true }],
+    ['omitted', { suppressTooltip: true }],
+  ] as const)(
+    'does not call /self/settings when capable remote displayMode is %s',
+    async (_label, settings) => {
+      (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+        userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+      );
+      (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+        settings,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        settingsCapabilities: { partialMerge: true, displayMode: true },
+      });
 
-    await syncAllUsers();
+      await syncAllUsers();
 
-    expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
-    expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
-  });
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
+      expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
+      expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
+    },
+  );
 });

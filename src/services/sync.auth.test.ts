@@ -815,6 +815,15 @@ describe('syncAllData auth handling', () => {
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
     );
+    // Capable remote displayMode available — sync must still never call settings (#777).
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: {
+        displayMode: 'pericope',
+        suppressTooltip: true,
+      },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
 
     await syncAllData(true);
 
@@ -900,6 +909,15 @@ describe('syncAllUsers auth handling', () => {
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+    // Capable remote displayMode available — sync must still never call settings (#777).
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: {
+        displayMode: 'verse',
+        suppressTooltip: true,
+      },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
 
     await syncAllUsers();
 
