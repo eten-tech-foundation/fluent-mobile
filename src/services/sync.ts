@@ -41,6 +41,7 @@ import {
   syncPendingChapterClaims,
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
+import { syncPendingStageAdvances } from './stageAdvanceSync';
 import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import {
@@ -491,6 +492,29 @@ export async function syncPendingChapterClaimsForUser(userId: number) {
         failed: 1,
       }
     );
+  }
+}
+
+export async function syncPendingStageAdvancesForUser(
+  userId: number,
+  token?: string,
+) {
+  const { isOnline } = await getConnectivitySnapshot();
+  if (!isOnline) {
+    return { synced: 0, dropped: 0, failed: 0 };
+  }
+
+  try {
+    return await syncPendingStageAdvances(userId, token);
+  } catch (error) {
+    if (isAuthError(error)) {
+      throw error;
+    }
+    log.warn('Stage-advance sync failed; leaving rows pending', {
+      userId,
+      error: getErrorMessage(error),
+    });
+    return { synced: 0, dropped: 0, failed: 1 };
   }
 }
 
@@ -1223,9 +1247,10 @@ export async function syncAllUsers(): Promise<void> {
           });
         }
 
-        for (const { userId, userIdNum } of usersWithCreds) {
+        for (const { userId, userIdNum, token } of usersWithCreds) {
           try {
             await syncPendingChapterClaimsForUser(userIdNum);
+            await syncPendingStageAdvancesForUser(userIdNum, token);
           } catch (error) {
             if (isAuthError(error)) {
               if (userId === currentActiveUserId) {
@@ -1414,6 +1439,7 @@ export async function syncAllData(
         // master data (fluent-api#373 / #670 follow-up).
         masterPromise = syncMasterData(sessionToken);
         await syncPendingChapterClaimsForUser(userId);
+        await syncPendingStageAdvancesForUser(userId, sessionToken);
         await masterPromise;
         await syncPericopeSets(sessionToken);
         await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
@@ -1656,6 +1682,7 @@ export async function refreshChapterMetadataIfOnline(
       // Push offline claims before assignment reconcile so list refresh does
       // not clear provisional "mine" ahead of the claim POST (#611 / #273).
       await syncPendingChapterClaimsForUser(userId);
+      await syncPendingStageAdvancesForUser(userId, sessionToken);
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
       await maybeBackfillMasterDataOnRefresh(sessionToken);

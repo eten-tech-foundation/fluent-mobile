@@ -1,33 +1,22 @@
-jest.mock('./api', () => ({
-  FluentAPI: {
-    checkServerReachable: jest.fn(),
-    submitChapterAssignment: jest.fn(),
-  },
-}));
-
 jest.mock('../db/repository', () => ({
   updateChapterAssignmentStatusLocally: jest.fn(),
 }));
 
-import { FluentAPI } from './api';
 import { updateChapterAssignmentStatusLocally } from '../db/repository';
 import { confirmStageAdvancement } from './stageAdvance';
 
-const mockReachable = jest.mocked(FluentAPI.checkServerReachable);
-const mockSubmit = jest.mocked(FluentAPI.submitChapterAssignment);
 const mockLocalUpdate = jest.mocked(updateChapterAssignmentStatusLocally);
 
 describe('confirmStageAdvancement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockLocalUpdate.mockResolvedValue(undefined);
-    mockReachable.mockResolvedValue(true);
-    mockSubmit.mockResolvedValue({ chapterAssignmentId: 7 });
   });
 
-  it('writes local status then submits when online', async () => {
+  it('writes the local status and does not call the server', async () => {
     await confirmStageAdvancement({
       chapterAssignmentId: 7,
+      userId: 4,
       destination: {
         nextStatus: 'peer_check',
         buttonLabel: 'Send to Peer Check',
@@ -35,13 +24,13 @@ describe('confirmStageAdvancement', () => {
       },
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'peer_check', undefined);
-    expect(mockSubmit).toHaveBeenCalledWith(7);
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'peer_check', undefined, 4);
   });
 
-  it('writes local Peer Checker when assigning on Send to Community Review', async () => {
+  it('writes the local peer checker when sending to Community Review', async () => {
     await confirmStageAdvancement({
       chapterAssignmentId: 7,
+      userId: 4,
       destination: {
         nextStatus: 'community_review',
         buttonLabel: 'Send to Community Review',
@@ -50,58 +39,22 @@ describe('confirmStageAdvancement', () => {
       assignPeerCheckerId: 99,
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'community_review', 99);
-    expect(mockSubmit).toHaveBeenCalledWith(7);
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'community_review', 99, 4);
   });
 
-  it('skips submit when offline after local write', async () => {
-    mockReachable.mockResolvedValue(false);
-
-    await confirmStageAdvancement({
-      chapterAssignmentId: 7,
-      destination: {
-        nextStatus: 'community_review',
-        buttonLabel: 'Send to Community Review',
-        destinationLabel: 'Community Review',
-      },
-    });
-
-    expect(mockLocalUpdate).toHaveBeenCalledWith(
-      7,
-      'community_review',
-      undefined,
-    );
-    expect(mockSubmit).not.toHaveBeenCalled();
-  });
-
-  it('does not throw when submit fails after local write', async () => {
-    mockSubmit.mockRejectedValue(new Error('network'));
+  it('propagates a local write failure', async () => {
+    mockLocalUpdate.mockRejectedValue(new Error('sqlite'));
 
     await expect(
       confirmStageAdvancement({
         chapterAssignmentId: 7,
+        userId: 4,
         destination: {
           nextStatus: 'peer_check',
           buttonLabel: 'Send to Peer Check',
           destinationLabel: 'Peer Check',
         },
       }),
-    ).resolves.toBeUndefined();
-
-    expect(mockLocalUpdate).toHaveBeenCalled();
-  });
-
-  it('writes local status then submits for a late-chain stage (Consultant Check → Complete)', async () => {
-    await confirmStageAdvancement({
-      chapterAssignmentId: 7,
-      destination: {
-        nextStatus: 'complete',
-        buttonLabel: 'Send to Complete',
-        destinationLabel: 'Complete',
-      },
-    });
-
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
-    expect(mockSubmit).toHaveBeenCalledWith(7);
+    ).rejects.toThrow('sqlite');
   });
 });

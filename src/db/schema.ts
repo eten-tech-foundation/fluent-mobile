@@ -185,6 +185,20 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_ccq_chapter_assignment ON chapter_claim_queue(chapter_assignment_id);`,
   `CREATE INDEX IF NOT EXISTS idx_ccq_status ON chapter_claim_queue(sync_status);`,
 
+  `CREATE TABLE IF NOT EXISTS stage_advance_queue (
+      id                    INTEGER PRIMARY KEY,
+      chapter_assignment_id INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,
+      user_id               INTEGER NOT NULL REFERENCES users(id),
+      from_status           TEXT NOT NULL,
+      to_status             TEXT NOT NULL,
+      peer_checker_id       INTEGER,
+      created_at            TEXT NOT NULL,
+      sync_status           TEXT NOT NULL DEFAULT 'pending'
+    );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_saq_chapter_assignment ON stage_advance_queue(chapter_assignment_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_saq_status ON stage_advance_queue(sync_status);`,
+
   `CREATE TABLE IF NOT EXISTS pericope_sets (
       id          INTEGER PRIMARY KEY,
       name        TEXT NOT NULL,

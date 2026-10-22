@@ -1,5 +1,6 @@
 import { WorkflowBadgeStage } from '../types/db/types';
 import { workflowStages } from '../theme/tokens';
+import { STAGE_STATUS_ORDER } from './stageAdvancement';
 
 /** Matches fluent-api CHAPTER_ASSIGNMENT_STATUS.complete */
 const COMPLETE_STATUSES = new Set(['complete']);
@@ -57,4 +58,39 @@ export function getBadgeStage(
 
 export function getWorkflowStageLabel(stage: WorkflowBadgeStage): string {
   return workflowStages[stage].label;
+}
+
+function stageRank(status: string | null | undefined): number | null {
+  if (status === null || status === undefined) return null;
+  const index = STAGE_STATUS_ORDER.indexOf(
+    normalizeStatus(status) as (typeof STAGE_STATUS_ORDER)[number],
+  );
+  return index === -1 ? null : index;
+}
+
+/**
+ * Lower workflow stage of the two values. A missing status loses to the
+ * defined one, so an undefined server status keeps the local stage (#257).
+ */
+export function pickLowerStageStatus(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): string {
+  if (a === null || a === undefined) return b ?? '';
+  if (b === null || b === undefined) return a;
+  const rankA = stageRank(a);
+  const rankB = stageRank(b);
+  if (rankA === null) return normalizeStatus(b);
+  if (rankB === null) return normalizeStatus(a);
+  return rankA <= rankB ? normalizeStatus(a) : normalizeStatus(b);
+}
+
+export function isStageAhead(
+  serverStatus: string | null | undefined,
+  toStatus: string,
+): boolean {
+  const serverRank = stageRank(serverStatus);
+  const toRank = stageRank(toStatus);
+  if (serverRank === null || toRank === null) return false;
+  return serverRank > toRank;
 }

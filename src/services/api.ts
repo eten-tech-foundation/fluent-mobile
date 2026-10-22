@@ -37,6 +37,7 @@ import {
   type NormalizedClaimChapterAssignmentResponse,
 } from '../types/api/chapterClaim';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
+import type { ApiChapterAssignment } from '../types/api/types';
 import type {
   PutUserSettingsBody,
   UserSettingsResponse,
@@ -318,16 +319,29 @@ export const FluentAPI = {
       token,
     ),
 
+  /** Translator READ of one assignment. Drain compares this status before PATCH (#257). */
+  getChapterAssignment: (
+    chapterAssignmentId: number,
+    token?: string,
+  ): Promise<ApiChapterAssignment> =>
+    authedRequest<ApiChapterAssignment>(
+      `/chapter-assignments/${chapterAssignmentId}`,
+      undefined,
+      token,
+    ),
+
   /**
-   * Advance a chapter assignment to the next workflow stage (online path).
-   * Offline queue / reconnect handling is #257.
+   * Advance a chapter assignment one step. Body stays empty.
+   * Callers that already hold a per-user session pass `token` (#257).
    */
   submitChapterAssignment: (
     chapterAssignmentId: number,
+    token?: string,
   ): Promise<SubmitChapterAssignmentResponse> =>
     authedRequest<SubmitChapterAssignmentResponse>(
       `/chapter-assignments/${chapterAssignmentId}/submit`,
       { method: 'PATCH' },
+      token,
     ),
 
   getBibleTexts: (
