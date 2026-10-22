@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BackHandler,
   PixelRatio,
@@ -18,6 +18,7 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { HardwarePanel } from '../../../components/ui/HardwarePanel';
@@ -59,8 +60,8 @@ const SHEET_SPRING = { damping: 26, stiffness: 220, mass: 1 };
 /** How far the hero drags before a release opens or closes it. */
 const SNAP_AT = 0.35;
 const FLING = 500;
-/** The script shows this many reading lines before the player opens. */
-const PREVIEW_LINES = 3;
+/** The hero shows this many lines of the script at body size. */
+const PREVIEW_LINES = 4;
 
 /**
  * FIA listening steps. Their audio has no source yet (Q11 in
@@ -183,15 +184,22 @@ function Sheet({
   const [actions, setActions] = useState(0);
   const [panel, setPanel] = useState(0);
   const progress = useSharedValue(0);
+  const scriptRef = useRef<ScrollView>(null);
 
   const { spacing } = theme;
-  const lineHeight = readingLineHeight(
-    theme.type.reading.lineHeight,
-    theme.fontScale.readingMax,
-  );
+  // The script grows from body size in the hero to reading size in the
+  // player. maxFontSizeMultiplier caps the glyphs but Android scales
+  // lineHeight by the full font scale, so cap that by hand (figma-to-component.md).
+  const small = theme.type.body;
+  const large = theme.type.reading;
+  const fontScale = PixelRatio.getFontScale();
+  const capped = Math.min(fontScale, theme.fontScale.readingMax);
+  const lineProp = (lineHeight: number) => (lineHeight * capped) / fontScale;
+  const smallLine = lineProp(small.lineHeight);
+  const largeLine = lineProp(large.lineHeight);
   const headerBottom = insets.top + header;
   const scriptTop = headerBottom + title + spacing.lg;
-  const preview = PREVIEW_LINES * lineHeight;
+  const preview = PREVIEW_LINES * small.lineHeight * capped;
   const actionsTop = scriptTop + preview + spacing.lg;
   const collapsed = actionsTop + actions + spacing.xl;
   const measured = header > 0 && title > 0 && actions > 0 && container > 0;
@@ -202,6 +210,8 @@ function Sheet({
   const animateTo = useCallback(
     (open: boolean, velocity = 0) => {
       setExpanded(open);
+      // The hero previews the first verses, wherever the player was scrolled.
+      if (!open) scriptRef.current?.scrollTo({ y: 0, animated: true });
       const target = open ? 1 : 0;
       const done = (finished?: boolean) => {
         'worklet';
@@ -282,7 +292,13 @@ function Sheet({
     titleLayer: { transformOrigin: [0, 0, 0] },
     title: { ...t.type.heading, color: t.roles.fgPrimary },
     reading: { ...t.type.reading, color: t.roles.fgPrimary },
-    verseNumber: { ...t.type.label, color: t.roles.fgSecondary },
+    // No lineHeight, so it follows the script's as that grows.
+    verseNumber: {
+      fontFamily: t.type.label.fontFamily,
+      fontSize: t.type.label.fontSize,
+      fontWeight: t.type.label.fontWeight,
+      color: t.roles.fgSecondary,
+    },
     note: { ...t.type.label, color: t.roles.fgSecondary },
     actions: { gap: t.spacing.lg },
     actionRow: { flexDirection: 'row', gap: t.spacing.xxl },
@@ -336,8 +352,23 @@ function Sheet({
     ),
     height: interpolate(progress.value, [0, 1], [preview, fullScript], 'clamp'),
   }));
+  const textStyle = useAnimatedStyle(() => ({
+    fontSize: interpolate(
+      progress.value,
+      [0, 1],
+      [small.fontSize, large.fontSize],
+      'clamp',
+    ),
+    lineHeight: interpolate(
+      progress.value,
+      [0, 1],
+      [smallLine, largeLine],
+      'clamp',
+    ),
+  }));
+  // Gone before the growing script reaches them.
   const actionsStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.25], [1, 0], 'clamp'),
+    opacity: interpolate(progress.value, [0, 0.12], [1, 0], 'clamp'),
     transform: [
       {
         translateY: interpolate(progress.value, [0, 0.4], [0, 24], 'clamp'),
@@ -386,6 +417,7 @@ function Sheet({
             </Text>
           </Animated.View>
           <Animated.ScrollView
+            ref={scriptRef}
             style={[styles.layer, scriptStyle]}
             scrollEnabled={expanded}
             showsVerticalScrollIndicator={false}
@@ -400,19 +432,17 @@ function Sheet({
                 }
                 testID="passage-script"
               >
-                <Text
-                  style={[styles.reading, { lineHeight }]}
+                <Animated.Text
+                  style={[styles.reading, textStyle]}
                   maxFontSizeMultiplier={theme.fontScale.readingMax}
                 >
                   {passage.verses.map(v => (
                     <Text key={`${v.chapterNumber}:${v.verseNumber}`}>
-                      <Text style={[styles.verseNumber, { lineHeight }]}>
-                        {v.verseNumber}{' '}
-                      </Text>
+                      <Text style={styles.verseNumber}>{v.verseNumber} </Text>
                       {v.text}{' '}
                     </Text>
                   ))}
-                </Text>
+                </Animated.Text>
               </Pressable>
             ) : (
               <Text style={styles.note}>
@@ -513,7 +543,11 @@ function Sheet({
         </Animated.View>
       </GestureDetector>
       <ColorModeScope value="hardware">
-        <Materials reference={passage.reference} />
+        <Materials
+          reference={passage.reference}
+          progress={progress}
+          hidden={expanded}
+        />
       </ColorModeScope>
       <Animated.View
         style={[styles.bottom, bottomStyle]}
@@ -596,17 +630,12 @@ function Footer({
       backgroundColor: t.roles.bgDefault,
       paddingHorizontal: t.spacing.xl,
       paddingVertical: t.spacing.md,
-      gap: t.spacing.md,
     },
-    note: { ...t.type.label, color: t.roles.fgSecondary },
   }));
+  if (!recordMode || takes.length === 0) return null;
   return (
     <View style={styles.footer}>
-      {recordMode ? <Takes takes={takes} onPress={onOpenDrafting} /> : null}
-      <Text style={styles.note}>
-        Playback and recording are coming to this player. For now, the keys open
-        drafting at this passage.
-      </Text>
+      <Takes takes={takes} onPress={onOpenDrafting} />
     </View>
   );
 }
@@ -688,17 +717,28 @@ function Takes({
 }
 
 /**
- * maxFontSizeMultiplier caps the glyphs but not lineHeight, which Android
- * scales by the full font scale (docs/guides/figma-to-component.md).
+ * Figma's passage rows: title and reference, a Progress ring round button.
+ * As the player opens they fade and sink, so the light page reads as
+ * turning into the Hardware panel rising under it.
  */
-function readingLineHeight(lineHeight: number, max: number) {
-  const scale = PixelRatio.getFontScale();
-  return (lineHeight * Math.min(scale, max)) / scale;
-}
-
-/** Figma's passage rows: title and reference, a Progress ring round button. */
-function Materials({ reference }: { reference: string }) {
+function Materials({
+  reference,
+  progress,
+  hidden,
+}: {
+  reference: string;
+  progress: SharedValue<number>;
+  hidden: boolean;
+}) {
+  const sinkStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.45], [1, 0], 'clamp'),
+    transform: [
+      { translateY: interpolate(progress.value, [0, 0.5], [0, 64], 'clamp') },
+      { scale: interpolate(progress.value, [0, 0.5], [1, 0.96], 'clamp') },
+    ],
+  }));
   const styles = useThemedStyles(t => ({
+    page: { flex: 1 },
     list: { paddingHorizontal: t.spacing.xl, paddingBottom: t.spacing.xxl },
     head: { paddingTop: t.spacing.xl, paddingBottom: t.spacing.md },
     heading: { ...t.type.title, color: t.roles.fgPrimary },
@@ -713,28 +753,34 @@ function Materials({ reference }: { reference: string }) {
     meta: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
   return (
-    <ScrollView contentContainerStyle={styles.list}>
-      <View style={styles.head}>
-        <Text style={styles.heading} accessibilityRole="header">
-          Listening materials
-        </Text>
-        <Text style={styles.meta}>Step audio isn't connected yet</Text>
-      </View>
-      {STEPS.map(name => (
-        <View key={name} style={styles.row}>
-          <View style={styles.text}>
-            <Text style={styles.name}>{name}</Text>
-            <Text style={styles.meta}>{reference}</Text>
-          </View>
-          <ProgressRing value={0} accessibilityLabel={`${name} listened`}>
-            <RoundButton
-              icon={ArrowRight}
-              accessibilityLabel={`Play ${name}`}
-              disabled
-            />
-          </ProgressRing>
+    <Animated.View
+      style={[styles.page, sinkStyle]}
+      pointerEvents={hidden ? 'none' : 'auto'}
+      importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
+    >
+      <ScrollView contentContainerStyle={styles.list}>
+        <View style={styles.head}>
+          <Text style={styles.heading} accessibilityRole="header">
+            Listening materials
+          </Text>
+          <Text style={styles.meta}>Step audio isn't connected yet</Text>
         </View>
-      ))}
-    </ScrollView>
+        {STEPS.map(name => (
+          <View key={name} style={styles.row}>
+            <View style={styles.text}>
+              <Text style={styles.name}>{name}</Text>
+              <Text style={styles.meta}>{reference}</Text>
+            </View>
+            <ProgressRing value={0} accessibilityLabel={`${name} listened`}>
+              <RoundButton
+                icon={ArrowRight}
+                accessibilityLabel={`Play ${name}`}
+                disabled
+              />
+            </ProgressRing>
+          </View>
+        ))}
+      </ScrollView>
+    </Animated.View>
   );
 }
