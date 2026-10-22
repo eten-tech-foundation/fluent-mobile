@@ -2,6 +2,7 @@ import { isApiError } from '../types/api/errors';
 import {
   verseAudioBlobKey,
   type VerseAudioConflictStatus,
+  type VerseAudioGranularity,
   type VerseAudioListResponse,
   type VerseAudioResponse,
   type VerseAudioTakeResponse,
@@ -88,6 +89,97 @@ function isConflictStatus(value: unknown): value is VerseAudioConflictStatus {
   return value === 'clean' || value === 'conflict' || value === 'resolved';
 }
 
+function isGranularity(value: unknown): value is VerseAudioGranularity {
+  return value === 'verse' || value === 'pericope';
+}
+
+function isNullablePositiveInt(value: unknown): value is number | null {
+  if (value === null) return true;
+  return isFiniteNumber(value) && Number.isInteger(value) && value > 0;
+}
+
+/**
+ * Optional selected-canonical coverage (API455+).
+ * Absent keys → older payload (omit fields). Present keys must be well-typed.
+ */
+function parseOptionalCoverage(
+  body: Record<string, unknown>,
+  label: string,
+): {
+  granularity?: VerseAudioGranularity;
+  startChapter?: number | null;
+  startVerse?: number | null;
+  endChapter?: number | null;
+  endVerse?: number | null;
+} {
+  const hasGranularity = Object.prototype.hasOwnProperty.call(
+    body,
+    'granularity',
+  );
+  const hasStartChapter = Object.prototype.hasOwnProperty.call(
+    body,
+    'startChapter',
+  );
+  const hasStartVerse = Object.prototype.hasOwnProperty.call(
+    body,
+    'startVerse',
+  );
+  const hasEndChapter = Object.prototype.hasOwnProperty.call(
+    body,
+    'endChapter',
+  );
+  const hasEndVerse = Object.prototype.hasOwnProperty.call(body, 'endVerse');
+  const anyPresent =
+    hasGranularity ||
+    hasStartChapter ||
+    hasStartVerse ||
+    hasEndChapter ||
+    hasEndVerse;
+
+  if (!anyPresent) {
+    return {};
+  }
+
+  if (!hasGranularity || !isGranularity(body.granularity)) {
+    throw createApiError(
+      500,
+      `Malformed verse audio response: ${label} invalid granularity`,
+    );
+  }
+  if (!hasStartChapter || !isNullablePositiveInt(body.startChapter)) {
+    throw createApiError(
+      500,
+      `Malformed verse audio response: ${label} invalid startChapter`,
+    );
+  }
+  if (!hasStartVerse || !isNullablePositiveInt(body.startVerse)) {
+    throw createApiError(
+      500,
+      `Malformed verse audio response: ${label} invalid startVerse`,
+    );
+  }
+  if (!hasEndChapter || !isNullablePositiveInt(body.endChapter)) {
+    throw createApiError(
+      500,
+      `Malformed verse audio response: ${label} invalid endChapter`,
+    );
+  }
+  if (!hasEndVerse || !isNullablePositiveInt(body.endVerse)) {
+    throw createApiError(
+      500,
+      `Malformed verse audio response: ${label} invalid endVerse`,
+    );
+  }
+
+  return {
+    granularity: body.granularity,
+    startChapter: body.startChapter,
+    startVerse: body.startVerse,
+    endChapter: body.endChapter,
+    endVerse: body.endVerse,
+  };
+}
+
 function parseVerseAudioTake(data: unknown): VerseAudioTakeResponse {
   if (data === null || typeof data !== 'object') {
     throw createApiError(500, 'Malformed verse audio response: invalid take');
@@ -147,6 +239,7 @@ function parseVerseAudioTake(data: unknown): VerseAudioTakeResponse {
     sizeBytes: body.sizeBytes as number,
     durationSeconds,
     contentHash: body.contentHash,
+    ...parseOptionalCoverage(body, 'take'),
     downloadUrl: body.downloadUrl,
     createdAt: body.createdAt,
     updatedAt: body.updatedAt,
@@ -206,7 +299,12 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
       'Malformed verse audio response: missing contentType',
     );
   }
-  if (typeof body.downloadUrl !== 'string' || body.downloadUrl.length === 0) {
+  // API455+: null when active is null/unmatched/empty; string when matched.
+  // Empty string is still malformed. Older non-null string payloads remain valid.
+  if (
+    body.downloadUrl !== null &&
+    (typeof body.downloadUrl !== 'string' || body.downloadUrl.length === 0)
+  ) {
     throw createApiError(
       500,
       'Malformed verse audio response: missing downloadUrl',
@@ -243,12 +341,13 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
     durationSeconds,
     versionToken: body.versionToken as number,
     conflictStatus: body.conflictStatus,
+    ...parseOptionalCoverage(body, 'recording'),
     activeTakeId:
       body.activeTakeId === null || body.activeTakeId === undefined
         ? null
         : (body.activeTakeId as number),
     verseNumber: body.verseNumber as number,
-    downloadUrl: body.downloadUrl,
+    downloadUrl: body.downloadUrl as string | null,
     takes: body.takes.map(parseVerseAudioTake),
     createdAt: body.createdAt,
     updatedAt: body.updatedAt,

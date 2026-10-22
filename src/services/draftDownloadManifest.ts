@@ -1,6 +1,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import type { VerseAudioConflictStatus } from '../types/api/verseAudio';
-import type { DraftDownloadRole } from '../types/draftDownload/types';
+import type {
+  DraftAudioCoverage,
+  DraftDownloadRole,
+} from '../types/draftDownload/types';
 import { ensureDownloadsDir, fileExists } from './downloadStorage';
 
 export type DraftDownloadManifestUnit = {
@@ -10,6 +13,8 @@ export type DraftDownloadManifestUnit = {
   activeTakeId: number;
   contentHash: string;
   resourceId: string;
+  /** Exact active-take coverage; null for older manifests / payloads. */
+  coverage: DraftAudioCoverage | null;
 };
 
 export type DraftDownloadManifest = {
@@ -82,7 +87,14 @@ export async function readDraftDownloadManifest(
     if (!matchesIdentity(parsed, identity)) {
       return null;
     }
-    return parsed;
+    // Pre-#784 on-disk units omit coverage — normalize rather than invent ranges.
+    return {
+      ...parsed,
+      units: (parsed.units ?? []).map(unit => ({
+        ...unit,
+        coverage: unit.coverage ?? null,
+      })),
+    };
   } catch {
     return null;
   }

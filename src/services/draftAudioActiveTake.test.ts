@@ -41,6 +41,7 @@ describe('resolveActiveTakeDownload', () => {
     expect(resolved.take.id).toBe(10);
     expect(resolved.take.downloadUrl).toBe('https://example.test/t10');
     expect(resolved.conflictStatus).toBe('clean');
+    expect(resolved.coverage).toBeNull();
   });
 
   it('rejects null activeTakeId instead of top-level / last-take fallback', () => {
@@ -58,12 +59,58 @@ describe('resolveActiveTakeDownload', () => {
     ).toThrow(/not present in takes/);
   });
 
+  it('rejects empty takes without inventing a take', () => {
+    expect(() =>
+      resolveActiveTakeDownload({
+        ...base,
+        activeTakeId: 10,
+        takes: [],
+        downloadUrl: null,
+      }),
+    ).toThrow(/not present in takes/);
+  });
+
   it('preserves conflict status without inventing product behavior', () => {
     const resolved = resolveActiveTakeDownload({
       ...base,
       conflictStatus: 'conflict',
     });
     expect(resolved.conflictStatus).toBe('conflict');
+  });
+
+  it('selects older non-last active over newer different-granularity take', () => {
+    const resolved = resolveActiveTakeDownload({
+      ...base,
+      activeTakeId: 10,
+      downloadUrl: 'https://example.test/t10',
+      takes: [
+        {
+          ...take(10),
+          granularity: 'verse',
+          startChapter: 1,
+          startVerse: 3,
+          endChapter: 1,
+          endVerse: 3,
+        },
+        {
+          ...take(20, 'https://example.test/t20'),
+          granularity: 'pericope',
+          startChapter: 1,
+          startVerse: 3,
+          endChapter: 1,
+          endVerse: 8,
+        },
+      ],
+    });
+    expect(resolved.take.id).toBe(10);
+    expect(resolved.take.contentHash).toBe('hash-10');
+    expect(resolved.coverage).toEqual({
+      granularity: 'verse',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 3,
+    });
   });
 
   it('maps content types to file extensions', () => {

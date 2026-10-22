@@ -838,6 +838,7 @@ export async function startDraftDownload(
         audio.take.id,
         audio.take.contentHash,
       ),
+      coverage: audio.coverage,
     }));
 
     const keepIds = new Set<string>([
@@ -1042,6 +1043,7 @@ export async function getDraftChapterLocalBundle(
       conflictStatus,
       activeTakeId: meta.activeTakeId,
       contentHash: meta.contentHash,
+      coverage: meta.coverage ?? null,
       localPlaybackUri,
       draftText: verse?.content ?? null,
     });
