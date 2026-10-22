@@ -37,6 +37,10 @@ import {
   type NormalizedClaimChapterAssignmentResponse,
 } from '../types/api/chapterClaim';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
+import type {
+  PutUserSettingsBody,
+  UserSettingsResponse,
+} from '../types/api/userSettings';
 import { checkServerReachable } from './connectivity';
 import type {
   ApiPericopeSetPayload,
@@ -246,27 +250,46 @@ export const FluentAPI = {
     ),
 
   getUserProjects: (
-    userId: number,
+    _userId: number,
     token?: string,
   ): Promise<UserProjectsResponse> =>
-    authedRequest<UserProjectsResponse>(
-      `/users/${userId}/projects`,
-      undefined,
-      token,
-    ),
+    authedRequest<UserProjectsResponse>('/self/projects', undefined, token),
 
   getUserMilestones: (
-    userId: number,
+    _userId: number,
     token?: string,
   ): Promise<UserMilestonesResponse> =>
-    authedRequest<UserMilestonesResponse>(
-      `/users/${userId}/milestones`,
-      undefined,
+    authedRequest<UserMilestonesResponse>('/self/milestones', undefined, token),
+
+  /**
+   * Account settings (#754 / fluent-api#434). Pass an explicit bearer for the
+   * target account — do not rely on mutating the global auth token mid-sync.
+   * Responses may include top-level `settingsCapabilities` (not stored keys).
+   */
+  getSelfSettings: (token?: string): Promise<UserSettingsResponse> =>
+    authedRequest<UserSettingsResponse>('/self/settings', undefined, token),
+
+  /**
+   * Partial settings update. Absent keys are untouched server-side when
+   * `settingsCapabilities.partialMerge` is true; explicit `displayMode: null`
+   * deletes only that key. Mobile must GET capabilities before calling this
+   * for displayMode-only writes.
+   */
+  putSelfSettings: (
+    body: PutUserSettingsBody,
+    token?: string,
+  ): Promise<UserSettingsResponse> =>
+    authedRequest<UserSettingsResponse>(
+      '/self/settings',
+      {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      },
       token,
     ),
 
   getChapterAssignments: (
-    userId: number,
+    _userId: number,
     updatedAfter?: string,
     excludeProjectIds?: number[],
     token?: string,
@@ -278,7 +301,7 @@ export const FluentAPI = {
     }
     const query = params.toString();
     return authedRequest<ChapterAssignmentsResponse>(
-      `/users/${userId}/chapter-assignments/all${query ? `?${query}` : ''}`,
+      `/self/chapter-assignments/all${query ? `?${query}` : ''}`,
       undefined,
       token,
     );
@@ -286,11 +309,11 @@ export const FluentAPI = {
 
   /** Role-filtered assignments — matches web My Work / My History. */
   getUserChapterAssignments: (
-    userId: number,
+    _userId: number,
     token?: string,
   ): Promise<UserChapterAssignmentsResponse> =>
     authedRequest<UserChapterAssignmentsResponse>(
-      `/users/${userId}/chapter-assignments`,
+      '/self/chapter-assignments',
       undefined,
       token,
     ),

@@ -1,22 +1,14 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
-import { Key, type KeyIconProps } from '../../../components/ui/Key';
+import {
+  PauseFill,
+  PlayFill,
+  SkipBackFill,
+  SkipForwardFill,
+} from '../../../components/ui/icons';
+import { Key } from '../../../components/ui/Key';
 import { KeyDeck } from '../../../components/ui/KeyDeck';
 import { useThemedStyles } from '../../../theme/useTheme';
-
-/** Figma keys use filled Phosphor glyphs; fill the Lucide equivalents to match. */
-function filled(Icon: LucideIcon) {
-  return function FilledIcon({ color, size }: KeyIconProps) {
-    return <Icon color={color} fill={color} size={size} />;
-  };
-}
-
-const PlayIcon = filled(Play);
-const PauseIcon = filled(Pause);
-const SkipBackIcon = filled(SkipBack);
-const SkipForwardIcon = filled(SkipForward);
 
 const VERSE_COUNT = 5;
 
@@ -54,7 +46,7 @@ export function KeyEntry() {
         <Text style={styles.demoTitle}>Transport</Text>
         <KeyDeck>
           <Key
-            icon={playing ? PauseIcon : PlayIcon}
+            icon={playing ? PauseFill : PlayFill}
             accessibilityLabel={playing ? 'Pause' : 'Play'}
             announceLatched={false}
             active={playing}
@@ -63,7 +55,7 @@ export function KeyEntry() {
             testID="gallery-key-play"
           />
           <Key
-            icon={SkipBackIcon}
+            icon={SkipBackFill}
             accessibilityLabel="Previous verse"
             onPress={() => setVerse(v => v - 1)}
             disabled={verse === 1}
@@ -71,7 +63,7 @@ export function KeyEntry() {
             testID="gallery-key-back"
           />
           <Key
-            icon={SkipForwardIcon}
+            icon={SkipForwardFill}
             accessibilityLabel="Next verse"
             onPress={() => setVerse(v => v + 1)}
             disabled={verse === VERSE_COUNT}
@@ -87,7 +79,7 @@ export function KeyEntry() {
       <View style={styles.demo}>
         <Text style={styles.demoTitle}>Now playing (72 × 72)</Text>
         <Key
-          icon={playing ? PauseIcon : PlayIcon}
+          icon={playing ? PauseFill : PlayFill}
           accessibilityLabel={playing ? 'Pause' : 'Play'}
           announceLatched={false}
           active={playing}

@@ -28,6 +28,16 @@ export interface ApiTranslationQuestionsResponse {
   items: ApiTranslationQuestionItem[];
 }
 
+/** Aquifer / fluent-api license blob — used for Images & Maps attribution (#594). */
+export interface ApiTranslationImageLicenseInfo {
+  title?: string;
+  copyright?: {
+    dates?: string;
+    holder?: { name?: string; url?: string };
+  };
+  licenses?: Array<Record<string, { name?: string; url?: string }>>;
+}
+
 export interface ApiTranslationImageItem {
   id: number;
   title: string;
@@ -35,6 +45,12 @@ export interface ApiTranslationImageItem {
   url: string;
   thumbnailUrl?: string;
   size?: number;
+  /** Optional caption under the title (fluent-api / Aquifer). */
+  caption?: string;
+  /** Prefers explicit attribution; otherwise derived from licenseInfo (#594). */
+  attribution?: string;
+  /** Opaque until fluent-api stabilizes the shape; parser narrows when object-like. */
+  licenseInfo?: unknown;
 }
 
 export interface ApiTranslationImagesResponse {
@@ -50,6 +66,15 @@ export type ApiPrepareOfflineResourceTier = 1 | 2 | 3;
 
 export type ApiPrepareOfflineResourceKind = 'text' | 'audio' | 'image';
 
+/** Actual coverage of one resource, independent of the manifest request range. */
+export interface ApiPrepareOfflineResourceScope {
+  bookCode?: string;
+  startChapter?: number;
+  endChapter?: number;
+  verseStart?: number;
+  verseEnd?: number;
+}
+
 export interface ApiPrepareOfflineManifestItem {
   id: string;
   tier: ApiPrepareOfflineResourceTier;
@@ -63,6 +88,8 @@ export interface ApiPrepareOfflineManifestItem {
   fileExt: string;
   aquiferContentId?: number;
   languageCode: string;
+  scope?: ApiPrepareOfflineResourceScope;
+  /** Legacy scope fields; a multi-chapter range may be the request range. */
   bookCode?: string;
   startChapter?: number;
   endChapter?: number;

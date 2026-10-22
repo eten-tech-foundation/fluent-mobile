@@ -274,6 +274,22 @@ describe('loadTranslationNotesForUnit', () => {
       expect(getTranslationNotes).toHaveBeenCalledTimes(1);
     });
 
+    it('returns empty offline when nothing is downloaded (#578)', async () => {
+      mockFindRows.mockResolvedValue(null);
+
+      await expect(
+        loadTranslationNotesForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: false,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([]);
+      expect(getTranslationNotes).not.toHaveBeenCalled();
+    });
+
     it('falls back to the API when every downloaded file is unreadable', async () => {
       mockFindRows.mockResolvedValue([
         downloadedRow({ localFilePath: 'file:///downloads/tn.json' }),
@@ -316,6 +332,111 @@ describe('loadTranslationNotesForUnit', () => {
           verseNumber: 2,
         }),
       ).resolves.toEqual([]);
+      expect(getTranslationNotes).not.toHaveBeenCalled();
+    });
+
+    it('loads local rows for every verseRef and only calls API for missing refs', async () => {
+      mockFindRows.mockImplementation(async query => {
+        if (query.verseNumber === 1) {
+          return [
+            downloadedRow({
+              id: '42-7-tn-mrk-14-1',
+              resourceId: 'local-v1',
+              label: 'Mark 14:1',
+              localFilePath: 'file:///downloads/tn-1.json',
+            }),
+          ];
+        }
+        return null;
+      });
+      mockReadJson.mockResolvedValue([
+        {
+          tiptap: {
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'local note for v1' }],
+              },
+            ],
+          },
+        },
+      ]);
+      getTranslationNotes.mockResolvedValue({
+        items: [
+          {
+            ...sampleItem,
+            id: 222,
+            name: 'Mark 14:2',
+            localizedName: 'Mark 14:2',
+          },
+        ],
+      });
+
+      const notes = await loadTranslationNotesForUnit({
+        projectId: 7,
+        userId: 42,
+        isOnline: true,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 1,
+        verseRefs: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      });
+
+      expect(mockFindRows).toHaveBeenCalledTimes(2);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(1);
+      expect(getTranslationNotes).toHaveBeenCalledWith(7, 'MRK', 14, 2, 'eng');
+      expect(notes.map(n => n.id)).toEqual([
+        'tn-api-local-v1-0',
+        'tn-api-222-0',
+      ]);
+    });
+
+    it('returns downloaded pericope notes offline without API fan-out', async () => {
+      mockFindRows.mockImplementation(async query => {
+        if (query.verseNumber === 1) {
+          return [
+            downloadedRow({
+              id: '42-7-tn-mrk-14-1',
+              resourceId: 'local-v1',
+              label: 'Mark 14:1',
+              localFilePath: 'file:///downloads/tn-1.json',
+            }),
+          ];
+        }
+        return null;
+      });
+      mockReadJson.mockResolvedValue([
+        {
+          tiptap: {
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'local note for v1' }],
+              },
+            ],
+          },
+        },
+      ]);
+
+      const notes = await loadTranslationNotesForUnit({
+        projectId: 7,
+        userId: 42,
+        isOnline: false,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 1,
+        verseRefs: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      });
+
+      expect(notes.map(n => n.id)).toEqual(['tn-api-local-v1-0']);
       expect(getTranslationNotes).not.toHaveBeenCalled();
     });
   });

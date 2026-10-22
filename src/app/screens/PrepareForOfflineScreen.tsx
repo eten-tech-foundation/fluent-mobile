@@ -19,6 +19,11 @@ import { ProjectSummary } from '../../types/db/types';
 import { parseUserId } from '../../utils/parseUserId';
 import { parseOptionalNumber } from '../../navigation/routeParams';
 import { theme } from '../../theme';
+import {
+  PREPARE_OFFLINE_MANIFEST_LOAD_ERROR,
+  PREPARE_OFFLINE_MANIFEST_LOADING,
+  PREPARE_OFFLINE_NO_RESOURCES_FOR_SELECTION,
+} from '../../constants/messages';
 import { ChapterSelectionAccordion } from '../prepare-offline/ChapterSelectionAccordion';
 import { PrepareOfflineDownloadFooter } from '../prepare-offline/PrepareOfflineDownloadFooter';
 import { PrepareOfflineResourcesSection } from '../prepare-offline/PrepareOfflineResourcesSection';
@@ -65,7 +70,6 @@ export default function PrepareForOfflineScreen() {
 
   const {
     catalog,
-    totalBytes,
     selectedItems,
     canDownload,
     manifestLoading,
@@ -99,6 +103,8 @@ export default function PrepareForOfflineScreen() {
     busy,
     catalogWithProgress,
     downloadButtonLabel,
+    totalBytes,
+    totalBytesIncomplete,
     canDownload: canDownloadNow,
     inventoryRefreshSignal,
     handleDownload,
@@ -135,8 +141,28 @@ export default function PrepareForOfflineScreen() {
     setPickedProjectId(project.id);
   }, []);
 
-  const showDownloadFooter =
-    !loading && !error && !manifestLoading && !manifestError;
+  // Keep Total download / Download visible across chapter select/deselect.
+  // Manifest loading or failure must not remove the control (#702) — surface
+  // status in the footer hint instead.
+  const showDownloadFooter = !loading && !error;
+
+  const selectionFooterMessage = useMemo(() => {
+    if (selectedCount < 1) {
+      return undefined;
+    }
+    if (manifestLoading) {
+      return PREPARE_OFFLINE_MANIFEST_LOADING;
+    }
+    if (manifestError) {
+      return PREPARE_OFFLINE_MANIFEST_LOAD_ERROR;
+    }
+    if (catalog.items.length === 0) {
+      return PREPARE_OFFLINE_NO_RESOURCES_FOR_SELECTION;
+    }
+    return undefined;
+  }, [selectedCount, manifestLoading, manifestError, catalog.items.length]);
+
+  const footerHintMessage = selectionFooterMessage ?? downloadErrorMessage;
 
   const showStorageSection =
     projectId !== null && projectId !== undefined && !loading && !error;
@@ -203,13 +229,14 @@ export default function PrepareForOfflineScreen() {
           {showDownloadFooter ? (
             <PrepareOfflineDownloadFooter
               totalBytes={totalBytes}
+              totalBytesIncomplete={totalBytesIncomplete}
               canDownload={canDownloadNow}
               downloadButtonLabel={downloadButtonLabel}
               session={session}
-              busy={busy}
+              busy={busy || manifestLoading}
               transportBlocked={transportBlocked}
               transportBlockedMessage={transportBlockedMessage}
-              downloadErrorMessage={downloadErrorMessage}
+              downloadErrorMessage={footerHintMessage}
               onDownload={() => void handleDownload()}
               onPause={() => void pause()}
               onResume={() => void resume()}

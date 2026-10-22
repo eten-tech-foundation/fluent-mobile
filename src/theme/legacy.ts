@@ -13,6 +13,11 @@ import { homeListContent, listCard, workflowBadge } from './layout';
 import { headerLayout } from './iconSpecs';
 import { legacyRoles } from './legacyRoles';
 import { buildElevation } from './elevation';
+import {
+  buildTypeStyles,
+  systemFontFamilies,
+  teluguTypeOverrides,
+} from './typeStyles';
 
 /** Frozen Legacy theme — matches today's shipped UI token values. */
 export const legacyTheme = {
@@ -29,7 +34,13 @@ export const legacyTheme = {
     easeStandard: { x1: 0.2, y1: 0, x2: 0, y2: 1 },
   },
   opacity: { disabled: 0.4 },
-  controlSizes: { icon24: 24, icon32: 32 },
+  controlSizes: { icon20: 20, icon24: 24, icon32: 32 },
+  /** Figma `stroke/1` (rims on screen buttons), `stroke/2` (hardware bevels). */
+  stroke: { 1: 1, 2: 2 },
+  /** Figma named type styles; no Legacy screen uses them, so same metrics. */
+  type: buildTypeStyles(systemFontFamilies.sans, systemFontFamilies.mono),
+  typeTelugu: teluguTypeOverrides,
+  fontScale: { readingMax: 1.3 },
   workflowBadges,
   workflowStages,
   recordControlSizes,

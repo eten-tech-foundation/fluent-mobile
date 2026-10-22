@@ -1,21 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { Circle, Square } from 'lucide-react-native';
 import { setMicActive } from '../../../audio/micActivity';
-import type { LucideIcon } from 'lucide-react-native';
-import { Key, type KeyIconProps } from '../../../components/ui/Key';
+import { RecordFill, StopFill } from '../../../components/ui/icons';
+import { Key } from '../../../components/ui/Key';
 import { KeyDeck } from '../../../components/ui/KeyDeck';
 import { LevelWave } from '../../../components/ui/LevelWave';
 import { useThemedStyles } from '../../../theme/useTheme';
-
-function filled(Icon: LucideIcon) {
-  return function FilledIcon({ color, size }: KeyIconProps) {
-    return <Icon color={color} fill={color} size={size} />;
-  };
-}
-
-const RecordIcon = filled(Circle);
-const StopIcon = filled(Square);
 
 /** 100ms, the rate the recorder would report metering. */
 const TICK_MS = 100;
@@ -106,7 +96,7 @@ export function LevelWaveEntry() {
       />
       <KeyDeck>
         <Key
-          icon={recording ? StopIcon : RecordIcon}
+          icon={recording ? StopFill : RecordFill}
           accessibilityLabel={recording ? 'Stop recording' : 'Record'}
           announceLatched={false}
           active={recording}

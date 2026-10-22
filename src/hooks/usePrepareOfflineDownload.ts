@@ -16,6 +16,7 @@ import type { WorkerSessionState } from '../services/downloadQueueWorker';
 import { mergeQueueIntoPrepareOfflineCatalog } from '../utils/mergeQueueIntoPrepareOfflineCatalog';
 import {
   computeRemainingBytes,
+  hasPendingDownloadWork,
   sortItemsForPrepareOfflineDownload,
 } from '../utils/prepareOfflineCatalog';
 import {
@@ -24,7 +25,10 @@ import {
 } from '../services/prepareOfflineResources';
 import type { PrepareOfflineManifestContext } from '../utils/buildManifestContexts';
 import { syncBibleTextsForChapters } from '../services/sync';
-import { formatByteSize } from '../utils/formatByteSize';
+import {
+  formatDownloadButtonLabel,
+  summarizeDownloadSizes,
+} from '../utils/prepareOfflineSizeSemantics';
 import { logger } from '../utils/logger';
 import {
   isTransportBlockedForTransfer,
@@ -356,20 +360,27 @@ export function usePrepareOfflineDownload({
     [mergedSelectedItems],
   );
 
+  // Footer Total and idle CTA both derive from merged selected rows so queue
+  // size recovery and selection stay consistent (#756).
+  const selectedDownloadSummary = useMemo(
+    () => summarizeDownloadSizes(mergedSelectedItems),
+    [mergedSelectedItems],
+  );
+
   const downloadButtonLabel = useMemo(() => {
-    if (pendingBytes > 0) {
-      return `Download ${formatByteSize(pendingBytes)}`;
+    const pendingItems = mergedSelectedItems.filter(
+      item => item.status !== 'completed',
+    );
+    const pendingSummary = summarizeDownloadSizes(pendingItems);
+    if (pendingSummary.knownBytes > 0 || pendingSummary.hasUnknown) {
+      return formatDownloadButtonLabel(pendingSummary);
     }
 
-    const totalSelectedBytes = mergedSelectedItems.reduce(
-      (sum, item) => sum + item.bytes,
-      0,
-    );
-
-    return totalSelectedBytes > 0
+    return selectedDownloadSummary.knownBytes > 0 ||
+      selectedDownloadSummary.hasUnknown
       ? 'All on device'
-      : `Download ${formatByteSize(0)}`;
-  }, [mergedSelectedItems, pendingBytes]);
+      : formatDownloadButtonLabel({ knownBytes: 0, hasUnknown: false });
+  }, [mergedSelectedItems, selectedDownloadSummary]);
 
   const hasResumableQueueWork = useMemo(
     () =>
@@ -385,8 +396,10 @@ export function usePrepareOfflineDownload({
   // Leftover queue rows alone must not enable Download when there is nothing
   // selected to fetch (unassigned + 0 chapters → pendingBytes 0). Resume those
   // rows via pause/resume controls instead (#580 / #50 / #51).
+  // Unknown-size rows still count as pending work even when known bytes are 0.
   const canDownloadNow =
-    pendingBytes > 0 && (canDownload || hasResumableQueueWork);
+    (pendingBytes > 0 || hasPendingDownloadWork(mergedSelectedItems)) &&
+    (canDownload || hasResumableQueueWork);
 
   const handlePause = useCallback(async () => {
     if (downloadInFlightRef.current) {
@@ -634,6 +647,8 @@ export function usePrepareOfflineDownload({
     busy,
     catalogWithProgress,
     downloadButtonLabel,
+    totalBytes: selectedDownloadSummary.knownBytes,
+    totalBytesIncomplete: selectedDownloadSummary.hasUnknown,
     canDownload: canDownloadNow && !transportBlocked,
     transportBlocked: transportBlocked || downloadTransportError !== null,
     transportBlockedMessage: downloadTransportError ?? transportBlockedMessage,

@@ -1,5 +1,9 @@
 # UI version theming (Legacy / Next)
 
+Original Lovable source review and current issue ownership:
+[dated review and evidence map](../features/next-ui-redesign/lovable-review.md).
+Source/token evidence does not establish rendered visual fidelity.
+
 Fluent Mobile supports a runtime-selectable **UI version** while the redesign
 lands:
 
@@ -45,17 +49,19 @@ Do **not** import `src/theme/next*` from app/UI code (ESLint bans `theme/next`).
 ### Foundations groups on `Theme`
 
 For Next components, `Theme` also carries `roles` (Foundations role names,
-Hardware in Next, nearest Legacy colors in Legacy), `elevation` (effect
-styles as `boxShadow` strings built from roles), `motion`, `opacity` and
-`controlSizes`, plus `radius.xs`. They're added in `legacy.ts` and overridden
-in `next.ts`; `tokens.ts` is untouched.
+Hardware by default, nearest Legacy colors in Legacy), `elevation` (effect
+styles as `boxShadow` strings built from roles), `motion`, `opacity`,
+`controlSizes`, `stroke`, the named type styles (`type`, `typeTelugu`,
+`fontScale`), plus `radius.xs` and `spacing.xxs`. They're added in
+`legacy.ts` and overridden in `next.ts` (`typeTelugu` and `fontScale` are the
+same in both); `tokens.ts` is untouched.
 
 ### Unmapped Foundations steps
 
 Kept accessible on `nextSpace` / `nextRadiusScale` but not on `Theme` keys yet:
 
 - `space-32`
-- Not encoded yet: `space-48`, gradients, `stroke/*` (follow-up)
+- Not encoded yet: `space-48`, gradients (follow-up)
 
 `Theme.spacing.xl` (20) has no Foundations step — left at 20 until design assigns one.
 
@@ -86,7 +92,10 @@ Kept accessible on `nextSpace` / `nextRadiusScale` but not on `Theme` keys yet:
    `listCard`, and `headerLayout` are re-derived from the resolved
    colors/spacing/radius so derived layout stays in sync.
 3. If you need a **new** `Theme` key, add it to the Legacy theme with today's
-   value first, then override in Next — keeps `Theme` one shape.
+   value first, then override in Next — keeps `Theme` one shape. Groups with
+   no Legacy equivalent (`roles`, `type`, …) get the nearest or the Figma
+   value instead, since no Legacy screen reads them. A shared component that
+   adopts one will look the same in Legacy, so check it there too.
 4. `iconSizes` and stroke-width constants in `iconSpecs.ts` are still
    Legacy-only (not on `Theme`). Add them to `Theme` before overriding for Next.
 5. Migrate any StyleSheet that must show the new value onto `useThemedStyles`

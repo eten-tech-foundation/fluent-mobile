@@ -1,6 +1,8 @@
 import type React from 'react';
+import { HardwarePanelEntry } from './HardwarePanelEntry';
 import { KeyEntry } from './KeyEntry';
 import { LevelWaveEntry } from './LevelWaveEntry';
+import { RoundButtonEntry } from './RoundButtonEntry';
 import { SwitchEntry } from './SwitchEntry';
 import { WaveformEntry } from './WaveformEntry';
 
@@ -24,8 +26,9 @@ export const galleryEntries: GalleryEntry[] = [
   },
   {
     // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-41
+    // Used as the Mode toggle: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-538
     id: 'switch',
-    name: 'Switch',
+    name: 'Switch · Mode toggle',
     modes: 'Hardware',
     Component: SwitchEntry,
   },
@@ -44,5 +47,21 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Level wave · Short and Long',
     modes: 'Hardware (header) · Canvas (take card)',
     Component: LevelWaveEntry,
+  },
+  {
+    // Figma: Round button https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-64
+    // Figma: Progress ring https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2400-302
+    id: 'round-button',
+    name: 'Round button · Progress ring',
+    modes: 'Soft in passage rows · Flat in the Canvas player header',
+    Component: RoundButtonEntry,
+  },
+  {
+    // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2411-529
+    // Mode toggle 2409-538 and Speaker grill 2409-533 are drawn inside it.
+    id: 'hardware-panel',
+    name: 'Hardware panel',
+    modes: 'Hardware',
+    Component: HardwarePanelEntry,
   },
 ];

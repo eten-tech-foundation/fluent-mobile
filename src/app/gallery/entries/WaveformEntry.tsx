@@ -1,23 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
-import { Key, type KeyIconProps } from '../../../components/ui/Key';
+import {
+  PauseFill,
+  PlayFill,
+  SkipBackFill,
+  SkipForwardFill,
+} from '../../../components/ui/icons';
+import { Key } from '../../../components/ui/Key';
 import { KeyDeck } from '../../../components/ui/KeyDeck';
 import { PageDots } from '../../../components/ui/PageDots';
 import { Waveform, type WaveformVerse } from '../../../components/ui/Waveform';
 import { ColorModeScope, useThemedStyles } from '../../../theme/useTheme';
-
-function filled(Icon: LucideIcon) {
-  return function FilledIcon({ color, size }: KeyIconProps) {
-    return <Icon color={color} fill={color} size={size} />;
-  };
-}
-
-const PlayIcon = filled(Play);
-const PauseIcon = filled(Pause);
-const SkipBackIcon = filled(SkipBack);
-const SkipForwardIcon = filled(SkipForward);
 
 /** Bar heights from the Listen player frame (Figma 2440:30858). */
 const VERSES: WaveformVerse[] = [
@@ -118,7 +111,7 @@ export function WaveformEntry() {
       <ColorModeScope value="hardware">
         <KeyDeck>
           <Key
-            icon={playing ? PauseIcon : PlayIcon}
+            icon={playing ? PauseFill : PlayFill}
             accessibilityLabel={playing ? 'Pause' : 'Play'}
             announceLatched={false}
             active={playing}
@@ -127,7 +120,7 @@ export function WaveformEntry() {
             testID="gallery-waveform-play"
           />
           <Key
-            icon={SkipBackIcon}
+            icon={SkipBackFill}
             accessibilityLabel="Previous verse"
             disabled={progress === 0}
             onPress={previous}
@@ -135,7 +128,7 @@ export function WaveformEntry() {
             testID="gallery-waveform-previous"
           />
           <Key
-            icon={SkipForwardIcon}
+            icon={SkipForwardFill}
             accessibilityLabel="Next verse"
             disabled={verse >= VERSES.length - 1}
             onPress={next}

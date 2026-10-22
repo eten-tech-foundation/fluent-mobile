@@ -2,10 +2,12 @@ import { legacyTheme, type Theme } from './legacy';
 import { buildElevation } from './elevation';
 import {
   nextControlSizes,
+  nextStroke,
   nextMotion,
   nextOpacity,
   nextSpacing,
   nextRadius,
+  nextTypeStyles,
   nextTypography,
 } from './nextFoundation';
 import {
@@ -163,6 +165,7 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
     motion: { ...nextMotion, easeStandard: { ...nextMotion.easeStandard } },
     opacity: { ...nextOpacity },
     controlSizes: { ...nextControlSizes },
+    stroke: { ...nextStroke },
     spacing: { ...nextSpacing },
     radius: { ...nextRadius },
     typography: {
@@ -171,6 +174,7 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
       weights: { ...nextTypography.weights },
       lineHeights: { ...nextTypography.lineHeights },
     },
+    type: nextTypeStyles,
   };
 }
 

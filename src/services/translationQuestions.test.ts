@@ -222,6 +222,22 @@ describe('loadTranslationQuestionsForUnit', () => {
       expect(getTranslationQuestions).toHaveBeenCalledTimes(1);
     });
 
+    it('returns empty offline when nothing is downloaded (#578)', async () => {
+      mockFindRows.mockResolvedValue(null);
+
+      await expect(
+        loadTranslationQuestionsForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: false,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([]);
+      expect(getTranslationQuestions).not.toHaveBeenCalled();
+    });
+
     it('falls back to the API when every downloaded file is unreadable', async () => {
       mockFindRows.mockResolvedValue([
         downloadedRow({ localFilePath: 'file:///downloads/tq.json' }),
@@ -265,6 +281,60 @@ describe('loadTranslationQuestionsForUnit', () => {
         }),
       ).resolves.toEqual([]);
       expect(getTranslationQuestions).not.toHaveBeenCalled();
+    });
+
+    it('loads local rows for every verseRef and only calls API for missing refs', async () => {
+      mockFindRows.mockImplementation(async query => {
+        if (query.verseNumber === 1) {
+          return [
+            downloadedRow({
+              id: '42-7-tq-mrk-14-1',
+              resourceId: 'local-tq-v1',
+              label: 'Mark 14:1',
+              localFilePath: 'file:///downloads/tq-1.json',
+            }),
+          ];
+        }
+        return null;
+      });
+      mockReadJson.mockResolvedValue(sampleItem.content);
+      getTranslationQuestions.mockResolvedValue({
+        items: [
+          {
+            ...sampleItem,
+            id: 20,
+            name: 'Q2',
+            localizedName: 'Q2',
+          },
+        ],
+      });
+
+      const questions = await loadTranslationQuestionsForUnit({
+        projectId: 7,
+        userId: 42,
+        isOnline: true,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 1,
+        verseRefs: [
+          { chapterNumber: 14, verseNumber: 1 },
+          { chapterNumber: 14, verseNumber: 2 },
+        ],
+      });
+
+      expect(mockFindRows).toHaveBeenCalledTimes(2);
+      expect(getTranslationQuestions).toHaveBeenCalledTimes(1);
+      expect(getTranslationQuestions).toHaveBeenCalledWith(
+        7,
+        'MRK',
+        14,
+        2,
+        'eng',
+      );
+      expect(questions.map(q => q.id)).toEqual([
+        'tq-api-local-tq-v1-0',
+        'tq-api-20-0',
+      ]);
     });
   });
 

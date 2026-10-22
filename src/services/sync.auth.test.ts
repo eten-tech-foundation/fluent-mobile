@@ -25,10 +25,15 @@ import {
   getLastSyncedAt,
   getUserIdSync,
   setSyncError,
+  setSyncCount,
   setReauthRequired,
   registerKnownUser,
   setUserSync,
+  isBibleTextsServerIdRemapPending,
+  clearBibleTextsServerIdRemapPending,
 } from './storage';
+import { getDatabase } from '../db/db';
+import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
 
 jest.mock('./authToken', () => ({
   authToken: {
@@ -53,7 +58,19 @@ jest.mock('./api', () => ({
     getBibleTexts: jest.fn(),
     getPericopeSets: jest.fn().mockResolvedValue([]),
     getPericopeSet: jest.fn().mockResolvedValue({ status: 304, etag: null }),
+    getSelfSettings: jest.fn().mockResolvedValue({
+      settings: null,
+      updatedAt: null,
+    }),
+    putSelfSettings: jest.fn().mockResolvedValue({
+      settings: null,
+      updatedAt: null,
+    }),
   },
+}));
+
+jest.mock('./displayModeSettingsSync', () => ({
+  syncDisplayModeSettingsForUser: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('./connectivity', () => ({
@@ -77,8 +94,12 @@ jest.mock('./storage', () => ({
     SYNC_ERROR_CHAPTER_CLAIMS: 'sync_error_chapter_claims',
     SYNC_ERROR_PROJECT_UNITS: 'sync_error_project_units',
     SYNC_ERROR_BIBLE_TEXTS: 'sync_error_bible_texts',
+    SYNC_ERROR_PERICOPES: 'sync_error_pericopes',
     SYNC_ERROR_PREPARE_OFFLINE_BIBLE_TEXTS:
       'sync_error_prepare_offline_bible_texts',
+    SYNC_COUNT_PROJECTS: 'sync_count_projects',
+    SYNC_COUNT_CHAPTERS: 'sync_count_chapters',
+    SYNC_COUNT_BIBLES: 'sync_count_bibles',
   },
   getUserIdSync: jest.fn(),
   getActiveUserId: jest.fn(),
@@ -102,6 +123,8 @@ jest.mock('./storage', () => ({
   isReauthRequired: jest.fn(),
   isBibleTextsServerIdRemapPending: jest.fn().mockReturnValue(false),
   clearBibleTextsServerIdRemapPending: jest.fn(),
+  getPericopeBookVersion: jest.fn().mockReturnValue(''),
+  setPericopeBookVersion: jest.fn(),
 }));
 
 jest.mock('./chapterClaimSync', () => ({
@@ -127,6 +150,7 @@ jest.mock('../db/repository', () => ({
   }),
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
+  getMyWorkChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
   hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
@@ -145,6 +169,12 @@ jest.mock('../db/repository', () => ({
 
 const {
   getChaptersToSync,
+  getMyWorkChaptersToSync,
+  getRecordingLinkedChaptersToSync,
+  getLocalProjectIds,
+  getChaptersNeedingPericopeSync,
+  getProjectPericopeSetId,
+  upsertPericopeSet,
   userHasLocalProjects,
   userHasLocalChapterAssignments,
   userNeedsAssigneeRepair,
@@ -153,6 +183,12 @@ const {
 } = jest.requireMock('../db/repository') as {
   insertUser: jest.Mock;
   getChaptersToSync: jest.Mock;
+  getMyWorkChaptersToSync: jest.Mock;
+  getRecordingLinkedChaptersToSync: jest.Mock;
+  getLocalProjectIds: jest.Mock;
+  getChaptersNeedingPericopeSync: jest.Mock;
+  getProjectPericopeSetId: jest.Mock;
+  upsertPericopeSet: jest.Mock;
   userHasLocalProjects: jest.Mock;
   userHasLocalChapterAssignments: jest.Mock;
   userNeedsAssigneeRepair: jest.Mock;
@@ -477,6 +513,65 @@ describe('refreshChapterMetadataIfOnline', () => {
     expect(authToken.set).not.toHaveBeenCalled();
   });
 
+  it('retains the captured per-request token after an account switch during metadata refresh (#294)', async () => {
+    const initialToken = 'C0294_USER_2_SENTINEL';
+    const otherToken = 'C0294_USER_3_SENTINEL';
+    let releaseProjects!: (value: { data: [] }) => void;
+    (getCredentials as jest.Mock).mockImplementation(
+      async (userId: string) => ({
+        token: userId === '2' ? initialToken : otherToken,
+      }),
+    );
+    (authToken.get as jest.Mock).mockReturnValue('C0294_GLOBAL_INITIAL');
+    (FluentAPI.getUserProjects as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          releaseProjects = resolve;
+        }),
+    );
+
+    const refresh = refreshChapterMetadataIfOnline(2);
+    try {
+      await waitFor(() => {
+        expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, initialToken);
+      });
+      expect(FluentAPI.getUserMilestones).not.toHaveBeenCalled();
+
+      // Change only mocks while account2's project request is still pending.
+      // Actual account/session/credential stores are never accessed.
+      (getActiveUserId as jest.Mock).mockReturnValue('3');
+      (authToken.get as jest.Mock).mockReturnValue('C0294_GLOBAL_OTHER');
+      releaseProjects({ data: [] });
+      await refresh;
+
+      expect(getCredentials).toHaveBeenCalledTimes(1);
+      expect(getCredentials).toHaveBeenCalledWith('2');
+      // A safe abort after the switch is valid. Any request that does run
+      // must retain the original account and its captured token.
+      for (const call of (FluentAPI.getUserProjects as jest.Mock).mock.calls) {
+        expect(call).toEqual([2, initialToken]);
+      }
+      for (const call of (FluentAPI.getUserMilestones as jest.Mock).mock
+        .calls) {
+        expect(call).toEqual([2, initialToken]);
+      }
+      for (const call of (FluentAPI.getChapterAssignments as jest.Mock).mock
+        .calls) {
+        expect(call[0]).toBe(2);
+        expect(call[3]).toBe(initialToken);
+      }
+      for (const call of (FluentAPI.getUserChapterAssignments as jest.Mock).mock
+        .calls) {
+        expect(call).toEqual([2, initialToken]);
+      }
+      expect(authToken.set).not.toHaveBeenCalled();
+      expect(authToken.get).not.toHaveBeenCalled();
+    } finally {
+      releaseProjects?.({ data: [] });
+      await refresh;
+    }
+  });
+
   it('marks reauth required and skips the refresh when no credentials exist for this user', async () => {
     (getCredentials as jest.Mock).mockResolvedValue(null);
 
@@ -716,6 +811,10 @@ describe('syncAllData auth handling', () => {
     await syncAllData(true);
 
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '2',
+      'valid-token',
+    );
   });
 
   it('continues chapter assignment sync after pending claim soft-fail', async () => {
@@ -801,6 +900,14 @@ describe('syncAllUsers auth handling', () => {
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(1, 'user-1-token');
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '1',
+      'user-1-token',
+    );
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '2',
+      'user-2-token',
+    );
     expect(authToken.set).not.toHaveBeenCalled();
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('1', expect.any(String));
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
@@ -1145,6 +1252,334 @@ describe('syncAllUsers auth handling', () => {
     await loginPass;
 
     expect(insertUser).toHaveBeenCalled();
+  });
+});
+
+describe('syncAllData progressive login (#670)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __resetFullSyncSingleFlightForTests();
+    jest.spyOn(syncEvents, 'emitAuthReauthRequired');
+    jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
+    jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
+
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+    (getUserIdSync as jest.Mock).mockReturnValue('2');
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getLastSyncedAt as jest.Mock).mockReturnValue('');
+    (getLastAssignmentSyncAt as jest.Mock).mockReturnValue('');
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+    (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+    userHasLocalProjects.mockResolvedValue(false);
+    userHasLocalChapterAssignments.mockResolvedValue(false);
+    userNeedsAssigneeRepair.mockResolvedValue(false);
+    getLocalProjectIds.mockResolvedValue([]);
+    getChaptersToSync.mockResolvedValue(
+      new Map([
+        [
+          10,
+          [
+            { bookId: 41, chapterNumber: 1 },
+            { bookId: 19, chapterNumber: 1 },
+          ],
+        ],
+      ]),
+    );
+    getMyWorkChaptersToSync.mockResolvedValue(
+      new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+    );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    __resetFullSyncSingleFlightForTests();
+  });
+
+  it('unblocks Tier 1 before full project assignments and scopes bible texts to My Work', async () => {
+    const preloadedUser = { id: 2, email: 'user2@test.com' };
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'new-user-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'new-user-token',
+    });
+
+    // Fresh install: Tier 1 only has My Work (MRK); Tier 2 catalogue adds PSA.
+    // Unbundled set id so GET /pericope-sets/{id} is the persist path.
+    const myWorkChapter = {
+      projectId: 10,
+      bookId: 41,
+      bookCode: 'MRK',
+      chapterNumber: 1,
+    };
+    const catalogueChapter = {
+      projectId: 10,
+      bookId: 19,
+      bookCode: 'PSA',
+      chapterNumber: 1,
+    };
+    getProjectPericopeSetId.mockResolvedValue(99);
+    getChaptersNeedingPericopeSync
+      .mockResolvedValueOnce([myWorkChapter])
+      .mockResolvedValueOnce([catalogueChapter]);
+    (FluentAPI.getPericopeSet as jest.Mock).mockImplementation(
+      async (_setId: number, opts: { bookCode: string }) => ({
+        status: 200,
+        etag: `"etag-${opts.bookCode}"`,
+        data: [
+          {
+            bookCode: opts.bookCode,
+            pericopeNumber: '1',
+            pericopeTitle: null,
+            verses: [{ chapterNumber: 1, verseNumber: 1 }],
+          },
+        ],
+      }),
+    );
+
+    let resolveAssignments: (value: unknown) => void = () => undefined;
+    (FluentAPI.getChapterAssignments as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveAssignments = resolve;
+        }),
+    );
+
+    const onTier1Complete = jest.fn();
+    const pending = syncAllData(false, preloadedUser.email, preloadedUser, {
+      onTier1Complete,
+    });
+
+    await waitFor(() => {
+      expect(FluentAPI.getUserChapterAssignments).toHaveBeenCalledWith(
+        2,
+        'new-user-token',
+      );
+      expect(getMyWorkChaptersToSync).toHaveBeenCalledWith(2);
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 41, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(onTier1Complete).toHaveBeenCalledTimes(1);
+    });
+
+    // Tier 1 unblocked: My Work pericopes persisted; catalogue PSA not yet.
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
+      bookCode: 'MRK',
+      etag: null,
+    });
+    expect(upsertPericopeSet).toHaveBeenCalledWith(
+      99,
+      'MRK',
+      expect.arrayContaining([
+        expect.objectContaining({ chapterNumber: 1, verseNumber: 1 }),
+      ]),
+    );
+    expect(FluentAPI.getPericopeSet).not.toHaveBeenCalledWith(
+      99,
+      expect.objectContaining({ bookCode: 'PSA' }),
+    );
+    expect(upsertPericopeSet).not.toHaveBeenCalledWith(
+      99,
+      'PSA',
+      expect.anything(),
+    );
+
+    // Tier 2 not finished yet — full catalogue still pending.
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+    // Tier 1 only fetched My Work texts so far.
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+    resolveAssignments({ data: [] });
+    await pending;
+
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      2,
+      undefined,
+      undefined,
+      'new-user-token',
+    );
+    expect(onTier1Complete).toHaveBeenCalledTimes(1);
+    // After Tier 2 assignments, catalogue PSA pericopes are fetched + persisted.
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
+      bookCode: 'PSA',
+      etag: null,
+    });
+    expect(upsertPericopeSet).toHaveBeenCalledWith(
+      99,
+      'PSA',
+      expect.arrayContaining([
+        expect.objectContaining({ chapterNumber: 1, verseNumber: 1 }),
+      ]),
+    );
+    // Tier 2 texts skip My Work (MRK) and only fetch remaining catalogue (PSA).
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getBibleTexts).toHaveBeenLastCalledWith(
+      10,
+      [{ bookId: 19, chapterNumber: 1 }],
+      undefined,
+    );
+  });
+
+  it('re-login unblocks My Work before full catalogue when there is no cursor', async () => {
+    const preloadedUser = { id: 2, email: 'user2@test.com' };
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'relogin-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'relogin-token',
+    });
+    // Local projects exist ⇒ re-login path (not fresh install).
+    getLocalProjectIds.mockResolvedValue([10]);
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
+
+    const myWorkChapter = {
+      projectId: 10,
+      bookId: 41,
+      bookCode: 'MRK',
+      chapterNumber: 1,
+    };
+    const catalogueChapter = {
+      projectId: 10,
+      bookId: 19,
+      bookCode: 'PSA',
+      chapterNumber: 1,
+    };
+    getProjectPericopeSetId.mockResolvedValue(99);
+    getChaptersNeedingPericopeSync
+      .mockResolvedValueOnce([myWorkChapter])
+      .mockResolvedValueOnce([catalogueChapter]);
+    (FluentAPI.getPericopeSet as jest.Mock).mockImplementation(
+      async (_setId: number, opts: { bookCode: string }) => ({
+        status: 200,
+        etag: `"etag-${opts.bookCode}"`,
+        data: [
+          {
+            bookCode: opts.bookCode,
+            pericopeNumber: '1',
+            pericopeTitle: null,
+            verses: [{ chapterNumber: 1, verseNumber: 1 }],
+          },
+        ],
+      }),
+    );
+
+    let resolveCatalogue: (value: unknown) => void = () => undefined;
+    (FluentAPI.getChapterAssignments as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveCatalogue = resolve;
+        }),
+    );
+
+    const onTier1Complete = jest.fn();
+    const pending = syncAllData(false, preloadedUser.email, preloadedUser, {
+      onTier1Complete,
+    });
+
+    await waitFor(() => {
+      expect(FluentAPI.getUserChapterAssignments).toHaveBeenCalledWith(
+        2,
+        'relogin-token',
+      );
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 41, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(onTier1Complete).toHaveBeenCalledTimes(1);
+    });
+
+    // Catalogue must not have finished before Tier 1 unblocked Home.
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
+      bookCode: 'MRK',
+      etag: null,
+    });
+    expect(FluentAPI.getPericopeSet).not.toHaveBeenCalledWith(
+      99,
+      expect.objectContaining({ bookCode: 'PSA' }),
+    );
+
+    resolveCatalogue({ data: [] });
+    await pending;
+
+    expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+      2,
+      undefined,
+      undefined,
+      'relogin-token',
+    );
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
+      bookCode: 'PSA',
+      etag: null,
+    });
+    expect(FluentAPI.getBibleTexts).toHaveBeenLastCalledWith(
+      10,
+      [{ bookId: 19, chapterNumber: 1 }],
+      undefined,
+    );
+  });
+
+  it('My-Work-only login preserves bible count and clears remap without Tier 1 refetch', async () => {
+    const preloadedUser = { id: 2, email: 'user2@test.com' };
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'mywork-only-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'mywork-only-token',
+    });
+    // Assignments are only My Work — Tier 2 exclude empties the remainder.
+    getChaptersToSync.mockResolvedValue(
+      new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+    );
+    getMyWorkChaptersToSync.mockResolvedValue(
+      new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
+    );
+    getRecordingLinkedChaptersToSync.mockResolvedValue(new Map());
+    (isBibleTextsServerIdRemapPending as jest.Mock).mockReturnValue(true);
+    // Local texts from Tier 1 (distinct bible count) must survive Tier 2.
+    (getDatabase as jest.Mock).mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 2 }] }),
+    });
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          bookId: 41,
+          chapterNumber: 1,
+          verses: [{ id: 4101, verseNumber: 1, text: 'The beginning' }],
+        },
+      ],
+    });
+    getProjectPericopeSetId.mockResolvedValue(null);
+    getChaptersNeedingPericopeSync.mockResolvedValue([]);
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+
+    await syncAllData(false, preloadedUser.email, preloadedUser, {
+      onTier1Complete: jest.fn(),
+    });
+
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+      10,
+      [{ bookId: 41, chapterNumber: 1 }],
+      undefined,
+    );
+    expect(setSyncCount).toHaveBeenCalledWith('sync_count_bibles', 2);
+    expect(setSyncCount).not.toHaveBeenCalledWith('sync_count_bibles', 0);
+    expect(clearBibleTextsServerIdRemapPending).toHaveBeenCalled();
+    (isBibleTextsServerIdRemapPending as jest.Mock).mockReturnValue(false);
   });
 });
 

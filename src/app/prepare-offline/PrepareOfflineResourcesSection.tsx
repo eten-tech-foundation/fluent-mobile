@@ -5,6 +5,7 @@ import {
   PrepareOfflineResourceItem,
 } from '../../types/prepareOffline/types';
 import { filterPrepareOfflineCatalogByTiers } from '../../utils/prepareOfflineCatalog';
+import { SOURCE_BIBLE_RESOURCE_NAME } from '../../services/offlineSourceAudio';
 import { theme } from '../../theme';
 import { CustomizeDownloadAccordion } from './CustomizeDownloadAccordion';
 import { PrepareOfflineResourceSummary } from './PrepareOfflineResourceSummary';
@@ -37,6 +38,7 @@ export function PrepareOfflineResourcesSection({
       groupName: SOURCE_BIBLE_GROUP,
       label: 'Text',
       bytes: 0,
+      sizeKnown: true,
       status: 'selected',
       required: true,
       removable: false,
@@ -45,12 +47,18 @@ export function PrepareOfflineResourcesSection({
     };
 
     const existing = base.groups.find(
-      group => group.groupName === SOURCE_BIBLE_GROUP,
+      group =>
+        group.groupName === SOURCE_BIBLE_GROUP ||
+        group.groupName === SOURCE_BIBLE_RESOURCE_NAME,
     );
     const groups = existing
       ? base.groups.map(group =>
           group === existing
-            ? { ...group, items: [textRow, ...group.items] }
+            ? {
+                ...group,
+                groupName: SOURCE_BIBLE_GROUP,
+                items: [textRow, ...group.items],
+              }
             : group,
         )
       : [{ groupName: SOURCE_BIBLE_GROUP, items: [textRow] }, ...base.groups];
