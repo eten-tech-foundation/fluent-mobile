@@ -7,6 +7,11 @@ import {
   PrepareOfflineResourceStatus,
   PrepareOfflineResourceTier,
 } from '../types/prepareOffline/types';
+import {
+  hasPendingDownloadWork,
+  isManifestItemSizeKnown,
+  summarizeDownloadSizes,
+} from './prepareOfflineSizeSemantics';
 
 function groupItemsByName(
   items: PrepareOfflineResourceItem[],
@@ -91,10 +96,17 @@ export function computeTotalBytes(
   catalog: PrepareOfflineCatalog,
   deselectedItemIds: Set<string>,
 ): number {
-  return getEffectiveItems(catalog, deselectedItemIds).reduce(
-    (sum, item) => sum + item.bytes,
-    0,
-  );
+  return summarizeDownloadSizes(getEffectiveItems(catalog, deselectedItemIds))
+    .knownBytes;
+}
+
+/** True when any selected catalog row has unknown remote size. */
+export function catalogHasUnknownSizes(
+  catalog: PrepareOfflineCatalog,
+  deselectedItemIds: Set<string>,
+): boolean {
+  return summarizeDownloadSizes(getEffectiveItems(catalog, deselectedItemIds))
+    .hasUnknown;
 }
 
 export function computePendingBytes(
@@ -111,7 +123,9 @@ export function getRemainingBytesForItem(
   if (item.status === 'completed') {
     return 0;
   }
-
+  // Keep known lower-bound bytes on mixed unknown rows (e.g. 4096 + unknown).
+  // Fully unknown zero still returns 0; callers enable Download via
+  // hasPendingDownloadWork (#756).
   return item.bytes;
 }
 
@@ -122,11 +136,14 @@ export function computeRemainingBytes(
   return items.reduce((sum, item) => sum + getRemainingBytesForItem(item), 0);
 }
 
+export { hasPendingDownloadWork };
+
 interface AggregatedRow {
   groupName: string;
   kind: PrepareOfflineResourceItem['kind'];
   tier: PrepareOfflineResourceTier;
   bytes: number;
+  sizeKnown: boolean;
   required: boolean;
   removable: boolean;
   members: PrepareOfflineResourceManifestItem[];
@@ -145,16 +162,22 @@ function aggregateManifestItems(
 
   for (const entry of manifest) {
     const key = `${entry.resourceName}:${entry.kind}`;
+    const memberKnown = isManifestItemSizeKnown(entry);
     const existing = byKey.get(key);
     if (existing) {
-      existing.bytes += entry.bytesTotal;
+      if (memberKnown) {
+        existing.bytes += entry.bytesTotal;
+      } else {
+        existing.sizeKnown = false;
+      }
       existing.members.push(entry);
     } else {
       byKey.set(key, {
         groupName: entry.resourceName,
         kind: entry.kind,
         tier: entry.tier,
-        bytes: entry.bytesTotal,
+        bytes: memberKnown ? entry.bytesTotal : 0,
+        sizeKnown: memberKnown,
         required: entry.required,
         removable: entry.removable,
         members: [entry],
@@ -205,6 +228,7 @@ function buildManifestRows(
     label:
       row.kind === 'text' ? 'Text' : row.kind === 'audio' ? 'Audio' : 'Image',
     bytes: row.bytes,
+    sizeKnown: row.sizeKnown,
     status: aggregateStatus(row.members, getResourceStatus),
     manifestMembers: row.members,
   }));

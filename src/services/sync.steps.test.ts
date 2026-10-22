@@ -2,6 +2,8 @@ import { ApiError } from '../types/api/errors';
 import { FluentAPI } from './api';
 import { AuthError } from './authError';
 import {
+  __resetFullSyncSingleFlightForTests,
+  syncAllUsers,
   syncBibleTexts,
   syncBibleTextsForChapters,
   syncChapterAssignments,
@@ -9,8 +11,15 @@ import {
   syncPendingChapterClaimsForUser,
   syncProjects,
 } from './sync';
+import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
+import { getCredentials } from './keychain';
 import {
   clearSyncError,
+  getActiveUserId,
+  getKnownUserIds,
+  getLastAssignmentSyncAt,
+  getLastSyncedAt,
+  getUserLastSyncedAt,
   setSyncCount,
   setSyncError,
   isBibleTextsServerIdRemapPending,
@@ -18,6 +27,7 @@ import {
   getMasterDataLastSyncedAt,
   setMasterDataLastSyncedAt,
 } from './storage';
+import * as syncEvents from './syncEvents';
 import { getDatabase } from '../db/db';
 import {
   getChaptersToSync,
@@ -66,7 +76,21 @@ jest.mock('./api', () => ({
       peerCheckChapters: [],
     }),
     getBibleTexts: jest.fn(),
+    getPericopeSets: jest.fn().mockResolvedValue([]),
+    getPericopeSet: jest.fn().mockResolvedValue({ status: 304, etag: null }),
+    getSelfSettings: jest.fn().mockResolvedValue({
+      settings: null,
+      updatedAt: null,
+    }),
+    putSelfSettings: jest.fn().mockResolvedValue({
+      settings: null,
+      updatedAt: null,
+    }),
   },
+}));
+
+jest.mock('./displayModeSettingsSync', () => ({
+  syncDisplayModeSettingsForUser: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('./keychain', () => ({
@@ -109,8 +133,12 @@ jest.mock('./storage', () => ({
   setSyncError: jest.fn(),
   clearSyncError: jest.fn(),
   clearAllSyncErrors: jest.fn(),
+  setReauthRequired: jest.fn(),
+  isReauthRequired: jest.fn(),
   isBibleTextsServerIdRemapPending: jest.fn().mockReturnValue(false),
   clearBibleTextsServerIdRemapPending: jest.fn(),
+  getPericopeBookVersion: jest.fn().mockReturnValue(''),
+  setPericopeBookVersion: jest.fn(),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -136,6 +164,10 @@ jest.mock('../db/repository', () => ({
   userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
   insertUser: jest.fn().mockResolvedValue(undefined),
+  insertPericopeSets: jest.fn().mockResolvedValue(undefined),
+  getProjectPericopeSetId: jest.fn().mockResolvedValue(null),
+  getChaptersNeedingPericopeSync: jest.fn().mockResolvedValue([]),
+  upsertPericopeSet: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../db/db', () => ({
@@ -947,5 +979,72 @@ describe('sync step orchestration', () => {
         'sync_error_bible_texts',
       );
     });
+  });
+});
+
+describe('syncAllUsers displayMode wiring', () => {
+  const { userHasLocalProjects, userHasLocalChapterAssignments } =
+    jest.requireMock('../db/repository') as {
+      userHasLocalProjects: jest.Mock;
+      userHasLocalChapterAssignments: jest.Mock;
+    };
+  const getChaptersToSyncMockLocal = jest.mocked(getChaptersToSync);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __resetFullSyncSingleFlightForTests();
+    jest.spyOn(syncEvents, 'emitAuthReauthRequired');
+    jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
+    jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
+
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getKnownUserIds as jest.Mock).mockReturnValue(['1', '2']);
+    (getLastSyncedAt as jest.Mock).mockReturnValue('2026-06-01T00:00:00.000Z');
+    (getLastAssignmentSyncAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+    userHasLocalProjects.mockResolvedValue(true);
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+    getChaptersToSyncMockLocal.mockResolvedValue(new Map());
+    getConnectivitySnapshotMock.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+    syncPendingChapterClaimsMock.mockResolvedValue({
+      synced: 0,
+      conflicts: 0,
+      failed: 0,
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    __resetFullSyncSingleFlightForTests();
+  });
+
+  it('invokes syncDisplayModeSettingsForUser with each user id and bearer', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+
+    await syncAllUsers();
+
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '1',
+      'user-1-token',
+    );
+    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
+      '2',
+      'user-2-token',
+    );
   });
 });

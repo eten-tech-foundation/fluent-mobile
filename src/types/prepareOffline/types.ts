@@ -71,6 +71,11 @@ export interface PrepareOfflineResourceItem {
   groupName: string;
   label: string;
   bytes: number;
+  /**
+   * False when one or more remote members lack a usable byte size (wire 0 /
+   * omitted). Do not treat as free (#756). Defaults to true when omitted.
+   */
+  sizeKnown?: boolean;
   status: PrepareOfflineResourceStatus;
   progress?: number;
   /** Real manifest items this display row aggregates, for download enqueue. */
