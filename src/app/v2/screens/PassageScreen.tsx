@@ -25,18 +25,23 @@ import { HardwarePanel } from '../../../components/ui/HardwarePanel';
 import {
   ArrowDown,
   ArrowLeft,
+  ArrowRight,
   EjectFill,
   PlayFill,
   RecordFill,
   SkipBackFill,
   SkipForwardFill,
+  type NextIconProps,
 } from '../../../components/ui/icons';
 import { Key } from '../../../components/ui/Key';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
+import { ProgressRing } from '../../../components/ui/ProgressRing';
+import { RoundButton } from '../../../components/ui/RoundButton';
+import { VerseChip } from '../../../components/ui/VerseChip';
 import {
   usePassage,
+  type Passage,
   type PassageTake,
-  type PassageVerse,
 } from '../../../hooks/usePassage';
 import { hrefs } from '../../../navigation/hrefs';
 import {
@@ -53,6 +58,7 @@ import {
 const SHEET_MS = 320;
 /** How far the hero drags before a release opens or closes it. */
 const SNAP_AT = 0.35;
+const FLING = 500;
 const PREVIEW_LINES = 4;
 
 /**
@@ -68,15 +74,13 @@ const STEPS = [
   'Speaking the Word',
 ];
 
-type Ready = Extract<
-  ReturnType<typeof usePassage>['passage'],
-  { status: 'ready' }
->;
+type Ready = Extract<Passage, { status: 'ready' }>;
 
 /**
- * Next passage page: the script and its two actions in a dark hero that
- * grows into the full player, then the passage's listening materials. Until
- * the player is wired, its keys open Legacy drafting at this passage.
+ * Next passage page: a dark hero with the script, Listen and Record, and the
+ * takes, which grows into the full player; then the listening materials as
+ * Figma's passage rows. Until the player is wired, its keys open Legacy
+ * drafting at this passage.
  */
 export default function PassageScreen() {
   const router = useRouter();
@@ -164,17 +168,24 @@ export default function PassageScreen() {
       : {},
   );
 
-  const drag = Gesture.Pan()
-    .onUpdate(e => {
-      const start = expanded ? 1 : 0;
-      progress.value = Math.min(1, Math.max(0, start - e.translationY / range));
-    })
-    .onEnd(e => {
-      const shouldOpen = expanded
-        ? progress.value > 1 - SNAP_AT && e.velocityY < 500
-        : progress.value > SNAP_AT || e.velocityY < -500;
-      scheduleOnRN(animateTo, shouldOpen);
-    });
+  // One per detector: the collapsed hero drags open, the player header drags
+  // closed, and the player's script keeps its own scrolling.
+  const makeDrag = () =>
+    Gesture.Pan()
+      .activeOffsetY([-12, 12])
+      .onUpdate(e => {
+        const start = expanded ? 1 : 0;
+        progress.value = Math.min(
+          1,
+          Math.max(0, start - e.translationY / range),
+        );
+      })
+      .onEnd(e => {
+        const shouldOpen = expanded
+          ? progress.value > 1 - SNAP_AT && e.velocityY < FLING
+          : progress.value > SNAP_AT || e.velocityY < -FLING;
+        scheduleOnRN(animateTo, shouldOpen);
+      });
 
   if (passage.status === 'loading') {
     return (
@@ -205,10 +216,12 @@ export default function PassageScreen() {
             expanded={expanded}
             progress={progress}
             topInset={insets.top}
-            drag={drag}
+            headerDrag={makeDrag()}
+            heroDrag={makeDrag()}
             onMeasure={setCollapsedHeight}
             onMeasureHeader={setHeaderHeight}
-            onBack={() => (expanded ? animateTo(false) : router.back())}
+            onBack={() => router.back()}
+            onClose={() => animateTo(false)}
             onListen={() => open(false)}
             onRecord={() => open(true)}
             onDownload={download}
@@ -226,7 +239,7 @@ export default function PassageScreen() {
           />
         </Animated.View>
       </ColorModeScope>
-      <Materials />
+      <Materials reference={passage.reference} />
     </View>
   );
 }
@@ -236,10 +249,12 @@ function Hero({
   expanded,
   progress,
   topInset,
-  drag,
+  headerDrag,
+  heroDrag,
   onMeasure,
   onMeasureHeader,
   onBack,
+  onClose,
   onListen,
   onRecord,
   onDownload,
@@ -249,39 +264,33 @@ function Hero({
   expanded: boolean;
   progress: SharedValue<number>;
   topInset: number;
-  drag: ReturnType<typeof Gesture.Pan>;
+  headerDrag: ReturnType<typeof Gesture.Pan>;
+  heroDrag: ReturnType<typeof Gesture.Pan>;
   onMeasure: (height: number) => void;
   onMeasureHeader: (height: number) => void;
   onBack: () => void;
+  onClose: () => void;
   onListen: () => void;
   onRecord: () => void;
   onDownload: () => void;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
 }) {
-  const theme = useTheme();
   const styles = useThemedStyles(t => ({
     hero: {
       backgroundColor: t.roles.bgDefault,
       paddingHorizontal: t.spacing.xl,
     },
-    back: {
-      width: 48,
-      height: 48,
+    // Figma player header: the passage in overline, Flat round button.
+    header: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: -t.spacing.md,
+      gap: t.spacing.md,
+      paddingTop: t.spacing.md,
+      paddingBottom: t.spacing.md,
     },
-    reference: {
-      ...t.type.meta,
-      color: t.roles.fgSecondary,
-      paddingTop: t.spacing.sm,
-    },
-    title: {
-      ...t.type.heading,
-      color: t.roles.fgPrimary,
-      paddingTop: t.spacing.xxs,
-    },
-    collapsed: { paddingTop: t.spacing.lg, gap: t.spacing.lg },
+    overline: { ...t.type.overline, color: t.roles.fgSecondary, flex: 1 },
+    collapsed: { gap: t.spacing.lg, paddingBottom: t.spacing.xl },
+    title: { ...t.type.heading, color: t.roles.fgPrimary },
     script: { ...t.type.body, color: t.roles.fgPrimary },
     // Keeps the line's height, or Android squeezes the lines together.
     verseNumber: {
@@ -290,235 +299,193 @@ function Hero({
       color: t.roles.fgSecondary,
     },
     note: { ...t.type.label, color: t.roles.fgSecondary },
-    download: { gap: t.spacing.sm },
-    actions: { flexDirection: 'row', gap: t.spacing.md },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
-    handle: {
-      alignItems: 'center',
-      paddingTop: t.spacing.md,
-      paddingBottom: t.spacing.lg,
-      gap: t.spacing.xs,
-    },
-    grip: {
-      width: 36,
-      height: 4,
-      borderRadius: t.radius.full,
-      backgroundColor: t.roles.fgSecondary,
-    },
+    actions: { flexDirection: 'row', gap: t.spacing.xxl },
   }));
   const collapsedStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.3], [1, 0], 'clamp'),
   }));
-  const title = passage.title ?? passage.reference;
 
   return (
     <View
       style={[styles.hero, { paddingTop: topInset }]}
       onLayout={e => onMeasure(Math.round(e.nativeEvent.layout.height))}
     >
-      <View
-        onLayout={e =>
-          onMeasureHeader(
-            Math.round(e.nativeEvent.layout.y + e.nativeEvent.layout.height),
-          )
-        }
-      >
-        <Pressable
-          onPress={onBack}
-          accessibilityRole="button"
-          accessibilityLabel={expanded ? 'Close the player' : 'Back'}
-          style={styles.back}
-          testID="passage-back"
+      <GestureDetector gesture={headerDrag}>
+        <View
+          style={styles.header}
+          onLayout={e =>
+            onMeasureHeader(
+              Math.round(e.nativeEvent.layout.y + e.nativeEvent.layout.height),
+            )
+          }
         >
-          {expanded ? (
-            <ArrowDown
-              color={theme.roles.fgPrimary}
-              size={theme.controlSizes.icon24}
-            />
-          ) : (
-            <ArrowLeft
-              color={theme.roles.fgPrimary}
-              size={theme.controlSizes.icon24}
+          {expanded ? null : (
+            <RoundButton
+              variant="flat"
+              icon={ArrowLeft}
+              accessibilityLabel="Back"
+              onPress={onBack}
+              testID="passage-back"
             />
           )}
-        </Pressable>
-        {passage.title ? (
-          <Text style={styles.reference}>{passage.reference}</Text>
-        ) : null}
-        <Text style={styles.title} accessibilityRole="header" numberOfLines={2}>
-          {title}
-        </Text>
-      </View>
-      <Animated.View
-        style={[styles.collapsed, collapsedStyle]}
-        pointerEvents={expanded ? 'none' : 'auto'}
-        importantForAccessibility={expanded ? 'no-hide-descendants' : 'auto'}
-      >
-        {passage.downloaded ? (
-          <Pressable
-            onPress={onListen}
-            accessibilityRole="button"
-            accessibilityLabel="Open the script in the player"
-            testID="passage-script"
+          <Text style={styles.overline} numberOfLines={1}>
+            {expanded
+              ? passage.title ?? passage.reference
+              : passage.title
+              ? passage.reference
+              : ''}
+          </Text>
+          {expanded ? (
+            <RoundButton
+              variant="flat"
+              icon={ArrowDown}
+              accessibilityLabel="Close the player"
+              onPress={onClose}
+              testID="passage-close"
+            />
+          ) : null}
+        </View>
+      </GestureDetector>
+      <GestureDetector gesture={heroDrag}>
+        <Animated.View
+          style={[styles.collapsed, collapsedStyle]}
+          pointerEvents={expanded ? 'none' : 'auto'}
+          importantForAccessibility={expanded ? 'no-hide-descendants' : 'auto'}
+        >
+          <Text
+            style={styles.title}
+            accessibilityRole="header"
+            numberOfLines={2}
           >
-            <Text style={styles.script} numberOfLines={PREVIEW_LINES}>
-              {passage.verses.map(v => (
-                <Text key={`${v.chapterNumber}:${v.verseNumber}`}>
-                  <Text style={styles.verseNumber}>{v.verseNumber} </Text>
-                  {v.text}{' '}
-                </Text>
-              ))}
-            </Text>
-          </Pressable>
-        ) : (
-          <View style={styles.download}>
+            {passage.title ?? passage.reference}
+          </Text>
+          {passage.downloaded ? (
+            <Pressable
+              onPress={onListen}
+              accessibilityRole="button"
+              accessibilityLabel="Open the script in the player"
+              testID="passage-script"
+            >
+              <Text style={styles.script} numberOfLines={PREVIEW_LINES}>
+                {passage.verses.map(v => (
+                  <Text key={`${v.chapterNumber}:${v.verseNumber}`}>
+                    <Text style={styles.verseNumber}>{v.verseNumber} </Text>
+                    {v.text}{' '}
+                  </Text>
+                ))}
+              </Text>
+            </Pressable>
+          ) : (
             <Text style={styles.note}>
               {downloadState === 'failed'
                 ? "The text didn't download. Check your connection and try again."
                 : 'The text for this passage isn’t on this phone yet.'}
             </Text>
-            <Pill
-              label={
-                downloadState === 'downloading'
-                  ? 'Downloading…'
-                  : 'Download text'
-              }
-              onPress={onDownload}
-              disabled={downloadState === 'downloading'}
-              testID="passage-download"
+          )}
+          <View style={styles.actions}>
+            {passage.downloaded ? null : (
+              <Action
+                icon={ArrowDown}
+                label={
+                  downloadState === 'downloading' ? 'Downloading' : 'Download'
+                }
+                onPress={onDownload}
+                disabled={downloadState === 'downloading'}
+                testID="passage-download"
+              />
+            )}
+            <Action
+              icon={PlayFill}
+              label="Listen"
+              onPress={onListen}
+              testID="passage-listen"
+            />
+            <Action
+              icon={RecordIcon}
+              label={passage.takes.length > 0 ? 'Record a take' : 'Record'}
+              onPress={onRecord}
+              testID="passage-record"
             />
           </View>
-        )}
-        <View style={styles.actions}>
-          <Pill
-            label="Listen"
-            icon="play"
-            onPress={onListen}
-            testID="passage-listen"
-          />
-          <Pill
-            label="Record take"
-            icon="record"
-            record
-            onPress={onRecord}
-            testID="passage-record"
-          />
-        </View>
-        {passage.takes.length > 0 ? (
-          <View style={styles.chips}>
-            {[...passage.takes].reverse().map(take => (
-              <TakeChip key={take.id} take={take} onPress={onRecord} />
-            ))}
-          </View>
-        ) : null}
-        <GestureDetector gesture={drag}>
-          <Pressable
-            onPress={onListen}
-            accessibilityRole="button"
-            accessibilityLabel="Open the full player"
-            style={styles.handle}
-            testID="passage-handle"
-          >
-            <View style={styles.grip} />
-            <Text style={styles.note}>Pull up for the full player</Text>
-          </Pressable>
-        </GestureDetector>
-      </Animated.View>
+          <Takes takes={passage.takes} onPress={onRecord} />
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }
 
-function Pill({
-  label,
+function RecordIcon({ size }: NextIconProps) {
+  const theme = useTheme();
+  return <RecordFill color={theme.roles.accentRecord} size={size} />;
+}
+
+/** A Flat round button with its label, for the dark hero. */
+function Action({
   icon,
-  record = false,
-  disabled = false,
+  label,
   onPress,
+  disabled,
   testID,
 }: {
+  icon: React.ComponentType<NextIconProps>;
   label: string;
-  icon?: 'play' | 'record';
-  record?: boolean;
-  disabled?: boolean;
   onPress: () => void;
+  disabled?: boolean;
   testID?: string;
 }) {
-  const theme = useTheme();
   const styles = useThemedStyles(t => ({
-    pill: {
-      flex: 1,
-      height: 48,
-      borderRadius: t.radius.full,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: t.spacing.sm,
-      borderWidth: t.stroke[2],
-      borderColor: t.roles.fgSecondary,
-    },
-    record: {
-      backgroundColor: t.roles.accentRecord,
-      borderColor: t.roles.accentRecord,
-    },
-    pressed: { backgroundColor: t.roles.surfaceDefault },
-    label: { ...t.type.title, color: t.roles.fgPrimary },
-    recordLabel: { color: t.roles.fgOnAccent },
+    action: { alignItems: 'center', gap: t.spacing.xs },
+    label: { ...t.type.label, color: t.roles.fgPrimary },
   }));
-  const color = record ? theme.roles.fgOnAccent : theme.roles.fgPrimary;
-  const Icon =
-    icon === 'record' ? RecordFill : icon === 'play' ? PlayFill : null;
-
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      style={({ pressed }) => [
-        styles.pill,
-        record && styles.record,
-        pressed && !record && styles.pressed,
-      ]}
-      testID={testID}
-    >
-      {Icon ? <Icon color={color} size={theme.controlSizes.icon20} /> : null}
-      <Text style={[styles.label, record && styles.recordLabel]}>{label}</Text>
-    </Pressable>
+    <View style={styles.action}>
+      <RoundButton
+        variant="flat"
+        icon={icon}
+        accessibilityLabel={label}
+        onPress={onPress}
+        disabled={disabled}
+        testID={testID}
+      />
+      <Text style={styles.label} importantForAccessibility="no">
+        {label}
+      </Text>
+    </View>
   );
 }
 
-function TakeChip({
-  take,
+/** Takes of the whole passage as numbered chips, like Figma's Recorder. */
+function Takes({
+  takes,
   onPress,
 }: {
-  take: PassageTake;
+  takes: PassageTake[];
   onPress: () => void;
 }) {
   const styles = useThemedStyles(t => ({
-    chip: {
-      borderRadius: t.radius.full,
-      borderWidth: t.stroke[1],
-      borderColor: t.roles.fgSecondary,
-      paddingHorizontal: t.spacing.md,
-      paddingVertical: t.spacing.xs,
-    },
-    quiet: { borderColor: t.roles.borderRim },
-    label: { ...t.type.label, color: t.roles.fgPrimary },
-    quietLabel: { color: t.roles.fgSecondary },
+    row: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
+    label: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
-  const label = `Take ${take.takeNumber}${take.selected ? ' · selected' : ''}`;
+  if (takes.length === 0) return null;
+  const selected = takes.find(take => take.selected);
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      style={[styles.chip, !take.selected && styles.quiet]}
-      testID={`passage-take-${take.takeNumber}`}
+      accessibilityLabel={`${takes.length} ${
+        takes.length === 1 ? 'take' : 'takes'
+      }${selected ? `, take ${selected.takeNumber} selected` : ''}`}
+      style={styles.row}
+      testID="passage-takes"
     >
-      <Text style={[styles.label, !take.selected && styles.quietLabel]}>
-        {label}
-      </Text>
+      <Text style={styles.label}>Takes</Text>
+      {takes.map(take => (
+        <VerseChip
+          key={take.id}
+          verse={take.takeNumber}
+          current={take.selected}
+        />
+      ))}
     </Pressable>
   );
 }
@@ -534,7 +501,7 @@ function Player({
   onOpenDrafting,
 }: {
   passage: Ready;
-  /** Under the hero's back button and title, which stay put. */
+  /** Under the player header, which stays put. */
   top: number;
   /** Full size from the start, so the growing hero reveals it. */
   height: number;
@@ -555,12 +522,12 @@ function Player({
     script: { paddingHorizontal: t.spacing.xl, paddingBottom: t.spacing.xxl },
     reading: { ...t.type.reading, color: t.roles.fgPrimary },
     verseNumber: { ...t.type.label, color: t.roles.fgSecondary },
-    note: {
-      ...t.type.label,
-      color: t.roles.fgSecondary,
+    footer: {
       paddingHorizontal: t.spacing.xl,
       paddingVertical: t.spacing.md,
+      gap: t.spacing.md,
     },
+    note: { ...t.type.label, color: t.roles.fgSecondary },
     key: { flex: 1 },
   }));
   // Shared by the verse numbers too, or Android squeezes the lines together.
@@ -584,7 +551,7 @@ function Player({
           style={[styles.reading, { lineHeight }]}
           maxFontSizeMultiplier={theme.fontScale.readingMax}
         >
-          {passage.verses.map((v: PassageVerse) => (
+          {passage.verses.map(v => (
             <Text key={`${v.chapterNumber}:${v.verseNumber}`}>
               <Text style={[styles.verseNumber, { lineHeight }]}>
                 {v.verseNumber}{' '}
@@ -594,10 +561,15 @@ function Player({
           ))}
         </Text>
       </ScrollView>
-      <Text style={styles.note}>
-        Playback and recording are coming to this player. For now, the keys open
-        drafting at this passage.
-      </Text>
+      <View style={styles.footer}>
+        {recordMode ? (
+          <Takes takes={passage.takes} onPress={onOpenDrafting} />
+        ) : null}
+        <Text style={styles.note}>
+          Playback and recording are coming to this player. For now, the keys
+          open drafting at this passage.
+        </Text>
+      </View>
       <ColorModeScope value="hardware">
         <HardwarePanel
           recordMode={recordMode}
@@ -661,28 +633,21 @@ function readingLineHeight(lineHeight: number, max: number) {
   return (lineHeight * Math.min(scale, max)) / scale;
 }
 
-function Materials() {
+/** Figma's passage rows: title and reference, a Progress ring round button. */
+function Materials({ reference }: { reference: string }) {
   const styles = useThemedStyles(t => ({
-    list: { paddingBottom: t.spacing.xxl },
-    head: {
-      paddingHorizontal: t.spacing.xl,
-      paddingTop: t.spacing.xl,
-      paddingBottom: t.spacing.sm,
-      gap: t.spacing.xxs,
-    },
+    list: { paddingHorizontal: t.spacing.xl, paddingBottom: t.spacing.xxl },
+    head: { paddingTop: t.spacing.xl, paddingBottom: t.spacing.md },
     heading: { ...t.type.title, color: t.roles.fgPrimary },
-    meta: { ...t.type.meta, color: t.roles.fgSecondary },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      minHeight: 56,
-      paddingHorizontal: t.spacing.xl,
       gap: t.spacing.lg,
-      borderTopWidth: t.stroke[1],
-      borderTopColor: t.roles.borderRim,
+      paddingVertical: t.spacing.xs,
     },
-    number: { ...t.type.meta, color: t.roles.fgSecondary, width: 20 },
-    name: { ...t.type.body, color: t.roles.fgSecondary, flex: 1 },
+    text: { flex: 1, gap: t.spacing.xxs },
+    name: { ...t.type.body, color: t.roles.fgSecondary },
+    meta: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
   return (
     <ScrollView contentContainerStyle={styles.list}>
@@ -692,10 +657,19 @@ function Materials() {
         </Text>
         <Text style={styles.meta}>Step audio isn't connected yet</Text>
       </View>
-      {STEPS.map((name, i) => (
+      {STEPS.map(name => (
         <View key={name} style={styles.row}>
-          <Text style={styles.number}>{i + 1}</Text>
-          <Text style={styles.name}>{name}</Text>
+          <View style={styles.text}>
+            <Text style={styles.name}>{name}</Text>
+            <Text style={styles.meta}>{reference}</Text>
+          </View>
+          <ProgressRing value={0} accessibilityLabel={`${name} listened`}>
+            <RoundButton
+              icon={ArrowRight}
+              accessibilityLabel={`Play ${name}`}
+              disabled
+            />
+          </ProgressRing>
         </View>
       ))}
     </ScrollView>

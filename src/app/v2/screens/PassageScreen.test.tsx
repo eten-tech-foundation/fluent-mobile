@@ -27,6 +27,7 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('react-native-gesture-handler', () => {
   const pan = {
+    activeOffsetY: () => pan,
     onUpdate: () => pan,
     onEnd: () => pan,
   };
@@ -81,17 +82,17 @@ describe('PassageScreen', () => {
     mockDownloadState = 'idle';
   });
 
-  it('puts the script, its actions and takes in the hero', () => {
+  it('puts the script, its actions and takes in the hero, then the steps', () => {
     render(<PassageScreen />);
 
     expect(screen.getByText('The Last Supper')).toBeTruthy();
-    expect(screen.getByText('Mark 14:22–25')).toBeTruthy();
+    expect(screen.getAllByText('Mark 14:22–25').length).toBeGreaterThan(1);
     expect(screen.getByLabelText('Listen')).toBeTruthy();
-    expect(screen.getByLabelText('Record take')).toBeTruthy();
-    expect(screen.getByLabelText('Take 2 · selected')).toBeTruthy();
-    expect(screen.getByLabelText('Take 1')).toBeTruthy();
+    expect(screen.getByLabelText('Record a take')).toBeTruthy();
+    expect(screen.getByLabelText('2 takes, take 2 selected')).toBeTruthy();
     expect(screen.getByText('Listening materials')).toBeTruthy();
     expect(screen.getByText('Hear & Heart')).toBeTruthy();
+    expect(screen.getByLabelText('Play Hear & Heart')).toBeTruthy();
   });
 
   it('opens the player in Record mode, whose keys open drafting', () => {
@@ -118,6 +119,7 @@ describe('PassageScreen', () => {
     fireEvent.press(screen.getByTestId('passage-listen'));
 
     expect(screen.getByLabelText('Listen in drafting')).toBeTruthy();
+    expect(screen.getByText('The Last Supper')).toBeTruthy();
     expect(screen.getByLabelText('Close the player')).toBeTruthy();
   });
 
@@ -125,9 +127,9 @@ describe('PassageScreen', () => {
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-listen'));
 
-    fireEvent.press(screen.getByTestId('passage-back'));
+    expect(screen.queryByTestId('passage-back')).toBeNull();
+    fireEvent.press(screen.getByTestId('passage-close'));
     expect(mockBack).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('Back')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('passage-back'));
     expect(mockBack).toHaveBeenCalled();
