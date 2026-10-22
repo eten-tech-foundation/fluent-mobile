@@ -1,5 +1,3 @@
-import type { DraftDownloadRole } from '../draftDownload/types';
-
 export interface Bible {
   id: number;
   languageId: number;
@@ -73,13 +71,6 @@ export interface MyWorkChapter {
   bookCode: string;
   assignedUserId: number | null;
   peerCheckerId: number | null;
-  /**
-   * Advisory role snapshot from list mapping only. Request builders must
-   * re-classify from assignmentStatus + peerCheckerId + projectId + current
-   * user — never authorize from this field alone across account switches.
-   * Observer requires a known Project Observer grant; open-peer is unset.
-   */
-  draftDownloadRole: DraftDownloadRole | null;
 }
 
 export interface ProjectChapter {

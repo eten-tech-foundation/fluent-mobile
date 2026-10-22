@@ -101,7 +101,6 @@ const baseChapter: MyWorkChapter = {
   bookCode: 'MRK',
   assignedUserId: 7,
   peerCheckerId: null,
-  draftDownloadRole: null,
 };
 
 const peerChapter: MyWorkChapter = {
@@ -113,7 +112,6 @@ const peerChapter: MyWorkChapter = {
   workflowStage: 'peer_check',
   assignedUserId: 9,
   peerCheckerId: 7,
-  draftDownloadRole: 'peer_check',
 };
 
 const peerRequest = {
@@ -266,7 +264,6 @@ describe('MyWorkRow', () => {
         chapter={{
           ...peerChapter,
           peerCheckerId: 9,
-          draftDownloadRole: 'peer_check',
         }}
         onPress={jest.fn()}
       />,
@@ -276,7 +273,7 @@ describe('MyWorkRow', () => {
     expect(queryByTestId('my-work-draft-download-2')).toBeNull();
   });
 
-  it('preserves request ids and ignores stale advisory role after eligibility loss', () => {
+  it('preserves request ids while eligible and nulls after live eligibility loss', () => {
     const { rerender, queryByTestId } = render(
       <MyWorkRow chapter={peerChapter} onPress={jest.fn()} />,
     );
@@ -287,7 +284,6 @@ describe('MyWorkRow', () => {
         chapter={{
           ...peerChapter,
           assignmentStatus: 'community_review',
-          draftDownloadRole: 'peer_check',
         }}
         onPress={jest.fn()}
       />,

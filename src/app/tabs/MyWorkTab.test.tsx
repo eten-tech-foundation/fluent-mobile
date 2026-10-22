@@ -98,7 +98,6 @@ const myWorkIds = {
   bookCode: 'LUK',
   assignedUserId: null as number | null,
   peerCheckerId: null as number | null,
-  draftDownloadRole: null as MyWorkChapter['draftDownloadRole'],
 };
 
 const sampleChapter: MyWorkChapter = {
@@ -157,7 +156,6 @@ const peerChapter: MyWorkChapter = {
   ...myWorkIds,
   assignedUserId: 9,
   peerCheckerId: 7,
-  draftDownloadRole: 'peer_check',
 };
 
 const linguistChapter: MyWorkChapter = {
