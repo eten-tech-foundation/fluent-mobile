@@ -58,7 +58,7 @@ jest.mock('../../../hooks/usePassage', () => ({
   }),
 }));
 
-const ready: Passage = {
+const ready: Extract<Passage, { status: 'ready' }> = {
   status: 'ready',
   title: 'The Last Supper',
   reference: 'Mark 14:22–25',
@@ -69,8 +69,18 @@ const ready: Passage = {
   downloaded: true,
   recordedStatus: 'recorded',
   takes: [
-    { id: 'a', takeNumber: 1, selected: false },
-    { id: 'b', takeNumber: 2, selected: true },
+    {
+      id: 'a',
+      takeNumber: 1,
+      selected: false,
+      recordedAt: '2026-10-19T10:00:00Z',
+    },
+    {
+      id: 'b',
+      takeNumber: 2,
+      selected: true,
+      recordedAt: '2026-10-20T10:00:00Z',
+    },
   ],
 };
 
@@ -92,7 +102,9 @@ describe('PassageScreen', () => {
     expect(screen.getAllByText('Mark 14:22–25').length).toBeGreaterThan(1);
     expect(screen.getByLabelText('Listen')).toBeTruthy();
     expect(screen.getByLabelText('Record a take')).toBeTruthy();
-    expect(screen.getByLabelText('2 takes, take 2 selected')).toBeTruthy();
+    expect(screen.getByTestId('passage-takes-meta').props.children).toMatch(
+      /^2 takes · /,
+    );
     expect(screen.getByText('Listening materials')).toBeTruthy();
     expect(screen.getByText('Hear & Heart')).toBeTruthy();
     expect(screen.getByLabelText('Play Hear & Heart')).toBeTruthy();

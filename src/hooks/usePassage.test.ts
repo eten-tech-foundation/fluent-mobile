@@ -54,6 +54,7 @@ function take(overrides: Record<string, unknown>) {
     takeNumber: 1,
     isSelected: false,
     granularity: 'pericope',
+    createdAt: '2026-10-20T10:00:00Z',
     startChapter: 14,
     startVerse: 22,
     endChapter: 14,
@@ -112,8 +113,18 @@ describe('usePassage', () => {
       downloaded: true,
       recordedStatus: 'partial',
       takes: [
-        { id: 'a', takeNumber: 1, selected: false },
-        { id: 'b', takeNumber: 2, selected: true },
+        {
+          id: 'a',
+          takeNumber: 1,
+          selected: false,
+          recordedAt: '2026-10-20T10:00:00Z',
+        },
+        {
+          id: 'b',
+          takeNumber: 2,
+          selected: true,
+          recordedAt: '2026-10-20T10:00:00Z',
+        },
       ],
     });
     expect(mockPericope).toHaveBeenCalledWith(41, 14, 22, 7);

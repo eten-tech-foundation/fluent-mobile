@@ -28,6 +28,8 @@ export interface PassageTake {
   takeNumber: number;
   /** The take drafting plays and uploads for this passage. */
   selected: boolean;
+  /** ISO time it was recorded. */
+  recordedAt: string;
 }
 
 export type Passage =
@@ -146,6 +148,7 @@ async function loadPassage(
             id: r.id,
             takeNumber: r.takeNumber,
             selected: r.isSelected,
+            recordedAt: r.createdAt,
           }));
 
   return {

@@ -45,6 +45,7 @@ import {
   type PassageTake,
 } from '../../../hooks/usePassage';
 import { hrefs } from '../../../navigation/hrefs';
+import { formatLastActivity } from '../../../utils/formatLastActivity';
 import {
   parseRequiredNumber,
   parseRequiredString,
@@ -299,7 +300,9 @@ function Sheet({
     note: { ...t.type.label, color: t.roles.fgSecondary },
     actions: { gap: t.spacing.lg },
     actionRow: { flexDirection: 'row', gap: t.spacing.md },
-    handle: { alignItems: 'center', gap: t.spacing.xs },
+    primary: { flex: 1 },
+    meta: { ...t.type.meta, color: t.roles.fgSecondary },
+    handle: { alignItems: 'center', paddingVertical: t.spacing.sm },
     grip: {
       width: 36,
       height: 4,
@@ -445,28 +448,15 @@ function Sheet({
             }
             onLayout={measure(setActions)}
           >
+            <Text style={styles.meta} testID="passage-takes-meta">
+              {takesLine(passage)}
+            </Text>
+            {/* Like a music app: one labelled primary between plain circles.
+                Recording is the job here; everything below is listening. */}
             <View style={styles.actionRow}>
-              {passage.downloaded ? null : (
-                <RoundButton
-                  variant="flat"
-                  icon={ArrowDown}
-                  label={
-                    downloadState === 'downloading' ? 'Downloading' : 'Download'
-                  }
-                  accessibilityLabel={
-                    downloadState === 'downloading'
-                      ? 'Downloading the text'
-                      : 'Download the text'
-                  }
-                  onPress={onDownload}
-                  disabled={downloadState === 'downloading'}
-                  testID="passage-download"
-                />
-              )}
               <RoundButton
                 variant="flat"
                 icon={PlayFill}
-                label="Listen"
                 accessibilityLabel="Listen"
                 onPress={() => open(false)}
                 testID="passage-listen"
@@ -479,19 +469,33 @@ function Sheet({
                   passage.takes.length > 0 ? 'Record a take' : 'Record'
                 }
                 onPress={() => open(true)}
+                style={styles.primary}
                 testID="passage-record"
               />
+              {passage.downloaded ? null : (
+                <RoundButton
+                  variant="flat"
+                  icon={ArrowDown}
+                  accessibilityLabel={
+                    downloadState === 'downloading'
+                      ? 'Downloading the text'
+                      : 'Download the text'
+                  }
+                  onPress={onDownload}
+                  disabled={downloadState === 'downloading'}
+                  testID="passage-download"
+                />
+              )}
             </View>
-            <Takes takes={passage.takes} onPress={() => open(true)} />
             <Pressable
               onPress={() => open(false)}
               accessibilityRole="button"
               accessibilityLabel="Open the full player"
+              hitSlop={12}
               style={styles.handle}
               testID="passage-handle"
             >
               <View style={styles.grip} />
-              <Text style={styles.note}>Pull up for the full player</Text>
             </Pressable>
           </Animated.View>
           <GestureDetector gesture={drag(expanded)}>
@@ -640,6 +644,20 @@ function Footer({
       <Takes takes={takes} onPress={onOpenDrafting} />
     </View>
   );
+}
+
+/** Like a music app's "Updated 3d ago": how many takes, and when. */
+function takesLine(passage: Ready) {
+  const { takes, recordedStatus } = passage;
+  if (takes.length === 0) {
+    if (recordedStatus === 'recorded') return 'Recorded verse by verse';
+    if (recordedStatus === 'partial') return 'Partly recorded';
+    return 'Not recorded yet';
+  }
+  const latest = takes.reduce((a, b) => (b.recordedAt > a.recordedAt ? b : a));
+  const when = formatLastActivity(latest.recordedAt);
+  const count = `${takes.length} ${takes.length === 1 ? 'take' : 'takes'}`;
+  return when ? `${count} · ${when}` : count;
 }
 
 function RecordIcon({ size }: NextIconProps) {
