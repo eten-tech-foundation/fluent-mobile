@@ -47,6 +47,10 @@ import type {
   PutUserSettingsBody,
   UserSettingsResponse,
 } from '../types/api/userSettings';
+import {
+  parseChapterCommentAggregate,
+  type ChapterCommentAggregate,
+} from '../types/api/chapterCommentAggregate';
 import { checkServerReachable } from './connectivity';
 import type {
   ApiPericopeSetPayload,
@@ -376,6 +380,37 @@ export const FluentAPI = {
       undefined,
       token,
     ),
+
+  /**
+   * Comment count + current-user-commented marker for one assignment (#703).
+   * Pinned fluent-api PR #459: GET …/comment-aggregate (viewer from bearer; no userId param).
+   * Pass an explicit `token` so mid-flight account switches cannot retarget auth.
+   */
+  getCommentAggregate: async (
+    chapterAssignmentId: number,
+    token?: string,
+  ): Promise<ChapterCommentAggregate> => {
+    if (
+      typeof chapterAssignmentId !== 'number' ||
+      !Number.isInteger(chapterAssignmentId) ||
+      chapterAssignmentId <= 0
+    ) {
+      throw createApiError(
+        400,
+        'Invalid chapterAssignmentId for comment-aggregate',
+      );
+    }
+    const raw = await authedRequest<unknown>(
+      `/chapter-assignments/${chapterAssignmentId}/comment-aggregate`,
+      undefined,
+      token,
+    );
+    const parsed = parseChapterCommentAggregate(raw, chapterAssignmentId);
+    if (!parsed) {
+      throw createApiError(500, 'Malformed chapter comment-aggregate response');
+    }
+    return parsed;
+  },
 
   /**
    * Advance a chapter assignment one step. Body stays empty.
