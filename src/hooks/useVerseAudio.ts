@@ -1338,6 +1338,7 @@ export function useVerseAudio({
           setLoadedTakeId(null);
         }
         await deleteTakeFn(id);
+        notifyPendingUploads();
         if (target?.localFilePath) {
           await deleteFile(target.localFilePath).catch(() => {
             // best-effort — DB row is already gone, don't block the UI on a stray file

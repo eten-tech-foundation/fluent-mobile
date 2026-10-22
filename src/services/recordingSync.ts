@@ -230,6 +230,7 @@ async function uploadOneRecording(
 
       const baseVersionToken = await getLatestVersionToken(
         recording.bibleTextId,
+        recording.projectUnitId,
       );
 
       const response = await FluentAPI.uploadVerseAudio(

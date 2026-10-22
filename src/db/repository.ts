@@ -1354,18 +1354,19 @@ export async function markRecordingAndChapterConflicted(
 
 export async function getLatestVersionToken(
   bibleTextId: number,
+  projectUnitId: number | null,
 ): Promise<number | undefined> {
   const db = getDatabase();
-  // Server version tokens increase monotonically per verse, so the newest
-  // server token is the MAX — not the token on the most recently *updated*
-  // row. Selecting an already-uploaded take (#701) bumps its updated_at
-  // without refreshing version_token; ordering by updated_at would return
-  // that stale token as baseVersionToken and the server 409s the CAS, so the
-  // selection change never lands.
+  // The server keeps one version token per (projectUnitId, bibleTextId).
+  // Scope the MAX to this unit; a higher token from another unit for the
+  // same verse is not accepted for this unit, and the server returns 200
+  // without changing the active take (no 409).
   const result = await db.execute(
     `SELECT MAX(version_token) AS version_token FROM recordings
-     WHERE bible_text_id = ? AND version_token IS NOT NULL`,
-    [bibleTextId],
+     WHERE bible_text_id = ?
+       AND project_unit_id IS ?
+       AND version_token IS NOT NULL`,
+    [bibleTextId, projectUnitId],
   );
   const row = (
     result?.rows as { version_token: number | null }[] | undefined

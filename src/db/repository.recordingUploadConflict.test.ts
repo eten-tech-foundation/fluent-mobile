@@ -60,6 +60,7 @@ function createRecordingConflictTestDb() {
       version_token: 3,
       upload_error: null,
       updated_at: '2026-01-05T00:00:00.000Z',
+      project_unit_id: 12,
     },
     {
       id: 'rec-pending',
@@ -86,6 +87,7 @@ function createRecordingConflictTestDb() {
       version_token: 4,
       upload_error: null,
       updated_at: '2026-01-04T00:00:00.000Z',
+      project_unit_id: 12,
     },
   ];
 
@@ -112,10 +114,14 @@ function createRecordingConflictTestDb() {
       sql.includes('SELECT MAX(version_token) AS version_token') &&
       sql.includes('FROM recordings')
     ) {
-      const [bibleTextId] = params as [number];
+      const [bibleTextId, projectUnitId] = params as [number, number | null];
+      // Mirrors `project_unit_id IS ?` — scope tokens to the caller's unit.
       const tokens = recordings
         .filter(
-          r => r.bible_text_id === bibleTextId && r.version_token !== null,
+          r =>
+            r.bible_text_id === bibleTextId &&
+            (r.project_unit_id ?? null) === (projectUnitId ?? null) &&
+            r.version_token !== null,
         )
         .map(r => r.version_token as number);
       const max = tokens.length > 0 ? Math.max(...tokens) : null;
@@ -266,7 +272,33 @@ describe('recording upload conflict repository helpers (#256)', () => {
     // holds the higher server token (4). Re-selecting an uploaded take bumps
     // its updated_at without a new token, so ordering by recency would send a
     // stale baseVersionToken and the server 409s the CAS.
-    await expect(getLatestVersionToken(42)).resolves.toBe(4);
+    await expect(getLatestVersionToken(42, 12)).resolves.toBe(4);
+  });
+
+  it('getLatestVersionToken scopes tokens to the project unit (#701)', async () => {
+    const db = createRecordingConflictTestDb();
+    // Same verse, higher token — but it belongs to a different unit, so the
+    // server would ignore it for unit 12 (200 without changing the take).
+    db.__recordings.push({
+      id: 'rec-other-unit',
+      bible_text_id: 42,
+      local_file_path: '/other.m4a',
+      duration_ms: 1000,
+      recorded_by_user_id: 1,
+      is_selected: 1,
+      sync_status: 'conflicted',
+      blob_key: null,
+      version_token: 9,
+      upload_error: null,
+      updated_at: '2026-01-07T00:00:00.000Z',
+      project_unit_id: 99,
+    });
+    setDatabase(db as never);
+
+    await expect(getLatestVersionToken(42, 12)).resolves.toBe(4);
+    await expect(getLatestVersionToken(42, 99)).resolves.toBe(9);
+    // No token for this verse in a null unit.
+    await expect(getLatestVersionToken(42, null)).resolves.toBeUndefined();
   });
 
   it('getLatestVersionToken returns undefined when no row has a token', async () => {
@@ -276,7 +308,7 @@ describe('recording upload conflict repository helpers (#256)', () => {
     });
     setDatabase(db as never);
 
-    await expect(getLatestVersionToken(42)).resolves.toBeUndefined();
+    await expect(getLatestVersionToken(42, 12)).resolves.toBeUndefined();
   });
 
   it('getPendingRecordings excludes uploaded and conflicted rows', async () => {
