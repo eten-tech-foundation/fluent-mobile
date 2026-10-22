@@ -9,7 +9,10 @@ import {
   getSyncPausedUntilMs,
   setSyncPausedUntilMs,
 } from './storage';
-import { syncPendingChapterClaimsForUser } from './sync';
+import {
+  syncPendingChapterClaimsForUser,
+  syncPendingStageAdvancesForUser,
+} from './sync';
 import {
   getUploadOverCellular,
   subscribeToPreference,
@@ -36,6 +39,18 @@ async function pushPendingClaimsBeforeUpload(): Promise<void> {
     return;
   }
   await syncPendingChapterClaimsForUser(userId);
+}
+
+async function pushPendingStageAdvancesBeforeUpload(): Promise<void> {
+  const activeUserId = getActiveUserId();
+  const userId = Number(activeUserId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    log.warn('Skipping stage-advance push before upload — no active user', {
+      activeUserId,
+    });
+    return;
+  }
+  await syncPendingStageAdvancesForUser(userId);
 }
 
 export {
@@ -106,6 +121,7 @@ export function startUploadOrchestrator(
         ? workerOverride ?? null
         : chapterUploadWorker,
     pushPendingClaimsBeforeUpload,
+    pushPendingStageAdvancesBeforeUpload,
     ...restOverrides,
   };
 

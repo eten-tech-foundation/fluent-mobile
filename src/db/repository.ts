@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
 import { StageAdvanceStatus } from '@/utils/stageAdvancement';
+import { insertStageAdvanceQueueEntry } from './stageAdvanceQueueRepository';
 
 const log = logger.create('DBRepository');
 
@@ -338,8 +339,22 @@ async function insertChapterAssignmentTx(
       book_id = excluded.book_id,
       chapter_number = excluded.chapter_number,
       assigned_user_id = excluded.assigned_user_id,
-      peer_checker_id = excluded.peer_checker_id,
-      status = excluded.status,
+      peer_checker_id = CASE
+        WHEN EXISTS (
+          SELECT 1 FROM stage_advance_queue saq
+          WHERE saq.chapter_assignment_id = chapter_assignments.id
+            AND saq.sync_status = 'pending'
+        ) THEN chapter_assignments.peer_checker_id
+        ELSE excluded.peer_checker_id
+      END,
+      status = CASE
+        WHEN EXISTS (
+          SELECT 1 FROM stage_advance_queue saq
+          WHERE saq.chapter_assignment_id = chapter_assignments.id
+            AND saq.sync_status = 'pending'
+        ) THEN chapter_assignments.status
+        ELSE excluded.status
+      END,
       submitted_time = excluded.submitted_time,
       updated_at = excluded.updated_at,
       total_verses = MAX(chapter_assignments.total_verses, excluded.total_verses),
@@ -1196,19 +1211,25 @@ export async function resolveChapterClaimQueueEntry(id: number): Promise<void> {
 }
 
 /**
- * Immediately apply a local stage advance (#258, #443, #442). Optional
- * peerCheckerId is set when an unassigned Peer Check is sent to Community
- * Review. Server confirmation and pending-sync queue behavior are owned by #257.
+ * Immediately apply a local stage advance and enqueue it in the same
+ * transaction (#257). Optional peerCheckerId is set when an unassigned Peer
+ * Check is sent to Community Review. Drain owns the server PATCH.
  */
 export async function updateChapterAssignmentStatusLocally(
   chapterAssignmentId: number,
   status: StageAdvanceStatus,
-  peerCheckerId?: number,
+  peerCheckerId: number | undefined,
+  userId: number,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
   const submittedTime = new Date().toISOString();
   await db.transaction(async (tx: Transaction) => {
+    const current = await tx.execute(
+      `SELECT status FROM chapter_assignments WHERE id = ?`,
+      [chapterAssignmentId],
+    );
+    const currentRow = current.rows?.[0] as { status?: string } | undefined;
     if (peerCheckerId !== undefined) {
       await tx.execute(
         `UPDATE chapter_assignments
@@ -1219,15 +1240,39 @@ export async function updateChapterAssignmentStatusLocally(
          WHERE id = ?`,
         [status, submittedTime, updatedAt, peerCheckerId, chapterAssignmentId],
       );
-      return;
+    } else {
+      await tx.execute(
+        `UPDATE chapter_assignments
+         SET status = ?,
+             submitted_time = ?,
+             updated_at = ?
+         WHERE id = ?`,
+        [status, submittedTime, updatedAt, chapterAssignmentId],
+      );
     }
+    if (!currentRow) return;
+    await insertStageAdvanceQueueEntry(tx, {
+      chapterAssignmentId,
+      userId,
+      fromStatus: String(currentRow.status ?? ''),
+      toStatus: status,
+      peerCheckerId: peerCheckerId ?? null,
+      createdAt: updatedAt,
+    });
+  });
+}
+
+/** Write a resolved status without enqueueing. Used when a queued advance loses to a lower server stage (#257). */
+export async function setChapterAssignmentStatus(
+  chapterAssignmentId: number,
+  status: string,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.transaction(async (tx: Transaction) => {
     await tx.execute(
-      `UPDATE chapter_assignments
-       SET status = ?,
-           submitted_time = ?,
-           updated_at = ?
-       WHERE id = ?`,
-      [status, submittedTime, updatedAt, chapterAssignmentId],
+      `UPDATE chapter_assignments SET status = ?, updated_at = ? WHERE id = ?`,
+      [status, updatedAt, chapterAssignmentId],
     );
   });
 }

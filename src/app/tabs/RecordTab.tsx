@@ -1041,6 +1041,9 @@ export function RecordTab({
     }
     setSubmitting(true);
     try {
+      if (currentUserId === null) {
+        throw new Error('Missing user for stage advance');
+      }
       await confirmStageAdvancement({
         chapterAssignmentId: chapterData.id,
         destination: stageAdvance.destination,
@@ -1049,6 +1052,7 @@ export function RecordTab({
           currentUserId,
           nextStatus: stageAdvance.destination.nextStatus,
         }),
+        userId: currentUserId,
       });
       setConfirmVisible(false);
       if (router.canGoBack()) {

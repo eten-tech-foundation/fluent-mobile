@@ -159,6 +159,14 @@ jest.mock('./chapterClaimSync', () => ({
     .mockResolvedValue({ conflicts: 0 }),
 }));
 
+jest.mock('./stageAdvanceSync', () => ({
+  syncPendingStageAdvances: jest.fn().mockResolvedValue({
+    synced: 0,
+    dropped: 0,
+    failed: 0,
+  }),
+}));
+
 jest.mock('../db/repository', () => ({
   insertMasterData: jest.fn().mockResolvedValue(undefined),
   insertProjects: jest.fn().mockResolvedValue(undefined),
@@ -222,6 +230,10 @@ const { syncPendingChapterClaims } = jest.requireMock('./chapterClaimSync') as {
   syncPendingChapterClaims: jest.Mock;
 };
 
+const { syncPendingStageAdvances } = jest.requireMock('./stageAdvanceSync') as {
+  syncPendingStageAdvances: jest.Mock;
+};
+
 const { reconcileUserProjects, reconcileUserChapterWork } = jest.requireMock(
   '../db/repository',
 ) as {
@@ -278,10 +290,16 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
     await refreshChapterMetadataIfOnline(2);
 
     expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(
+      2,
+      expect.any(String),
+    );
     const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
+    const stageOrder = syncPendingStageAdvances.mock.invocationCallOrder[0];
     const projectsOrder = (FluentAPI.getUserProjects as jest.Mock).mock
       .invocationCallOrder[0];
-    expect(claimsOrder).toBeLessThan(projectsOrder);
+    expect(claimsOrder).toBeLessThan(stageOrder);
+    expect(stageOrder).toBeLessThan(projectsOrder);
   });
 
   it('runs chapter-work reconciliation with empty lists when the response is validly empty', async () => {
@@ -361,8 +379,8 @@ describe('refreshChapterMetadataIfOnline', () => {
     await refreshChapterMetadataIfOnline(2);
     await refreshChapterMetadataIfOnline(2);
 
-    // Each refresh snapshots once for the gate + once inside claim push (#611).
-    expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(4);
+    // Each refresh snapshots once for the gate, once for claims, once for stage advances.
+    expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(6);
     expect(FluentAPI.getLanguages).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getChapterAssignments).toHaveBeenNthCalledWith(
@@ -741,12 +759,20 @@ describe('syncAllData auth handling', () => {
 
     await syncAllData(true);
 
+    expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(2, 'valid-token');
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
       undefined,
       undefined,
       'valid-token',
     );
+    const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
+    const stageOrder = syncPendingStageAdvances.mock.invocationCallOrder[0];
+    const assignmentsOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(stageOrder);
+    expect(stageOrder).toBeLessThan(assignmentsOrder);
   });
 
   it('registers a new user without switching active user during add-account sync', async () => {
@@ -1141,6 +1167,7 @@ describe('syncAllUsers auth handling', () => {
 
     await waitFor(() => {
       expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+      expect(syncPendingStageAdvances).toHaveBeenCalledWith(2, 'user-2-token');
     });
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
 
@@ -1701,6 +1728,19 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
 
+    // Claims → stage drain before My Work assignment pull; no early full catalogue.
+    expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(2, 'scoped-token');
+    const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
+    const stageOrder = syncPendingStageAdvances.mock.invocationCallOrder[0];
+    const myWorkOrder = (FluentAPI.getUserChapterAssignments as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(stageOrder);
+    expect(stageOrder).toBeLessThan(myWorkOrder);
+    // Full catalogue must not finish before Tier 1 unblocked.
+    expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(1);
+    expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
+
     resolveLanguages([]);
     await pending;
 
@@ -1720,6 +1760,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     const catalogueOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
       .invocationCallOrder[0];
     expect(masterCursorOrder).toBeLessThan(catalogueOrder);
+    expect(stageOrder).toBeLessThan(catalogueOrder);
   });
 
   it('re-login Tier 1 seeds assignment parents without advancing master cursor (#679)', async () => {
@@ -1798,6 +1839,18 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     ).toBeGreaterThanOrEqual(2);
     expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+    // Claims → stage drain before My Work assignment pull; catalogue still held.
+    expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(
+      2,
+      'relogin-scoped',
+    );
+    const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
+    const stageOrder = syncPendingStageAdvances.mock.invocationCallOrder[0];
+    const myWorkOrder = (FluentAPI.getUserChapterAssignments as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(stageOrder);
+    expect(stageOrder).toBeLessThan(myWorkOrder);
 
     resolveLanguages([]);
     await pending;
@@ -1809,6 +1862,9 @@ describe('syncAllData progressive login (#670 / #679)', () => {
       undefined,
       'relogin-scoped',
     );
+    const catalogueOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(stageOrder).toBeLessThan(catalogueOrder);
   });
 
   it('empty My Work skips assignment seed and still completes Tier 1 (#679)', async () => {
@@ -1961,12 +2017,16 @@ describe('syncAllData progressive login (#670 / #679)', () => {
         'parallel-warm-token',
       );
     });
-    // Projects must wait until both claims and master finish.
+    // Stage drain waits on claims; projects wait until claims, stage, and master finish.
+    expect(syncPendingStageAdvances).not.toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
 
     resolveClaims({ synced: 0, conflicts: 0, failed: 0 });
-    await new Promise<void>(resolve => {
-      setImmediate(resolve);
+    await waitFor(() => {
+      expect(syncPendingStageAdvances).toHaveBeenCalledWith(
+        2,
+        'parallel-warm-token',
+      );
     });
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
 
@@ -1978,12 +2038,17 @@ describe('syncAllData progressive login (#670 / #679)', () => {
       'parallel-warm-token',
     );
     const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
+    const stageOrder = syncPendingStageAdvances.mock.invocationCallOrder[0];
     const masterOrder = (FluentAPI.getLanguages as jest.Mock).mock
       .invocationCallOrder[0];
     const projectsOrder = (FluentAPI.getUserProjects as jest.Mock).mock
       .invocationCallOrder[0];
-    expect(claimsOrder).toBeLessThan(projectsOrder);
+    const assignmentsOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(stageOrder);
+    expect(stageOrder).toBeLessThan(projectsOrder);
     expect(masterOrder).toBeLessThan(projectsOrder);
+    expect(stageOrder).toBeLessThan(assignmentsOrder);
   });
 
   it('peer-check-only My Work seeds FK parents with session token and leaves master cursor (#679)', async () => {
