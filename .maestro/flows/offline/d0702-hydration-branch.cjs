@@ -1,11 +1,12 @@
 /**
  * D-0702 hydration terminal classifier (device-free).
- * Used by static tests to gate available / unavailable / loading / mixed states.
+ * Used by static tests to gate available / unavailable / empty / loading / mixed states.
  * Runtime Maestro YAML selects branches via visible oracles; this encodes the
  * same semantics so loading or arbitrary errors cannot silently PASS.
  *
  * @typedef {object} HydrationSignals
  * @property {boolean} loadingVisible
+ * @property {boolean} emptyVisible
  * @property {boolean} unavailableVisible
  * @property {boolean} resourcesSectionVisible
  * @property {boolean} footerHintVisible
@@ -19,16 +20,20 @@
 const UNAVAILABLE_MESSAGE =
   "Couldn't load downloadable resources for the selected chapters. Check your connection and try again.";
 
+const EMPTY_MESSAGE =
+  'No downloadable resources are available for the selected chapters.';
+
 const POSITIVE_SIZE_RE = /^(?!0 B$)\d+(\.\d+)? (B|KB|MB|GB)$/;
 const POSITIVE_DOWNLOAD_RE = /^Download (?!0 B$).+$/;
 
 /**
  * @param {HydrationSignals} signals
- * @returns {{ ok: boolean, branch?: 'available'|'unavailable', reason: string }}
+ * @returns {{ ok: boolean, branch?: 'available'|'unavailable'|'empty', reason: string }}
  */
 function classifyHydrationTerminal(signals) {
   const {
     loadingVisible,
+    emptyVisible,
     unavailableVisible,
     resourcesSectionVisible,
     footerHintVisible,
@@ -39,6 +44,16 @@ function classifyHydrationTerminal(signals) {
 
   if (loadingVisible) {
     return { ok: false, reason: 'still-loading' };
+  }
+
+  if (emptyVisible) {
+    if (unavailableVisible || resourcesSectionVisible) {
+      return { ok: false, reason: 'mixed-empty-and-other' };
+    }
+    if (downloadEnabled) {
+      return { ok: false, reason: 'empty-but-download-enabled' };
+    }
+    return { ok: true, branch: 'empty', reason: 'empty' };
   }
 
   if (unavailableVisible && resourcesSectionVisible) {
@@ -87,6 +102,7 @@ function classifyHydrationTerminal(signals) {
 
 module.exports = {
   UNAVAILABLE_MESSAGE,
+  EMPTY_MESSAGE,
   POSITIVE_SIZE_RE,
   POSITIVE_DOWNLOAD_RE,
   classifyHydrationTerminal,

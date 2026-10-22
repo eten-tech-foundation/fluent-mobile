@@ -49,14 +49,16 @@ const UNAVAILABLE =
   "Couldn't load downloadable resources for the selected chapters. Check your connection and try again.";
 
 function loadYamlDocs(file) {
+  let yaml;
   try {
-    const yaml = require('js-yaml');
-    return yaml.loadAll(fs.readFileSync(file, 'utf8'));
-  } catch {
+    yaml = require('js-yaml');
+  } catch (err) {
+    if (!err || err.code !== 'MODULE_NOT_FOUND') throw err;
     const raw = fs.readFileSync(file, 'utf8');
     const parts = raw.split(/^---\s*$/m);
     return parts.map((p, i) => ({ _rawPart: i, _text: p }));
   }
+  return yaml.loadAll(fs.readFileSync(file, 'utf8'));
 }
 
 function collectRunFlowDeps(entryFile, seen = new Set()) {

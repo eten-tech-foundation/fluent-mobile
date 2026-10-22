@@ -416,8 +416,12 @@ def snapshot_prefs(bridge: Bridge) -> dict[str, str]:
 
 def dump_nodes(bridge: Bridge, label: str) -> list[dict[str, str]]:
     """Parse uiautomator hierarchy. Bridge.shell must return XML for dump/cat probes."""
-    bridge.shell("uiautomator", "dump", f"/sdcard/d0702-{label}.xml")
-    xml = bridge.shell("cat", f"/sdcard/d0702-{label}.xml")
+    target = f"/sdcard/d0702-{label}.xml"
+    bridge.shell("rm", "-f", target)
+    out = bridge.shell("uiautomator", "dump", target)
+    if isinstance(bridge, AdbBridge) and "dumped to" not in out:
+        raise RuntimeError(f"uiautomator dump failed: {out.strip()!r}")
+    xml = bridge.shell("cat", target)
     nodes: list[dict[str, str]] = []
     try:
         root = ET.fromstring(xml)

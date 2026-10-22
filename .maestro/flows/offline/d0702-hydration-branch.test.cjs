@@ -11,6 +11,7 @@
 const assert = require('node:assert/strict');
 const {
   UNAVAILABLE_MESSAGE,
+  EMPTY_MESSAGE,
   classifyHydrationTerminal,
   POSITIVE_SIZE_RE,
   POSITIVE_DOWNLOAD_RE,
@@ -25,6 +26,7 @@ const { describe, it } = harness;
 /** Signals matching retained step-066 available hierarchy (rounded labels). */
 const AVAILABLE_MATTHEW = {
   loadingVisible: false,
+  emptyVisible: false,
   unavailableVisible: false,
   resourcesSectionVisible: true,
   footerHintVisible: false,
@@ -36,7 +38,20 @@ const AVAILABLE_MATTHEW = {
 /** Signals matching historical unavailable explanation branch. */
 const UNAVAILABLE = {
   loadingVisible: false,
+  emptyVisible: false,
   unavailableVisible: true,
+  resourcesSectionVisible: false,
+  footerHintVisible: true,
+  downloadEnabled: false,
+  totalBytesText: '0 B',
+  downloadLabel: 'Download 0 B',
+};
+
+/** Successful empty-catalog terminal (no resources section, Download disabled). */
+const EMPTY = {
+  loadingVisible: false,
+  emptyVisible: true,
+  unavailableVisible: false,
   resourcesSectionVisible: false,
   footerHintVisible: true,
   downloadEnabled: false,
@@ -64,6 +79,13 @@ describe('D-0702 hydration branch classifier', () => {
     assert.equal(UNAVAILABLE_MESSAGE.includes('Couldn'), true);
   });
 
+  it('accepts successful empty-catalog terminal', () => {
+    const r = classifyHydrationTerminal(EMPTY);
+    assert.equal(r.ok, true);
+    assert.equal(r.branch, 'empty');
+    assert.equal(EMPTY_MESSAGE.includes('No downloadable resources'), true);
+  });
+
   it('rejects loading / disabled-transient (not a PASS)', () => {
     assert.equal(
       classifyHydrationTerminal({
@@ -77,6 +99,7 @@ describe('D-0702 hydration branch classifier', () => {
     assert.equal(
       classifyHydrationTerminal({
         loadingVisible: false,
+        emptyVisible: false,
         unavailableVisible: false,
         resourcesSectionVisible: false,
         footerHintVisible: true,
@@ -89,6 +112,27 @@ describe('D-0702 hydration branch classifier', () => {
   });
 
   it('rejects mixed / invalid terminals', () => {
+    assert.equal(
+      classifyHydrationTerminal({
+        ...EMPTY,
+        unavailableVisible: true,
+      }).reason,
+      'mixed-empty-and-other',
+    );
+    assert.equal(
+      classifyHydrationTerminal({
+        ...EMPTY,
+        resourcesSectionVisible: true,
+      }).reason,
+      'mixed-empty-and-other',
+    );
+    assert.equal(
+      classifyHydrationTerminal({
+        ...EMPTY,
+        downloadEnabled: true,
+      }).reason,
+      'empty-but-download-enabled',
+    );
     assert.equal(
       classifyHydrationTerminal({
         ...AVAILABLE_MATTHEW,

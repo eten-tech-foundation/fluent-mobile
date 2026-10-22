@@ -23,7 +23,7 @@ Artifact failure on `fbb8fbcc` retained — no conversion to PASS. Successful `7
 
 After 0→1 + `checked: true` + book/selected counts + footer/Total/Download visible (disabled-during-loading is **transient**, not terminal):
 
-**Bounded scroll-wait** (not footer-first / not N×animation): `scrollUntilVisible` resources-section (45s, optional) → else unavailable message (45s) → else UP re-check resources (15s) → `assertTrue` branch ∈ {available,unavailable}. Timeout / loading / disabled-only → fail:
+**Bounded scroll-wait** (not footer-first / not N×animation): `scrollUntilVisible` resources-section (45s, optional) → else unavailable message (45s) → else UP re-check resources (15s) → `assertTrue` branch ∈ {available,unavailable,empty}. Timeout / loading / disabled-only → fail:
 
 ### (A) Available — `d0702-assert-hydration-available.yaml`
 
