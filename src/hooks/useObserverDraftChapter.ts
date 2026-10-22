@@ -29,6 +29,8 @@ function mapUnits(bundle: DraftChapterLocalBundle | null): ObserverDraftUnit[] {
     activeTakeId: unit.activeTakeId,
     localPlaybackUri: unit.localPlaybackUri,
     conflictStatus: unit.conflictStatus,
+    // Pass published coverage through — never invent bounds here.
+    coverage: unit.coverage ?? null,
   }));
 }
 

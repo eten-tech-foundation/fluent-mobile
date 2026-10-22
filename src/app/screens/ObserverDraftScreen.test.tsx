@@ -180,12 +180,23 @@ jest.mock('../tabs/BibleTab', () => {
 jest.mock('../tabs/ObserverDraftTab', () => {
   const MockReact = require('react');
   const { View, Text } = require('react-native');
+  const {
+    formatCanonicalObserverDraftLabel,
+  } = require('../tabs/observerDraftCoverageLabel');
   return {
     ObserverDraftTab: (props: {
       units: Array<{
         bibleTextId: number;
+        verseNumber: number;
         draftText: string | null;
         localPlaybackUri: string | null;
+        coverage?: {
+          granularity: 'verse' | 'pericope';
+          startChapter: number | null;
+          startVerse: number | null;
+          endChapter: number | null;
+          endVerse: number | null;
+        } | null;
       }>;
       unresolvedConflictPlaybackPolicy: string;
       hasAccess: boolean;
@@ -213,6 +224,14 @@ jest.mock('../tabs/ObserverDraftTab', () => {
                   Text,
                   { testID: `mock-audio-${unit.bibleTextId}` },
                   unit.localPlaybackUri ?? 'Audio unavailable',
+                ),
+                MockReact.createElement(
+                  Text,
+                  { testID: `mock-coverage-label-${unit.bibleTextId}` },
+                  formatCanonicalObserverDraftLabel(
+                    unit.verseNumber,
+                    unit.coverage,
+                  ),
                 ),
               ),
             )
@@ -274,6 +293,7 @@ const readyBundle = {
       conflictStatus: 'clean' as const,
       activeTakeId: 55,
       contentHash: 'abc',
+      coverage: null,
       localPlaybackUri: 'file:///canonical/55.m4a',
       draftText: 'Target draft',
     },
@@ -451,6 +471,7 @@ describe('ObserverDraftScreen', () => {
           conflictStatus: null,
           activeTakeId: null,
           contentHash: null,
+          coverage: null,
           localPlaybackUri: null,
           draftText: null,
         },
@@ -471,6 +492,89 @@ describe('ObserverDraftScreen', () => {
         'Audio unavailable',
       );
     });
+  });
+
+  it('loader bundle coverage reaches Draft tab labels (same/cross-chapter + null legacy)', async () => {
+    mockGetDraftChapterLocalBundle.mockResolvedValue({
+      ...readyBundle,
+      units: [
+        {
+          ...readyBundle.units[0],
+          verseNumber: 3,
+          coverage: {
+            granularity: 'pericope',
+            startChapter: 1,
+            startVerse: 3,
+            endChapter: 1,
+            endVerse: 7,
+          },
+        },
+      ],
+    });
+
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByTestId('observer-draft-tab-draft')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('observer-draft-tab-draft'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-coverage-label-501')).toHaveTextContent(
+        'Canonical draft - Pericope - vv. 3-7',
+      );
+    });
+    expect(screen.getAllByTestId('mock-unit-501')).toHaveLength(1);
+    expect(mockStartDraftDownload).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('policy:undecided')).toBeTruthy();
+
+    mockGetDraftChapterLocalBundle.mockResolvedValue({
+      ...readyBundle,
+      units: [
+        {
+          ...readyBundle.units[0],
+          verseNumber: 30,
+          coverage: {
+            granularity: 'pericope',
+            startChapter: 1,
+            startVerse: 30,
+            endChapter: 2,
+            endVerse: 5,
+          },
+        },
+      ],
+    });
+    await act(async () => {
+      mockQueueListeners.forEach(fn => fn());
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-coverage-label-501')).toHaveTextContent(
+        'Canonical draft - Pericope - vv. 1:30-2:5',
+      );
+    });
+    expect(screen.getAllByTestId('mock-unit-501')).toHaveLength(1);
+
+    mockGetDraftChapterLocalBundle.mockResolvedValue({
+      ...readyBundle,
+      units: [
+        {
+          ...readyBundle.units[0],
+          verseNumber: 3,
+          coverage: null,
+        },
+      ],
+    });
+    await act(async () => {
+      mockQueueListeners.forEach(fn => fn());
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-coverage-label-501')).toHaveTextContent(
+        'Canonical draft - v. 3',
+      );
+    });
+    expect(screen.queryByText(/Verse/)).toBeNull();
+    expect(mockStartDraftDownload).not.toHaveBeenCalled();
   });
 
   it('hides content for invalid route params', async () => {

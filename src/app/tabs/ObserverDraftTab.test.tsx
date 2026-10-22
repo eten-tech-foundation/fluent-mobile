@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react-native';
 import {
   ObserverDraftTab,
+  type ObserverDraftAudioCoverage,
   type ObserverDraftTabProps,
   type ObserverDraftUnit,
 } from './ObserverDraftTab';
@@ -210,8 +211,125 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
   it('does not invent a take number in the DraftTakeRow label', async () => {
     view = await renderTab();
 
-    expect(screen.getByText('Canonical draft - Verse - v. 3')).toBeTruthy();
+    expect(screen.getByText('Canonical draft - v. 3')).toBeTruthy();
+    expect(screen.queryByText(/Verse/)).toBeNull();
     expect(screen.queryByText(/^Take \d+/)).toBeNull();
+  });
+
+  it('renders same-chapter pericope coverage with one row for the anchor unit', async () => {
+    const pericopeCoverage: ObserverDraftAudioCoverage = {
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    };
+    view = await renderTab({
+      units: [unit({ coverage: pericopeCoverage })],
+    });
+
+    expect(
+      screen.getByText('Canonical draft - Pericope - vv. 3-7'),
+    ).toBeTruthy();
+    expect(screen.getAllByTestId('observer-draft-unit-101')).toHaveLength(1);
+    expect(screen.queryByText(/^Take \d+/)).toBeNull();
+  });
+
+  it('renders cross-chapter pericope coverage with inclusive chapter:verse bounds', async () => {
+    view = await renderTab({
+      units: [
+        unit({
+          verseNumber: 30,
+          coverage: {
+            granularity: 'pericope',
+            startChapter: 1,
+            startVerse: 30,
+            endChapter: 2,
+            endVerse: 5,
+          },
+        }),
+      ],
+    });
+
+    expect(
+      screen.getByText('Canonical draft - Pericope - vv. 1:30-2:5'),
+    ).toBeTruthy();
+  });
+
+  it('renders known verse coverage and keeps undecided policy read-only playback', async () => {
+    view = await renderTab({
+      units: [
+        unit({
+          coverage: {
+            granularity: 'verse',
+            startChapter: 1,
+            startVerse: 3,
+            endChapter: 1,
+            endVerse: 3,
+          },
+        }),
+      ],
+      unresolvedConflictPlaybackPolicy: 'undecided',
+    });
+
+    expect(screen.getByText('Canonical draft - Verse - vv. 3-3')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await waitFor(() => {
+      expect(mockPlaybackLoad).toHaveBeenCalledWith('file:///canonical/55.m4a');
+      expect(mockPlaybackResume).toHaveBeenCalledWith(
+        undefined,
+        'file:///canonical/55.m4a',
+      );
+    });
+    expect(screen.queryByTestId('record-take-select-55')).toBeNull();
+  });
+
+  it('uses neutral null label and range-unavailable partial pericope (no invented Verse)', async () => {
+    view = await renderTab({
+      units: [unit({ coverage: null })],
+    });
+    expect(screen.getByText('Canonical draft - v. 3')).toBeTruthy();
+    expect(screen.queryByText(/Verse/)).toBeNull();
+
+    await rerenderTab(view, {
+      units: [
+        unit({
+          coverage: {
+            granularity: 'pericope',
+            startChapter: 1,
+            startVerse: 3,
+            endChapter: null,
+            endVerse: null,
+          },
+        }),
+      ],
+    });
+    expect(
+      screen.getByText('Canonical draft - Pericope - Range unavailable - v. 3'),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Verse/)).toBeNull();
+  });
+
+  it('keeps exactly one row for a same-anchor unit (verse/pericope are not duplicated)', async () => {
+    view = await renderTab({
+      units: [
+        unit({
+          bibleTextId: 101,
+          verseNumber: 3,
+          coverage: {
+            granularity: 'pericope',
+            startChapter: 1,
+            startVerse: 3,
+            endChapter: 1,
+            endVerse: 5,
+          },
+        }),
+      ],
+    });
+
+    expect(screen.getAllByTestId('observer-draft-unit-101')).toHaveLength(1);
+    expect(screen.getAllByTestId('observer-draft-verse-row-3')).toHaveLength(1);
+    expect(screen.getAllByTestId('record-play-button-55')).toHaveLength(1);
   });
 
   it('shows honest unavailable when localPlaybackUri is null', async () => {

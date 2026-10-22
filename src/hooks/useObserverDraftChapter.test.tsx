@@ -74,7 +74,17 @@ const assignment1002 = {
   chapterNumber: 2,
 };
 
-const bundleFor = (chapterAssignmentId: number, draftText: string) => ({
+const bundleFor = (
+  chapterAssignmentId: number,
+  draftText: string,
+  coverage: {
+    granularity: 'verse' | 'pericope';
+    startChapter: number | null;
+    startVerse: number | null;
+    endChapter: number | null;
+    endVerse: number | null;
+  } | null = null,
+) => ({
   chapterAssignmentId,
   role: 'observer' as const,
   status: 'ready' as const,
@@ -94,6 +104,7 @@ const bundleFor = (chapterAssignmentId: number, draftText: string) => ({
       conflictStatus: 'clean' as const,
       activeTakeId: 55,
       contentHash: 'abc',
+      coverage,
       localPlaybackUri: 'file:///canonical/55.m4a',
       draftText,
     },
@@ -281,5 +292,87 @@ describe('useObserverDraftChapter scope projection', () => {
     expect(
       result.current.draftUnits.some(u => u.draftText === 'EPOCH-0-STALE'),
     ).toBe(false);
+  });
+
+  it('passes published same-chapter and cross-chapter coverage through mapUnits', async () => {
+    mockGetDraftChapterLocalBundle.mockResolvedValue(
+      bundleFor(1001, 'Draft', {
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 3,
+        endChapter: 1,
+        endVerse: 7,
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({
+        chapterAssignmentId,
+        projectId,
+      }: {
+        chapterAssignmentId: number | null;
+        projectId: number | null;
+      }) => useObserverDraftChapter({ chapterAssignmentId, projectId }),
+      { initialProps: { chapterAssignmentId: 1001, projectId: 9 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasAccess).toBe(true);
+      expect(result.current.draftUnits).toHaveLength(1);
+      expect(result.current.draftUnits[0]?.coverage).toEqual({
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 3,
+        endChapter: 1,
+        endVerse: 7,
+      });
+    });
+
+    mockGetDraftChapterLocalBundle.mockResolvedValue(
+      bundleFor(1001, 'Draft', {
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 30,
+        endChapter: 2,
+        endVerse: 5,
+      }),
+    );
+    act(() => {
+      result.current.refresh();
+    });
+    rerender({ chapterAssignmentId: 1001, projectId: 9 });
+
+    await waitFor(() => {
+      expect(result.current.draftUnits[0]?.coverage).toEqual({
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 30,
+        endChapter: 2,
+        endVerse: 5,
+      });
+    });
+    expect(result.current.draftUnits).toHaveLength(1);
+  });
+
+  it('passes legacy null coverage through without inventing bounds', async () => {
+    mockGetDraftChapterLocalBundle.mockResolvedValue(
+      bundleFor(1001, 'Legacy', null),
+    );
+
+    const { result } = renderHook(() =>
+      useObserverDraftChapter({
+        chapterAssignmentId: 1001,
+        projectId: 9,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasAccess).toBe(true);
+      expect(result.current.draftUnits[0]?.coverage).toBeNull();
+    });
+    const { startDraftDownload } = jest.requireMock(
+      '../services/draftDownload',
+    );
+    expect(startDraftDownload).not.toHaveBeenCalled();
   });
 });
