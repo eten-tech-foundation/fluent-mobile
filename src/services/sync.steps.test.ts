@@ -65,8 +65,11 @@ jest.mock('./authToken', () => ({
 jest.mock('./api', () => ({
   FluentAPI: {
     getLanguages: jest.fn().mockResolvedValue([]),
+    getLanguage: jest.fn(),
     getBooks: jest.fn().mockResolvedValue([]),
+    getBook: jest.fn(),
     getBibles: jest.fn().mockResolvedValue([]),
+    getBible: jest.fn(),
     getUserByEmail: jest.fn(),
     getUserProjects: jest.fn(),
     getUserMilestones: jest.fn().mockResolvedValue([]),
@@ -427,6 +430,96 @@ describe('sync step orchestration', () => {
         reconcileUserMilestonesMock.mock.invocationCallOrder[0],
       ).toBeLessThan(reconcileUserProjectsMock.mock.invocationCallOrder[0]);
       expect(ensureUserProjectMembershipMock).not.toHaveBeenCalled();
+    });
+
+    it('seedFkParents fetches unique languages by id without advancing master cursor (#679)', async () => {
+      mockDbCount(1);
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 1,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockResolvedValue({
+        id: 1,
+        langName: 'English',
+        langCodeIso6393: 'eng',
+      });
+
+      await syncProjects(2, 'seed-tok', { seedFkParents: true });
+
+      expect(FluentAPI.getLanguage).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getLanguage).toHaveBeenCalledWith(1, 'seed-tok');
+      expect(insertMasterDataMock).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            id: 1,
+            langName: 'English',
+            langCode: 'eng',
+          }),
+        ],
+        [],
+        [],
+      );
+      expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+      expect(insertProjectsMock).toHaveBeenCalled();
+      const seedOrder = insertMasterDataMock.mock.invocationCallOrder[0];
+      const projectOrder = insertProjectsMock.mock.invocationCallOrder[0];
+      expect(seedOrder).toBeLessThan(projectOrder);
+    });
+
+    it('seedFkParents failure does not insert projects (#679)', async () => {
+      jest.useFakeTimers();
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockRejectedValue(
+        new Error('language missing'),
+      );
+
+      try {
+        const pending = syncProjects(2, 'seed-tok', { seedFkParents: true });
+        const expectation = expect(pending).rejects.toThrow('language missing');
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(insertProjectsMock).not.toHaveBeenCalled();
+        expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not by-id seed when seedFkParents is omitted', async () => {
+      mockDbCount(1);
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+
+      await syncProjects(2, 'no-seed-tok');
+
+      expect(FluentAPI.getLanguage).not.toHaveBeenCalled();
+      expect(insertMasterDataMock).not.toHaveBeenCalled();
     });
   });
 
