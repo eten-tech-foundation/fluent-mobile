@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useDraftDownload } from '../../hooks/useDraftDownload';
 import { MyWorkChapter } from '../../types/db/types';
+import type { DraftDownloadRequest } from '../../types/draftDownload/types';
 import {
   buildMyWorkDraftDownloadRequest,
   getValidatedMyWorkDownloadUserId,
@@ -19,6 +20,19 @@ interface MyWorkRowProps {
   chapter: MyWorkChapter;
   onPress: () => void;
   isSyncing?: boolean;
+}
+
+function sameDraftDownloadIdentity(
+  a: DraftDownloadRequest,
+  b: DraftDownloadRequest,
+): boolean {
+  return (
+    a.userId === b.userId &&
+    a.role === b.role &&
+    a.chapterAssignmentId === b.chapterAssignmentId &&
+    a.projectId === b.projectId &&
+    a.projectUnitId === b.projectUnitId
+  );
 }
 
 export function MyWorkRow({
@@ -86,6 +100,21 @@ export function MyWorkRow({
           <DraftDownloadChip
             state={state}
             onPress={() => {
+              // Revalidate at press — grant revocation without rerender must not start.
+              const currentUserId = getValidatedMyWorkDownloadUserId();
+              if (currentUserId === null) {
+                return;
+              }
+              const liveRequest = buildMyWorkDraftDownloadRequest(
+                chapter,
+                currentUserId,
+              );
+              if (
+                liveRequest === null ||
+                !sameDraftDownloadIdentity(liveRequest, downloadRequest)
+              ) {
+                return;
+              }
               void start();
             }}
             testID={`my-work-draft-download-${chapter.id}`}

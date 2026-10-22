@@ -24,6 +24,13 @@ jest.mock('../../services/userOrgGrants', () => ({
   hasProjectObserverGrant: jest.fn(() => false),
 }));
 
+import { hasProjectObserverGrant } from '../../services/userOrgGrants';
+
+const mockHasProjectObserverGrant =
+  hasProjectObserverGrant as jest.MockedFunction<
+    typeof hasProjectObserverGrant
+  >;
+
 jest.mock('lucide-react-native', () => {
   const ReactNative = require('react-native');
   const Mock = () => <ReactNative.View />;
@@ -101,6 +108,7 @@ const baseChapter: MyWorkChapter = {
   bookCode: 'MRK',
   assignedUserId: 7,
   peerCheckerId: null,
+  listAccess: 'assigned',
 };
 
 const peerChapter: MyWorkChapter = {
@@ -112,6 +120,18 @@ const peerChapter: MyWorkChapter = {
   workflowStage: 'peer_check',
   assignedUserId: 9,
   peerCheckerId: 7,
+};
+
+const observerChapter: MyWorkChapter = {
+  ...baseChapter,
+  id: 3,
+  displayLabel: 'Mark 3',
+  chapterNumber: 3,
+  assignmentStatus: 'community_review',
+  workflowStage: 'community_review',
+  assignedUserId: null,
+  peerCheckerId: null,
+  listAccess: 'observer',
 };
 
 const peerRequest = {
@@ -126,11 +146,24 @@ const peerRequest = {
   role: 'peer_check' as const,
 };
 
+const observerRequest = {
+  chapterAssignmentId: 3,
+  projectUnitId: 11,
+  projectId: 3,
+  userId: 7,
+  bibleId: 5,
+  bookId: 41,
+  bookCode: 'MRK',
+  chapterNumber: 3,
+  role: 'observer' as const,
+};
+
 describe('MyWorkRow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetActiveUserId.mockReturnValue('7');
     mockParseUserId.mockReturnValue(7);
+    mockHasProjectObserverGrant.mockReturnValue(false);
     mockStart.mockResolvedValue({ ok: true });
     mockUseDraftDownload.mockReturnValue({
       state: {
@@ -291,5 +324,32 @@ describe('MyWorkRow', () => {
 
     expect(mockUseDraftDownload).toHaveBeenLastCalledWith(null);
     expect(queryByTestId('my-work-draft-download-2')).toBeNull();
+  });
+
+  it('does not start Observer download when grant is revoked before tap without rerender', () => {
+    mockHasProjectObserverGrant.mockReturnValue(true);
+    const { getByTestId } = render(
+      <MyWorkRow chapter={observerChapter} onPress={jest.fn()} />,
+    );
+
+    expect(mockUseDraftDownload).toHaveBeenCalledWith(observerRequest);
+    mockHasProjectObserverGrant.mockReturnValue(false);
+
+    fireEvent.press(getByTestId('my-work-draft-download-3'));
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('does not start download when account switches before tap without rerender', () => {
+    mockHasProjectObserverGrant.mockReturnValue(true);
+    const { getByTestId } = render(
+      <MyWorkRow chapter={observerChapter} onPress={jest.fn()} />,
+    );
+
+    expect(mockUseDraftDownload).toHaveBeenCalledWith(observerRequest);
+    mockGetActiveUserId.mockReturnValue('8');
+    mockParseUserId.mockReturnValue(8);
+
+    fireEvent.press(getByTestId('my-work-draft-download-3'));
+    expect(mockStart).not.toHaveBeenCalled();
   });
 });

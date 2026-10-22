@@ -16,7 +16,13 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { MyWorkRow } from '../../components/ui/MyWorkRow';
 import { PhaseStatusIcon } from '../../components/ui/PhaseStatusIcon';
 import { hrefs } from '../../navigation/hrefs';
+import { getObserverDraftDestination } from '../../navigation/observerDraft';
+import { getActiveUserId } from '../../services/storage';
+import { getObserverProjectIds } from '../../services/userOrgGrants';
+import { MyWorkChapter } from '../../types/db/types';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { classifyMyWorkListAccess } from '../../utils/myWorkChapterFilter';
+import { parseUserId } from '../../utils/parseUserId';
 import {
   groupMyWorkChaptersByStage,
   MyWorkAccordionStage,
@@ -50,6 +56,7 @@ export function MyWorkTab({
     useState<MyWorkExpandedStagesState>(EMPTY_EXPANDED_STATE);
   const expandedStateRef = useRef(expandedState);
   expandedStateRef.current = expandedState;
+  const pressGenerationRef = useRef(0);
 
   const groups = groupMyWorkChaptersByStage(chapters);
   const groupStagesKey = groups.map(group => group.stage).join('|');
@@ -62,6 +69,74 @@ export function MyWorkTab({
       reconcileExpandedMyWorkStages(groupStages, expandedStateRef.current),
     );
   }, [groupStagesKey]);
+
+  const openChapter = async (chapter: MyWorkChapter) => {
+    const pressGeneration = ++pressGenerationRef.current;
+
+    // Reclassify from live account + grants — stale listAccess must not route.
+    const activeRaw = getActiveUserId();
+    const syncedUserId = parseUserId();
+    if (
+      !activeRaw ||
+      syncedUserId === null ||
+      activeRaw !== String(syncedUserId)
+    ) {
+      return;
+    }
+    const grantProjectIds = getObserverProjectIds(String(syncedUserId));
+    const access = classifyMyWorkListAccess({
+      userId: syncedUserId,
+      assignmentStatus: chapter.assignmentStatus,
+      assignedUserId: chapter.assignedUserId,
+      peerCheckerId: chapter.peerCheckerId,
+      projectId: chapter.projectId,
+      grantProjectIds,
+    });
+    if (access === null) {
+      return;
+    }
+
+    if (access === 'observer') {
+      // Guarded helper revalidates account/grant pre- and post-await.
+      // Null must not fall back to mutable verse-detail.
+      const destination = await getObserverDraftDestination({
+        chapterAssignmentId: chapter.id,
+        projectId: chapter.projectId,
+      });
+      if (pressGenerationRef.current !== pressGeneration) {
+        return;
+      }
+      const afterRaw = getActiveUserId();
+      const afterSynced = parseUserId();
+      if (
+        !afterRaw ||
+        afterSynced === null ||
+        afterRaw !== String(afterSynced) ||
+        afterSynced !== syncedUserId
+      ) {
+        return;
+      }
+      if (
+        !getObserverProjectIds(String(afterSynced)).includes(chapter.projectId)
+      ) {
+        return;
+      }
+      if (destination === null) {
+        return;
+      }
+      router.push(destination);
+      return;
+    }
+
+    router.push(
+      hrefs.verseDetail({
+        chapterId: chapter.id,
+        chapterName: chapter.displayLabel,
+        projectName: chapter.projectName,
+        language: chapter.targetLanguageName,
+      }),
+    );
+  };
 
   if (loading || (isSyncing && chapters.length === 0)) {
     return <LoadingSpinner />;
@@ -153,16 +228,9 @@ export function MyWorkTab({
                     key={chapter.id}
                     chapter={chapter}
                     isSyncing={isSyncing}
-                    onPress={() =>
-                      router.push(
-                        hrefs.verseDetail({
-                          chapterId: chapter.id,
-                          chapterName: chapter.displayLabel,
-                          projectName: chapter.projectName,
-                          language: chapter.targetLanguageName,
-                        }),
-                      )
-                    }
+                    onPress={() => {
+                      void openChapter(chapter);
+                    }}
                   />
                 ))
               : null}

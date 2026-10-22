@@ -5,23 +5,19 @@ import type {
   DraftDownloadRequest,
   DraftDownloadRole,
 } from '../types/draftDownload/types';
-import { MY_WORK_CHAPTER_STATUSES } from './myWorkChapterFilter';
+import {
+  isMyWorkObserverReviewStatus,
+  MY_WORK_CHAPTER_STATUSES,
+  MY_WORK_OBSERVER_REVIEW_STATUSES,
+  type MyWorkObserverReviewStatus,
+} from './myWorkChapterFilter';
 import { parseUserId } from './parseUserId';
 
-/**
- * Review stages where a verified Project Observer grant can authorize an
- * observer download role (#505). Not applied to My Work list SQL until a typed
- * Observer navigation entry exists (no verse-detail dead-ends).
- */
-export const MY_WORK_OBSERVER_REVIEW_STATUSES = [
-  'community_review',
-  'linguist_check',
-  'theological_check',
-  'consultant_check',
-] as const;
-
-export type MyWorkObserverReviewStatus =
-  (typeof MY_WORK_OBSERVER_REVIEW_STATUSES)[number];
+export {
+  isMyWorkObserverReviewStatus,
+  MY_WORK_OBSERVER_REVIEW_STATUSES,
+  type MyWorkObserverReviewStatus,
+};
 
 function normalizeStatus(status: string | null | undefined): string {
   return (status ?? '').trim().toLowerCase();
@@ -29,15 +25,6 @@ function normalizeStatus(status: string | null | undefined): string {
 
 function isPositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
-}
-
-export function isMyWorkObserverReviewStatus(
-  status: string | null | undefined,
-): status is MyWorkObserverReviewStatus {
-  const normalized = normalizeStatus(status);
-  return (MY_WORK_OBSERVER_REVIEW_STATUSES as readonly string[]).includes(
-    normalized,
-  );
 }
 
 /**
