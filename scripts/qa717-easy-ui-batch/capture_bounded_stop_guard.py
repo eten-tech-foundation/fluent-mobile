@@ -22,10 +22,14 @@ Emergency path (fail-closed unless explicitly authorized at construct time):
   runtime authorization before live use; default False.
 
 Guarantee envelope (honest):
-  - WHEN host→device control path responds within ordinary_stop_timeout_s:
-      host initiates ordinary Stop by deadline_s (= max - margin), so intended
-      recorded duration is bounded near deadline_s + stop_latency ≤ max when
-      the app honors Stop promptly.
+  - WHEN host→device control path responds within configured timeouts:
+      at deadline_offset_s (= max - margin) the host *begins* ordinary Stop
+      (fresh dump, then tap). The Stop tap therefore starts only after the
+      first dump returns — up to dump_timeout_s after the deadline fires —
+      and tap/verify may add ordinary_stop_timeout_s (+ another dump).
+      safety_margin_seconds must be >= dump_timeout_s + ordinary_stop_timeout_s
+      so the worst-case ordinary path still aims near max_recorded_seconds when
+      the app honors Stop promptly. This is best-effort, not an absolute cap.
   - WHEN ordinary stop times out and emergency IS authorized and returns:
       recording ends via process death within deadline + ordinary_timeout +
       emergency_timeout wall time; may leave partial temp capture; NOT a clean
@@ -66,13 +70,22 @@ class StopBridge(Protocol):
 @dataclass(frozen=True)
 class StopGuardConfig:
     max_recorded_seconds: float = 30.0
-    safety_margin_seconds: float = 5.0  # arm stop at 25s for 30s max
+    # Default covers dump_timeout_s + ordinary_stop_timeout_s (3+3) with 1s slack.
+    safety_margin_seconds: float = 7.0
     ordinary_stop_timeout_s: float = 3.0
     emergency_stop_timeout_s: float = 5.0
     dump_timeout_s: float = 3.0
     max_attempts_including_partial: int = 2
     allow_emergency_app_process_stop: bool = False  # fail-closed
     package: str = DEFAULT_PACKAGE
+
+    def __post_init__(self) -> None:
+        min_margin = self.dump_timeout_s + self.ordinary_stop_timeout_s
+        if self.safety_margin_seconds < min_margin:
+            raise ValueError(
+                "safety_margin_seconds must be >= dump_timeout_s + "
+                f"ordinary_stop_timeout_s ({min_margin})"
+            )
 
     @property
     def deadline_offset_s(self) -> float:
@@ -167,6 +180,7 @@ class CaptureBoundedStopGuard:
     _reconcile_required: bool = False
     _session: CaptureSession | None = None
     _timer_handle: Any | None = None
+    _deadline_in_flight: CaptureSession | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock)
     events: list[str] = field(default_factory=list)
 
@@ -217,6 +231,8 @@ class CaptureBoundedStopGuard:
         with self._lock:
             if self._latched or self._reconcile_required:
                 raise CaptureLatched(self._latch_reason or "reconcile_required")
+            if self._deadline_in_flight is not None:
+                raise CaptureLatched("prior_deadline_still_active")
             if self._started >= self.config.max_attempts_including_partial:
                 self._latched = True
                 self._latch_reason = "attempt_budget_exhausted"
@@ -284,6 +300,7 @@ class CaptureBoundedStopGuard:
         """Clear latch after human/runtime reconciliation — required before next Start."""
         with self._lock:
             self._cancel_timer_unlocked()
+            self._deadline_in_flight = None
             self._latched = False
             self._latch_reason = None
             self._reconcile_required = False
@@ -301,30 +318,61 @@ class CaptureBoundedStopGuard:
 
     def _deadline_fire(self) -> None:
         """Timer thread entry — must not share stale coordinates."""
-        try:
-            result = self._perform_bounded_stop()
-        except Exception as exc:  # noqa: BLE001
-            result = StopActionResult(
-                kind="uncertain",
-                ok=False,
-                detail=f"deadline_exception:{exc!r}",
-            )
         with self._lock:
-            if self._session is None or self._session.finished:
+            session = self._session
+            if session is None or session.finished:
                 self.events.append("deadline_ignored_session_done")
                 return
-            self._session.finished = True
-            self._session.result = result
-            if result.ok and result.kind in {"ordinary_stop", "skipped"}:
-                self._completed_ok += 1
-                self.events.append(f"deadline_{result.kind}_ok#{self._session.attempt}")
-                return
-            # Emergency success still counts as partial/uncertain save path
-            self._partial_or_failed += 1
-            self._latched = True
-            self._reconcile_required = True
-            self._latch_reason = result.detail
-            self.events.append(f"deadline_{result.kind}:{result.detail}")
+            self._deadline_in_flight = session
+        try:
+            try:
+                result = self._perform_bounded_stop()
+            except Exception as exc:  # noqa: BLE001
+                result = StopActionResult(
+                    kind="uncertain",
+                    ok=False,
+                    detail=f"deadline_exception:{exc!r}",
+                )
+        finally:
+            with self._lock:
+                in_flight = self._deadline_in_flight
+                self._deadline_in_flight = None
+                clean = result.ok and result.kind in {"ordinary_stop", "skipped"}
+                if self._session is None:
+                    self.events.append("deadline_ignored_session_done")
+                    return
+                if in_flight is not None and self._session is not in_flight:
+                    # Session was replaced; never commit onto the new capture.
+                    self.events.append("deadline_ignored_stale_session")
+                    if not clean and not self._latched:
+                        self._partial_or_failed += 1
+                        self._latched = True
+                        self._reconcile_required = True
+                        self._latch_reason = result.detail
+                    return
+                if self._session.finished:
+                    self.events.append("deadline_ignored_session_done")
+                    # Late non-clean result must still fail-closed (no lost latch).
+                    if not clean and not self._latched:
+                        self._partial_or_failed += 1
+                        self._latched = True
+                        self._reconcile_required = True
+                        self._latch_reason = result.detail
+                    return
+                self._session.finished = True
+                self._session.result = result
+                if clean:
+                    self._completed_ok += 1
+                    self.events.append(
+                        f"deadline_{result.kind}_ok#{self._session.attempt}"
+                    )
+                    return
+                # Emergency success still counts as partial/uncertain save path
+                self._partial_or_failed += 1
+                self._latched = True
+                self._reconcile_required = True
+                self._latch_reason = result.detail
+                self.events.append(f"deadline_{result.kind}:{result.detail}")
 
     def _perform_bounded_stop(self) -> StopActionResult:
         """Ordinary stop with fresh control identity; optional emergency."""

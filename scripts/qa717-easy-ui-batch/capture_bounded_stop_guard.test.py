@@ -99,12 +99,12 @@ class DeadlineRaces(unittest.TestCase):
         g, sched, bridge = self._guard(
             bridge,
             max_recorded_seconds=30,
-            safety_margin_seconds=5,
+            safety_margin_seconds=7,
         )
         attempt = g.admit_attempt()
         g.arm_after_start(attempt)
-        # Advance just past 25s deadline
-        sched.advance(25.0)
+        # Advance just past deadline_offset (30 - 7 = 23s)
+        sched.advance(23.0)
         self.assertTrue(g._session.finished)
         self.assertEqual(g._session.result.kind, "ordinary_stop")
         self.assertTrue(g._session.result.ok)
@@ -205,7 +205,7 @@ class DeadlineRaces(unittest.TestCase):
         g, sched, bridge = self._guard()
         snap = g.snapshot()
         self.assertFalse(snap["absolute30sGuaranteedIfAdbUnresponsive"])
-        self.assertEqual(snap["deadlineOffsetSeconds"], 25.0)
+        self.assertEqual(snap["deadlineOffsetSeconds"], 23.0)
         self.assertFalse(snap["allowEmergencyAppProcessStop"])
 
     def test_parse_stop_control_rejects_wrong_id(self):
@@ -214,6 +214,114 @@ class DeadlineRaces(unittest.TestCase):
             'bounds="[100,200][300,400]"/></hierarchy>'
         )
         self.assertIsNone(self.m.parse_stop_control_center(xml))
+
+
+
+class ConfigMarginHonesty(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.m = load()
+
+    def test_default_margin_covers_dump_plus_ordinary_stop(self):
+        cfg = self.m.StopGuardConfig()
+        self.assertGreaterEqual(
+            cfg.safety_margin_seconds,
+            cfg.dump_timeout_s + cfg.ordinary_stop_timeout_s,
+        )
+
+    def test_thin_margin_rejected(self):
+        with self.assertRaises(ValueError):
+            self.m.StopGuardConfig(safety_margin_seconds=5.0)
+
+
+class DeadlineInFlightAndLateLatch(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.m = load()
+
+    def test_admit_blocked_while_deadline_callback_in_flight(self):
+        m = self.m
+        test = self
+        events: list = []
+
+        class Bridge:
+            def dump_hierarchy(self, *, timeout_s: float) -> str:
+                events.append("dump")
+                with test.assertRaises(m.CaptureLatched) as ctx:
+                    g.admit_attempt()
+                test.assertIn("prior_deadline_still_active", str(ctx.exception))
+                return (
+                    '<?xml version="1.0"?><hierarchy>'
+                    '<node resource-id="record-stop-button" '
+                    'bounds="[100,200][300,400]"/>'
+                    "</hierarchy>"
+                )
+
+            def tap_xy(self, x, y, *, timeout_s: float) -> None:
+                events.append(("tap", x, y))
+
+            def force_stop_app(self, package, *, timeout_s: float) -> None:
+                raise RuntimeError("no")
+
+        bridge = Bridge()
+        sched = m.FakeClockScheduler(0.0)
+        g = m.CaptureBoundedStopGuard(
+            bridge=bridge,
+            config=m.StopGuardConfig(
+                max_recorded_seconds=15,
+                safety_margin_seconds=6,
+                dump_timeout_s=3,
+                ordinary_stop_timeout_s=3,
+            ),
+            schedule=sched.schedule,
+            clock=sched.clock,
+        )
+        attempt = g.admit_attempt()
+        g.arm_after_start(attempt)
+        sched.advance(9.0)
+        self.assertIn("dump", events)
+        self.assertTrue(g.snapshot()["session"]["finished"])
+
+    def test_late_uncertain_after_external_stop_still_latches(self):
+        m = self.m
+        dumps = {"n": 0}
+
+        class FlakyBridge:
+            def dump_hierarchy(self, *, timeout_s: float) -> str:
+                dumps["n"] += 1
+                if dumps["n"] == 1:
+                    g.note_external_ordinary_stop()
+                    raise TimeoutError("dump_after_external")
+                return "<hierarchy/>"
+
+            def tap_xy(self, x, y, *, timeout_s: float) -> None:
+                pass
+
+            def force_stop_app(self, package, *, timeout_s: float) -> None:
+                raise RuntimeError("no")
+
+        bridge = FlakyBridge()
+        sched = m.FakeClockScheduler(0.0)
+        g = m.CaptureBoundedStopGuard(
+            bridge=bridge,
+            config=m.StopGuardConfig(
+                max_recorded_seconds=15,
+                safety_margin_seconds=6,
+                dump_timeout_s=3,
+                ordinary_stop_timeout_s=3,
+                allow_emergency_app_process_stop=False,
+            ),
+            schedule=sched.schedule,
+            clock=sched.clock,
+        )
+        attempt = g.admit_attempt()
+        g.arm_after_start(attempt)
+        sched.advance(9.0)
+        snap = g.snapshot()
+        self.assertTrue(snap["latched"])
+        self.assertTrue(snap["reconcileRequired"])
+        with self.assertRaises(m.CaptureLatched):
+            g.admit_attempt()
 
 
 class RealDefaultClock(unittest.TestCase):
@@ -229,7 +337,7 @@ class RealDefaultClock(unittest.TestCase):
         sched = self.m.FakeClockScheduler(0.0)
         cfg = self.m.StopGuardConfig(
             max_recorded_seconds=15,
-            safety_margin_seconds=1,
+            safety_margin_seconds=6,
         )
         g = self.m.CaptureBoundedStopGuard(
             bridge=bridge,
@@ -248,7 +356,7 @@ class RealDefaultClock(unittest.TestCase):
         sched = self.m.FakeClockScheduler(0.0)
         cfg = self.m.StopGuardConfig(
             max_recorded_seconds=15,
-            safety_margin_seconds=1,
+            safety_margin_seconds=6,
         )
         g = self.m.CaptureBoundedStopGuard(
             bridge=bridge,
