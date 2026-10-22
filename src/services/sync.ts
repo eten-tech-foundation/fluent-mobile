@@ -43,6 +43,10 @@ import {
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
 import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
+import {
+  persistOrgGrantsFromUserResponse,
+  refreshUserOrgGrants,
+} from './userOrgGrants';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import {
   flattenApiPericopeSetGroups,
@@ -251,6 +255,7 @@ export async function syncUser(email?: string, preloadedUser?: ApiUser) {
       } else {
         registerKnownUser(userIdStr, userEmail);
       }
+      persistOrgGrantsFromUserResponse(userIdStr, user);
 
       const existingCreds = await getCredentials(userIdStr);
       if (existingCreds?.token) {
@@ -1349,6 +1354,7 @@ export async function syncAllUsers(): Promise<void> {
             : undefined;
 
           try {
+            await refreshUserOrgGrants(userId, token);
             await syncDisplayModeSettingsForUser(userId, token);
             await syncProjects(userIdNum, token);
             await syncMilestones(userIdNum, token);
@@ -1478,6 +1484,7 @@ export async function syncAllData(
             throw new AuthError('No session token. Please sign in again.');
           }
           sessionToken = creds.token;
+          await refreshUserOrgGrants(existingUserIdStr, sessionToken);
         } else {
           const user = await syncUser(email, preloadedUser);
           userId = user.id;
@@ -1769,6 +1776,7 @@ export async function refreshChapterMetadataIfOnline(
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
       await maybeBackfillMasterDataOnRefresh(sessionToken);
+      await refreshUserOrgGrants(userIdStr, sessionToken);
       await syncProjects(userId, sessionToken);
       await syncMilestones(userId, sessionToken);
 
