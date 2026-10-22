@@ -1511,10 +1511,13 @@ export async function updateChapterAssignmentStatusLocally(
   });
 
   if (snapshotCaptureFailed) {
-    log.warn('Skipping stage-exit draft purge; in-txn snapshot capture failed', {
-      chapterAssignmentId,
-      userId: actorUserId,
-    });
+    log.warn(
+      'Skipping stage-exit draft purge; in-txn snapshot capture failed',
+      {
+        chapterAssignmentId,
+        userId: actorUserId,
+      },
+    );
     return;
   }
 

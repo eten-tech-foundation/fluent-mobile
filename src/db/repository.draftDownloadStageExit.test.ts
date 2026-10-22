@@ -231,8 +231,7 @@ function createStageExitTestDb(
         /chapter_assignments\.status/i.test(sql);
       if (existing && preservesQueuedStage) {
         const queued = queue.some(
-          q =>
-            q.chapter_assignment_id === id && q.sync_status === 'pending',
+          q => q.chapter_assignment_id === id && q.sync_status === 'pending',
         );
         if (queued) {
           next.status = existing.status;
