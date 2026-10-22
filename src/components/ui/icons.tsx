@@ -23,6 +23,8 @@ const SkipBackIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/SkipBack').SkipBackIcon;
 const SkipForwardIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/SkipForward').SkipForwardIcon;
+const StopIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Stop').StopIcon;
 const UserSoundIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/UserSound').UserSoundIcon;
 const WaveformIcon: PhosphorIcon =
@@ -65,3 +67,4 @@ export const SkipForwardFill = weighted(
 );
 export const RecordFill = weighted(CircleIcon, 'fill', 'RecordFill');
 export const EjectFill = weighted(EjectIcon, 'fill', 'EjectFill');
+export const StopFill = weighted(StopIcon, 'fill', 'StopFill');

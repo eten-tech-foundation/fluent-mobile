@@ -1,8 +1,10 @@
 import type React from 'react';
 import { HardwarePanelEntry } from './HardwarePanelEntry';
 import { KeyEntry } from './KeyEntry';
+import { LevelWaveEntry } from './LevelWaveEntry';
 import { RoundButtonEntry } from './RoundButtonEntry';
 import { SwitchEntry } from './SwitchEntry';
+import { WaveformEntry } from './WaveformEntry';
 
 export interface GalleryEntry {
   id: string;
@@ -29,6 +31,22 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Switch · Mode toggle',
     modes: 'Hardware',
     Component: SwitchEntry,
+  },
+  {
+    // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-505
+    // Verse chip 2409-502 · Page dot 2409-508
+    id: 'waveform',
+    name: 'Waveform · Page dots',
+    modes: 'Canvas (the player)',
+    Component: WaveformEntry,
+  },
+  {
+    // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-509
+    // Long: Recorder take card 2555-910
+    id: 'level-wave',
+    name: 'Level wave · Short and Long',
+    modes: 'Hardware (header) · Canvas (take card)',
+    Component: LevelWaveEntry,
   },
   {
     // Figma: Round button https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-64
