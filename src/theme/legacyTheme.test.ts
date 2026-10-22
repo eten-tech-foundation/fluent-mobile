@@ -102,6 +102,7 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
       easeStandard: { x1: 0.2, y1: 0, x2: 0, y2: 1 },
     });
     expect(nextTheme.opacity.disabled).toBe(0.4);
+    expect(nextTheme.controlSizes.icon20).toBe(20);
     expect(nextTheme.controlSizes.icon32).toBe(32);
     expect(nextTheme.type.reading).toMatchObject({
       fontSize: 42,

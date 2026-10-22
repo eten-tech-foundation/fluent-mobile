@@ -34,6 +34,7 @@ exports[`legacyTheme matches the frozen Legacy snapshot 1`] = `
     "workflowBadgePeerCheckText": "#1A1A1A",
   },
   "controlSizes": {
+    "icon20": 20,
     "icon24": 24,
     "icon32": 32,
   },

@@ -15,7 +15,7 @@ the Legacy / Next split described there.
 | Foundations roles, all three modes | `theme.roles.*` via `useTheme()` / `useThemedStyles()`; wrap a subtree in `ColorModeScope` for Canvas or Accent (Hardware is the default) |
 | Effect styles as `boxShadow` | `theme.elevation.raised` · `inset` · `soft` · `floating` |
 | Motion | `theme.motion.pressMs` · `releaseMs` · `easeStandard` |
-| Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon24` / `icon32` |
+| Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon20` / `icon24` / `icon32` |
 | Radius `xs` (4), space `2`, strokes | `theme.radius.xs`, `theme.spacing.xxs`, `theme.stroke[1]` / `[2]` |
 | Type styles | `theme.type.reading` … `meta` (spread into a style); layer `theme.typeTelugu.*` for Telugu; Reading text gets `maxFontSizeMultiplier={theme.fontScale.readingMax}`, which caps the glyphs but not `lineHeight` (Android scales it by the full font scale), so pass `lineHeight: type.reading.lineHeight * Math.min(scale, readingMax) / scale` with `scale = PixelRatio.getFontScale()` |
 | Icons | Figma's Phosphor set from `src/components/ui/icons`: Regular, except Fill on hardware transport keys. Add a new icon there as a typed `require` of its own module (`phosphor-react-native/src/icons/<Name>`); never import the package root or Lucide in Next UI |

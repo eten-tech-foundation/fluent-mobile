@@ -1,4 +1,5 @@
 import type React from 'react';
+import { HardwarePanelEntry } from './HardwarePanelEntry';
 import { KeyEntry } from './KeyEntry';
 import { RoundButtonEntry } from './RoundButtonEntry';
 import { SwitchEntry } from './SwitchEntry';
@@ -36,5 +37,13 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Round button · Progress ring',
     modes: 'Soft in passage rows · Flat in the Canvas player header',
     Component: RoundButtonEntry,
+  },
+  {
+    // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2411-529
+    // Mode toggle 2409-538 and Speaker grill 2409-533 are drawn inside it.
+    id: 'hardware-panel',
+    name: 'Hardware panel',
+    modes: 'Hardware',
+    Component: HardwarePanelEntry,
   },
 ];

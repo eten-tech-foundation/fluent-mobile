@@ -10,11 +10,10 @@ import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import { useHaptics } from '../../hooks/useHaptics';
 import { usePressProgress } from '../../hooks/usePressProgress';
 
-/** Figma Key: 96pt tall, lip 12pt (8pt when sunk) sitting 2pt off the bottom edge. */
+/** Key: 96pt tall, lip 12pt (8pt when sunk) flush with the bottom edge. Figma still has it 2pt up. */
 const KEY_HEIGHT = 96;
 const LIP_HEIGHT = 12;
 const LIP_HEIGHT_DOWN = 8;
-const LIP_BOTTOM = 2;
 
 export type KeyIconProps = { color: string; size: number };
 
@@ -88,12 +87,15 @@ export function Key({
       bottom: 0,
       alignItems: 'center',
       justifyContent: 'center',
+      // Clips the lip to the key's corners, like Figma's Key.
+      overflow: 'hidden',
+      borderRadius: t.radius.xs,
     },
     lip: {
       position: 'absolute',
       left: 0,
       right: 0,
-      bottom: LIP_BOTTOM,
+      bottom: 0,
       backgroundColor: t.roles.surfaceHighlight,
     },
     icon: {
