@@ -6,6 +6,7 @@ import { parseUserId } from '../utils/parseUserId';
 import { getActiveUserId } from '../services/storage';
 import { getObserverProjectIds } from '../services/userOrgGrants';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
+import { getTranslatorProjectIds } from '../utils/myWorkDraftDownload';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useMyWorkChapters');
@@ -25,14 +26,19 @@ function resolveValidatedMyWorkUserId(): number | null {
 function filterChaptersForCurrentGrants(
   chapters: MyWorkChapter[],
   grantProjectIds: readonly number[],
+  translatorProjectIds: readonly number[],
 ): MyWorkChapter[] {
-  const allowed = new Set(grantProjectIds);
+  const observerAllowed = new Set(grantProjectIds);
+  const translatorAllowed = new Set(translatorProjectIds);
   return chapters.filter(chapter => {
     if (chapter.listAccess === 'assigned') {
       return true;
     }
+    if (chapter.listAccess === 'open_peer') {
+      return translatorAllowed.has(chapter.projectId);
+    }
     if (chapter.listAccess === 'observer') {
-      return allowed.has(chapter.projectId);
+      return observerAllowed.has(chapter.projectId);
     }
     return false;
   });
@@ -56,11 +62,15 @@ export function useMyWorkChapters(refreshKey = 0) {
 
     const generation = ++loadGenerationRef.current;
     const requestUserId = userId;
-    // Unknown/revoked grant snapshots yield [] — no Observer rows in SQL.
+    // Unknown/revoked grant snapshots yield [] — fail closed for those branches.
     const grantProjectIds = getObserverProjectIds(String(requestUserId));
+    const translatorProjectIds = getTranslatorProjectIds(String(requestUserId));
 
     try {
-      const next = await getMyWorkChapters(requestUserId, { grantProjectIds });
+      const next = await getMyWorkChapters(requestUserId, {
+        grantProjectIds,
+        translatorProjectIds,
+      });
       if (loadGenerationRef.current !== generation) {
         return;
       }
@@ -70,10 +80,19 @@ export function useMyWorkChapters(refreshKey = 0) {
         setChapters([]);
         return;
       }
-      // Re-read current known Observer project IDs before publishing — grant
+      // Re-read current known grant project IDs before publishing — grants
       // may have been revoked/unknown while the SQL await was in flight.
       const currentGrantIds = getObserverProjectIds(String(currentUserId));
-      setChapters(filterChaptersForCurrentGrants(next, currentGrantIds));
+      const currentTranslatorIds = getTranslatorProjectIds(
+        String(currentUserId),
+      );
+      setChapters(
+        filterChaptersForCurrentGrants(
+          next,
+          currentGrantIds,
+          currentTranslatorIds,
+        ),
+      );
     } catch (error) {
       if (loadGenerationRef.current !== generation) {
         return;

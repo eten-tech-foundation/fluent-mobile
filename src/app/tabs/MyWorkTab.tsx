@@ -23,6 +23,7 @@ import { getObserverProjectIds } from '../../services/userOrgGrants';
 import { MyWorkChapter } from '../../types/db/types';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import { classifyMyWorkListAccess } from '../../utils/myWorkChapterFilter';
+import { getTranslatorProjectIds } from '../../utils/myWorkDraftDownload';
 import { parseUserId } from '../../utils/parseUserId';
 import {
   groupMyWorkChaptersByStage,
@@ -85,6 +86,7 @@ export function MyWorkTab({
       return;
     }
     const grantProjectIds = getObserverProjectIds(String(syncedUserId));
+    const translatorProjectIds = getTranslatorProjectIds(String(syncedUserId));
     const access = classifyMyWorkListAccess({
       userId: syncedUserId,
       assignmentStatus: chapter.assignmentStatus,
@@ -92,6 +94,7 @@ export function MyWorkTab({
       peerCheckerId: chapter.peerCheckerId,
       projectId: chapter.projectId,
       grantProjectIds,
+      translatorProjectIds,
     });
     if (access === null) {
       return;
@@ -164,6 +167,19 @@ export function MyWorkTab({
       }
       router.push(destination);
       return;
+    }
+
+    // Assigned + open_peer: existing verse-detail peer route (PR #538 /
+    // fb634e598e2f83ebef07e89c8ff495964c8a0940). Recheck Translator grant
+    // immediately before navigate — fail closed on revoke/account drift.
+    if (access === 'open_peer') {
+      if (
+        !getTranslatorProjectIds(String(syncedUserId)).includes(
+          chapter.projectId,
+        )
+      ) {
+        return;
+      }
     }
 
     router.push(

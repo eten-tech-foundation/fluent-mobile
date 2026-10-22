@@ -41,8 +41,11 @@ export type WorkflowBadgeStage =
   | 'advanced_check'
   | 'complete';
 
-/** Verified My Work row access after query eligibility (#505 Observer). */
-export type MyWorkListAccess = 'assigned' | 'observer';
+/**
+ * Verified My Work row access after query eligibility (#505).
+ * `open_peer` = unassigned Peer Check for a non-drafter Project Translator.
+ */
+export type MyWorkListAccess = 'assigned' | 'open_peer' | 'observer';
 
 export interface MyWorkChapter {
   id: number;

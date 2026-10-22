@@ -3,6 +3,7 @@ import { getMyWorkChapters } from '../db/queries';
 import { getActiveUserId } from '../services/storage';
 import { getObserverProjectIds } from '../services/userOrgGrants';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
+import { getTranslatorProjectIds } from '../utils/myWorkDraftDownload';
 import { parseUserId } from '../utils/parseUserId';
 import { useMyWorkChapters } from './useMyWorkChapters';
 import type { MyWorkChapter } from '../types/db/types';
@@ -26,6 +27,10 @@ jest.mock('../services/userOrgGrants', () => ({
   getObserverProjectIds: jest.fn(),
 }));
 
+jest.mock('../utils/myWorkDraftDownload', () => ({
+  getTranslatorProjectIds: jest.fn(() => []),
+}));
+
 jest.mock('../services/sync', () => ({
   refreshChapterMetadataIfOnline: jest.fn(),
 }));
@@ -43,6 +48,10 @@ const mockGetActiveUserId = getActiveUserId as jest.MockedFunction<
 const mockGetObserverProjectIds = getObserverProjectIds as jest.MockedFunction<
   typeof getObserverProjectIds
 >;
+const mockGetTranslatorProjectIds =
+  getTranslatorProjectIds as jest.MockedFunction<
+    typeof getTranslatorProjectIds
+  >;
 const mockRefreshChapterMetadataIfOnline =
   refreshChapterMetadataIfOnline as jest.MockedFunction<
     typeof refreshChapterMetadataIfOnline
@@ -109,12 +118,38 @@ const assignedChapter: MyWorkChapter = {
   listAccess: 'assigned',
 };
 
+const openPeerChapter: MyWorkChapter = {
+  id: 15,
+  displayLabel: 'Luke 8',
+  bookName: 'Luke',
+  chapterNumber: 8,
+  assignmentStatus: 'peer_check',
+  workflowStage: 'peer_check',
+  syncState: 'synced',
+  ownershipState: 'unassigned',
+  completedVerses: 1,
+  totalVerses: 5,
+  downloadedVerses: 5,
+  hasConflict: false,
+  projectName: 'Gospel of Luke',
+  targetLanguageName: 'Baka',
+  projectUnitId: 11,
+  projectId: 3,
+  bibleId: 5,
+  bookId: 42,
+  bookCode: 'LUK',
+  assignedUserId: 9,
+  peerCheckerId: null,
+  listAccess: 'open_peer',
+};
+
 describe('useMyWorkChapters Observer grants', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParseUserId.mockReturnValue(7);
     mockGetActiveUserId.mockReturnValue('7');
     mockGetObserverProjectIds.mockReturnValue([100]);
+    mockGetTranslatorProjectIds.mockReturnValue([]);
     mockGetMyWorkChapters.mockResolvedValue([observerChapter]);
     mockRefreshChapterMetadataIfOnline.mockResolvedValue();
   });
@@ -125,6 +160,7 @@ describe('useMyWorkChapters Observer grants', () => {
     await waitFor(() => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
         grantProjectIds: [100],
+        translatorProjectIds: [],
       });
     });
     expect(mockGetObserverProjectIds).toHaveBeenCalledWith('7');
@@ -142,6 +178,7 @@ describe('useMyWorkChapters Observer grants', () => {
     await waitFor(() => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
         grantProjectIds: [],
+        translatorProjectIds: [],
       });
     });
   });
@@ -194,6 +231,30 @@ describe('useMyWorkChapters Observer grants', () => {
 
     await act(async () => {
       slow.resolve([observerChapter, assignedChapter]);
+      await slow.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.chapters).toEqual([assignedChapter]);
+    });
+  });
+
+  it('filters open Peer Check rows when Translator grant is revoked while pending', async () => {
+    mockRefreshChapterMetadataIfOnline.mockReturnValue(new Promise(() => {}));
+    mockGetTranslatorProjectIds.mockReturnValue([3]);
+    const slow = deferred<MyWorkChapter[]>();
+    mockGetMyWorkChapters.mockReturnValueOnce(slow.promise);
+
+    const { result } = renderHook(() => useMyWorkChapters());
+
+    await waitFor(() => {
+      expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
+    });
+
+    mockGetTranslatorProjectIds.mockReturnValue([]);
+
+    await act(async () => {
+      slow.resolve([openPeerChapter, assignedChapter]);
       await slow.promise;
     });
 
