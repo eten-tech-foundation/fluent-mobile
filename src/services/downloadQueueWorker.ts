@@ -78,10 +78,21 @@ function parseDownloadState(
 
 const alwaysAllowTransport: TransportAllowsFn = async () => true;
 
+type ResolvingDownload = {
+  itemId: string;
+  /**
+   * Set synchronously by dropItems()/cancel() while processNext has shifted
+   * an item but not yet assigned `this.active` (awaiting transport/resolver).
+   */
+  cancelled: boolean;
+};
+
 export class DownloadQueueWorker {
   private state: WorkerSessionState = 'idle';
   private pauseReason: DownloadPauseReason | null = null;
   private active: ActiveDownload | null = null;
+  /** Item shifted from the queue before `active` exists (resolver/transport gap). */
+  private resolving: ResolvingDownload | null = null;
   private queue: DownloadQueueItem[] = [];
   private resolver: ResourceResolver;
   private transportAllows: TransportAllowsFn;
@@ -114,6 +125,101 @@ export class DownloadQueueWorker {
     await this.processNext();
   }
 
+  /**
+   * Append items to the in-memory queue while a session is already running.
+   * De-dupes against the active transfer, resolving slot, and pending queue.
+   * Does **not** resume a user-paused session (avoids restarting unrelated PFO work).
+   */
+  enqueueAdditional(items: DownloadQueueItem[]): void {
+    if (items.length === 0) return;
+
+    if (this.state === 'idle' || this.state === 'cancelled') {
+      void this.start(items);
+      return;
+    }
+
+    const known = new Set<string>(this.queue.map(item => item.id));
+    if (this.active) {
+      known.add(this.active.itemId);
+    }
+    if (this.resolving) {
+      known.add(this.resolving.itemId);
+    }
+    const fresh = items.filter(item => !known.has(item.id));
+    if (fresh.length === 0) return;
+    this.queue.push(...fresh);
+    log.info('Appended items to active download queue', {
+      appended: fresh.length,
+      state: this.state,
+    });
+  }
+
+  /**
+   * Drop pending queue rows and cancel the active/resolving transfer when it
+   * matches. Leaves other queued work (e.g. PFO) intact. Used by draft
+   * stage-exit purge.
+   */
+  async dropItems(itemIds: string[]): Promise<void> {
+    if (itemIds.length === 0) return;
+    const drop = new Set(itemIds);
+    this.queue = this.queue.filter(item => !drop.has(item.id));
+
+    if (this.resolving && drop.has(this.resolving.itemId)) {
+      // Synchronous — processNext continuations observe this across awaits.
+      this.resolving.cancelled = true;
+    }
+
+    const active = this.active;
+    if (!active || !drop.has(active.itemId)) {
+      return;
+    }
+
+    active.cancelled = true;
+    const wasPaused = this.state === 'paused';
+    const { itemId, resumable, savedPauseState } = active;
+    try {
+      if (wasPaused) {
+        await markDownloadItemCancelled(itemId, savedPauseState);
+      } else {
+        try {
+          const pauseState = await resumable.pauseAsync();
+          await markDownloadItemCancelled(
+            itemId,
+            serializeDownloadState(pauseState),
+          );
+        } catch (error) {
+          log.error('Failed to pause on dropItems', { error, itemId });
+          await markDownloadItemCancelled(itemId, savedPauseState);
+        }
+      }
+    } finally {
+      this.active = null;
+      if (this.state === 'cancelled') {
+        this.state = 'idle';
+        return;
+      }
+      if (this.state === 'paused') {
+        // Stay paused — do not auto-resume remaining (possibly PFO) work.
+        return;
+      }
+      if (this.state === 'downloading') {
+        await this.processNext();
+      }
+    }
+  }
+
+  private isResolvingCancelled(itemId: string): boolean {
+    return (
+      this.resolving?.itemId === itemId && this.resolving.cancelled === true
+    );
+  }
+
+  private clearResolvingIf(itemId: string): void {
+    if (this.resolving?.itemId === itemId) {
+      this.resolving = null;
+    }
+  }
+
   async pause(reason: DownloadPauseReason = 'user'): Promise<void> {
     // Promote a transport pause to a user pause so auto-resume will not undo it.
     if (this.state === 'paused' && reason === 'user') {
@@ -124,7 +230,7 @@ export class DownloadQueueWorker {
       return;
     }
     if (!this.active) {
-      // Waiting between items (UI pause or transport blocked before start).
+      // Waiting between items, or still resolving (transport/resolver await).
       this.pauseReason = reason;
       this.state = 'paused';
       return;
@@ -226,9 +332,12 @@ export class DownloadQueueWorker {
 
     // Set synchronously, before any await, so a racing
     // processNext()/resume() continuation always observes it regardless of
-    // ordering — see ActiveDownload.cancelled.
+    // ordering — see ActiveDownload.cancelled / ResolvingDownload.cancelled.
     if (active) {
       active.cancelled = true;
+    }
+    if (this.resolving) {
+      this.resolving.cancelled = true;
     }
 
     this.state = 'cancelled';
@@ -258,6 +367,7 @@ export class DownloadQueueWorker {
       }
     } finally {
       this.active = null;
+      this.resolving = null;
       this.state = 'idle';
     }
   }
@@ -275,6 +385,29 @@ export class DownloadQueueWorker {
   }
 
   /**
+   * After an await during resolve/setup: abort without recreating cache when
+   * dropItems/cancel marked the shifted item cancelled; otherwise re-queue if
+   * the session left `downloading`.
+   */
+  private async abandonResolvingItem(
+    next: DownloadQueueItem,
+  ): Promise<'aborted' | 'requeued' | 'continue'> {
+    if (this.isResolvingCancelled(next.id)) {
+      this.clearResolvingIf(next.id);
+      if (this.state === 'downloading') {
+        await this.processNext();
+      }
+      return 'aborted';
+    }
+    if (this.state !== 'downloading') {
+      this.queue.unshift(next);
+      this.clearResolvingIf(next.id);
+      return 'requeued';
+    }
+    return 'continue';
+  }
+
+  /**
    * Text items with inline `serializedContent` in the manifest have no
    * sourceUrl to fetch. Write the content straight to disk and mark complete,
    * bypassing the resolver/resumable-download path (#51 / download-queue text
@@ -289,6 +422,9 @@ export class DownloadQueueWorker {
         );
       }
       await ensureDownloadsDir(next.projectId ?? 0);
+      if ((await this.abandonResolvingItem(next)) !== 'continue') {
+        return;
+      }
       const destPath =
         next.localFilePath ??
         downloadResourcePath(
@@ -297,10 +433,23 @@ export class DownloadQueueWorker {
           next.fileExt ?? 'json',
         );
       await markDownloadItemDownloading(next.id);
+      if ((await this.abandonResolvingItem(next)) !== 'continue') {
+        return;
+      }
       await FileSystem.writeAsStringAsync(destPath, next.serializedContent);
+      if ((await this.abandonResolvingItem(next)) !== 'continue') {
+        return;
+      }
       await this.handleItemComplete(next.id, destPath);
     } catch (error) {
       log.error('Failed to write text item', { error, itemId: next.id });
+      if (this.isResolvingCancelled(next.id)) {
+        this.clearResolvingIf(next.id);
+        if (this.state === 'downloading') {
+          await this.processNext();
+        }
+        return;
+      }
       try {
         await markDownloadItemFailed(next.id);
       } catch (innerError) {
@@ -310,6 +459,7 @@ export class DownloadQueueWorker {
         });
       }
       this.active = null;
+      this.clearResolvingIf(next.id);
       await this.processNext();
     }
   }
@@ -324,11 +474,23 @@ export class DownloadQueueWorker {
       return;
     }
 
+    // Claim immediately so dropItems/enqueueAdditional see this id before
+    // transport/resolver awaits assign `this.active`.
+    this.resolving = { itemId: next.id, cancelled: false };
+
     if (!(await this.transportAllows())) {
+      if (this.isResolvingCancelled(next.id)) {
+        this.clearResolvingIf(next.id);
+        if (this.state === 'downloading') {
+          await this.processNext();
+        }
+        return;
+      }
       log.info('Transport blocked before next download item; pausing queue', {
         itemId: next.id,
       });
       this.queue.unshift(next);
+      this.clearResolvingIf(next.id);
       // Do not overwrite a concurrent user pause reason.
       if (this.state === 'downloading') {
         this.pauseReason = 'transport';
@@ -337,9 +499,8 @@ export class DownloadQueueWorker {
       return;
     }
 
-    // Concurrent pause() may have won while we awaited transport.
-    if (this.state !== 'downloading') {
-      this.queue.unshift(next);
+    const afterTransport = await this.abandonResolvingItem(next);
+    if (afterTransport !== 'continue') {
       return;
     }
 
@@ -355,19 +516,27 @@ export class DownloadQueueWorker {
       const saved = parseDownloadState(next.resumeData);
       const { url, ext } = await this.resolver(next);
 
-      if (this.state !== 'downloading') {
-        this.queue.unshift(next);
+      const afterResolve = await this.abandonResolvingItem(next);
+      if (afterResolve !== 'continue') {
         return;
       }
 
       await ensureDownloadsDir(next.projectId ?? 0);
+      const afterDir = await this.abandonResolvingItem(next);
+      if (afterDir !== 'continue') {
+        return;
+      }
+
       const destPath =
         saved?.fileUri ??
         next.localFilePath ??
         downloadResourcePath(next.projectId ?? 0, next.id, ext);
 
+      // Prefer a freshly resolved URL so short-lived SAS links (#508 draft
+      // audio, 15 min) can refresh on transfer/retry while resumeData + dest
+      // path keep completed/partial bytes.
       const resumable = FileSystem.createDownloadResumable(
-        saved?.url ?? url,
+        url,
         destPath,
         saved?.options ?? {},
         progress => {
@@ -387,14 +556,29 @@ export class DownloadQueueWorker {
         saved?.resumeData,
       );
 
-      if (this.state !== 'downloading') {
-        this.queue.unshift(next);
+      const afterCreate = await this.abandonResolvingItem(next);
+      if (afterCreate !== 'continue') {
         return;
       }
 
-      activeAtStart = { itemId: next.id, resumable };
+      activeAtStart = {
+        itemId: next.id,
+        resumable,
+        cancelled: this.isResolvingCancelled(next.id),
+      };
       this.active = activeAtStart;
+      this.clearResolvingIf(next.id);
+      if (activeAtStart.cancelled) {
+        this.active = null;
+        if (this.state === 'downloading') {
+          await this.processNext();
+        }
+        return;
+      }
       await markDownloadItemDownloading(next.id);
+      if (activeAtStart.cancelled) {
+        return;
+      }
       const shouldResume = Boolean(saved?.resumeData);
       const result = shouldResume
         ? await resumable.resumeAsync()
@@ -413,12 +597,27 @@ export class DownloadQueueWorker {
       }
     } catch (error) {
       log.error('Failed to download item', { error, itemId: next.id });
-      if (activeAtStart?.cancelled) {
+      const wasCancelled =
+        activeAtStart?.cancelled === true || this.isResolvingCancelled(next.id);
+      if (wasCancelled) {
+        this.clearResolvingIf(next.id);
+        // dropItems on active already advances; resolving-only cancel must.
+        if (!activeAtStart && this.state === 'downloading') {
+          await this.processNext();
+        }
         return;
       }
       if (!(await this.transportAllows())) {
+        if (this.isResolvingCancelled(next.id)) {
+          this.clearResolvingIf(next.id);
+          if (this.state === 'downloading') {
+            await this.processNext();
+          }
+          return;
+        }
         if (!activeAtStart) {
           this.queue.unshift(next);
+          this.clearResolvingIf(next.id);
           if (this.state === 'downloading') {
             this.pauseReason = 'transport';
             this.state = 'paused';
@@ -437,6 +636,7 @@ export class DownloadQueueWorker {
         });
       }
       this.active = null;
+      this.clearResolvingIf(next.id);
       await this.processNext();
     }
   }
@@ -488,13 +688,35 @@ export class DownloadQueueWorker {
   }
 
   private async handleItemComplete(itemId: string, uri: string): Promise<void> {
+    if (this.active?.itemId === itemId && this.active.cancelled === true) {
+      return;
+    }
+    if (this.isResolvingCancelled(itemId)) {
+      this.clearResolvingIf(itemId);
+      if (this.state === 'downloading') {
+        await this.processNext();
+      }
+      return;
+    }
     const info = await FileSystem.getInfoAsync(uri);
+    if (this.active?.itemId === itemId && this.active.cancelled === true) {
+      // dropItems/cancel on active already advances the queue.
+      return;
+    }
+    if (this.isResolvingCancelled(itemId)) {
+      this.clearResolvingIf(itemId);
+      if (this.state === 'downloading') {
+        await this.processNext();
+      }
+      return;
+    }
     await markDownloadItemCompleted(
       itemId,
       uri,
       info.exists ? info.size : undefined,
     );
     this.active = null;
+    this.clearResolvingIf(itemId);
     await this.processNext();
   }
 }
