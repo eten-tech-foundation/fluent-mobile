@@ -192,7 +192,6 @@ function LongWave({
   };
 
   const target = levelWaveOffset(frontX, frameWidth);
-  const frontOnScreen = frontX - target;
   const reduceMotion = useReducedMotion();
   // One animated front drives both the scroll and the playhead, so they
   // can't drift apart mid-animation.
@@ -226,9 +225,13 @@ function LongWave({
   }));
 
   const firstVisible = Math.max(0, Math.floor(target / pitch) - OFFSCREEN_BARS);
-  const tickStart =
-    levels.length > 0 ? Math.ceil((frontOnScreen + pitch) / pitch) : 0;
-  const tickCount = Math.max(0, Math.floor(frameWidth / pitch) - tickStart + 1);
+  // Ticks sit on the bars' grid and scroll with them, so they stay aligned
+  // once the front reaches the playhead anchor.
+  const tickStart = levels.length > 0 ? levels.length + 1 : 0;
+  const tickCount = Math.max(
+    0,
+    Math.floor((target + frameWidth) / pitch) - tickStart + 1,
+  );
 
   return (
     <View
@@ -238,21 +241,17 @@ function LongWave({
       accessibilityLabel={accessibilityLabel}
       testID={testID}
     >
-      <View
-        style={styles.layer}
-        importantForAccessibility="no-hide-descendants"
-      >
-        {Array.from({ length: tickCount }, (_, i) => (
-          <View
-            key={tickStart + i}
-            style={[styles.tick, { left: (tickStart + i) * pitch }]}
-          />
-        ))}
-      </View>
       <Animated.View
         style={[styles.layer, barsStyle]}
         importantForAccessibility="no-hide-descendants"
       >
+        {Array.from({ length: tickCount }, (_, i) => (
+          <View
+            key={`tick-${tickStart + i}`}
+            style={[styles.tick, { left: (tickStart + i) * pitch }]}
+            testID={testID ? `${testID}-tick-${tickStart + i}` : undefined}
+          />
+        ))}
         <RecordedBars
           levels={levels}
           from={firstVisible}

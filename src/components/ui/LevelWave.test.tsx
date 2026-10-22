@@ -132,6 +132,25 @@ describe('LevelWave long', () => {
     expect(screen.queryByTestId('l-bar-0', hidden)).toBeNull();
     expect(screen.getByTestId('l-bar-399', hidden)).toBeTruthy();
   });
+
+  it('keeps rest ticks on the bar grid once it scrolls', () => {
+    render(
+      <LevelWave
+        variant="long"
+        levels={Array(400).fill(0.5)}
+        recording
+        accessibilityLabel="Take 1"
+        testID="l"
+      />,
+    );
+    layout(328);
+
+    const leftOf = (id: string) =>
+      StyleSheet.flatten(screen.getByTestId(id, hidden).props.style).left;
+    const pitch = leftOf('l-bar-399') - leftOf('l-bar-398');
+    expect(screen.queryByTestId('l-tick-400', hidden)).toBeNull();
+    expect(leftOf('l-tick-401')).toBe(leftOf('l-bar-399') + 2 * pitch);
+  });
 });
 
 describe('levelWaveOffset', () => {
