@@ -50,7 +50,7 @@ After 0→1 + `checked: true` + book/selected counts + footer/Total/Download vis
 
 Then **shared:** footer + Total + Download visible, not downloading → 1→0 `checked: false` + book zero + `Selected chapters (0)` + footer Download disabled → Collapse. Parent restore12 / closed Home / external finally **unchanged**.
 
-**Not admitted:** successful empty catalog (`No downloadable resources are available…`) — distinct from couldn't-load unavailable; parked pending product confirmation (assertions not weakened).
+**Also admitted:** successful empty catalog (`No downloadable resources are available…`) as terminal `empty` (distinct from couldn't-load unavailable; shared footer path, no A/B suite file).
 
 ---
 
@@ -77,5 +77,5 @@ No app source. No Download tap / network. No invented empty-catalog manifest.
 | Download tap / queue | Forbidden |
 | Requiring available to fail | Forbidden |
 | Weak OR of one element | Forbidden — full branch suite |
-| Successful empty catalog as terminal | Parked — see README / PR question |
+| Successful empty catalog as terminal | Admitted as `empty` (message + no resources section) |
 | Unsupported anchors | **None** for authored terminals |

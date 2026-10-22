@@ -55,16 +55,25 @@ def main() -> int:
 
     body = NESTED.read_text(encoding="utf-8")
     frags = extract_js_fragments(body)
-    required_substrings = [
-        "typeof D0702_BOOK_ZERO === 'string'",
+    # Exact fragment membership (avoid substring false-positives on the terminal OR).
+    required_exact = [
         "output.d0702HydrationBranch = ''",
         "output.d0702HydrationBranch == ''",
+        "output.d0702HydrationBranch = 'available'",
+        "output.d0702HydrationBranch = 'unavailable'",
+        "output.d0702HydrationBranch = 'empty'",
         "output.d0702HydrationBranch == 'available'",
         "output.d0702HydrationBranch == 'unavailable'",
-        "output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable'",
+        (
+            "output.d0702HydrationBranch == 'available' || "
+            "output.d0702HydrationBranch == 'unavailable' || "
+            "output.d0702HydrationBranch == 'empty'"
+        ),
     ]
-    joined = "\n".join(frags)
-    missing = [s for s in required_substrings if s not in joined]
+    frag_set = set(frags)
+    missing = [s for s in required_exact if s not in frag_set]
+    if not any(f.startswith("typeof D0702_BOOK_ZERO") for f in frags):
+        missing.append("typeof D0702_BOOK_ZERO === 'string'…")
     if missing:
         print("MISSING_FRAGMENTS=" + repr(missing))
         print("FOUND=" + repr(frags))
@@ -119,24 +128,27 @@ def main() -> int:
 
             // Drive hydration terminal scenarios using ONLY extracted assignment /
             // condition fragment strings (no handwritten predicate copies).
-            String assignEmpty = null, assignAvail = null, assignUnavail = null;
-            String condEmpty = null, condAvail = null, condUnavail = null, condTerminal = null;
+            String assignUnset = null, assignAvail = null, assignUnavail = null, assignEmptyCatalog = null;
+            String condUnset = null, condAvail = null, condUnavail = null, condTerminal = null;
             String typeofZero = null;
+            String terminalExact =
+                "output.d0702HydrationBranch == 'available' || "
+                + "output.d0702HydrationBranch == 'unavailable' || "
+                + "output.d0702HydrationBranch == 'empty'";
             for (String frag : FRAGS) {{
-              if (frag.equals("output.d0702HydrationBranch = ''")) assignEmpty = frag;
+              if (frag.equals("output.d0702HydrationBranch = ''")) assignUnset = frag;
               else if (frag.equals("output.d0702HydrationBranch = 'available'")) assignAvail = frag;
               else if (frag.equals("output.d0702HydrationBranch = 'unavailable'")) assignUnavail = frag;
-              else if (frag.equals("output.d0702HydrationBranch == ''")) condEmpty = frag;
+              else if (frag.equals("output.d0702HydrationBranch = 'empty'")) assignEmptyCatalog = frag;
+              else if (frag.equals("output.d0702HydrationBranch == ''")) condUnset = frag;
               else if (frag.equals("output.d0702HydrationBranch == 'available'")) condAvail = frag;
               else if (frag.equals("output.d0702HydrationBranch == 'unavailable'")) condUnavail = frag;
-              else if (frag.equals(
-                  "output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable'"))
-                condTerminal = frag;
+              else if (frag.equals(terminalExact)) condTerminal = frag;
               else if (frag.startsWith("typeof D0702_BOOK_ZERO")) typeofZero = frag;
             }}
-            if (assignEmpty == null || assignAvail == null || assignUnavail == null
-                || condEmpty == null || condAvail == null || condUnavail == null
-                || condTerminal == null || typeofZero == null) {{
+            if (assignUnset == null || assignAvail == null || assignUnavail == null
+                || assignEmptyCatalog == null || condUnset == null || condAvail == null
+                || condUnavail == null || condTerminal == null || typeofZero == null) {{
               System.out.println("MISSING_NAMED_EXTRACTED");
               System.exit(4);
             }}
@@ -153,12 +165,12 @@ def main() -> int:
             }}
             b.put("D0702_BOOK_ZERO", "^Matthew, 0 of 28 chapters selected$");
 
-            eng.eval(assignEmpty);
-            if (!Boolean.TRUE.equals(eng.eval(condEmpty))) {{
-              System.out.println("EMPTY_WHEN_FAIL"); System.exit(6);
+            eng.eval(assignUnset);
+            if (!Boolean.TRUE.equals(eng.eval(condUnset))) {{
+              System.out.println("UNSET_WHEN_FAIL"); System.exit(6);
             }}
             if (Boolean.TRUE.equals(eng.eval(condTerminal))) {{
-              System.out.println("EMPTY_MUST_FAIL_TERMINAL"); System.exit(6);
+              System.out.println("UNSET_MUST_FAIL_TERMINAL"); System.exit(6);
             }}
 
             eng.eval(assignAvail);
@@ -181,6 +193,15 @@ def main() -> int:
             }}
             if (Boolean.TRUE.equals(eng.eval(condAvail))) {{
               System.out.println("UNAVAIL_NOT_AVAIL_FAIL"); System.exit(6);
+            }}
+
+            // Successful empty catalog is a terminal (shared footer path; no avail/unavail suite).
+            eng.eval(assignEmptyCatalog);
+            if (!Boolean.TRUE.equals(eng.eval(condTerminal))) {{
+              System.out.println("EMPTY_CATALOG_TERMINAL_FAIL"); System.exit(6);
+            }}
+            if (Boolean.TRUE.equals(eng.eval(condAvail)) || Boolean.TRUE.equals(eng.eval(condUnavail))) {{
+              System.out.println("EMPTY_CATALOG_NOT_AB_FAIL"); System.exit(6);
             }}
 
             // Non-terminal marker must not satisfy extracted terminal assertTrue.

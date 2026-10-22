@@ -1,9 +1,9 @@
 {
   "schema": "d0702-01-offline-validation/v1",
-  "generated_utc": "2026-10-21T20:30:00Z",
+  "generated_utc": "2026-10-21T23:05:00Z",
   "criterion": "D-0702-01",
   "admission_status": "AUTHORING_GATES_GREEN_DEVICE_PASS_ON_753aecd8_CURRENT_HEAD_UNEXECUTED",
-  "admission_note": "YAML/fixture/static + host external-finally unit-tested (21) + d0702-graal-gate.py. One complete device MAESTRO_OK_CLEANUP_OK was observed on head 753aecd8 — not on later heads including 984fc794. C51 arithmetic not_run. runtime_pass_claimed remains false.",
+  "admission_note": "YAML/fixture/static + host external-finally unit-tested (21) + d0702-graal-gate.py (extracts real YAML ${...}; fails closed without jars). Hydration terminals: available | unavailable | empty. One complete device MAESTRO_OK_CLEANUP_OK was observed on head 753aecd8 — not on later heads (984fc794, 64cd544f, or this head). C51 arithmetic not_run. runtime_pass_claimed remains false.",
   "device_ops": "ONE_PRIOR_EXECUTE_ON_753aecd8_ONLY",
   "runtime_pass_claimed": false,
   "device_pass": {
@@ -13,7 +13,7 @@
     "projectId": "13",
     "actor": "PM9",
     "receipt": "task-10/artifacts/d0702-pr755-final-dismiss-runtime-20261021/host-runner-result.json",
-    "note": "Later heads (including 984fc794) have not been re-executed on device."
+    "note": "Later heads (including 984fc794 / 64cd544f / post-review corrections) have not been re-executed on device; do not stamp a new device pass."
   },
   "prior_retained_behavior_pass": {
     "actor": "PM9",

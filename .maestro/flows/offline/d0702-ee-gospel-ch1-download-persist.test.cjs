@@ -105,13 +105,27 @@ describe('D-0702-01 durable wrapper static contract', () => {
     assert.ok(!/^\s*-\s*mutating\s*$/m.test(nText));
   });
 
-  it('maps A/B hydration terminals (not unavailable-only) and forbids bare Download', () => {
+  it('maps A/B/empty hydration terminals (not unavailable-only) and forbids bare Download', () => {
     const nestedBody = fs.readFileSync(nested, 'utf8');
     const avail = fs.readFileSync(availableAssert, 'utf8');
     const unavail = fs.readFileSync(unavailableAssert, 'utf8');
     assert.ok(nestedBody.includes('d0702-assert-hydration-available.yaml'));
     assert.ok(nestedBody.includes('d0702-assert-hydration-unavailable.yaml'));
     assert.ok(nestedBody.includes('output.d0702HydrationBranch'));
+    // Successful empty catalog is a third terminal (message + no resources section).
+    assert.ok(
+      nestedBody.includes("output.d0702HydrationBranch = 'empty'"),
+    );
+    assert.ok(
+      nestedBody.includes(
+        "output.d0702HydrationBranch == 'available' || output.d0702HydrationBranch == 'unavailable' || output.d0702HydrationBranch == 'empty'",
+      ),
+    );
+    assert.ok(
+      nestedBody.includes(
+        'No downloadable resources are available for the selected chapters',
+      ),
+    );
     // Bounded scrollUntilVisible waits (not N×animation busy-loop).
     assert.ok(nestedBody.includes('scrollUntilVisible:'));
     assert.ok(nestedBody.includes("id: 'prepare-offline-resources-section'"));

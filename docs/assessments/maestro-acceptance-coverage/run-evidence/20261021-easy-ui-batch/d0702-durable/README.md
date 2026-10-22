@@ -121,6 +121,6 @@ node scripts/maestro-fixture-guard.cjs --preflight --recursive -- \
 
 ---
 
-## Parked product question (empty catalog)
+## Empty catalog terminal
 
-Issue #702 / D-0702-01 oracle treats terminals as **available resources** or **couldn't-load unavailable** (`Couldn't load downloadable resources…`). A successful empty catalog (`No downloadable resources are available for the selected chapters.` with no resources section) is a distinct UI state. It is **not** admitted here (assertions not weakened; no invented empty-catalog manifest). See correction result / PR follow-up question.
+Successful empty catalog (`No downloadable resources are available for the selected chapters.` with no resources section) is a third hydration terminal (`empty`) alongside **available** and **couldn't-load unavailable**. Nested `assertTrue` admits `available || unavailable || empty`; available/unavailable suites still run only on their branches. No invented empty-catalog fixture — detection is message + absent resources section.
