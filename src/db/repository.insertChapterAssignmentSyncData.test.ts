@@ -1,3 +1,10 @@
+const mockMaybePurge = jest.fn();
+
+jest.mock('../services/draftDownloadPurge', () => ({
+  maybePurgeDraftDownloadsAfterPersistedStageChange: (...args: unknown[]) =>
+    mockMaybePurge(...args),
+}));
+
 import type { Transaction } from '@op-engineering/op-sqlite';
 import type { ChapterAssignment } from '../types/db/types';
 import {
@@ -116,6 +123,28 @@ function createSyncTestDb() {
           rows: tables.get('project_units')?.rows ?? [],
           rowsAffected: 0,
         };
+      }
+
+      if (
+        /^SELECT ca\.id AS id, ca\.status AS status, pu\.project_id AS project_id/i.test(
+          sql,
+        )
+      ) {
+        const allowed = new Set(params.map(Number));
+        const assignments = tables.get('chapter_assignments')?.rows ?? [];
+        const units = tables.get('project_units')?.rows ?? [];
+        const rows = assignments
+          .filter(r => allowed.has(Number(r.id)))
+          .map(r => {
+            const unit = units.find(u => u.id === r.project_unit_id);
+            return {
+              id: r.id,
+              status: r.status,
+              project_id: unit?.project_id ?? null,
+            };
+          })
+          .filter(r => r.project_id !== null && r.project_id !== undefined);
+        return { rows, rowsAffected: 0 };
       }
 
       if (/^INSERT OR IGNORE INTO users \(id, email\)/i.test(sql)) {
@@ -347,11 +376,16 @@ describe('filterAssignmentsWithValidParents', () => {
 });
 
 describe('insertChapterAssignmentSyncData', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMaybePurge.mockResolvedValue(null);
+  });
+
   it('does not throw on empty assignments array', async () => {
     const db = createSyncTestDb();
     setDatabase(db as never);
 
-    await expect(insertChapterAssignmentSyncData([])).resolves.toEqual({
+    await expect(insertChapterAssignmentSyncData([], 7)).resolves.toEqual({
       insertedCount: 0,
       skipped: [],
     });
@@ -371,9 +405,10 @@ describe('insertChapterAssignmentSyncData', () => {
     });
 
     await expect(
-      insertChapterAssignmentSyncData([
-        validAssignment({ chapterAssignmentId: 5, bibleId: 999 }),
-      ]),
+      insertChapterAssignmentSyncData(
+        [validAssignment({ chapterAssignmentId: 5, bibleId: 999 })],
+        7,
+      ),
     ).resolves.toEqual({
       insertedCount: 0,
       skipped: [
@@ -398,9 +433,10 @@ describe('insertChapterAssignmentSyncData', () => {
     });
 
     await expect(
-      insertChapterAssignmentSyncData([
-        validAssignment({ chapterAssignmentId: 6, bookId: 999 }),
-      ]),
+      insertChapterAssignmentSyncData(
+        [validAssignment({ chapterAssignmentId: 6, bookId: 999 })],
+        7,
+      ),
     ).resolves.toEqual({
       insertedCount: 0,
       skipped: [
@@ -423,9 +459,10 @@ describe('insertChapterAssignmentSyncData', () => {
       books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({ chapterAssignmentId: 10, bibleId: 999 }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [validAssignment({ chapterAssignmentId: 10, bibleId: 999 })],
+      7,
+    );
 
     expect(db.table('project_units')).toHaveLength(0);
     expect(db.table('chapter_assignments')).toHaveLength(0);
@@ -442,12 +479,15 @@ describe('insertChapterAssignmentSyncData', () => {
       users: [{ id: 1, email: 'u@example.com' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({
-        chapterAssignmentId: 5,
-        assignedUserId: 999,
-      }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({
+          chapterAssignmentId: 5,
+          assignedUserId: 999,
+        }),
+      ],
+      7,
+    );
 
     expect(db.table('chapter_assignments')).toHaveLength(1);
     expect(db.table('chapter_assignments')[0].assigned_user_id).toBe(999);
@@ -466,9 +506,10 @@ describe('insertChapterAssignmentSyncData', () => {
       project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({ chapterAssignmentId: 8, peerCheckerId: 777 }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [validAssignment({ chapterAssignmentId: 8, peerCheckerId: 777 })],
+      7,
+    );
 
     expect(db.table('chapter_assignments')[0].peer_checker_id).toBe(777);
     const stub = db.table('users').find(u => u.id === 777);
@@ -487,7 +528,7 @@ describe('insertChapterAssignmentSyncData', () => {
       ],
     });
 
-    await insertChapterAssignmentSyncData([validAssignment()]);
+    await insertChapterAssignmentSyncData([validAssignment()], 7);
 
     expect(db.table('project_units')[0].name).toBe('Mark');
   });
@@ -501,9 +542,10 @@ describe('insertChapterAssignmentSyncData', () => {
       books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({ chapterAssignmentId: 7 }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [validAssignment({ chapterAssignmentId: 7 })],
+      7,
+    );
 
     expect(db.table('project_units')).toHaveLength(1);
     expect(db.table('chapter_assignments')).toHaveLength(1);
@@ -519,10 +561,13 @@ describe('insertChapterAssignmentSyncData', () => {
       project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({ chapterAssignmentId: 1 }),
-      validAssignment({ chapterAssignmentId: 2, bibleId: 999 }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({ chapterAssignmentId: 1 }),
+        validAssignment({ chapterAssignmentId: 2, bibleId: 999 }),
+      ],
+      7,
+    );
 
     expect(db.table('chapter_assignments')).toHaveLength(1);
     expect(db.table('chapter_assignments')[0].id).toBe(1);
@@ -538,23 +583,27 @@ describe('insertChapterAssignmentSyncData', () => {
       project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({ chapterAssignmentId: 1, hasConflict: true }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [validAssignment({ chapterAssignmentId: 1, hasConflict: true })],
+      7,
+    );
     expect(db.table('chapter_assignments')[0].has_conflict).toBe(1);
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({ chapterAssignmentId: 1, chapterStatus: 'draft' }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [validAssignment({ chapterAssignmentId: 1, chapterStatus: 'draft' })],
+      7,
+    );
     expect(db.table('chapter_assignments')[0].has_conflict).toBe(1);
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({ chapterAssignmentId: 1, hasConflict: false }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [validAssignment({ chapterAssignmentId: 1, hasConflict: false })],
+      7,
+    );
     expect(db.table('chapter_assignments')[0].has_conflict).toBe(0);
   });
 
   it('keeps local status and peer checker while a stage advance is queued', async () => {
+    mockMaybePurge.mockResolvedValue(null);
     const db = createSyncTestDb();
     setDatabase(db as never);
     db.seed({
@@ -565,14 +614,17 @@ describe('insertChapterAssignmentSyncData', () => {
       users: [{ id: 5, email: 'seehagen@example.com' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({
-        chapterAssignmentId: 1,
-        chapterStatus: 'peer_check',
-        peerCheckerId: 20,
-        assignedUserId: 5,
-      }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({
+          chapterAssignmentId: 1,
+          chapterStatus: 'peer_check',
+          peerCheckerId: 20,
+          assignedUserId: 5,
+        }),
+      ],
+      7,
+    );
     db.seed({
       stage_advance_queue: [
         {
@@ -587,30 +639,54 @@ describe('insertChapterAssignmentSyncData', () => {
         },
       ],
     });
+    mockMaybePurge.mockClear();
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({
-        chapterAssignmentId: 1,
-        chapterStatus: 'draft',
-        assignedUserId: 5,
-      }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({
+          chapterAssignmentId: 1,
+          chapterStatus: 'draft',
+          assignedUserId: 5,
+        }),
+      ],
+      7,
+    );
 
     expect(db.table('chapter_assignments')[0].status).toBe('peer_check');
     expect(db.table('chapter_assignments')[0].peer_checker_id).toBe(20);
+    // #770 pending skip keeps persisted status — purge sees actual same pair,
+    // not the sync payload's draft target.
+    expect(mockMaybePurge).toHaveBeenCalledWith({
+      projectId: 100,
+      userId: 7,
+      chapterAssignmentId: 1,
+      fromStatus: 'peer_check',
+      toStatus: 'peer_check',
+    });
 
     db.table('stage_advance_queue').splice(0, 1);
+    mockMaybePurge.mockClear();
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({
-        chapterAssignmentId: 1,
-        chapterStatus: 'draft',
-        assignedUserId: 5,
-      }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({
+          chapterAssignmentId: 1,
+          chapterStatus: 'draft',
+          assignedUserId: 5,
+        }),
+      ],
+      7,
+    );
 
     expect(db.table('chapter_assignments')[0].status).toBe('draft');
     expect(db.table('chapter_assignments')[0].peer_checker_id).toBeNull();
+    expect(mockMaybePurge).toHaveBeenCalledWith({
+      projectId: 100,
+      userId: 7,
+      chapterAssignmentId: 1,
+      fromStatus: 'peer_check',
+      toStatus: 'draft',
+    });
   });
 
   it('persists valid stageEnteredAt and stores null for omitted/invalid', async () => {
@@ -623,26 +699,29 @@ describe('insertChapterAssignmentSyncData', () => {
       project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({
-        chapterAssignmentId: 1,
-        stageEnteredAt: '2025-04-01T15:30:00.000Z',
-      }),
-      validAssignment({
-        chapterAssignmentId: 2,
-        chapterNumber: 2,
-        stageEnteredAt: null,
-      }),
-      validAssignment({
-        chapterAssignmentId: 3,
-        chapterNumber: 3,
-      }),
-      validAssignment({
-        chapterAssignmentId: 4,
-        chapterNumber: 4,
-        stageEnteredAt: 'yesterday',
-      }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({
+          chapterAssignmentId: 1,
+          stageEnteredAt: '2025-04-01T15:30:00.000Z',
+        }),
+        validAssignment({
+          chapterAssignmentId: 2,
+          chapterNumber: 2,
+          stageEnteredAt: null,
+        }),
+        validAssignment({
+          chapterAssignmentId: 3,
+          chapterNumber: 3,
+        }),
+        validAssignment({
+          chapterAssignmentId: 4,
+          chapterNumber: 4,
+          stageEnteredAt: 'yesterday',
+        }),
+      ],
+      7,
+    );
 
     const byId = (id: number) =>
       db.table('chapter_assignments').find(row => row.id === id);
@@ -663,15 +742,18 @@ describe('insertChapterAssignmentSyncData', () => {
       users: [{ id: 5, email: 'seehagen@example.com' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({
-        chapterAssignmentId: 1,
-        chapterStatus: 'peer_check',
-        peerCheckerId: 20,
-        assignedUserId: 5,
-        stageEnteredAt: '2025-04-01T15:30:00.000Z',
-      }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({
+          chapterAssignmentId: 1,
+          chapterStatus: 'peer_check',
+          peerCheckerId: 20,
+          assignedUserId: 5,
+          stageEnteredAt: '2025-04-01T15:30:00.000Z',
+        }),
+      ],
+      7,
+    );
     db.seed({
       stage_advance_queue: [
         {
@@ -687,15 +769,18 @@ describe('insertChapterAssignmentSyncData', () => {
       ],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({
-        chapterAssignmentId: 1,
-        chapterStatus: 'draft',
-        assignedUserId: 5,
-        peerCheckerId: 99,
-        stageEnteredAt: '2026-01-01T00:00:00.000Z',
-      }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({
+          chapterAssignmentId: 1,
+          chapterStatus: 'draft',
+          assignedUserId: 5,
+          peerCheckerId: 99,
+          stageEnteredAt: '2026-01-01T00:00:00.000Z',
+        }),
+      ],
+      7,
+    );
 
     expect(db.table('chapter_assignments')[0]).toEqual(
       expect.objectContaining({
@@ -716,26 +801,32 @@ describe('insertChapterAssignmentSyncData', () => {
       project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
     });
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({
-        chapterAssignmentId: 1,
-        chapterNumber: 1,
-        stageEnteredAt: '2025-04-01T15:30:00.000Z',
-      }),
-      validAssignment({
-        chapterAssignmentId: 2,
-        chapterNumber: 2,
-        stageEnteredAt: '2025-05-01T15:30:00.000Z',
-      }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({
+          chapterAssignmentId: 1,
+          chapterNumber: 1,
+          stageEnteredAt: '2025-04-01T15:30:00.000Z',
+        }),
+        validAssignment({
+          chapterAssignmentId: 2,
+          chapterNumber: 2,
+          stageEnteredAt: '2025-05-01T15:30:00.000Z',
+        }),
+      ],
+      7,
+    );
 
-    await insertChapterAssignmentSyncData([
-      validAssignment({
-        chapterAssignmentId: 2,
-        chapterNumber: 2,
-        stageEnteredAt: '2025-06-01T15:30:00.000Z',
-      }),
-    ]);
+    await insertChapterAssignmentSyncData(
+      [
+        validAssignment({
+          chapterAssignmentId: 2,
+          chapterNumber: 2,
+          stageEnteredAt: '2025-06-01T15:30:00.000Z',
+        }),
+      ],
+      7,
+    );
 
     const byId = (id: number) =>
       db.table('chapter_assignments').find(row => row.id === id);

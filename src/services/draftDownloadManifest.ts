@@ -4,6 +4,7 @@ import type {
   DraftAudioCoverage,
   DraftDownloadRole,
 } from '../types/draftDownload/types';
+import { draftAudioResourceId } from './draftDownloadIds';
 import { ensureDownloadsDir, fileExists } from './downloadStorage';
 
 export type DraftDownloadManifestUnit = {
@@ -63,6 +64,31 @@ function matchesIdentity(
   );
 }
 
+/**
+ * Every unit.resourceId must equal the exact assignment audio identity derived
+ * from unit fields. Forged `draft-audio-<other-assignment>-…` ids fail closed.
+ */
+function unitsMatchAssignmentAudioIdentity(
+  manifest: DraftDownloadManifest,
+): boolean {
+  for (const unit of manifest.units ?? []) {
+    try {
+      const expected = draftAudioResourceId(
+        manifest.chapterAssignmentId,
+        unit.bibleTextId,
+        unit.activeTakeId,
+        unit.contentHash,
+      );
+      if (unit.resourceId !== expected) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 export async function writeDraftDownloadManifest(
   manifest: DraftDownloadManifest,
 ): Promise<string> {
@@ -73,8 +99,9 @@ export async function writeDraftDownloadManifest(
 }
 
 /**
- * Read + validate identity. Returns null when missing or identity mismatch
- * (prevents another account/request from consuming stale bytes).
+ * Read + validate identity and unit resource ids. Returns null when missing,
+ * identity mismatch, or any unit.resourceId is not the exact assignment audio
+ * identity (prevents forged/foreign draft-audio ids from being consumed).
  */
 export async function readDraftDownloadManifest(
   identity: DraftManifestIdentity,
@@ -88,13 +115,17 @@ export async function readDraftDownloadManifest(
       return null;
     }
     // Pre-#784 on-disk units omit coverage — normalize rather than invent ranges.
-    return {
+    const normalized: DraftDownloadManifest = {
       ...parsed,
       units: (parsed.units ?? []).map(unit => ({
         ...unit,
         coverage: unit.coverage ?? null,
       })),
     };
+    if (!unitsMatchAssignmentAudioIdentity(normalized)) {
+      return null;
+    }
+    return normalized;
   } catch {
     return null;
   }
@@ -112,6 +143,7 @@ export async function writeDraftDownloadPurgeTombstone(
   identity: DraftManifestIdentity,
   previous: DraftDownloadManifest | null,
 ): Promise<void> {
+  // Keep units so a failed file-delete purge can retry owned ids safely.
   const tombstone: DraftDownloadManifest = {
     chapterAssignmentId: identity.chapterAssignmentId,
     projectId: identity.projectId,
@@ -122,7 +154,7 @@ export async function writeDraftDownloadPurgeTombstone(
     bookId: previous?.bookId ?? 0,
     bookCode: previous?.bookCode ?? '',
     chapterNumber: previous?.chapterNumber ?? 0,
-    units: [],
+    units: previous?.units ?? [],
     purgeGeneration: (previous?.purgeGeneration ?? 0) + 1,
     purged: true,
   };
