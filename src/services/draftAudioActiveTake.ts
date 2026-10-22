@@ -2,7 +2,12 @@ import type {
   VerseAudioResponse,
   VerseAudioTakeResponse,
 } from '../types/api/verseAudio';
+import type { DraftAudioCoverage } from '../types/draftDownload/types';
 import { createApiError } from './apiError';
+import {
+  coverageFromTake,
+  isValidInclusiveCoverage,
+} from './draftAudioCoverage';
 
 export type ResolvedActiveTake = {
   take: VerseAudioTakeResponse;
@@ -10,13 +15,17 @@ export type ResolvedActiveTake = {
   bibleTextId: number;
   verseNumber: number;
   recordingId: number;
+  /** Exact active-take coverage; null for older payloads without coverage keys. */
+  coverage: DraftAudioCoverage | null;
 };
 
 /**
- * Canonical selected-take rule for draft download (#508 / #704):
+ * Canonical selected-take rule for draft download (#508 / #704 / #784):
  * exact `take.id === activeTakeId`. Reject null/missing/mismatched active.
- * Never use top-level `downloadUrl` or "latest take" — the API serializer
- * falls back to the last take for the top-level URL when active is missing.
+ * Never use top-level `downloadUrl` or "latest take" — API455 sets top-level
+ * `downloadUrl` to null when active is unavailable (no invent-take fallback).
+ * Coverage comes from the matched take only (verse/pericope alternatives share
+ * the same recording + projectUnitId + bibleTextId anchor).
  */
 export function resolveActiveTakeDownload(
   item: VerseAudioResponse,
@@ -43,12 +52,21 @@ export function resolveActiveTakeDownload(
     );
   }
 
+  const coverage = coverageFromTake(take);
+  if (coverage !== null && !isValidInclusiveCoverage(coverage)) {
+    throw createApiError(
+      500,
+      `Verse audio unit ${item.id}: active take ${take.id} has invalid inclusive coverage`,
+    );
+  }
+
   return {
     take,
     conflictStatus: item.conflictStatus,
     bibleTextId: item.bibleTextId,
     verseNumber: item.verseNumber,
     recordingId: item.id,
+    coverage,
   };
 }
 

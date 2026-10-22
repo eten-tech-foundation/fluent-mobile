@@ -168,6 +168,60 @@ describe('verseAudioContract', () => {
     ).toBe('conflict');
   });
 
+  it('parses nullable top-level downloadUrl without dropping takes', () => {
+    const parsed = parseVerseAudioResponse({
+      ...validResponse,
+      activeTakeId: null,
+      downloadUrl: null,
+    });
+    expect(parsed.downloadUrl).toBeNull();
+    expect(parsed.takes).toHaveLength(1);
+    expect(parsed.takes[0]?.downloadUrl).toBe('https://example.test/take');
+  });
+
+  it('rejects fractional coverage bounds (positive ints only)', () => {
+    expect(() =>
+      parseVerseAudioResponse({
+        ...validResponse,
+        granularity: 'verse',
+        startChapter: 1.5,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 1,
+        takes: [
+          {
+            ...validTake,
+            granularity: 'verse',
+            startChapter: 1,
+            startVerse: 1,
+            endChapter: 1,
+            endVerse: 1,
+          },
+        ],
+      }),
+    ).toThrow(/invalid startChapter/);
+    expect(() =>
+      parseVerseAudioResponse({
+        ...validResponse,
+        granularity: 'verse',
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 1,
+        takes: [
+          {
+            ...validTake,
+            granularity: 'verse',
+            startChapter: 1,
+            startVerse: 2.25,
+            endChapter: 1,
+            endVerse: 2,
+          },
+        ],
+      }),
+    ).toThrow(/take invalid startVerse/);
+  });
+
   it('rejects malformed success bodies', () => {
     expect(() => parseVerseAudioResponse(null)).toThrow(ApiError);
     expect(() => parseVerseAudioResponse({})).toThrow(/missing id/);
