@@ -1955,11 +1955,13 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     // Projects must wait until both claims and master finish.
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
 
-    resolveLanguages([]);
-    await Promise.resolve();
+    resolveClaims({ synced: 0, conflicts: 0, failed: 0 });
+    await new Promise<void>(resolve => {
+      setImmediate(resolve);
+    });
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
 
-    resolveClaims({ synced: 0, conflicts: 0, failed: 0 });
+    resolveLanguages([]);
     await pending;
 
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(
