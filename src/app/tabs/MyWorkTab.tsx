@@ -87,8 +87,17 @@ export function MyWorkTab({
       ListFooterComponent={
         <View
           testID="my-work-list-end"
-          accessibilityLabel={`my-work-count-${chapters.length}`}
-        />
+          collapsable={false}
+          accessible={false}
+          style={styles.listEndMarker}
+        >
+          <View
+            testID={`my-work-list-count-${chapters.length}`}
+            collapsable={false}
+            accessible={false}
+            style={styles.listEndMarker}
+          />
+        </View>
       }
       renderItem={({ item: group }) => {
         const expanded = expandedState.expanded.has(group.stage);
@@ -166,6 +175,7 @@ export function MyWorkTab({
 
 const styles = StyleSheet.create({
   listContent: theme.homeListContent,
+  listEndMarker: { height: 1 },
   stageGroup: {
     gap: theme.spacing.xs,
     marginBottom: theme.spacing.sm,
