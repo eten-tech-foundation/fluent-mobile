@@ -56,6 +56,7 @@ function row(overrides: Record<string, unknown> = {}) {
     completed_verses: 0,
     downloaded_verses: 0,
     has_conflict: 0,
+    stage_entered_at: null,
     ...overrides,
   };
 }
@@ -77,6 +78,8 @@ describe('getMyWorkChapters', () => {
     ];
     expect(sql).toContain('pu.project_id');
     expect(sql).not.toContain('user_projects');
+    expect(sql).toContain('ca.stage_entered_at');
+    expect(sql).toMatch(/ORDER BY b\.id, ca\.chapter_number/);
     expect(params).toEqual([
       7,
       MY_WORK_CHAPTER_STATUSES.NOT_STARTED,
@@ -88,6 +91,26 @@ describe('getMyWorkChapters', () => {
     expect(chapters).toHaveLength(1);
     expect(chapters[0]?.listAccess).toBe('assigned');
     expect(chapters[0]?.projectId).toBe(3);
+    expect(chapters[0]?.stageEnteredAt).toBeNull();
+  });
+
+  it('maps stage_entered_at onto MyWorkChapter.stageEnteredAt', async () => {
+    mockExecute.mockResolvedValue({
+      rows: [
+        row({
+          stage_entered_at: '2025-04-01T15:30:00.000Z',
+        }),
+        row({
+          id: 2,
+          stage_entered_at: '   ',
+        }),
+      ],
+    });
+
+    const chapters = await getMyWorkChapters(7);
+
+    expect(chapters[0]?.stageEnteredAt).toBe('2025-04-01T15:30:00.000Z');
+    expect(chapters[1]?.stageEnteredAt).toBeNull();
   });
 
   it('binds Observer statuses, deduped project IDs, and membership userId', async () => {

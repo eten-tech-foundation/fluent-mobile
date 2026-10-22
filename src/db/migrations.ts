@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 21;
+export const CURRENT_SCHEMA_VERSION = 22;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -363,6 +363,22 @@ async function applyStageAdvanceQueueTable(db: SqlExecutor): Promise<void> {
   );
 }
 
+/** Nullable ISO stage-entry time for My Work within-stage ordering (#505 / #457). */
+export async function addChapterAssignmentStageEnteredAt(
+  db: SqlExecutor,
+): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(chapter_assignments)');
+  if (!info.rows.length) {
+    return;
+  }
+  await addColumnIfMissing(
+    db,
+    'chapter_assignments',
+    'stage_entered_at',
+    'TEXT',
+  );
+}
+
 async function applyChapterClaimQueueTable(db: SqlExecutor): Promise<void> {
   await db.execute(
     `CREATE TABLE IF NOT EXISTS chapter_claim_queue (
@@ -695,6 +711,11 @@ export const migrations: Migration[] = [
     version: 21,
     name: 'stage_advance_queue_table',
     up: applyStageAdvanceQueueTable,
+  },
+  {
+    version: 22,
+    name: 'chapter_assignment_stage_entered_at',
+    up: addChapterAssignmentStageEnteredAt,
   },
 ];
 

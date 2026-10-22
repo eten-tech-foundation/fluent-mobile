@@ -1841,10 +1841,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
     // Claims → stage drain before My Work assignment pull; catalogue still held.
     expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
-    expect(syncPendingStageAdvances).toHaveBeenCalledWith(
-      2,
-      'relogin-scoped',
-    );
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(2, 'relogin-scoped');
     const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
     const stageOrder = syncPendingStageAdvances.mock.invocationCallOrder[0];
     const myWorkOrder = (FluentAPI.getUserChapterAssignments as jest.Mock).mock

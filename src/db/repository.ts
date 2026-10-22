@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
 import { StageAdvanceStatus } from '@/utils/stageAdvancement';
+import { normalizeStageEnteredAt } from '../utils/stageEnteredAt';
 import { insertStageAdvanceQueueEntry } from './stageAdvanceQueueRepository';
 
 const log = logger.create('DBRepository');
@@ -327,12 +328,17 @@ async function insertChapterAssignmentTx(
 ) {
   if (!assignment?.chapterAssignmentId) return;
 
+  // Authoritative API only — never activity / updatedAt / local clock.
+  const stageEnteredAt = normalizeStageEnteredAt(
+    assignment.stageEnteredAt ?? null,
+  );
+
   await tx.execute(
     `INSERT INTO chapter_assignments
     (id, project_unit_id, bible_id, book_id, chapter_number,
      assigned_user_id, peer_checker_id, status, submitted_time, updated_at,
-     total_verses, completed_verses, has_conflict)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     stage_entered_at, total_verses, completed_verses, has_conflict)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       project_unit_id = excluded.project_unit_id,
       bible_id = excluded.bible_id,
@@ -357,6 +363,14 @@ async function insertChapterAssignmentTx(
       END,
       submitted_time = excluded.submitted_time,
       updated_at = excluded.updated_at,
+      stage_entered_at = CASE
+        WHEN EXISTS (
+          SELECT 1 FROM stage_advance_queue saq
+          WHERE saq.chapter_assignment_id = chapter_assignments.id
+            AND saq.sync_status = 'pending'
+        ) THEN chapter_assignments.stage_entered_at
+        ELSE excluded.stage_entered_at
+      END,
       total_verses = MAX(chapter_assignments.total_verses, excluded.total_verses),
       completed_verses = excluded.completed_verses,
       has_conflict = CASE
@@ -374,6 +388,7 @@ async function insertChapterAssignmentTx(
       assignment.chapterStatus ?? 'not_started',
       assignment.submittedTime ?? null,
       assignment.updatedAt ?? new Date().toISOString(),
+      stageEnteredAt,
       assignment.totalVerses ?? 0,
       assignment.completedVerses ?? 0,
       assignment.hasConflict === true ? 1 : 0,
@@ -1230,24 +1245,42 @@ export async function updateChapterAssignmentStatusLocally(
       [chapterAssignmentId],
     );
     const currentRow = current.rows?.[0] as { status?: string } | undefined;
+    // Clear stage_entered_at only when the persisted status actually changes;
+    // repeats preserve the prior timestamp. RHS `status` is the old row value
+    // (SQLite UPDATE semantics). Never invent a local clock / activity stamp.
     if (peerCheckerId !== undefined) {
       await tx.execute(
         `UPDATE chapter_assignments
          SET status = ?,
              submitted_time = ?,
              updated_at = ?,
+             stage_entered_at = CASE
+               WHEN status IS DISTINCT FROM ? THEN NULL
+               ELSE stage_entered_at
+             END,
              peer_checker_id = ?
          WHERE id = ?`,
-        [status, submittedTime, updatedAt, peerCheckerId, chapterAssignmentId],
+        [
+          status,
+          submittedTime,
+          updatedAt,
+          status,
+          peerCheckerId,
+          chapterAssignmentId,
+        ],
       );
     } else {
       await tx.execute(
         `UPDATE chapter_assignments
          SET status = ?,
              submitted_time = ?,
-             updated_at = ?
+             updated_at = ?,
+             stage_entered_at = CASE
+               WHEN status IS DISTINCT FROM ? THEN NULL
+               ELSE stage_entered_at
+             END
          WHERE id = ?`,
-        [status, submittedTime, updatedAt, chapterAssignmentId],
+        [status, submittedTime, updatedAt, status, chapterAssignmentId],
       );
     }
     if (!currentRow) return;
@@ -1270,9 +1303,18 @@ export async function setChapterAssignmentStatus(
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
   await db.transaction(async (tx: Transaction) => {
+    // Atomic clear-on-actual-change: compare new status to the old row value
+    // in one UPDATE (no separate read/write race). Unknown until API restamps.
     await tx.execute(
-      `UPDATE chapter_assignments SET status = ?, updated_at = ? WHERE id = ?`,
-      [status, updatedAt, chapterAssignmentId],
+      `UPDATE chapter_assignments
+       SET status = ?,
+           updated_at = ?,
+           stage_entered_at = CASE
+             WHEN status IS DISTINCT FROM ? THEN NULL
+             ELSE stage_entered_at
+           END
+       WHERE id = ?`,
+      [status, updatedAt, status, chapterAssignmentId],
     );
   });
 }

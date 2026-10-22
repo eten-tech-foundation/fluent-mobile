@@ -1,4 +1,5 @@
 import { MyWorkChapter, WorkflowBadgeStage } from '../types/db/types';
+import { stageEnteredAtMs } from './stageEnteredAt';
 
 /**
  * Accordion keys for My Work (#505 foundation).
@@ -81,9 +82,33 @@ export function getMyWorkAccordionStageLabel(
 }
 
 /**
+ * Within a stage: valid `stageEnteredAt` newest-first; null/invalid keep prior
+ * query order; equal timestamps stay stable. Never sorts on lastActivity (#505).
+ */
+export function orderChaptersWithinStage(
+  chapters: readonly MyWorkChapter[],
+): MyWorkChapter[] {
+  return chapters
+    .map((chapter, index) => ({ chapter, index }))
+    .sort((a, b) => {
+      const aMs = stageEnteredAtMs(a.chapter.stageEnteredAt);
+      const bMs = stageEnteredAtMs(b.chapter.stageEnteredAt);
+      const aValid = aMs !== null;
+      const bValid = bMs !== null;
+      if (aValid && bValid && aMs !== bMs) {
+        return bMs - aMs;
+      }
+      if (aValid !== bValid) {
+        return aValid ? -1 : 1;
+      }
+      return a.index - b.index;
+    })
+    .map(entry => entry.chapter);
+}
+
+/**
  * Group My Work chapters into non-empty stage accordions.
- * Preserves within-group input order (query order). No stage-entry sort —
- * genuine stage-entry timestamps are unavailable (#505 remaining AC).
+ * Within each stage, order by `stageEnteredAt` newest-first (#505 / #457).
  */
 export function groupMyWorkChaptersByStage(
   chapters: readonly MyWorkChapter[],
@@ -112,7 +137,7 @@ export function groupMyWorkChaptersByStage(
     groups.push({
       stage,
       label: getMyWorkAccordionStageLabel(stage),
-      chapters: stageChapters,
+      chapters: orderChaptersWithinStage(stageChapters),
     });
   }
 

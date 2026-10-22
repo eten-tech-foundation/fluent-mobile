@@ -25,6 +25,12 @@ export interface ApiChapterAssignment {
   peerCheckerId?: number | null;
   submittedTime?: string | null;
   updatedAt?: string | null;
+  /**
+   * ISO-8601 time the assignment entered its current status (fluent-api#457).
+   * Optional for backward-compatible clients; null/omitted means unknown.
+   * Never derived from activity / updatedAt / submittedTime.
+   */
+  stageEnteredAt?: string | null;
   totalVerses?: number;
   completedVerses?: number;
   /** Chapter-level unresolved audio-take conflict rollup (fluent-api#271). */

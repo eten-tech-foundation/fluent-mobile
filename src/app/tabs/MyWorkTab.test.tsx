@@ -128,6 +128,7 @@ const myWorkIds = {
   bookCode: 'LUK',
   assignedUserId: 7 as number | null,
   peerCheckerId: null as number | null,
+  stageEnteredAt: null as string | null,
   listAccess: 'assigned' as const,
 };
 

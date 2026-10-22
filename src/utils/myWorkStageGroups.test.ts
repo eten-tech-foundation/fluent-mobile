@@ -22,6 +22,7 @@ function chapter(
     totalVerses: 1,
     downloadedVerses: 0,
     hasConflict: false,
+    stageEnteredAt: null,
     projectName: 'Demo',
     targetLanguageName: 'English',
     projectUnitId: 11,
@@ -79,21 +80,67 @@ describe('myWorkStageGroups', () => {
     expect(groups[0].chapters.map(item => item.id)).toEqual([1, 2]);
   });
 
-  it('preserves within-group query order without activity sorting', () => {
+  it('orders within-stage by stageEnteredAt newest-first, not lastActivity', () => {
     const groups = groupMyWorkChaptersByStage([
       chapter({
         id: 2,
         assignmentStatus: 'draft',
-        lastActivityAt: '2024-01-01T00:00:00Z',
+        stageEnteredAt: '2024-01-01T00:00:00.000Z',
+        lastActivityAt: '2025-06-01T00:00:00.000Z',
       }),
       chapter({
         id: 1,
         assignmentStatus: 'draft',
-        lastActivityAt: '2025-01-01T00:00:00Z',
+        stageEnteredAt: '2025-01-01T00:00:00.000Z',
+        lastActivityAt: '2020-01-01T00:00:00.000Z',
+      }),
+      chapter({
+        id: 3,
+        assignmentStatus: 'draft',
+        stageEnteredAt: '2024-06-01T00:00:00.000Z',
+        lastActivityAt: '2026-01-01T00:00:00.000Z',
       }),
     ]);
 
-    expect(groups[0].chapters.map(item => item.id)).toEqual([2, 1]);
+    expect(groups[0].chapters.map(item => item.id)).toEqual([1, 3, 2]);
+  });
+
+  it('keeps null/invalid stageEnteredAt in prior query order after dated rows', () => {
+    const groups = groupMyWorkChaptersByStage([
+      chapter({
+        id: 10,
+        assignmentStatus: 'peer_check',
+        stageEnteredAt: null,
+      }),
+      chapter({
+        id: 11,
+        assignmentStatus: 'peer_check',
+        stageEnteredAt: 'not-a-date',
+      }),
+      chapter({
+        id: 12,
+        assignmentStatus: 'peer_check',
+        stageEnteredAt: '2025-01-01T00:00:00.000Z',
+      }),
+      chapter({
+        id: 13,
+        assignmentStatus: 'peer_check',
+        stageEnteredAt: null,
+      }),
+    ]);
+
+    expect(groups[0].chapters.map(item => item.id)).toEqual([12, 10, 11, 13]);
+  });
+
+  it('keeps equal stageEnteredAt ties in prior query order', () => {
+    const stamp = '2025-03-01T12:00:00.000Z';
+    const groups = groupMyWorkChaptersByStage([
+      chapter({ id: 21, assignmentStatus: 'draft', stageEnteredAt: stamp }),
+      chapter({ id: 22, assignmentStatus: 'draft', stageEnteredAt: stamp }),
+      chapter({ id: 23, assignmentStatus: 'draft', stageEnteredAt: stamp }),
+    ]);
+
+    expect(groups[0].chapters.map(item => item.id)).toEqual([21, 22, 23]);
   });
 
   it('starts multi-group accordions collapsed and sole group expanded', () => {
