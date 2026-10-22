@@ -58,7 +58,8 @@ function weighted(
 export const ArrowDown = weighted(ArrowDownIcon, 'regular', 'ArrowDown');
 export const ArrowLeft = weighted(ArrowLeftIcon, 'regular', 'ArrowLeft');
 export const ArrowRight = weighted(ArrowRightIcon, 'regular', 'ArrowRight');
-export const Check = weighted(CheckIcon, 'regular', 'Check');
+/** Bold, so the heard mark holds its own inside the 3pt Progress ring. */
+export const CheckBold = weighted(CheckIcon, 'bold', 'CheckBold');
 export const Headphones = weighted(HeadphonesIcon, 'regular', 'Headphones');
 export const UserSound = weighted(UserSoundIcon, 'regular', 'UserSound');
 export const Waveform = weighted(WaveformIcon, 'regular', 'Waveform');

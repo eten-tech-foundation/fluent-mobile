@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { Check, PauseFill, PlayFill } from './icons';
+import { CheckBold, PauseFill, PlayFill } from './icons';
 import { ProgressRing } from './ProgressRing';
 import { RoundButton } from './RoundButton';
 import { useTheme, useThemedStyles } from '../../theme/useTheme';
@@ -131,7 +131,7 @@ export function TrackRow({
         <Pressable onPress={onPress} accessible={false} style={styles.layer}>
           <Animated.View style={glyphStyle}>
             {heard ? (
-              <Check
+              <CheckBold
                 color={theme.roles.accentPrimary}
                 size={theme.controlSizes.icon24}
               />
