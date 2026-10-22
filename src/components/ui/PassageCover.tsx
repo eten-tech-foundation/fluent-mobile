@@ -36,7 +36,7 @@ export interface PassageCoverProps {
 /**
  * A passage in the book page's gallery: a typographic cover with the verse
  * range, then its title and how much is recorded. Flat, since tactile
- * controls stay in the player.
+ * controls stay in the player. A placeholder until the Claude Design covers.
  */
 export function PassageCover({
   eyebrow,

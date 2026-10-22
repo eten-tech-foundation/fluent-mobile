@@ -29,6 +29,7 @@ import type { ProjectChapter } from '../../../types/db/types';
 /**
  * Next book page, in place of Legacy's chapter list: the milestone's
  * passages as a gallery grouped by chapter. A passage opens its passage page.
+ * The covers are a placeholder until the Claude Design version.
  */
 export default function BookScreen() {
   const router = useRouter();
