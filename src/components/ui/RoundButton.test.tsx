@@ -5,6 +5,7 @@ import { RoundButton, type RoundButtonIconProps } from './RoundButton';
 import { setUiVersion } from '../../services/userPreferences';
 import { legacyTheme, resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
+import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -22,6 +23,9 @@ function ColorIcon({ color }: RoundButtonIconProps) {
   return <Text testID="round-icon">{color}</Text>;
 }
 
+const renderWithPreferences = (ui: React.ReactElement) =>
+  render(ui, { wrapper: UiVersionPreferenceProvider });
+
 describe('RoundButton', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -34,7 +38,7 @@ describe('RoundButton', () => {
 
   it('calls onPress and fires the press haptic on press-in', () => {
     const onPress = jest.fn();
-    render(
+    renderWithPreferences(
       <RoundButton
         icon={ColorIcon}
         accessibilityLabel="Download"
@@ -52,7 +56,7 @@ describe('RoundButton', () => {
 
   it('ignores presses, reports disabled and fades when disabled', () => {
     const onPress = jest.fn();
-    render(
+    renderWithPreferences(
       <RoundButton
         icon={ColorIcon}
         accessibilityLabel="Download"
@@ -73,7 +77,7 @@ describe('RoundButton', () => {
   });
 
   it('shows the rim on Soft only', () => {
-    const { rerender } = render(
+    const { rerender } = renderWithPreferences(
       <RoundButton icon={ColorIcon} accessibilityLabel="Download" testID="b" />,
     );
     expect(screen.getByTestId('b-rim')).toBeTruthy();
@@ -93,7 +97,7 @@ describe('RoundButton', () => {
     act(() => {
       setUiVersion('next');
     });
-    render(
+    renderWithPreferences(
       <RoundButton
         icon={ColorIcon}
         accessibilityLabel="Download"
@@ -108,7 +112,7 @@ describe('RoundButton', () => {
 
   it('fades the raised face out while pressed', () => {
     jest.useFakeTimers();
-    render(
+    renderWithPreferences(
       <RoundButton
         icon={ColorIcon}
         accessibilityLabel="Download"

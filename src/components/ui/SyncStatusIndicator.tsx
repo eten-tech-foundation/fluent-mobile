@@ -1,11 +1,10 @@
-import { StyleSheet, View } from 'react-native';
-import { theme } from '../../theme';
+import { View } from 'react-native';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import { CloudSyncStatusIcon } from './CloudSyncStatusIcon';
 import { SyncStatus } from '../../utils/syncStatusState';
 import { SyncPageStatus } from '../../types/sync/types';
 
 const INDICATOR_SIZE = 96;
-const INDICATOR_CLOUD_COLOR = theme.colors.mutedForeground;
 
 function resolveIconState(
   status: SyncPageStatus,
@@ -61,6 +60,8 @@ export function SyncStatusIndicator({
   hasFailedUploads = false,
   isUploading = false,
 }: SyncStatusIndicatorProps) {
+  const theme = useTheme();
+  const styles = useStyles();
   const { status: iconStatus, animated } = resolveIconState(
     status,
     isOnline,
@@ -75,21 +76,22 @@ export function SyncStatusIndicator({
         status={iconStatus}
         size={INDICATOR_SIZE * 0.5}
         animated={animated}
-        cloudColor={INDICATOR_CLOUD_COLOR}
+        cloudColor={theme.colors.mutedForeground}
         decorative
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  circle: {
-    width: INDICATOR_SIZE,
-    height: INDICATOR_SIZE,
-    borderRadius: INDICATOR_SIZE / 2,
-    backgroundColor: theme.colors.cardBackground,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    circle: {
+      width: INDICATOR_SIZE,
+      height: INDICATOR_SIZE,
+      borderRadius: INDICATOR_SIZE / 2,
+      backgroundColor: theme.colors.cardBackground,
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'center',
+    },
+  }));

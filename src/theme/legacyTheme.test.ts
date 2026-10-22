@@ -4,13 +4,22 @@ import {
   mapRolesToThemeColors,
   nextColorRoles,
   nextPrimitives,
-  nextRadius,
-  nextSpace,
   nextTheme,
   nextThemes,
-  nextTypeStyles,
 } from './next';
+import { nextBaseline } from './nextBaseline';
 import { resolveTheme } from './uiVersion';
+
+function expectIndependentGroups(left: unknown, right: unknown): void {
+  if (left === null || typeof left !== 'object') return;
+  expect(right).not.toBe(left);
+  for (const key of Object.keys(left)) {
+    expectIndependentGroups(
+      (left as Record<string, unknown>)[key],
+      (right as Record<string, unknown>)[key],
+    );
+  }
+}
 
 describe('legacyTheme', () => {
   it('exports theme as an alias of legacyTheme', () => {
@@ -22,146 +31,55 @@ describe('legacyTheme', () => {
   });
 });
 
-describe('resolveTheme', () => {
-  it('returns legacyTheme for legacy', () => {
-    expect(resolveTheme('legacy')).toBe(legacyTheme);
-  });
-
-  it('returns nextTheme for next', () => {
-    expect(resolveTheme('next')).toBe(nextTheme);
-  });
-});
-
-describe('nextTheme (Figma Foundations / Hardware)', () => {
-  it('is a distinct object from legacyTheme (runtime switch identity)', () => {
-    expect(nextTheme).not.toBe(legacyTheme);
-  });
-
-  it('defaults Next chrome to Hardware mode', () => {
+describe('current-design parity with independent Next ownership', () => {
+  it('keeps the default Hardware mode and runtime switch identities', () => {
     expect(NEXT_DEFAULT_COLOR_MODE).toBe('hardware');
-  });
-
-  it('maps Hardware roles onto Theme.colors', () => {
-    const hardware = nextColorRoles.hardware;
-    expect(nextTheme.colors.background).toBe(hardware.bgDefault);
-    expect(nextTheme.colors.foreground).toBe(hardware.fgPrimary);
-    expect(nextTheme.colors.primary).toBe(hardware.accentPrimary);
-    expect(nextTheme.colors.cardBackground).toBe(hardware.surfaceDefault);
-    expect(nextTheme.colors.border).toBe(hardware.borderRim);
-    expect(nextTheme.colors.recordAccent).toBe(hardware.accentRecord);
-  });
-
-  it('uses Foundations spacing and radius on Theme keys', () => {
-    expect(nextTheme.spacing.lg).toBe(nextSpace[16]);
-    expect(nextTheme.spacing.xxl).toBe(nextSpace[24]);
-    expect(nextTheme.radius.md).toBe(nextRadius.md);
-    expect(nextTheme.radius.lg).toBe(nextRadius.lg);
-    expect(nextTheme.radius.full).toBe(999);
-  });
-
-  it('applies Foundations type sizes onto Theme.typography', () => {
-    expect(nextTheme.typography.sizes.lg).toBe(nextTypeStyles.title.fontSize);
-    expect(nextTheme.typography.sizes.sm).toBe(nextTypeStyles.label.fontSize);
-    expect(nextTheme.typography.sizes.xl).toBe(
-      nextTypeStyles.overline.fontSize,
-    );
-    // reading (42) must not alias onto display (record timer)
-    expect(nextTheme.typography.sizes.display).toBe(
-      legacyTheme.typography.sizes.display,
-    );
-    expect(nextTypeStyles.reading.fontSize).toBe(42);
-  });
-
-  it('re-derives listCard and headerLayout from resolved tokens', () => {
-    expect(nextTheme.listCard.backgroundColor).toBe(
-      nextTheme.colors.cardBackground,
-    );
-    expect(nextTheme.listCard.borderColor).toBe(nextTheme.colors.border);
-    expect(nextTheme.listCard.paddingHorizontal).toBe(nextTheme.spacing.lg);
-    expect(nextTheme.listCard.borderRadius).toBe(nextTheme.radius.sm);
-    expect(nextTheme.homeListContent.padding).toBe(nextTheme.spacing.lg);
-    expect(nextTheme.headerLayout.paddingHorizontal).toBe(nextTheme.spacing.lg);
-    expect(nextTheme.headerLayout.paddingVertical).toBe(nextTheme.spacing.md);
-  });
-
-  it('keeps Legacy sync/warning colors until redesign defines them', () => {
-    expect(nextTheme.colors.syncSynced).toBe(legacyTheme.colors.syncSynced);
-    expect(nextTheme.colors.warning).toBe(legacyTheme.colors.warning);
-  });
-
-  it('exposes Hardware roles, role-built elevation and Foundations motion', () => {
-    const hardware = nextColorRoles.hardware;
-    expect(nextTheme.roles).toEqual(hardware);
-    expect(nextTheme.elevation.raised).toBe(
-      `inset 0px 2px 2px ${hardware.borderHighlight}, inset 0px -2px 1px ${hardware.borderShadow}, 0px 3px 6px ${hardware.shadowCast}`,
-    );
-    expect(nextTheme.elevation.inset).toContain(hardware.shadowEdge);
-    expect(nextTheme.motion).toEqual({
-      pressMs: 80,
-      releaseMs: 180,
-      easeStandard: { x1: 0.2, y1: 0, x2: 0, y2: 1 },
-    });
-    expect(nextTheme.opacity.disabled).toBe(0.4);
-    expect(nextTheme.controlSizes.icon32).toBe(32);
-    expect(nextTheme.type.reading).toMatchObject({
-      fontSize: 42,
-      lineHeight: 52,
-      fontWeight: '400',
-      includeFontPadding: false,
-    });
-    expect(nextTheme.type.readingStrong.fontWeight).toBe('700');
-    // No sans family until fonts load, so Android keeps 500/600 weights.
-    expect(nextTheme.type.title).not.toHaveProperty('fontFamily');
-    expect(nextTheme.type.overline).toMatchObject({
-      fontFamily: 'monospace',
-      fontSize: 20,
-      textTransform: 'uppercase',
-    });
-    expect(nextTheme.typeTelugu.reading.lineHeight).toBe(64);
-    expect(nextTheme.fontScale.readingMax).toBe(1.3);
-    expect(nextTheme.radius.xs).toBe(4);
-  });
-
-  it('keeps the same role keys in Legacy so components never branch', () => {
-    expect(Object.keys(legacyTheme.roles).sort()).toEqual(
-      Object.keys(nextTheme.roles).sort(),
-    );
-  });
-
-  it('uses the Figma record red per mode', () => {
-    expect(nextColorRoles.canvas.accentRecord).toBe(nextPrimitives.red[500]);
-    expect(nextColorRoles.hardware.accentRecord).toBe(nextPrimitives.red[600]);
-    expect(nextColorRoles.accent.accentRecord).toBe(nextPrimitives.red[300]);
-  });
-
-  it('resolves a Next theme per color mode, and ignores modes in Legacy', () => {
-    for (const mode of ['canvas', 'hardware', 'accent'] as const) {
-      const resolved = resolveTheme('next', mode);
-      expect(resolved).toBe(nextThemes[mode]);
-      expect(resolved.roles).toEqual(nextColorRoles[mode]);
-      expect(resolved.colors.background).toBe(nextColorRoles[mode].bgDefault);
-      expect(resolved.elevation.raised).toContain(
-        nextColorRoles[mode].borderHighlight,
-      );
-      expect(resolveTheme('legacy', mode)).toBe(legacyTheme);
-    }
-    expect(resolveTheme('next')).toBe(nextThemes.hardware);
+    expect(resolveTheme('legacy')).toBe(legacyTheme);
+    expect(resolveTheme('next')).toBe(nextTheme);
     expect(nextTheme).toBe(nextThemes.hardware);
   });
 
-  it('exposes Canvas and Accent role tables for future surfaces', () => {
+  it.each(['canvas', 'hardware', 'accent'] as const)(
+    'starts %s at the current design without sharing nested token objects',
+    mode => {
+      const resolved = resolveTheme('next', mode);
+      expect(resolved).toBe(nextThemes[mode]);
+      expect(resolved).toEqual(legacyTheme);
+      expectIndependentGroups(legacyTheme, resolved);
+      expectIndependentGroups(nextBaseline, resolved);
+      expect(resolveTheme('legacy', mode)).toBe(legacyTheme);
+    },
+  );
+
+  it('keeps Next modes isolated from each other', () => {
+    expectIndependentGroups(nextThemes.hardware, nextThemes.canvas);
+    expectIndependentGroups(nextThemes.hardware, nextThemes.accent);
+    expectIndependentGroups(nextThemes.canvas, nextThemes.accent);
+  });
+
+  it('does not bleed a future Next token edit into Legacy, its baseline or another mode', () => {
+    const colors = nextThemes.hardware.colors as { primary: string };
+    const original = colors.primary;
+    try {
+      colors.primary = '#123456';
+      expect(colors.primary).toBe('#123456');
+      expect(legacyTheme.colors.primary).toBe(original);
+      expect(nextBaseline.colors.primary).toBe(original);
+      expect(nextThemes.canvas.colors.primary).toBe(original);
+      expect(nextThemes.accent.colors.primary).toBe(original);
+    } finally {
+      colors.primary = original;
+    }
+  });
+
+  it('retains Figma inputs for future divergence without applying them to current themes', () => {
     expect(nextColorRoles.canvas.bgDefault).toBe(nextPrimitives.black);
     expect(nextColorRoles.accent.bgDefault).toBe(nextPrimitives.blue[700]);
     expect(mapRolesToThemeColors(nextColorRoles.canvas).background).toBe(
       nextPrimitives.black,
     );
-  });
-
-  it('resolves Hardware roles from primitives', () => {
-    expect(nextColorRoles.hardware.bgDefault).toBe(nextPrimitives.bone[50]);
-    expect(nextColorRoles.hardware.accentPrimary).toBe(
-      nextPrimitives.blue[700],
+    expect(nextThemes.canvas.colors.background).toBe(
+      legacyTheme.colors.background,
     );
-    expect(nextColorRoles.hardware.accentRecord).toBe(nextPrimitives.red[600]);
   });
 });

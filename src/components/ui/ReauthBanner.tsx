@@ -1,9 +1,10 @@
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlertCircle } from 'lucide-react-native';
 import { SettingsNavigationRow } from './SettingsListRow';
-import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { iconSizes, listIconStrokeWidth } from '../../theme';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import {
   REAUTH_PROMPT_SUBTITLE,
   REAUTH_PROMPT_TITLE,
@@ -15,6 +16,8 @@ interface ReauthBannerProps {
 
 export function ReauthBanner({ onSignInAgain }: ReauthBannerProps) {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
+  const styles = useStyles();
 
   return (
     <View
@@ -40,24 +43,25 @@ export function ReauthBanner({ onSignInAgain }: ReauthBannerProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    left: theme.spacing.lg,
-    right: theme.spacing.lg,
-    zIndex: 10,
-  },
-  card: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.radius.lg,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.colors.foreground,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: { elevation: 2 },
-    }),
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    container: {
+      position: 'absolute',
+      left: theme.spacing.lg,
+      right: theme.spacing.lg,
+      zIndex: 10,
+    },
+    card: {
+      backgroundColor: theme.colors.cardBackground,
+      borderRadius: theme.radius.lg,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.colors.foreground,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+        },
+        android: { elevation: 2 },
+      }),
+    },
+  }));

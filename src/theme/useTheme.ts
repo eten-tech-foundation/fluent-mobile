@@ -1,23 +1,18 @@
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useSyncExternalStore,
-} from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import {
   StyleSheet,
   type ImageStyle,
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import {
-  getUserPreferenceValue,
-  subscribeToUserPreferences,
-  type UiVersion,
-} from '../services/userPreferences';
 import type { Theme } from './legacy';
 import { resolveTheme } from './uiVersion';
-import { DEFAULT_COLOR_MODE, type ColorMode } from './uiVersionTypes';
+import {
+  DEFAULT_COLOR_MODE,
+  DEFAULT_UI_VERSION,
+  type ColorMode,
+  type UiVersion,
+} from './uiVersionTypes';
 
 type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
 
@@ -25,21 +20,18 @@ const UiVersionOverrideContext = createContext<UiVersion | null>(null);
 
 /**
  * Pins a subtree to one UI version regardless of the device preference.
- * Only the component gallery uses this (it always reviews Next).
+ * The root preference bridge provides the stored version; gallery/test scopes
+ * can override it locally without reading native preferences.
  */
 export const UiVersionOverride = UiVersionOverrideContext.Provider;
 
 /**
- * Active UI version from device preferences (or a `UiVersionOverride`).
- * Safe outside navigators (no useFocusEffect) — usable from root layouts.
+ * Active UI version from the root preference provider or a subtree override.
+ * Presentation-only imports never initialize native preference storage. Outside
+ * a provider, standalone chrome uses the safe Legacy default.
  */
 export function useUiVersion(): UiVersion {
-  const stored = useSyncExternalStore(
-    subscribeToUserPreferences,
-    () => getUserPreferenceValue('uiVersion'),
-    () => getUserPreferenceValue('uiVersion'),
-  );
-  return useContext(UiVersionOverrideContext) ?? stored;
+  return useContext(UiVersionOverrideContext) ?? DEFAULT_UI_VERSION;
 }
 
 const ColorModeContext = createContext<ColorMode>(DEFAULT_COLOR_MODE);
