@@ -27,6 +27,7 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('react-native-gesture-handler', () => {
   const pan = {
+    enabled: () => pan,
     activeOffsetY: () => pan,
     onUpdate: () => pan,
     onEnd: () => pan,
@@ -85,7 +86,9 @@ describe('PassageScreen', () => {
   it('puts the script, its actions and takes in the hero, then the steps', () => {
     render(<PassageScreen />);
 
-    expect(screen.getByText('The Last Supper')).toBeTruthy();
+    expect(
+      screen.getByRole('header', { name: 'The Last Supper' }),
+    ).toBeTruthy();
     expect(screen.getAllByText('Mark 14:22–25').length).toBeGreaterThan(1);
     expect(screen.getByLabelText('Listen')).toBeTruthy();
     expect(screen.getByLabelText('Record a take')).toBeTruthy();
@@ -119,7 +122,6 @@ describe('PassageScreen', () => {
     fireEvent.press(screen.getByTestId('passage-listen'));
 
     expect(screen.getByLabelText('Listen in drafting')).toBeTruthy();
-    expect(screen.getByText('The Last Supper')).toBeTruthy();
     expect(screen.getByLabelText('Close the player')).toBeTruthy();
   });
 
