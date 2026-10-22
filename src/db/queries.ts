@@ -669,6 +669,7 @@ function mapMyWorkChapterRow(
   row: DBTypes.MyWorkChapterRow,
   currentUserId: number,
   grantProjectIds: readonly number[],
+  translatorProjectIds: readonly number[],
 ): DBTypes.MyWorkChapter | null {
   const projectUnitId = Number(row.project_unit_id);
   const projectId = Number(row.project_id);
@@ -697,6 +698,7 @@ function mapMyWorkChapterRow(
     peerCheckerId: safePeerCheckerId,
     projectId: safeProjectId,
     grantProjectIds,
+    translatorProjectIds,
   });
   if (listAccess === null) {
     return null;
@@ -783,6 +785,8 @@ export async function getMilestoneChapters(
 export type GetMyWorkChaptersOptions = {
   /** Project IDs with a known Project Observer grant for the active user. */
   grantProjectIds?: readonly number[];
+  /** Project IDs with a known Project Translator grant for open Peer Check. */
+  translatorProjectIds?: readonly number[];
 };
 
 export async function getMyWorkChapters(
@@ -793,7 +797,14 @@ export async function getMyWorkChapters(
   const grantProjectIds = normalizeMyWorkGrantProjectIds(
     options?.grantProjectIds,
   );
-  const filter = buildMyWorkChapterFilter(userId, grantProjectIds);
+  const translatorProjectIds = normalizeMyWorkGrantProjectIds(
+    options?.translatorProjectIds,
+  );
+  const filter = buildMyWorkChapterFilter(
+    userId,
+    grantProjectIds,
+    translatorProjectIds,
+  );
   try {
     const result = await db.execute(
       `SELECT
@@ -835,7 +846,9 @@ export async function getMyWorkChapters(
 
     const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];
     const chapters = rows
-      .map(row => mapMyWorkChapterRow(row, userId, grantProjectIds))
+      .map(row =>
+        mapMyWorkChapterRow(row, userId, grantProjectIds, translatorProjectIds),
+      )
       .filter((chapter): chapter is DBTypes.MyWorkChapter => chapter !== null);
 
     log.info('My work chapters fetched', { count: chapters.length });

@@ -1,4 +1,7 @@
-import { hasProjectObserverGrant } from '../services/userOrgGrants';
+import {
+  getUserOrgGrants,
+  hasProjectObserverGrant,
+} from '../services/userOrgGrants';
 import { getActiveUserId } from '../services/storage';
 import type { MyWorkChapter } from '../types/db/types';
 import type {
@@ -6,6 +9,7 @@ import type {
   DraftDownloadRole,
 } from '../types/draftDownload/types';
 import {
+  isEligibleOpenPeerCheckNonDrafter,
   isMyWorkObserverReviewStatus,
   MY_WORK_CHAPTER_STATUSES,
   MY_WORK_OBSERVER_REVIEW_STATUSES,
@@ -19,12 +23,48 @@ export {
   type MyWorkObserverReviewStatus,
 };
 
+/**
+ * Exact role name from fluent-api `ROLES.PROJECT_TRANSLATOR` (`src/lib/roles.ts`,
+ * blob `c5a9ffc170beefe91c37f2415e273602f17b6fb7`). Kept local to My Work —
+ * do not add Translator helpers to shared `userOrgGrants`.
+ */
+const PROJECT_TRANSLATOR_ROLE_NAME = 'Project Translator';
+
 function normalizeStatus(status: string | null | undefined): string {
   return (status ?? '').trim().toLowerCase();
 }
 
 function isPositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+/**
+ * Derive Project Translator project IDs from the existing org-grant snapshot
+ * (`getUserOrgGrants`). Unknown/revoked/unregistered → [] (fail closed).
+ * Org-only grants (null projectId) excluded.
+ */
+export function getTranslatorProjectIds(userId: string): number[] {
+  const snapshot = getUserOrgGrants(userId);
+  if (snapshot.status !== 'known') return [];
+  const ids = new Set<number>();
+  for (const grant of snapshot.grants) {
+    if (
+      grant.roleName === PROJECT_TRANSLATOR_ROLE_NAME &&
+      grant.projectId !== null &&
+      isPositiveInteger(grant.projectId)
+    ) {
+      ids.add(grant.projectId);
+    }
+  }
+  return [...ids];
+}
+
+export function hasProjectTranslatorGrant(
+  userId: string,
+  projectId: number,
+): boolean {
+  if (!isPositiveInteger(projectId)) return false;
+  return getTranslatorProjectIds(userId).includes(projectId);
 }
 
 /**
@@ -51,16 +91,16 @@ export function getValidatedMyWorkDownloadUserId(): number | null {
 /**
  * Classify draft-download role for a My Work row for the *current* user.
  * - Assigned peer checker at peer_check → `peer_check`
+ * - Open peer_check (null peerChecker) for non-drafter Project Translator → `peer_check`
  * - Observer review stage + known Project Observer grant for user+project → `observer`
- * - Unknown grant snapshots never authorize observer
- * - Open peer (unassigned peer_check) is intentionally not classified: verified
- *   Translator role + drafter semantics are unavailable without guessing
+ * - Unknown grant snapshots never authorize observer / open peer
  *
  * Re-evaluate on every call from live assignment fields + current user.
  */
 export function classifyMyWorkDraftDownloadRole(input: {
   userId: number;
   assignmentStatus: string;
+  assignedUserId?: number | null | undefined;
   peerCheckerId: number | null | undefined;
   projectId: number;
 }): DraftDownloadRole | null {
@@ -73,6 +113,20 @@ export function classifyMyWorkDraftDownloadRole(input: {
   if (
     status === MY_WORK_CHAPTER_STATUSES.PEER_CHECK &&
     input.peerCheckerId === input.userId
+  ) {
+    return 'peer_check';
+  }
+
+  if (
+    isEligibleOpenPeerCheckNonDrafter(
+      {
+        status: input.assignmentStatus,
+        assignedUserId: input.assignedUserId ?? undefined,
+        peerCheckerId: input.peerCheckerId ?? undefined,
+      },
+      input.userId,
+    ) &&
+    hasProjectTranslatorGrant(String(input.userId), input.projectId)
   ) {
     return 'peer_check';
   }
@@ -103,6 +157,7 @@ export function buildMyWorkDraftDownloadRequest(
     | 'bookCode'
     | 'chapterNumber'
     | 'assignmentStatus'
+    | 'assignedUserId'
     | 'peerCheckerId'
   >,
   userId: number,
@@ -114,6 +169,7 @@ export function buildMyWorkDraftDownloadRequest(
   const role = classifyMyWorkDraftDownloadRole({
     userId,
     assignmentStatus: chapter.assignmentStatus,
+    assignedUserId: chapter.assignedUserId,
     peerCheckerId: chapter.peerCheckerId,
     projectId: chapter.projectId,
   });

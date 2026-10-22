@@ -1,14 +1,19 @@
-import { hasProjectObserverGrant } from '../services/userOrgGrants';
+import {
+  getUserOrgGrants,
+  hasProjectObserverGrant,
+} from '../services/userOrgGrants';
 import { getActiveUserId } from '../services/storage';
 import { parseUserId } from './parseUserId';
 import {
   buildMyWorkDraftDownloadRequest,
   classifyMyWorkDraftDownloadRole,
+  getTranslatorProjectIds,
   getValidatedMyWorkDownloadUserId,
 } from './myWorkDraftDownload';
 
 jest.mock('../services/userOrgGrants', () => ({
   hasProjectObserverGrant: jest.fn(),
+  getUserOrgGrants: jest.fn(),
 }));
 
 jest.mock('../services/storage', () => ({
@@ -23,6 +28,9 @@ const mockHasProjectObserverGrant =
   hasProjectObserverGrant as jest.MockedFunction<
     typeof hasProjectObserverGrant
   >;
+const mockGetUserOrgGrants = getUserOrgGrants as jest.MockedFunction<
+  typeof getUserOrgGrants
+>;
 const mockGetActiveUserId = getActiveUserId as jest.MockedFunction<
   typeof getActiveUserId
 >;
@@ -37,6 +45,7 @@ const peerChapterIds = {
   bookCode: 'MRK',
   chapterNumber: 2,
   assignmentStatus: 'peer_check',
+  assignedUserId: 9,
   peerCheckerId: 7,
 } as const;
 
@@ -44,6 +53,7 @@ describe('myWorkDraftDownload', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHasProjectObserverGrant.mockReturnValue(false);
+    mockGetUserOrgGrants.mockReturnValue({ status: 'unknown' });
     mockGetActiveUserId.mockReturnValue('7');
     mockParseUserId.mockReturnValue(7);
   });
@@ -62,6 +72,44 @@ describe('myWorkDraftDownload', () => {
     expect(getValidatedMyWorkDownloadUserId()).toBeNull();
   });
 
+  it('derives Project Translator project IDs only from known grant snapshots', () => {
+    expect(getTranslatorProjectIds('7')).toEqual([]);
+
+    mockGetUserOrgGrants.mockReturnValue({
+      status: 'known',
+      grants: [
+        {
+          roleId: 4,
+          orgId: 1,
+          projectId: 3,
+          roleName: 'Project Translator',
+        },
+        {
+          roleId: 4,
+          orgId: 1,
+          projectId: null,
+          roleName: 'Project Translator',
+        },
+        {
+          roleId: 7,
+          orgId: 1,
+          projectId: 9,
+          roleName: 'Project Observer',
+        },
+        {
+          roleId: 4,
+          orgId: 1,
+          projectId: 3,
+          roleName: 'Project Translator',
+        },
+      ],
+    });
+    expect(getTranslatorProjectIds('7')).toEqual([3]);
+
+    mockGetUserOrgGrants.mockReturnValue({ status: 'known', grants: [] });
+    expect(getTranslatorProjectIds('7')).toEqual([]);
+  });
+
   it('classifies assigned peer checker rows as peer_check', () => {
     expect(
       classifyMyWorkDraftDownloadRole({
@@ -72,6 +120,7 @@ describe('myWorkDraftDownload', () => {
       }),
     ).toBe('peer_check');
     expect(mockHasProjectObserverGrant).not.toHaveBeenCalled();
+    expect(mockGetUserOrgGrants).not.toHaveBeenCalled();
   });
 
   it('does not classify when assigned peer checker is a different user', () => {
@@ -104,11 +153,58 @@ describe('myWorkDraftDownload', () => {
     ).toBeNull();
   });
 
-  it('does not classify open peer_check without a peer checker (gap)', () => {
+  it('classifies open peer_check for non-drafter Project Translator only', () => {
+    mockGetUserOrgGrants.mockReturnValue({
+      status: 'known',
+      grants: [
+        {
+          roleId: 4,
+          orgId: 1,
+          projectId: 3,
+          roleName: 'Project Translator',
+        },
+      ],
+    });
+
     expect(
       classifyMyWorkDraftDownloadRole({
         userId: 7,
         assignmentStatus: 'peer_check',
+        assignedUserId: 9,
+        peerCheckerId: null,
+        projectId: 3,
+      }),
+    ).toBe('peer_check');
+
+    // Drafter on open Peer Check — fail closed.
+    expect(
+      classifyMyWorkDraftDownloadRole({
+        userId: 7,
+        assignmentStatus: 'peer_check',
+        assignedUserId: 7,
+        peerCheckerId: null,
+        projectId: 3,
+      }),
+    ).toBeNull();
+
+    // Missing drafter id — fail closed (PR #538 / API #334).
+    expect(
+      classifyMyWorkDraftDownloadRole({
+        userId: 7,
+        assignmentStatus: 'peer_check',
+        assignedUserId: null,
+        peerCheckerId: null,
+        projectId: 3,
+      }),
+    ).toBeNull();
+
+    // Unknown / revoked Translator snapshot — fail closed.
+    mockGetUserOrgGrants.mockReturnValue({ status: 'unknown' });
+    expect(
+      classifyMyWorkDraftDownloadRole({
+        userId: 7,
+        assignmentStatus: 'peer_check',
+        assignedUserId: 9,
         peerCheckerId: null,
         projectId: 3,
       }),
@@ -168,6 +264,41 @@ describe('myWorkDraftDownload', () => {
     const request = buildMyWorkDraftDownloadRequest(peerChapterIds, 7);
 
     expect(request).toEqual({
+      chapterAssignmentId: 99,
+      projectUnitId: 11,
+      projectId: 3,
+      userId: 7,
+      bibleId: 5,
+      bookId: 41,
+      bookCode: 'MRK',
+      chapterNumber: 2,
+      role: 'peer_check',
+    });
+  });
+
+  it('builds peer_check download request for open peer Translator rows', () => {
+    mockGetUserOrgGrants.mockReturnValue({
+      status: 'known',
+      grants: [
+        {
+          roleId: 4,
+          orgId: 1,
+          projectId: 3,
+          roleName: 'Project Translator',
+        },
+      ],
+    });
+
+    expect(
+      buildMyWorkDraftDownloadRequest(
+        {
+          ...peerChapterIds,
+          assignedUserId: 9,
+          peerCheckerId: null,
+        },
+        7,
+      ),
+    ).toEqual({
       chapterAssignmentId: 99,
       projectUnitId: 11,
       projectId: 3,

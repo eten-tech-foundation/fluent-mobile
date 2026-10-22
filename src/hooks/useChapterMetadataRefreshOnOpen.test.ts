@@ -36,6 +36,10 @@ jest.mock('../services/userOrgGrants', () => ({
   getObserverProjectIds: jest.fn(() => []),
 }));
 
+jest.mock('../utils/myWorkDraftDownload', () => ({
+  getTranslatorProjectIds: jest.fn(() => []),
+}));
+
 jest.mock('../services/sync', () => ({
   refreshChapterMetadataIfOnline: jest.fn(),
 }));
