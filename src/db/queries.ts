@@ -10,6 +10,7 @@ import {
 } from '../utils/formatLastActivity';
 import { deriveProjectSyncState } from '../utils/projectSyncState';
 import {
+  classifyMyWorkDraftDownloadRole,
   getMyWorkChapterQueryParams,
   MY_WORK_CHAPTER_WHERE,
 } from '../utils/myWorkChapterFilter';
@@ -668,12 +669,45 @@ function mapMyWorkChapterRow(
   row: DBTypes.MyWorkChapterRow,
   currentUserId: number,
 ): DBTypes.MyWorkChapter {
+  const projectUnitId = Number(row.project_unit_id);
+  const projectId = Number(row.project_id);
+  const bibleId = Number(row.bible_id);
+  const bookId = Number(row.book_id);
+  const assignedUserId =
+    row.assigned_user_id == null ? null : Number(row.assigned_user_id);
+  const peerCheckerId =
+    row.peer_checker_id == null ? null : Number(row.peer_checker_id);
+  const bookCode =
+    typeof row.book_code === 'string' ? row.book_code.trim() : '';
+
   return {
     ...mapChapterRowCore(row, currentUserId),
     assignmentStatus: row.status,
     workflowStage: getBadgeStage(row.status),
     projectName: row.project_name,
     targetLanguageName: row.target_language_name,
+    projectUnitId: Number.isFinite(projectUnitId) ? projectUnitId : 0,
+    projectId: Number.isFinite(projectId) ? projectId : 0,
+    bibleId: Number.isFinite(bibleId) ? bibleId : 0,
+    bookId: Number.isFinite(bookId) ? bookId : 0,
+    bookCode,
+    assignedUserId:
+      assignedUserId != null && Number.isFinite(assignedUserId)
+        ? assignedUserId
+        : null,
+    peerCheckerId:
+      peerCheckerId != null && Number.isFinite(peerCheckerId)
+        ? peerCheckerId
+        : null,
+    draftDownloadRole: classifyMyWorkDraftDownloadRole({
+      userId: currentUserId,
+      assignmentStatus: row.status,
+      peerCheckerId:
+        peerCheckerId != null && Number.isFinite(peerCheckerId)
+          ? peerCheckerId
+          : null,
+      projectId: Number.isFinite(projectId) ? projectId : 0,
+    }),
   };
 }
 
@@ -753,6 +787,10 @@ export async function getMyWorkChapters(
         ca.submitted_time,
         ca.assigned_user_id,
         ca.peer_checker_id,
+        ca.project_unit_id,
+        ca.bible_id,
+        pu.project_id,
+        b.code AS book_code,
         b.eng_display_name AS book_name,
         p.name AS project_name,
         tl.lang_name AS target_language_name,

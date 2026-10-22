@@ -24,6 +24,14 @@ function chapter(
     hasConflict: false,
     projectName: 'Demo',
     targetLanguageName: 'English',
+    projectUnitId: 11,
+    projectId: 3,
+    bibleId: 5,
+    bookId: 42,
+    bookCode: 'LUK',
+    assignedUserId: null,
+    peerCheckerId: null,
+    draftDownloadRole: null,
     ...overrides,
   };
 }
