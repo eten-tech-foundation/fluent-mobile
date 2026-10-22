@@ -166,22 +166,6 @@ function createStageExitTestDb(
       return { rows: [] };
     }
 
-    if (sql.startsWith('UPDATE chapter_assignments SET status = ?')) {
-      const [status, submittedTime, updatedAt, id] = params as [
-        string,
-        string,
-        string,
-        number,
-      ];
-      const row = rows.find(r => r.id === id);
-      if (row) {
-        row.status = status;
-        row.submitted_time = submittedTime;
-        row.updated_at = updatedAt;
-      }
-      return { rows: [] };
-    }
-
     if (/^SELECT id FROM users WHERE id IN/i.test(sql)) {
       return { rows: [] };
     }
