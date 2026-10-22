@@ -86,7 +86,7 @@ the font family, gradients and `space/48`.
 | `elevation/inset` | 3 layers, bound to `shadow/cast`, `shadow/edge`, `border/highlight` | Pressed keys, switch track, speaker holes | `theme.elevation.inset` |
 | `elevation/soft` | 4 layers, bound to highlight/shadow/dish | Round button, Style=Soft (light screens) | `theme.elevation.soft` |
 | `elevation/floating` | `0 4 20` `shadow/float` | Overlays above scrolling content | `theme.elevation.floating` |
-| `fade/reading` | `bg/clear` → `bg/default` | Overlay on upcoming text | Open |
+| `fade/reading` | `bg/clear` → `bg/default` | Overlay on upcoming text | `theme.fade.reading` |
 | `gradient/accent` | `surface/sunken` → `bg/default` | Note overlay background | Open |
 | `Fluent Gradient` (paint style) | `blue/800` → `blue/700` | Brand moments | Open |
 
@@ -121,5 +121,6 @@ In dependency order:
 1. **Typography family.** The named styles are encoded; confirm the families
    (Google Sans Flex / DM Mono / Noto Sans Telugu are placeholders), then load
    them with `expo-font` and change `nextFontFamilies` in `nextFoundation.ts`.
-2. **Gradients.** `fade/reading`, `gradient/accent`, `Fluent Gradient`, plus
-   `space/48`.
+2. **Gradients.** `gradient/accent`, `Fluent Gradient`, plus `space/48`.
+   `fade/reading` is encoded like the elevation styles, built from roles
+   (`src/theme/gradients.ts`).

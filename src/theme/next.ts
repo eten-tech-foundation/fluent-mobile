@@ -1,5 +1,6 @@
 import { legacyTheme, type Theme } from './legacy';
 import { buildElevation } from './elevation';
+import { buildFades } from './gradients';
 import {
   nextControlSizes,
   nextStroke,
@@ -162,6 +163,7 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
     colors,
     roles: { ...roles },
     elevation: buildElevation(roles),
+    fade: buildFades(roles),
     motion: { ...nextMotion, easeStandard: { ...nextMotion.easeStandard } },
     opacity: { ...nextOpacity },
     controlSizes: { ...nextControlSizes },

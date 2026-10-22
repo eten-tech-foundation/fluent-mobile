@@ -13,6 +13,7 @@ import { homeListContent, listCard, workflowBadge } from './layout';
 import { headerLayout } from './iconSpecs';
 import { legacyRoles } from './legacyRoles';
 import { buildElevation } from './elevation';
+import { buildFades } from './gradients';
 import {
   buildTypeStyles,
   systemFontFamilies,
@@ -28,6 +29,8 @@ export const legacyTheme = {
   /** Foundations role names (Next components); Legacy maps to nearest colors. */
   roles: legacyRoles,
   elevation: buildElevation(legacyRoles),
+  /** Figma `fade/*` gradients, built from roles. */
+  fade: buildFades(legacyRoles),
   motion: {
     pressMs: 80,
     releaseMs: 180,

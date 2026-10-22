@@ -14,6 +14,7 @@ the Legacy / Next split described there.
 | --- | --- |
 | Foundations roles, all three modes | `theme.roles.*` via `useTheme()` / `useThemedStyles()`; wrap a subtree in `ColorModeScope` for Canvas or Accent (Hardware is the default) |
 | Effect styles as `boxShadow` | `theme.elevation.raised` · `inset` · `soft` · `floating` |
+| Fades as `experimental_backgroundImage` | `theme.fade.reading` (Figma `fade/reading`), laid over the end of text that's still to come |
 | Motion | `theme.motion.pressMs` · `releaseMs` · `easeStandard` |
 | Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon20` / `icon24` / `icon32` |
 | Radius `xs` (4), space `2`, strokes | `theme.radius.xs`, `theme.spacing.xxs`, `theme.stroke[1]` / `[2]` |

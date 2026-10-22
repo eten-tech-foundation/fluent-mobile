@@ -27,6 +27,7 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 | `src/theme/next.ts` | Per-mode `nextThemes` (Canvas / Hardware / Accent) + deep-merge + layout derive |
 | `src/theme/legacyRoles.ts` | Nearest Legacy colors for the Foundations role names (`theme.roles` in Legacy) |
 | `src/theme/elevation.ts` | Effect styles as `boxShadow` strings, built from roles |
+| `src/theme/gradients.ts` | Fades (`fade/reading`) as `experimental_backgroundImage` strings, built from roles |
 | `src/theme/uiVersionTypes.ts` | `UiVersion`, `DEFAULT_UI_VERSION`, `isUiVersion`, `ColorMode`, `DEFAULT_COLOR_MODE` (no theme object imports) |
 | `src/theme/uiVersion.ts` | `resolveTheme()` |
 | `src/theme/useTheme.ts` | `useUiVersion()`, `useTheme()`, `useThemedStyles()` — import from this module (not the `theme` barrel) so static consumers stay free of preference/storage |
@@ -50,7 +51,8 @@ Do **not** import `src/theme/next*` from app/UI code (ESLint bans `theme/next`).
 
 For Next components, `Theme` also carries `roles` (Foundations role names,
 Hardware by default, nearest Legacy colors in Legacy), `elevation` (effect
-styles as `boxShadow` strings built from roles), `motion`, `opacity`,
+styles as `boxShadow` strings built from roles), `fade` (gradients as
+`experimental_backgroundImage` strings, also built from roles), `motion`, `opacity`,
 `controlSizes`, `stroke`, the named type styles (`type`, `typeTelugu`,
 `fontScale`), plus `radius.xs` and `spacing.xxs`. They're added in
 `legacy.ts` and overridden in `next.ts` (`typeTelugu` and `fontScale` are the
