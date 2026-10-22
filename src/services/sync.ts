@@ -35,6 +35,7 @@ import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
 import { isApiError, isRetryableApiError } from '../types/api/errors';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
+import type { ChapterAssignment, Project } from '../types/db/types';
 import { getConnectivitySnapshot } from './connectivity';
 import {
   reconcilePendingClaimsAfterAssignmentPull,
@@ -275,6 +276,82 @@ export type SyncMasterDataOptions = {
   forceFull?: boolean;
 };
 
+export type SyncProjectsOptions = {
+  /**
+   * Fetch real language parents via GET /languages/{id} before project insert
+   * so login Tier 1 can skip the full world catalogue (#679). Never advances
+   * the global master-data cursor.
+   */
+  seedFkParents?: boolean;
+};
+
+function uniquePositiveIds(ids: Array<number | undefined | null>): number[] {
+  const seen = new Set<number>();
+  const unique: number[] = [];
+  for (const id of ids) {
+    if (typeof id !== 'number' || !Number.isFinite(id) || id <= 0) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    unique.push(id);
+  }
+  return unique;
+}
+
+/**
+ * Persist real master rows needed as FK parents. Must never call
+ * setMasterDataLastSyncedAt — scoped seed is not a catalogue watermark (#679).
+ */
+async function seedLanguageParentsForProjects(
+  projects: Project[],
+  sessionToken?: string,
+): Promise<void> {
+  const languageIds = uniquePositiveIds(
+    projects.flatMap(project => [
+      project.sourceLanguageId ?? project.source_language_id,
+      project.targetLanguageId ?? project.target_language_id,
+    ]),
+  );
+  if (languageIds.length === 0) return;
+
+  log.info('Seeding project language parents', {
+    count: languageIds.length,
+  });
+
+  const languages = await Promise.all(
+    languageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+  );
+  await insertMasterData(languages.map(mapApiLanguage), [], []);
+}
+
+async function seedAssignmentMasterParents(
+  assignments: ChapterAssignment[],
+  sessionToken?: string,
+): Promise<void> {
+  const bibleIds = uniquePositiveIds(assignments.map(a => a.bibleId));
+  const bookIds = uniquePositiveIds(assignments.map(a => a.bookId));
+  if (bibleIds.length === 0 && bookIds.length === 0) return;
+
+  log.info('Seeding assignment master parents', {
+    bibleCount: bibleIds.length,
+    bookCount: bookIds.length,
+  });
+
+  const [books, bibles] = await Promise.all([
+    Promise.all(bookIds.map(id => FluentAPI.getBook(id, sessionToken))),
+    Promise.all(bibleIds.map(id => FluentAPI.getBible(id, sessionToken))),
+  ]);
+
+  const languageIds = uniquePositiveIds(bibles.map(bible => bible.languageId));
+  const languages =
+    languageIds.length === 0
+      ? []
+      : await Promise.all(
+          languageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+        );
+
+  await insertMasterData(languages.map(mapApiLanguage), books, bibles);
+}
+
 export async function syncMasterData(
   sessionToken?: string,
   options?: SyncMasterDataOptions,
@@ -317,7 +394,11 @@ export async function syncMasterData(
   );
 }
 
-export async function syncProjects(userId: number, sessionToken?: string) {
+export async function syncProjects(
+  userId: number,
+  sessionToken?: string,
+  options?: SyncProjectsOptions,
+) {
   return retrySyncStep(
     'Project sync',
     KV_KEYS.SYNC_ERROR_PROJECTS,
@@ -333,6 +414,10 @@ export async function syncProjects(userId: number, sessionToken?: string) {
         count: projects.length,
         isArray: isConfirmedShape,
       });
+
+      if (options?.seedFkParents && projects.length > 0) {
+        await seedLanguageParentsForProjects(projects, sessionToken);
+      }
 
       if (projects.length > 0) {
         await insertProjects(projects);
@@ -575,6 +660,7 @@ export async function syncChapterAssignments(
 async function syncUserChapterWork(
   userId: number,
   sessionToken?: string,
+  options?: { seedFkParents?: boolean },
 ): Promise<{ partialSkipWarning?: string }> {
   let partialSkipWarning: string | undefined;
   await retrySyncStep(
@@ -599,6 +685,10 @@ async function syncUserChapterWork(
         ? response.peerCheckChapters
         : [];
       const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
+
+      if (options?.seedFkParents && mapped.length > 0) {
+        await seedAssignmentMasterParents(mapped, sessionToken);
+      }
 
       if (mapped.length > 0) {
         const { insertedCount, skipped } =
@@ -1409,21 +1499,19 @@ export async function syncAllData(
         const userAssignmentCursor =
           getUserLastSyncedAt(userIdStr) || undefined;
 
-        // Claims overlap master fetch; projects/assignments wait for FK parents.
-        // Full catalogue still runs in Tier 1 until fluent-api offers scoped
-        // master data (fluent-api#373 / #670 follow-up).
-        masterPromise = syncMasterData(sessionToken);
-        await syncPendingChapterClaimsForUser(userId);
-        await masterPromise;
-        await syncPericopeSets(sessionToken);
-        await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
-        await syncProjects(userId, sessionToken);
-        await syncMilestones(userId, sessionToken);
-
         let assignmentPartialSkipWarning: string | undefined;
         let bibleTextUpdatedAfter: string | undefined;
 
         if (isIncremental) {
+          // Warm Sync Now: claims overlap master fetch; projects wait for both.
+          masterPromise = syncMasterData(sessionToken);
+          await syncPendingChapterClaimsForUser(userId);
+          await masterPromise;
+          await syncPericopeSets(sessionToken);
+          await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
+          await syncProjects(userId, sessionToken);
+          await syncMilestones(userId, sessionToken);
+
           const assignmentCursor = userAssignmentCursor ?? lastSyncedAt;
           const { didFullSync, partialSkipWarning } =
             await syncChapterAssignmentsForUser(
@@ -1437,8 +1525,17 @@ export async function syncAllData(
           await syncBibleTexts(bibleTextUpdatedAfter);
           notifyTier1Complete();
         } else if (localProjectIdsBefore.length === 0) {
-          // Tier 1 (#670): My Work assignments + texts only — unblock Home.
-          const workResult = await syncUserChapterWork(userId, sessionToken);
+          // Login Tier 1 (#679): seed only FK parents My Work needs — do not
+          // await the full world catalogue before Home unblocks.
+          await syncPendingChapterClaimsForUser(userId);
+          await syncPericopeSets(sessionToken);
+          await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
+          await syncProjects(userId, sessionToken, { seedFkParents: true });
+          await syncMilestones(userId, sessionToken);
+
+          const workResult = await syncUserChapterWork(userId, sessionToken, {
+            seedFkParents: true,
+          });
           assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
             workResult.partialSkipWarning,
           );
@@ -1450,6 +1547,10 @@ export async function syncAllData(
             chapterGroups: myWorkChapterGroups,
           });
           notifyTier1Complete();
+
+          // Full master after Tier 1; await before Tier 2 assignment catalogue.
+          masterPromise = syncMasterData(sessionToken);
+          await masterPromise;
 
           // Tier 2: full project assignment catalogue + remaining bible texts.
           log.info('Login Tier 2: project assignments + remaining bible texts');
@@ -1473,11 +1574,17 @@ export async function syncAllData(
             excludeChapterGroups: myWorkChapterGroups,
           });
         } else {
-          // Re-login (#670): My Work assignments + texts first so Home is not
-          // blocked on a full assignment catalogue when there is no cursor.
-          // Omit excludeProjectIds: the API can return [] when every local
-          // project is excluded before checking newly assigned work.
-          const workResult = await syncUserChapterWork(userId, sessionToken);
+          // Re-login (#670/#679): My Work + scoped seeds first; full catalogue
+          // after Tier 1 so Home is not blocked on world languages/books/bibles.
+          await syncPendingChapterClaimsForUser(userId);
+          await syncPericopeSets(sessionToken);
+          await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
+          await syncProjects(userId, sessionToken, { seedFkParents: true });
+          await syncMilestones(userId, sessionToken);
+
+          const workResult = await syncUserChapterWork(userId, sessionToken, {
+            seedFkParents: true,
+          });
           assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
             workResult.partialSkipWarning,
           );
@@ -1491,6 +1598,9 @@ export async function syncAllData(
             chapterGroups: myWorkChapterGroups,
           });
           notifyTier1Complete();
+
+          masterPromise = syncMasterData(sessionToken);
+          await masterPromise;
 
           // Tier 2: remaining assignment catalogue + texts (and pericopes for
           // chapters added by that catalogue pull).
