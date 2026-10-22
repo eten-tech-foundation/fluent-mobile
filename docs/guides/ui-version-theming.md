@@ -77,7 +77,9 @@ Kept accessible on `nextSpace` / `nextRadiusScale` but not on `Theme` keys yet:
    Next values only through `useTheme()` / `resolveTheme()`.
 4. **Avoid spreading** `uiVersion === 'next' ? … : …` through the tree. Prefer
    token-driven differences; for structural splits, branch once at a screen or
-   section boundary.
+   section boundary. A whole Next screen swaps in at its route file, e.g.
+   `src/routes/(app)/(stack)/chapters.tsx` renders `src/app/v2/screens/BookScreen`
+   in Next and `ViewProject` in Legacy.
 5. **Do not fork** domain behavior (sync, recording, DB, auth, etc.) by UI
    version.
 6. **`useThemedStyles` factory must be theme-only.** The hook memos on the

@@ -7,6 +7,8 @@ type PhosphorIcon = React.ComponentType<IconProps>;
 // TypeScript skips the package's raw source, which fails strict checks in CI.
 const ArrowDownIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/ArrowDown').ArrowDownIcon;
+const ArrowLeftIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/ArrowLeft').ArrowLeftIcon;
 const ArrowRightIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/ArrowRight').ArrowRightIcon;
 const CircleIcon: PhosphorIcon =
@@ -52,6 +54,7 @@ function weighted(
  * the package root pulls in every icon and weight.
  */
 export const ArrowDown = weighted(ArrowDownIcon, 'regular', 'ArrowDown');
+export const ArrowLeft = weighted(ArrowLeftIcon, 'regular', 'ArrowLeft');
 export const ArrowRight = weighted(ArrowRightIcon, 'regular', 'ArrowRight');
 export const Headphones = weighted(HeadphonesIcon, 'regular', 'Headphones');
 export const UserSound = weighted(UserSoundIcon, 'regular', 'UserSound');
