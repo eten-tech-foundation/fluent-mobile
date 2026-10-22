@@ -66,6 +66,7 @@ const SNAP_AT = 0.35;
 const FLING = 500;
 /** The hero shows this many lines of the script at body size. */
 const PREVIEW_LINES = 4;
+const PLAYER_FADE_LINES = 2;
 /** Round button width; the centered title stays clear of the corners. */
 const ROUND_BUTTON = 48;
 
@@ -405,9 +406,10 @@ function Sheet({
     ),
     height: interpolate(progress.value, [0, 1], [preview, fullScript], 'clamp'),
   }));
-  // One line deep, at whatever size the script is.
+  // One line deep in the hero; two in the player, so reading eases out
+  // well before the waveform.
   const fadeSmall = small.lineHeight * capped;
-  const fadeLarge = large.lineHeight * capped;
+  const fadeLarge = PLAYER_FADE_LINES * large.lineHeight * capped;
   const fadeStyle = useAnimatedStyle(() => {
     const height = interpolate(
       progress.value,
