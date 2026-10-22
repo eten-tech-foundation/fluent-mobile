@@ -5,6 +5,7 @@ import { LevelWaveEntry } from './LevelWaveEntry';
 import { PassageCoverEntry } from './PassageCoverEntry';
 import { RoundButtonEntry } from './RoundButtonEntry';
 import { SwitchEntry } from './SwitchEntry';
+import { TrackRowEntry } from './TrackRowEntry';
 import { WaveformEntry } from './WaveformEntry';
 
 export interface GalleryEntry {
@@ -48,6 +49,14 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Level wave · Short and Long',
     modes: 'Hardware (header) · Canvas (take card)',
     Component: LevelWaveEntry,
+  },
+  {
+    // Figma passage rows (Round button 2326-64 in Progress ring 2400-302),
+    // with the button only on the live row.
+    id: 'track-row',
+    name: 'Track row',
+    modes: 'Hardware (passage page)',
+    Component: TrackRowEntry,
   },
   {
     // No Figma component: built from Foundations tokens for the book page.

@@ -11,6 +11,8 @@ const ArrowLeftIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/ArrowLeft').ArrowLeftIcon;
 const ArrowRightIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/ArrowRight').ArrowRightIcon;
+const CheckIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Check').CheckIcon;
 const CircleIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/Circle').CircleIcon;
 const EjectIcon: PhosphorIcon =
@@ -56,6 +58,7 @@ function weighted(
 export const ArrowDown = weighted(ArrowDownIcon, 'regular', 'ArrowDown');
 export const ArrowLeft = weighted(ArrowLeftIcon, 'regular', 'ArrowLeft');
 export const ArrowRight = weighted(ArrowRightIcon, 'regular', 'ArrowRight');
+export const Check = weighted(CheckIcon, 'regular', 'Check');
 export const Headphones = weighted(HeadphonesIcon, 'regular', 'Headphones');
 export const UserSound = weighted(UserSoundIcon, 'regular', 'UserSound');
 export const Waveform = weighted(WaveformIcon, 'regular', 'Waveform');

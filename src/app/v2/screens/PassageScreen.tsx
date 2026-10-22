@@ -25,7 +25,6 @@ import { HardwarePanel } from '../../../components/ui/HardwarePanel';
 import {
   ArrowDown,
   ArrowLeft,
-  ArrowRight,
   EjectFill,
   PlayFill,
   RecordFill,
@@ -36,8 +35,8 @@ import {
 import { Key } from '../../../components/ui/Key';
 import { PageDots } from '../../../components/ui/PageDots';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
-import { ProgressRing } from '../../../components/ui/ProgressRing';
 import { RoundButton } from '../../../components/ui/RoundButton';
+import { TrackRow } from '../../../components/ui/TrackRow';
 import { VerseChip } from '../../../components/ui/VerseChip';
 import { Waveform, type WaveformVerse } from '../../../components/ui/Waveform';
 import { useHaptics } from '../../../hooks/useHaptics';
@@ -929,14 +928,6 @@ function Materials({
     list: { paddingHorizontal: t.spacing.xl, paddingBottom: t.spacing.xxl },
     head: { paddingTop: t.spacing.xl, paddingBottom: t.spacing.md },
     heading: { ...t.type.title, color: t.roles.fgPrimary },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: t.spacing.lg,
-      paddingVertical: t.spacing.xs,
-    },
-    text: { flex: 1, gap: t.spacing.xxs },
-    name: { ...t.type.body, color: t.roles.fgSecondary },
     meta: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
   return (
@@ -952,21 +943,16 @@ function Materials({
           </Text>
           <Text style={styles.meta}>Step audio isn't connected yet</Text>
         </View>
+        {/* Nothing plays yet, so every step rests unheard with no button. */}
         {STEPS.map((name, step) => (
-          <View key={name} style={styles.row}>
-            <View style={styles.text}>
-              <Text style={styles.name}>{name}</Text>
-              <Text style={styles.meta}>{reference}</Text>
-            </View>
-            <ProgressRing value={0} accessibilityLabel={`${name} listened`}>
-              <RoundButton
-                icon={ArrowRight}
-                accessibilityLabel={`Open ${name}`}
-                onPress={() => onOpen(step)}
-                testID={`passage-step-${step}`}
-              />
-            </ProgressRing>
-          </View>
+          <TrackRow
+            key={name}
+            title={name}
+            meta={reference}
+            listened={0}
+            onPress={() => onOpen(step)}
+            testID={`passage-step-${step}`}
+          />
         ))}
       </ScrollView>
     </Animated.View>
