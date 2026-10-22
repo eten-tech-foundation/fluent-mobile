@@ -135,18 +135,19 @@ describe('BookScreen', () => {
     expect(screen.getByRole('header', { name: 'Luke 1' })).toBeTruthy();
   });
 
-  it('opens drafting at the first verse of the passage', () => {
+  it('opens the passage page for the passage', () => {
     render(<BookScreen />);
 
     fireEvent.press(screen.getByTestId('book-passage-1-pericope::1'));
 
     expect(mockPush).toHaveBeenCalledWith(
       expect.objectContaining({
-        pathname: '/(app)/(stack)/verse-detail',
+        pathname: '/(app)/(stack)/passage',
         params: expect.objectContaining({
           chapterId: '1',
+          anchorVerse: '22',
+          projectUnitId: '3',
           chapterName: 'Mark 14',
-          recoverVerse: '22',
         }),
       }),
     );

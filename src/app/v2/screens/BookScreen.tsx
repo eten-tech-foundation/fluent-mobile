@@ -28,8 +28,7 @@ import type { ProjectChapter } from '../../../types/db/types';
 
 /**
  * Next book page, in place of Legacy's chapter list: the milestone's
- * passages as a gallery grouped by chapter. A passage opens Legacy drafting
- * at its first verse until the Next passage page lands.
+ * passages as a gallery grouped by chapter. A passage opens its passage page.
  */
 export default function BookScreen() {
   const router = useRouter();
@@ -127,15 +126,16 @@ export default function BookScreen() {
   const openPassage = useCallback(
     (chapter: ProjectChapter, passage: BookPassage) =>
       router.push(
-        hrefs.verseDetail({
+        hrefs.passage({
           chapterId: chapter.id,
+          anchorVerse: passage.anchorVerse,
+          projectUnitId,
           chapterName: chapter.displayLabel,
           projectName,
           language,
-          recoverVerse: passage.anchorVerse,
         }),
       ),
-    [router, projectName, language],
+    [router, projectUnitId, projectName, language],
   );
 
   const renderChapter: ListRenderItem<ProjectChapter> = ({ item }) => {

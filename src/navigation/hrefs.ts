@@ -84,6 +84,26 @@ export const hrefs = {
           : {}),
       },
     } as const),
+  /** Next passage page; a passage is found by its first verse in the chapter. */
+  passage: (params: {
+    chapterId: number;
+    anchorVerse: number;
+    projectUnitId: number;
+    chapterName: string;
+    projectName: string;
+    language: string;
+  }) =>
+    ({
+      pathname: '/(app)/(stack)/passage' as const,
+      params: {
+        chapterId: String(params.chapterId),
+        anchorVerse: String(params.anchorVerse),
+        projectUnitId: String(params.projectUnitId),
+        chapterName: params.chapterName,
+        projectName: params.projectName,
+        language: params.language,
+      },
+    } as const),
   addUser: '/(app)/(stack)/add-user' as const,
   reauth: (params?: { returnTo?: 'home' | 'settings' }) =>
     ({
