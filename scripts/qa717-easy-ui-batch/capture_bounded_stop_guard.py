@@ -54,6 +54,8 @@ from typing import Any, Callable, Protocol
 
 STOP_CONTROL_ID = "record-stop-button"
 START_CONTROL_ID = "record-start-button"
+# Review path after saved takes — RecordTab New Take → handleStart() directly.
+NEW_TAKE_CONTROL_ID = "record-new-take-button"
 DEFAULT_PACKAGE = "com.eten.fluent"
 
 
@@ -155,9 +157,15 @@ def control_present(hierarchy_xml: str, control_id: str) -> bool:
 
 
 def is_record_idle(hierarchy_xml: str) -> bool:
-    """Idle Record: Start visible, Stop absent — do not tap Start."""
-    return control_present(hierarchy_xml, START_CONTROL_ID) and not control_present(
-        hierarchy_xml, STOP_CONTROL_ID
+    """Idle/review Record: Start OR New Take visible, Stop absent.
+
+    Deadline path must treat review New Take as already-idle (skip Stop tap),
+    never as a Start opportunity. Active/paused (Stop visible) is not idle.
+    """
+    if control_present(hierarchy_xml, STOP_CONTROL_ID):
+        return False
+    return control_present(hierarchy_xml, START_CONTROL_ID) or control_present(
+        hierarchy_xml, NEW_TAKE_CONTROL_ID
     )
 
 

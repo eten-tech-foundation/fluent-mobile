@@ -30,7 +30,7 @@ the modules themselves; callers inject bridges):
 
 | File | Role |
 | --- | --- |
-| `capture_bounded_stop_guard.py` | Admit → arm host monotonic deadline → fresh-dump Stop; real `time.monotonic` default clock (avoids TypeError when no FakeClock injected). |
+| `capture_bounded_stop_guard.py` | Admit → arm host monotonic deadline → fresh-dump Stop; real `time.monotonic` default clock (avoids TypeError when no FakeClock injected). Idle predicate: Start **or** review New Take, and no Stop (deadline skips Stop tap; never treats New Take as Start). |
 | `capture_stop_readiness.py` | Fail-closed `safe_dump` (no uncaught `TimeoutExpired`) and `readiness_valid_for_root_start` expiry gate so root does not late-Start after readiness ages out. |
 | `capture_root_start_readiness.py` | Select ROOT start control: idle `record-start-button` **or** review `record-new-take-button`; reject Stop/Pause/wrong verse/ambiguous both. Caller supplies expected verse label (no target pins). |
 

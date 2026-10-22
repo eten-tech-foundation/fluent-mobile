@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib.util
 import pathlib
+from pathlib import Path
 import sys
 import unittest
 
@@ -368,6 +369,49 @@ class RealDefaultClock(unittest.TestCase):
         self.assertIsInstance(session.armed_at_mono, float)
         self.assertIsInstance(session.deadline_mono, float)
         self.assertGreater(session.deadline_mono, session.armed_at_mono)
+
+
+
+class TestRecordIdleNewTake(unittest.TestCase):
+    """Focused: generic idle predicate accepts New Take when Stop absent."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        import sys
+
+        path = Path(__file__).resolve().parent / "capture_bounded_stop_guard.py"
+        spec = importlib.util.spec_from_file_location("cbsg_idle_nt", path)
+        cls.m = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        sys.modules["cbsg_idle_nt"] = cls.m
+        spec.loader.exec_module(cls.m)
+
+    def test_new_take_without_stop_is_idle(self):
+        xml = (
+            '<?xml version="1.0"?><hierarchy>'
+            '<node resource-id="record-new-take-button" bounds="[1,1][2,2]"/>'
+            "</hierarchy>"
+        )
+        self.assertTrue(self.m.is_record_idle(xml))
+
+    def test_start_without_stop_is_idle(self):
+        xml = (
+            '<?xml version="1.0"?><hierarchy>'
+            '<node resource-id="record-start-button" bounds="[1,1][2,2]"/>'
+            "</hierarchy>"
+        )
+        self.assertTrue(self.m.is_record_idle(xml))
+
+    def test_stop_visible_not_idle_even_with_new_take(self):
+        xml = (
+            '<?xml version="1.0"?><hierarchy>'
+            '<node resource-id="record-new-take-button" bounds="[1,1][2,2]"/>'
+            '<node resource-id="record-stop-button" bounds="[3,3][4,4]"/>'
+            "</hierarchy>"
+        )
+        self.assertFalse(self.m.is_record_idle(xml))
+
 
 
 if __name__ == "__main__":
