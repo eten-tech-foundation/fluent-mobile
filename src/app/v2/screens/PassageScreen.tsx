@@ -375,13 +375,16 @@ function Sheet({
       },
     ],
   }));
+  // Overlaps the materials fading out on the same cream, so the keys come
+  // up out of the page instead of arriving after it.
   const bottomStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.45, 0.8], [0, 1], 'clamp'),
     transform: [
       {
         translateY: interpolate(
           progress.value,
-          [0.5, 1],
-          [panel || container, 0],
+          [0.4, 1],
+          [(panel || container) * 0.4, 0],
           'clamp',
         ),
       },
@@ -731,10 +734,9 @@ function Materials({
   hidden: boolean;
 }) {
   const sinkStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.45], [1, 0], 'clamp'),
+    opacity: interpolate(progress.value, [0.2, 0.55], [1, 0], 'clamp'),
     transform: [
-      { translateY: interpolate(progress.value, [0, 0.5], [0, 64], 'clamp') },
-      { scale: interpolate(progress.value, [0, 0.5], [1, 0.96], 'clamp') },
+      { translateY: interpolate(progress.value, [0, 0.6], [0, 32], 'clamp') },
     ],
   }));
   const styles = useThemedStyles(t => ({
