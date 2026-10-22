@@ -183,6 +183,8 @@ function Sheet({
   const [recordMode, setRecordMode] = useState(false);
   const [container, setContainer] = useState(0);
   const [header, setHeader] = useState(0);
+  const [headerWidth, setHeaderWidth] = useState(0);
+  const [titleWidth, setTitleWidth] = useState(0);
   const [actions, setActions] = useState(0);
   const [panel, setPanel] = useState(0);
   const progress = useSharedValue(0);
@@ -278,20 +280,15 @@ function Sheet({
       paddingVertical: t.spacing.md,
     },
     corner: { position: 'absolute', top: t.spacing.md, right: 0 },
-    // Centered between Back and Close, so it stays put as they swap.
+    // Centered in the hero; slides to the left edge as the player arrives.
     overlineSlot: {
       position: 'absolute',
       top: 0,
       bottom: 0,
-      left: ROUND_BUTTON + t.spacing.md,
-      right: ROUND_BUTTON + t.spacing.md,
+      left: 0,
       justifyContent: 'center',
     },
-    overline: {
-      ...t.type.overline,
-      color: t.roles.fgPrimary,
-      textAlign: 'center',
-    },
+    overline: { ...t.type.overline, color: t.roles.fgPrimary },
     reading: { ...t.type.reading, color: t.roles.fgPrimary },
     // No lineHeight, so it follows the script's as that grows.
     verseNumber: {
@@ -347,6 +344,23 @@ function Sheet({
   }));
   const closeStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0.6, 1], [0, 1], 'clamp'),
+  }));
+  // Clear of Back and Close either side while it's centered.
+  const titleMax = Math.max(0, headerWidth - 2 * (ROUND_BUTTON + spacing.md));
+  const titleCenter = (headerWidth - Math.min(titleWidth, titleMax)) / 2;
+  const titleReady = headerWidth > 0 && titleWidth > 0;
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: titleReady ? 1 : 0,
+    transform: [
+      {
+        translateX: interpolate(
+          progress.value,
+          [0.3, 0.8],
+          [titleCenter, 0],
+          'clamp',
+        ),
+      },
+    ],
   }));
   const scriptStyle = useAnimatedStyle(() => ({
     top: interpolate(
@@ -507,7 +521,10 @@ function Sheet({
           <GestureDetector gesture={drag(expanded)}>
             <View
               style={[styles.layer, styles.header, { top: insets.top }]}
-              onLayout={measure(setHeader)}
+              onLayout={e => {
+                setHeader(Math.round(e.nativeEvent.layout.height));
+                setHeaderWidth(Math.round(e.nativeEvent.layout.width));
+              }}
             >
               <Animated.View
                 style={backStyle}
@@ -524,11 +541,21 @@ function Sheet({
                   testID="passage-back"
                 />
               </Animated.View>
-              <Animated.View style={styles.overlineSlot} pointerEvents="none">
+              <Animated.View
+                style={[
+                  styles.overlineSlot,
+                  { maxWidth: titleMax },
+                  titleStyle,
+                ]}
+                pointerEvents="none"
+              >
                 <Text
                   style={styles.overline}
                   numberOfLines={1}
                   accessibilityRole="header"
+                  onLayout={e =>
+                    setTitleWidth(Math.round(e.nativeEvent.layout.width))
+                  }
                 >
                   {heroTitle}
                 </Text>
