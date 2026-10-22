@@ -63,7 +63,7 @@ const SNAP_AT = 0.35;
 const FLING = 500;
 /** The hero shows this many lines of the script at body size. */
 const PREVIEW_LINES = 4;
-/** Round button width; the title starts after Back, then slides over. */
+/** Round button width; the centered title stays clear of the corners. */
 const ROUND_BUTTON = 48;
 
 /**
@@ -278,17 +278,20 @@ function Sheet({
       paddingVertical: t.spacing.md,
     },
     corner: { position: 'absolute', top: t.spacing.md, right: 0 },
-    // The player header's title: beside Back in the hero, then it slides to
-    // the left edge as Back fades.
+    // Centered between Back and Close, so it stays put as they swap.
     overlineSlot: {
       position: 'absolute',
       top: 0,
       bottom: 0,
-      left: 0,
+      left: ROUND_BUTTON + t.spacing.md,
       right: ROUND_BUTTON + t.spacing.md,
       justifyContent: 'center',
     },
-    overline: { ...t.type.overline, color: t.roles.fgPrimary },
+    overline: {
+      ...t.type.overline,
+      color: t.roles.fgPrimary,
+      textAlign: 'center',
+    },
     reading: { ...t.type.reading, color: t.roles.fgPrimary },
     // No lineHeight, so it follows the script's as that grows.
     verseNumber: {
@@ -299,9 +302,25 @@ function Sheet({
     },
     note: { ...t.type.label, color: t.roles.fgSecondary },
     actions: { gap: t.spacing.lg },
-    actionRow: { flexDirection: 'row', gap: t.spacing.md },
-    primary: { flex: 1 },
-    meta: { ...t.type.meta, color: t.roles.fgSecondary },
+    actionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: t.spacing.md,
+    },
+    primary: { paddingHorizontal: t.spacing.xl },
+    // Record's ring: accent/record around the dot, like the Soft rim.
+    recordRing: {
+      borderRadius: t.radius.full,
+      borderWidth: t.stroke[2],
+      borderColor: t.roles.accentRecord,
+      padding: t.spacing.xxs,
+    },
+    meta: {
+      ...t.type.meta,
+      color: t.roles.fgSecondary,
+      textAlign: 'center',
+    },
     handle: { alignItems: 'center', paddingVertical: t.spacing.sm },
     grip: {
       width: 36,
@@ -323,25 +342,11 @@ function Sheet({
       ? { height: collapsed + range * Math.min(1, progress.value) }
       : { height: 0 },
   );
-  // Back clears out before the title slides across where it was.
   const backStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.12], [1, 0], 'clamp'),
   }));
   const closeStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0.6, 1], [0, 1], 'clamp'),
-  }));
-  const titleSlide = ROUND_BUTTON + spacing.md;
-  const titleStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateX: interpolate(
-          progress.value,
-          [0.08, 0.5],
-          [titleSlide, 0],
-          'clamp',
-        ),
-      },
-    ],
   }));
   const scriptStyle = useAnimatedStyle(() => ({
     top: interpolate(
@@ -451,27 +456,28 @@ function Sheet({
             <Text style={styles.meta} testID="passage-takes-meta">
               {takesLine(passage)}
             </Text>
-            {/* Like a music app: one labelled primary between plain circles.
-                Recording is the job here; everything below is listening. */}
+            {/* Like a music app: one labelled primary, plain circles beside. */}
             <View style={styles.actionRow}>
               <RoundButton
                 variant="flat"
                 icon={PlayFill}
+                label="Listen"
                 accessibilityLabel="Listen"
                 onPress={() => open(false)}
+                style={styles.primary}
                 testID="passage-listen"
               />
-              <RoundButton
-                variant="flat"
-                icon={RecordIcon}
-                label={passage.takes.length > 0 ? 'Record a take' : 'Record'}
-                accessibilityLabel={
-                  passage.takes.length > 0 ? 'Record a take' : 'Record'
-                }
-                onPress={() => open(true)}
-                style={styles.primary}
-                testID="passage-record"
-              />
+              <View style={styles.recordRing}>
+                <RoundButton
+                  variant="flat"
+                  icon={RecordIcon}
+                  accessibilityLabel={
+                    passage.takes.length > 0 ? 'Record a take' : 'Record'
+                  }
+                  onPress={() => open(true)}
+                  testID="passage-record"
+                />
+              </View>
               {passage.downloaded ? null : (
                 <RoundButton
                   variant="flat"
@@ -518,10 +524,7 @@ function Sheet({
                   testID="passage-back"
                 />
               </Animated.View>
-              <Animated.View
-                style={[styles.overlineSlot, titleStyle]}
-                pointerEvents="none"
-              >
+              <Animated.View style={styles.overlineSlot} pointerEvents="none">
                 <Text
                   style={styles.overline}
                   numberOfLines={1}
