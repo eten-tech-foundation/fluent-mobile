@@ -10,7 +10,7 @@ const MANIFEST_MEMBER: PrepareOfflineResourceManifestItem = {
   id: 'source-bible-audio-MRK-1',
   tier: 1,
   kind: 'audio',
-  resourceName: 'Source Bible',
+  resourceName: 'Source Bible Audio',
   label: 'Audio',
   required: true,
   removable: false,
@@ -676,7 +676,7 @@ describe('usePrepareOfflineDownload', () => {
           id: 'tier-1-source-bible-audio',
           tier: 1,
           kind: 'audio',
-          groupName: 'Source Bible',
+          groupName: 'Source Bible Audio',
           label: 'Audio',
           bytes: 2048,
           status: 'selected',
@@ -1397,5 +1397,189 @@ describe('usePrepareOfflineDownload', () => {
     expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
     expect(mockStart).not.toHaveBeenCalled();
     expect(result.current.canDownload).toBe(false);
+  });
+
+  it('fail-before/pass-after: footer totals use merged selected summary after completed size recovery (#756)', async () => {
+    const { getDownloadedResourcesByProject } =
+      jest.requireMock('../db/repository');
+
+    const unknownMember: PrepareOfflineResourceManifestItem = {
+      id: 'ref-img-1',
+      tier: 3,
+      kind: 'image',
+      resourceName: 'Reference Images',
+      label: 'Image',
+      required: false,
+      removable: true,
+      bytesTotal: 0,
+      sourceUrl: 'https://example.com/img.jpg',
+      fileExt: 'jpg',
+      languageCode: 'eng',
+    };
+    const knownMember: PrepareOfflineResourceManifestItem = {
+      ...MANIFEST_MEMBER,
+      id: 'known-audio-1',
+      bytesTotal: 1024,
+    };
+
+    const selectedCatalog: PrepareOfflineCatalog = {
+      items: [
+        {
+          id: 'Source Bible:audio',
+          tier: 1,
+          kind: 'audio',
+          groupName: 'Source Bible',
+          label: 'Audio',
+          bytes: 1024,
+          sizeKnown: true,
+          status: 'selected',
+          required: true,
+          removable: false,
+          manifestMembers: [knownMember],
+        },
+        {
+          id: 'Reference Images:image',
+          tier: 3,
+          kind: 'image',
+          groupName: 'Reference Images',
+          label: 'Image',
+          bytes: 0,
+          sizeKnown: false,
+          status: 'selected',
+          required: false,
+          removable: true,
+          manifestMembers: [unknownMember],
+        },
+      ],
+      groups: [],
+    };
+
+    getDownloadedResourcesByProject.mockResolvedValue([
+      {
+        id: '1-42-known-audio-1',
+        resourceId: 'known-audio-1',
+        tier: 1,
+        label: 'Audio',
+        progress: 1,
+        status: 'completed',
+        projectId: 1,
+        userId: 42,
+        bytesTotal: 1024,
+      },
+      {
+        id: '1-42-ref-img-1',
+        resourceId: 'ref-img-1',
+        tier: 3,
+        label: 'Image',
+        progress: 1,
+        status: 'completed',
+        projectId: 1,
+        userId: 42,
+        bytesTotal: 4096,
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog: selectedCatalog,
+        selectedItems: selectedCatalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.totalBytes).toBe(5120);
+      expect(result.current.totalBytesIncomplete).toBe(false);
+    });
+    // CTA path already uses mergedSelectedItems — totals must agree.
+    expect(result.current.downloadButtonLabel).toBe('All on device');
+  });
+
+  it('fail-before/pass-after: merged footer keeps incomplete + Included/zero semantics (#756)', async () => {
+    const { getDownloadedResourcesByProject } =
+      jest.requireMock('../db/repository');
+
+    const unknownMember: PrepareOfflineResourceManifestItem = {
+      id: 'ref-img-2',
+      tier: 3,
+      kind: 'image',
+      resourceName: 'Reference Images',
+      label: 'Image',
+      required: false,
+      removable: true,
+      bytesTotal: 0,
+      sourceUrl: 'https://example.com/img2.jpg',
+      fileExt: 'jpg',
+      languageCode: 'eng',
+    };
+
+    const selectedCatalog: PrepareOfflineCatalog = {
+      items: [
+        {
+          id: 'Source Bible:text',
+          tier: 1,
+          kind: 'text',
+          groupName: 'Source Bible',
+          label: 'Text',
+          bytes: 0,
+          sizeKnown: true,
+          displayValue: 'Included',
+          status: 'completed',
+          required: true,
+          removable: false,
+          manifestMembers: [],
+        },
+        {
+          id: 'Reference Images:image',
+          tier: 3,
+          kind: 'image',
+          groupName: 'Reference Images',
+          label: 'Image',
+          bytes: 0,
+          sizeKnown: false,
+          status: 'selected',
+          required: false,
+          removable: true,
+          manifestMembers: [unknownMember],
+        },
+      ],
+      groups: [],
+    };
+
+    // Completed without positive bytesTotal — wire 0 ambiguity; stay incomplete.
+    getDownloadedResourcesByProject.mockResolvedValue([
+      {
+        id: '1-42-ref-img-2',
+        resourceId: 'ref-img-2',
+        tier: 3,
+        label: 'Image',
+        progress: 1,
+        status: 'completed',
+        projectId: 1,
+        userId: 42,
+        bytesTotal: 0,
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog: selectedCatalog,
+        selectedItems: selectedCatalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.totalBytes).toBe(0);
+      expect(result.current.totalBytesIncomplete).toBe(true);
+    });
   });
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Headphones, Speech } from 'lucide-react-native';
+import { Headphones, UserSound } from './icons';
 import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import { KeyDeck } from './KeyDeck';
 import { Switch } from './Switch';
@@ -86,7 +86,7 @@ export function HardwarePanel({
             disabled={modeLocked}
             testID={testID ? `${testID}-mode` : undefined}
           />
-          <Speech color={iconColor} size={iconSize} />
+          <UserSound color={iconColor} size={iconSize} />
         </View>
         <View style={styles.grillSlot}>
           <SpeakerGrill testID={testID ? `${testID}-grill` : undefined} />

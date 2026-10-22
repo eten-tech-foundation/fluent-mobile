@@ -14,16 +14,70 @@ interface PendingUploadUnit {
   project_unit_id: number;
 }
 
+interface RecordingRow {
+  id: string;
+  project_unit_id: number | null;
+  /** Chapter assignment this take's verse matches. Pending protection follows that unit. */
+  matchesAssignmentOn?: number;
+  pending?: boolean;
+}
+
 let projectUnitRows: ProjectUnitRow[] = [];
 let userProjectRows: UserProjectRow[] = [];
 let pendingUploadUnits: PendingUploadUnit[] = [];
+let recordingRows: RecordingRow[] = [];
 const executedSql: string[] = [];
 
 function resetProjectUnitsDbMock(): void {
   projectUnitRows = [];
   userProjectRows = [];
   pendingUploadUnits = [];
+  recordingRows = [];
   executedSql.length = 0;
+}
+
+function unitIdsSelectedForRemoval(sql: string, params: unknown[]): number[] {
+  const userId = params[0] as number;
+  const keepIds = sql.includes('NOT IN')
+    ? new Set(
+        (sql.includes('up2')
+          ? params.slice(1, -1)
+          : params.slice(1)) as number[],
+      )
+    : new Set<number>();
+  const memberProjectIds = new Set(
+    userProjectRows
+      .filter(row => row.user_id === userId)
+      .map(row => row.project_id),
+  );
+  return projectUnitRows
+    .filter(row => {
+      const isMemberUnit = memberProjectIds.has(row.project_id);
+      const isStale = sql.includes('NOT IN')
+        ? isMemberUnit && !keepIds.has(row.id)
+        : isMemberUnit;
+      const neededByOtherMember =
+        sql.includes('up2') &&
+        userProjectRows.some(
+          other =>
+            other.project_id === row.project_id && other.user_id !== userId,
+        );
+      return isStale && !unitIsPendingProtected(row.id) && !neededByOtherMember;
+    })
+    .map(row => row.id);
+}
+
+function unitIsPendingProtected(unitId: number): boolean {
+  if (pendingUploadUnits.some(row => row.project_unit_id === unitId)) {
+    return true;
+  }
+  return recordingRows.some(
+    recording =>
+      recording.pending === true &&
+      recording.matchesAssignmentOn === unitId &&
+      (recording.project_unit_id === null ||
+        recording.project_unit_id === unitId),
+  );
 }
 
 type ExecuteResult = { rows: unknown[]; rowsAffected?: number };
@@ -65,39 +119,48 @@ async function mockExecute(
     return { rows: [] };
   }
 
-  if (normalized.startsWith('DELETE FROM project_units')) {
-    const userId = params[0] as number;
-    const keepIds = normalized.includes('NOT IN')
-      ? new Set(
-          (normalized.includes('up2')
-            ? params.slice(1, -1)
-            : params.slice(1)) as number[],
-        )
-      : new Set<number>();
-    const hasOtherMemberGuard = normalized.includes('up2');
-    const memberProjectIds = new Set(
-      userProjectRows
-        .filter(row => row.user_id === userId)
-        .map(row => row.project_id),
+  if (normalized.startsWith('SELECT pu.id')) {
+    return {
+      rows: unitIdsSelectedForRemoval(normalized, params).map(id => ({ id })),
+      rowsAffected: 0,
+    };
+  }
+
+  if (
+    normalized.startsWith('UPDATE recordings SET project_unit_id = NULL') ||
+    normalized.startsWith('DELETE FROM project_units')
+  ) {
+    const removeIds = new Set(
+      normalized.includes('SELECT pu.id')
+        ? unitIdsSelectedForRemoval(normalized, params)
+        : (params as number[]),
     );
-    const pendingIds = new Set(
-      pendingUploadUnits.map(row => row.project_unit_id),
-    );
+    if (normalized.startsWith('UPDATE recordings')) {
+      let rowsAffected = 0;
+      for (const recording of recordingRows) {
+        if (
+          recording.project_unit_id !== null &&
+          removeIds.has(recording.project_unit_id)
+        ) {
+          recording.project_unit_id = null;
+          rowsAffected += 1;
+        }
+      }
+      return { rows: [], rowsAffected };
+    }
+    if (
+      recordingRows.some(
+        recording =>
+          recording.project_unit_id !== null &&
+          removeIds.has(recording.project_unit_id),
+      )
+    ) {
+      throw new Error(
+        '[op-sqlite] statement execution error: FOREIGN KEY constraint failed',
+      );
+    }
     const before = projectUnitRows.length;
-    projectUnitRows = projectUnitRows.filter(row => {
-      const isMemberUnit = memberProjectIds.has(row.project_id);
-      const isStale = normalized.includes('NOT IN')
-        ? isMemberUnit && !keepIds.has(row.id)
-        : isMemberUnit;
-      const hasPendingUpload = pendingIds.has(row.id);
-      const neededByOtherMember =
-        hasOtherMemberGuard &&
-        userProjectRows.some(
-          other =>
-            other.project_id === row.project_id && other.user_id !== userId,
-        );
-      return !(isStale && !hasPendingUpload && !neededByOtherMember);
-    });
+    projectUnitRows = projectUnitRows.filter(row => !removeIds.has(row.id));
     return { rows: [], rowsAffected: before - projectUnitRows.length };
   }
 
@@ -200,5 +263,53 @@ describe('reconcileUserMilestones', () => {
     await reconcileUserMilestones(1, []);
 
     expect(projectUnitRows.map(row => row.id)).toEqual([20]);
+  });
+
+  it('detaches recordings from member units removed when the server list is empty', async () => {
+    recordingRows = [
+      { id: 'uploaded-on-removed-unit', project_unit_id: 10 },
+      { id: 'on-other-project', project_unit_id: 20 },
+    ];
+
+    await reconcileUserMilestones(1, []);
+
+    expect(projectUnitRows.map(row => row.id)).toEqual([20]);
+    expect(recordingRows).toEqual([
+      { id: 'uploaded-on-removed-unit', project_unit_id: null },
+      { id: 'on-other-project', project_unit_id: 20 },
+    ]);
+  });
+
+  it('leaves a pending-upload recording attached to the unit that stays', async () => {
+    recordingRows = [{ id: 'pending', project_unit_id: 11 }];
+    pendingUploadUnits = [{ project_unit_id: 11 }];
+
+    await reconcileUserMilestones(1, []);
+
+    expect(projectUnitRows.map(row => row.id)).toEqual([11, 20]);
+    expect(recordingRows).toEqual([{ id: 'pending', project_unit_id: 11 }]);
+  });
+
+  it('still deletes a unit whose pending protection appears only after project_unit_id is nulled', async () => {
+    recordingRows = [
+      {
+        id: 'cross-unit-pending',
+        project_unit_id: 10,
+        matchesAssignmentOn: 11,
+        pending: true,
+      },
+    ];
+
+    await reconcileUserMilestones(1, []);
+
+    expect(projectUnitRows.map(row => row.id)).toEqual([20]);
+    expect(recordingRows).toEqual([
+      {
+        id: 'cross-unit-pending',
+        project_unit_id: null,
+        matchesAssignmentOn: 11,
+        pending: true,
+      },
+    ]);
   });
 });

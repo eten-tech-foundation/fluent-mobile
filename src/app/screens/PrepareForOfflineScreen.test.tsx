@@ -6,6 +6,11 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import PrepareForOfflineScreen from './PrepareForOfflineScreen';
+import {
+  PREPARE_OFFLINE_MANIFEST_LOAD_ERROR,
+  PREPARE_OFFLINE_MANIFEST_LOADING,
+  PREPARE_OFFLINE_NO_RESOURCES_FOR_SELECTION,
+} from '../../constants/messages';
 
 const mockHandleDownload = jest.fn();
 
@@ -83,50 +88,7 @@ const mockCatalogItems = [
 ];
 
 jest.mock('../../hooks/usePrepareOfflineResources', () => ({
-  usePrepareOfflineResources: jest.fn(
-    ({ selectedCount }: { selectedCount: number }) => {
-      const emptyCatalog = {
-        items: [],
-        groups: [],
-      };
-      // Real hook returns an empty catalog (and nothing to download) when no
-      // chapters are selected — regardless of whether the user is assigned.
-      const hasSelection = selectedCount > 0;
-      const catalog = hasSelection
-        ? {
-            items: mockCatalogItems,
-            groups: [
-              {
-                groupName: 'Source Bible',
-                items: mockCatalogItems.slice(0, 2),
-              },
-              {
-                groupName: 'Translation Words',
-                items: [mockCatalogItems[2]],
-              },
-              {
-                groupName: 'Reference Images',
-                items: [mockCatalogItems[3]],
-              },
-            ],
-          }
-        : emptyCatalog;
-
-      return {
-        catalog,
-        effectiveCatalog: catalog,
-        deselectedItemIds: new Set<string>(),
-        totalBytes: hasSelection ? 4096 : 0,
-        pendingBytes: hasSelection ? 4096 : 0,
-        selectedItems: catalog.items,
-        canDownload: hasSelection,
-        manifestLoading: false,
-        manifestError: null,
-        isItemSelected: () => true,
-        toggleItemSelected: jest.fn(),
-      };
-    },
-  ),
+  usePrepareOfflineResources: jest.fn(),
 }));
 
 jest.mock('../../hooks/usePrepareOfflineDownload', () => ({
@@ -136,6 +98,9 @@ jest.mock('../../hooks/usePrepareOfflineDownload', () => ({
       busy: false,
       catalogWithProgress: catalog,
       downloadButtonLabel: canDownload ? 'Download 18 MB' : 'Download 0 B',
+      // Footer totals come from the download hook's merged selected summary (#756).
+      totalBytes: canDownload ? 4096 : 0,
+      totalBytesIncomplete: false,
       canDownload,
       inventoryRefreshSignal: '0',
       handleDownload: mockHandleDownload,
@@ -192,11 +157,73 @@ jest.mock('react-native-safe-area-context', () => ({
 const { usePrepareOfflineSelection } = jest.requireMock(
   '../../hooks/usePrepareOfflineSelection',
 );
+const { usePrepareOfflineResources } = jest.requireMock(
+  '../../hooks/usePrepareOfflineResources',
+);
+
+function defaultResourcesMock({
+  selectedCount,
+  manifestLoading = false,
+  manifestError = null,
+  forceEmptyCatalog = false,
+}: {
+  selectedCount: number;
+  manifestLoading?: boolean;
+  manifestError?: unknown;
+  forceEmptyCatalog?: boolean;
+}) {
+  const emptyCatalog = {
+    items: [],
+    groups: [],
+  };
+  // Real hook returns an empty catalog (and nothing to download) when no
+  // chapters are selected — regardless of whether the user is assigned.
+  const hasSelection =
+    selectedCount > 0 && !forceEmptyCatalog && !manifestError;
+  const catalog = hasSelection
+    ? {
+        items: mockCatalogItems,
+        groups: [
+          {
+            groupName: 'Source Bible',
+            items: mockCatalogItems.slice(0, 2),
+          },
+          {
+            groupName: 'Translation Words',
+            items: [mockCatalogItems[2]],
+          },
+          {
+            groupName: 'Reference Images',
+            items: [mockCatalogItems[3]],
+          },
+        ],
+      }
+    : emptyCatalog;
+
+  return {
+    catalog,
+    effectiveCatalog: catalog,
+    deselectedItemIds: new Set<string>(),
+    totalBytes: hasSelection ? 4096 : 0,
+    pendingBytes: hasSelection ? 4096 : 0,
+    selectedItems: catalog.items,
+    canDownload: hasSelection && !manifestLoading,
+    manifestLoading,
+    manifestError,
+    manifestContexts: [],
+    isItemSelected: () => true,
+    toggleItemSelected: jest.fn(),
+  };
+}
 
 describe('PrepareForOfflineScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseLocalSearchParams.mockReturnValue({});
+    usePrepareOfflineResources.mockImplementation(
+      ({ selectedCount }: { selectedCount: number }) =>
+        defaultResourcesMock({ selectedCount }),
+    );
     usePrepareOfflineSelection.mockImplementation(
       (projectId: number | null) => {
         if (!projectId) {
@@ -447,6 +474,87 @@ describe('PrepareForOfflineScreen', () => {
 
     expect(screen.getByTestId('prepare-offline-download-footer')).toBeTruthy();
     expect(screen.getByTestId('prepare-offline-download-button')).toBeTruthy();
+  });
+
+  describe('download footer visibility (#702)', () => {
+    it('keeps download controls visible while the manifest is loading', async () => {
+      usePrepareOfflineResources.mockImplementation(
+        ({ selectedCount }: { selectedCount: number }) =>
+          defaultResourcesMock({
+            selectedCount,
+            manifestLoading: selectedCount > 0,
+            forceEmptyCatalog: true,
+          }),
+      );
+
+      render(<PrepareForOfflineScreen />);
+      fireEvent.press(screen.getByText('Luke'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('prepare-offline-download-footer'),
+        ).toBeTruthy();
+        expect(
+          screen.getByTestId('prepare-offline-download-button'),
+        ).toBeTruthy();
+        expect(screen.getByText(PREPARE_OFFLINE_MANIFEST_LOADING)).toBeTruthy();
+      });
+
+      expect(
+        screen.getByTestId('prepare-offline-download-button').props
+          .accessibilityState?.disabled,
+      ).toBe(true);
+    });
+
+    it('keeps download controls visible and explains a manifest load failure', async () => {
+      usePrepareOfflineResources.mockImplementation(
+        ({ selectedCount }: { selectedCount: number }) =>
+          defaultResourcesMock({
+            selectedCount,
+            manifestError: new Error('manifest failed'),
+          }),
+      );
+
+      render(<PrepareForOfflineScreen />);
+      fireEvent.press(screen.getByText('Luke'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('prepare-offline-download-footer'),
+        ).toBeTruthy();
+        expect(
+          screen.getByTestId('prepare-offline-download-button'),
+        ).toBeTruthy();
+        expect(
+          screen.getByText(PREPARE_OFFLINE_MANIFEST_LOAD_ERROR),
+        ).toBeTruthy();
+      });
+
+      const button = screen.getByTestId('prepare-offline-download-button');
+      expect(button.props.accessibilityState?.disabled).toBe(true);
+    });
+
+    it('explains when a selection has no downloadable resources', async () => {
+      usePrepareOfflineResources.mockImplementation(
+        ({ selectedCount }: { selectedCount: number }) =>
+          defaultResourcesMock({
+            selectedCount,
+            forceEmptyCatalog: true,
+          }),
+      );
+
+      render(<PrepareForOfflineScreen />);
+      fireEvent.press(screen.getByText('Luke'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('prepare-offline-download-footer'),
+        ).toBeTruthy();
+        expect(
+          screen.getByText(PREPARE_OFFLINE_NO_RESOURCES_FOR_SELECTION),
+        ).toBeTruthy();
+      });
+    });
   });
 
   describe('back navigation (#503)', () => {

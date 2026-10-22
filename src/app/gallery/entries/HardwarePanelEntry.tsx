@@ -1,45 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
 import {
-  Circle,
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-} from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
+  EjectFill,
+  PauseFill,
+  PlayFill,
+  RecordFill,
+  SkipBackFill,
+  SkipForwardFill,
+} from '../../../components/ui/icons';
 import { setMicActive } from '../../../audio/micActivity';
 import { HardwarePanel } from '../../../components/ui/HardwarePanel';
 import { Key, type KeyIconProps } from '../../../components/ui/Key';
 import { useTheme, useThemedStyles } from '../../../theme/useTheme';
 
-function filled(Icon: LucideIcon) {
-  return function FilledIcon({ color, size }: KeyIconProps) {
-    return <Icon color={color} fill={color} size={size} />;
-  };
-}
-
-const PlayIcon = filled(Play);
-const PauseIcon = filled(Pause);
-const SkipBackIcon = filled(SkipBack);
-const SkipForwardIcon = filled(SkipForward);
+const PlayIcon = PlayFill;
+const PauseIcon = PauseFill;
+const SkipBackIcon = SkipBackFill;
+const SkipForwardIcon = SkipForwardFill;
+const EjectIcon = EjectFill;
 /** Figma's Record key glyph is accent/record, not the key's gray. */
 function RecordIcon({ size }: KeyIconProps) {
   const { roles } = useTheme();
-  return (
-    <Circle color={roles.accentRecord} fill={roles.accentRecord} size={size} />
-  );
-}
-
-/** Lucide has no eject; the Record panel's third key uses this one. */
-function EjectIcon({ color, size }: KeyIconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path d="M12 4 L21 15 H3 Z" fill={color} />
-      <Rect x={3} y={18} width={18} height={3} rx={1} fill={color} />
-    </Svg>
-  );
+  return <RecordFill color={roles.accentRecord} size={size} />;
 }
 
 const VERSES = 5;

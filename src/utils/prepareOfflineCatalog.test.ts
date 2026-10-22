@@ -1,17 +1,20 @@
 import {
   buildPrepareOfflineCatalog,
   buildEffectiveCatalog,
+  catalogHasUnknownSizes,
   computePendingBytes,
   computeRemainingBytes,
   computeTotalBytes,
   filterPrepareOfflineCatalogByTiers,
   getEffectiveItems,
   getRemainingBytesForItem,
+  hasPendingDownloadWork,
   isItemCustomizeLocked,
   isItemIncluded,
   isTierLocked,
   sortItemsForPrepareOfflineDownload,
 } from './prepareOfflineCatalog';
+import { formatResourceSizeLabel } from './prepareOfflineSizeSemantics';
 import {
   PrepareOfflineChapterRow,
   PrepareOfflineResourceManifestItem,
@@ -76,7 +79,7 @@ function buildManifestFixture(): PrepareOfflineResourceManifestItem[] {
     }),
     manifestItem({
       tier: 1,
-      resourceName: 'Source Bible',
+      resourceName: 'Source Bible Audio',
       kind: 'audio',
       id: 'source-bible-audio-GEN-1',
     }),
@@ -129,6 +132,7 @@ describe('prepareOfflineCatalog', () => {
     expect(catalog.items.length).toBeGreaterThan(0);
     expect(catalog.groups.map(g => g.groupName)).toEqual([
       'Source Bible',
+      'Source Bible Audio',
       'Translation Notes',
       'Translation Words',
       'Translation Questions',
@@ -139,7 +143,7 @@ describe('prepareOfflineCatalog', () => {
     expect(tier1).toHaveLength(4);
     expect(tier1.map(item => item.groupName).sort()).toEqual([
       'Source Bible',
-      'Source Bible',
+      'Source Bible Audio',
       'Translation Notes',
       'Translation Notes',
     ]);
@@ -184,6 +188,7 @@ describe('prepareOfflineCatalog', () => {
     expect(tier1Only.items.every(item => item.tier === 1)).toBe(true);
     expect(tier1Only.groups.map(group => group.groupName)).toEqual([
       'Source Bible',
+      'Source Bible Audio',
       'Translation Notes',
     ]);
 
@@ -288,6 +293,123 @@ describe('prepareOfflineCatalog', () => {
     expect(computeTotalBytes(catalog, new Set())).toBe(
       5 * TEXT_BYTES + 5 * AUDIO_BYTES,
     );
+  });
+
+  it('fail-before/pass-after: unknown remote image size is not free and incompletes total (#756)', () => {
+    const knownBytes = 1000;
+    const catalog = buildTestCatalog({
+      chapters,
+      selectedIds: new Set([1]),
+      manifest: [
+        manifestItem({
+          tier: 1,
+          resourceName: 'Translation Notes',
+          kind: 'text',
+          bytesTotal: knownBytes,
+          id: 'tn-text',
+        }),
+        manifestItem({
+          tier: 3,
+          resourceName: 'Reference Images',
+          kind: 'image',
+          bytesTotal: 0,
+          sourceUrl: 'https://cdn.example/aquifer-869927-image.jpg',
+          fileExt: 'jpg',
+          id: 'aquifer-869927-image',
+        }),
+        manifestItem({
+          tier: 3,
+          resourceName: 'Reference Images',
+          kind: 'image',
+          bytesTotal: 0,
+          sourceUrl: 'https://cdn.example/aquifer-869979-image.jpg',
+          fileExt: 'jpg',
+          id: 'aquifer-869979-image',
+        }),
+      ],
+    });
+
+    const imageRow = catalog.items.find(
+      row => row.id === 'Reference Images:image',
+    );
+    expect(imageRow).toBeDefined();
+    expect(imageRow!.sizeKnown).toBe(false);
+    expect(imageRow!.bytes).toBe(0);
+    expect(formatResourceSizeLabel(imageRow!)).toBe('Unknown');
+    expect(formatResourceSizeLabel(imageRow!)).not.toBe('0 B');
+
+    expect(computeTotalBytes(catalog, new Set())).toBe(knownBytes);
+    expect(catalogHasUnknownSizes(catalog, new Set())).toBe(true);
+    expect(hasPendingDownloadWork(catalog.items)).toBe(true);
+
+    // Deselect unknown images → exact known total, no incompleteness.
+    const deselected = new Set(['Reference Images:image']);
+    expect(computeTotalBytes(catalog, deselected)).toBe(knownBytes);
+    expect(catalogHasUnknownSizes(catalog, deselected)).toBe(false);
+  });
+
+  it('aggregates mixed known/unknown members as At least known sum', () => {
+    const catalog = buildTestCatalog({
+      chapters,
+      selectedIds: new Set([1]),
+      manifest: [
+        manifestItem({
+          tier: 3,
+          resourceName: 'Reference Images',
+          kind: 'image',
+          bytesTotal: 4096,
+          sourceUrl: 'https://cdn.example/known.jpg',
+          fileExt: 'jpg',
+          id: 'img-known',
+        }),
+        manifestItem({
+          tier: 3,
+          resourceName: 'Reference Images',
+          kind: 'image',
+          bytesTotal: 0,
+          sourceUrl: 'https://cdn.example/unknown.jpg',
+          fileExt: 'jpg',
+          id: 'img-unknown',
+        }),
+      ],
+    });
+    const imageRow = catalog.items.find(
+      row => row.id === 'Reference Images:image',
+    )!;
+    expect(imageRow.sizeKnown).toBe(false);
+    expect(imageRow.bytes).toBe(4096);
+    expect(formatResourceSizeLabel(imageRow)).toBe('At least 4 KB');
+    // Total/pending must retain the known subset (not drop to 0 / Size incomplete).
+    expect(computeTotalBytes(catalog, new Set())).toBe(4096);
+    expect(catalogHasUnknownSizes(catalog, new Set())).toBe(true);
+    expect(computePendingBytes(catalog, new Set())).toBe(4096);
+    expect(hasPendingDownloadWork(catalog.items)).toBe(true);
+  });
+
+  it('fail-before/pass-after: getRemainingBytesForItem keeps mixed unknown lower bound (#756 r4340953936)', () => {
+    const mixedUnknown = {
+      id: 'Reference Images:image',
+      tier: 3 as const,
+      kind: 'image' as const,
+      groupName: 'Reference Images',
+      label: 'Image',
+      bytes: 4096,
+      sizeKnown: false,
+      status: 'selected' as const,
+      required: false,
+      removable: true,
+      manifestMembers: [],
+    };
+    const fullyUnknownZero = {
+      ...mixedUnknown,
+      id: 'Reference Images:fully-unknown',
+      bytes: 0,
+    };
+
+    expect(getRemainingBytesForItem(mixedUnknown)).toBe(4096);
+    expect(getRemainingBytesForItem(fullyUnknownZero)).toBe(0);
+    expect(hasPendingDownloadWork([fullyUnknownZero])).toBe(true);
+    expect(computeRemainingBytes([mixedUnknown, fullyUnknownZero])).toBe(4096);
   });
 
   it('subtracts deselected tier 2/3 rows from totals', () => {
@@ -422,6 +544,7 @@ describe('prepareOfflineCatalog', () => {
 
     expect(effective.groups.map(group => group.groupName)).toEqual([
       'Source Bible',
+      'Source Bible Audio',
       'Translation Notes',
     ]);
     expect(effective.items).toHaveLength(4);

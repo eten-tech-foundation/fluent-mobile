@@ -50,8 +50,8 @@
   "dependencies": {
     "@op-engineering/op-sqlite": "^15.2.11",
     "@react-native-community/netinfo": "^12.0.1",
-    "@react-native-vector-icons/ionicons": "^13.1.4",
-    "@tanstack/react-query": "^5.104.1",
+    "@react-native-vector-icons/ionicons": "^13.1.5",
+    "@tanstack/react-query": "^5.104.3",
     "babel-preset-expo": "~57.0.6",
     "expo": "~57.0.21",
     "expo-asset": "~57.0.12",
@@ -71,6 +71,7 @@
     "expo-system-ui": "~57.0.3",
     "expo-updates": "~57.0.21",
     "lucide-react-native": "^0.577.0",
+    "phosphor-react-native": "^3.0.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",

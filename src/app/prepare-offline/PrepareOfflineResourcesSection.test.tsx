@@ -66,8 +66,7 @@ function buildManifestFixture(): PrepareOfflineResourceManifestItem[] {
   });
 
   return [
-    entry(1, 'Source Bible', 'text'),
-    entry(1, 'Source Bible', 'audio'),
+    entry(1, 'Source Bible Audio', 'audio'),
     entry(1, 'Translation Notes', 'text'),
     entry(1, 'Translation Notes', 'audio'),
     entry(2, 'Translation Words', 'text'),
@@ -116,6 +115,47 @@ describe('PrepareOfflineResourcesSection', () => {
     expect(screen.queryByTestId('resource-tier-2')).toBeNull();
     expect(screen.queryByTestId('prepare-offline-download-button')).toBeNull();
   });
+
+  it.each(['Source Bible Audio', 'Source Bible'])(
+    'shows synced text and %s audio in one display group without renaming the catalog',
+    resourceName => {
+      const manifest = buildManifestFixture().map(member =>
+        member.resourceName === 'Source Bible Audio'
+          ? { ...member, resourceName }
+          : member,
+      );
+      const sourceCatalog = buildPrepareOfflineCatalog({
+        manifest,
+        getResourceStatus: () => 'selected',
+        chapters,
+        selectedIds: new Set([1]),
+      });
+      const beforeRender = JSON.stringify(sourceCatalog);
+
+      render(
+        <PrepareOfflineResourcesSection
+          {...defaultProps}
+          catalog={sourceCatalog}
+        />,
+      );
+
+      const summary = screen.getByTestId('prepare-offline-resource-summary');
+      expect(within(summary).getAllByText('Source Bible')).toHaveLength(1);
+      expect(within(summary).queryByText('Source Bible Audio')).toBeNull();
+      expect(
+        within(summary).getByTestId('resource-row-source-bible-text-synced'),
+      ).toBeTruthy();
+      expect(
+        within(summary).getByTestId(`resource-row-${resourceName}:audio`),
+      ).toBeTruthy();
+      expect(within(summary).getByText('Included')).toBeTruthy();
+      expect(
+        within(summary).queryAllByTestId('resource-group-divider'),
+      ).toHaveLength(1);
+      expect(JSON.stringify(sourceCatalog)).toBe(beforeRender);
+      expect(sourceCatalog.items.some(item => item.displayValue)).toBe(false);
+    },
+  );
 
   it('shows full-bleed dividers between tier 1 resource groups in the summary', () => {
     render(<PrepareOfflineResourcesSection {...defaultProps} />);
