@@ -1,3 +1,5 @@
+import type { DraftDownloadRole } from '../draftDownload/types';
+
 export interface Bible {
   id: number;
   languageId: number;
@@ -59,6 +61,25 @@ export interface MyWorkChapter {
   lastActivityLabel?: string;
   projectName: string;
   targetLanguageName: string;
+  /** `chapter_assignments.project_unit_id` for draft-download requests. */
+  projectUnitId: number;
+  /** `project_units.project_id` for grant + download scoping. */
+  projectId: number;
+  /** `chapter_assignments.bible_id` for draft-download requests. */
+  bibleId: number;
+  /** `chapter_assignments.book_id` for draft-download requests. */
+  bookId: number;
+  /** `books.code` for draft-download requests. */
+  bookCode: string;
+  assignedUserId: number | null;
+  peerCheckerId: number | null;
+  /**
+   * Advisory role snapshot from list mapping only. Request builders must
+   * re-classify from assignmentStatus + peerCheckerId + projectId + current
+   * user — never authorize from this field alone across account switches.
+   * Observer requires a known Project Observer grant; open-peer is unset.
+   */
+  draftDownloadRole: DraftDownloadRole | null;
 }
 
 export interface ProjectChapter {
@@ -102,8 +123,12 @@ export interface MyWorkChapterRow {
   chapter_number: number;
   status: string;
   book_name: string;
+  book_code: string;
   project_name: string;
   target_language_name: string;
+  project_unit_id: number;
+  project_id: number;
+  bible_id: number;
   updated_at?: string | null;
   submitted_time?: string | null;
   recording_count: number;

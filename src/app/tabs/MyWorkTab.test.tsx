@@ -36,6 +36,7 @@ jest.mock('lucide-react-native', () => {
     ListChecks: MockIcon,
     Cloud: MockIcon,
     CloudCheck: MockIcon,
+    CloudOff: MockIcon,
     CloudUpload: MockIcon,
     Circle: MockIcon,
     Mic: MockIcon,
@@ -56,10 +57,48 @@ jest.mock('../../hooks/useMyWorkChapters', () => ({
   useMyWorkChapters: jest.fn(),
 }));
 
+jest.mock('../../hooks/useDraftDownload', () => ({
+  useDraftDownload: () => ({
+    state: {
+      chapterAssignmentId: 0,
+      role: 'peer_check',
+      status: 'idle',
+      phase: 'idle',
+      progress: 0,
+      readyAtMs: null,
+    },
+    start: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
+jest.mock('../../services/storage', () => ({
+  getActiveUserId: () => '7',
+}));
+
+jest.mock('../../utils/parseUserId', () => ({
+  parseUserId: () => 7,
+}));
+
+jest.mock('../../services/userOrgGrants', () => ({
+  hasProjectObserverGrant: () => false,
+}));
+
 const { useMyWorkChapters } = jest.requireMock(
   '../../hooks/useMyWorkChapters',
 ) as {
   useMyWorkChapters: jest.Mock;
+};
+
+const myWorkIds = {
+  projectUnitId: 11,
+  projectId: 3,
+  bibleId: 5,
+  bookId: 42,
+  bookCode: 'LUK',
+  assignedUserId: null as number | null,
+  peerCheckerId: null as number | null,
+  draftDownloadRole: null as MyWorkChapter['draftDownloadRole'],
 };
 
 const sampleChapter: MyWorkChapter = {
@@ -78,6 +117,7 @@ const sampleChapter: MyWorkChapter = {
   lastActivityLabel: 'Jun 1, 2024',
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
+  ...myWorkIds,
 };
 
 const notStartedChapter: MyWorkChapter = {
@@ -95,6 +135,7 @@ const notStartedChapter: MyWorkChapter = {
   hasConflict: false,
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
+  ...myWorkIds,
 };
 
 const peerChapter: MyWorkChapter = {
@@ -113,6 +154,10 @@ const peerChapter: MyWorkChapter = {
   lastActivityLabel: 'Jun 2, 2024',
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
+  ...myWorkIds,
+  assignedUserId: 9,
+  peerCheckerId: 7,
+  draftDownloadRole: 'peer_check',
 };
 
 const linguistChapter: MyWorkChapter = {
@@ -130,6 +175,7 @@ const linguistChapter: MyWorkChapter = {
   hasConflict: false,
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
+  ...myWorkIds,
 };
 
 const theologicalChapter: MyWorkChapter = {
@@ -147,6 +193,7 @@ const theologicalChapter: MyWorkChapter = {
   hasConflict: false,
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
+  ...myWorkIds,
 };
 
 describe('MyWorkTab', () => {
