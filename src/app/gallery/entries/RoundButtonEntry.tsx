@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { ArrowDown, ArrowRight, AudioLines } from 'lucide-react-native';
+import { ArrowDown, ArrowRight, Waveform } from '../../../components/ui/icons';
 import { ProgressRing } from '../../../components/ui/ProgressRing';
 import { RoundButton } from '../../../components/ui/RoundButton';
 import { ColorModeScope, useThemedStyles } from '../../../theme/useTheme';
@@ -100,7 +100,7 @@ function PassageRows() {
               accessibilityLabel={`${track.title} listened`}
             >
               <RoundButton
-                icon={isPlaying ? AudioLines : ArrowRight}
+                icon={isPlaying ? Waveform : ArrowRight}
                 accessibilityLabel={
                   isPlaying ? `Pause ${track.title}` : `Play ${track.title}`
                 }

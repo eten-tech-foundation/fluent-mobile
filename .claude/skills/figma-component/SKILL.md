@@ -41,6 +41,10 @@ Read it fully before step 1; this file is how an agent executes it.
   `t.controlSizes.*`, `t.type.*` (named type styles; layer `t.typeTelugu.*`
   for Telugu), plus the existing `t.spacing` / `t.radius`. Use `t.type.*` for
   new text, not the Legacy-keyed `t.typography.sizes`.
+- Icons: Phosphor (Figma's `Icon (Phosphor)`), from `src/components/ui/icons`.
+  Regular by default, Fill on hardware transport keys; check the weight by
+  matching the Figma SVG path to `phosphor-react-native/src/defs/<Name>.tsx`.
+  Add missing icons there as a typed `require` per icon. Lucide is Legacy only.
 - Haptics: `useHaptics()` from `src/hooks/useHaptics.ts` (no-op in Legacy, silent
   for the whole take, recording or paused, via `src/audio/micActivity.ts`).
 - Reference implementations: `src/components/ui/Key.tsx` (pressable, latch),
