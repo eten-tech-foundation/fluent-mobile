@@ -46,7 +46,8 @@ export interface UploadVerseAudioParams {
   endVerse?: number;
 }
 
-export type VerseAudioConflictStatus = 'clean' | 'conflict';
+/** API wire values include `resolved` after POST /resolve (fluent-api main). */
+export type VerseAudioConflictStatus = 'clean' | 'conflict' | 'resolved';
 
 export interface VerseAudioTakeResponse {
   id: number;

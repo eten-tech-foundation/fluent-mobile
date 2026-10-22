@@ -29,8 +29,13 @@ import type {
 } from '../types/api/translationResources';
 import type {
   UploadVerseAudioParams,
+  VerseAudioListResponse,
   VerseAudioResponse,
 } from '../types/api/verseAudio';
+import type {
+  GetTranslatedVersesParams,
+  TranslatedVerseResponse,
+} from '../types/api/translatedVerse';
 import {
   normalizeClaimResponse,
   type ClaimChapterAssignmentResponse,
@@ -56,12 +61,42 @@ import {
 } from './httpClient';
 import { resolveSessionToken } from './sessionToken';
 import { createApiError } from './apiError';
-import { parseVerseAudioResponse } from './verseAudioContract';
+import {
+  parseVerseAudioListResponse,
+  parseVerseAudioResponse,
+} from './verseAudioContract';
+import { parseTranslatedVersesResponse } from './translatedVerseContract';
 import {
   buildVerseAudioFormData,
   verseAudioRangeUploadPath,
   verseAudioUploadPath,
 } from './verseAudioFormData';
+
+export type GetChapterVerseAudioParams = {
+  projectUnitId: number;
+  bibleId: number;
+  bookId: number;
+  chapterNumber: number;
+};
+
+function chapterVerseAudioPath(params: GetChapterVerseAudioParams): string {
+  const query = new URLSearchParams({
+    projectUnitId: String(params.projectUnitId),
+    bibleId: String(params.bibleId),
+    bookId: String(params.bookId),
+    chapterNumber: String(params.chapterNumber),
+  });
+  return `/verse-audio?${query.toString()}`;
+}
+
+function translatedVersesPath(params: GetTranslatedVersesParams): string {
+  const query = new URLSearchParams({
+    projectUnitId: String(params.projectUnitId),
+    bookId: String(params.bookId),
+    chapterNumber: String(params.chapterNumber),
+  });
+  return `/translated-verses?${query.toString()}`;
+}
 
 function translationResourcesVersePath(
   projectId: number,
@@ -361,6 +396,40 @@ export const FluentAPI = {
     params: UploadVerseAudioParams,
     token?: string,
   ): Promise<VerseAudioResponse> => uploadVerseAudioRequest(params, token),
+
+  /**
+   * Chapter draft audio listing (#508 / #704).
+   * `GET /verse-audio?projectUnitId&bibleId&bookId&chapterNumber`.
+   * Callers must resolve playback via exact `take.id === activeTakeId`
+   * (see `resolveActiveTakeDownload`) — never the top-level downloadUrl.
+   */
+  getChapterVerseAudio: async (
+    params: GetChapterVerseAudioParams,
+    token?: string,
+  ): Promise<VerseAudioListResponse> => {
+    const raw = await authedRequest<unknown>(
+      chapterVerseAudioPath(params),
+      undefined,
+      token,
+    );
+    return parseVerseAudioListResponse(raw);
+  },
+
+  /**
+   * Chapter draft text with verse anchors/markers (#508 / #704).
+   * `GET /translated-verses?projectUnitId&bookId&chapterNumber`.
+   */
+  getTranslatedVerses: async (
+    params: GetTranslatedVersesParams,
+    token?: string,
+  ): Promise<TranslatedVerseResponse[]> => {
+    const raw = await authedRequest<unknown>(
+      translatedVersesPath(params),
+      undefined,
+      token,
+    );
+    return parseTranslatedVersesResponse(raw);
+  },
 
   claimChapterAssignment: (
     chapterAssignmentId: number,

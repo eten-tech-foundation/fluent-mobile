@@ -485,3 +485,45 @@ export async function getDownloadedResourcesForChapter(
   const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
   return rows.map(mapRow);
 }
+
+/**
+ * All queue rows for a project/user whose raw resource_id starts with `prefix`.
+ * Used by draft-chapter download (#508 / #704) for progress + purge.
+ */
+export async function getDownloadQueueItemsByResourcePrefix(
+  projectId: number,
+  userId: number,
+  resourceIdPrefix: string,
+): Promise<DownloadQueueItem[]> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT * FROM download_queue
+     WHERE project_id = ? AND user_id = ?
+       AND COALESCE(resource_id, id) LIKE ?
+     ORDER BY queue_order ASC`,
+    [projectId, userId, `${resourceIdPrefix}%`],
+  );
+  const rows = (result.rows ?? []) as unknown as DownloadQueueRow[];
+  return rows.map(mapRow);
+}
+
+/**
+ * Re-queue failed/cancelled/paused items for retry without clearing
+ * resume_data or local_file_path (retain partial bytes — #508).
+ */
+export async function requeueDownloadItems(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  const placeholders = ids.map(() => '?').join(', ');
+  const result = await db.execute(
+    `UPDATE download_queue
+     SET status = 'queued', updated_at = ?
+     WHERE id IN (${placeholders})
+       AND status IN ('failed', 'cancelled', 'paused')`,
+    [now, ...ids],
+  );
+  if ((result.rowsAffected ?? 0) > 0) {
+    emitDownloadQueueChanged();
+  }
+}
