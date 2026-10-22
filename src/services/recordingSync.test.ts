@@ -703,6 +703,38 @@ describe('recordingSync', () => {
     expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
   });
 
+  it('lets a joining caller abort wait without cancelling the in-flight pass', async () => {
+    let resolveUpload: (value: unknown) => void = () => undefined;
+    mockUploadVerseAudio.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveUpload = resolve;
+        }),
+    );
+
+    const first = syncPendingRecordings('tok-1', { delay });
+    await waitFor(() => {
+      expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+    });
+
+    const joiner = new AbortController();
+    const second = syncPendingRecordings('tok-2', {
+      delay,
+      signal: joiner.signal,
+    });
+    joiner.abort();
+
+    await expect(second).rejects.toMatchObject({ name: 'AbortError' });
+
+    resolveUpload(successResponse());
+    await expect(first).resolves.toEqual({
+      uploaded: 1,
+      conflicted: 0,
+      failed: 0,
+    });
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+  });
+
   it('requires a non-empty auth token', async () => {
     await expect(syncPendingRecordings('', { delay })).rejects.toThrow(
       /Auth token is required/,
@@ -878,6 +910,30 @@ describe('recordingSync', () => {
     const call = mockUploadVerseAudio.mock.calls[0][0];
     expect(JSON.stringify(call)).not.toMatch(/recordings\/sync/);
     expect(JSON.stringify(call)).not.toMatch(/R2_/);
+  });
+
+  it('does not send a PUT when cancellation arrives during the local version-token lookup', async () => {
+    const controller = new AbortController();
+    let finishVersion!: (value: number) => void;
+    const version = new Promise<number>(resolve => {
+      finishVersion = resolve;
+    });
+    mockGetLatestVersionToken.mockImplementationOnce(() => version);
+    const pass = syncPendingRecordings('pass-token', {
+      delay,
+      signal: controller.signal,
+    });
+    await waitFor(() =>
+      expect(mockGetLatestVersionToken).toHaveBeenCalledTimes(1),
+    );
+    controller.abort();
+    finishVersion(2);
+
+    await expect(pass).rejects.toMatchObject({ name: 'AbortError' });
+    expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith('rec-1', 'pending');
+    expect(mockMarkRecordingUploaded).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
   });
 
   it('does not retry a server-accepted conflict when its local atomic marker fails', async () => {
