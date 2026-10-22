@@ -49,6 +49,12 @@ export interface UploadVerseAudioParams {
 /** API wire values include `resolved` after POST /resolve (fluent-api main). */
 export type VerseAudioConflictStatus = 'clean' | 'conflict' | 'resolved';
 
+/**
+ * Recorded-unit granularity (fluent-api #454 / PR #455 selected-canonical wire).
+ * Absent on older payloads — do not invent.
+ */
+export type VerseAudioGranularity = 'verse' | 'pericope';
+
 export interface VerseAudioTakeResponse {
   id: number;
   uploadedBy: number;
@@ -56,12 +62,23 @@ export interface VerseAudioTakeResponse {
   sizeBytes: number;
   durationSeconds: number | null;
   contentHash: string;
+  /** Present on API455+ wire; omitted on older payloads. */
+  granularity?: VerseAudioGranularity;
+  startChapter?: number | null;
+  startVerse?: number | null;
+  endChapter?: number | null;
+  endVerse?: number | null;
   downloadUrl: string;
   createdAt: string;
   updatedAt: string;
 }
 
-/** Successful `200` body (`verseAudioResponseSchema` in fluent-api #271). */
+/**
+ * Successful `200` body.
+ * Coverage + nullable top-level `downloadUrl`: fluent-api #454 / PR #455.
+ * Pinned mobile fixture: `src/services/fixtures/selectedCanonicalHydration.wire-contract.json`.
+ * Prior baseline: fluent-api #271 / PR #281.
+ */
 export interface VerseAudioResponse {
   id: number;
   projectUnitId: number;
@@ -72,9 +89,19 @@ export interface VerseAudioResponse {
   durationSeconds: number | null;
   versionToken: number;
   conflictStatus: VerseAudioConflictStatus;
+  /** Present on API455+ wire; omitted on older payloads. */
+  granularity?: VerseAudioGranularity;
+  startChapter?: number | null;
+  startVerse?: number | null;
+  endChapter?: number | null;
+  endVerse?: number | null;
   activeTakeId: number | null;
   verseNumber: number;
-  downloadUrl: string;
+  /**
+   * Exact active take URL when `takes[].id === activeTakeId`; otherwise `null`.
+   * Never a last-take invent fallback (API455+).
+   */
+  downloadUrl: string | null;
   takes: VerseAudioTakeResponse[];
   createdAt: string;
   updatedAt: string;

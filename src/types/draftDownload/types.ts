@@ -1,4 +1,7 @@
-import type { VerseAudioConflictStatus } from '../api/verseAudio';
+import type {
+  VerseAudioConflictStatus,
+  VerseAudioGranularity,
+} from '../api/verseAudio';
 import type { TranslatedVerseMarkers } from '../api/translatedVerse';
 
 export type DraftDownloadRole = 'observer' | 'peer_check';
@@ -49,7 +52,22 @@ export interface DraftDownloadState {
   errorMessage?: string;
 }
 
-/** One verse unit exposed to the Observer owner for offline playback. */
+/** Selected-canonical coverage for Observer / peer-check consumers (API455+). */
+export type DraftAudioGranularity = VerseAudioGranularity;
+
+export interface DraftAudioCoverage {
+  granularity: DraftAudioGranularity;
+  startChapter: number | null;
+  startVerse: number | null;
+  endChapter: number | null;
+  endVerse: number | null;
+}
+
+/**
+ * One anchored recording unit exposed to the Observer owner for offline playback.
+ * Stable identity: bibleTextId (shared anchor) + activeTakeId + contentHash.
+ * Verse and pericope are take alternatives on the same anchor — not separate units.
+ */
 export interface DraftDownloadUnitAnchor {
   bibleTextId: number;
   verseNumber: number;
@@ -59,6 +77,12 @@ export interface DraftDownloadUnitAnchor {
   /** Null when identity/metadata is missing. */
   activeTakeId: number | null;
   contentHash: string | null;
+  /**
+   * Inclusive coverage from the exact active take (API455+).
+   * Null when coverage keys were absent (older payload) or unit not selected.
+   * Never invented.
+   */
+  coverage: DraftAudioCoverage | null;
   /** Null unless take/hash identity verified and local file exists. */
   localPlaybackUri: string | null;
   draftText: string | null;
@@ -76,7 +100,7 @@ export interface DraftSourceScriptureSnapshot {
 /**
  * Typed integration contract for Observer / peer-check consumers.
  * Does not invent unresolved-conflict product UX — conflictStatus is passthrough.
- * Pericope ranges are not claimed complete (API list has no range fields).
+ * Coverage is additive from selected-canonical API455 wire (exact active take).
  */
 export interface DraftChapterLocalBundle {
   chapterAssignmentId: number;

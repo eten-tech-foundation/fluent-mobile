@@ -142,6 +142,7 @@ function baseManifest(
         activeTakeId: 10,
         contentHash: 'abc123hash',
         resourceId: audioResourceId,
+        coverage: null,
       },
     ],
     purgeGeneration: 0,
