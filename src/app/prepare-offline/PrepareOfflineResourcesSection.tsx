@@ -38,6 +38,7 @@ export function PrepareOfflineResourcesSection({
       groupName: SOURCE_BIBLE_GROUP,
       label: 'Text',
       bytes: 0,
+      sizeKnown: true,
       status: 'selected',
       required: true,
       removable: false,
