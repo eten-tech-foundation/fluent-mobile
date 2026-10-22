@@ -39,6 +39,7 @@ const baseChapter: MyWorkChapter = {
   displayLabel: 'Mark 1',
   bookName: 'Mark',
   chapterNumber: 1,
+  assignmentStatus: 'draft',
   workflowStage: 'draft',
   syncState: 'deviceOnly',
   ownershipState: 'mine',
@@ -99,5 +100,15 @@ describe('MyWorkRow', () => {
         node => node.props.testID,
       ),
     ).toEqual(['chapter-cloud-sync-indicator', 'chapter-ownership-mine']);
+  });
+
+  it('does not render the workflow status badge on the row', () => {
+    const { queryByText, getByText } = render(
+      <MyWorkRow chapter={baseChapter} onPress={jest.fn()} />,
+    );
+
+    expect(getByText('Mark 1')).toBeTruthy();
+    expect(getByText('Yesterday')).toBeTruthy();
+    expect(queryByText('Draft')).toBeNull();
   });
 });
