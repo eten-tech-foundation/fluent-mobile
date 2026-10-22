@@ -43,6 +43,10 @@ import {
 } from './pericopeSets';
 import { FIA_SET_ID } from '../../assets/pericope-sets/pericopeSetVersions';
 import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
+import {
+  persistOrgGrantsFromUserResponse,
+  refreshUserOrgGrants,
+} from './userOrgGrants';
 
 jest.mock('./authToken', () => ({
   authToken: {
@@ -83,6 +87,11 @@ jest.mock('./api', () => ({
 
 jest.mock('./displayModeSettingsSync', () => ({
   syncDisplayModeSettingsForUser: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('./userOrgGrants', () => ({
+  persistOrgGrantsFromUserResponse: jest.fn(),
+  refreshUserOrgGrants: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('./connectivity', () => ({
@@ -2206,5 +2215,148 @@ describe('refreshChapterMetadataIfOnline pericope hydration after metadata impor
       'user-2-metadata-token',
     );
     expect(authToken.set).not.toHaveBeenCalled();
+  });
+});
+
+describe('org grant hydration wiring (#452 prerequisite)', () => {
+  const mockPersistOrgGrants = persistOrgGrantsFromUserResponse as jest.Mock;
+  const mockRefreshUserOrgGrants = refreshUserOrgGrants as jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __resetFullSyncSingleFlightForTests();
+    jest.spyOn(syncEvents, 'emitAuthReauthRequired');
+    jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
+    jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
+
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
+    (getUserIdSync as jest.Mock).mockReturnValue('2');
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getKnownUserIds as jest.Mock).mockReturnValue(['1', '2']);
+    (getLastSyncedAt as jest.Mock).mockReturnValue('2026-06-01T00:00:00.000Z');
+    (getLastAssignmentSyncAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+    userHasLocalProjects.mockResolvedValue(true);
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+    userNeedsAssigneeRepair.mockResolvedValue(false);
+    getChaptersToSync.mockResolvedValue(new Map());
+    getLocalProjectIds.mockResolvedValue([]);
+    mockRefreshUserOrgGrants.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    __resetFullSyncSingleFlightForTests();
+  });
+
+  it('persists grants from the loaded user after login account registration', async () => {
+    const user = {
+      id: 2,
+      email: 'user2@test.com',
+      orgGrants: [],
+    };
+    (FluentAPI.getUserByEmail as jest.Mock).mockResolvedValue(user);
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'login-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'login-token' });
+
+    await syncAllData(false, 'user2@test.com');
+
+    expect(mockPersistOrgGrants).toHaveBeenCalledWith('2', user);
+    expect(setUserSync).toHaveBeenCalledWith('2', 'user2@test.com');
+    const persistOrder = mockPersistOrgGrants.mock.invocationCallOrder[0];
+    const projectsOrder = (FluentAPI.getUserProjects as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(persistOrder).toBeLessThan(projectsOrder);
+  });
+
+  it('persists grants after registerKnownUser on add-account sync', async () => {
+    const user = {
+      id: 247,
+      email: 'b@example.com',
+      orgGrants: [],
+    };
+    (getActiveUserId as jest.Mock).mockReturnValue('245');
+    (FluentAPI.getUserByEmail as jest.Mock).mockResolvedValue(user);
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'b-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+
+    await syncAllData(false, 'b@example.com');
+
+    expect(registerKnownUser).toHaveBeenCalledWith('247', 'b@example.com');
+    expect(setUserSync).not.toHaveBeenCalled();
+    expect(mockPersistOrgGrants).toHaveBeenCalledWith('247', user);
+    const registerOrder = (registerKnownUser as jest.Mock).mock
+      .invocationCallOrder[0];
+    const persistOrder = mockPersistOrgGrants.mock.invocationCallOrder[0];
+    expect(registerOrder).toBeLessThan(persistOrder);
+  });
+
+  it('refreshes grants after incremental token capture and before claims/master', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+
+    await syncAllData(true);
+
+    expect(mockRefreshUserOrgGrants).toHaveBeenCalledWith('2', 'valid-token');
+    const refreshOrder = mockRefreshUserOrgGrants.mock.invocationCallOrder[0];
+    const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
+    const projectsOrder = (FluentAPI.getUserProjects as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(refreshOrder).toBeLessThan(claimsOrder);
+    expect(refreshOrder).toBeLessThan(projectsOrder);
+  });
+
+  it('refreshes grants in syncAllUsers project loop with each captured token', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+
+    await syncAllUsers();
+
+    expect(mockRefreshUserOrgGrants).toHaveBeenCalledWith('1', 'user-1-token');
+    expect(mockRefreshUserOrgGrants).toHaveBeenCalledWith('2', 'user-2-token');
+    const refresh1 = mockRefreshUserOrgGrants.mock.invocationCallOrder[0];
+    const refresh2 = mockRefreshUserOrgGrants.mock.invocationCallOrder[1];
+    const projects1 = (FluentAPI.getUserProjects as jest.Mock).mock
+      .invocationCallOrder[0];
+    const claims1 = syncPendingChapterClaims.mock.invocationCallOrder[0];
+    expect(claims1).toBeLessThan(refresh1);
+    expect(refresh1).toBeLessThan(projects1);
+    expect(refresh2).toBeGreaterThan(refresh1);
+  });
+
+  it('refreshes grants immediately before syncProjects on metadata refresh', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'user-2-specific-token',
+    });
+
+    await refreshChapterMetadataIfOnline(2);
+
+    expect(mockRefreshUserOrgGrants).toHaveBeenCalledWith(
+      '2',
+      'user-2-specific-token',
+    );
+    const refreshOrder = mockRefreshUserOrgGrants.mock.invocationCallOrder[0];
+    const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
+    const projectsOrder = (FluentAPI.getUserProjects as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(refreshOrder);
+    expect(refreshOrder).toBeLessThan(projectsOrder);
   });
 });
