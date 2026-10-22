@@ -1,0 +1,265 @@
+# C-0051-06 — project13 Matthew1 positive resource DOWNLOAD (existing session).
+# Stack base: PR755 / 753aecd8 (D-0702 nav + restore12 + Back dismiss).
+# Refs #51 + #717. Observes #52 Pause/Cancel if still in-flight (not mandatory).
+#
+# MUTATING: taps prepare-offline-download-button once. No clearState/login,
+# network toggle, permission, recording, delete, or bare ^Download$.
+# Payload labels pin exact historical UI (2.4 MB Total/CTA). That aggregate is
+# NOT a general <5 MiB safety proof — original catalog had Images 0 B unknown
+# and transferred ~27 MB; original manifest is NONADMISSIBLE. No Customize
+# deselect. EXTERNAL host finally still required when a future admissible
+# fixture is authorized.
+#
+# Fixture-guard: mutating + pfo-download admitted only with matching env +
+# known-complete structural manifest (original c0051-matthew1-small refused).
+# Default deny retained for other unpinned mutating flows. Do not retag
+# ordered-readonly.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - mutating
+  - pfo-download
+  - c0051
+  - c0051-06
+  - download
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertNotVisible:
+    id: 'settings-menu-more-settings'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+# Cached switch → PM9
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-9'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-9'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-prepare-offline'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-prepare-offline'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: '^project-row-13$'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: '^project-row-13$'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-download-footer'
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      text: '^Selected chapters \(0\)$'
+    timeout: 30000
+- assertVisible:
+    text: '^Matthew, 0 of 28 chapters selected$'
+# Matthew chapter 1 only
+- scrollUntilVisible:
+    element:
+      text: '^Expand Matthew$'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: '^Expand Matthew$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: '^Collapse Matthew$'
+    timeout: 15000
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: false
+- tapOn:
+    text: '^Chapter 1$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: '^Matthew, 1 of 28 chapters selected$'
+    timeout: 15000
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: true
+- assertVisible:
+    text: '^Selected chapters \(1\)$'
+# Available hydration (resources-section appears after resolve — not at zero)
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-resources-section'
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    id: 'prepare-offline-resources-section'
+- assertVisible:
+    text: '^RESOURCES TO DOWNLOAD$'
+- assertVisible:
+    id: 'prepare-offline-resource-summary'
+- assertVisible:
+    text: '^Source Bible$'
+- assertVisible:
+    text: '^Translation Notes$'
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-download-button'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'prepare-offline-download-footer'
+- assertVisible:
+    text: '^Total download$'
+# Exact historical fixture labels (manifest observedUiTotalLabel / Download CTA).
+# Identity pin only — not an admission oracle / not general 5 MiB safety.
+- assertVisible:
+    id: 'prepare-offline-total-bytes'
+    text: '^2\.4 MB$'
+- assertVisible:
+    id: 'prepare-offline-download-button'
+    enabled: true
+    text: '^Download 2\.4 MB$'
+# MUTATION — start download once (C-0051-06 → #52 surface or complete)
+- tapOn:
+    id: 'prepare-offline-download-button'
+    waitToSettleTimeoutMs: 500
+# Observe control swap if still downloading; do not invent Pause if missed.
+- evalScript: ${output.c0051DownloadSurface = ''}
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-download-controls-downloading'
+    direction: DOWN
+    timeout: 8000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: 'prepare-offline-download-controls-downloading'
+    commands:
+      - evalScript: ${output.c0051DownloadSurface = 'downloading'}
+      - assertVisible:
+          id: 'prepare-offline-download-pause'
+      - assertVisible:
+          id: 'prepare-offline-download-cancel'
+# Complete chrome (fast finish path)
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-download-complete'
+    direction: DOWN
+    timeout: 120000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: 'prepare-offline-download-complete'
+    commands:
+      - evalScript: ${output.c0051DownloadSurface = 'complete'}
+      - assertVisible:
+          id: 'prepare-offline-download-complete'
+# Must have observed downloading controls and/or complete — not idle Download after tap.
+- assertTrue: ${output.c0051DownloadSurface == 'downloading' || output.c0051DownloadSurface == 'complete'}
+# Restore Matthew selection 1→0 (leave new downloads on disk — no delete)
+- scrollUntilVisible:
+    element:
+      text: '^Chapter 1$'
+    direction: UP
+    timeout: 15000
+- tapOn:
+    text: '^Chapter 1$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: '^Matthew, 0 of 28 chapters selected$'
+    timeout: 15000
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: false
+- scrollUntilVisible:
+    element:
+      text: '^Collapse Matthew$'
+    direction: UP
+    timeout: 15000
+- tapOn:
+    text: '^Collapse Matthew$'
+    waitToSettleTimeoutMs: 500
+# Leave PFO → closed Home as PM9. Do NOT switch to account-12 here —
+# host wait_for_queue_settle must finish first; bounded_ui_restore owns 12.
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-9'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- pressKey: Back
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+- assertNotVisible:
+    id: 'login-email-input'

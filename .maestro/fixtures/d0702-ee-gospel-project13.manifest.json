@@ -1,0 +1,65 @@
+{
+  "$schemaComment": "D-0702-01 named fixture — disposable English→English gospels project13 (already observed). Not a seed script. No available-download size claim.",
+  "version": 1,
+  "criterion": "D-0702-01",
+  "sourceIssue": 702,
+  "description": "PM9 / cached 10,9,12 on A5554: project13 English→English (lang 5 both), milestone 21, Matthew/Mark/Luke (68 chapter assignments). Chapter-1 select 0→1→0 per book resolves to either available hydration (resources section + positive Total/Download) or exact unavailable explanation (0 B Download disabled + couldn't-load hint). Distinct from project12/1-Peter.",
+  "actor": {
+    "cachedActive": "9",
+    "roleNote": "Retained runtime used PM9; issue narrative T1/user10 is not re-claimed here",
+    "cacheAccounts": ["10", "9", "12"],
+    "restoreActive": "12"
+  },
+  "project": {
+    "id": "13",
+    "rowId": "project-row-13",
+    "sourceLanguage": "English",
+    "targetLanguage": "English",
+    "languageIdBoth": 5,
+    "milestoneId": 21,
+    "books": [
+      { "name": "Matthew", "totalChapters": 28, "probeChapter": 1 },
+      { "name": "Mark", "totalChapters": 16, "probeChapter": 1 },
+      { "name": "Luke", "totalChapters": 24, "probeChapter": 1 }
+    ],
+    "assignmentCountObserved": 68
+  },
+  "chrome": {
+    "selectionSummary": "Selected chapters (n)",
+    "notAssignedTranslatorAccordion": true,
+    "resourcesSectionId": "prepare-offline-resources-section",
+    "resourcesSectionWhen": "after-selection-hydration-only",
+    "unavailableHint": "Couldn't load downloadable resources for the selected chapters. Check your connection and try again.",
+    "downloadButtonId": "prepare-offline-download-button",
+    "downloadLabelRegex": "^Download .+$",
+    "forbidBareDownload": "^Download$"
+  },
+  "flows": {
+    "ordered": ".maestro/flows/offline/d0702-ee-gospel-ch1-download-persist-existing-session.yaml",
+    "bookNested": ".maestro/flows/offline/d0702-book-ch1-unavailable-persist.yaml",
+    "availableAssert": ".maestro/flows/offline/d0702-assert-hydration-available.yaml",
+    "unavailableAssert": ".maestro/flows/offline/d0702-assert-hydration-unavailable.yaml",
+    "notReused": ".maestro/flows/offline/pfo-download-button-persist.yaml",
+    "notReusedReason": "Assigned-chapters + Select-all path; shared pfo-selector-values.js would need chapter-1/Selected support (held/shared — not edited)",
+    "alsoAvoided": "goto-home.yaml → ensure-no-modal.yaml fails ordered-journey recursive fixture-guard (untagged actions)"
+  },
+  "outOfScope": [
+    "available resource grouped size / download total arithmetic (API431 / C51 manifest prereq)",
+    "equating sum of rounded row labels to Total/Download bytes",
+    "Download tap / network session",
+    "recording / playback / delete",
+    "project12 / 1183 / 1184 / 1185 mutation"
+  ],
+  "retainedBehaviorEvidence": {
+    "reconciliation": "task-10/artifacts/d0702-direct-behavior-reconciliation-20261021.md",
+    "availableRuntime": "task-10/artifacts/d0702-pr755-selector-preflight-runtime-20261021/",
+    "hierarchies": [
+      "task-10/artifacts/d0702-mark-ch1-selected.xml",
+      "task-10/artifacts/d0702-mark-ch1-deselected.xml",
+      "task-10/artifacts/d0702-luke-ch1-selected.xml",
+      "task-10/artifacts/d0702-luke-ch1-deselected.xml"
+    ],
+    "devicePassHead": "753aecd816e85abf146e6401386710254555f250",
+    "note": "Absolute local Codex paths omitted; receipts live under task-10 artifacts outside this repo."
+  }
+}
