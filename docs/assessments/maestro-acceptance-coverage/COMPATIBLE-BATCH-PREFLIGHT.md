@@ -32,10 +32,12 @@ the modules themselves; callers inject bridges):
 | --- | --- |
 | `capture_bounded_stop_guard.py` | Admit → arm host monotonic deadline → fresh-dump Stop; real `time.monotonic` default clock (avoids TypeError when no FakeClock injected). |
 | `capture_stop_readiness.py` | Fail-closed `safe_dump` (no uncaught `TimeoutExpired`) and `readiness_valid_for_root_start` expiry gate so root does not late-Start after readiness ages out. |
+| `capture_root_start_readiness.py` | Select ROOT start control: idle `record-start-button` **or** review `record-new-take-button`; reject Stop/Pause/wrong verse/ambiguous both. Caller supplies expected verse label (no target pins). |
 
-Focused tests: `capture_bounded_stop_guard.test.py`, `capture_stop_readiness.test.py`
-(`python3 <file> -v`). These do **not** prove native capture automation PASS or
-drawer (B0016) criteria. Target-pinned B adapters stay out of this packet.
+Focused tests: `capture_bounded_stop_guard.test.py`, `capture_stop_readiness.test.py`,
+`capture_root_start_readiness.test.py` (`python3 <file> -v`). These do **not** prove
+native capture automation PASS or drawer (B0016) criteria. Target-pinned B adapters
+and post-READY single-UIA-owner watch loops stay out of this packet until sanitized.
 Related audit criteria: Refs #568 / #569 (non-closing); this packet Refs #717.
 
 ## Proof classes (keep separate)
