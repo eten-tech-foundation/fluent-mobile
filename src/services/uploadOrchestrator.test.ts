@@ -45,6 +45,7 @@ function createHarness(options?: {
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
   getPendingUploadChapters?: UploadOrchestratorDeps['getPendingUploadChapters'];
   pushPendingClaimsBeforeUpload?: UploadOrchestratorDeps['pushPendingClaimsBeforeUpload'];
+  pushPendingStageAdvancesBeforeUpload?: UploadOrchestratorDeps['pushPendingStageAdvancesBeforeUpload'];
 }) {
   let connListener: ConnListener | null = null;
   let prefListener: ((value: boolean) => void) | null = null;
@@ -174,6 +175,8 @@ function createHarness(options?: {
       };
     },
     pushPendingClaimsBeforeUpload: options?.pushPendingClaimsBeforeUpload,
+    pushPendingStageAdvancesBeforeUpload:
+      options?.pushPendingStageAdvancesBeforeUpload,
   };
 
   const orchestrator = createUploadOrchestrator(deps);
@@ -629,6 +632,65 @@ describe('uploadOrchestrator', () => {
     releaseClaims();
     await h.waitFor(() => h.uploaded.length === 1);
     expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 1 }]);
+  });
+
+  it('drains stage advances after claims and before takes (#257)', async () => {
+    let releaseClaims!: () => void;
+    let releaseStage!: () => void;
+    const pushPendingClaimsBeforeUpload = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          releaseClaims = resolve;
+        }),
+    );
+    const pushPendingStageAdvancesBeforeUpload = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          releaseStage = resolve;
+        }),
+    );
+    const h = createHarness({
+      pushPendingClaimsBeforeUpload,
+      pushPendingStageAdvancesBeforeUpload,
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(
+      () => pushPendingClaimsBeforeUpload.mock.calls.length === 1,
+    );
+    await h.flush();
+    expect(pushPendingStageAdvancesBeforeUpload).not.toHaveBeenCalled();
+    expect(h.uploaded).toEqual([]);
+
+    releaseClaims();
+    await h.waitFor(
+      () => pushPendingStageAdvancesBeforeUpload.mock.calls.length === 1,
+    );
+    await h.flush();
+    expect(h.uploaded).toEqual([]);
+
+    releaseStage();
+    await h.waitFor(() => h.uploaded.length === 1);
+    expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 1 }]);
+    expect(
+      pushPendingClaimsBeforeUpload.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      pushPendingStageAdvancesBeforeUpload.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('still uploads when stage-advance drain rejects (#257)', async () => {
+    const pushPendingStageAdvancesBeforeUpload = jest
+      .fn()
+      .mockRejectedValue(new Error('stage network'));
+    const h = createHarness({
+      pushPendingStageAdvancesBeforeUpload,
+      chapters: [{ bookId: 3, chapterNumber: 2 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+    expect(pushPendingStageAdvancesBeforeUpload).toHaveBeenCalledTimes(1);
+    expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 2 }]);
   });
 
   it('still uploads when claim push rejects (#611 soft-continue)', async () => {

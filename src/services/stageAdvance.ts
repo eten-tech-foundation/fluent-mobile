@@ -1,41 +1,23 @@
-import { FluentAPI } from './api';
 import { updateChapterAssignmentStatusLocally } from '../db/repository';
-import { logger } from '../utils/logger';
 import type { StageAdvanceDestination } from '../utils/stageAdvancement';
 
-const log = logger.create('stageAdvance');
-
 /**
- * Apply stage advancement locally immediately, then best-effort PATCH submit
- * when the server is reachable. Offline queue persistence is #257.
+ * Apply the stage change locally and enqueue it. Drain sends the PATCH.
+ * The Record tab returns after this function; it does not wait on the server.
  */
 export async function confirmStageAdvancement(params: {
   chapterAssignmentId: number;
   destination: StageAdvanceDestination;
   assignPeerCheckerId?: number;
+  userId: number;
 }): Promise<void> {
-  const { chapterAssignmentId, destination, assignPeerCheckerId } = params;
+  const { chapterAssignmentId, destination, assignPeerCheckerId, userId } =
+    params;
 
   await updateChapterAssignmentStatusLocally(
     chapterAssignmentId,
     destination.nextStatus,
     assignPeerCheckerId,
+    userId,
   );
-
-  try {
-    const reachable = await FluentAPI.checkServerReachable();
-    if (!reachable) {
-      log.info('Offline after local stage advance; sync deferred to #257', {
-        chapterAssignmentId,
-        nextStatus: destination.nextStatus,
-      });
-      return;
-    }
-    await FluentAPI.submitChapterAssignment(chapterAssignmentId);
-  } catch (error) {
-    log.warn('Stage submit failed after local update; queue deferred to #257', {
-      chapterAssignmentId,
-      error,
-    });
-  }
 }

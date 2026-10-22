@@ -43,6 +43,7 @@ import {
 } from '../db/repository';
 import { getConnectivitySnapshot } from './connectivity';
 import { syncPendingChapterClaims } from './chapterClaimSync';
+import { syncPendingStageAdvances } from './stageAdvanceSync';
 
 jest.mock('./connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
@@ -53,6 +54,14 @@ jest.mock('./chapterClaimSync', () => ({
   reconcilePendingClaimsAfterAssignmentPull: jest
     .fn()
     .mockResolvedValue({ conflicts: 0 }),
+}));
+
+jest.mock('./stageAdvanceSync', () => ({
+  syncPendingStageAdvances: jest.fn().mockResolvedValue({
+    synced: 0,
+    dropped: 0,
+    failed: 0,
+  }),
 }));
 
 jest.mock('./authToken', () => ({
@@ -197,6 +206,7 @@ const clearSyncErrorMock = jest.mocked(clearSyncError);
 const setSyncCountMock = jest.mocked(setSyncCount);
 const getConnectivitySnapshotMock = jest.mocked(getConnectivitySnapshot);
 const syncPendingChapterClaimsMock = jest.mocked(syncPendingChapterClaims);
+const syncPendingStageAdvancesMock = jest.mocked(syncPendingStageAdvances);
 const isBibleTextsServerIdRemapPendingMock = jest.mocked(
   isBibleTextsServerIdRemapPending,
 );
@@ -1024,6 +1034,11 @@ describe('syncAllUsers displayMode wiring', () => {
       conflicts: 0,
       failed: 0,
     });
+    syncPendingStageAdvancesMock.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+    });
   });
 
   afterEach(() => {
@@ -1046,5 +1061,17 @@ describe('syncAllUsers displayMode wiring', () => {
       '2',
       'user-2-token',
     );
+    expect(syncPendingStageAdvancesMock).toHaveBeenCalledWith(
+      1,
+      'user-1-token',
+    );
+    expect(syncPendingStageAdvancesMock).toHaveBeenCalledWith(
+      2,
+      'user-2-token',
+    );
+    const claimsOrder =
+      syncPendingChapterClaimsMock.mock.invocationCallOrder[0];
+    const stageOrder = syncPendingStageAdvancesMock.mock.invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(stageOrder);
   });
 });

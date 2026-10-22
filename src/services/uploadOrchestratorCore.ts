@@ -74,6 +74,11 @@ export type UploadOrchestratorDeps = {
    * Soft-fail / auth behavior is owned by the injected implementation.
    */
   pushPendingClaimsBeforeUpload?: () => Promise<void>;
+  /**
+   * Push queued stage advances after claims and before takes (#257).
+   * Soft-fail: a failed drain must not block audio upload.
+   */
+  pushPendingStageAdvancesBeforeUpload?: () => Promise<void>;
 };
 
 export type UploadOrchestratorSnapshot = {
@@ -421,6 +426,40 @@ export function createUploadOrchestrator(
                 reason,
                 error,
               });
+            }
+          }
+          if (abort.signal.aborted) {
+            return;
+          }
+          if (deps.pushPendingStageAdvancesBeforeUpload) {
+            try {
+              await Promise.race([
+                deps.pushPendingStageAdvancesBeforeUpload(),
+                new Promise<never>((_, reject) => {
+                  if (abort.signal.aborted) {
+                    reject(new Error('aborted'));
+                    return;
+                  }
+                  abort.signal.addEventListener(
+                    'abort',
+                    () => {
+                      reject(new Error('aborted'));
+                    },
+                    { once: true },
+                  );
+                }),
+              ]);
+            } catch (error) {
+              if (abort.signal.aborted) {
+                return;
+              }
+              log.warn(
+                'Pending stage-advance push before upload failed; continuing',
+                {
+                  reason,
+                  error,
+                },
+              );
             }
           }
           if (abort.signal.aborted) {
