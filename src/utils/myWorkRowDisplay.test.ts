@@ -24,7 +24,6 @@ const baseChapter: MyWorkChapter = {
   bookCode: 'LUK',
   assignedUserId: null,
   peerCheckerId: null,
-  draftDownloadRole: null,
 };
 
 describe('getMyWorkRowDisplay', () => {

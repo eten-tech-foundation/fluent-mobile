@@ -10,7 +10,6 @@ import {
 } from '../utils/formatLastActivity';
 import { deriveProjectSyncState } from '../utils/projectSyncState';
 import {
-  classifyMyWorkDraftDownloadRole,
   getMyWorkChapterQueryParams,
   MY_WORK_CHAPTER_WHERE,
 } from '../utils/myWorkChapterFilter';
@@ -699,15 +698,6 @@ function mapMyWorkChapterRow(
       peerCheckerId != null && Number.isFinite(peerCheckerId)
         ? peerCheckerId
         : null,
-    draftDownloadRole: classifyMyWorkDraftDownloadRole({
-      userId: currentUserId,
-      assignmentStatus: row.status,
-      peerCheckerId:
-        peerCheckerId != null && Number.isFinite(peerCheckerId)
-          ? peerCheckerId
-          : null,
-      projectId: Number.isFinite(projectId) ? projectId : 0,
-    }),
   };
 }
 

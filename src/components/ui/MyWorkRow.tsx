@@ -5,7 +5,7 @@ import { MyWorkChapter } from '../../types/db/types';
 import {
   buildMyWorkDraftDownloadRequest,
   getValidatedMyWorkDownloadUserId,
-} from '../../utils/myWorkChapterFilter';
+} from '../../utils/myWorkDraftDownload';
 import { getMyWorkRowDisplay } from '../../utils/myWorkRowDisplay';
 import { theme } from '../../theme';
 import { ChapterConflictIndicator } from './ChapterConflictIndicator';
