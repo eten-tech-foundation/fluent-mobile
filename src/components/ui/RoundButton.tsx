@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Pressable,
+  Text,
   View,
   type GestureResponderEvent,
   type StyleProp,
@@ -30,6 +31,11 @@ export interface RoundButtonProps {
    * blue screens and always uses Canvas colors.
    */
   variant?: 'soft' | 'flat';
+  /**
+   * Text after the icon. The circle stretches into a pill at the same height,
+   * for actions that need a word, like Listen and Record.
+   */
+  label?: string;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -53,6 +59,7 @@ function RoundButtonBody({
   accessibilityLabel,
   onPress,
   variant,
+  label,
   disabled = false,
   style,
   testID,
@@ -64,6 +71,11 @@ function RoundButtonBody({
       width: BUTTON_SIZE,
       height: BUTTON_SIZE,
       borderRadius: t.radius.full,
+    },
+    pill: {
+      width: undefined,
+      minWidth: BUTTON_SIZE,
+      paddingHorizontal: t.spacing.lg,
     },
     face: {
       position: 'absolute',
@@ -87,17 +99,20 @@ function RoundButtonBody({
       position: 'absolute',
       top: -t.spacing.xxs,
       left: -t.spacing.xxs,
-      width: BUTTON_SIZE + t.spacing.xxs * 2,
-      height: BUTTON_SIZE + t.spacing.xxs * 2,
+      right: -t.spacing.xxs,
+      bottom: -t.spacing.xxs,
       borderRadius: t.radius.full,
       borderWidth: t.stroke[1],
       borderColor: t.roles.borderRim,
     },
     content: {
       flex: 1,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: t.spacing.sm,
     },
+    label: { ...t.type.title, color: t.roles.fgPrimary },
     disabled: { opacity: t.opacity.disabled },
   }));
 
@@ -128,7 +143,12 @@ function RoundButtonBody({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
-      style={[styles.button, style, disabled && styles.disabled]}
+      style={[
+        styles.button,
+        label ? styles.pill : null,
+        style,
+        disabled && styles.disabled,
+      ]}
       testID={testID}
     >
       {soft ? (
@@ -150,6 +170,11 @@ function RoundButtonBody({
       />
       <Animated.View style={[styles.content, iconStyle]}>
         <Icon color={theme.roles.fgPrimary} size={theme.controlSizes.icon24} />
+        {label ? (
+          <Text style={styles.label} numberOfLines={1}>
+            {label}
+          </Text>
+        ) : null}
       </Animated.View>
     </Pressable>
   );

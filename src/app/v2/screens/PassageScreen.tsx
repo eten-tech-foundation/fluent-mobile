@@ -62,6 +62,8 @@ const SNAP_AT = 0.35;
 const FLING = 500;
 /** The hero shows this many lines of the script at body size. */
 const PREVIEW_LINES = 4;
+/** Round button width; the title starts after Back, then slides over. */
+const ROUND_BUTTON = 48;
 
 /**
  * FIA listening steps. Their audio has no source yet (Q11 in
@@ -180,7 +182,6 @@ function Sheet({
   const [recordMode, setRecordMode] = useState(false);
   const [container, setContainer] = useState(0);
   const [header, setHeader] = useState(0);
-  const [title, setTitle] = useState(0);
   const [actions, setActions] = useState(0);
   const [panel, setPanel] = useState(0);
   const progress = useSharedValue(0);
@@ -198,11 +199,11 @@ function Sheet({
   const smallLine = lineProp(small.lineHeight);
   const largeLine = lineProp(large.lineHeight);
   const headerBottom = insets.top + header;
-  const scriptTop = headerBottom + title + spacing.lg;
+  const scriptTop = headerBottom + spacing.sm;
   const preview = PREVIEW_LINES * small.lineHeight * capped;
   const actionsTop = scriptTop + preview + spacing.lg;
   const collapsed = actionsTop + actions + spacing.xl;
-  const measured = header > 0 && title > 0 && actions > 0 && container > 0;
+  const measured = header > 0 && actions > 0 && container > 0;
   const range = Math.max(1, container - collapsed);
   const fullScript = Math.max(preview, container - headerBottom - panel);
 
@@ -276,21 +277,17 @@ function Sheet({
       paddingVertical: t.spacing.md,
     },
     corner: { position: 'absolute', top: t.spacing.md, right: 0 },
-    // Starts at the left edge, where the shrinking title lands, not after
-    // the faded Back button.
+    // The player header's title: beside Back in the hero, then it slides to
+    // the left edge as Back fades.
     overlineSlot: {
       position: 'absolute',
       top: 0,
       bottom: 0,
       left: 0,
-      right: 56,
+      right: ROUND_BUTTON + t.spacing.md,
       justifyContent: 'center',
     },
-    overline: { ...t.type.overline, color: t.roles.fgSecondary },
-    // Shrinks from its top left into the overline slot. An array, since
-    // Reanimated hands the string form to Android unparsed.
-    titleLayer: { transformOrigin: [0, 0, 0] },
-    title: { ...t.type.heading, color: t.roles.fgPrimary },
+    overline: { ...t.type.overline, color: t.roles.fgPrimary },
     reading: { ...t.type.reading, color: t.roles.fgPrimary },
     // No lineHeight, so it follows the script's as that grows.
     verseNumber: {
@@ -301,7 +298,14 @@ function Sheet({
     },
     note: { ...t.type.label, color: t.roles.fgSecondary },
     actions: { gap: t.spacing.lg },
-    actionRow: { flexDirection: 'row', gap: t.spacing.xxl },
+    actionRow: { flexDirection: 'row', gap: t.spacing.md },
+    handle: { alignItems: 'center', gap: t.spacing.xs },
+    grip: {
+      width: 36,
+      height: 4,
+      borderRadius: t.radius.full,
+      backgroundColor: t.roles.fgSecondary,
+    },
     bottom: {
       position: 'absolute',
       left: 0,
@@ -311,35 +315,28 @@ function Sheet({
     key: { flex: 1 },
   }));
 
-  // Overline sits centered in the header; the title shrinks to its size there.
-  const overlineScale =
-    theme.type.overline.fontSize / theme.type.heading.fontSize;
-  const overlineY = insets.top + (header - theme.type.overline.lineHeight) / 2;
-
   const frameStyle = useAnimatedStyle(() =>
     measured
       ? { height: collapsed + range * Math.min(1, progress.value) }
       : { height: 0 },
   );
+  // Back clears out before the title slides across where it was.
   const backStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.3], [1, 0], 'clamp'),
+    opacity: interpolate(progress.value, [0, 0.12], [1, 0], 'clamp'),
   }));
   const closeStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0.6, 1], [0, 1], 'clamp'),
   }));
+  const titleSlide = ROUND_BUTTON + spacing.md;
   const titleStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.55, 0.85], [1, 0], 'clamp'),
     transform: [
       {
-        translateY: interpolate(
+        translateX: interpolate(
           progress.value,
-          [0, 1],
-          [0, overlineY - headerBottom],
+          [0.08, 0.5],
+          [titleSlide, 0],
           'clamp',
         ),
-      },
-      {
-        scale: interpolate(progress.value, [0, 1], [1, overlineScale], 'clamp'),
       },
     ],
   }));
@@ -399,26 +396,6 @@ function Sheet({
     <View style={styles.sheet} onLayout={measure(setContainer)}>
       <GestureDetector gesture={drag(!expanded)}>
         <Animated.View style={[styles.frame, frameStyle]}>
-          <Animated.View
-            style={[
-              styles.layer,
-              styles.titleLayer,
-              { top: headerBottom },
-              titleStyle,
-            ]}
-            onLayout={measure(setTitle)}
-            importantForAccessibility={
-              expanded ? 'no-hide-descendants' : 'auto'
-            }
-          >
-            <Text
-              style={styles.title}
-              accessibilityRole="header"
-              numberOfLines={2}
-            >
-              {heroTitle}
-            </Text>
-          </Animated.View>
           <Animated.ScrollView
             ref={scriptRef}
             style={[styles.layer, scriptStyle]}
@@ -470,30 +447,52 @@ function Sheet({
           >
             <View style={styles.actionRow}>
               {passage.downloaded ? null : (
-                <Action
+                <RoundButton
+                  variant="flat"
                   icon={ArrowDown}
                   label={
                     downloadState === 'downloading' ? 'Downloading' : 'Download'
+                  }
+                  accessibilityLabel={
+                    downloadState === 'downloading'
+                      ? 'Downloading the text'
+                      : 'Download the text'
                   }
                   onPress={onDownload}
                   disabled={downloadState === 'downloading'}
                   testID="passage-download"
                 />
               )}
-              <Action
+              <RoundButton
+                variant="flat"
                 icon={PlayFill}
                 label="Listen"
+                accessibilityLabel="Listen"
                 onPress={() => open(false)}
                 testID="passage-listen"
               />
-              <Action
+              <RoundButton
+                variant="flat"
                 icon={RecordIcon}
                 label={passage.takes.length > 0 ? 'Record a take' : 'Record'}
+                accessibilityLabel={
+                  passage.takes.length > 0 ? 'Record a take' : 'Record'
+                }
                 onPress={() => open(true)}
                 testID="passage-record"
               />
             </View>
             <Takes takes={passage.takes} onPress={() => open(true)} />
+            <Pressable
+              onPress={() => open(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Open the full player"
+              style={styles.handle}
+              testID="passage-handle"
+            >
+              <View style={styles.grip} />
+              <Text style={styles.note}>Pull up for the full player</Text>
+            </Pressable>
           </Animated.View>
           <GestureDetector gesture={drag(expanded)}>
             <View
@@ -516,13 +515,13 @@ function Sheet({
                 />
               </Animated.View>
               <Animated.View
-                style={[styles.overlineSlot, closeStyle]}
+                style={[styles.overlineSlot, titleStyle]}
                 pointerEvents="none"
               >
                 <Text
                   style={styles.overline}
                   numberOfLines={1}
-                  importantForAccessibility={expanded ? 'auto' : 'no'}
+                  accessibilityRole="header"
                 >
                   {heroTitle}
                 </Text>
@@ -646,41 +645,6 @@ function Footer({
 function RecordIcon({ size }: NextIconProps) {
   const theme = useTheme();
   return <RecordFill color={theme.roles.accentRecord} size={size} />;
-}
-
-/** A Flat round button with its label, for the dark hero. */
-function Action({
-  icon,
-  label,
-  onPress,
-  disabled,
-  testID,
-}: {
-  icon: React.ComponentType<NextIconProps>;
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  testID?: string;
-}) {
-  const styles = useThemedStyles(t => ({
-    action: { alignItems: 'center', gap: t.spacing.xs },
-    label: { ...t.type.label, color: t.roles.fgPrimary },
-  }));
-  return (
-    <View style={styles.action}>
-      <RoundButton
-        variant="flat"
-        icon={icon}
-        accessibilityLabel={label}
-        onPress={onPress}
-        disabled={disabled}
-        testID={testID}
-      />
-      <Text style={styles.label} importantForAccessibility="no">
-        {label}
-      </Text>
-    </View>
-  );
 }
 
 /** Takes of the whole passage as numbered chips, like Figma's Recorder. */

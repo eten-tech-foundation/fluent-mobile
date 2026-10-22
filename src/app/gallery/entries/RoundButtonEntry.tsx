@@ -1,9 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { ArrowDown, ArrowRight, Waveform } from '../../../components/ui/icons';
+import {
+  ArrowDown,
+  ArrowRight,
+  PlayFill,
+  RecordFill,
+  Waveform,
+  type NextIconProps,
+} from '../../../components/ui/icons';
 import { ProgressRing } from '../../../components/ui/ProgressRing';
 import { RoundButton } from '../../../components/ui/RoundButton';
-import { ColorModeScope, useThemedStyles } from '../../../theme/useTheme';
+import {
+  ColorModeScope,
+  useTheme,
+  useThemedStyles,
+} from '../../../theme/useTheme';
 
 /**
  * Listening progress in whole steps, so a track lands exactly on complete.
@@ -159,6 +170,56 @@ function PlayerHeader() {
   );
 }
 
+function RecordIcon({ size }: NextIconProps) {
+  const theme = useTheme();
+  return <RecordFill color={theme.roles.accentRecord} size={size} />;
+}
+
+/** Flat with a label: the passage hero's two actions (Canvas). */
+function HeroActions() {
+  const [last, setLast] = useState<string | null>(null);
+  const styles = useThemedStyles(t => ({
+    hero: {
+      gap: t.spacing.md,
+      padding: t.spacing.lg,
+      borderRadius: t.radius.sm,
+      backgroundColor: t.roles.bgDefault,
+    },
+    row: { flexDirection: 'row', gap: t.spacing.md },
+    hint: {
+      color: t.roles.fgSecondary,
+      fontSize: t.typography.sizes.sm,
+      includeFontPadding: false,
+    },
+  }));
+
+  return (
+    <View style={styles.hero}>
+      <View style={styles.row}>
+        <RoundButton
+          variant="flat"
+          icon={PlayFill}
+          label="Listen"
+          accessibilityLabel="Listen"
+          onPress={() => setLast('Listen')}
+          testID="gallery-hero-listen"
+        />
+        <RoundButton
+          variant="flat"
+          icon={RecordIcon}
+          label="Record"
+          accessibilityLabel="Record"
+          onPress={() => setLast('Record')}
+          testID="gallery-hero-record"
+        />
+      </View>
+      <Text style={styles.hint}>
+        {last ? `Opens the player in ${last} mode` : 'Opens the player'}
+      </Text>
+    </View>
+  );
+}
+
 export function RoundButtonEntry() {
   const styles = useThemedStyles(t => ({
     demos: { gap: t.spacing.xxl },
@@ -181,6 +242,14 @@ export function RoundButtonEntry() {
         <Text style={styles.demoTitle}>Player header (Flat)</Text>
         <ColorModeScope value="canvas">
           <PlayerHeader />
+        </ColorModeScope>
+      </View>
+      <View style={styles.demo}>
+        <Text style={styles.demoTitle}>
+          Passage actions (Flat with a label)
+        </Text>
+        <ColorModeScope value="canvas">
+          <HeroActions />
         </ColorModeScope>
       </View>
     </View>

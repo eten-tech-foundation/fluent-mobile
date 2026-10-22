@@ -72,6 +72,27 @@ describe('RoundButton', () => {
     ).toMatchObject({ opacity: legacyTheme.opacity.disabled });
   });
 
+  it('stretches into a pill with its label beside the icon', () => {
+    const onPress = jest.fn();
+    render(
+      <RoundButton
+        variant="flat"
+        icon={ColorIcon}
+        label="Listen"
+        accessibilityLabel="Listen"
+        onPress={onPress}
+        testID="b"
+      />,
+    );
+
+    expect(screen.getByText('Listen')).toBeTruthy();
+    expect(
+      StyleSheet.flatten(screen.getByTestId('b').props.style),
+    ).toMatchObject({ width: undefined, minWidth: 48 });
+    fireEvent.press(screen.getByLabelText('Listen'));
+    expect(onPress).toHaveBeenCalled();
+  });
+
   it('shows the rim on Soft only', () => {
     const { rerender } = render(
       <RoundButton icon={ColorIcon} accessibilityLabel="Download" testID="b" />,
