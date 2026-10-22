@@ -34,15 +34,18 @@ import {
   type NextIconProps,
 } from '../../../components/ui/icons';
 import { Key } from '../../../components/ui/Key';
+import { PageDots } from '../../../components/ui/PageDots';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { ProgressRing } from '../../../components/ui/ProgressRing';
 import { RoundButton } from '../../../components/ui/RoundButton';
 import { VerseChip } from '../../../components/ui/VerseChip';
+import { Waveform, type WaveformVerse } from '../../../components/ui/Waveform';
 import { useHaptics } from '../../../hooks/useHaptics';
 import {
   usePassage,
   type Passage,
   type PassageTake,
+  type PassageVerse,
 } from '../../../hooks/usePassage';
 import { hrefs } from '../../../navigation/hrefs';
 import { formatLastActivity } from '../../../utils/formatLastActivity';
@@ -189,6 +192,9 @@ function Sheet({
   const [panel, setPanel] = useState(0);
   const progress = useSharedValue(0);
   const scriptRef = useRef<ScrollView>(null);
+  const pagerRef = useRef<ScrollView>(null);
+  /** 0 is the script; then one page per listening material. */
+  const [page, setPage] = useState(0);
 
   const { spacing } = theme;
   // The script grows from body size in the hero to reading size in the
@@ -209,13 +215,24 @@ function Sheet({
   const measured = header > 0 && actions > 0 && container > 0;
   const range = Math.max(1, container - collapsed);
   const fullScript = Math.max(preview, container - headerBottom - panel);
+  const pageWidth = headerWidth;
+  const goToPage = useCallback(
+    (index: number) => {
+      setPage(index);
+      pagerRef.current?.scrollTo({ x: index * pageWidth, animated: false });
+    },
+    [pageWidth],
+  );
 
   const settled = useCallback(() => haptics.press(), [haptics]);
   const animateTo = useCallback(
     (open: boolean, velocity = 0) => {
       setExpanded(open);
       // The hero previews the first verses, wherever the player was scrolled.
-      if (!open) scriptRef.current?.scrollTo({ y: 0, animated: true });
+      if (!open) {
+        scriptRef.current?.scrollTo({ y: 0, animated: true });
+        goToPage(0);
+      }
       const target = open ? 1 : 0;
       const done = (finished?: boolean) => {
         'worklet';
@@ -225,14 +242,24 @@ function Sheet({
         ? withTiming(target, { duration: 0 }, done)
         : withSpring(target, { ...SHEET_SPRING, velocity }, done);
     },
-    [progress, reduceMotion, settled],
+    [progress, reduceMotion, settled, goToPage],
   );
+  /** Opens on the script, or on a listening material's page. */
   const open = useCallback(
-    (record: boolean) => {
+    (record: boolean, atPage = 0) => {
       setRecordMode(record);
+      goToPage(record ? 0 : atPage);
       animateTo(true);
     },
-    [animateTo],
+    [animateTo, goToPage],
+  );
+  // Recording is always of the script.
+  const changeMode = useCallback(
+    (record: boolean) => {
+      setRecordMode(record);
+      if (record) goToPage(0);
+    },
+    [goToPage],
   );
 
   useEffect(() => {
@@ -418,41 +445,65 @@ function Sheet({
     <View style={styles.sheet} onLayout={measure(setContainer)}>
       <GestureDetector gesture={drag(!expanded)}>
         <Animated.View style={[styles.frame, frameStyle]}>
+          {/* Swipes from the script through the listening materials. */}
           <Animated.ScrollView
-            ref={scriptRef}
+            ref={pagerRef}
+            horizontal
+            pagingEnabled
             style={[styles.layer, scriptStyle]}
-            scrollEnabled={expanded}
-            showsVerticalScrollIndicator={false}
-            testID="passage-script-frame"
+            scrollEnabled={expanded && !recordMode}
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={e =>
+              setPage(
+                Math.round(e.nativeEvent.contentOffset.x / (pageWidth || 1)),
+              )
+            }
+            testID="passage-pager"
           >
-            {passage.downloaded ? (
-              <Pressable
-                onPress={expanded ? undefined : () => open(false)}
-                accessibilityRole={expanded ? undefined : 'button'}
-                accessibilityLabel={
-                  expanded ? undefined : 'Open the script in the player'
-                }
-                testID="passage-script"
-              >
-                <Animated.Text
-                  style={[styles.reading, textStyle]}
-                  maxFontSizeMultiplier={theme.fontScale.readingMax}
+            <ScrollView
+              ref={scriptRef}
+              style={{ width: pageWidth }}
+              scrollEnabled={expanded}
+              showsVerticalScrollIndicator={false}
+              testID="passage-script-frame"
+            >
+              {passage.downloaded ? (
+                <Pressable
+                  onPress={expanded ? undefined : () => open(false)}
+                  accessibilityRole={expanded ? undefined : 'button'}
+                  accessibilityLabel={
+                    expanded ? undefined : 'Open the script in the player'
+                  }
+                  testID="passage-script"
                 >
-                  {passage.verses.map(v => (
-                    <Text key={`${v.chapterNumber}:${v.verseNumber}`}>
-                      <Text style={styles.verseNumber}>{v.verseNumber} </Text>
-                      {v.text}{' '}
-                    </Text>
-                  ))}
-                </Animated.Text>
-              </Pressable>
-            ) : (
-              <Text style={styles.note}>
-                {downloadState === 'failed'
-                  ? "The text didn't download. Check your connection and try again."
-                  : 'The text for this passage isn’t on this phone yet.'}
-              </Text>
-            )}
+                  <Animated.Text
+                    style={[styles.reading, textStyle]}
+                    maxFontSizeMultiplier={theme.fontScale.readingMax}
+                  >
+                    {passage.verses.map(v => (
+                      <Text key={`${v.chapterNumber}:${v.verseNumber}`}>
+                        <Text style={styles.verseNumber}>{v.verseNumber} </Text>
+                        {v.text}{' '}
+                      </Text>
+                    ))}
+                  </Animated.Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.note}>
+                  {downloadState === 'failed'
+                    ? "The text didn't download. Check your connection and try again."
+                    : 'The text for this passage isn’t on this phone yet.'}
+                </Text>
+              )}
+            </ScrollView>
+            {STEPS.map(name => (
+              <MaterialPage
+                key={name}
+                name={name}
+                width={pageWidth}
+                hidden={!expanded}
+              />
+            ))}
           </Animated.ScrollView>
           <Animated.View
             style={[
@@ -583,6 +634,7 @@ function Sheet({
           reference={passage.reference}
           progress={progress}
           hidden={expanded}
+          onOpen={step => open(false, step + 1)}
         />
       </ColorModeScope>
       <Animated.View
@@ -593,6 +645,8 @@ function Sheet({
         testID="passage-player"
       >
         <Footer
+          passage={passage}
+          page={page}
           recordMode={recordMode}
           takes={passage.takes}
           onOpenDrafting={onOpenDrafting}
@@ -600,7 +654,7 @@ function Sheet({
         <ColorModeScope value="hardware">
           <HardwarePanel
             recordMode={recordMode}
-            onRecordModeChange={setRecordMode}
+            onRecordModeChange={changeMode}
           >
             {recordMode ? (
               <>
@@ -652,11 +706,20 @@ function Sheet({
   );
 }
 
+/**
+ * Under the script, as in the Figma Listen player: the waveform with its verse
+ * chips, then the reference and which page of the script is showing. Record
+ * mode adds the takes.
+ */
 function Footer({
+  passage,
+  page,
   recordMode,
   takes,
   onOpenDrafting,
 }: {
+  passage: Ready;
+  page: number;
   recordMode: boolean;
   takes: PassageTake[];
   onOpenDrafting: () => void;
@@ -666,14 +729,89 @@ function Footer({
       backgroundColor: t.roles.bgDefault,
       paddingHorizontal: t.spacing.xl,
       paddingVertical: t.spacing.md,
+      gap: t.spacing.md,
     },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    reference: { ...t.type.label, color: t.roles.fgPrimary },
   }));
-  if (!recordMode || takes.length === 0) return null;
+  const pages = 1 + STEPS.length;
+  const name = page === 0 ? passage.reference : STEPS[page - 1];
   return (
     <View style={styles.footer}>
-      <Takes takes={takes} onPress={onOpenDrafting} />
+      {recordMode ? (
+        <Takes takes={takes} onPress={onOpenDrafting} />
+      ) : (
+        // Materials have no audio yet, so their waveform stays empty.
+        <Waveform
+          verses={page === 0 ? scriptBars(passage.verses) : []}
+          progress={0}
+          accessibilityLabel={`${name} playback`}
+          testID="passage-waveform"
+        />
+      )}
+      <View style={styles.row}>
+        <Text style={styles.reference} numberOfLines={1}>
+          {name}
+        </Text>
+        <PageDots
+          count={pages}
+          index={page}
+          accessibilityLabel={`${name}, ${page + 1} of ${pages}`}
+          testID="passage-pages"
+        />
+      </View>
     </View>
   );
+}
+
+/** A listening material in the player. Its audio has no source yet (Q11). */
+function MaterialPage({
+  name,
+  width,
+  hidden,
+}: {
+  name: string;
+  width: number;
+  hidden: boolean;
+}) {
+  const styles = useThemedStyles(t => ({
+    page: { gap: t.spacing.md },
+    name: { ...t.type.heading, color: t.roles.fgPrimary },
+    note: { ...t.type.label, color: t.roles.fgSecondary },
+  }));
+  return (
+    <View
+      style={[styles.page, { width }]}
+      importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
+    >
+      <Text style={styles.name}>{name}</Text>
+      <Text style={styles.note}>This step's audio isn't connected yet.</Text>
+    </View>
+  );
+}
+
+/** Waveform bar heights in pt (Waveform's row is 52). */
+const BAR_MIN = 6;
+const BAR_MAX = 52;
+
+/**
+ * Stand-in levels until playback is wired: a bar per word, taller for longer
+ * words, so each verse's chip and segment follow its length.
+ */
+function scriptBars(verses: PassageVerse[]): WaveformVerse[] {
+  return verses
+    .filter(v => v.text)
+    .map(v => ({
+      verse: v.verseNumber,
+      bars: v.text
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(word => Math.min(BAR_MAX, BAR_MIN + word.length * 5)),
+    }));
 }
 
 /** Like a music app's "Updated 3d ago": how many takes, and when. */
@@ -740,10 +878,13 @@ function Materials({
   reference,
   progress,
   hidden,
+  onOpen,
 }: {
   reference: string;
   progress: SharedValue<number>;
   hidden: boolean;
+  /** Opens the player on that material's page. */
+  onOpen: (step: number) => void;
 }) {
   const sinkStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0.2, 0.55], [1, 0], 'clamp'),
@@ -779,7 +920,7 @@ function Materials({
           </Text>
           <Text style={styles.meta}>Step audio isn't connected yet</Text>
         </View>
-        {STEPS.map(name => (
+        {STEPS.map((name, step) => (
           <View key={name} style={styles.row}>
             <View style={styles.text}>
               <Text style={styles.name}>{name}</Text>
@@ -788,8 +929,9 @@ function Materials({
             <ProgressRing value={0} accessibilityLabel={`${name} listened`}>
               <RoundButton
                 icon={ArrowRight}
-                accessibilityLabel={`Play ${name}`}
-                disabled
+                accessibilityLabel={`Open ${name}`}
+                onPress={() => onOpen(step)}
+                testID={`passage-step-${step}`}
               />
             </ProgressRing>
           </View>

@@ -107,7 +107,16 @@ describe('PassageScreen', () => {
     );
     expect(screen.getByText('Listening materials')).toBeTruthy();
     expect(screen.getByText('Hear & Heart')).toBeTruthy();
-    expect(screen.getByLabelText('Play Hear & Heart')).toBeTruthy();
+    expect(screen.getByLabelText('Open Hear & Heart')).toBeTruthy();
+  });
+
+  it("opens the player on a listening material's page", () => {
+    render(<PassageScreen />);
+
+    fireEvent.press(screen.getByTestId('passage-step-1'));
+
+    expect(screen.getByLabelText('Setting the Stage, 3 of 7')).toBeTruthy();
+    expect(screen.getByLabelText('Close the player')).toBeTruthy();
   });
 
   it('opens the player in Record mode, whose keys open drafting', () => {
