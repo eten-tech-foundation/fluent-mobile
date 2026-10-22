@@ -358,6 +358,13 @@ function Sheet({
       right: 0,
       bottom: 0,
     },
+    // Figma fade/reading over the last line, so the script trails off.
+    fade: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      experimental_backgroundImage: t.fade.reading,
+    },
     key: { flex: 1 },
   }));
 
@@ -398,6 +405,24 @@ function Sheet({
     ),
     height: interpolate(progress.value, [0, 1], [preview, fullScript], 'clamp'),
   }));
+  // One line deep, at whatever size the script is.
+  const fadeSmall = small.lineHeight * capped;
+  const fadeLarge = large.lineHeight * capped;
+  const fadeStyle = useAnimatedStyle(() => {
+    const height = interpolate(
+      progress.value,
+      [0, 1],
+      [fadeSmall, fadeLarge],
+      'clamp',
+    );
+    const top = interpolate(
+      progress.value,
+      [0, 1],
+      [scriptTop + preview, headerBottom + fullScript],
+      'clamp',
+    );
+    return { top: top - height, height };
+  });
   const textStyle = useAnimatedStyle(() => ({
     fontSize: interpolate(
       progress.value,
@@ -505,6 +530,11 @@ function Sheet({
               />
             ))}
           </Animated.ScrollView>
+          <Animated.View
+            style={[styles.fade, fadeStyle]}
+            pointerEvents="none"
+            testID="passage-fade"
+          />
           <Animated.View
             style={[
               styles.layer,
