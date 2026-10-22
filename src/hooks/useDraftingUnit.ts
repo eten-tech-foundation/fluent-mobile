@@ -8,6 +8,7 @@ import {
   subscribeToDraftingUnit,
   type DraftingUnit,
 } from '../services/draftingUnitPreference';
+import { scheduleDisplayModePush } from '../services/displayModeSettingsSync';
 
 export function useDraftingUnit() {
   const draftingUnit = useSyncExternalStore(
@@ -23,7 +24,9 @@ export function useDraftingUnit() {
   );
 
   const setUnit = useCallback((unit: DraftingUnit) => {
-    setDraftingUnit(unit, getActiveUserId());
+    const userId = getActiveUserId();
+    setDraftingUnit(unit, userId);
+    void scheduleDisplayModePush(userId);
   }, []);
 
   return { draftingUnit, setDraftingUnit: setUnit };

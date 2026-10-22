@@ -48,6 +48,24 @@ describe('PrepareOfflineDownloadFooter', () => {
     ).toHaveTextContent('Download 18 MB');
   });
 
+  it('shows incomplete total when unknown sizes remain (#756)', () => {
+    render(
+      <PrepareOfflineDownloadFooter
+        {...defaultProps}
+        totalBytes={2.4 * 1024 * 1024}
+        totalBytesIncomplete
+        downloadButtonLabel="Download at least 2.4 MB"
+      />,
+    );
+
+    expect(screen.getByTestId('prepare-offline-total-bytes')).toHaveTextContent(
+      'At least 2.4 MB',
+    );
+    expect(
+      screen.getByTestId('prepare-offline-total-bytes'),
+    ).not.toHaveTextContent(/^2\.4 MB$/);
+  });
+
   it('calls onDownload when the download button is pressed', () => {
     const onDownload = jest.fn();
     render(

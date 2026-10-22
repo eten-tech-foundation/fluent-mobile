@@ -60,14 +60,16 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
   });
 
   it('applies Foundations type sizes onto Theme.typography', () => {
-    expect(nextTheme.typography.sizes.lg).toBe(nextTypeStyles.title.size);
-    expect(nextTheme.typography.sizes.sm).toBe(nextTypeStyles.label.size);
-    expect(nextTheme.typography.sizes.xl).toBe(nextTypeStyles.overline.size);
+    expect(nextTheme.typography.sizes.lg).toBe(nextTypeStyles.title.fontSize);
+    expect(nextTheme.typography.sizes.sm).toBe(nextTypeStyles.label.fontSize);
+    expect(nextTheme.typography.sizes.xl).toBe(
+      nextTypeStyles.overline.fontSize,
+    );
     // reading (42) must not alias onto display (record timer)
     expect(nextTheme.typography.sizes.display).toBe(
       legacyTheme.typography.sizes.display,
     );
-    expect(nextTypeStyles.reading.size).toBe(42);
+    expect(nextTypeStyles.reading.fontSize).toBe(42);
   });
 
   it('re-derives listCard and headerLayout from resolved tokens', () => {
@@ -101,6 +103,22 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     });
     expect(nextTheme.opacity.disabled).toBe(0.4);
     expect(nextTheme.controlSizes.icon32).toBe(32);
+    expect(nextTheme.type.reading).toMatchObject({
+      fontSize: 42,
+      lineHeight: 52,
+      fontWeight: '400',
+      includeFontPadding: false,
+    });
+    expect(nextTheme.type.readingStrong.fontWeight).toBe('700');
+    // No sans family until fonts load, so Android keeps 500/600 weights.
+    expect(nextTheme.type.title).not.toHaveProperty('fontFamily');
+    expect(nextTheme.type.overline).toMatchObject({
+      fontFamily: 'monospace',
+      fontSize: 20,
+      textTransform: 'uppercase',
+    });
+    expect(nextTheme.typeTelugu.reading.lineHeight).toBe(64);
+    expect(nextTheme.fontScale.readingMax).toBe(1.3);
     expect(nextTheme.radius.xs).toBe(4);
   });
 

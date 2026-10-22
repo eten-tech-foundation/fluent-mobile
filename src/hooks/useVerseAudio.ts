@@ -28,6 +28,8 @@ import { usePlaybackEngine } from './usePlaybackEngine';
 import { useRecordingEngine } from './useRecordingEngine';
 import { getConnectivitySnapshot } from '../services/connectivity';
 import { notifyPendingUploads } from '../services/uploadOrchestrator';
+import { onRecordingDataChanged } from '../services/recordingDataEvents';
+import { onUploadSessionEvent } from '../services/syncEvents';
 import { shouldEndPlaybackOnIdle } from './playbackStatusGuards';
 import { verseAudioReducer, type VerseAudioState } from './verseAudioReducer';
 import { MAX_RECORDING_TAKES } from '../constants/recordingTakes';
@@ -622,6 +624,37 @@ export function useVerseAudio({
     refreshAllTakes,
     clearStitchQueue,
   ]);
+
+  // A dual-mounted Record tab keeps its take list across navigation. Upload
+  // events update SQLite without changing the verse ID; refresh only row data
+  // here so a status badge update never stops playback or resets capture state.
+  useEffect(() => {
+    if (bibleTextId === null) return;
+    let cancelled = false;
+    let requestId = 0;
+    const refresh = async () => {
+      const currentRequest = ++requestId;
+      try {
+        const rows = await loadTakesFn(bibleTextId);
+        if (cancelled || currentRequest !== requestId) return;
+        setTakes(rows);
+        await refreshAllTakes(bibleTextId);
+      } catch (error) {
+        log.warn('Failed to refresh recording status', { error });
+      }
+    };
+    const unsubscribeData = onRecordingDataChanged(() => {
+      void refresh();
+    });
+    const unsubscribeUpload = onUploadSessionEvent(() => {
+      void refresh();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribeData();
+      unsubscribeUpload();
+    };
+  }, [bibleTextId, loadTakesFn, refreshAllTakes]);
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
