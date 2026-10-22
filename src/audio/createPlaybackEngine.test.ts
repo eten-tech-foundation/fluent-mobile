@@ -504,4 +504,136 @@ describe('createPlaybackEngine', () => {
     expect(statuses).not.toContain('playing');
     expect(engine.getStatus()).toBe('idle');
   });
+
+  it('stop during play load prevents player.play and late playing status', async () => {
+    const player = makeFakePlayer({ unloadPolls: 3, durationSec: 3 });
+    const statuses: string[] = [];
+    const delayReleases: Array<() => void> = [];
+    const engine = createPlaybackEngine({
+      player,
+      onStatusChange: s => statuses.push(s),
+      delayMs: () =>
+        new Promise<void>(resolve => {
+          delayReleases.push(resolve);
+        }),
+    });
+
+    const playing = engine.play('file:///take.m4a');
+
+    await new Promise<void>((resolve, reject) => {
+      const started = Date.now();
+      const tick = () => {
+        if (player.calls.includes('replace') && delayReleases.length > 0) {
+          resolve();
+          return;
+        }
+        if (Date.now() - started > 2000) {
+          reject(new Error('play load never entered waitUntilLoaded'));
+          return;
+        }
+        setImmediate(tick);
+      };
+      tick();
+    });
+
+    await engine.stop();
+    while (delayReleases.length > 0) {
+      const release = delayReleases.shift()!;
+      release();
+      await new Promise<void>(r => setImmediate(r));
+    }
+    await playing;
+
+    expect(player.calls).not.toContain('play');
+    expect(statuses).not.toContain('playing');
+    expect(engine.getStatus()).toBe('idle');
+  });
+
+  it('stop during post-play settle prevents late playing status', async () => {
+    const player = makeFakePlayer({ durationSec: 3 });
+    const statuses: string[] = [];
+    const delayReleases: Array<() => void> = [];
+    const engine = createPlaybackEngine({
+      player,
+      onStatusChange: s => statuses.push(s),
+      delayMs: () =>
+        new Promise<void>(resolve => {
+          delayReleases.push(resolve);
+        }),
+    });
+
+    const playing = engine.play('file:///take.m4a');
+
+    await new Promise<void>((resolve, reject) => {
+      const started = Date.now();
+      const tick = () => {
+        if (delayReleases.length > 0 && player.calls.includes('play')) {
+          resolve();
+          return;
+        }
+        if (Date.now() - started > 2000) {
+          reject(new Error('play never reached post-play delay'));
+          return;
+        }
+        setImmediate(tick);
+      };
+      tick();
+    });
+
+    await engine.stop();
+    while (delayReleases.length > 0) {
+      const release = delayReleases.shift()!;
+      release();
+      await new Promise<void>(r => setImmediate(r));
+    }
+    await playing;
+
+    expect(statuses).not.toContain('playing');
+    expect(engine.getStatus()).toBe('idle');
+  });
+
+  it('stop cancels an in-flight resume before late playing status', async () => {
+    const player = makeFakePlayer({ durationSec: 3 });
+    const statuses: string[] = [];
+    const delayReleases: Array<() => void> = [];
+    const engine = createPlaybackEngine({
+      player,
+      onStatusChange: s => statuses.push(s),
+      delayMs: () =>
+        new Promise<void>(resolve => {
+          delayReleases.push(resolve);
+        }),
+    });
+
+    await engine.load('file:///take.m4a');
+    // Instant delay for the load path above; gate resume's post-play delays.
+    const resuming = engine.resume(500);
+
+    await new Promise<void>((resolve, reject) => {
+      const started = Date.now();
+      const tick = () => {
+        if (delayReleases.length > 0 && player.calls.includes('play')) {
+          resolve();
+          return;
+        }
+        if (Date.now() - started > 2000) {
+          reject(new Error('resume never reached post-play delay'));
+          return;
+        }
+        setImmediate(tick);
+      };
+      tick();
+    });
+
+    await engine.stop();
+    while (delayReleases.length > 0) {
+      const release = delayReleases.shift()!;
+      release();
+      await new Promise<void>(r => setImmediate(r));
+    }
+    await resuming;
+
+    expect(statuses).not.toContain('playing');
+    expect(engine.getStatus()).toBe('idle');
+  });
 });
