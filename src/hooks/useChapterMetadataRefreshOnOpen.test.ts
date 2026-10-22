@@ -28,6 +28,12 @@ jest.mock('../db/repository', () => ({
 
 jest.mock('../services/storage', () => ({
   getActiveUserId: jest.fn(),
+  getKnownUserIds: jest.fn(() => ['7']),
+  isReauthRequired: jest.fn(() => false),
+}));
+
+jest.mock('../services/userOrgGrants', () => ({
+  getObserverProjectIds: jest.fn(() => []),
 }));
 
 jest.mock('../services/sync', () => ({
