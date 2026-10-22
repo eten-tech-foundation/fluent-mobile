@@ -703,6 +703,38 @@ describe('recordingSync', () => {
     expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
   });
 
+  it('lets a joining caller abort wait without cancelling the in-flight pass', async () => {
+    let resolveUpload: (value: unknown) => void = () => undefined;
+    mockUploadVerseAudio.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveUpload = resolve;
+        }),
+    );
+
+    const first = syncPendingRecordings('tok-1', { delay });
+    await waitFor(() => {
+      expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+    });
+
+    const joiner = new AbortController();
+    const second = syncPendingRecordings('tok-2', {
+      delay,
+      signal: joiner.signal,
+    });
+    joiner.abort();
+
+    await expect(second).rejects.toMatchObject({ name: 'AbortError' });
+
+    resolveUpload(successResponse());
+    await expect(first).resolves.toEqual({
+      uploaded: 1,
+      conflicted: 0,
+      failed: 0,
+    });
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+  });
+
   it('requires a non-empty auth token', async () => {
     await expect(syncPendingRecordings('', { delay })).rejects.toThrow(
       /Auth token is required/,
