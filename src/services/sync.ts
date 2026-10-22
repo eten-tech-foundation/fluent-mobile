@@ -941,7 +941,10 @@ export async function syncPericopeSets(sessionToken?: string) {
  * book missing from the bundle), call `GET /pericope-sets/{id}?bookCode=` with
  * `If-None-Match` against the KV book version (stored ETag).
  */
-export async function syncPericopes() {
+export async function syncPericopes(
+  sessionToken?: string,
+  failingUserId?: string,
+) {
   return retrySyncStep(
     'Pericope sync',
     KV_KEYS.SYNC_ERROR_PERICOPES,
@@ -1010,10 +1013,14 @@ export async function syncPericopes() {
             );
           }
 
-          const result = await FluentAPI.getPericopeSet(pericopeSetId, {
-            bookCode,
-            etag: storedBookVersion || null,
-          });
+          const result = await FluentAPI.getPericopeSet(
+            pericopeSetId,
+            {
+              bookCode,
+              etag: storedBookVersion || null,
+            },
+            sessionToken,
+          );
 
           if (result.status === 304) {
             log.info('Pericope book not modified (304)', {
@@ -1042,6 +1049,7 @@ export async function syncPericopes() {
         }
       }
     },
+    failingUserId,
   );
 }
 
@@ -1663,6 +1671,11 @@ export async function refreshChapterMetadataIfOnline(
       if (syncedAt) {
         setUserLastSyncedAt(userIdStr, syncedAt);
       }
+      // New chapters from this light refresh need set-level pericope hydrate
+      // (#438 / #766). Warm All-synced sessions have no Sync Now; bible text
+      // already has a DraftingScreen ensure — pericopes must not wait for login.
+      // Pass the captured session token so unbundled set GETs keep #294 isolation.
+      await syncPericopes(sessionToken, userIdStr);
     } catch (error) {
       if (isAuthError(error)) {
         await handleSyncAuthFailure(String(userId));
