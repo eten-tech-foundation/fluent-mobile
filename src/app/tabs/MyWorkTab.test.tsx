@@ -205,7 +205,7 @@ describe('MyWorkTab', () => {
     expect(await screen.findByText('Jun 1, 2024')).toBeTruthy();
     expect(screen.getByTestId('my-work-list')).toBeTruthy();
     expect(screen.getByTestId('my-work-list-end')).toBeTruthy();
-    expect(screen.getByLabelText('my-work-count-1')).toBeTruthy();
+    expect(screen.getByTestId('my-work-list-count-1')).toBeTruthy();
   });
 
   it('keeps not_started chapters visible under Drafting without a row badge', async () => {
@@ -292,7 +292,7 @@ describe('MyWorkTab', () => {
     const list = screen.getByTestId('my-work-list');
     expect(list.props.refreshing).toBe(true);
     expect(screen.getByTestId('my-work-list-end')).toBeTruthy();
-    expect(screen.getByLabelText('my-work-count-1')).toBeTruthy();
+    expect(screen.getByTestId('my-work-list-count-1')).toBeTruthy();
     fireEvent(list, 'refresh');
     expect(refresh).toHaveBeenCalledTimes(1);
   });
