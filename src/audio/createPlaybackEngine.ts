@@ -156,16 +156,22 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
     load,
     async play(uri: string) {
       // Leave prior status until load succeeds so UI does not show "playing" at 0:00.
+      // Capture the generation `load` will claim; `stop` (or a newer load) bumps
+      // `loadGeneration` and must abort before late play / status emissions.
+      const expectedGeneration = loadGeneration + 1;
       await load(uri);
+      if (loadGeneration !== expectedGeneration) return;
       player.play();
       // Some containers (e.g. raw ADTS) report duration 0 until playback starts.
       await delayMs(100);
+      if (loadGeneration !== expectedGeneration) return;
       const durationMs = Math.max(0, Math.round(player.duration * 1000));
       if (!player.playing && durationMs <= 0) {
         throw new Error(
           'Take has no playable audio (duration 0:00). Re-record this verse.',
         );
       }
+      if (loadGeneration !== expectedGeneration) return;
       setStatus('playing');
       emitPosition();
     },
@@ -225,6 +231,9 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
       emitPosition();
     },
     async stop() {
+      // Invalidate in-flight play/resume so a prior load cannot emit 'playing'
+      // after the caller asked to stop (same generation counter as load/resume).
+      ++loadGeneration;
       // Do not call player.remove() here — usePlaybackEngine owns a singleton
       // player for the Record tab lifetime. remove() is only for unmount cleanup.
       player.pause();
