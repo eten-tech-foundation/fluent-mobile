@@ -192,12 +192,9 @@ class LiveLogReaderTests(unittest.TestCase):
             self.assertNotIn("hunter2leak", sanitized)
             self.assertNotIn("abc123leak", sanitized)
             self.assertNotIn("bodysecret", sanitized)
-            # Fail-closed structured / query redaction
-            self.assertTrue(
-                "redacted" in sanitized.lower()
-                or "?<redacted-query>" in sanitized
-                or "***" in sanitized
-            )
+            self.assertIn("<redacted:structured-payload>", sanitized)
+            self.assertNotIn("deadbeefsecret", sanitized)
+            self.assertNotIn("bodysecret", sanitized)
 
     def test_legacy_incomplete_state_rewinds_without_keeping_secret(self):
         """v1 state with incomplete secret must rewind and not rewrite the secret."""
@@ -312,18 +309,75 @@ class LiveLogReaderTests(unittest.TestCase):
                 "password='x,y;z'",
                 "x,y;z",
             ),
+            (
+                r'token="abc\"defLEAK"',
+                "defLEAK",
+            ),
+            (
+                'client_secret=CLIENTSECRETLEAK',
+                "CLIENTSECRETLEAK",
+            ),
+            (
+                "secret=GENERICSECRETLEAK",
+                "GENERICSECRETLEAK",
+            ),
+            (
+                '{"Authorization":"Basic AUTHBASICLEAK"}',
+                "AUTHBASICLEAK",
+            ),
+            (
+                "authorization=Basic AUTHBASICEQLEAK",
+                "AUTHBASICEQLEAK",
+            ),
         ]
         for raw, banned in cases:
             with self.subTest(raw=raw[:50]):
                 out = self.m.sanitize_line(raw)
                 self.assertNotIn(banned, out)
-                self.assertIn("***", out)
+                if raw.startswith("{"):
+                    self.assertIn("<redacted:structured-payload>", out)
+                else:
+                    self.assertIn("***", out)
 
     def test_allowlisted_tiny_json_kept_redacted(self):
         raw = '{"code":"ERR_UNEXPECTED","itemId":"13-9-aquifer-2699-image","ok":false}'
         out = self.m.sanitize_line(raw)
         self.assertIn("ERR_UNEXPECTED", out)
         self.assertIn("13-9-aquifer-2699-image", out)
+
+    def test_allowlisted_dict_rejects_nested_and_secret_error_strings(self):
+        nested = '{"error":{"ssn":"123-45-6789"}}'
+        out_nested = self.m.sanitize_line(nested)
+        self.assertEqual(out_nested, "<redacted:structured-payload>")
+        self.assertNotIn("123-45-6789", out_nested)
+
+        err_secret = '{"ok":true,"error":"client_secret=EMBEDDEDSECRETLEAK"}'
+        out_err = self.m.sanitize_line(err_secret)
+        self.assertNotIn("EMBEDDEDSECRETLEAK", out_err)
+        self.assertIn("secret=***", out_err.lower())
+
+    def test_structured_marker_fail_closed_compact_jwt(self):
+        raw = "FluentAPI responseBody eyJhbGciOi.LEAKJWT.sig"
+        out = self.m.sanitize_line(raw)
+        self.assertIn("[FluentAPI] <redacted:structured-payload>", out)
+        self.assertNotIn("LEAKJWT", out)
+
+    def test_v1_state_without_prefix_hash_does_not_reemit(self):
+        """Legacy cursor with byte_offset but no prefix_sha256 must not reset."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_p = pathlib.Path(tmp)
+            log = tmp_p / "metro.log"
+            log.write_text("first\nsecond\n", encoding="utf-8")
+            s_v1 = {
+                "schemaVersion": 2,
+                "byte_offset": len("first\n".encode("utf-8")),
+                "inode": log.stat().st_ino,
+                "size": log.stat().st_size,
+            }
+            lines, s2, meta = self.m.read_incremental(log, s_v1)
+            self.assertFalse(meta["truncated"])
+            self.assertEqual(lines, ["second"])
+            self.assertIsNotNone(s2.get("prefix_sha256"))
 
     def test_emit_receipts_skips_empty(self):
         receipts = self.m.emit_receipts(

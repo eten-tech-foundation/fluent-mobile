@@ -37,15 +37,19 @@ ALLOWLIST_TAG_RE = re.compile(
 )
 
 # Avoid \\b before Authorization when preceded by literal \n in flattened dumps.
-AUTH_HEADER_RE = re.compile(r"(?i)authorization\s*:\s*\S.*")
-# Match token/password/api-key including accessToken/refreshToken suffixes and
-# quoted JSON keys; consume complete quoted values (delimiters inside quotes).
+AUTH_HEADER_RE = re.compile(r'(?i)authorization["\']?\s*[:=]\s*\S.*')
+# Match token/password/secret/api-key including accessToken/refreshToken suffixes
+# and quoted JSON keys; consume complete quoted values (incl. escaped quotes).
 SECRET_KV_RE = re.compile(
-    r"""(?i)(token|password|api[_-]?key)["']?\s*[:=]\s*(?:"[^"]*"|'[^']*'|\S+)"""
+    r"""(?i)(token|password|secret|api[_-]?key)["']?\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S+)"""
 )
 # Cookie / Set-Cookie: redact through end of line (multi-pair cookie headers).
 COOKIE_HEADER_RE = re.compile(r"(?i)((?:set-)?cookie)[\"']?\s*[:=]\s*\S.*")
 BEARER_RE = re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-+/=]+")
+# Compact JWTs without a Bearer prefix (e.g. after responseBody markers).
+COMPACT_JWT_RE = re.compile(
+    r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9._-]+\.[A-Za-z0-9._\-+/=]+"
+)
 URL_WITH_QUERY_RE = re.compile(r"(https?://[^\s\"']+)\?[^\s\"']*")
 SIGNED_QUERY_RE = re.compile(
     r"(?i)([?&])([A-Za-z0-9_]*(?:token|key|secret|sig|signature|X-Amz-)[A-Za-z0-9_]*)=[^&\s\"']+"
@@ -166,7 +170,7 @@ def detect_truncation(path: Path, state: dict[str, Any]) -> bool:
     # Same inode + non-decreasing size can still be a full rewrite
     # (e.g. `adb logcat -d > raw-logcat.txt`). Compare prefix hash.
     expected = state.get("prefix_sha256")
-    if prev and (expected is None or file_prefix_sha256(path, prev) != expected):
+    if prev and expected is not None and file_prefix_sha256(path, prev) != expected:
         return True
     return False
 
@@ -232,6 +236,7 @@ def redact_secrets(text: str) -> str:
     out = AUTH_HEADER_RE.sub("Authorization: ***", text)
     out = COOKIE_HEADER_RE.sub(lambda m: f"{m.group(1)}: ***", out)
     out = BEARER_RE.sub("Bearer ***", out)
+    out = COMPACT_JWT_RE.sub("<redacted-jwt>", out)
     out = SECRET_KV_RE.sub(lambda m: f"{m.group(1)}=***", out)
     out = URL_WITH_QUERY_RE.sub(r"\1?<redacted-query>", out)
     out = SIGNED_QUERY_RE.sub(r"\1\2=***", out)
@@ -247,9 +252,7 @@ def sanitize_line(line: str) -> str:
     # Multiline native blobs may arrive as one logical line with embedded \\n
     text = text.replace("\x00", "")
 
-    if STRUCTURED_FAIL_CLOSED_RE.search(text) and (
-        JSONISH_RE.search(text) or ":" in text
-    ):
+    if STRUCTURED_FAIL_CLOSED_RE.search(text):
         tag = "unknown"
         m = ALLOWLIST_TAG_RE.search(text)
         if m:
@@ -282,8 +285,20 @@ def sanitize_line(line: str) -> str:
                         "ok",
                     }
                     keys = set(obj.keys())
-                    if keys and keys.issubset(allowed):
-                        return redact_secrets(json.dumps(obj, sort_keys=True))
+                    values_ok = all(
+                        isinstance(v, (str, int, float, bool)) or v is None
+                        for v in obj.values()
+                    )
+                    if keys and keys.issubset(allowed) and values_ok:
+                        safe_obj = {
+                            k: (
+                                redact_secrets(v)
+                                if isinstance(v, str)
+                                else v
+                            )
+                            for k, v in obj.items()
+                        }
+                        return json.dumps(safe_obj, sort_keys=True)
                 return "<redacted:structured-payload>"
 
     return redact_secrets(text)
