@@ -32,6 +32,10 @@ export interface PassageTake {
   recordedAt: string;
 }
 
+type Assignment = NonNullable<
+  Awaited<ReturnType<typeof getChapterAssignmentById>>
+>;
+
 export type Passage =
   | { status: 'loading' }
   | { status: 'missing' }
@@ -47,13 +51,13 @@ export type Passage =
       recordedStatus: BibleUnitRecordedStatus;
       /** Takes of the whole passage, oldest first. Verse takes aren't listed. */
       takes: PassageTake[];
+      /** The chapter it's recorded under, for the shared record session. */
+      assignment: Assignment;
+      /** Verses in that chapter, so recording knows when the text is in. */
+      chapterVerseCount: number;
     };
 
 export type PassageDownload = 'idle' | 'downloading' | 'failed';
-
-type Assignment = NonNullable<
-  Awaited<ReturnType<typeof getChapterAssignmentById>>
->;
 
 async function loadPassage(
   assignment: Assignment,
@@ -159,6 +163,9 @@ async function loadPassage(
     downloaded: verses.some(v => v.text !== ''),
     recordedStatus: unitRecordedStatus(unitVerses, coverages),
     takes,
+    assignment,
+    chapterVerseCount: texts.filter(t => t.chapterNumber === chapterNumber)
+      .length,
   };
 }
 
