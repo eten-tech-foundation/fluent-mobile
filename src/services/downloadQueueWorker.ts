@@ -13,6 +13,17 @@ import { markDownloadItemDownloading } from '../db/downloadQueueRepository';
 
 const log = logger.create('DownloadQueueWorker');
 
+/** Expo FS pauseAsync when the native resumable is already gone (benign on cancel). */
+export function isMissingNativeDownloadObjectError(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+      ? error
+      : '';
+  return /No download object available/i.test(message);
+}
+
 export type WorkerSessionState =
   | 'idle'
   | 'downloading'
@@ -251,7 +262,19 @@ export class DownloadQueueWorker {
               serializeDownloadState(pauseState),
             );
           } catch (error) {
-            log.error('Failed to pause on cancel', { error, itemId });
+            if (isMissingNativeDownloadObjectError(error)) {
+              // Native object already released — cancel still succeeds; retain
+              // any previously saved pause state for resume. Do not elevate.
+              log.info(
+                'Pause skipped on cancel; native download object already gone',
+                {
+                  itemId,
+                  error,
+                },
+              );
+            } else {
+              log.error('Failed to pause on cancel', { error, itemId });
+            }
             await markDownloadItemCancelled(itemId, savedPauseState);
           }
         }
