@@ -339,6 +339,8 @@ async function fetchAndStoreOne(
         return;
       }
       if (isAuthError(error)) {
+        // Fail closed for indicators: do not keep last-known counts after 401.
+        markCommentAggregateUnknown(userId, chapterAssignmentId);
         noteAuthFailure(userId);
         return;
       }

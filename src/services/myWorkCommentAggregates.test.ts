@@ -235,6 +235,26 @@ describe('myWorkCommentAggregates', () => {
     });
   });
 
+  it('current-session AuthError marks reauth and fails closed to unknown', async () => {
+    persistCommentAggregate('7', {
+      chapterAssignmentId: 9,
+      commentCount: 4,
+      currentUserHasCommented: false,
+    });
+    mockGetActiveUserId.mockReturnValue('7');
+    mockGetCommentAggregate.mockRejectedValueOnce(new AuthError('session expired'));
+
+    await refreshMyWorkCommentAggregates({
+      userId: '7',
+      sessionToken: 'tok-7',
+      chapterAssignmentIds: [9],
+    });
+
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('7');
+    expect(mockEmitAuthReauthRequired).toHaveBeenCalledWith('7');
+    expect(getCommentAggregateCacheEntry('7', 9)).toEqual({ status: 'unknown' });
+  });
+
   it('does not reauth a new account when an old auth error completes after token rotation', async () => {
     mockGetCredentials.mockResolvedValue({ token: 'old-tok' });
     let rejectFetch!: (reason?: unknown) => void;

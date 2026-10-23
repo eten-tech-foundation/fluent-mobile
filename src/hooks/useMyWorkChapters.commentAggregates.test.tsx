@@ -223,10 +223,7 @@ describe('useMyWorkChapters comment aggregates', () => {
     });
 
     expect(result.current.chapters).toEqual([assignedChapter]);
-    expect(mockGetCommentAggregateCacheEntry).not.toHaveBeenCalledWith(
-      '8',
-      expect.anything(),
-    );
+    expect(mockGetCommentAggregateCacheEntry).not.toHaveBeenCalledWith('8', 9);
   });
 
   it('re-filters Observer rows before late aggregate republish', async () => {
