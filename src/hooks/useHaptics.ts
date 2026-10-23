@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { isMicActive } from '../audio/micActivity';
 import { useUiVersion } from '../theme/useTheme';
@@ -18,6 +19,10 @@ function perform(type: Haptics.AndroidHaptics): void {
 
 const noop = () => undefined;
 
+/** Drag_Start needs API 34 and Gesture_End API 30; older phones get the nearest one. */
+const atLeast = (api: number) =>
+  typeof Platform.Version === 'number' && Platform.Version >= api;
+
 /**
  * Semantic haptics for Next UI components; no-ops in Legacy. Add a method
  * when a component needs one, using the mapping in
@@ -35,6 +40,22 @@ export function useHaptics() {
               on
                 ? Haptics.AndroidHaptics.Toggle_On
                 : Haptics.AndroidHaptics.Toggle_Off,
+            )
+        : noop,
+      dragStart: isNext
+        ? () =>
+            perform(
+              atLeast(34)
+                ? Haptics.AndroidHaptics.Drag_Start
+                : Haptics.AndroidHaptics.Long_Press,
+            )
+        : noop,
+      dragEnd: isNext
+        ? () =>
+            perform(
+              atLeast(30)
+                ? Haptics.AndroidHaptics.Gesture_End
+                : Haptics.AndroidHaptics.Virtual_Key,
             )
         : noop,
     }),

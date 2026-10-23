@@ -3,6 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { fanPlacement, TakeFan } from './TakeFan';
 import { mockPreferenceStore } from '../../../../test/mocks/preferenceStore';
 
+jest.mock('../../../../assets/icons/trash-open.svg', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  return () => MockReact.createElement(View);
+});
+
 jest.mock('../../../../services/storage', () => ({
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
 }));
@@ -75,5 +81,41 @@ describe('TakeFan', () => {
     fireEvent.press(screen.getByLabelText('Take 2, not recorded yet'));
     expect(onSelect).not.toHaveBeenCalled();
     expect(screen.queryByText('2')).toBeNull();
+  });
+
+  it('offers Delete to TalkBack, and undoes a deleted take on tap', () => {
+    const onSelect = jest.fn();
+    const onDelete = jest.fn();
+    const { rerender } = render(
+      <TakeFan
+        takes={[{ id: 'a', takeNumber: 1, official: false }]}
+        frontId="a"
+        onSelect={onSelect}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent(
+      screen.getByLabelText('Take 1, selected'),
+      'accessibilityAction',
+      {
+        nativeEvent: { actionName: 'delete' },
+      },
+    );
+    expect(onDelete).toHaveBeenCalledWith('a');
+
+    rerender(
+      <TakeFan
+        takes={[{ id: 'a', takeNumber: 1, official: false, deleted: true }]}
+        frontId="a"
+        onSelect={onSelect}
+        onDelete={onDelete}
+      />,
+    );
+    fireEvent.press(screen.getByLabelText('Take 1, deleted'));
+    expect(onSelect).toHaveBeenCalledWith('a');
+    expect(
+      screen.getByLabelText('Take 1, deleted').props.accessibilityActions,
+    ).toBeUndefined();
   });
 });
