@@ -39,9 +39,9 @@ export function useSyncStatus({
   } = usePendingUploads(refreshKey);
   const { needsDownloadSync } = useLocalSyncHealth(refreshKey);
   const { reauthRequired } = useReauthRequired();
-  const [hasMetadataSyncError, setHasMetadataSyncError] = useState(
-    hasPersistedMetadataSyncErrors,
-  );
+  // Effect below is the single reader for persisted metadata errors (mount +
+  // refreshKey). Avoid lazy useState init so we do not double-read on mount.
+  const [hasMetadataSyncError, setHasMetadataSyncError] = useState(false);
 
   useEffect(() => {
     setHasMetadataSyncError(hasPersistedMetadataSyncErrors());

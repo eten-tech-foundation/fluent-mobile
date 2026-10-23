@@ -1,11 +1,20 @@
 const mockGetSyncError = jest.fn();
+const mockKv = new Map<string, string>();
 
 jest.mock('@op-engineering/op-sqlite', () => ({
   Storage: jest.fn().mockImplementation(() => ({
-    getItemSync: jest.fn(() => null),
-    setItemSync: jest.fn(),
-    removeItemSync: jest.fn(),
+    getItemSync: (key: string) => mockKv.get(key) ?? null,
+    setItemSync: (key: string, value: string) => {
+      mockKv.set(key, value);
+    },
+    removeItemSync: (key: string) => {
+      mockKv.delete(key);
+    },
   })),
+}));
+
+jest.mock('expo-router', () => ({
+  useFocusEffect: () => {},
 }));
 
 jest.mock('./useConnectivity', () => ({
@@ -37,7 +46,14 @@ jest.mock('../services/storage', () => {
 });
 
 import { renderHook, waitFor } from '@testing-library/react-native';
-import { KV_KEYS } from '../services/storage';
+import {
+  addKnownUserId,
+  clearReauthRequired,
+  KV_KEYS,
+  setReauthRequired,
+  setUserEmail,
+  setUserSync,
+} from '../services/storage';
 import { useConnectivity } from './useConnectivity';
 import { usePreferences } from './usePreferences';
 import { usePendingUploads } from './usePendingUploads';
@@ -87,6 +103,7 @@ function mockOnlineWifi() {
 describe('useSyncStatus cellular gate', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    mockKv.clear();
     mockGetSyncError.mockReturnValue(undefined);
     mockUseReauthRequired.mockReturnValue({
       reauthRequired: false,
@@ -256,6 +273,7 @@ describe('useSyncStatus cellular gate', () => {
 describe('useSyncStatus metadata / reauth retry work', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    mockKv.clear();
     mockGetSyncError.mockReturnValue(undefined);
     mockUseReauthRequired.mockReturnValue({
       reauthRequired: false,
@@ -343,20 +361,29 @@ describe('useSyncStatus metadata / reauth retry work', () => {
   });
 
   it('does not treat inactive-user reauth as Home retry work (active-account isolation)', async () => {
-    // useReauthRequired already scopes to the active user via
-    // isReauthRequiredForActiveUser — inactive flags must not surface here.
-    mockUseReauthRequired.mockReturnValue({
-      reauthRequired: false,
-      refreshReauthRequired: jest.fn(),
-    });
+    // Drive the real hook so isolation goes through isReauthRequiredForActiveUser
+    // (inactive flag set, active user clear) — not a stubbed false return.
+    const { useReauthRequired: realUseReauthRequired } = jest.requireActual<
+      typeof import('./useReauthRequired')
+    >('./useReauthRequired');
+    mockUseReauthRequired.mockImplementation(realUseReauthRequired);
 
-    const { result } = renderHook(() =>
-      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
-    );
+    setUserSync('1', 'one@example.com');
+    addKnownUserId('2');
+    setUserEmail('2', 'two@example.com');
+    setReauthRequired('2');
 
-    await waitFor(() => {
-      expect(result.current.status).toBe('online_synced');
-      expect(result.current.hasSyncRetryWork).toBe(false);
-    });
+    try {
+      const { result } = renderHook(() =>
+        useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+      );
+
+      await waitFor(() => {
+        expect(result.current.status).toBe('online_synced');
+        expect(result.current.hasSyncRetryWork).toBe(false);
+      });
+    } finally {
+      clearReauthRequired('2');
+    }
   });
 });

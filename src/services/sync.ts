@@ -1791,6 +1791,9 @@ export async function refreshChapterMetadataIfOnline(
       });
     } finally {
       inFlightMetadataRefresh.delete(userId);
+      // Home useSyncStatus resamples metadata sync_error_* on this event;
+      // refresh clears (or sets) those keys without bumping refreshKey.
+      emitSyncComplete();
     }
   })();
 
