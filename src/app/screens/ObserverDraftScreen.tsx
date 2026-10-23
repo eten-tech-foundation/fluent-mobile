@@ -9,14 +9,17 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BookOpen, FileText } from 'lucide-react-native';
+import { DraftCommentsDrawerHost } from '../../components/comments/DraftCommentsSurface';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
+import { useDraftCommentsSurface } from '../../hooks/useDraftCommentsSurface';
 import { useObserverDraftChapter } from '../../hooks/useObserverDraftChapter';
 import { getObserverDraftDestination } from '../../navigation/observerDraft';
 import { parseOptionalNumber } from '../../navigation/routeParams';
 import { hrefs } from '../../navigation/hrefs';
 import { iconSizes, listIconStrokeWidth, theme } from '../../theme';
 import { UiVersionOverride } from '../../theme/useTheme';
+import { parseUserId } from '../../utils/parseUserId';
 import { BibleTab } from '../tabs/BibleTab';
 import { ObserverDraftTab } from '../tabs/ObserverDraftTab';
 import { DraftingProvider } from '../context/DraftingContext';
@@ -93,6 +96,17 @@ export default function ObserverDraftScreen() {
 
   const showContent = chapter.hasAccess && assignment !== null;
 
+  // #451 read-only mount: list + aggregate refresh; compose/react stay off
+  // until product enables mutation paths (no live comment upload this slice).
+  const parsedUserId = parseUserId();
+  const commentsSurface = useDraftCommentsSurface({
+    chapterAssignmentId: assignment?.id ?? chapterAssignmentId,
+    userId: parsedUserId !== null ? String(parsedUserId) : '',
+    enabled: showContent && activeTab === 'draft',
+    canCompose: false,
+    canReact: false,
+  });
+
   return (
     <UiVersionOverride value="legacy">
       <ScreenContainer>
@@ -157,9 +171,33 @@ export default function ObserverDraftScreen() {
                     hasAccess={chapter.hasAccess}
                     isActive={activeTab === 'draft'}
                     unresolvedConflictPlaybackPolicy="undecided"
+                    commentCountByBibleTextId={
+                      commentsSurface.commentCountByBibleTextId
+                    }
+                    commentCountByPericopeNumber={
+                      commentsSurface.commentCountByPericopeNumber
+                    }
+                    onOpenComments={anchor => {
+                      if (
+                        typeof anchor.pericopeNumber === 'string' &&
+                        anchor.pericopeNumber.length > 0
+                      ) {
+                        commentsSurface.openForPericope(
+                          anchor.pericopeNumber,
+                          anchor.pericopeSetId,
+                        );
+                        return;
+                      }
+                      commentsSurface.openForVerse(anchor.bibleTextId);
+                    }}
                   />
                 </View>
               </View>
+
+              <DraftCommentsDrawerHost
+                surface={commentsSurface}
+                testID="observer-draft-comments-drawer"
+              />
 
               <View
                 style={styles.chapterBrowse}

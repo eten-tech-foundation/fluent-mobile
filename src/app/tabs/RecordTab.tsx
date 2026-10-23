@@ -26,6 +26,8 @@ import {
   TriangleAlert,
 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { CommentIndicator } from '../../components/comments/CommentIndicator';
+import type { DraftCommentAnchor } from '../../services/draftCommentAnchor';
 import {
   theme,
   iconSizes,
@@ -152,6 +154,15 @@ type RecordTabProps = {
    */
   onRegisterCaptureControls?: (controls: CaptureControls | null) => void;
   onChapterClaimed?: () => void;
+  /**
+   * #451: active draft-unit comment anchor (verse or pericope) for the
+   * DraftingScreen comments surface. Null while bibleTextId/pericope unresolved.
+   */
+  onActiveCommentAnchorChange?: (anchor: DraftCommentAnchor | null) => void;
+  /** Fail-closed count for the active unit indicator (missing → hide). */
+  activeUnitCommentCount?: number | null;
+  /** Opens the half drawer for the active verse/pericope (#451). */
+  onOpenComments?: () => void;
 };
 
 /**
@@ -170,6 +181,9 @@ export function RecordTab({
   onCaptureActiveChange,
   onRegisterCaptureControls,
   onChapterClaimed,
+  onActiveCommentAnchorChange,
+  activeUnitCommentCount,
+  onOpenComments,
 }: RecordTabProps) {
   const router = useRouter();
   const rawParams = useLocalSearchParams<{ chapterName?: string }>();
@@ -278,6 +292,29 @@ export function RecordTab({
     }
     return bibleTextId;
   }, [bibleTextId, bibleTextVerse, selectedVerse]);
+
+  /** #451: verse vs pericope create/filter anchor for the comments surface. */
+  const activeCommentAnchor = useMemo((): DraftCommentAnchor | null => {
+    if (
+      effectiveUnit === 'pericope' &&
+      activePericope !== null &&
+      activePericope.pericopeNumber.length > 0
+    ) {
+      return {
+        kind: 'pericope',
+        pericopeNumber: activePericope.pericopeNumber,
+        pericopeSetId,
+      };
+    }
+    if (captureBibleTextId === null) {
+      return null;
+    }
+    return { kind: 'verse', bibleTextId: captureBibleTextId };
+  }, [activePericope, captureBibleTextId, effectiveUnit, pericopeSetId]);
+
+  useEffect(() => {
+    onActiveCommentAnchorChange?.(activeCommentAnchor);
+  }, [activeCommentAnchor, onActiveCommentAnchorChange]);
 
   const recordingCaptureReady = useMemo(() => {
     if (captureBibleTextId === null) {
@@ -1124,10 +1161,26 @@ export function RecordTab({
             style={prevDisabled ? styles.dim : undefined}
           />
         </TouchableOpacity>
-        <View style={styles.referenceColumn}>
-          <Text style={styles.reference} testID="record-verse-reference">
-            {reference}
-          </Text>
+        <TouchableOpacity
+          style={styles.referenceColumn}
+          onPress={onOpenComments}
+          disabled={onOpenComments === undefined}
+          accessibilityRole={onOpenComments ? 'button' : undefined}
+          accessibilityLabel={
+            onOpenComments ? 'Open comments for this unit' : undefined
+          }
+          testID="record-comment-entry"
+        >
+          <View style={styles.referenceRow}>
+            <Text style={styles.reference} testID="record-verse-reference">
+              {reference}
+            </Text>
+            <CommentIndicator
+              count={activeUnitCommentCount}
+              onPress={onOpenComments}
+              testID="record-unit-comment"
+            />
+          </View>
           {referenceSubtitle ? (
             <Text
               style={styles.referenceSubtitle}
@@ -1137,7 +1190,7 @@ export function RecordTab({
               {referenceSubtitle}
             </Text>
           ) : null}
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => {
             if (!nextDisabled) {
@@ -1775,6 +1828,11 @@ const styles = StyleSheet.create({
   referenceColumn: {
     flex: 1,
     alignItems: 'center',
+  },
+  referenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
   },
   referenceSubtitle: {
     fontSize: theme.typography.sizes.sm,

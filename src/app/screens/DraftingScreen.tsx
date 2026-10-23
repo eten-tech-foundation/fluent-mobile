@@ -7,12 +7,18 @@ import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { onSyncComplete } from '../../services/syncEvents';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
+import {
+  DraftCommentsDrawerHost,
+  DraftCommentsEntryButton,
+} from '../../components/comments/DraftCommentsSurface';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
+import { useDraftCommentsSurface } from '../../hooks/useDraftCommentsSurface';
+import type { DraftCommentAnchor } from '../../services/draftCommentAnchor';
 import { AccountSwitcherPanel } from '../../components/ui/AccountSwitcherPanel';
 import {
   getLastActiveTab,
@@ -151,6 +157,52 @@ export default function DraftingScreen() {
     setAccountSwitcherVisible(false);
   }, []);
 
+  const [activeCommentAnchor, setActiveCommentAnchor] =
+    useState<DraftCommentAnchor | null>(null);
+
+  // #451 read-only Record mount: list + aggregate; compose/react off (no
+  // live comment-audio upload). Entry shows on Record tab only.
+  const commentsSurface = useDraftCommentsSurface({
+    chapterAssignmentId: chapterId,
+    userId: userId !== null ? String(userId) : '',
+    enabled: !loading && chapterData !== null && activeTab === 'record',
+    canCompose: false,
+    canReact: false,
+    activeCommentAnchor,
+  });
+
+  const activeUnitCommentCount = (() => {
+    if (activeCommentAnchor === null) {
+      return null;
+    }
+    if (activeCommentAnchor.kind === 'verse') {
+      return (
+        commentsSurface.commentCountByBibleTextId.get(
+          activeCommentAnchor.bibleTextId,
+        ) ?? null
+      );
+    }
+    return (
+      commentsSurface.commentCountByPericopeNumber.get(
+        activeCommentAnchor.pericopeNumber,
+      ) ?? null
+    );
+  })();
+
+  const openRecordCommentsForAnchor = commentsSurface.openForAnchor;
+  const openRecordCommentsChapter = commentsSurface.openChapter;
+  const handleOpenRecordComments = useCallback(() => {
+    if (activeCommentAnchor !== null) {
+      openRecordCommentsForAnchor(activeCommentAnchor);
+      return;
+    }
+    openRecordCommentsChapter();
+  }, [
+    activeCommentAnchor,
+    openRecordCommentsChapter,
+    openRecordCommentsForAnchor,
+  ]);
+
   /**
    * #49 leave prompt: Resume keeps the capture, Discard drops it and then
    * runs the originally requested action (back / Sync / account switcher).
@@ -259,6 +311,14 @@ export default function DraftingScreen() {
       accountLastName={activeAccount.lastName}
       accountEmail={activeAccount.email}
       onAccountPress={handleAccountPress}
+      rightAccessory={
+        activeTab === 'record' && chapterData !== null ? (
+          <DraftCommentsEntryButton
+            surface={commentsSurface}
+            testID="drafting-record-comments-entry"
+          />
+        ) : undefined
+      }
     />
   );
 
@@ -502,6 +562,9 @@ export default function DraftingScreen() {
                   onCaptureActiveChange={setRecordCaptureActive}
                   onRegisterCaptureControls={setCaptureControls}
                   onChapterClaimed={handleChapterClaimed}
+                  onActiveCommentAnchorChange={setActiveCommentAnchor}
+                  activeUnitCommentCount={activeUnitCommentCount}
+                  onOpenComments={handleOpenRecordComments}
                 />
               </View>
             </View>
@@ -510,6 +573,10 @@ export default function DraftingScreen() {
             <DraftingTabBar activeTab={activeTab} onTabChange={setActiveTab} />
           </View>
         </SourceAudioProvider>
+        <DraftCommentsDrawerHost
+          surface={commentsSurface}
+          testID="drafting-record-comments-drawer"
+        />
         {renderAccountSwitcher()}
       </DraftingProvider>
     </ScreenContainer>

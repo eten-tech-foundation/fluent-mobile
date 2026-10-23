@@ -50,7 +50,24 @@ import {
   parseChapterCommentAggregate,
   type ChapterCommentAggregate,
 } from '../types/api/chapterCommentAggregate';
+import {
+  parseChapterComment,
+  parseClearChapterCommentReactionResponse,
+  parseListChapterCommentsResponse,
+  parseSetChapterCommentReactionResponse,
+  type ChapterComment,
+  type ClearChapterCommentReactionResponse,
+  type CreateChapterCommentReplyRequest,
+  type CreateTopLevelChapterCommentRequest,
+  type ListChapterCommentsResponse,
+  type SetChapterCommentReactionResponse,
+} from '../types/api/chapterComments';
 import { checkServerReachable } from './connectivity';
+import {
+  buildCommentAudioFormData,
+  commentAudioUploadPath,
+  type BuildCommentAudioFormDataParams,
+} from './commentAudioFormData';
 import type {
   ApiPericopeSetPayload,
   GetPericopeSetOptions,
@@ -76,6 +93,13 @@ import {
   verseAudioUploadPath,
 } from './verseAudioFormData';
 
+export type GetChapterVerseAudioParams = {
+  projectUnitId: number;
+  bibleId: number;
+  bookId: number;
+  chapterNumber: number;
+};
+
 function assertPositiveChapterAssignmentId(
   chapterAssignmentId: number,
 ): void {
@@ -87,13 +111,6 @@ function assertPositiveChapterAssignmentId(
     throw createApiError(400, 'Invalid chapterAssignmentId');
   }
 }
-
-export type GetChapterVerseAudioParams = {
-  projectUnitId: number;
-  bibleId: number;
-  bookId: number;
-  chapterNumber: number;
-};
 
 function chapterVerseAudioPath(params: GetChapterVerseAudioParams): string {
   const query = new URLSearchParams({
@@ -414,6 +431,150 @@ export const FluentAPI = {
         500,
         'Malformed chapter comment-aggregate response',
       );
+    }
+    return parsed;
+  },
+
+  /**
+   * List chapter comments (fluent-api PR #459).
+   * `GET /chapter-assignments/{id}/comments` — connected + all retained
+   * Unconnected for the chapter.
+   */
+  listChapterComments: async (
+    chapterAssignmentId: number,
+    token?: string,
+  ): Promise<ListChapterCommentsResponse> => {
+    assertPositiveChapterAssignmentId(chapterAssignmentId);
+    const raw = await authedRequest<unknown>(
+      `/chapter-assignments/${chapterAssignmentId}/comments`,
+      undefined,
+      token,
+    );
+    const parsed = parseListChapterCommentsResponse(raw, chapterAssignmentId);
+    if (!parsed) {
+      throw createApiError(500, 'Malformed chapter comments list response');
+    }
+    return parsed;
+  },
+
+  /**
+   * Create top-level text or emoji-only comment (PR #459).
+   * Audio uses {@link FluentAPI.createCommentAudio}.
+   */
+  createChapterComment: async (
+    chapterAssignmentId: number,
+    body: CreateTopLevelChapterCommentRequest,
+    token?: string,
+  ): Promise<ChapterComment> => {
+    assertPositiveChapterAssignmentId(chapterAssignmentId);
+    const raw = await authedRequest<unknown>(
+      `/chapter-assignments/${chapterAssignmentId}/comments`,
+      { method: 'POST', body: JSON.stringify(body) },
+      token,
+    );
+    const parsed = parseChapterComment(raw, chapterAssignmentId);
+    if (!parsed) {
+      throw createApiError(500, 'Malformed chapter comment create response');
+    }
+    return parsed;
+  },
+
+  /**
+   * One-level text/emoji reply (PR #459). Further replies flatten server-side.
+   */
+  createChapterCommentReply: async (
+    chapterAssignmentId: number,
+    body: CreateChapterCommentReplyRequest,
+    token?: string,
+  ): Promise<ChapterComment> => {
+    assertPositiveChapterAssignmentId(chapterAssignmentId);
+    const raw = await authedRequest<unknown>(
+      `/chapter-assignments/${chapterAssignmentId}/comments/replies`,
+      { method: 'POST', body: JSON.stringify(body) },
+      token,
+    );
+    const parsed = parseChapterComment(raw, chapterAssignmentId);
+    if (!parsed) {
+      throw createApiError(500, 'Malformed chapter comment reply response');
+    }
+    return parsed;
+  },
+
+  /**
+   * Comment-owned audio create or one-level audio reply (PR #459).
+   * `POST …/comments/audio` multipart — never verse-audio.
+   */
+  createCommentAudio: async (
+    chapterAssignmentId: number,
+    params: BuildCommentAudioFormDataParams,
+    token?: string,
+  ): Promise<ChapterComment> => {
+    assertPositiveChapterAssignmentId(chapterAssignmentId);
+    const formData = await buildCommentAudioFormData(params);
+    const raw = await authedMultipartRequest<unknown>(
+      commentAudioUploadPath(chapterAssignmentId),
+      formData,
+      { method: 'POST' },
+      token,
+    );
+    const parsed = parseChapterComment(raw, chapterAssignmentId);
+    if (!parsed) {
+      throw createApiError(500, 'Malformed comment audio create response');
+    }
+    return parsed;
+  },
+
+  /**
+   * Set/replace reaction; server toggles clear when the same emoji is sent again.
+   */
+  setChapterCommentReaction: async (
+    chapterAssignmentId: number,
+    commentId: number,
+    emoji: string,
+    token?: string,
+  ): Promise<SetChapterCommentReactionResponse> => {
+    assertPositiveChapterAssignmentId(chapterAssignmentId);
+    if (
+      typeof commentId !== 'number' ||
+      !Number.isInteger(commentId) ||
+      commentId <= 0
+    ) {
+      throw createApiError(400, 'Invalid commentId');
+    }
+    const raw = await authedRequest<unknown>(
+      `/chapter-assignments/${chapterAssignmentId}/comments/${commentId}/reaction`,
+      { method: 'PUT', body: JSON.stringify({ emoji }) },
+      token,
+    );
+    const parsed = parseSetChapterCommentReactionResponse(raw);
+    if (!parsed) {
+      throw createApiError(500, 'Malformed comment reaction response');
+    }
+    return parsed;
+  },
+
+  /** Explicitly clear the caller's reaction on a comment. */
+  clearChapterCommentReaction: async (
+    chapterAssignmentId: number,
+    commentId: number,
+    token?: string,
+  ): Promise<ClearChapterCommentReactionResponse> => {
+    assertPositiveChapterAssignmentId(chapterAssignmentId);
+    if (
+      typeof commentId !== 'number' ||
+      !Number.isInteger(commentId) ||
+      commentId <= 0
+    ) {
+      throw createApiError(400, 'Invalid commentId');
+    }
+    const raw = await authedRequest<unknown>(
+      `/chapter-assignments/${chapterAssignmentId}/comments/${commentId}/reaction`,
+      { method: 'DELETE' },
+      token,
+    );
+    const parsed = parseClearChapterCommentReactionResponse(raw);
+    if (!parsed) {
+      throw createApiError(500, 'Malformed clear comment reaction response');
     }
     return parsed;
   },
