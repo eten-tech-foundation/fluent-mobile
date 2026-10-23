@@ -1177,7 +1177,7 @@ describe('RecordTab', () => {
     });
   });
 
-  it('shows taken-chapter banner for an unrelated viewer and keeps record enabled', async () => {
+  it('shows taken-chapter banner for an unrelated viewer and disables record', async () => {
     renderTab(undefined, {
       chapterData: {
         ...chapterData,
@@ -1189,7 +1189,7 @@ describe('RecordTab', () => {
     expect(screen.getByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeTruthy();
 
     await waitFor(() => {
-      expect(screen.getByTestId('record-start-button')).toBeEnabled();
+      expect(screen.getByTestId('record-start-button')).toBeDisabled();
     });
   });
 

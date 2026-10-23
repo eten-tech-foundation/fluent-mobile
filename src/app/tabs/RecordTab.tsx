@@ -903,7 +903,7 @@ export function RecordTab({
   });
 
   async function handleStart() {
-    if (stageLocked) return;
+    if (stageLocked || isTaken) return;
     if (!(await ensureMic())) return;
     setElapsedMs(0);
     if (sourceAudioControl && sourceAudioControl.status !== 'idle') {
@@ -938,12 +938,12 @@ export function RecordTab({
     () => isRecordingLockedByStage(chapterData),
     [chapterData],
   );
-  const captureDisabled =
-    recordDisabled || drafterCaptureBlocked || stageLocked;
   const isTaken = useMemo(
     () => isChapterTakenByOther(chapterData, currentUserId),
     [chapterData, currentUserId],
   );
+  const captureDisabled =
+    recordDisabled || drafterCaptureBlocked || stageLocked || isTaken;
   const { hasConflict } = useChapterConflictStatus(chapterData.id);
   const chapterHasRecording = hasChapterRecording;
   const lastVerseNumber = verses[verses.length - 1]?.verseNumber ?? null;
