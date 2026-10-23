@@ -670,6 +670,7 @@ function mapMyWorkChapterRow(
 ): DBTypes.MyWorkChapter {
   return {
     ...mapChapterRowCore(row, currentUserId),
+    assignmentStatus: row.status,
     workflowStage: getBadgeStage(row.status),
     projectName: row.project_name,
     targetLanguageName: row.target_language_name,
