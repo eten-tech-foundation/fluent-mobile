@@ -3,7 +3,9 @@
 
 Reuses redaction ideas from:
   - scripts/qa717-easy-ui-batch runners' sanitize_remote_stderr (token/query)
-  - src/utils/sanitizeUploadError.ts (path / length discipline — mirrored here)
+  - secret / URL / email / structured-payload patterns also seen in
+    src/utils/sanitizeUploadError.ts (this helper does not mirror path scrubbing
+    or length caps from that module)
 
 Does not start Metro, tap devices, or print raw secrets to stdout.
 Controller must call read at Maestro checkpoints with an explicit --action label.
@@ -11,6 +13,7 @@ Controller must call read at Maestro checkpoints with an explicit --action label
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -35,9 +38,13 @@ ALLOWLIST_TAG_RE = re.compile(
 
 # Avoid \\b before Authorization when preceded by literal \n in flattened dumps.
 AUTH_HEADER_RE = re.compile(r"(?i)authorization\s*:\s*\S.*")
+# Match token/password/api-key including accessToken/refreshToken suffixes and
+# quoted JSON keys; consume complete quoted values (delimiters inside quotes).
 SECRET_KV_RE = re.compile(
-    r"(?i)(?<![A-Za-z])(token|password|cookie|set-cookie|api[_-]?key)\s*[:=]\s*\S+"
+    r"""(?i)(token|password|api[_-]?key)["']?\s*[:=]\s*(?:"[^"]*"|'[^']*'|\S+)"""
 )
+# Cookie / Set-Cookie: redact through end of line (multi-pair cookie headers).
+COOKIE_HEADER_RE = re.compile(r"(?i)((?:set-)?cookie)[\"']?\s*[:=]\s*\S.*")
 BEARER_RE = re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-+/=]+")
 URL_WITH_QUERY_RE = re.compile(r"(https?://[^\s\"']+)\?[^\s\"']*")
 SIGNED_QUERY_RE = re.compile(
@@ -63,6 +70,7 @@ def empty_state() -> dict[str, Any]:
         "byte_offset": 0,
         "inode": None,
         "size": 0,
+        "prefix_sha256": None,
     }
 
 
@@ -96,6 +104,7 @@ def load_state(path: Path) -> dict[str, Any]:
         "byte_offset": max(0, offset),
         "inode": data.get("inode"),
         "size": int(data.get("size") or 0),
+        "prefix_sha256": data.get("prefix_sha256"),
     }
 
 
@@ -107,6 +116,7 @@ def save_state(path: Path, state: dict[str, Any]) -> None:
         "byte_offset": int(state.get("byte_offset") or 0),
         "inode": state.get("inode"),
         "size": int(state.get("size") or 0),
+        "prefix_sha256": state.get("prefix_sha256"),
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -122,6 +132,25 @@ def split_complete_lines(chunk: str, incomplete: str = "") -> tuple[list[str], s
     return [p for p in parts[:-1]], parts[-1]
 
 
+def file_prefix_sha256(path: Path, length: int) -> str | None:
+    """SHA-256 of the first `length` bytes (secret-free cursor fingerprint)."""
+    digest = hashlib.sha256()
+    if length <= 0:
+        return digest.hexdigest()
+    try:
+        with path.open("rb") as fh:
+            remaining = length
+            while remaining:
+                block = fh.read(min(1024 * 1024, remaining))
+                if not block:
+                    return None
+                digest.update(block)
+                remaining -= len(block)
+    except OSError:
+        return None
+    return digest.hexdigest()
+
+
 def detect_truncation(path: Path, state: dict[str, Any]) -> bool:
     try:
         st = path.stat()
@@ -133,6 +162,11 @@ def detect_truncation(path: Path, state: dict[str, Any]) -> bool:
     if prev_inode is not None and cur_inode is not None and prev_inode != cur_inode:
         return True
     if st.st_size < prev:
+        return True
+    # Same inode + non-decreasing size can still be a full rewrite
+    # (e.g. `adb logcat -d > raw-logcat.txt`). Compare prefix hash.
+    expected = state.get("prefix_sha256")
+    if prev and (expected is None or file_prefix_sha256(path, prev) != expected):
         return True
     return False
 
@@ -154,6 +188,7 @@ def read_incremental(
             "byte_offset": int(state.get("byte_offset") or 0),
             "inode": state.get("inode"),
             "size": int(state.get("size") or 0),
+            "prefix_sha256": state.get("prefix_sha256"),
         }, meta
 
     if detect_truncation(path, state):
@@ -186,6 +221,7 @@ def read_incremental(
         "byte_offset": new_offset,
         "inode": getattr(st, "st_ino", None),
         "size": st.st_size,
+        "prefix_sha256": file_prefix_sha256(path, new_offset),
     }
     meta["bytes_read"] = len(raw)
     meta["lines"] = len(lines)
@@ -194,6 +230,7 @@ def read_incremental(
 
 def redact_secrets(text: str) -> str:
     out = AUTH_HEADER_RE.sub("Authorization: ***", text)
+    out = COOKIE_HEADER_RE.sub(lambda m: f"{m.group(1)}: ***", out)
     out = BEARER_RE.sub("Bearer ***", out)
     out = SECRET_KV_RE.sub(lambda m: f"{m.group(1)}=***", out)
     out = URL_WITH_QUERY_RE.sub(r"\1?<redacted-query>", out)
@@ -328,6 +365,29 @@ def recommended_logcat_argv(serial: str) -> list[str]:
     ]
 
 
+def _summary(
+    *,
+    source: str,
+    run_id: str,
+    action: str,
+    receipts: list[dict[str, Any]],
+    meta: dict[str, Any],
+    new_state: dict[str, Any],
+) -> dict[str, Any]:
+    missing = bool(meta.get("missing"))
+    return {
+        "ok": not missing,
+        "source": source,
+        "runId": run_id,
+        "maestroAction": action,
+        "newLines": len(receipts),
+        "truncated": meta.get("truncated", False),
+        "missing": missing,
+        "bytesRead": meta.get("bytes_read", 0),
+        "stateByteOffset": new_state["byte_offset"],
+    }
+
+
 def cmd_metro_read(args: argparse.Namespace) -> int:
     log_path = Path(args.log)
     state_path = Path(args.state)
@@ -339,22 +399,21 @@ def cmd_metro_read(args: argparse.Namespace) -> int:
         source="metro",
         action=args.action,
     )
-    save_state(state_path, new_state)
+    # Persist sanitized receipts before advancing the cursor so a receipts
+    # write failure leaves the input eligible for reread.
     if args.receipts:
         append_receipts(Path(args.receipts), receipts)
-    # Summary only — never dump raw chunk
-    summary = {
-        "ok": True,
-        "source": "metro",
-        "runId": args.run_id,
-        "maestroAction": args.action,
-        "newLines": len(receipts),
-        "truncated": meta.get("truncated", False),
-        "bytesRead": meta.get("bytes_read", 0),
-        "stateByteOffset": new_state["byte_offset"],
-    }
+    save_state(state_path, new_state)
+    summary = _summary(
+        source="metro",
+        run_id=args.run_id,
+        action=args.action,
+        receipts=receipts,
+        meta=meta,
+        new_state=new_state,
+    )
     print(json.dumps(summary))
-    return 0
+    return 1 if summary["missing"] else 0
 
 
 def cmd_file_read(args: argparse.Namespace) -> int:
@@ -369,21 +428,19 @@ def cmd_file_read(args: argparse.Namespace) -> int:
         source=args.source,
         action=args.action,
     )
-    save_state(state_path, new_state)
     if args.receipts:
         append_receipts(Path(args.receipts), receipts)
-    summary = {
-        "ok": True,
-        "source": args.source,
-        "runId": args.run_id,
-        "maestroAction": args.action,
-        "newLines": len(receipts),
-        "truncated": meta.get("truncated", False),
-        "bytesRead": meta.get("bytes_read", 0),
-        "stateByteOffset": new_state["byte_offset"],
-    }
+    save_state(state_path, new_state)
+    summary = _summary(
+        source=args.source,
+        run_id=args.run_id,
+        action=args.action,
+        receipts=receipts,
+        meta=meta,
+        new_state=new_state,
+    )
     print(json.dumps(summary))
-    return 0
+    return 1 if summary["missing"] else 0
 
 
 def cmd_logcat_argv(args: argparse.Namespace) -> int:

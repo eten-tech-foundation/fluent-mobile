@@ -4,7 +4,7 @@ Small incremental sanitized reader for **owned Metro logs** and **explicit-seria
 
 ## Reuse
 
-- Redaction patterns aligned with `sanitize_remote_stderr` in qa717 runners and path/length discipline from `src/utils/sanitizeUploadError.ts` (logic copied into this script — app source untouched).
+- Redaction patterns aligned with `sanitize_remote_stderr` in qa717 runners and with the secret / URL / email / structured-payload ideas in `src/utils/sanitizeUploadError.ts` (logic for those categories lives in `sanitize_line` / `redact_secrets` here — app source untouched; this helper does not implement that module’s path scrubbing or length caps).
 - Cursor + JSONL receipts live under the controller’s artifact directory (not agent chat).
 
 ## Durable Metro capture (do not start Metro here)
@@ -35,7 +35,7 @@ python3 scripts/qa717-easy-ui-batch/live-log-reader.py metro-read \
   --receipts /path/to/artifacts/sanitized-receipts.jsonl
 ```
 
-Stdout is a **summary only** (`newLines`, cursor offset, truncation). Receipts JSONL hold sanitized lines with `observedAtUtc`, `runId`, `source`, `maestroAction`, `sanitizedLine`.
+Stdout is a **summary only** (`newLines`, cursor offset, truncation, `missing`). A missing `--log` path sets `missing: true`, `ok: false`, and exits nonzero so controllers can tell it apart from a quiet log. Receipts JSONL hold sanitized lines with `observedAtUtc`, `runId`, `source`, `maestroAction`, `sanitizedLine`. Sanitized receipts are appended **before** the cursor advances; if the receipts write fails, the next checkpoint re-reads those lines.
 
 ## Logcat (read-only dump)
 
@@ -62,13 +62,14 @@ If capturing useful device lines requires launching Fluent, **leave that gate un
 - Raw Metro/`script` and raw `logcat -d` files are **local controller artifacts only**.
 - Do not paste raw files into chat/agent output.
 - Delete or rotate raw files at handback; keep sanitized JSONL if needed for receipts.
-- **State/cursor JSON is secret-free:** only `schemaVersion`, `byte_offset` (start of the next unread *complete* line), `inode`, and `size`. It never stores unfinished line fragments.
-- Unfinished lines (no trailing newline yet) stay only in the restricted raw log. The next checkpoint re-reads those bytes from the raw file, then advances the cursor past completed lines only. Truncation/rotation (smaller file or inode change) resets the offset to `0`.
+- **State/cursor JSON is secret-free:** only `schemaVersion`, `byte_offset` (start of the next unread *complete* line), `inode`, `size`, and `prefix_sha256` (hash of bytes before the offset). It never stores unfinished line fragments.
+- Unfinished lines (no trailing newline yet) stay only in the restricted raw log. The next checkpoint re-reads those bytes from the raw file, then advances the cursor past completed lines only. Truncation/rotation (smaller file, inode change, or same-inode rewrite detected via `prefix_sha256`) resets the offset to `0`.
 - Legacy v1 state that contained an `incomplete` string is loaded by rewinding `byte_offset` and is rewritten without that field.
 
 ## Redaction (fail closed)
 
-- Authorization / Bearer / token / password / cookie values → `***`
+- Authorization / Bearer / token / password / api-key values (including quoted JSON keys and `accessToken` / `refreshToken`) → `***`
+- Cookie / Set-Cookie headers → redacted through end of line
 - URL query strings (incl. signed URL params) → `?<redacted-query>` / `param=***`
 - Emails → `<redacted-email>`
 - Unknown JSON / `requestBody` / `responseBody` / `payload` / `headers` / `stack` → `<redacted:structured-payload>`
@@ -80,4 +81,4 @@ If capturing useful device lines requires launching Fluent, **leave that gate un
 python3 scripts/qa717-easy-ui-batch/live-log-reader.test.py
 ```
 
-Covers cursor/no-duplicate, truncation, receipt fields, multiline native errors, secret/URL/payload redaction (incl. malformed), secret-free state across a split secret line (CLI checkpoints), legacy incomplete rewind, and a synthetic two-read new-only CLI proof.
+Covers cursor/no-duplicate, truncation, same-inode equal-size rewrite, receipt fields, multiline native errors, secret/URL/payload redaction (incl. quoted JSON token keys, access/refreshToken, Cookie/Set-Cookie, quoted values with delimiters), missing-log nonzero exit, receipts-before-cursor failure, secret-free state across a split secret line (CLI checkpoints), legacy incomplete rewind, and a synthetic two-read new-only CLI proof.

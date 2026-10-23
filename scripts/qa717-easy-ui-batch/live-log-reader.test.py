@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 MOD_PATH = pathlib.Path(__file__).resolve().parent / "live-log-reader.py"
 
@@ -69,6 +70,31 @@ class LiveLogReaderTests(unittest.TestCase):
             self.assertEqual(lines, ["x"])
             self.assertNotIn("incomplete", s2)
 
+    def test_same_inode_equal_size_replacement_rereads(self):
+        """adb logcat -d rewrite at same inode/size must not skip new records."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_p = pathlib.Path(tmp)
+            log = tmp_p / "raw-logcat.txt"
+            original = "AAAA\nBBBB\n"
+            replacement = "CCCC\nDDDD\n"
+            self.assertEqual(len(original.encode("utf-8")), len(replacement.encode("utf-8")))
+            log.write_text(original, encoding="utf-8")
+            inode_before = log.stat().st_ino
+            s0 = self.m.empty_state()
+            lines1, s1, _ = self.m.read_incremental(log, s0)
+            self.assertEqual(lines1, ["AAAA", "BBBB"])
+            self.assertIsNotNone(s1.get("prefix_sha256"))
+            # In-place rewrite (same inode), equal size — documented logcat dump pattern.
+            with log.open("r+b") as fh:
+                fh.write(replacement.encode("utf-8"))
+                fh.truncate()
+            self.assertEqual(log.stat().st_ino, inode_before)
+            self.assertEqual(log.stat().st_size, len(replacement.encode("utf-8")))
+            lines2, s2, meta = self.m.read_incremental(log, s1)
+            self.assertTrue(meta["truncated"])
+            self.assertEqual(lines2, ["CCCC", "DDDD"])
+            self.assertNotEqual(s2["prefix_sha256"], s1["prefix_sha256"])
+
     def test_state_secret_free_across_split_secret_line(self):
         """Split secret/signed URL/payload line must not land in state JSON."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -105,6 +131,7 @@ class LiveLogReaderTests(unittest.TestCase):
                 "byte_offset",
                 "inode",
                 "size",
+                "prefix_sha256",
             })
             self.assertEqual(state_obj["byte_offset"], 0)
 
@@ -254,6 +281,44 @@ class LiveLogReaderTests(unittest.TestCase):
                 self.assertIn(must_have, out)
                 self.assertNotIn(must_not, out)
 
+    def test_redact_quoted_json_token_access_refresh_cookie(self):
+        """Regression: quoted JSON keys, access/refreshToken, Cookie full line."""
+        cases = [
+            (
+                'LOG session {"token":"abc123"}',
+                "abc123",
+            ),
+            (
+                "accessToken=access-secret-value",
+                "access-secret-value",
+            ),
+            (
+                "refreshToken: refresh-secret-value",
+                "refresh-secret-value",
+            ),
+            (
+                "Cookie: a=1; sid=COOKIESECRET",
+                "COOKIESECRET",
+            ),
+            (
+                "Set-Cookie: sid=SETCOOKIESECRET; Path=/",
+                "SETCOOKIESECRET",
+            ),
+            (
+                'token="abc,def"',
+                "abc,def",
+            ),
+            (
+                "password='x,y;z'",
+                "x,y;z",
+            ),
+        ]
+        for raw, banned in cases:
+            with self.subTest(raw=raw[:50]):
+                out = self.m.sanitize_line(raw)
+                self.assertNotIn(banned, out)
+                self.assertIn("***", out)
+
     def test_allowlisted_tiny_json_kept_redacted(self):
         raw = '{"code":"ERR_UNEXPECTED","itemId":"13-9-aquifer-2699-image","ok":false}'
         out = self.m.sanitize_line(raw)
@@ -279,6 +344,102 @@ class LiveLogReaderTests(unittest.TestCase):
         self.assertIn("-d", argv)
         self.assertIn("main,system,crash", argv)
         self.assertIn("threadtime,UTC", argv)
+
+    def test_missing_log_distinct_from_quiet_nonzero(self):
+        """Missing --log must report missing and fail nonzero (not quiet ok)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_p = pathlib.Path(tmp)
+            state = tmp_p / "cursor.json"
+            receipts = tmp_p / "receipts.jsonl"
+            missing_log = tmp_p / "does-not-exist.log"
+            py = sys.executable
+            script = str(MOD_PATH)
+            proc = subprocess.run(
+                [
+                    py,
+                    script,
+                    "metro-read",
+                    "--log",
+                    str(missing_log),
+                    "--state",
+                    str(state),
+                    "--run-id",
+                    "missing-run",
+                    "--action",
+                    "checkpoint_missing",
+                    "--receipts",
+                    str(receipts),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            summary = json.loads(proc.stdout.strip())
+            self.assertTrue(summary["missing"])
+            self.assertFalse(summary["ok"])
+            self.assertEqual(summary["newLines"], 0)
+
+            # Quiet existing log still succeeds with missing=false.
+            quiet = tmp_p / "quiet.log"
+            quiet.write_text("", encoding="utf-8")
+            proc2 = subprocess.run(
+                [
+                    py,
+                    script,
+                    "metro-read",
+                    "--log",
+                    str(quiet),
+                    "--state",
+                    str(state),
+                    "--run-id",
+                    "quiet-run",
+                    "--action",
+                    "checkpoint_quiet",
+                    "--receipts",
+                    str(receipts),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(proc2.returncode, 0)
+            summary2 = json.loads(proc2.stdout.strip())
+            self.assertFalse(summary2["missing"])
+            self.assertTrue(summary2["ok"])
+            self.assertEqual(summary2["newLines"], 0)
+
+    def test_receipts_written_before_cursor_advances_on_failure(self):
+        """If receipts append fails, cursor must not advance past those lines."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_p = pathlib.Path(tmp)
+            log = tmp_p / "metro.log"
+            state = tmp_p / "cursor.json"
+            receipts = tmp_p / "receipts.jsonl"
+            log.write_text("LOG [SyncService] keep-me\n", encoding="utf-8")
+            ns = self.m.argparse.Namespace(
+                log=str(log),
+                state=str(state),
+                run_id="receipt-order",
+                action="checkpoint_fail",
+                receipts=str(receipts),
+            )
+            with mock.patch.object(
+                self.m, "append_receipts", side_effect=OSError("disk full")
+            ):
+                with self.assertRaises(OSError):
+                    self.m.cmd_metro_read(ns)
+            self.assertFalse(state.exists())
+            # Retry without failure must still emit the line.
+            code = self.m.cmd_metro_read(ns)
+            self.assertEqual(code, 0)
+            rows = [
+                json.loads(x)
+                for x in receipts.read_text(encoding="utf-8").splitlines()
+                if x.strip()
+            ]
+            self.assertEqual(len(rows), 1)
+            self.assertIn("keep-me", rows[0]["sanitizedLine"])
 
     def test_cli_synthetic_increment_twice_new_only(self):
         """Append harmless synthetic lines; invoke reader twice → new-only counts."""
