@@ -46,6 +46,10 @@ import type {
   PutUserSettingsBody,
   UserSettingsResponse,
 } from '../types/api/userSettings';
+import {
+  parseChapterCommentAggregate,
+  type ChapterCommentAggregate,
+} from '../types/api/chapterCommentAggregate';
 import { checkServerReachable } from './connectivity';
 import type {
   ApiPericopeSetPayload,
@@ -71,6 +75,18 @@ import {
   verseAudioRangeUploadPath,
   verseAudioUploadPath,
 } from './verseAudioFormData';
+
+function assertPositiveChapterAssignmentId(
+  chapterAssignmentId: number,
+): void {
+  if (
+    typeof chapterAssignmentId !== 'number' ||
+    !Number.isInteger(chapterAssignmentId) ||
+    chapterAssignmentId <= 0
+  ) {
+    throw createApiError(400, 'Invalid chapterAssignmentId');
+  }
+}
 
 export type GetChapterVerseAudioParams = {
   projectUnitId: number;
@@ -376,6 +392,31 @@ export const FluentAPI = {
       `/chapter-assignments/${chapterAssignmentId}/submit`,
       { method: 'PATCH' },
     ),
+
+  /**
+   * Chapter comment aggregate for My Work / #451 handoff (fluent-api PR #459).
+   * `GET /chapter-assignments/{id}/comment-aggregate` — viewer from bearer only;
+   * never sends `userId`. Structural parse; no 0/false invent on malformed.
+   */
+  getCommentAggregate: async (
+    chapterAssignmentId: number,
+    token?: string,
+  ): Promise<ChapterCommentAggregate> => {
+    assertPositiveChapterAssignmentId(chapterAssignmentId);
+    const raw = await authedRequest<unknown>(
+      `/chapter-assignments/${chapterAssignmentId}/comment-aggregate`,
+      undefined,
+      token,
+    );
+    const parsed = parseChapterCommentAggregate(raw, chapterAssignmentId);
+    if (!parsed) {
+      throw createApiError(
+        500,
+        'Malformed chapter comment-aggregate response',
+      );
+    }
+    return parsed;
+  },
 
   getBibleTexts: (
     bibleId: number,

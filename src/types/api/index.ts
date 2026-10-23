@@ -1,3 +1,4 @@
+export * from './chapterCommentAggregate';
 export * from './errors';
 export * from './responses';
 export * from './sourceAudio';

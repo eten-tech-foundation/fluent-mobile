@@ -1,0 +1,32 @@
+{
+  "description": "Pinned fluent-api PR #459 (issue #458) chapter comment-aggregate wire for mobile #703. Tip dfad78d; schema unchanged vs earlier pins. Backend undeployed at pin time; no runtime HTTP claim. No /comment-aggregate HTTP fixture exists at this pin — examples below are labeled by provenance.",
+  "baseline": {
+    "issue": 458,
+    "pr459Heads": {
+      "lockSerialize": "d2637641478eda0ffde8b47cbb1cf949afbee0df",
+      "tip": "dfad78d7438caad4391ad77d2e442e7c921f88e1"
+    },
+    "pr459Head": "dfad78d7438caad4391ad77d2e442e7c921f88e1",
+    "endpoint": "GET /chapter-assignments/{chapterAssignmentId}/comment-aggregate",
+    "schemaExport": "chapterCommentAggregateSchema",
+    "httpFixtureAtPin": false
+  },
+  "examples": {
+    "serviceUnitTestExtracted": {
+      "provenance": "Extracted from draft-comments.service.test.ts ('aggregate counts all retained comments and ignores reaction-only presence'). Schema-stable at tip dfad78d.",
+      "payload": {
+        "chapterAssignmentId": 9,
+        "commentCount": 4,
+        "currentUserHasCommented": false
+      }
+    },
+    "schemaDerivedZeroFalse": {
+      "provenance": "Schema-derived valid zero/false body from chapterCommentAggregateSchema (positive chapterAssignmentId, nonnegative commentCount, boolean marker). Not copied from an HTTP fixture.",
+      "payload": {
+        "chapterAssignmentId": 1,
+        "commentCount": 0,
+        "currentUserHasCommented": false
+      }
+    }
+  }
+}

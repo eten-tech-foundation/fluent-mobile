@@ -41,6 +41,20 @@ export type WorkflowBadgeStage =
   | 'advanced_check'
   | 'complete';
 
+/**
+ * My Work row comment-aggregate view (#703 / #451).
+ * `originatingUserId` is the account that produced the snapshot — indicators
+ * fail closed when it drifts from the active session.
+ */
+export type MyWorkChapterCommentAggregate =
+  | {
+      status: 'known';
+      commentCount: number;
+      currentUserHasCommented: boolean;
+      originatingUserId: string;
+    }
+  | { status: 'unknown' };
+
 export interface MyWorkChapter {
   id: number;
   displayLabel: string;
@@ -57,6 +71,8 @@ export interface MyWorkChapter {
   lastActivityLabel?: string;
   projectName: string;
   targetLanguageName: string;
+  /** Optional #703 aggregate for comment count / “I commented” marker. */
+  commentAggregate?: MyWorkChapterCommentAggregate | null;
 }
 
 export interface ProjectChapter {
