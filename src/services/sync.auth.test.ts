@@ -1074,7 +1074,8 @@ describe('syncAllUsers auth handling', () => {
       new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
     );
     // Valid payload so the assertion stays on #177 cursor drop; empty full-fetch
-    // missing-chapter failure is covered in sync.steps.test.ts.
+    // missing-chapter failure on this path is covered in sync.steps.test.ts
+    // ("fails empty full-fetch when #177 drops cursor despite updatedAfter").
     (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
       data: [
         {
