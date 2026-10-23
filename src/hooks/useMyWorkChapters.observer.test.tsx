@@ -248,7 +248,10 @@ describe('useMyWorkChapters Observer grants', () => {
     const { result } = renderHook(() => useMyWorkChapters());
 
     await waitFor(() => {
-      expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
+      expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
+        grantProjectIds: [100],
+        translatorProjectIds: [3],
+      });
     });
 
     mockGetTranslatorProjectIds.mockReturnValue([]);
