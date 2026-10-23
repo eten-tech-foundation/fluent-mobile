@@ -1464,3 +1464,81 @@ describe('stage advance queue migration (#257)', () => {
     ).resolves.toBeDefined();
   });
 });
+
+describe('chapter_assignments.stage_entered_at migration (#505 / #457)', () => {
+  it('includes stage_entered_at in the baseline chapter_assignments schema', () => {
+    const sql = createTableQueries.find(query =>
+      query.includes('CREATE TABLE IF NOT EXISTS chapter_assignments'),
+    );
+    expect(sql).toBeDefined();
+    expect(sql).toContain('stage_entered_at TEXT');
+  });
+
+  it('adds stage_entered_at when upgrading from v21 and preserves existing rows', async () => {
+    const db = createFakeDb(21);
+    db._tables.set('chapter_assignments', {
+      columns: new Set([
+        'id',
+        'project_unit_id',
+        'bible_id',
+        'book_id',
+        'chapter_number',
+        'status',
+        'updated_at',
+        'has_conflict',
+      ]),
+      rows: [
+        {
+          id: 1,
+          project_unit_id: 10,
+          bible_id: 2,
+          book_id: 40,
+          chapter_number: 1,
+          status: 'draft',
+          updated_at: '2026-01-01T00:00:00.000Z',
+          has_conflict: 0,
+        },
+      ],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    expect(
+      await columnExists(db, 'chapter_assignments', 'stage_entered_at'),
+    ).toBe(false);
+
+    await runMigrations(db);
+
+    expect(
+      await columnExists(db, 'chapter_assignments', 'stage_entered_at'),
+    ).toBe(true);
+    expect(db._tables.get('chapter_assignments')?.rows[0]).toMatchObject({
+      id: 1,
+      status: 'draft',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    });
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('is idempotent when stage_entered_at already exists at v21', async () => {
+    const db = createFakeDb(21);
+    db._tables.set('chapter_assignments', {
+      columns: new Set(['id', 'stage_entered_at']),
+      rows: [{ id: 7, stage_entered_at: '2025-04-01T15:30:00.000Z' }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await runMigrations(db);
+    await runMigrations(db);
+
+    expect(
+      await columnExists(db, 'chapter_assignments', 'stage_entered_at'),
+    ).toBe(true);
+    expect(db._tables.get('chapter_assignments')?.rows[0]).toEqual({
+      id: 7,
+      stage_entered_at: '2025-04-01T15:30:00.000Z',
+    });
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+});

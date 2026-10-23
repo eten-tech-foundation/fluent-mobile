@@ -704,10 +704,16 @@ function mapMyWorkChapterRow(
     return null;
   }
 
+  const rawStageEnteredAt =
+    typeof row.stage_entered_at === 'string' ? row.stage_entered_at.trim() : '';
+  const stageEnteredAt =
+    rawStageEnteredAt.length > 0 ? rawStageEnteredAt : null;
+
   return {
     ...mapChapterRowCore(row, currentUserId),
     assignmentStatus: row.status,
     workflowStage: getBadgeStage(row.status),
+    stageEnteredAt,
     projectName: row.project_name,
     targetLanguageName: row.target_language_name,
     projectUnitId: Number.isFinite(projectUnitId) ? projectUnitId : 0,
@@ -814,6 +820,7 @@ export async function getMyWorkChapters(
         ca.status,
         ca.updated_at,
         ca.submitted_time,
+        ca.stage_entered_at,
         ca.assigned_user_id,
         ca.peer_checker_id,
         ca.project_unit_id,

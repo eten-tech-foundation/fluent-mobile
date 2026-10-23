@@ -61,6 +61,11 @@ export interface MyWorkChapter {
   totalVerses: number;
   downloadedVerses: number;
   hasConflict: boolean;
+  /**
+   * ISO time this chapter entered its current stage, or null when unknown.
+   * Ordering uses this only — never `lastActivityAt` (#505 / fluent-api#457).
+   */
+  stageEnteredAt: string | null;
   lastActivityAt?: string;
   lastActivityLabel?: string;
   projectName: string;
@@ -142,6 +147,7 @@ export interface MyWorkChapterRow {
   assigned_user_id?: number | null;
   peer_checker_id?: number | null;
   has_conflict: number;
+  stage_entered_at?: string | null;
 }
 
 export interface ProjectSummary extends Project {
@@ -190,6 +196,11 @@ export interface ChapterAssignment {
   chapterStatus?: string;
   submittedTime?: string;
   updatedAt?: string;
+  /**
+   * Normalized stage-entry time from the API (`string`), or `null` when
+   * omitted/invalid. Never filled from activity timestamps.
+   */
+  stageEnteredAt?: string | null;
   totalVerses?: number;
   completedVerses?: number;
   /**

@@ -182,11 +182,12 @@ function createSyncTestDb() {
           status: params[7] as string,
           submitted_time: params[8] as string | null,
           updated_at: params[9] as string,
-          total_verses: params[10] as number,
-          completed_verses: params[11] as number,
-          has_conflict: params[12] as number,
+          stage_entered_at: params[10] as string | null,
+          total_verses: params[11] as number,
+          completed_verses: params[12] as number,
+          has_conflict: params[13] as number,
         };
-        const updateHasConflict = Number(params[13] ?? 0) === 1;
+        const updateHasConflict = Number(params[14] ?? 0) === 1;
         const existing = tables
           .get('chapter_assignments')
           ?.rows.find(r => r.id === row.id);
@@ -205,6 +206,13 @@ function createSyncTestDb() {
           if (queued) {
             row.status = existing.status;
             row.peer_checker_id = existing.peer_checker_id;
+            // Only preserve timestamp when the upsert SQL includes the SAQ CASE.
+            if (
+              /stage_entered_at = CASE/i.test(sql) &&
+              /THEN chapter_assignments\.stage_entered_at/i.test(sql)
+            ) {
+              row.stage_entered_at = existing.stage_entered_at ?? null;
+            }
           }
         }
         upsertById('chapter_assignments', row);
@@ -606,5 +614,135 @@ describe('insertChapterAssignmentSyncData', () => {
 
     expect(db.table('chapter_assignments')[0].status).toBe('draft');
     expect(db.table('chapter_assignments')[0].peer_checker_id).toBeNull();
+  });
+
+  it('persists valid stageEnteredAt and stores null for omitted/invalid', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+      project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({
+        chapterAssignmentId: 1,
+        stageEnteredAt: '2025-04-01T15:30:00.000Z',
+      }),
+      validAssignment({
+        chapterAssignmentId: 2,
+        chapterNumber: 2,
+        stageEnteredAt: null,
+      }),
+      validAssignment({
+        chapterAssignmentId: 3,
+        chapterNumber: 3,
+      }),
+      validAssignment({
+        chapterAssignmentId: 4,
+        chapterNumber: 4,
+        stageEnteredAt: 'yesterday',
+      }),
+    ]);
+
+    const byId = (id: number) =>
+      db.table('chapter_assignments').find(row => row.id === id);
+    expect(byId(1)?.stage_entered_at).toBe('2025-04-01T15:30:00.000Z');
+    expect(byId(2)?.stage_entered_at).toBeNull();
+    expect(byId(3)?.stage_entered_at).toBeNull();
+    expect(byId(4)?.stage_entered_at).toBeNull();
+  });
+
+  it('protects status, peer checker, and stage_entered_at while a stage advance is queued', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+      project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
+      users: [{ id: 5, email: 'seehagen@example.com' }],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({
+        chapterAssignmentId: 1,
+        chapterStatus: 'peer_check',
+        peerCheckerId: 20,
+        assignedUserId: 5,
+        stageEnteredAt: '2025-04-01T15:30:00.000Z',
+      }),
+    ]);
+    db.seed({
+      stage_advance_queue: [
+        {
+          id: 1,
+          chapter_assignment_id: 1,
+          user_id: 5,
+          from_status: 'draft',
+          to_status: 'peer_check',
+          peer_checker_id: null,
+          created_at: '2026-10-22T00:00:00.000Z',
+          sync_status: 'pending',
+        },
+      ],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({
+        chapterAssignmentId: 1,
+        chapterStatus: 'draft',
+        assignedUserId: 5,
+        peerCheckerId: 99,
+        stageEnteredAt: '2026-01-01T00:00:00.000Z',
+      }),
+    ]);
+
+    expect(db.table('chapter_assignments')[0]).toEqual(
+      expect.objectContaining({
+        status: 'peer_check',
+        peer_checker_id: 20,
+        stage_entered_at: '2025-04-01T15:30:00.000Z',
+      }),
+    );
+  });
+
+  it('does not rewrite a peer assignment timestamp when upserting another id', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+      project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({
+        chapterAssignmentId: 1,
+        chapterNumber: 1,
+        stageEnteredAt: '2025-04-01T15:30:00.000Z',
+      }),
+      validAssignment({
+        chapterAssignmentId: 2,
+        chapterNumber: 2,
+        stageEnteredAt: '2025-05-01T15:30:00.000Z',
+      }),
+    ]);
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({
+        chapterAssignmentId: 2,
+        chapterNumber: 2,
+        stageEnteredAt: '2025-06-01T15:30:00.000Z',
+      }),
+    ]);
+
+    const byId = (id: number) =>
+      db.table('chapter_assignments').find(row => row.id === id);
+    expect(byId(1)?.stage_entered_at).toBe('2025-04-01T15:30:00.000Z');
+    expect(byId(2)?.stage_entered_at).toBe('2025-06-01T15:30:00.000Z');
   });
 });

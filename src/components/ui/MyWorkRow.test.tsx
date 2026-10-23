@@ -98,6 +98,7 @@ const baseChapter: MyWorkChapter = {
   totalVerses: 10,
   downloadedVerses: 10,
   hasConflict: false,
+  stageEnteredAt: null,
   lastActivityLabel: 'Yesterday',
   projectName: 'Demo',
   targetLanguageName: 'English',

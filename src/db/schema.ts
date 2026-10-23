@@ -61,6 +61,7 @@ export const createTableQueries: string[] = [
       status           TEXT NOT NULL DEFAULT 'not_started',
       submitted_time   TEXT,
       updated_at       TEXT NOT NULL,
+      stage_entered_at TEXT,
       total_verses     INTEGER NOT NULL DEFAULT 0,
       completed_verses INTEGER NOT NULL DEFAULT 0,
       has_conflict     INTEGER NOT NULL DEFAULT 0,

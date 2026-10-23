@@ -1,5 +1,6 @@
 import { ApiChapterAssignment } from '../types/api/types';
 import { ChapterAssignment } from '../types/db/types';
+import { normalizeStageEnteredAt } from '../utils/stageEnteredAt';
 
 function nonNegativeInt(value: unknown): number {
   return Math.max(0, Number(value) || 0);
@@ -61,6 +62,11 @@ export function mapApiChapterAssignment(
     chapterStatus: normalizeChapterStatus(api.chapterStatus ?? api.status),
     submittedTime: api.submittedTime ?? undefined,
     updatedAt: api.updatedAt ?? undefined,
+    stageEnteredAt: normalizeStageEnteredAt(
+      api.stageEnteredAt ??
+        (api as { stage_entered_at?: string | null }).stage_entered_at ??
+        undefined,
+    ),
     totalVerses: nonNegativeInt(api.totalVerses),
     completedVerses: nonNegativeInt(api.completedVerses),
     ...(typeof hasConflict === 'boolean' ? { hasConflict } : {}),

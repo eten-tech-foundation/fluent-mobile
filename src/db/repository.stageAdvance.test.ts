@@ -10,6 +10,7 @@ type ChapterAssignmentRow = {
   peer_checker_id: number | null;
   submitted_time: string | null;
   updated_at: string;
+  stage_entered_at: string | null;
 };
 
 type QueueRow = {
@@ -44,20 +45,74 @@ function createStageAdvanceTestDb(initial: ChapterAssignmentRow[]) {
       });
       return { rows: [] };
     }
-    if (sql.includes('peer_checker_id = ?')) {
-      const [status, submittedTime, updatedAt, peerCheckerId, id] = params as [
-        string,
-        string,
-        string,
-        number,
-        number,
-      ];
+    if (
+      sql.includes('peer_checker_id = ?') &&
+      sql.includes('stage_entered_at') &&
+      sql.includes('IS DISTINCT FROM')
+    ) {
+      const [status, submittedTime, updatedAt, statusAgain, peerCheckerId, id] =
+        params as [string, string, string, string, number, number];
+      expect(statusAgain).toBe(status);
       const row = rows.find(r => r.id === id);
       if (row) {
+        const statusChanged = row.status !== status;
         row.status = status;
         row.submitted_time = submittedTime;
         row.updated_at = updatedAt;
         row.peer_checker_id = peerCheckerId;
+        if (statusChanged) {
+          row.stage_entered_at = null;
+        }
+      }
+      return { rows: [] };
+    }
+    if (
+      sql.startsWith('UPDATE chapter_assignments') &&
+      sql.includes('submitted_time') &&
+      sql.includes('stage_entered_at') &&
+      sql.includes('IS DISTINCT FROM')
+    ) {
+      const [status, submittedTime, updatedAt, statusAgain, id] = params as [
+        string,
+        string,
+        string,
+        string,
+        number,
+      ];
+      expect(statusAgain).toBe(status);
+      const row = rows.find(r => r.id === id);
+      if (row) {
+        const statusChanged = row.status !== status;
+        row.status = status;
+        row.submitted_time = submittedTime;
+        row.updated_at = updatedAt;
+        if (statusChanged) {
+          row.stage_entered_at = null;
+        }
+      }
+      return { rows: [] };
+    }
+    if (
+      sql.startsWith('UPDATE chapter_assignments') &&
+      sql.includes('stage_entered_at') &&
+      sql.includes('IS DISTINCT FROM') &&
+      !sql.includes('submitted_time')
+    ) {
+      const [status, updatedAt, statusAgain, id] = params as [
+        string,
+        string,
+        string,
+        number,
+      ];
+      expect(statusAgain).toBe(status);
+      const row = rows.find(r => r.id === id);
+      if (row) {
+        const statusChanged = row.status !== status;
+        row.status = status;
+        row.updated_at = updatedAt;
+        if (statusChanged) {
+          row.stage_entered_at = null;
+        }
       }
       return { rows: [] };
     }
@@ -100,6 +155,7 @@ describe('updateChapterAssignmentStatusLocally', () => {
         peer_checker_id: 20,
         submitted_time: null,
         updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: '2025-04-01T15:30:00.000Z',
       },
     ]);
     setDatabase(db as never);
@@ -110,6 +166,7 @@ describe('updateChapterAssignmentStatusLocally', () => {
       expect.objectContaining({
         status: 'peer_check',
         peer_checker_id: 20,
+        stage_entered_at: null,
       }),
     );
   });
@@ -122,6 +179,7 @@ describe('updateChapterAssignmentStatusLocally', () => {
         peer_checker_id: null,
         submitted_time: null,
         updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: '2025-04-01T15:30:00.000Z',
       },
     ]);
     setDatabase(db as never);
@@ -132,6 +190,7 @@ describe('updateChapterAssignmentStatusLocally', () => {
       expect.objectContaining({
         status: 'community_review',
         peer_checker_id: 99,
+        stage_entered_at: null,
       }),
     );
     expect(db.__queue).toEqual([
@@ -153,6 +212,7 @@ describe('updateChapterAssignmentStatusLocally', () => {
         peer_checker_id: null,
         submitted_time: null,
         updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: null,
       },
     ]);
     setDatabase(db as never);
@@ -170,19 +230,72 @@ describe('updateChapterAssignmentStatusLocally', () => {
       },
     ]);
   });
+
+  it('clears stage_entered_at on status change and preserves it on repeat', async () => {
+    const stamp = '2025-04-01T15:30:00.000Z';
+    const db = createStageAdvanceTestDb([
+      {
+        id: 7,
+        status: 'draft',
+        peer_checker_id: null,
+        submitted_time: null,
+        updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: stamp,
+      },
+      {
+        id: 8,
+        status: 'draft',
+        peer_checker_id: null,
+        submitted_time: null,
+        updated_at: '2026-01-01T00:00:00.000Z',
+        stage_entered_at: '2025-05-01T15:30:00.000Z',
+      },
+    ]);
+    setDatabase(db as never);
+
+    await updateChapterAssignmentStatusLocally(7, 'peer_check', undefined, 4);
+    expect(db.__rows[0].stage_entered_at).toBeNull();
+    expect(db.__rows[1].stage_entered_at).toBe('2025-05-01T15:30:00.000Z');
+
+    db.__rows[0].stage_entered_at = '2025-07-01T00:00:00.000Z';
+    await updateChapterAssignmentStatusLocally(7, 'peer_check', undefined, 4);
+    expect(db.__rows[0].stage_entered_at).toBe('2025-07-01T00:00:00.000Z');
+    expect(db.__queue.map(entry => entry.user_id)).toEqual([4, 4]);
+  });
 });
 
 describe('setChapterAssignmentStatus', () => {
   it('writes the resolved status inside a transaction', async () => {
-    const rows = [{ id: 7, status: 'community_review', updated_at: '' }];
+    const rows = [
+      {
+        id: 7,
+        status: 'community_review',
+        updated_at: '',
+        stage_entered_at: '2025-04-01T15:30:00.000Z' as string | null,
+      },
+    ];
     const execute = async (query: string, params: unknown[] = []) => {
       const sql = query.replace(/\s+/g, ' ').trim();
-      if (sql.startsWith('UPDATE chapter_assignments SET status')) {
-        const [status, updatedAt, id] = params as [string, string, number];
+      if (
+        sql.startsWith('UPDATE chapter_assignments') &&
+        sql.includes('stage_entered_at') &&
+        sql.includes('IS DISTINCT FROM')
+      ) {
+        const [status, updatedAt, statusAgain, id] = params as [
+          string,
+          string,
+          string,
+          number,
+        ];
+        expect(statusAgain).toBe(status);
         const row = rows.find(item => item.id === id);
         if (row) {
+          const statusChanged = row.status !== status;
           row.status = status;
           row.updated_at = updatedAt;
+          if (statusChanged) {
+            row.stage_entered_at = null;
+          }
         }
         return { rows: [] };
       }
@@ -203,5 +316,68 @@ describe('setChapterAssignmentStatus', () => {
 
     expect(rows[0].status).toBe('peer_check');
     expect(rows[0].updated_at).not.toBe('');
+    expect(rows[0].stage_entered_at).toBeNull();
+  });
+
+  it('clears stage_entered_at only when the resolved status changes', async () => {
+    const rows = [
+      {
+        id: 7,
+        status: 'peer_check',
+        updated_at: 'old',
+        stage_entered_at: '2025-04-01T15:30:00.000Z' as string | null,
+      },
+      {
+        id: 8,
+        status: 'draft',
+        updated_at: 'old',
+        stage_entered_at: '2025-05-01T15:30:00.000Z' as string | null,
+      },
+    ];
+    const execute = async (query: string, params: unknown[] = []) => {
+      const sql = query.replace(/\s+/g, ' ').trim();
+      if (
+        sql.startsWith('UPDATE chapter_assignments') &&
+        sql.includes('stage_entered_at') &&
+        sql.includes('IS DISTINCT FROM')
+      ) {
+        const [status, updatedAt, statusAgain, id] = params as [
+          string,
+          string,
+          string,
+          number,
+        ];
+        expect(statusAgain).toBe(status);
+        const row = rows.find(item => item.id === id);
+        if (row) {
+          const statusChanged = row.status !== status;
+          row.status = status;
+          row.updated_at = updatedAt;
+          if (statusChanged) {
+            row.stage_entered_at = null;
+          }
+        }
+        return { rows: [] };
+      }
+      throw new Error(`unexpected SQL: ${sql}`);
+    };
+    setDatabase({
+      execute: async () => {
+        throw new Error('write outside transaction');
+      },
+      transaction: async (
+        fn: (tx: { execute: typeof execute }) => Promise<void>,
+      ) => {
+        await fn({ execute });
+      },
+    } as never);
+
+    await setChapterAssignmentStatus(7, 'peer_check');
+    expect(rows[0].stage_entered_at).toBe('2025-04-01T15:30:00.000Z');
+    expect(rows[1].stage_entered_at).toBe('2025-05-01T15:30:00.000Z');
+
+    await setChapterAssignmentStatus(7, 'community_review');
+    expect(rows[0].stage_entered_at).toBeNull();
+    expect(rows[1].stage_entered_at).toBe('2025-05-01T15:30:00.000Z');
   });
 });

@@ -155,6 +155,71 @@ describe('mapApiChapterAssignment', () => {
     expect(mapped.hasConflict).toBe(true);
   });
 
+  it('maps valid stageEnteredAt and nulls omitted/invalid values', () => {
+    const valid = mapApiChapterAssignment({
+      chapterAssignmentId: 30,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 1,
+      chapterStatus: 'draft',
+      stageEnteredAt: '2025-04-01T15:30:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      submittedTime: '2026-02-01T00:00:00.000Z',
+    });
+    const omitted = mapApiChapterAssignment({
+      chapterAssignmentId: 31,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 2,
+      chapterStatus: 'draft',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    const explicitNull = mapApiChapterAssignment({
+      chapterAssignmentId: 32,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 3,
+      chapterStatus: 'draft',
+      stageEnteredAt: null,
+    });
+    const invalid = mapApiChapterAssignment({
+      chapterAssignmentId: 33,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 4,
+      chapterStatus: 'draft',
+      stageEnteredAt: 'yesterday',
+    });
+
+    expect(valid.stageEnteredAt).toBe('2025-04-01T15:30:00.000Z');
+    expect(omitted.stageEnteredAt).toBeNull();
+    expect(explicitNull.stageEnteredAt).toBeNull();
+    expect(invalid.stageEnteredAt).toBeNull();
+  });
+
+  it('maps stage_entered_at snake_case and space-separated datetimes', () => {
+    const snake = mapApiChapterAssignment({
+      chapterAssignmentId: 34,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 5,
+      chapterStatus: 'draft',
+      stage_entered_at: '2025-04-01 15:30:00.000Z',
+    } as Parameters<typeof mapApiChapterAssignment>[0]);
+
+    expect(snake.stageEnteredAt).toBe('2025-04-01 15:30:00.000Z');
+  });
+
   it('ORs audio-take hasConflict with claim conflict', () => {
     const audioOnly = mapApiChapterAssignment({
       chapterAssignmentId: 19,
