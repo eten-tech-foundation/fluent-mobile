@@ -356,11 +356,66 @@ class LiveLogReaderTests(unittest.TestCase):
         self.assertNotIn("EMBEDDEDSECRETLEAK", out_err)
         self.assertIn("secret=***", out_err.lower())
 
-    def test_structured_marker_fail_closed_compact_jwt(self):
-        raw = "FluentAPI responseBody eyJhbGciOi.LEAKJWT.sig"
+    def test_structured_marker_fail_closed_hides_jwtish(self):
+        """responseBody fail-closed must hide JWT-shaped fragments (not COMPACT_JWT_RE)."""
+        raw = (
+            "FluentAPI responseBody "
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.sigSTRUCTJWTLEAK"
+        )
         out = self.m.sanitize_line(raw)
         self.assertIn("[FluentAPI] <redacted:structured-payload>", out)
-        self.assertNotIn("LEAKJWT", out)
+        self.assertNotIn("sigSTRUCTJWTLEAK", out)
+        # Fail-closed replaces the whole line — must not rely on <redacted-jwt> alone.
+        self.assertNotIn("<redacted-jwt>", out)
+
+    def test_url_userinfo_password_redacted(self):
+        raw = "callback https://admin:hunter2USERINFOLEAK@internal.example.com/callback"
+        out = self.m.sanitize_line(raw)
+        self.assertNotIn("hunter2USERINFOLEAK", out)
+        self.assertNotIn("admin:", out)
+        self.assertIn("https://***@", out)
+
+    def test_url_userinfo_username_only_token_redacted(self):
+        raw = "fetch https://tokenONLYUSERINFOLEAK@127.0.0.1:8443/media/a.mp3"
+        out = self.m.sanitize_line(raw)
+        self.assertNotIn("tokenONLYUSERINFOLEAK", out)
+        self.assertIn("https://***@", out)
+
+    def test_url_userinfo_with_query_redacts_both(self):
+        raw = (
+            "GET https://svc:passUSERINFOQLEAK@cdn.example.com/a.mp3"
+            "?X-Amz-Signature=SIGQUERYLEAK"
+        )
+        out = self.m.sanitize_line(raw)
+        self.assertNotIn("passUSERINFOQLEAK", out)
+        self.assertNotIn("SIGQUERYLEAK", out)
+        self.assertIn("https://***@", out)
+        self.assertIn("?<redacted-query>", out)
+
+    def test_bare_compact_jwt_redacted_without_structured_marker(self):
+        # Must reach COMPACT_JWT_RE (no responseBody / structured fail-closed).
+        # Shape must be eyJ<header>.eyJ<payload>.<sig> — non-eyJ middle segments
+        # are not real compact JWTs and must not be treated as a passing JWT test.
+        raw = (
+            "ReactNativeJS next "
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.sigBAREJWTLEAK"
+        )
+        out = self.m.sanitize_line(raw)
+        self.assertNotIn("sigBAREJWTLEAK", out)
+        self.assertIn("<redacted-jwt>", out)
+
+    def test_bearer_jwt_token_redacted(self):
+        raw = (
+            "AuthSession Authorization Bearer "
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.sigBEARJWTLEAK"
+        )
+        out = self.m.sanitize_line(raw)
+        self.assertNotIn("sigBEARJWTLEAK", out)
+        # AUTH_HEADER_RE or BEARER_RE — either path must remove the token material.
+        self.assertTrue(
+            "Authorization: ***" in out or "Bearer ***" in out,
+            msg=f"expected auth redaction markers in {out!r}",
+        )
 
     def test_v1_state_without_prefix_hash_does_not_reemit(self):
         """Legacy cursor with byte_offset but no prefix_sha256 must not reset."""
@@ -553,6 +608,38 @@ class LiveLogReaderTests(unittest.TestCase):
                 self.assertEqual(obj["runId"], "synthetic-run")
                 self.assertIn("observedAtUtc", obj)
                 self.assertNotIn("password=", obj["sanitizedLine"].lower())
+
+    def test_gitignore_ignores_raw_receipt_and_cursor_artifacts(self):
+        """Repo .gitignore must ignore restricted raw logs, receipts, and cursor state."""
+        repo_root = pathlib.Path(__file__).resolve().parents[2]
+        rels = [
+            "scripts/qa717-easy-ui-batch/artifacts/raw-logcat.txt",
+            "scripts/qa717-easy-ui-batch/artifacts/raw-metro.txt",
+            "scripts/qa717-easy-ui-batch/artifacts/receipts.jsonl",
+            "scripts/qa717-easy-ui-batch/artifacts/sanitized-receipts.jsonl",
+            "scripts/qa717-easy-ui-batch/artifacts/run.receipt.jsonl",
+            "scripts/qa717-easy-ui-batch/artifacts/cursor.json",
+            "scripts/qa717-easy-ui-batch/artifacts/cursor-state.json",
+            "scripts/qa717-easy-ui-batch/artifacts/metro.cursor.json",
+        ]
+        proc = subprocess.run(
+            ["git", "-C", str(repo_root), "check-ignore", "-v", *rels],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(
+            proc.returncode,
+            0,
+            msg=f"check-ignore failed: stderr={proc.stderr!r} stdout={proc.stdout!r}",
+        )
+        ignored = {
+            line.rsplit("\t", 1)[-1].strip()
+            for line in proc.stdout.splitlines()
+            if line.strip()
+        }
+        for rel in rels:
+            self.assertIn(rel, ignored, msg=f"expected gitignored: {rel}")
 
 
 if __name__ == "__main__":

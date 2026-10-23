@@ -51,6 +51,8 @@ COMPACT_JWT_RE = re.compile(
     r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9._-]+\.[A-Za-z0-9._\-+/=]+"
 )
 URL_WITH_QUERY_RE = re.compile(r"(https?://[^\s\"']+)\?[^\s\"']*")
+# https://user:password@host or https://token@host — redact userinfo (no query required).
+URL_USERINFO_RE = re.compile(r"(https?://)[^\s/@]+(?::[^\s/@]*)?@")
 SIGNED_QUERY_RE = re.compile(
     r"(?i)([?&])([A-Za-z0-9_]*(?:token|key|secret|sig|signature|X-Amz-)[A-Za-z0-9_]*)=[^&\s\"']+"
 )
@@ -238,6 +240,7 @@ def redact_secrets(text: str) -> str:
     out = BEARER_RE.sub("Bearer ***", out)
     out = COMPACT_JWT_RE.sub("<redacted-jwt>", out)
     out = SECRET_KV_RE.sub(lambda m: f"{m.group(1)}=***", out)
+    out = URL_USERINFO_RE.sub(r"\1***@", out)
     out = URL_WITH_QUERY_RE.sub(r"\1?<redacted-query>", out)
     out = SIGNED_QUERY_RE.sub(r"\1\2=***", out)
     out = EMAIL_RE.sub("<redacted-email>", out)
