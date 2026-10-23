@@ -69,6 +69,12 @@ jest.mock('../src/services/uploadProgressNotification', () => ({
   stopUploadProgressNotification: () => mockStopUploadProgressNotification(),
 }));
 
+const mockIsE2eDownloadAutoResumeHoldEnabled = jest.fn(() => false);
+jest.mock('../src/config/e2eDownloadAutoResumeGuard', () => ({
+  isE2eDownloadAutoResumeHoldEnabled: () =>
+    mockIsE2eDownloadAutoResumeHoldEnabled(),
+}));
+
 import {
   AuthSessionProvider,
   useAuthSession,
@@ -107,6 +113,7 @@ describe('AuthSessionProvider', () => {
     jest.clearAllMocks();
     mockRestoreSession.mockResolvedValue({ authenticated: false });
     mockSyncAllData.mockResolvedValue(undefined);
+    mockIsE2eDownloadAutoResumeHoldEnabled.mockReturnValue(false);
   });
 
   it('bootstraps session, then renders children', async () => {
@@ -138,6 +145,60 @@ describe('AuthSessionProvider', () => {
     });
     expect(mockStartUploadOrchestrator).toHaveBeenCalled();
     expect(mockStartUploadProgressNotification).toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).toHaveBeenCalled();
+  });
+
+  it('E2E download hold skips download auto-resume but keeps upload + sync', async () => {
+    mockIsE2eDownloadAutoResumeHoldEnabled.mockReturnValue(true);
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    expect(mockStartUploadOrchestrator).toHaveBeenCalled();
+    expect(mockStartUploadProgressNotification).toHaveBeenCalled();
+    expect(mockRefreshSyncStatusStore).toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
+
+    // signIn still runs post-login sync (metadata path unchanged).
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in'));
+    });
+    expect(mockSyncAllData).toHaveBeenCalled();
+  });
+
+  it('E2E download hold off restores download auto-resume on next auth effect', async () => {
+    mockIsE2eDownloadAutoResumeHoldEnabled.mockReturnValue(true);
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    const { getByTestId, unmount } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
+    unmount();
+
+    jest.clearAllMocks();
+    mockIsE2eDownloadAutoResumeHoldEnabled.mockReturnValue(false);
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    const second = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+    await waitFor(() => {
+      expect(second.getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    expect(mockStartUploadOrchestrator).toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).toHaveBeenCalled();
   });
 
   it('signIn runs post-login sync with sync-active UI', async () => {
@@ -222,8 +283,8 @@ describe('AuthSessionProvider', () => {
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockStopUploadProgressNotification).toHaveBeenCalled();
   });
-  
-    it('refreshes the sync-status store when a session starts', async () => {
+
+  it('refreshes the sync-status store when a session starts', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
     const { getByTestId } = render(
       <AuthSessionProvider>
