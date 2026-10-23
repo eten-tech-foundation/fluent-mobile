@@ -649,15 +649,31 @@ function chapterRowsToBibleGroups(
   return bibleGroups;
 }
 
-export async function getChaptersToSync() {
+/**
+ * Full-catalogue chapters for bible-text sync: assignments on projects where
+ * any eligible known user has `user_projects` membership (not assignee-only).
+ * Empty `userIds` returns an empty Map (no unscoped fallback).
+ */
+export async function getChaptersToSync(userIds: number[]) {
   const db = getDatabase();
 
+  if (userIds.length === 0) {
+    return new Map();
+  }
+
   try {
-    const result = await db.execute(`
-      SELECT DISTINCT bible_id, book_id, chapter_number
-      FROM chapter_assignments
-      ORDER BY bible_id, book_id, chapter_number
-    `);
+    const placeholders = userIds.map(() => '?').join(',');
+    const result = await db.execute(
+      `
+      SELECT DISTINCT ca.bible_id, ca.book_id, ca.chapter_number
+      FROM chapter_assignments ca
+      INNER JOIN project_units pu ON pu.id = ca.project_unit_id
+      INNER JOIN user_projects up ON up.project_id = pu.project_id
+      WHERE up.user_id IN (${placeholders})
+      ORDER BY ca.bible_id, ca.book_id, ca.chapter_number
+    `,
+      userIds,
+    );
 
     const rows = result.rows as unknown as DBTypes.ChapterRow[];
     return chapterRowsToBibleGroups(rows);

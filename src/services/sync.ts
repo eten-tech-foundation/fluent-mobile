@@ -874,6 +874,11 @@ export type SyncBibleTextsOptions = {
    * texts already ran). Still counts as unscoped for server-id remap clear.
    */
   excludeChapterGroups?: BibleChapterGroup;
+  /**
+   * Known/eligible account ids whose `user_projects` membership scopes the
+   * full-catalogue chapter selection when `chapterGroups` is omitted.
+   */
+  eligibleUserIds?: number[];
 };
 
 export async function syncBibleTexts(
@@ -897,7 +902,35 @@ export async function syncBibleTexts(
         cursorForSync = undefined;
       }
 
-      const bibleGroups = options?.chapterGroups ?? (await getChaptersToSync());
+      // Bare UI callers (e.g. DraftingScreen ensure) omit eligibleUserIds — scope
+      // to the active account only. Multi-account syncAllUsers must pass the
+      // known-user union explicitly; do not fall back to snapshotKnownUserIds().
+      // getActiveUserId() returns '' when unset — reject before Number('') → 0.
+      const activeRaw = getActiveUserId();
+      const activeUserId = Number(activeRaw);
+      const defaultEligibleUserIds =
+        activeRaw !== '' && Number.isFinite(activeUserId) ? [activeUserId] : [];
+      // Remap clear is global after a successful getChaptersToSync pass — cover
+      // every known account's chapters (same union idea as syncAllUsers), not
+      // just eligibleUserIds / active-only. Scoped chapterGroups passes keep
+      // remap pending and do not use this path.
+      let catalogueEligibleUserIds =
+        options?.eligibleUserIds ?? defaultEligibleUserIds;
+      if (remapPending && !options?.chapterGroups) {
+        const knownUserIds = getKnownUserIds() ?? [];
+        const idsForRemap =
+          knownUserIds.length > 0
+            ? knownUserIds
+            : activeRaw !== ''
+            ? [activeRaw]
+            : [];
+        catalogueEligibleUserIds = idsForRemap
+          .map(id => Number(id))
+          .filter(id => Number.isFinite(id));
+      }
+      const bibleGroups =
+        options?.chapterGroups ??
+        (await getChaptersToSync(catalogueEligibleUserIds));
       // Tier 2 (#670): skip My Work chapters already fetched in Tier 1 without
       // switching to a scoped pass (scoped passes must not clear remap).
       if (!options?.chapterGroups && options?.excludeChapterGroups) {
@@ -1278,7 +1311,7 @@ type FullSyncEntry = {
 let latestFullSync: FullSyncEntry | null = null;
 
 function snapshotKnownUserIds(): Set<string> {
-  const known = getKnownUserIds();
+  const known = getKnownUserIds() ?? [];
   if (known.length > 0) return new Set(known);
   const activeUserId = getActiveUserId();
   return new Set(activeUserId ? [activeUserId] : []);
@@ -1515,7 +1548,10 @@ export async function syncAllUsers(): Promise<void> {
             (deviceHasLocalProjects ? deviceLastSyncedAt : undefined);
 
         await syncPericopes();
-        await syncBibleTexts(bibleTextUpdatedAfter);
+        const eligibleUserIds = userIdsToSync
+          .map(id => Number(id))
+          .filter(id => Number.isFinite(id));
+        await syncBibleTexts(bibleTextUpdatedAfter, { eligibleUserIds });
 
         const userSyncCompletedAt = new Date().toISOString();
         for (const userId of usersPendingCursorUpdate) {
@@ -1638,7 +1674,9 @@ export async function syncAllData(
           assignmentPartialSkipWarning = partialSkipWarning;
           bibleTextUpdatedAfter = didFullSync ? undefined : assignmentCursor;
           await syncPericopes();
-          await syncBibleTexts(bibleTextUpdatedAfter);
+          await syncBibleTexts(bibleTextUpdatedAfter, {
+            eligibleUserIds: [userId],
+          });
           notifyTier1Complete();
         } else if (localProjectIdsBefore.length === 0) {
           // Login Tier 1 (#679): seed only FK parents My Work needs — do not
@@ -1687,6 +1725,7 @@ export async function syncAllData(
           // server-id remap can still clear after remaining + recording-linked.
           await syncBibleTexts(undefined, {
             excludeChapterGroups: myWorkChapterGroups,
+            eligibleUserIds: [userId],
           });
         } else {
           // Re-login (#670/#679): My Work + scoped seeds first; full catalogue
@@ -1757,6 +1796,7 @@ export async function syncAllData(
             : userAssignmentCursor;
           await syncBibleTexts(bibleTextUpdatedAfter, {
             excludeChapterGroups: myWorkChapterGroups,
+            eligibleUserIds: [userId],
           });
         }
 
