@@ -42,8 +42,6 @@ import {
   getBundledPericopeSetVersion,
 } from './pericopeSets';
 import { FIA_SET_ID } from '../../assets/pericope-sets/pericopeSetVersions';
-import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
-
 jest.mock('./authToken', () => ({
   authToken: {
     get: jest.fn(),
@@ -79,10 +77,6 @@ jest.mock('./api', () => ({
       updatedAt: null,
     }),
   },
-}));
-
-jest.mock('./displayModeSettingsSync', () => ({
-  syncDisplayModeSettingsForUser: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('./connectivity', () => ({
@@ -821,14 +815,21 @@ describe('syncAllData auth handling', () => {
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
     );
+    // Capable remote displayMode available — sync must still never call settings (#777).
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: {
+        displayMode: 'pericope',
+        suppressTooltip: true,
+      },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
 
     await syncAllData(true);
 
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
-    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
-      '2',
-      'valid-token',
-    );
+    expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
+    expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
   });
 
   it('continues chapter assignment sync after pending claim soft-fail', async () => {
@@ -908,20 +909,23 @@ describe('syncAllUsers auth handling', () => {
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+    // Capable remote displayMode available — sync must still never call settings (#777).
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: {
+        displayMode: 'verse',
+        suppressTooltip: true,
+      },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
 
     await syncAllUsers();
 
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(1, 'user-1-token');
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
-    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
-      '1',
-      'user-1-token',
-    );
-    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
-      '2',
-      'user-2-token',
-    );
+    expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
+    expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
     expect(authToken.set).not.toHaveBeenCalled();
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('1', expect.any(String));
     expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
