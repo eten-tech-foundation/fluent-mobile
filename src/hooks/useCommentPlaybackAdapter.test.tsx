@@ -49,9 +49,7 @@ describe('useCommentPlaybackAdapter', () => {
   it('pauses when the same playing comment is toggled', async () => {
     const play = jest.fn(async () => undefined);
     const pause = jest.fn(async () => undefined);
-    mockUsePlaybackEngine.mockReturnValue(
-      engineMock('idle', { play, pause }),
-    );
+    mockUsePlaybackEngine.mockReturnValue(engineMock('idle', { play, pause }));
     const { result, rerender } = renderHook(() => useCommentPlaybackAdapter());
 
     await act(async () => {

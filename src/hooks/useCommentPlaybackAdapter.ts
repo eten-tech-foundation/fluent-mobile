@@ -39,10 +39,7 @@ export function useCommentPlaybackAdapter(): UseCommentPlaybackAdapterApi {
     (commentId: string, audioUri: string) => {
       void (async () => {
         try {
-          if (
-            playingCommentId === commentId &&
-            playback.status === 'playing'
-          ) {
+          if (playingCommentId === commentId && playback.status === 'playing') {
             await playback.pause();
             setPlayingCommentId(null);
             return;

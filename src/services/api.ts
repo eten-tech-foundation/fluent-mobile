@@ -100,9 +100,7 @@ export type GetChapterVerseAudioParams = {
   chapterNumber: number;
 };
 
-function assertPositiveChapterAssignmentId(
-  chapterAssignmentId: number,
-): void {
+function assertPositiveChapterAssignmentId(chapterAssignmentId: number): void {
   if (
     typeof chapterAssignmentId !== 'number' ||
     !Number.isInteger(chapterAssignmentId) ||
@@ -427,10 +425,7 @@ export const FluentAPI = {
     );
     const parsed = parseChapterCommentAggregate(raw, chapterAssignmentId);
     if (!parsed) {
-      throw createApiError(
-        500,
-        'Malformed chapter comment-aggregate response',
-      );
+      throw createApiError(500, 'Malformed chapter comment-aggregate response');
     }
     return parsed;
   },

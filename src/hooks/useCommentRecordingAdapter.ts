@@ -26,9 +26,8 @@ export type UseCommentRecordingAdapterApi = CommentRecordingState & {
 export function useCommentRecordingAdapter(): UseCommentRecordingAdapterApi {
   const recording = useRecordingEngine();
   const [recordedAudioUri, setRecordedAudioUri] = useState<string | null>(null);
-  const [micPermission, setMicPermission] = useState<MicPermissionResult | null>(
-    null,
-  );
+  const [micPermission, setMicPermission] =
+    useState<MicPermissionResult | null>(null);
 
   const isRecording =
     recording.status === 'recording' || recording.status === 'paused';

@@ -33,9 +33,7 @@ describe('useCommentRecordingAdapter', () => {
   });
 
   it('starts recording after mic grant and clears prior uri', async () => {
-    const { result, rerender } = renderHook(() =>
-      useCommentRecordingAdapter(),
-    );
+    const { result, rerender } = renderHook(() => useCommentRecordingAdapter());
 
     await act(async () => {
       result.current.onRecordStart();
