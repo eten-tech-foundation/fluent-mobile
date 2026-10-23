@@ -69,7 +69,7 @@ describe('observerDraftCoverageLabel', () => {
           endVerse: 3,
         }),
       ),
-    ).toBe('Canonical draft - Verse - vv. 3-3');
+    ).toBe('Canonical draft - Verse - v. 3');
   });
 
   it('formats same-chapter pericope with inclusive Legacy span', () => {

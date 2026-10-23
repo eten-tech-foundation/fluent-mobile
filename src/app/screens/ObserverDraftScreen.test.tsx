@@ -180,9 +180,6 @@ jest.mock('../tabs/BibleTab', () => {
 jest.mock('../tabs/ObserverDraftTab', () => {
   const MockReact = require('react');
   const { View, Text } = require('react-native');
-  const {
-    formatCanonicalObserverDraftLabel,
-  } = require('../tabs/observerDraftCoverageLabel');
   return {
     ObserverDraftTab: (props: {
       units: Array<{
@@ -227,11 +224,8 @@ jest.mock('../tabs/ObserverDraftTab', () => {
                 ),
                 MockReact.createElement(
                   Text,
-                  { testID: `mock-coverage-label-${unit.bibleTextId}` },
-                  formatCanonicalObserverDraftLabel(
-                    unit.verseNumber,
-                    unit.coverage,
-                  ),
+                  { testID: `mock-coverage-${unit.bibleTextId}` },
+                  JSON.stringify(unit.coverage ?? null),
                 ),
               ),
             )
@@ -519,8 +513,14 @@ describe('ObserverDraftScreen', () => {
     fireEvent.press(screen.getByTestId('observer-draft-tab-draft'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('mock-coverage-label-501')).toHaveTextContent(
-        'Canonical draft - Pericope - vv. 3-7',
+      expect(screen.getByTestId('mock-coverage-501')).toHaveTextContent(
+        JSON.stringify({
+          granularity: 'pericope',
+          startChapter: 1,
+          startVerse: 3,
+          endChapter: 1,
+          endVerse: 7,
+        }),
       );
     });
     expect(screen.getAllByTestId('mock-unit-501')).toHaveLength(1);
@@ -548,8 +548,14 @@ describe('ObserverDraftScreen', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('mock-coverage-label-501')).toHaveTextContent(
-        'Canonical draft - Pericope - vv. 1:30-2:5',
+      expect(screen.getByTestId('mock-coverage-501')).toHaveTextContent(
+        JSON.stringify({
+          granularity: 'pericope',
+          startChapter: 1,
+          startVerse: 30,
+          endChapter: 2,
+          endVerse: 5,
+        }),
       );
     });
     expect(screen.getAllByTestId('mock-unit-501')).toHaveLength(1);
@@ -569,9 +575,7 @@ describe('ObserverDraftScreen', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('mock-coverage-label-501')).toHaveTextContent(
-        'Canonical draft - v. 3',
-      );
+      expect(screen.getByTestId('mock-coverage-501')).toHaveTextContent('null');
     });
     expect(screen.queryByText(/Verse/)).toBeNull();
     expect(mockStartDraftDownload).not.toHaveBeenCalled();

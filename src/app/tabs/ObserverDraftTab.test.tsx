@@ -272,7 +272,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
       unresolvedConflictPlaybackPolicy: 'undecided',
     });
 
-    expect(screen.getByText('Canonical draft - Verse - vv. 3-3')).toBeTruthy();
+    expect(screen.getByText('Canonical draft - Verse - v. 3')).toBeTruthy();
     fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackLoad).toHaveBeenCalledWith('file:///canonical/55.m4a');

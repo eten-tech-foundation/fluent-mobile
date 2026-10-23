@@ -71,7 +71,7 @@ export function formatRangeUnavailableCanonicalLabel(
  * Legacy-familiar canonical label for Observer DraftTakeRow.
  * - null/undefined → neutral anchor (no Verse/Pericope claim)
  * - partial / reversed → preserve known granularity + range unavailable + anchor
- * - complete well-ordered → Verse/Pericope + formatTakeVerseSpan (full bounds)
+ * - complete well-ordered → Verse uses Legacy "v. N" for single verse; spans use formatTakeVerseSpan
  */
 export function formatCanonicalObserverDraftLabel(
   anchorVerseNumber: number,
@@ -93,6 +93,15 @@ export function formatCanonicalObserverDraftLabel(
       coverage.granularity,
       anchorVerseNumber,
     );
+  }
+
+  // Match Legacy take-card copy: single-verse → "v. N", spans → formatTakeVerseSpan.
+  if (
+    coverage.granularity === 'verse' &&
+    coverage.startChapter === coverage.endChapter &&
+    coverage.startVerse === coverage.endVerse
+  ) {
+    return `Canonical draft - Verse - v. ${coverage.startVerse}`;
   }
 
   return `Canonical draft - ${granularityWord(
