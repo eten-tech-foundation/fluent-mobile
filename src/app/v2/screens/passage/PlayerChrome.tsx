@@ -70,7 +70,9 @@ function FanSlot({
   children: React.ReactNode;
 }) {
   const styles = useThemedStyles(t => ({
-    slot: { paddingBottom: t.spacing.xs },
+    // Above the footer's scrim, which dims everything else while a take
+    // is lifted.
+    slot: { paddingBottom: t.spacing.xs, zIndex: 1 },
   }));
   return (
     <View

@@ -150,7 +150,12 @@ translator hears them all last.
   fan and Track row (`NEXT_SPRING`), 0.7 opacity on a pressed book cover, the
   hero's 36 × 4 grab handle, a 12pt check on the fan's official badge, the
   Track row's 8pt unheard dot, and no glow on the official take card (Figma
-  shows one, which is a gradient-style effect like Q2).
+  shows one, which is a gradient-style effect like Q2). Deleting a take adds
+  a 300ms hold to pick it up, a 5s undo window, the 82% scrim, the 22% red
+  tint over the bin and a 160ms drop. The undo card and the bin also use raw
+  colors in Figma (2557-1257, 2557-1092); code maps them to
+  `surface/sunken`, `border/highlight`, `surface/inverse` and `accent/record`,
+  and the bin's lighter dashed ring to `fg/on-accent` at 40%.
 
 ## Decided
 

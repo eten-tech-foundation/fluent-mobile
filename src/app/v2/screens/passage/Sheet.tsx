@@ -95,7 +95,14 @@ export function Sheet({
   const range = Math.max(1, container - collapsed);
   const fullScript = Math.max(preview, container - headerBottom - panel);
   const pageWidth = headerWidth;
-  const recorder = useRecorder({ passage, userId, onReload });
+  const recorder = useRecorder({
+    passage,
+    userId,
+    showing: expanded && recordMode,
+    onReload,
+  });
+  /** A take is lifted to delete it: everything but the fan dims. */
+  const [lifted, setLifted] = useState(false);
   const { capturing } = recorder;
   const goToPage = useCallback(
     (index: number) => {
@@ -263,7 +270,11 @@ export function Sheet({
         fanShown={recordMode}
         fan={
           <LayoutAnimationConfig skipEntering>
-            <TakeFan {...recorder.fan} visible={recordMode} />
+            <TakeFan
+              {...recorder.fan}
+              visible={recordMode}
+              onLiftChange={setLifted}
+            />
           </LayoutAnimationConfig>
         }
         footer={
@@ -272,6 +283,7 @@ export function Sheet({
             page={page}
             recordMode={recordMode}
             record={recorder.footer}
+            dimmed={lifted}
           />
         }
         keys={

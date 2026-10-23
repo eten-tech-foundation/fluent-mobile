@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import PassageScreen from './PassageScreen';
 import type { Passage, PassageDownload } from '../../../hooks/usePassage';
+import { UNDO_MS } from '../../../hooks/usePendingDelete';
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -11,6 +12,15 @@ const mockStart = jest.fn(async () => {});
 const mockStop = jest.fn(async () => {});
 const mockDiscard = jest.fn(async () => {});
 const mockEnsureMic = jest.fn(async () => true);
+const mockPlayTake = jest.fn(async () => {});
+const mockDeleteTake = jest.fn(async (_id: string) => {});
+type MockTake = {
+  id: string;
+  takeNumber: number;
+  granularity: string;
+  isSelected: boolean;
+  durationMs: number;
+};
 let mockSession = {
   state: 'idle' as string,
   captureActive: false,
@@ -18,7 +28,15 @@ let mockSession = {
   captureDisabled: false,
   canRecordNewTake: true,
   pericopeUnavailable: false,
+  takes: [] as MockTake[],
 };
+const take = (n: number): MockTake => ({
+  id: `t${n}`,
+  takeNumber: n,
+  granularity: 'pericope',
+  isSelected: false,
+  durationMs: 10000,
+});
 let mockPassage: Passage = { status: 'loading' };
 let mockDownloadState: PassageDownload = 'idle';
 
@@ -38,14 +56,16 @@ jest.mock('../../../hooks/useRecordSession', () => ({
   useRecordSession: () => ({
     verseAudio: {
       state: mockSession.state,
-      takes: [],
+      takes: mockSession.takes,
+      deleteTake: mockDeleteTake,
+      playingTakeId: null,
       selectedTake: null,
       start: mockStart,
       stop: mockStop,
       resume: jest.fn(),
       discardCapture: mockDiscard,
       pausePlayback: jest.fn(),
-      playTake: jest.fn(),
+      playTake: mockPlayTake,
       selectTake: jest.fn(),
       setCanonical: jest.fn(),
       ownCanonicalTakeId: null,
@@ -75,12 +95,16 @@ jest.mock('react-native-safe-area-context', () => ({
 jest.mock('react-native-gesture-handler', () => {
   const pan = {
     enabled: () => pan,
+    activeOffsetX: () => pan,
     activeOffsetY: () => pan,
+    failOffsetY: () => pan,
+    activateAfterLongPress: () => pan,
+    onStart: () => pan,
     onUpdate: () => pan,
     onEnd: () => pan,
   };
   return {
-    Gesture: { Pan: () => pan },
+    Gesture: { Pan: () => pan, Tap: () => pan, Race: () => pan },
     GestureDetector: ({ children }: { children: React.ReactNode }) => children,
   };
 });
@@ -93,8 +117,19 @@ jest.mock('../../../services/storage', () => ({
 }));
 
 jest.mock('../../../hooks/useHaptics', () => ({
-  useHaptics: () => ({ press: jest.fn(), toggle: jest.fn() }),
+  useHaptics: () => ({
+    press: jest.fn(),
+    toggle: jest.fn(),
+    dragStart: jest.fn(),
+    dragEnd: jest.fn(),
+  }),
 }));
+
+jest.mock('../../../assets/icons/trash-open.svg', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  return () => MockReact.createElement(View);
+});
 
 jest.mock('../../../hooks/usePassage', () => ({
   usePassage: () => ({
@@ -148,6 +183,7 @@ describe('PassageScreen', () => {
       captureDisabled: false,
       canRecordNewTake: true,
       pericopeUnavailable: false,
+      takes: [],
     };
     mockPassage = ready;
     mockDownloadState = 'idle';
@@ -304,6 +340,77 @@ describe('PassageScreen', () => {
     expect(
       screen.getByTestId('passage-key-record').props.accessibilityState,
     ).toMatchObject({ disabled: true });
+  });
+
+  it('plays the take from where it was scrubbed to', async () => {
+    mockSession = { ...mockSession, takes: [take(1)] };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    fireEvent(screen.getByLabelText('Take 1 playback'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Play take'));
+    });
+
+    expect(mockPlayTake).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 't1' }),
+      500,
+    );
+  });
+
+  it('deletes a take only once the undo window closes', async () => {
+    jest.useFakeTimers();
+    try {
+      mockSession = { ...mockSession, takes: [take(1), take(2)] };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      const remove = () =>
+        fireEvent(
+          screen.getByLabelText('Take 2, selected'),
+          'accessibilityAction',
+          { nativeEvent: { actionName: 'delete' } },
+        );
+
+      remove();
+      expect(screen.getByLabelText('Take 2, deleted')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Undo deleting Take 2'));
+      await act(async () => {
+        jest.advanceTimersByTime(UNDO_MS);
+      });
+      expect(mockDeleteTake).not.toHaveBeenCalled();
+
+      remove();
+      await act(async () => {
+        jest.advanceTimersByTime(UNDO_MS);
+      });
+      expect(mockDeleteTake).toHaveBeenCalledWith('t2');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('deletes a pending take before recording another', async () => {
+    mockSession = { ...mockSession, takes: [take(1), take(2)] };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    fireEvent(
+      screen.getByLabelText('Take 2, selected'),
+      'accessibilityAction',
+      {
+        nativeEvent: { actionName: 'delete' },
+      },
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+
+    expect(mockDeleteTake).toHaveBeenCalledWith('t2');
+    expect(mockDeleteTake.mock.invocationCallOrder[0]).toBeLessThan(
+      mockStart.mock.invocationCallOrder[0],
+    );
   });
 
   it('asks before closing the player on a take in progress', () => {

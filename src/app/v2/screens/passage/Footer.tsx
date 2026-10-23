@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
+  Easing,
   FadeIn,
   FadeOut,
   interpolate,
@@ -13,7 +14,7 @@ import Animated, {
   withTiming,
   ZoomIn,
 } from 'react-native-reanimated';
-import { CheckBold } from '../../../../components/ui/icons';
+import { CheckBold, UndoBold } from '../../../../components/ui/icons';
 import { NEXT_SPRING } from '../../../../components/ui/motion';
 import { PageDots } from '../../../../components/ui/PageDots';
 import {
@@ -21,6 +22,7 @@ import {
   type WaveformVerse,
 } from '../../../../components/ui/Waveform';
 import type { PassageVerse } from '../../../../hooks/usePassage';
+import { UNDO_MS } from '../../../../hooks/usePendingDelete';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import { STEPS, type Ready } from './steps';
 import { fitBars } from './fitBars';
@@ -40,6 +42,11 @@ const BAR_SLOT = 6;
 const WAVE_LEAD = 48;
 /** A take's wave sweeping in when it comes to the front. */
 const SWEEP_MS = 320;
+/** Figma's deleted take card: a 56pt Undo button over a 3pt timer. */
+const UNDO_BUTTON = 56;
+const TIMER_H = 3;
+/** Figma's scrim while a take is lifted: bg/default at 82% (Q25). */
+const SCRIM = 0.82;
 
 export interface FrontTake {
   takeNumber: number;
@@ -52,6 +59,10 @@ export interface FrontTake {
   official: boolean;
   /** Absent while recording or before the first take. */
   onToggleOfficial?: () => void;
+  /** Deleted, with the undo window open: the card offers Undo instead. */
+  onUndo?: () => void;
+  /** Scrub the take, 0–1; absent while recording or with nothing to play. */
+  onSeek?: (progress: number) => void;
 }
 
 export interface RecordStatus {
@@ -76,11 +87,14 @@ export function Footer({
   page,
   recordMode,
   record,
+  dimmed = false,
 }: {
   passage: Ready;
   page: number;
   recordMode: boolean;
   record: RecordStatus;
+  /** A take is lifted: dim everything above the keys but the fan. */
+  dimmed?: boolean;
 }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
@@ -91,7 +105,14 @@ export function Footer({
   const edge = useSharedValue(take.recording ? 1 : 0);
   const official = useSharedValue(take.official ? 1 : 0);
   const sweep = useSharedValue(1);
+  const undoing = take.onUndo !== undefined;
+  // The undo card stands in for the take's wave and row.
+  const recordShown = recordMode && !undoing;
+  const gone = useSharedValue(undoing ? 1 : 0);
+  const timer = useSharedValue(1);
+  const dim = useSharedValue(dimmed ? 1 : 0);
   const [waveWidth, setWaveWidth] = useState(0);
+  const { height: screenHeight } = useWindowDimensions();
 
   useEffect(() => {
     const to = recordMode ? 1 : 0;
@@ -107,6 +128,22 @@ export function Footer({
       duration: reduceMotion ? 0 : OFFICIAL_MS,
     });
   }, [take.official, reduceMotion, official]);
+  useEffect(() => {
+    gone.value = withTiming(undoing ? 1 : 0, {
+      duration: reduceMotion ? 0 : EDGE_MS,
+    });
+    if (undoing) {
+      timer.value = 1;
+      timer.value = reduceMotion
+        ? 0
+        : withTiming(0, { duration: UNDO_MS, easing: Easing.linear });
+    }
+  }, [undoing, take.takeNumber, reduceMotion, gone, timer]);
+  useEffect(() => {
+    dim.value = withTiming(dimmed ? 1 : 0, {
+      duration: reduceMotion ? 0 : theme.motion.releaseMs,
+    });
+  }, [dimmed, reduceMotion, dim, theme.motion.releaseMs]);
   // A take coming to the front sweeps its wave in, left to right. One that
   // just stopped keeps the wave it drew.
   const wasRecording = useRef(take.recording);
@@ -139,6 +176,53 @@ export function Footer({
       right: t.spacing.lg,
       borderRadius: t.radius.sm,
       borderWidth: t.stroke[1],
+    },
+    // Set either way: Android keeps a dashed border once it's been drawn.
+    solid: { borderStyle: 'solid' },
+    dashed: { borderStyle: 'dashed' },
+    // Over the card once it has grown: Undo, the struck-out take, a timer.
+    undo: {
+      position: 'absolute',
+      top: t.spacing.xs,
+      bottom: t.spacing.xxl,
+      left: t.spacing.lg,
+      right: t.spacing.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: t.spacing.sm,
+      paddingBottom: t.spacing.md,
+    },
+    undoButton: {
+      width: UNDO_BUTTON,
+      height: UNDO_BUTTON,
+      borderRadius: t.radius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.roles.surfaceInverse,
+    },
+    undoPressed: { opacity: t.opacity.disabled },
+    struck: {
+      ...t.type.label,
+      color: t.roles.fgSecondary,
+      textDecorationLine: 'line-through',
+    },
+    track: {
+      position: 'absolute',
+      left: t.spacing.xl,
+      right: t.spacing.xl,
+      bottom: t.spacing.md,
+      height: TIMER_H,
+      borderRadius: TIMER_H / 2,
+      backgroundColor: t.roles.borderRim,
+      overflow: 'hidden',
+    },
+    timer: { height: TIMER_H, backgroundColor: t.roles.fgPrimary },
+    scrim: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: t.roles.bgDefault,
     },
     layers: { height: WAVE_H },
     rowLayers: { minHeight: TOGGLE },
@@ -178,6 +262,11 @@ export function Footer({
       [0, 1],
       [roles.borderRim, roles.accentPrimary],
     );
+    const edgeColor = interpolateColor(
+      edge.value,
+      [0, 1],
+      [rimOrOfficial, roles.accentRecord],
+    );
     return {
       opacity: interpolate(mode.value, [0, 0.35], [0, 1], 'clamp'),
       top: interpolate(mode.value, [0, 1], [cardRowTop, spacing.xs]),
@@ -189,9 +278,9 @@ export function Footer({
         [roles.surfaceSunken, roles.accentPrimary],
       ),
       borderColor: interpolateColor(
-        edge.value,
+        gone.value,
         [0, 1],
-        [rimOrOfficial, roles.accentRecord],
+        [edgeColor, roles.borderHighlight],
       ),
     };
   });
@@ -200,9 +289,15 @@ export function Footer({
     transform: [{ translateY: interpolate(mode.value, [0, 1], [0, -6]) }],
   }));
   const recordStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(mode.value, [0.4, 1], [0, 1], 'clamp'),
+    opacity:
+      interpolate(mode.value, [0.4, 1], [0, 1], 'clamp') * (1 - gone.value),
     transform: [{ translateY: interpolate(mode.value, [0, 1], [6, 0]) }],
   }));
+  const undoStyle = useAnimatedStyle(() => ({ opacity: gone.value }));
+  const timerStyle = useAnimatedStyle(() => ({
+    width: `${timer.value * 100}%`,
+  }));
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: dim.value * SCRIM }));
   const sweepStyle = useAnimatedStyle(() =>
     waveWidth > 0 ? { width: waveWidth * sweep.value } : {},
   );
@@ -216,9 +311,17 @@ export function Footer({
     waveWidth > 0
       ? Math.max(1, Math.floor((waveWidth - WAVE_LEAD) / BAR_SLOT))
       : 60;
+  // A take from before this session has no levels: flat bars still show
+  // the playhead and give scrubbing something to hold.
+  const flat = take.levels.length === 0 && (take.durationMs ?? 0) > 0;
   const takeBars = useMemo(
-    () => fitBars(take.levels, maxBars, take.recording).map(levelBar),
-    [take.levels, maxBars, take.recording],
+    () =>
+      fitBars(
+        flat ? new Array<number>(maxBars).fill(0) : take.levels,
+        maxBars,
+        take.recording,
+      ).map(levelBar),
+    [flat, take.levels, maxBars, take.recording],
   );
   const firstVerse = passage.verses[0]?.verseNumber ?? 1;
 
@@ -226,7 +329,11 @@ export function Footer({
     <LayoutAnimationConfig skipEntering>
       <View style={styles.footer}>
         <Animated.View
-          style={[styles.card, cardStyle]}
+          style={[
+            styles.card,
+            undoing ? styles.dashed : styles.solid,
+            cardStyle,
+          ]}
           pointerEvents="none"
           testID="passage-take-card"
         />
@@ -251,9 +358,9 @@ export function Footer({
           </Animated.View>
           <Animated.View
             style={[styles.layer, recordStyle]}
-            pointerEvents={recordMode ? 'auto' : 'none'}
+            pointerEvents={recordShown ? 'auto' : 'none'}
             importantForAccessibility={
-              recordMode ? 'auto' : 'no-hide-descendants'
+              recordShown ? 'auto' : 'no-hide-descendants'
             }
           >
             <Animated.View style={[styles.clip, sweepStyle]}>
@@ -271,6 +378,7 @@ export function Footer({
                       )}`
                     : `${takeLabel} playback`
                 }
+                onSeek={take.recording ? undefined : take.onSeek}
                 style={waveWidth > 0 ? { width: waveWidth } : undefined}
                 testID="passage-take-wave"
               />
@@ -297,9 +405,9 @@ export function Footer({
           </Animated.View>
           <Animated.View
             style={[styles.layer, styles.row, recordStyle]}
-            pointerEvents={recordMode ? 'auto' : 'none'}
+            pointerEvents={recordShown ? 'auto' : 'none'}
             importantForAccessibility={
-              recordMode ? 'auto' : 'no-hide-descendants'
+              recordShown ? 'auto' : 'no-hide-descendants'
             }
           >
             {/* Keyed by take, so changing takes crossfades the label. */}
@@ -354,6 +462,39 @@ export function Footer({
             ) : null}
           </Animated.View>
         </View>
+        {take.onUndo ? (
+          <Animated.View
+            style={[styles.undo, undoStyle]}
+            pointerEvents={recordMode ? 'box-none' : 'none'}
+          >
+            <Pressable
+              onPress={take.onUndo}
+              accessibilityRole="button"
+              accessibilityLabel={`Undo deleting ${takeLabel}`}
+              style={({ pressed }) => [
+                styles.undoButton,
+                pressed && styles.undoPressed,
+              ]}
+              testID="passage-take-undo"
+            >
+              <UndoBold
+                color={roles.fgOnInverse}
+                size={theme.controlSizes.icon24}
+              />
+            </Pressable>
+            <Text style={styles.struck} numberOfLines={1}>
+              {takeLabel}
+            </Text>
+            <View style={styles.track}>
+              <Animated.View style={[styles.timer, timerStyle]} />
+            </View>
+          </Animated.View>
+        ) : null}
+        {/* Covers the script and header too, up to the keys. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.scrim, { top: -screenHeight }, scrimStyle]}
+        />
       </View>
     </LayoutAnimationConfig>
   );

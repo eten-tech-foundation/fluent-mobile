@@ -522,6 +522,33 @@ describe('useVerseAudio', () => {
     expect(mockRecordingStart).not.toHaveBeenCalled();
   });
 
+  it('keeps playing one take while another is deleted', async () => {
+    const take = makeTake();
+    const other = makeTake({
+      id: 'rec_2',
+      takeNumber: 2,
+      isSelected: false,
+      localFilePath: '/recordings/rec_2.m4a',
+    });
+    loadTakes.mockResolvedValue([take, other]);
+    deleteTake.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+    await act(async () => {
+      await result.current.playTake(take);
+    });
+    loadTakes.mockResolvedValue([take]);
+    await act(async () => {
+      await result.current.deleteTake('rec_2');
+    });
+
+    expect(deleteTake).toHaveBeenCalledWith('rec_2');
+    expect(result.current.state).toBe('playing');
+    expect(result.current.playingTakeId).toBe('rec_1');
+  });
+
   it('persists a single segment when pause/resume reuses the same file', async () => {
     const uri = 'file:///tmp/take.aac';
     mockRecordingPause.mockImplementation(async () => {
