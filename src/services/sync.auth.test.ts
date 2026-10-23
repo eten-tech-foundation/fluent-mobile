@@ -2324,7 +2324,13 @@ describe('org grant hydration wiring (#452 prerequisite)', () => {
     userHasLocalProjects.mockResolvedValue(true);
     userHasLocalChapterAssignments.mockResolvedValue(true);
     userNeedsAssigneeRepair.mockResolvedValue(false);
+    // Reset chapter fixtures left by progressive-login (#670) cases in this file.
+    // Empty maps are valid coverage here: grant wiring must not depend on bible
+    // text payloads; do not stub away #177 missing-chapter production errors.
     getChaptersToSync.mockResolvedValue(new Map());
+    getMyWorkChaptersToSync.mockResolvedValue(new Map());
+    getRecordingLinkedChaptersToSync.mockResolvedValue(new Map());
+    (isBibleTextsServerIdRemapPending as jest.Mock).mockReturnValue(false);
     getLocalProjectIds.mockResolvedValue([]);
     mockRefreshUserOrgGrants.mockResolvedValue(undefined);
   });
