@@ -22,6 +22,7 @@ import {
   contentTypeToAudioExt,
   resolveActiveTakeDownload,
 } from './draftAudioActiveTake';
+import { filterChapterVerseAudioListItems } from './verseAudioContract';
 import {
   DRAFT_DOWNLOAD_RESOURCE_NAME,
   draftAudioResourceId,
@@ -796,9 +797,14 @@ export async function startDraftDownload(
       };
     }
 
+    const listItems = filterChapterVerseAudioListItems(
+      list.items,
+      request.chapterNumber,
+    );
+
     const resolvedAudio = [];
     const unresolved: number[] = [];
-    for (const item of list.items) {
+    for (const item of listItems) {
       try {
         resolvedAudio.push(resolveActiveTakeDownload(item));
       } catch (error) {

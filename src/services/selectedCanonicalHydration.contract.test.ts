@@ -2,6 +2,7 @@ import wireContract from './fixtures/selectedCanonicalHydration.wire-contract.js
 import { draftAudioResourceId } from './draftDownloadIds';
 import { resolveActiveTakeDownload } from './draftAudioActiveTake';
 import {
+  filterChapterVerseAudioListItems,
   parseVerseAudioListResponse,
   parseVerseAudioResponse,
 } from './verseAudioContract';
@@ -102,6 +103,27 @@ describe('selected-canonical hydration contract (API455 pinned)', () => {
     });
     // No invented duplicate membership for chapter 2.
     expect(list.items.filter(item => item.startChapter === 2)).toHaveLength(0);
+  });
+
+  it('drops a chapter-2 list duplicate of the same anchor recording', () => {
+    const chapter2Duplicate = {
+      ...wireContract.pericopeMatchedActive,
+      verseNumber: 4,
+    };
+    const chapter2List = parseVerseAudioListResponse({
+      items: [chapter2Duplicate, chapter2Duplicate],
+      hasConflict: true,
+    });
+    expect(
+      filterChapterVerseAudioListItems(chapter2List.items, 2),
+    ).toHaveLength(0);
+    expect(filterChapterVerseAudioListItems(chapter2List.items, 1)).toEqual([
+      expect.objectContaining({
+        id: wireContract.pericopeMatchedActive.id,
+        startChapter: 1,
+        endChapter: 2,
+      }),
+    ]);
   });
 
   it('parses null active with retained takes and null top-level URL', () => {

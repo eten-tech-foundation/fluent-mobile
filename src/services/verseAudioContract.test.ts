@@ -179,6 +179,39 @@ describe('verseAudioContract', () => {
     expect(parsed.takes[0]?.downloadUrl).toBe('https://example.test/take');
   });
 
+  it('omits coverage when only a subset of coverage keys is present (upload-safe)', () => {
+    const parsed = parseVerseAudioResponse({
+      ...validResponse,
+      granularity: 'verse',
+      takes: [validTake],
+    });
+    expect(parsed.granularity).toBeUndefined();
+    expect(parsed.takes[0]?.granularity).toBeUndefined();
+  });
+
+  it('still rejects a full coverage set with invalid bounds', () => {
+    expect(() =>
+      parseVerseAudioResponse({
+        ...validResponse,
+        granularity: 'verse',
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 1,
+        takes: [
+          {
+            ...validTake,
+            granularity: 'verse',
+            startChapter: 1.5,
+            startVerse: 1,
+            endChapter: 1,
+            endVerse: 1,
+          },
+        ],
+      }),
+    ).toThrow(/take invalid startChapter/);
+  });
+
   it('rejects fractional coverage bounds (positive ints only)', () => {
     expect(() =>
       parseVerseAudioResponse({

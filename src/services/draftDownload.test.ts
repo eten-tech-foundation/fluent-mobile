@@ -109,9 +109,22 @@ const take = {
   sizeBytes: 2048,
   durationSeconds: 12.5,
   contentHash: 'abc123hash',
+  granularity: 'verse' as const,
+  startChapter: 1,
+  startVerse: 1,
+  endChapter: 1,
+  endVerse: 1,
   downloadUrl: 'https://example.test/take',
   createdAt: '2026-07-15T00:00:00.000Z',
   updatedAt: '2026-07-15T00:00:00.000Z',
+};
+
+const pericopeCoverage = {
+  granularity: 'pericope' as const,
+  startChapter: 1,
+  startVerse: 3,
+  endChapter: 2,
+  endVerse: 4,
 };
 
 const audioResourceId = draftAudioResourceId(9, 3401, 10, 'abc123hash');
@@ -141,6 +154,7 @@ describe('startDraftDownload', () => {
           versionToken: 2,
           conflictStatus: 'conflict',
           activeTakeId: 10,
+          ...pericopeCoverage,
           takes: [take],
           verseNumber: 1,
           downloadUrl: 'https://example.test/top',
@@ -219,6 +233,65 @@ describe('startDraftDownload', () => {
     expect(mockGetBibleTexts).not.toHaveBeenCalled();
     expect(mockWorkerStart).toHaveBeenCalled();
     expect(mockWorkerResume).not.toHaveBeenCalled();
+
+    expect(mockWriteManifest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        units: [
+          expect.objectContaining({
+            resourceId: audioResourceId,
+            activeTakeId: 10,
+            contentHash: 'abc123hash',
+            coverage: {
+              granularity: 'verse',
+              startChapter: 1,
+              startVerse: 1,
+              endChapter: 1,
+              endVerse: 1,
+            },
+          }),
+        ],
+      }),
+    );
+  });
+
+  it('drops cross-chapter list duplicates when chapter 2 repeats the anchor recording', async () => {
+    mockGetChapterVerseAudio.mockResolvedValue({
+      items: [
+        {
+          id: 2,
+          projectUnitId: 12,
+          bibleTextId: 3401,
+          uploadedBy: 3,
+          contentType: 'audio/mp4',
+          sizeBytes: 4096,
+          durationSeconds: 40,
+          versionToken: 3,
+          conflictStatus: 'conflict',
+          activeTakeId: 20,
+          ...pericopeCoverage,
+          takes: [
+            {
+              ...take,
+              id: 20,
+              contentHash: 'HASH_PERICOPE',
+              ...pericopeCoverage,
+            },
+          ],
+          verseNumber: 4,
+          downloadUrl: 'https://example.test/pericope',
+          createdAt: '2026-07-15T00:00:00.000Z',
+          updatedAt: '2026-07-15T00:00:00.000Z',
+        },
+      ],
+      hasConflict: true,
+    });
+
+    const result = await startDraftDownload({
+      ...request,
+      chapterNumber: 2,
+    });
+    expect(result).toEqual({ ok: false, reason: 'no_active_takes' });
+    expect(mockWriteManifest).not.toHaveBeenCalled();
   });
 
   it('fail-closes when active account changes before list/text responses apply', async () => {

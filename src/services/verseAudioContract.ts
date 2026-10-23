@@ -100,7 +100,9 @@ function isNullablePositiveInt(value: unknown): value is number | null {
 
 /**
  * Optional selected-canonical coverage (API455+).
- * Absent keys → older payload (omit fields). Present keys must be well-typed.
+ * Absent keys → older payload (omit fields). All five keys present → must be well-typed.
+ * Partial key sets omit coverage (same as legacy) so upload GET/PUT parsing is not fail-closed
+ * on half-populated wire; `coverageFromTake` yields null until the take carries a full range.
  */
 function parseOptionalCoverage(
   body: Record<string, unknown>,
@@ -140,31 +142,41 @@ function parseOptionalCoverage(
     return {};
   }
 
-  if (!hasGranularity || !isGranularity(body.granularity)) {
+  const allPresent =
+    hasGranularity &&
+    hasStartChapter &&
+    hasStartVerse &&
+    hasEndChapter &&
+    hasEndVerse;
+  if (!allPresent) {
+    return {};
+  }
+
+  if (!isGranularity(body.granularity)) {
     throw createApiError(
       500,
       `Malformed verse audio response: ${label} invalid granularity`,
     );
   }
-  if (!hasStartChapter || !isNullablePositiveInt(body.startChapter)) {
+  if (!isNullablePositiveInt(body.startChapter)) {
     throw createApiError(
       500,
       `Malformed verse audio response: ${label} invalid startChapter`,
     );
   }
-  if (!hasStartVerse || !isNullablePositiveInt(body.startVerse)) {
+  if (!isNullablePositiveInt(body.startVerse)) {
     throw createApiError(
       500,
       `Malformed verse audio response: ${label} invalid startVerse`,
     );
   }
-  if (!hasEndChapter || !isNullablePositiveInt(body.endChapter)) {
+  if (!isNullablePositiveInt(body.endChapter)) {
     throw createApiError(
       500,
       `Malformed verse audio response: ${label} invalid endChapter`,
     );
   }
-  if (!hasEndVerse || !isNullablePositiveInt(body.endVerse)) {
+  if (!isNullablePositiveInt(body.endVerse)) {
     throw createApiError(
       500,
       `Malformed verse audio response: ${label} invalid endVerse`,
@@ -380,4 +392,34 @@ export function parseVerseAudioListResponse(
     items: body.items.map(parseVerseAudioResponse),
     hasConflict: body.hasConflict,
   };
+}
+
+/**
+ * Chapter list membership for draft hydration (#784 / API455).
+ * Cross-chapter pericopes anchor on `startChapter`; drop duplicates by recording `id`
+ * when a downstream chapter list repeats the same unit.
+ */
+export function filterChapterVerseAudioListItems(
+  items: VerseAudioResponse[],
+  chapterNumber: number,
+): VerseAudioResponse[] {
+  const seenRecordingIds = new Set<number>();
+  const kept: VerseAudioResponse[] = [];
+
+  for (const item of items) {
+    if (
+      item.startChapter !== undefined &&
+      item.startChapter !== null &&
+      item.startChapter !== chapterNumber
+    ) {
+      continue;
+    }
+    if (seenRecordingIds.has(item.id)) {
+      continue;
+    }
+    seenRecordingIds.add(item.id);
+    kept.push(item);
+  }
+
+  return kept;
 }
