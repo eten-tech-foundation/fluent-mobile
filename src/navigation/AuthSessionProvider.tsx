@@ -34,7 +34,6 @@ import {
   resetSyncStatusStore,
 } from '../services/syncStatusStore';
 import { registerRecordingUploadWorker } from '../services/recordingSync';
-import { isE2eDownloadAutoResumeHoldEnabled } from '../config/e2eDownloadAutoResumeGuard';
 import { ApiUser } from '../types/api/responses';
 import { appStyles } from '../app/appStyles';
 import { theme } from '../theme';
@@ -113,16 +112,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
     startUploadProgressNotification();
     startUploadOrchestrator();
-    // Download-only E2E hold: keep queued offline downloads idle without
-    // short-circuiting upload orchestrator or post-login sync/metadata.
-    let stopAutoResume: (() => void) | null = null;
-    if (isE2eDownloadAutoResumeHoldEnabled()) {
-      log.info(
-        'E2E download auto-resume hold: skipping download queue auto-start',
-      );
-    } else {
-      stopAutoResume = startDownloadQueueAutoResume();
-    }
+    const stopAutoResume = startDownloadQueueAutoResume();
     void refreshSyncStatusStore();
     return () => {
       stopUploadProgressNotification();
