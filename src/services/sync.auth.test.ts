@@ -516,6 +516,29 @@ describe('refreshChapterMetadataIfOnline', () => {
     expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
   });
 
+  it('emits sync-complete after metadata refresh finishes (success, clear, or early exit)', async () => {
+    const emitSpy = jest
+      .spyOn(syncEvents, 'emitSyncComplete')
+      .mockImplementation(() => {});
+
+    try {
+      await refreshChapterMetadataIfOnline(2);
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+
+      emitSpy.mockClear();
+      mockGetConnectivitySnapshot.mockResolvedValueOnce({
+        isOnline: false,
+        isWifi: false,
+        isCellular: false,
+        connectionType: 'none',
+      });
+      await refreshChapterMetadataIfOnline(2);
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      emitSpy.mockRestore();
+    }
+  });
+
   it("passes this user's stored token to sync calls without mutating global authToken", async () => {
     (getCredentials as jest.Mock).mockResolvedValue({
       token: 'user-2-specific-token',

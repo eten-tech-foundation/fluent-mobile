@@ -187,6 +187,17 @@ describe('storage (KV wrapper)', () => {
       setReauthRequired('3');
       expect(isReauthRequiredForActiveUser()).toBe(true);
     });
+
+    it('ignores inactive users when checking active-user reauth', () => {
+      setUserSync('1', 'one@example.com');
+      addKnownUserId('2');
+      setUserEmail('2', 'two@example.com');
+      setReauthRequired('2');
+
+      expect(isReauthRequired('2')).toBe(true);
+      expect(getActiveUserId()).toBe('1');
+      expect(isReauthRequiredForActiveUser()).toBe(false);
+    });
   });
 
   describe('clearUserSession', () => {
