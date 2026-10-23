@@ -106,7 +106,7 @@ export type StageAdvanceVisibility = {
 
 /** Statuses gated to a specific assignee. Everything else (Community Review
  * through Consultant Check) is open to any translator per #443 AC. */
-const ASSIGNEE_GATED_STATUSES = new Set([
+export const ASSIGNEE_GATED_STATUSES = new Set([
   '',
   'not_started',
   'draft',
@@ -171,10 +171,12 @@ export function getStageAdvanceVisibility({
 }
 
 /**
- * True when the drafter must not capture on open Peer Check (#442, fluent-api
- * edit policy). PM-assigned Peer Check uses a different rule set.
+ * True when this user must not capture on Peer Check (#442, fluent-api edit
+ * policy). Open Peer Check blocks the drafter. Once a peer checker is
+ * assigned, only that checker may capture — the drafter and other peers
+ * are blocked.
  */
-export function isDrafterBlockedFromOpenPeerCheckCapture(
+export function isBlockedFromPeerCheckCapture(
   chapterData: StageAdvanceChapterData,
   currentUserId: number | null,
 ): boolean {
@@ -185,7 +187,7 @@ export function isDrafterBlockedFromOpenPeerCheckCapture(
     return false;
   }
   if (typeof chapterData.peerCheckerId === 'number') {
-    return false;
+    return chapterData.peerCheckerId !== currentUserId;
   }
   return chapterData.assignedUserId === currentUserId;
 }

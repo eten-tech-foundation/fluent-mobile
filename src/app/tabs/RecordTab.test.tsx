@@ -270,6 +270,15 @@ function renderTab(
   );
 }
 
+/** captureBibleTextId reaches useVerseAudio as `bibleTextId` once resolved. */
+async function waitForCaptureReady() {
+  await waitFor(() => {
+    expect(mockUseVerseAudio).toHaveBeenLastCalledWith(
+      expect.objectContaining({ bibleTextId: expect.any(Number) }),
+    );
+  });
+}
+
 function collectTestIds(node: unknown, ids: string[] = []): string[] {
   if (!node || typeof node !== 'object') {
     return ids;
@@ -1177,7 +1186,7 @@ describe('RecordTab', () => {
     });
   });
 
-  it('shows taken-chapter banner for an unrelated viewer and keeps record enabled', async () => {
+  it('shows taken-chapter banner for an unrelated viewer and disables record', async () => {
     renderTab(undefined, {
       chapterData: {
         ...chapterData,
@@ -1188,9 +1197,10 @@ describe('RecordTab', () => {
 
     expect(screen.getByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeTruthy();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('record-start-button')).toBeEnabled();
-    });
+    await waitForCaptureReady();
+    expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    fireEvent.press(screen.getByTestId('record-start-button'));
+    expect(idleAudio.start).not.toHaveBeenCalled();
   });
 
   it('hides taken-chapter banner when current user holds the Drafter slot', () => {
@@ -1204,7 +1214,7 @@ describe('RecordTab', () => {
     expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
   });
 
-  it('hides taken-chapter banner when current user holds the Peer Checker slot', () => {
+  it('hides taken-chapter banner when current user holds the Peer Checker slot', async () => {
     renderTab(undefined, {
       chapterData: {
         ...chapterData,
@@ -1214,6 +1224,12 @@ describe('RecordTab', () => {
     });
 
     expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
+    await waitForCaptureReady();
+    expect(screen.getByTestId('record-start-button')).toBeEnabled();
+    fireEvent.press(screen.getByTestId('record-start-button'));
+    await waitFor(() => {
+      expect(idleAudio.start).toHaveBeenCalled();
+    });
   });
 
   it('shows conflict banner when hook reports a conflict', () => {
@@ -1348,7 +1364,54 @@ describe('RecordTab', () => {
 
     expect(screen.getByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeTruthy();
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    });
   });
+
+  it('disables record for the drafter when a Peer Checker is already assigned', async () => {
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        status: 'peer_check',
+        assignedUserId: 42,
+        peerCheckerId: 99,
+      },
+    });
+
+    expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
+    await waitForCaptureReady();
+    expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    fireEvent.press(screen.getByTestId('record-start-button'));
+    expect(idleAudio.start).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'community_review',
+    'linguist_check',
+    'theological_check',
+    'consultant_check',
+  ] as const)(
+    'lets a non-assigned translator record during %s',
+    async status => {
+      renderTab(undefined, {
+        chapterData: {
+          ...chapterData,
+          status,
+          assignedUserId: 99,
+          peerCheckerId: 7,
+        },
+      });
+
+      expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
+      await waitForCaptureReady();
+      expect(screen.getByTestId('record-start-button')).toBeEnabled();
+      fireEvent.press(screen.getByTestId('record-start-button'));
+      await waitFor(() => {
+        expect(idleAudio.start).toHaveBeenCalled();
+      });
+    },
+  );
 
   it('assigns the tapping peer when confirming Send to Community Review on open Peer Check', async () => {
     render(
@@ -1437,15 +1500,6 @@ describe('RecordTab', () => {
       status: 'complete',
       assignedUserId: 42,
     };
-
-    /** captureBibleTextId reaches useVerseAudio as `bibleTextId` once resolved. */
-    async function waitForCaptureReady() {
-      await waitFor(() => {
-        expect(mockUseVerseAudio).toHaveBeenLastCalledWith(
-          expect.objectContaining({ bibleTextId: expect.any(Number) }),
-        );
-      });
-    }
 
     it('disables the idle record button at Complete', async () => {
       renderTab(undefined, { chapterData: completeChapter });

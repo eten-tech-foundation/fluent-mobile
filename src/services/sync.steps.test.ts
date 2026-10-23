@@ -11,7 +11,6 @@ import {
   syncPendingChapterClaimsForUser,
   syncProjects,
 } from './sync';
-import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
 import { getCredentials } from './keychain';
 import {
   clearSyncError,
@@ -74,8 +73,11 @@ jest.mock('./authToken', () => ({
 jest.mock('./api', () => ({
   FluentAPI: {
     getLanguages: jest.fn().mockResolvedValue([]),
+    getLanguage: jest.fn(),
     getBooks: jest.fn().mockResolvedValue([]),
+    getBook: jest.fn(),
     getBibles: jest.fn().mockResolvedValue([]),
+    getBible: jest.fn(),
     getUserByEmail: jest.fn(),
     getUserProjects: jest.fn(),
     getUserMilestones: jest.fn().mockResolvedValue([]),
@@ -96,10 +98,6 @@ jest.mock('./api', () => ({
       updatedAt: null,
     }),
   },
-}));
-
-jest.mock('./displayModeSettingsSync', () => ({
-  syncDisplayModeSettingsForUser: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('./keychain', () => ({
@@ -437,6 +435,96 @@ describe('sync step orchestration', () => {
         reconcileUserMilestonesMock.mock.invocationCallOrder[0],
       ).toBeLessThan(reconcileUserProjectsMock.mock.invocationCallOrder[0]);
       expect(ensureUserProjectMembershipMock).not.toHaveBeenCalled();
+    });
+
+    it('seedFkParents fetches unique languages by id without advancing master cursor (#679)', async () => {
+      mockDbCount(1);
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 1,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockResolvedValue({
+        id: 1,
+        langName: 'English',
+        langCodeIso6393: 'eng',
+      });
+
+      await syncProjects(2, 'seed-tok', { seedFkParents: true });
+
+      expect(FluentAPI.getLanguage).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getLanguage).toHaveBeenCalledWith(1, 'seed-tok');
+      expect(insertMasterDataMock).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            id: 1,
+            langName: 'English',
+            langCode: 'eng',
+          }),
+        ],
+        [],
+        [],
+      );
+      expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+      expect(insertProjectsMock).toHaveBeenCalled();
+      const seedOrder = insertMasterDataMock.mock.invocationCallOrder[0];
+      const projectOrder = insertProjectsMock.mock.invocationCallOrder[0];
+      expect(seedOrder).toBeLessThan(projectOrder);
+    });
+
+    it('seedFkParents failure does not insert projects (#679)', async () => {
+      jest.useFakeTimers();
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockRejectedValue(
+        new Error('language missing'),
+      );
+
+      try {
+        const pending = syncProjects(2, 'seed-tok', { seedFkParents: true });
+        const expectation = expect(pending).rejects.toThrow('language missing');
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(insertProjectsMock).not.toHaveBeenCalled();
+        expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not by-id seed when seedFkParents is omitted', async () => {
+      mockDbCount(1);
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+
+      await syncProjects(2, 'no-seed-tok');
+
+      expect(FluentAPI.getLanguage).not.toHaveBeenCalled();
+      expect(insertMasterDataMock).not.toHaveBeenCalled();
     });
   });
 
@@ -992,7 +1080,7 @@ describe('sync step orchestration', () => {
   });
 });
 
-describe('syncAllUsers displayMode wiring', () => {
+describe('syncAllUsers displayMode device-local (#777)', () => {
   const { userHasLocalProjects, userHasLocalChapterAssignments } =
     jest.requireMock('../db/repository') as {
       userHasLocalProjects: jest.Mock;
@@ -1046,21 +1134,21 @@ describe('syncAllUsers displayMode wiring', () => {
     __resetFullSyncSingleFlightForTests();
   });
 
-  it('invokes syncDisplayModeSettingsForUser with each user id and bearer', async () => {
+  it('does not call /self/settings when remote advertises displayMode capability', async () => {
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: { displayMode: 'verse', suppressTooltip: true },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
 
     await syncAllUsers();
 
-    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
-      '1',
-      'user-1-token',
-    );
-    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
-      '2',
-      'user-2-token',
-    );
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
+    expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
     expect(syncPendingStageAdvancesMock).toHaveBeenCalledWith(
       1,
       'user-1-token',
@@ -1071,7 +1159,10 @@ describe('syncAllUsers displayMode wiring', () => {
     );
     const claimsOrder =
       syncPendingChapterClaimsMock.mock.invocationCallOrder[0];
+    const assignmentOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
+      .invocationCallOrder[0];
     const stageOrder = syncPendingStageAdvancesMock.mock.invocationCallOrder[0];
-    expect(claimsOrder).toBeLessThan(stageOrder);
+    expect(claimsOrder).toBeLessThan(assignmentOrder);
+    expect(assignmentOrder).toBeLessThan(stageOrder);
   });
 });
