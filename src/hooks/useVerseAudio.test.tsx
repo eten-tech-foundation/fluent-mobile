@@ -365,6 +365,18 @@ describe('useVerseAudio', () => {
     expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
   });
 
+  it('queues an upload pass after a take is deleted (#701)', async () => {
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.deleteTake('rec_1');
+    });
+
+    expect(deleteTake).toHaveBeenCalledWith('rec_1');
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+  });
+
   it('writes a paused-take marker when recording is paused', async () => {
     const { result } = renderHook(() =>
       useVerseAudio({
