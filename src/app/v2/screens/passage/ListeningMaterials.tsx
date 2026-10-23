@@ -14,7 +14,7 @@ import { STEPS } from './steps';
  * sink, so the light page reads as turning into the Hardware panel rising
  * under it.
  */
-export function Materials({
+export function ListeningMaterials({
   reference,
   progress,
   hidden,

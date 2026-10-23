@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from '../../../components/ui/icons';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { PassageCover } from '../../../components/ui/PassageCover';
+import { RoundButton } from '../../../components/ui/RoundButton';
 import { PROJECT_CHAPTERS_EMPTY_MESSAGE } from '../../../constants/messages';
 import {
   useBookPassages,
@@ -68,13 +69,7 @@ export default function BookScreen() {
 
   const styles = useThemedStyles(t => ({
     screen: { flex: 1, backgroundColor: t.roles.bgDefault },
-    back: {
-      width: 48,
-      height: 48,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: t.spacing.sm,
-    },
+    back: { marginLeft: t.spacing.xl, marginTop: t.spacing.sm },
     hero: {
       paddingHorizontal: t.spacing.xl,
       paddingTop: t.spacing.lg,
@@ -173,19 +168,15 @@ export default function BookScreen() {
     );
   };
 
+  // Soft on the light page, like the passage page's Flat one on the dark hero.
   const backButton = (
-    <Pressable
-      onPress={() => router.back()}
-      accessibilityRole="button"
+    <RoundButton
+      icon={ArrowLeft}
       accessibilityLabel="Back"
+      onPress={() => router.back()}
       style={styles.back}
       testID="book-back"
-    >
-      <ArrowLeft
-        color={theme.roles.fgPrimary}
-        size={theme.controlSizes.icon24}
-      />
-    </Pressable>
+    />
   );
 
   let body: React.ReactNode;

@@ -6,7 +6,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { useThemedStyles } from '../../theme/useTheme';
+import { ColorModeScope, useThemedStyles } from '../../theme/useTheme';
 
 const PRESSED_OPACITY = 0.7;
 
@@ -36,7 +36,10 @@ export interface PassageCoverProps {
 /**
  * A passage in the book page's gallery: a typographic cover with the verse
  * range, then its title and how much is recorded. Flat, since tactile
- * controls stay in the player. A placeholder until the Claude Design covers.
+ * controls stay in the player.
+ *
+ * Placeholder: the cover face is replaced by the Claude Design covers
+ * (a follow-up on #790), so don't build on its look.
  */
 export function PassageCover({
   eyebrow,
@@ -51,15 +54,6 @@ export function PassageCover({
   const styles = useThemedStyles(t => ({
     item: { gap: t.spacing.xs },
     pressed: { opacity: PRESSED_OPACITY },
-    cover: {
-      aspectRatio: 1,
-      borderRadius: t.radius.sm,
-      backgroundColor: t.roles.surfaceInverse,
-      padding: t.spacing.md,
-      justifyContent: 'space-between',
-    },
-    eyebrow: { ...t.type.meta, color: t.roles.fgOnInverse },
-    verses: { ...t.type.heading, color: t.roles.fgOnInverse },
     title: { ...t.type.label, color: t.roles.fgPrimary },
     status: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
@@ -77,14 +71,10 @@ export function PassageCover({
       style={({ pressed }) => [styles.item, pressed && styles.pressed, style]}
       testID={testID}
     >
-      <View style={styles.cover}>
-        <Text style={styles.eyebrow} numberOfLines={1}>
-          {eyebrow}
-        </Text>
-        <Text style={styles.verses} numberOfLines={1} adjustsFontSizeToFit>
-          {verses}
-        </Text>
-      </View>
+      {/* The face is a Canvas surface, like the player's dark reading area. */}
+      <ColorModeScope value="canvas">
+        <CoverFace eyebrow={eyebrow} verses={verses} />
+      </ColorModeScope>
       <Text style={styles.title} numberOfLines={2}>
         {title}
       </Text>
@@ -92,5 +82,29 @@ export function PassageCover({
         {statusLabel}
       </Text>
     </Pressable>
+  );
+}
+
+function CoverFace({ eyebrow, verses }: { eyebrow: string; verses: string }) {
+  const styles = useThemedStyles(t => ({
+    face: {
+      aspectRatio: 1,
+      borderRadius: t.radius.sm,
+      backgroundColor: t.roles.surfaceDefault,
+      padding: t.spacing.md,
+      justifyContent: 'space-between',
+    },
+    eyebrow: { ...t.type.meta, color: t.roles.fgPrimary },
+    verses: { ...t.type.heading, color: t.roles.fgPrimary },
+  }));
+  return (
+    <View style={styles.face}>
+      <Text style={styles.eyebrow} numberOfLines={1}>
+        {eyebrow}
+      </Text>
+      <Text style={styles.verses} numberOfLines={1} adjustsFontSizeToFit>
+        {verses}
+      </Text>
+    </View>
   );
 }

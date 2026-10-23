@@ -8,7 +8,7 @@ import {
   parseRequiredNumber,
   parseRequiredString,
 } from '../../../navigation/routeParams';
-import { ColorModeScope, useThemedStyles } from '../../../theme/useTheme';
+import { useThemedStyles } from '../../../theme/useTheme';
 import { Sheet } from './passage/Sheet';
 
 /**
@@ -74,15 +74,13 @@ export default function PassageScreen() {
   }
   return (
     <View style={styles.screen}>
-      <ColorModeScope value="canvas">
-        <Sheet
-          passage={passage}
-          onBack={() => router.back()}
-          onOpenDrafting={openDrafting}
-          onDownload={download}
-          downloadState={downloadState}
-        />
-      </ColorModeScope>
+      <Sheet
+        passage={passage}
+        onBack={() => router.back()}
+        onOpenDrafting={openDrafting}
+        onDownload={download}
+        downloadState={downloadState}
+      />
     </View>
   );
 }
