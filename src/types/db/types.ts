@@ -46,6 +46,8 @@ export interface MyWorkChapter {
   displayLabel: string;
   bookName: string;
   chapterNumber: number;
+  /** Raw `chapter_assignments.status` for My Work stage accordions (#505). */
+  assignmentStatus: string;
   workflowStage: WorkflowBadgeStage | null;
   syncState: ChapterSyncState;
   ownershipState: ChapterOwnershipState;
