@@ -61,12 +61,44 @@ function defaultDelay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function createAbortError(): Error {
+  const error = new Error('Upload aborted');
+  error.name = 'AbortError';
+  return error;
+}
+
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
-    const error = new Error('Upload aborted');
-    error.name = 'AbortError';
-    throw error;
+    throw createAbortError();
   }
+}
+
+function awaitWithAbort<T>(
+  promise: Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(createAbortError());
+
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = () => signal.removeEventListener('abort', onAbort);
+    const onAbort = () => {
+      cleanup();
+      reject(createAbortError());
+    };
+
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      value => {
+        cleanup();
+        resolve(value);
+      },
+      error => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
 }
 
 function isAbortError(error: unknown): boolean {
@@ -232,6 +264,8 @@ async function uploadOneRecording(
         recording.bibleTextId,
         recording.projectUnitId,
       );
+      // Cancellation can arrive while local preflight is awaiting the DB.
+      throwIfAborted(signal);
 
       const response = await FluentAPI.uploadVerseAudio(
         {
@@ -511,7 +545,7 @@ export async function syncPendingRecordings(
 
   if (inFlight) {
     log.warn('Recording upload already in progress; joining in-flight pass');
-    return inFlight;
+    return awaitWithAbort(inFlight, options.signal);
   }
 
   inFlight = runUploadPass(token, options).finally(() => {

@@ -1,0 +1,333 @@
+import type { Theme } from './legacy';
+
+/**
+ * Independently owned Next baseline for the current matching-design phase.
+ * Values start equal to the frozen mobile Legacy baseline. Do not import
+ * Legacy values here: future edits to either UI version must stay isolated.
+ * Figma primitives/roles remain separate inputs for a future Next divergence.
+ */
+export const nextBaseline = {
+  colors: {
+    background: '#FFFFFF',
+    border: '#c3c9d5',
+    cardBackground: '#eaeef5',
+    destructive: '#DC2626',
+    drawerOverlay: 'rgba(10, 18, 40, 0.44)',
+    foreground: '#1A1A1A',
+    mutedForeground: '#545454',
+    primary: '#0B50D0',
+    primaryForeground: '#FFFFFF',
+    recordAccent: '#DC2626',
+    syncDownloading: '#0B50D0',
+    syncStatusOffline: '#A0A0A0',
+    syncStatusPending: '#E48F06',
+    syncStatusSynced: '#17B26A',
+    syncSynced: '#16A34A',
+    syncUnsynced: '#EAB308',
+    tabBarBackground: '#eaeef5',
+    warning: '#B45308',
+    warningBackground: '#FEF5E6',
+    warningBorder: '#FAD28E',
+    warningIcon: '#D97706',
+    waveformActive: '#3b7bf1',
+    waveformIdle: '#b0bfdd',
+    workflowBadgeDraftBorder: '#FBBF24',
+    workflowBadgeDraftText: '#1A1A1A',
+    workflowBadgeNotStartedBorder: '#6B7280',
+    workflowBadgeNotStartedText: '#FFFFFF',
+    workflowBadgePeerCheckBorder: '#EA580C',
+    workflowBadgePeerCheckText: '#1A1A1A',
+  },
+  controlSizes: {
+    icon24: 24,
+    icon32: 32,
+  },
+  elevation: {
+    floating: '0px 4px 20px rgba(0, 0, 0, 0.24)',
+    inset:
+      'inset 0px 3px 6px rgba(0, 0, 0, 0.32), inset 0px 0px 6px rgba(0, 0, 0, 0.12), inset 0px -1px 1px #FFFFFF',
+    raised:
+      'inset 0px 2px 2px #FFFFFF, inset 0px -2px 1px #c3c9d5, 0px 3px 6px rgba(0, 0, 0, 0.32)',
+    soft: 'inset 1px 1px 1px #FFFFFF, inset -1px -1px 1px #c3c9d5, inset 3px 3px 10px rgba(0, 0, 0, 0.08), inset -3px -3px 10px #FFFFFF',
+  },
+  headerLayout: {
+    minHeight: 56,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    sideSlot: 40,
+  },
+  homeListContent: {
+    gap: 8,
+    padding: 16,
+  },
+  listCard: {
+    activeOpacity: 0.95,
+    backgroundColor: '#eaeef5',
+    borderColor: '#c3c9d5',
+    borderRadius: 8,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  motion: {
+    easeStandard: {
+      x1: 0.2,
+      x2: 0,
+      y1: 0,
+      y2: 1,
+    },
+    pressMs: 80,
+    releaseMs: 180,
+  },
+  opacity: {
+    disabled: 0.4,
+  },
+  radius: {
+    full: 9999,
+    lg: 16,
+    md: 12,
+    sm: 8,
+    xs: 4,
+  },
+  recordControlSizes: {
+    idle: 96,
+    primary: 80,
+    secondary: 48,
+    stop: 56,
+  },
+  roles: {
+    accentPrimary: '#0B50D0',
+    accentRecord: '#DC2626',
+    bgClear: 'rgba(255, 255, 255, 0)',
+    bgDefault: '#FFFFFF',
+    borderHighlight: '#FFFFFF',
+    borderRim: '#c3c9d5',
+    borderShadow: '#c3c9d5',
+    fgInactive: '#c3c9d5',
+    fgOnAccent: '#FFFFFF',
+    fgOnInverse: '#FFFFFF',
+    fgPrimary: '#1A1A1A',
+    fgSecondary: '#545454',
+    shadowCast: 'rgba(0, 0, 0, 0.32)',
+    shadowDish: 'rgba(0, 0, 0, 0.08)',
+    shadowEdge: 'rgba(0, 0, 0, 0.12)',
+    shadowFloat: 'rgba(0, 0, 0, 0.24)',
+    surfaceDefault: '#eaeef5',
+    surfaceHighlight: '#FFFFFF',
+    surfaceInverse: '#1A1A1A',
+    surfaceInverseMuted: '#545454',
+    surfaceSunken: '#c3c9d5',
+  },
+  shadows: {
+    elevated: {
+      elevation: 6,
+      shadowColor: '#000000',
+      shadowOffset: {
+        height: 4,
+        width: 0,
+      },
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+    },
+    soft: {
+      elevation: 2,
+      shadowColor: '#000000',
+      shadowOffset: {
+        height: 1,
+        width: 0,
+      },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+    },
+  },
+  spacing: {
+    lg: 16,
+    md: 12,
+    sm: 8,
+    xl: 20,
+    xs: 4,
+    xxl: 24,
+    xxs: 2,
+  },
+  stroke: {
+    '1': 1,
+    '2': 2,
+  },
+  type: {
+    body: {
+      fontSize: 18,
+      fontWeight: '400',
+      includeFontPadding: false,
+      lineHeight: 24,
+    },
+    heading: {
+      fontSize: 42,
+      fontWeight: '700',
+      includeFontPadding: false,
+      lineHeight: 48,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      includeFontPadding: false,
+      lineHeight: 20,
+    },
+    lead: {
+      fontSize: 32,
+      fontWeight: '400',
+      includeFontPadding: false,
+      lineHeight: 40,
+    },
+    meta: {
+      fontFamily: 'monospace',
+      fontSize: 14,
+      fontWeight: '400',
+      includeFontPadding: false,
+      lineHeight: 20,
+      textTransform: 'uppercase',
+    },
+    overline: {
+      fontFamily: 'monospace',
+      fontSize: 20,
+      fontWeight: '500',
+      includeFontPadding: false,
+      lineHeight: 24,
+      textTransform: 'uppercase',
+    },
+    reading: {
+      fontSize: 42,
+      fontWeight: '400',
+      includeFontPadding: false,
+      lineHeight: 52,
+    },
+    readingStrong: {
+      fontSize: 42,
+      fontWeight: '700',
+      includeFontPadding: false,
+      lineHeight: 52,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '600',
+      includeFontPadding: false,
+      lineHeight: 24,
+    },
+  },
+  typeTelugu: {
+    body: {
+      lineHeight: 28,
+    },
+    heading: {
+      lineHeight: 64,
+    },
+    lead: {
+      lineHeight: 48,
+    },
+    reading: {
+      lineHeight: 64,
+    },
+    readingStrong: {
+      lineHeight: 64,
+    },
+    title: {
+      lineHeight: 28,
+    },
+  },
+  fontScale: {
+    readingMax: 1.3,
+  },
+  typography: {
+    fontFamily: 'System',
+    lineHeights: {
+      normal: 24,
+      tight: 20,
+    },
+    sizes: {
+      display: 32,
+      lg: 18,
+      md: 16,
+      sm: 14,
+      xl: 20,
+      xs: 12,
+    },
+    weights: {
+      bold: '700',
+      medium: '500',
+      regular: '400',
+      semibold: '600',
+    },
+  },
+  waveform: {
+    barGap: 3,
+    barMinHeight: 4,
+    barMinWidth: 3,
+    dockHeight: 28,
+    emptyDashWidth: 4,
+    playheadWidth: 2,
+    sourceDockHeight: 36,
+    tallHeight: 72,
+  },
+  workflowBadge: {
+    borderWidth: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+  },
+  workflowBadges: {
+    draft: {
+      border: '#fbbd23',
+      text: '#1A1A1A',
+    },
+    not_started: {
+      border: '#6b7280',
+      text: '#1A1A1A',
+    },
+    peer_check: {
+      border: '#e7560d',
+      text: '#1A1A1A',
+    },
+  },
+  workflowStages: {
+    advanced_check: {
+      badgeBorder: '#1f9fef',
+      label: 'Advanced Check',
+      phaseColor: '#1f9fef',
+      phaseIcon: 'badge-check',
+      phaseTint: '#1f9fef26',
+    },
+    community_review: {
+      badgeBorder: '#9234ea',
+      label: 'Community Check',
+      phaseColor: '#9234ea',
+      phaseIcon: 'users-round',
+      phaseTint: '#9234ea26',
+    },
+    complete: {
+      badgeBorder: '#16a249',
+      label: 'Complete',
+      phaseColor: '#16a249',
+      phaseIcon: 'circle-check',
+      phaseTint: '#16a24926',
+    },
+    draft: {
+      badgeBorder: '#fbbd23',
+      label: 'Draft',
+      phaseColor: '#fbbd23',
+      phaseIcon: 'mic',
+      phaseTint: '#fbbd2326',
+    },
+    not_started: {
+      badgeBorder: '#6b7280',
+      label: 'Not Started',
+      phaseColor: null,
+      phaseIcon: null,
+      phaseTint: null,
+    },
+    peer_check: {
+      badgeBorder: '#e7560d',
+      label: 'Peer Check',
+      phaseColor: '#e7560d',
+      phaseIcon: 'user-check',
+      phaseTint: '#e7560d26',
+    },
+  },
+} as const satisfies Theme;

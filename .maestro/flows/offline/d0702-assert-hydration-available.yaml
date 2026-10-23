@@ -1,0 +1,73 @@
+# D-0702 available-resources terminal (after ch1 select + hydration).
+# Evidence: d0702-pr755-selector-preflight-runtime-20261021 step-066 —
+# RESOURCES TO DOWNLOAD, Source Bible Audio 1.7 MB, Translation Notes 70 KB,
+# Total/Download 2.4 MB, download button enabled. No unavailable hint.
+# Scroll order: resources chrome first (may be above footer), then groups, then footer CTA.
+# Rounded displayed sizes only — do NOT equate row sums to total bytes.
+# NEVER tap Download / Pause / Resume / Cancel.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+  - ordered-readonly
+  - d0702
+  - nested
+---
+# Resources block (mid-screen) — do not require footer CTA in the same viewport.
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-resources-section'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'prepare-offline-resources-section'
+- assertVisible:
+    text: '^RESOURCES TO DOWNLOAD$'
+- assertVisible:
+    id: 'prepare-offline-resource-summary'
+- assertVisible:
+    id: 'resource-tier-1'
+- assertVisible:
+    text: '^TIER 1 — REQUIRED$'
+- scrollUntilVisible:
+    element:
+      text: '^Source Bible$'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    text: '^Source Bible$'
+- scrollUntilVisible:
+    element:
+      text: '^Translation Notes$'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    text: '^Translation Notes$'
+- assertVisible:
+    text: '^\d+(\.\d+)? (KB|MB)$'
+# Footer CTA (may be below resources) — positive total + enabled Download.
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-download-button'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'prepare-offline-download-footer'
+- assertVisible:
+    text: '^Total download$'
+- assertVisible:
+    id: 'prepare-offline-total-bytes'
+    text: '^(?!0 B$)\d+(\.\d+)? (B|KB|MB|GB)$'
+- assertVisible:
+    id: 'prepare-offline-download-button'
+    enabled: true
+    text: '^Download (?!0 B$).+$'
+- assertNotVisible:
+    text: '^Couldn''t load downloadable resources for the selected chapters\. Check your connection and try again\.$'
+- assertNotVisible:
+    id: 'prepare-offline-footer-hint'
+- assertNotVisible:
+    text: '^Loading resources for the selected chapters…$'
+- assertNotVisible:
+    id: 'prepare-offline-download-controls-downloading'

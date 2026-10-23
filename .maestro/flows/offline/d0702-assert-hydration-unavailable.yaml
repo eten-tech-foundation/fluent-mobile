@@ -1,0 +1,43 @@
+# D-0702 unavailable-resources terminal (after ch1 select + failed hydrate).
+# Evidence: prior PM9 unavailable screenshots/XML + reconciliation exact message;
+# Download disabled, total 0 B, footer-hint present, no resources section in tree.
+# Scroll to message/footer first (hint lives with footer), then negative resources.
+# NEVER tap Download / Pause / Resume / Cancel.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+  - ordered-readonly
+  - d0702
+  - nested
+---
+- scrollUntilVisible:
+    element:
+      text: '^Couldn''t load downloadable resources for the selected chapters\. Check your connection and try again\.$'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    text: '^Couldn''t load downloadable resources for the selected chapters\. Check your connection and try again\.$'
+- assertVisible:
+    id: 'prepare-offline-footer-hint'
+- assertVisible:
+    id: 'prepare-offline-download-footer'
+- assertVisible:
+    text: '^Total download$'
+- assertVisible:
+    id: 'prepare-offline-total-bytes'
+    text: '^0 B$'
+- assertVisible:
+    id: 'prepare-offline-download-button'
+    enabled: false
+    text: '^Download 0 B$'
+# Unavailable catalog renders no resources-section (not merely off-screen).
+- assertNotVisible:
+    id: 'prepare-offline-resources-section'
+- assertNotVisible:
+    text: '^RESOURCES TO DOWNLOAD$'
+- assertNotVisible:
+    text: '^Loading resources for the selected chapters…$'
+- assertNotVisible:
+    id: 'prepare-offline-download-controls-downloading'

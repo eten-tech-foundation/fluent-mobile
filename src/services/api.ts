@@ -228,6 +228,10 @@ export const FluentAPI = {
       token,
     ),
 
+  /** Authenticated raw-row GET /languages/{id} — scoped FK seed (#679). */
+  getLanguage: (id: number, token?: string): Promise<ApiLanguage> =>
+    authedRequest<ApiLanguage>(`/languages/${id}`, undefined, token),
+
   getBooks: (updatedAfter?: string, token?: string): Promise<ApiBookMeta[]> =>
     authedRequest<ApiBookMeta[]>(
       withUpdatedAfter('/books', updatedAfter),
@@ -235,12 +239,20 @@ export const FluentAPI = {
       token,
     ),
 
+  /** Authenticated raw-row GET /books/{id} — scoped FK seed (#679). */
+  getBook: (id: number, token?: string): Promise<ApiBookMeta> =>
+    authedRequest<ApiBookMeta>(`/books/${id}`, undefined, token),
+
   getBibles: (updatedAfter?: string, token?: string): Promise<ApiBible[]> =>
     authedRequest<ApiBible[]>(
       withUpdatedAfter('/bibles', updatedAfter),
       undefined,
       token,
     ),
+
+  /** Authenticated raw-row GET /bibles/{id} — scoped FK seed (#679). */
+  getBible: (id: number, token?: string): Promise<ApiBible> =>
+    authedRequest<ApiBible>(`/bibles/${id}`, undefined, token),
 
   getUserByEmail: (email: string, token?: string): Promise<ApiUser> =>
     authedRequest<ApiUser>(

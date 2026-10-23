@@ -1,0 +1,150 @@
+{
+  "$schemaComment": "C-0051-06 / issue #51 ORIGINAL Matthew1 download fixture — NONADMISSIBLE retained audit. Do not --execute. Guard/host refuse incomplete/unknown sizes (Images 0 B). Known-complete structural positive is a separate manifest.",
+  "version": 2,
+  "criterion": "C-0051-06",
+  "companionObserve": ["C-0052-02"],
+  "sourceIssues": [51, 717],
+  "stackBase": {
+    "branch": "mrace/test/702-gospel-download-persist",
+    "head": "753aecd816e85abf146e6401386710254555f250",
+    "dependency": "PR755 D-0702 durable wrapper + external finally (selection/hydration/restore12)"
+  },
+  "packaging": {
+    "guardBaseline": {
+      "commit": "d2da6fece7e5b7e0bc0dd8cb19836ec992db36b1",
+      "short": "d2da6fece",
+      "baselineLines": 504,
+      "path": "scripts/maestro-fixture-guard.cjs",
+      "note": "Absent from 755 head. Issue #51 PR must either (a) land 717 guard prerequisite d2da6fece (504 lines) first then apply only the pfo-download admission delta, or (b) include this vendored baseline+delta with explicit provenance — never silent full 717 tooling bundle."
+    },
+    "admissionDelta": "pfo-download tag path + manifest/env admission (default deny retained for other mutating flows)"
+  },
+  "admission": {
+    "id": "c0051-matthew1-small",
+    "kind": "pfo-project-download",
+    "projectId": "13",
+    "actorUserId": "9",
+    "restoreUserId": "12",
+    "book": "Matthew",
+    "chaptersExact": [1],
+    "maxBytes": 5242880,
+    "observedUiTotalLabel": "2.4 MB",
+    "requireKnownPositiveTotal": true,
+    "requireCompleteKnownSizes": true,
+    "sizeCompleteness": "incomplete-unknown-images",
+    "admissionStatus": "NONADMISSIBLE",
+    "requireEmptyQueue": true,
+    "requirePreserveTakes": 11,
+    "requirePreserveCacheFiles": 19,
+    "allowGenericUnlimitedDownload": false,
+    "pauseCancel": "only-if-control-surface-visible-for-this-queue; not mandatory if complete",
+    "nonAdmissibleReason": "Observed Reference Images Image 0 B is UNKNOWN remote size (measured ~24.5 MB after transfer), not free. Stale 2.4 MB Total/CTA aggregate must not admit a transfer (#756). No independent predownload size oracle available — fail closed; never backfill from after-download bytes."
+  },
+  "description": "NONADMISSIBLE retained audit packet for C-0051/issue #51. Original selected catalog showed Total/CTA 2.4 MB with Reference Images Image 0 B (unknown). That transfer completed 205 rows / ~27 MB; fixture project13 is retained and must not be re-run from this stale aggregate. Guard + host admission refuse unknown/incomplete sizes. Use c0051-matthew1-known-complete-bounded.manifest.json for a known-complete structural positive only (still fail-closed at execute without a predownload oracle).",
+  "actor": {
+    "cachedActive": "9",
+    "cacheAccounts": ["10", "9", "12"],
+    "restoreActive": "12",
+    "roleNote": "PM9 retained runtime actor; no fresh login"
+  },
+  "project": {
+    "id": "13",
+    "rowId": "project-row-13",
+    "sourceLanguage": "English",
+    "targetLanguage": "English",
+    "languageIdBoth": 5,
+    "milestoneId": 21,
+    "book": { "name": "Matthew", "totalChapters": 28, "probeChapter": 1 },
+    "selectionMode": "Selected chapters (not Assigned Select-all)"
+  },
+  "payload": {
+    "strategy": "default-catalog-no-customize-deselect",
+    "strategyReason": "HISTORICAL ONLY — 2.4 MB aggregate with Images 0 B was incorrectly treated as <5 MB safe. Retained as NONADMISSIBLE regression input.",
+    "maxBytesSafetyBound": 5242880,
+    "sizeCompleteness": "incomplete-unknown-images",
+    "observedUiTotalLabel": "2.4 MB",
+    "observedUiDownloadLabel": "Download 2.4 MB",
+    "observedGroups": [
+      { "name": "Source Bible", "items": ["Text Included", "Audio 1.7 MB"], "tier": 1 },
+      { "name": "Translation Notes", "items": ["Text 70 KB"], "tier": 1 },
+      { "name": "Translation Words", "items": ["Text 337 KB"], "tier": 2, "optionalDefaultSelected": true },
+      { "name": "Translation Questions", "items": ["Text 3 KB"], "tier": 2, "optionalDefaultSelected": true },
+      { "name": "Bible Commentary", "items": ["Text 222 KB"], "tier": 3, "optionalDefaultSelected": true },
+      { "name": "Reference Images", "items": ["Image 0 B"], "tier": 3, "optionalDefaultSelected": true }
+    ],
+    "noExactByteArithmetic": true,
+    "predownloadSizeOracle": null,
+    "predownloadOracleGap": "No independently complete pre-download size oracle. Fail closed. Do not admit using after-download queue/file bytes (26,957,219).",
+    "evidenceUi": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0051-positive-size-behavior-20261021.md"
+  },
+  "mutationsAuthorized": {
+    "tapDownload": true,
+    "networkToggle": false,
+    "permissionChange": false,
+    "recordingCapture": false,
+    "uploadRetry": false,
+    "deleteCacheOrQueue": false,
+    "clearState": false,
+    "freshLogin": false,
+    "kvDirectWrite": false,
+    "pauseCancel": "only-if-control-surface-visible-for-this-queue; not mandatory if complete",
+    "newContentKept": "downloaded project13 files under files/downloads/13/ retained as reusable QA fixture"
+  },
+  "ids": {
+    "screen": "prepare-offline-screen",
+    "resourcesSection": "prepare-offline-resources-section",
+    "resourceSummary": "prepare-offline-resource-summary",
+    "downloadFooter": "prepare-offline-download-footer",
+    "downloadButton": "prepare-offline-download-button",
+    "pause": "prepare-offline-download-pause",
+    "cancel": "prepare-offline-download-cancel",
+    "resume": "prepare-offline-download-resume",
+    "complete": "prepare-offline-download-complete",
+    "downloadingControls": "prepare-offline-download-controls-downloading",
+    "cacheDirRelative": "files/downloads/",
+    "newContentDirRelative": "files/downloads/13/",
+    "preexistingCacheProjects": ["8", "12"],
+    "queueTable": "download_queue"
+  },
+  "baseline": {
+    "contract": ".maestro/fixtures/c0051-matthew1-small-download.baselines/c0052-baseline-contract-20261021.md",
+    "takes": ".maestro/fixtures/c0051-matthew1-small-download.baselines/takes-11-baseline.json",
+    "takeCounts": { "owner10": 10, "owner9": 1, "total": 11 },
+    "queue": ".maestro/fixtures/c0051-matthew1-small-download.baselines/c0052-download-counts-baseline.csv",
+    "queueRowsBefore": 0,
+    "cacheHashes": ".maestro/fixtures/c0051-matthew1-small-download.baselines/c0052-resource-cache-hashes-baseline.txt",
+    "cacheBytes": ".maestro/fixtures/c0051-matthew1-small-download.baselines/c0052-resource-cache-bytes-baseline.txt",
+    "cacheFileCount": 19,
+    "prefsActive": "12",
+    "prefsKnown": ["10", "9", "12"],
+    "runAsCwd": "/data/user/0/com.eten.fluent"
+  },
+  "flows": {
+    "ordered": ".maestro/flows/offline/c0051-matthew1-small-download-existing-session.yaml",
+    "host": "scripts/qa717-easy-ui-batch/run-c0051-a5554-external-finally.py",
+    "reuses": [
+      "scripts/qa717-easy-ui-batch/run-d0702-a5554-external-finally.py (AdbBridge/FakeBridge/snapshot/finally helpers)"
+    ]
+  },
+  "fixtureGuard": {
+    "status": "NONADMISSIBLE_UNKNOWN_IMAGE_SIZES",
+    "env": {
+      "MAESTRO_PFO_DOWNLOAD_ADMISSION": "c0051-matthew1-small",
+      "MAESTRO_PFO_DOWNLOAD_MANIFEST": ".maestro/fixtures/c0051-matthew1-small-download.manifest.json",
+      "MAESTRO_FIXTURE_PROJECT_ID": "13",
+      "MAESTRO_FIXTURE_PROJECT_ALLOWLIST": "13"
+    },
+    "detail": "Original 2.4 MB + Reference Images 0 B fixture is NONADMISSIBLE. Guard rejects unknown/incomplete sizes; host refuses fresh-fixture rerun while queue205 / project13 cache remain. Default deny retained for unrelated mutating flows."
+  },
+  "outOfScope": [
+    "exact integer-byte arithmetic / sum of rounded labels",
+    "bandwidth throttle / giant media",
+    "API391 range-upload retry",
+    "deleting preexisting downloads or queue rows",
+    "legal acceptance / permission prompts",
+    "fresh login / clearState",
+    "issue #52 full Pause/Resume matrix as mandatory PASS"
+  ],
+  "closesIfExecuted": null,
+  "closureNote": "NONADMISSIBLE — packaging/admission hardening only. Criteria C-0051-06 / C-0052-02 do not close from this fixture; no device re-run authorized."
+}
