@@ -81,7 +81,13 @@ export function useDraftDownload(request: DraftDownloadRequest | null): {
         const key = requestKey(current);
         if (!current || !key) return;
         const generation = ++refreshGenRef.current;
-        const next = await getDraftDownloadState(current);
+        let next: DraftDownloadState;
+        try {
+          next = await getDraftDownloadState(current);
+        } catch {
+          // Keep previous chip state; trailing coalesce / next poll retries.
+          continue;
+        }
         if (
           generation !== refreshGenRef.current ||
           requestKey(requestRef.current) !== key

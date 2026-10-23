@@ -194,18 +194,23 @@ describe('DownloadQueueWorker', () => {
     );
   });
 
-  it('dropItems during deferred resolver cancels shifted item; unrelated queued item remains safe', async () => {
+  it('dropItems during deferred resolver cancels shifted item; re-enqueue completes once', async () => {
     let resolveDraft!: (value: { url: string; ext: string }) => void;
     const draftResolverPending = new Promise<{ url: string; ext: string }>(
       resolve => {
         resolveDraft = resolve;
       },
     );
+    let draftResolveCount = 0;
     const resolver = jest
       .fn()
       .mockImplementation(async (item: DownloadQueueItem) => {
         if (item.id === 'draft-resolving') {
-          return draftResolverPending;
+          draftResolveCount += 1;
+          if (draftResolveCount === 1) {
+            return draftResolverPending;
+          }
+          return { url: 'https://example.com/draft-retry.mp3', ext: 'mp3' };
         }
         return { url: 'https://example.com/pfo.mp3', ext: 'mp3' };
       });
@@ -230,14 +235,12 @@ describe('DownloadQueueWorker', () => {
       makeItem({ id: 'draft-resolving', label: 'Draft audio' }),
     ]);
 
+    // Stale first resolver result must not complete the dropped claim.
     resolveDraft({ url: 'https://example.com/draft.mp3', ext: 'mp3' });
     await startPromise;
+    await flushMicrotasks();
+    await flushMicrotasks();
 
-    expect(mockMarkDownloadItemCompleted).not.toHaveBeenCalledWith(
-      'draft-resolving',
-      expect.anything(),
-      expect.anything(),
-    );
     expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
       'pfo-unrelated',
       expect.any(String),
@@ -246,8 +249,10 @@ describe('DownloadQueueWorker', () => {
     const completedIds = mockMarkDownloadItemCompleted.mock.calls.map(
       call => call[0],
     );
-    expect(completedIds).not.toContain('draft-resolving');
+    expect(completedIds.filter(id => id === 'draft-resolving')).toHaveLength(1);
     expect(completedIds).toContain('pfo-unrelated');
+    // First (cancelled) resolver must not be the completion path; second run completes.
+    expect(draftResolveCount).toBeGreaterThanOrEqual(2);
   });
 
   it('enqueueAdditional de-dupes the resolving (pre-active) item id', async () => {

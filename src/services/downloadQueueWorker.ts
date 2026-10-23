@@ -153,7 +153,9 @@ export class DownloadQueueWorker {
     if (this.active) {
       known.add(this.active.itemId);
     }
-    if (this.resolving) {
+    // Cancelled resolving slots must not block re-enqueue of the same id
+    // (draft text re-download after removeStaleDraftRows).
+    if (this.resolving && !this.resolving.cancelled) {
       known.add(this.resolving.itemId);
     }
     const fresh = items.filter(item => !known.has(item.id));
@@ -214,19 +216,21 @@ export class DownloadQueueWorker {
         return;
       }
       if (this.state === 'downloading') {
-        await this.processNext();
+        // Do not await the rest of the queue — dropItems callers (e.g. draft
+        // re-download) must not block on unrelated PFO work.
+        void this.processNext();
       }
     }
   }
 
-  private isResolvingCancelled(itemId: string): boolean {
-    return (
-      this.resolving?.itemId === itemId && this.resolving.cancelled === true
-    );
+  /** Cancelled flag on this claim object — not the current `this.resolving` slot. */
+  private isResolvingCancelled(claim: ResolvingDownload): boolean {
+    return claim.cancelled;
   }
 
-  private clearResolvingIf(itemId: string): void {
-    if (this.resolving?.itemId === itemId) {
+  /** Clear the shared slot only when it still references this claim. */
+  private clearResolving(claim: ResolvingDownload): void {
+    if (this.resolving === claim) {
       this.resolving = null;
     }
   }
@@ -340,6 +344,7 @@ export class DownloadQueueWorker {
   async cancel(): Promise<void> {
     const wasPaused = this.state === 'paused';
     const active = this.active;
+    const resolvingClaim = this.resolving;
 
     // Set synchronously, before any await, so a racing
     // processNext()/resume() continuation always observes it regardless of
@@ -347,8 +352,8 @@ export class DownloadQueueWorker {
     if (active) {
       active.cancelled = true;
     }
-    if (this.resolving) {
-      this.resolving.cancelled = true;
+    if (resolvingClaim) {
+      resolvingClaim.cancelled = true;
     }
 
     this.state = 'cancelled';
@@ -390,7 +395,10 @@ export class DownloadQueueWorker {
       }
     } finally {
       this.active = null;
-      this.resolving = null;
+      // Do not clear a newer claim installed while cancel awaited.
+      if (resolvingClaim) {
+        this.clearResolving(resolvingClaim);
+      }
       this.state = 'idle';
     }
   }
@@ -414,9 +422,10 @@ export class DownloadQueueWorker {
    */
   private async abandonResolvingItem(
     next: DownloadQueueItem,
+    claim: ResolvingDownload,
   ): Promise<'aborted' | 'requeued' | 'continue'> {
-    if (this.isResolvingCancelled(next.id)) {
-      this.clearResolvingIf(next.id);
+    if (this.isResolvingCancelled(claim)) {
+      this.clearResolving(claim);
       if (this.state === 'downloading') {
         await this.processNext();
       }
@@ -424,7 +433,7 @@ export class DownloadQueueWorker {
     }
     if (this.state !== 'downloading') {
       this.queue.unshift(next);
-      this.clearResolvingIf(next.id);
+      this.clearResolving(claim);
       return 'requeued';
     }
     return 'continue';
@@ -437,7 +446,10 @@ export class DownloadQueueWorker {
    * item bug). Text items with only a `sourceUrl` are NOT handled here — see
    * hasInlineContent() and processNext().
    */
-  private async processTextItem(next: DownloadQueueItem): Promise<void> {
+  private async processTextItem(
+    next: DownloadQueueItem,
+    claim: ResolvingDownload,
+  ): Promise<void> {
     try {
       if (next.serializedContent === undefined) {
         throw new Error(
@@ -445,7 +457,7 @@ export class DownloadQueueWorker {
         );
       }
       await ensureDownloadsDir(next.projectId ?? 0);
-      if ((await this.abandonResolvingItem(next)) !== 'continue') {
+      if ((await this.abandonResolvingItem(next, claim)) !== 'continue') {
         return;
       }
       const destPath =
@@ -456,18 +468,18 @@ export class DownloadQueueWorker {
           next.fileExt ?? 'json',
         );
       await markDownloadItemDownloading(next.id);
-      if ((await this.abandonResolvingItem(next)) !== 'continue') {
+      if ((await this.abandonResolvingItem(next, claim)) !== 'continue') {
         return;
       }
       await FileSystem.writeAsStringAsync(destPath, next.serializedContent);
-      if ((await this.abandonResolvingItem(next)) !== 'continue') {
+      if ((await this.abandonResolvingItem(next, claim)) !== 'continue') {
         return;
       }
-      await this.handleItemComplete(next.id, destPath);
+      await this.handleItemComplete(next.id, destPath, claim);
     } catch (error) {
       log.error('Failed to write text item', { error, itemId: next.id });
-      if (this.isResolvingCancelled(next.id)) {
-        this.clearResolvingIf(next.id);
+      if (this.isResolvingCancelled(claim)) {
+        this.clearResolving(claim);
         if (this.state === 'downloading') {
           await this.processNext();
         }
@@ -482,7 +494,7 @@ export class DownloadQueueWorker {
         });
       }
       this.active = null;
-      this.clearResolvingIf(next.id);
+      this.clearResolving(claim);
       await this.processNext();
     }
   }
@@ -498,12 +510,14 @@ export class DownloadQueueWorker {
     }
 
     // Claim immediately so dropItems/enqueueAdditional see this id before
-    // transport/resolver awaits assign `this.active`.
-    this.resolving = { itemId: next.id, cancelled: false };
+    // transport/resolver awaits assign `this.active`. Track by object identity
+    // so a cancelled claim cannot clear/cancel a newer claim for the same id.
+    const claim: ResolvingDownload = { itemId: next.id, cancelled: false };
+    this.resolving = claim;
 
     if (!(await this.transportAllows())) {
-      if (this.isResolvingCancelled(next.id)) {
-        this.clearResolvingIf(next.id);
+      if (this.isResolvingCancelled(claim)) {
+        this.clearResolving(claim);
         if (this.state === 'downloading') {
           await this.processNext();
         }
@@ -513,7 +527,7 @@ export class DownloadQueueWorker {
         itemId: next.id,
       });
       this.queue.unshift(next);
-      this.clearResolvingIf(next.id);
+      this.clearResolving(claim);
       // Do not overwrite a concurrent user pause reason.
       if (this.state === 'downloading') {
         this.pauseReason = 'transport';
@@ -522,7 +536,7 @@ export class DownloadQueueWorker {
       return;
     }
 
-    const afterTransport = await this.abandonResolvingItem(next);
+    const afterTransport = await this.abandonResolvingItem(next, claim);
     if (afterTransport !== 'continue') {
       return;
     }
@@ -530,7 +544,7 @@ export class DownloadQueueWorker {
     // Only inline-content text items are written directly. Text items that
     // only have a sourceUrl fall through to the resolver/resumable path below.
     if (this.hasInlineContent(next)) {
-      await this.processTextItem(next);
+      await this.processTextItem(next, claim);
       return;
     }
 
@@ -539,13 +553,13 @@ export class DownloadQueueWorker {
       const saved = parseDownloadState(next.resumeData);
       const { url, ext } = await this.resolver(next);
 
-      const afterResolve = await this.abandonResolvingItem(next);
+      const afterResolve = await this.abandonResolvingItem(next, claim);
       if (afterResolve !== 'continue') {
         return;
       }
 
       await ensureDownloadsDir(next.projectId ?? 0);
-      const afterDir = await this.abandonResolvingItem(next);
+      const afterDir = await this.abandonResolvingItem(next, claim);
       if (afterDir !== 'continue') {
         return;
       }
@@ -579,7 +593,7 @@ export class DownloadQueueWorker {
         saved?.resumeData,
       );
 
-      const afterCreate = await this.abandonResolvingItem(next);
+      const afterCreate = await this.abandonResolvingItem(next, claim);
       if (afterCreate !== 'continue') {
         return;
       }
@@ -587,10 +601,10 @@ export class DownloadQueueWorker {
       activeAtStart = {
         itemId: next.id,
         resumable,
-        cancelled: this.isResolvingCancelled(next.id),
+        cancelled: this.isResolvingCancelled(claim),
       };
       this.active = activeAtStart;
-      this.clearResolvingIf(next.id);
+      this.clearResolving(claim);
       if (activeAtStart.cancelled) {
         this.active = null;
         if (this.state === 'downloading') {
@@ -616,14 +630,14 @@ export class DownloadQueueWorker {
       // A finished transfer should complete even if pause() raced — otherwise
       // pauseAsync failure can leave a stuck downloading+active state.
       if (result) {
-        await this.handleItemComplete(next.id, result.uri);
+        await this.handleItemComplete(next.id, result.uri, claim);
       }
     } catch (error) {
       log.error('Failed to download item', { error, itemId: next.id });
       const wasCancelled =
-        activeAtStart?.cancelled === true || this.isResolvingCancelled(next.id);
+        activeAtStart?.cancelled === true || this.isResolvingCancelled(claim);
       if (wasCancelled) {
-        this.clearResolvingIf(next.id);
+        this.clearResolving(claim);
         // dropItems on active already advances; resolving-only cancel must.
         if (!activeAtStart && this.state === 'downloading') {
           await this.processNext();
@@ -631,8 +645,8 @@ export class DownloadQueueWorker {
         return;
       }
       if (!(await this.transportAllows())) {
-        if (this.isResolvingCancelled(next.id)) {
-          this.clearResolvingIf(next.id);
+        if (this.isResolvingCancelled(claim)) {
+          this.clearResolving(claim);
           if (this.state === 'downloading') {
             await this.processNext();
           }
@@ -640,7 +654,7 @@ export class DownloadQueueWorker {
         }
         if (!activeAtStart) {
           this.queue.unshift(next);
-          this.clearResolvingIf(next.id);
+          this.clearResolving(claim);
           if (this.state === 'downloading') {
             this.pauseReason = 'transport';
             this.state = 'paused';
@@ -659,7 +673,7 @@ export class DownloadQueueWorker {
         });
       }
       this.active = null;
-      this.clearResolvingIf(next.id);
+      this.clearResolving(claim);
       await this.processNext();
     }
   }
@@ -710,12 +724,16 @@ export class DownloadQueueWorker {
     }
   }
 
-  private async handleItemComplete(itemId: string, uri: string): Promise<void> {
+  private async handleItemComplete(
+    itemId: string,
+    uri: string,
+    claim?: ResolvingDownload,
+  ): Promise<void> {
     if (this.active?.itemId === itemId && this.active.cancelled === true) {
       return;
     }
-    if (this.isResolvingCancelled(itemId)) {
-      this.clearResolvingIf(itemId);
+    if (claim && this.isResolvingCancelled(claim)) {
+      this.clearResolving(claim);
       if (this.state === 'downloading') {
         await this.processNext();
       }
@@ -726,8 +744,8 @@ export class DownloadQueueWorker {
       // dropItems/cancel on active already advances the queue.
       return;
     }
-    if (this.isResolvingCancelled(itemId)) {
-      this.clearResolvingIf(itemId);
+    if (claim && this.isResolvingCancelled(claim)) {
+      this.clearResolving(claim);
       if (this.state === 'downloading') {
         await this.processNext();
       }
@@ -739,7 +757,9 @@ export class DownloadQueueWorker {
       info.exists ? info.size : undefined,
     );
     this.active = null;
-    this.clearResolvingIf(itemId);
+    if (claim) {
+      this.clearResolving(claim);
+    }
     await this.processNext();
   }
 }
