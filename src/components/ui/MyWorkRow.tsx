@@ -1,14 +1,16 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { MessageSquare, MessageSquareCheck } from 'lucide-react-native';
 import { useDraftDownload } from '../../hooks/useDraftDownload';
 import { MyWorkChapter } from '../../types/db/types';
 import type { DraftDownloadRequest } from '../../types/draftDownload/types';
+import { getMyWorkCommentIndicator } from '../../utils/myWorkCommentIndicator';
 import {
   buildMyWorkDraftDownloadRequest,
   getValidatedMyWorkDownloadUserId,
 } from '../../utils/myWorkDraftDownload';
 import { getMyWorkRowDisplay } from '../../utils/myWorkRowDisplay';
-import { theme } from '../../theme';
+import { iconSizes, listIconStrokeWidth, theme } from '../../theme';
 import { ChapterConflictIndicator } from './ChapterConflictIndicator';
 import { ChapterProgressRing } from './ChapterProgressRing';
 import { ChapterCloudSyncIndicator } from './ChapterSyncIndicator';
@@ -41,11 +43,15 @@ export function MyWorkRow({
   isSyncing = false,
 }: MyWorkRowProps) {
   const display = getMyWorkRowDisplay(chapter, isSyncing);
+  const commentIndicator = getMyWorkCommentIndicator(chapter);
   // Fail closed when synced id drifts from active account (#291 / multi-account).
   const userId = getValidatedMyWorkDownloadUserId();
   const downloadRequest =
     userId !== null ? buildMyWorkDraftDownloadRequest(chapter, userId) : null;
   const { state, start } = useDraftDownload(downloadRequest);
+  const CommentIcon = commentIndicator?.currentUserHasCommented
+    ? MessageSquareCheck
+    : MessageSquare;
 
   return (
     <View style={styles.row} testID={`my-work-row-wrap-${chapter.id}`}>
@@ -80,6 +86,31 @@ export function MyWorkRow({
             <View style={styles.metaRow}>
               {display.showActivityDate ? (
                 <Text style={styles.activity}>{chapter.lastActivityLabel}</Text>
+              ) : null}
+              {commentIndicator ? (
+                <View
+                  style={styles.commentMeta}
+                  accessible
+                  accessibilityLabel={commentIndicator.accessibilityLabel}
+                  testID={`my-work-row-comment-${chapter.id}`}
+                >
+                  <CommentIcon
+                    size={iconSizes.headerTab}
+                    color={theme.colors.mutedForeground}
+                    strokeWidth={listIconStrokeWidth}
+                    testID={
+                      commentIndicator.currentUserHasCommented
+                        ? `my-work-row-comment-check-${chapter.id}`
+                        : `my-work-row-comment-icon-${chapter.id}`
+                    }
+                  />
+                  <Text
+                    style={styles.commentCount}
+                    testID={`my-work-row-comment-count-${chapter.id}`}
+                  >
+                    {commentIndicator.commentCount}
+                  </Text>
+                </View>
               ) : null}
               {display.showProgressRing ? (
                 <ChapterProgressRing
@@ -161,6 +192,15 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   activity: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.mutedForeground,
+  },
+  commentMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  commentCount: {
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.mutedForeground,
   },

@@ -23,6 +23,15 @@ jest.mock('../services/storage', () => ({
   getActiveUserId: jest.fn(),
 }));
 
+jest.mock('../services/keychain', () => ({
+  getCredentials: jest.fn(async () => null),
+}));
+
+jest.mock('../services/myWorkCommentAggregates', () => ({
+  getCommentAggregateCacheEntry: jest.fn(() => ({ status: 'unknown' })),
+  refreshMyWorkCommentAggregates: jest.fn(async () => undefined),
+}));
+
 jest.mock('../services/userOrgGrants', () => ({
   getObserverProjectIds: jest.fn(),
 }));

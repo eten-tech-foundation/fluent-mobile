@@ -46,6 +46,12 @@ jest.mock('./userOrgGrants', () => ({
     mockClearUserOrgGrantSnapshot(...args),
 }));
 
+const mockClearMyWorkCommentAggregates = jest.fn();
+jest.mock('./myWorkCommentAggregates', () => ({
+  clearMyWorkCommentAggregates: (...args: unknown[]) =>
+    mockClearMyWorkCommentAggregates(...args),
+}));
+
 jest.mock('../utils/logger', () => ({
   logger: { create: () => ({ info: jest.fn(), error: jest.fn() }) },
 }));
@@ -93,6 +99,7 @@ describe('accountSession', () => {
       expect(mockClearCredentials).toHaveBeenCalledWith('active-1');
       expect(mockResolveReauthForUser).toHaveBeenCalledWith('active-1');
       expect(mockClearUserOrgGrantSnapshot).toHaveBeenCalledWith('active-1');
+      expect(mockClearMyWorkCommentAggregates).toHaveBeenCalledWith('active-1');
       expect(mockSetItemSync).toHaveBeenCalledWith(
         'known_user_ids',
         'bad-2,good-3',
@@ -123,6 +130,7 @@ describe('accountSession', () => {
       expect(mockClearCredentials).toHaveBeenCalledWith('active-1');
       expect(mockResolveReauthForUser).toHaveBeenCalledWith('active-1');
       expect(mockClearUserOrgGrantSnapshot).toHaveBeenCalledWith('active-1');
+      expect(mockClearMyWorkCommentAggregates).toHaveBeenCalledWith('active-1');
       expect(mockSignOut).toHaveBeenCalled();
     });
   });
