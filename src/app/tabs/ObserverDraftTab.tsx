@@ -10,6 +10,12 @@ import { DraftTakeRow } from '../../components/ui/DraftTakeRow';
 import { usePlaybackEngine } from '../../hooks/usePlaybackEngine';
 import { theme } from '../../theme';
 import { UiVersionOverride } from '../../theme/useTheme';
+import {
+  formatCanonicalObserverDraftLabel,
+  type ObserverDraftAudioCoverage,
+} from './observerDraftCoverageLabel';
+
+export type { ObserverDraftAudioCoverage };
 
 /** Verified Observer bundle unit projection (render-only; no download/parser). */
 export type ObserverDraftUnit = {
@@ -19,6 +25,11 @@ export type ObserverDraftUnit = {
   activeTakeId: number | null;
   localPlaybackUri: string | null;
   conflictStatus: 'clean' | 'conflict' | 'resolved' | null;
+  /**
+   * Optional coverage from a newer download wire. Absent/null = legacy unit
+   * (honest anchor label). Do not invent verse bounds when missing.
+   */
+  coverage?: ObserverDraftAudioCoverage | null;
 };
 
 /**
@@ -60,11 +71,6 @@ const DRAFT_TEXT_UNAVAILABLE = 'Draft text unavailable';
 const DRAFT_AUDIO_UNAVAILABLE = 'Audio unavailable';
 
 const playingVerseHighlight = `${theme.colors.primary}14`;
-
-function canonicalDraftLabel(verseNumber: number): string {
-  // Explicit label — never invent a take ordinal for Observer read-only.
-  return `Canonical draft - Verse - v. ${verseNumber}`;
-}
 
 function hasDraftText(draftText: string | null): boolean {
   return draftText !== null && draftText.trim().length > 0;
@@ -551,7 +557,10 @@ export function ObserverDraftTab({
               <DraftTakeRow
                 takeId={takeId}
                 takeNumber={0}
-                label={canonicalDraftLabel(item.verseNumber)}
+                label={formatCanonicalObserverDraftLabel(
+                  item.verseNumber,
+                  item.coverage,
+                )}
                 isSelected={false}
                 isPlaying={isPlaying}
                 leadingIndicator="canonicalReadOnly"
