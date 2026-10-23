@@ -269,6 +269,7 @@ export class DownloadQueueWorker {
                 'Pause skipped on cancel; native download object already gone',
                 {
                   itemId,
+                  error,
                 },
               );
             } else {

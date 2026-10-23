@@ -471,10 +471,7 @@ describe('DownloadQueueWorker', () => {
         undefined,
       );
       expect(worker.getState()).toBe('idle');
-      expect(mockWorkerLog.error).not.toHaveBeenCalledWith(
-        'Failed to pause on cancel',
-        expect.anything(),
-      );
+      expect(mockWorkerLog.error).not.toHaveBeenCalled();
       expect(mockWorkerLog.info).toHaveBeenCalledWith(
         expect.stringMatching(/native download object/i),
         expect.objectContaining({ itemId: 'item-1' }),
