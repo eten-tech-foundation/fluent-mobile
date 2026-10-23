@@ -1,5 +1,11 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { MyWorkTab } from './MyWorkTab';
 import { MyWorkChapter } from '../../types/db/types';
 
@@ -72,16 +78,37 @@ jest.mock('../../hooks/useDraftDownload', () => ({
   }),
 }));
 
+const mockGetActiveUserId = jest.fn(() => '7');
+const mockParseUserId = jest.fn(() => 7);
+const mockGetObserverProjectIds = jest.fn(() => [] as number[]);
+const mockGetObserverDraftDestination = jest.fn();
+const mockIsUserProjectMember = jest.fn(
+  async (_userId: number, _projectId: number): Promise<boolean> => true,
+);
+
 jest.mock('../../services/storage', () => ({
-  getActiveUserId: () => '7',
+  getActiveUserId: () => mockGetActiveUserId(),
 }));
 
 jest.mock('../../utils/parseUserId', () => ({
-  parseUserId: () => 7,
+  parseUserId: () => mockParseUserId(),
 }));
 
 jest.mock('../../services/userOrgGrants', () => ({
   hasProjectObserverGrant: () => false,
+  getObserverProjectIds: () => mockGetObserverProjectIds(),
+}));
+
+jest.mock('../../db/repository', () => ({
+  isUserProjectMember: (userId: number, projectId: number) =>
+    mockIsUserProjectMember(userId, projectId),
+}));
+
+jest.mock('../../navigation/observerDraft', () => ({
+  getObserverDraftDestination: (args: {
+    chapterAssignmentId: number;
+    projectId: number;
+  }) => mockGetObserverDraftDestination(args),
 }));
 
 const { useMyWorkChapters } = jest.requireMock(
@@ -96,8 +123,9 @@ const myWorkIds = {
   bibleId: 5,
   bookId: 42,
   bookCode: 'LUK',
-  assignedUserId: null as number | null,
+  assignedUserId: 7 as number | null,
   peerCheckerId: null as number | null,
+  listAccess: 'assigned' as const,
 };
 
 const sampleChapter: MyWorkChapter = {
@@ -174,6 +202,7 @@ const linguistChapter: MyWorkChapter = {
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
   ...myWorkIds,
+  listAccess: 'observer',
 };
 
 const theologicalChapter: MyWorkChapter = {
@@ -192,11 +221,33 @@ const theologicalChapter: MyWorkChapter = {
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
   ...myWorkIds,
+  listAccess: 'observer',
 };
+
+const observerHref = {
+  pathname: '/(app)/(stack)/observer-draft' as const,
+  params: {
+    chapterAssignmentId: '13',
+    projectId: '3',
+  },
+};
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>(res => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 describe('MyWorkTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetActiveUserId.mockReturnValue('7');
+    mockParseUserId.mockReturnValue(7);
+    mockGetObserverProjectIds.mockReturnValue([]);
+    mockGetObserverDraftDestination.mockResolvedValue(observerHref);
+    mockIsUserProjectMember.mockResolvedValue(true);
   });
 
   it('shows loading spinner while syncing with no chapters yet', async () => {
@@ -321,6 +372,175 @@ describe('MyWorkTab', () => {
         language: 'Baka',
       },
     });
+    expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
+  });
+
+  it('routes Observer rows through the guarded helper with typed IDs', async () => {
+    mockGetObserverProjectIds.mockReturnValue([3]);
+    useMyWorkChapters.mockReturnValue({
+      chapters: [linguistChapter],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    // Sole accordion auto-expands — do not toggle (would collapse).
+    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+
+    await waitFor(() => {
+      expect(mockGetObserverDraftDestination).toHaveBeenCalledWith({
+        chapterAssignmentId: 13,
+        projectId: 3,
+      });
+    });
+    expect(mockPush).toHaveBeenCalledWith(observerHref);
+  });
+
+  it('does not fall back to verse-detail when Observer destination is null', async () => {
+    mockGetObserverProjectIds.mockReturnValue([3]);
+    mockGetObserverDraftDestination.mockResolvedValueOnce(null);
+    useMyWorkChapters.mockReturnValue({
+      chapters: [linguistChapter],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+
+    await waitFor(() => {
+      expect(mockGetObserverDraftDestination).toHaveBeenCalled();
+    });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('blocks navigation when Observer grant is revoked before press', async () => {
+    mockGetObserverProjectIds.mockReturnValue([]);
+    useMyWorkChapters.mockReturnValue({
+      chapters: [linguistChapter],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+
+    expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
+    expect(mockIsUserProjectMember).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('blocks Observer navigation when project membership is revoked', async () => {
+    mockGetObserverProjectIds.mockReturnValue([3]);
+    mockIsUserProjectMember.mockResolvedValueOnce(false);
+    useMyWorkChapters.mockReturnValue({
+      chapters: [linguistChapter],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+
+    await waitFor(() => {
+      expect(mockIsUserProjectMember).toHaveBeenCalledWith(7, 3);
+    });
+    expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('blocks router when membership is revoked after Observer helper resolution', async () => {
+    mockGetObserverProjectIds.mockReturnValue([3]);
+    const pending = deferred<typeof observerHref | null>();
+    mockGetObserverDraftDestination.mockReturnValueOnce(pending.promise);
+    mockIsUserProjectMember
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    useMyWorkChapters.mockReturnValue({
+      chapters: [linguistChapter],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+
+    await waitFor(() => {
+      expect(mockGetObserverDraftDestination).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      pending.resolve(observerHref);
+      await pending.promise;
+    });
+
+    await waitFor(() => {
+      expect(mockIsUserProjectMember).toHaveBeenCalledTimes(2);
+    });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('does not route stale assigned listAccess to verse-detail without live eligibility', async () => {
+    useMyWorkChapters.mockReturnValue({
+      chapters: [
+        {
+          ...linguistChapter,
+          // Stale cache claims assigned; live status/grants deny both paths.
+          listAccess: 'assigned',
+        },
+      ],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+
+    expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('blocks router when account changes after deferred Observer helper resolution', async () => {
+    mockGetObserverProjectIds.mockReturnValue([3]);
+    const pending = deferred<typeof observerHref | null>();
+    mockGetObserverDraftDestination.mockReturnValueOnce(pending.promise);
+    useMyWorkChapters.mockReturnValue({
+      chapters: [linguistChapter],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+
+    await waitFor(() => {
+      expect(mockGetObserverDraftDestination).toHaveBeenCalled();
+    });
+
+    mockGetActiveUserId.mockReturnValue('8');
+    mockParseUserId.mockReturnValue(8);
+    mockGetObserverProjectIds.mockReturnValue([]);
+
+    await act(async () => {
+      pending.resolve(observerHref);
+      await pending.promise;
+    });
+
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it('retains pull-to-refresh wiring and list end/count markers', async () => {

@@ -31,6 +31,7 @@ function chapter(
     bookCode: 'LUK',
     assignedUserId: null,
     peerCheckerId: null,
+    listAccess: 'assigned',
     ...overrides,
   };
 }

@@ -41,6 +41,9 @@ export type WorkflowBadgeStage =
   | 'advanced_check'
   | 'complete';
 
+/** Verified My Work row access after query eligibility (#505 Observer). */
+export type MyWorkListAccess = 'assigned' | 'observer';
+
 export interface MyWorkChapter {
   id: number;
   displayLabel: string;
@@ -71,6 +74,11 @@ export interface MyWorkChapter {
   bookCode: string;
   assignedUserId: number | null;
   peerCheckerId: number | null;
+  /**
+   * Assigned → mutable verse-detail; observer → guarded read-only destination.
+   * Set only after verified eligibility (not status alone).
+   */
+  listAccess: MyWorkListAccess;
 }
 
 export interface ProjectChapter {
