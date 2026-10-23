@@ -1520,9 +1520,10 @@ export async function syncAllData(
           // Org-grant refresh runs with claims so getUserByEmail does not
           // serialize ahead of the #771 overlap.
           masterPromise = syncMasterData(sessionToken);
+          // grantsRefreshPromise is always assigned in the isIncremental branch above.
           await Promise.all([
             syncPendingChapterClaimsForUser(userId),
-            grantsRefreshPromise ?? Promise.resolve(),
+            grantsRefreshPromise!,
           ]);
           await masterPromise;
           await syncPericopeSets(sessionToken);
