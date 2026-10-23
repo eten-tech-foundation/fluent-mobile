@@ -418,6 +418,11 @@ export const FluentAPI = {
   /**
    * Chapter draft text with verse anchors/markers (#508 / #704).
    * `GET /translated-verses?projectUnitId&bookId&chapterNumber`.
+   *
+   * Contract: fluent-api `translated-verses` domain (OpenAPI list route on
+   * main; mobile types pin `4bccdc12`). Response shape is
+   * `translatedVerseResponseSchema.array()` — not part of the recordings
+   * sync contract or Next-UI v2 manifest.
    */
   getTranslatedVerses: async (
     params: GetTranslatedVersesParams,

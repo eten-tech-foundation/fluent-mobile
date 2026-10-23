@@ -126,8 +126,11 @@ export class DownloadQueueWorker {
   }
 
   async start(items: DownloadQueueItem[]): Promise<void> {
+    // PFO / auto-resume still call start() while a draft session may already
+    // be running — append instead of dropping those items on the floor.
     if (this.state === 'downloading' || this.state === 'paused') {
-      log.info('start() called while downloading or paused; ignoring');
+      log.info('start() called while downloading or paused; appending');
+      this.enqueueAdditional(items);
       return;
     }
     this.queue = [...items];
@@ -138,8 +141,9 @@ export class DownloadQueueWorker {
 
   /**
    * Append items to the in-memory queue while a session is already running.
-   * De-dupes against the active transfer, resolving slot, and pending queue.
-   * Does **not** resume a user-paused session (avoids restarting unrelated PFO work).
+   * De-dupes against the active transfer, non-cancelled resolving slot, and
+   * pending queue. Does **not** resume a user-paused session (avoids
+   * restarting unrelated PFO work).
    */
   enqueueAdditional(items: DownloadQueueItem[]): void {
     if (items.length === 0) return;
@@ -153,7 +157,10 @@ export class DownloadQueueWorker {
     if (this.active) {
       known.add(this.active.itemId);
     }
-    if (this.resolving) {
+    // Cancelled resolving ids must not block retry — draft ids are
+    // deterministic, so a stage-exit drop + re-enqueue during resolver await
+    // would otherwise be de-duped away.
+    if (this.resolving && !this.resolving.cancelled) {
       known.add(this.resolving.itemId);
     }
     const fresh = items.filter(item => !known.has(item.id));

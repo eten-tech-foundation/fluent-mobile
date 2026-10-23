@@ -376,4 +376,43 @@ describe('startDraftDownload', () => {
     expect(after.status).toBe('idle');
     expect(after.progress).toBe(1);
   });
+
+  it('maps cancelled-only queue items to failed (retryable chip, not progress)', async () => {
+    mockReadManifest.mockResolvedValue({
+      chapterAssignmentId: 9,
+      projectId: 1,
+      userId: 7,
+      role: 'peer_check',
+      projectUnitId: 12,
+      bibleId: 1,
+      bookId: 41,
+      bookCode: 'MRK',
+      chapterNumber: 1,
+      units: [
+        {
+          bibleTextId: 3401,
+          verseNumber: 1,
+          conflictStatus: 'clean',
+          activeTakeId: 10,
+          contentHash: 'abc123hash',
+          resourceId: audioResourceId,
+        },
+      ],
+      purgeGeneration: 0,
+      purged: false,
+    });
+    mockGetByPrefix.mockResolvedValue([
+      {
+        id: `1-7-${audioResourceId}`,
+        resourceId: audioResourceId,
+        status: 'cancelled',
+        kind: 'audio',
+        progress: 0.4,
+        localFilePath: null,
+      },
+    ]);
+
+    const state = await getDraftDownloadState(request);
+    expect(state.status).toBe('failed');
+  });
 });

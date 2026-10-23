@@ -1,5 +1,6 @@
 /**
- * GET /translated-verses response (fluent-api main / pinned 4bccdc12).
+ * GET /translated-verses response (fluent-api `translated-verses` domain on
+ * main / pinned 4bccdc12). Matches OpenAPI `translatedVerseResponseSchema`.
  * `markers` may be null when the server `.catch(null)`s invalid/missing JSON.
  */
 

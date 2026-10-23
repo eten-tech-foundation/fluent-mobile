@@ -229,6 +229,11 @@ function deriveStatus(
       ) {
         return 'queued';
       }
+      // Cancelled-only (e.g. after PFO cancel) must surface as retryable, not
+      // progress — otherwise the chip sticks on downloading.
+      if (items.some(item => item.status === 'cancelled')) {
+        return 'failed';
+      }
       return items.length === 0 ? 'idle' : 'downloading';
     }
   }
@@ -236,7 +241,15 @@ function deriveStatus(
   const textRow = byResource.get(textId);
   if (!textRow || textRow.status !== 'completed') {
     if (items.some(item => item.status === 'downloading')) return 'downloading';
-    return 'queued';
+    if (
+      items.some(item => item.status === 'queued' || item.status === 'paused')
+    ) {
+      return 'queued';
+    }
+    if (items.some(item => item.status === 'cancelled')) {
+      return 'failed';
+    }
+    return items.length === 0 ? 'idle' : 'downloading';
   }
 
   if (role === 'observer') {
