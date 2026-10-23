@@ -1473,6 +1473,7 @@ export async function syncAllData(
       try {
         let userId: number;
         let sessionToken: string | undefined;
+        let grantsRefreshPromise: Promise<void> | undefined;
         if (isIncremental) {
           const existingUserIdStr = getUserIdSync();
           if (!existingUserIdStr) throw new Error('No user ID found');
@@ -1484,7 +1485,12 @@ export async function syncAllData(
             throw new AuthError('No session token. Please sign in again.');
           }
           sessionToken = creds.token;
-          await refreshUserOrgGrants(existingUserIdStr, sessionToken);
+          // Warm Sync Now: do not await grants before claims∥master (#771).
+          // Kick off refresh here; awaited alongside claims below.
+          grantsRefreshPromise = refreshUserOrgGrants(
+            existingUserIdStr,
+            sessionToken,
+          );
         } else {
           const user = await syncUser(email, preloadedUser);
           userId = user.id;
@@ -1511,8 +1517,13 @@ export async function syncAllData(
 
         if (isIncremental) {
           // Warm Sync Now: claims overlap master fetch; projects wait for both.
+          // Org-grant refresh runs with claims so getUserByEmail does not
+          // serialize ahead of the #771 overlap.
           masterPromise = syncMasterData(sessionToken);
-          await syncPendingChapterClaimsForUser(userId);
+          await Promise.all([
+            syncPendingChapterClaimsForUser(userId),
+            grantsRefreshPromise ?? Promise.resolve(),
+          ]);
           await masterPromise;
           await syncPericopeSets(sessionToken);
           await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
