@@ -7,7 +7,6 @@ import { ChapterConflictIndicator } from './ChapterConflictIndicator';
 import { ChapterProgressRing } from './ChapterProgressRing';
 import { ChapterCloudSyncIndicator } from './ChapterSyncIndicator';
 import { ListCard } from './ListCard';
-import { WorkflowBadge } from './WorkflowBadge';
 import { ChapterOwnershipIndicator } from './ChapterOwnershipIndicator';
 
 interface MyWorkRowProps {
@@ -22,7 +21,6 @@ export function MyWorkRow({
   isSyncing = false,
 }: MyWorkRowProps) {
   const display = getMyWorkRowDisplay(chapter, isSyncing);
-  const { workflowStage } = chapter;
 
   return (
     <ListCard
@@ -53,7 +51,6 @@ export function MyWorkRow({
         </View>
 
         <View style={styles.metaRow}>
-          {workflowStage ? <WorkflowBadge stage={workflowStage} /> : null}
           {display.showActivityDate ? (
             <Text style={styles.activity}>{chapter.lastActivityLabel}</Text>
           ) : null}
