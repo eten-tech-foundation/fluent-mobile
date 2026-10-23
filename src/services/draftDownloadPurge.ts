@@ -119,25 +119,43 @@ function ownedResourceIds(manifest: DraftDownloadManifest): Set<string> | null {
 }
 
 /**
- * After a committed local/sync status write, purge only on a strictly forward
- * exit of peer_check (peer_check role) or community_review (observer). Same,
- * lower, unknown, or missing persisted statuses → no purge.
+ * After a committed local/sync status write, purge on a strictly forward exit
+ * of peer_check (peer_check role) or community_review (observer).
+ *
+ * Non-forward persists (including destination→destination after an exit) do
+ * not start a new purge, but still retry deletes when a prior tombstone for
+ * either purge role still lists units.
  */
 export async function maybePurgeDraftDownloadsAfterPersistedStageChange(
   input: PersistedStageChangePurgeInput,
 ): Promise<PurgeDraftDownloadsResult | null> {
-  const forward = isStrictlyForwardStageExit(input.fromStatus, input.toStatus);
-  const leftStage = forward
-    ? normalizeStatus(input.fromStatus)
-    : normalizeStatus(input.fromStatus) ?? normalizeStatus(input.toStatus);
-  const role = roleForStageExit(leftStage);
-  if (!role || leftStage === null) {
-    return null;
+  if (isStrictlyForwardStageExit(input.fromStatus, input.toStatus)) {
+    const leftStage = normalizeStatus(input.fromStatus);
+    const role = roleForStageExit(leftStage);
+    if (!role || leftStage === null) {
+      return null;
+    }
+    return purgeDraftDownloadsOnStageExit({
+      projectId: input.projectId,
+      userId: input.userId,
+      chapterAssignmentId: input.chapterAssignmentId,
+      role,
+      leftStage,
+    });
   }
 
-  if (!forward) {
-    // Incomplete prior purge: tombstone still lists units → retry deletes even
-    // when from === to (repository writers only enter through this guard).
+  // After a Peer Check exit the next persist is community_review→community_review
+  // (observer role); after Community Review it is linguist_check→linguist_check
+  // (no purge role). Probe both purge-role tombstones so failed deletes retry.
+  const retryRoles: Array<{
+    role: DraftDownloadRole;
+    leftStage: 'peer_check' | 'community_review';
+  }> = [
+    { role: 'peer_check', leftStage: 'peer_check' },
+    { role: 'observer', leftStage: 'community_review' },
+  ];
+  let last: PurgeDraftDownloadsResult | null = null;
+  for (const { role, leftStage } of retryRoles) {
     const existing = await readDraftDownloadManifest({
       projectId: input.projectId,
       userId: input.userId,
@@ -145,17 +163,17 @@ export async function maybePurgeDraftDownloadsAfterPersistedStageChange(
       role,
     });
     if (!existing?.purged || existing.units.length === 0) {
-      return null;
+      continue;
     }
+    last = await purgeDraftDownloadsOnStageExit({
+      projectId: input.projectId,
+      userId: input.userId,
+      chapterAssignmentId: input.chapterAssignmentId,
+      role,
+      leftStage,
+    });
   }
-
-  return purgeDraftDownloadsOnStageExit({
-    projectId: input.projectId,
-    userId: input.userId,
-    chapterAssignmentId: input.chapterAssignmentId,
-    role,
-    leftStage,
-  });
+  return last;
 }
 
 /**

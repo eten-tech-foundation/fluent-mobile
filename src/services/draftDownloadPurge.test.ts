@@ -693,7 +693,7 @@ describe('persisted-stage purge gating', () => {
     },
   );
 
-  it('retries purge when same-stage write finds purged manifest still listing units', async () => {
+  it('retries peer_check tombstone on community_review→community_review persist', async () => {
     mockReadManifest.mockImplementation(async (identity: { role: string }) => {
       if (identity.role === 'peer_check') {
         return peerManifest({ purged: true, purgeGeneration: 1 });
@@ -704,11 +704,36 @@ describe('persisted-stage purge gating', () => {
       projectId: 1,
       userId: 7,
       chapterAssignmentId: 9,
-      fromStatus: 'peer_check',
-      toStatus: 'peer_check',
+      fromStatus: 'community_review',
+      toStatus: 'community_review',
     });
     expect(result).not.toBeNull();
-    expect(mockWriteTombstone).toHaveBeenCalled();
+    expect(mockWriteTombstone).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'peer_check' }),
+      expect.anything(),
+    );
+    expect(mockDropItems).toHaveBeenCalled();
+  });
+
+  it('retries observer tombstone on linguist_check→linguist_check persist', async () => {
+    mockReadManifest.mockImplementation(async (identity: { role: string }) => {
+      if (identity.role === 'observer') {
+        return observerManifest({ purged: true, purgeGeneration: 1 });
+      }
+      return null;
+    });
+    const result = await maybePurgeDraftDownloadsAfterPersistedStageChange({
+      projectId: 1,
+      userId: 7,
+      chapterAssignmentId: 9,
+      fromStatus: 'linguist_check',
+      toStatus: 'linguist_check',
+    });
+    expect(result).not.toBeNull();
+    expect(mockWriteTombstone).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'observer' }),
+      expect.anything(),
+    );
     expect(mockDropItems).toHaveBeenCalled();
   });
 });
