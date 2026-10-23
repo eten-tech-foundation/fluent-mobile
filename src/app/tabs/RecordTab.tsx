@@ -86,7 +86,7 @@ import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
 import type { Recording, RecordingWithOwner } from '../../types/db/types';
 import {
   getStageAdvanceVisibility,
-  isDrafterBlockedFromOpenPeerCheckCapture,
+  isBlockedFromPeerCheckCapture,
   isRecordingLockedByStage,
   resolvePeerCheckerAssignmentOnAdvance,
   stageAdvanceConfirmBody,
@@ -902,8 +902,24 @@ export function RecordTab({
     pauseDraftPlayback: verseAudio.pausePlayback,
   });
 
+  const currentUserId = userId;
+  const peerCheckCaptureBlocked = useMemo(
+    () => isBlockedFromPeerCheckCapture(chapterData, currentUserId),
+    [chapterData, currentUserId],
+  );
+  const stageLocked = useMemo(
+    () => isRecordingLockedByStage(chapterData),
+    [chapterData],
+  );
+  const isTaken = useMemo(
+    () => isChapterTakenByOther(chapterData, currentUserId),
+    [chapterData, currentUserId],
+  );
+  const captureDisabled =
+    recordDisabled || peerCheckCaptureBlocked || stageLocked || isTaken;
+
   async function handleStart() {
-    if (stageLocked || isTaken) return;
+    if (stageLocked || isTaken || peerCheckCaptureBlocked) return;
     if (!(await ensureMic())) return;
     setElapsedMs(0);
     if (sourceAudioControl && sourceAudioControl.status !== 'idle') {
@@ -929,21 +945,6 @@ export function RecordTab({
     }
     await verseAudio.playStitched(row);
   }
-  const currentUserId = userId;
-  const drafterCaptureBlocked = useMemo(
-    () => isDrafterBlockedFromOpenPeerCheckCapture(chapterData, currentUserId),
-    [chapterData, currentUserId],
-  );
-  const stageLocked = useMemo(
-    () => isRecordingLockedByStage(chapterData),
-    [chapterData],
-  );
-  const isTaken = useMemo(
-    () => isChapterTakenByOther(chapterData, currentUserId),
-    [chapterData, currentUserId],
-  );
-  const captureDisabled =
-    recordDisabled || drafterCaptureBlocked || stageLocked || isTaken;
   const { hasConflict } = useChapterConflictStatus(chapterData.id);
   const chapterHasRecording = hasChapterRecording;
   const lastVerseNumber = verses[verses.length - 1]?.verseNumber ?? null;
