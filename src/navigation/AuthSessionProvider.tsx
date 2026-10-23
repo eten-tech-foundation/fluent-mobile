@@ -29,6 +29,10 @@ import {
   startDownloadQueueAutoResume,
   stopDownloadQueueAutoResume,
 } from '../services/downloadQueueAutoResume';
+import {
+  refreshSyncStatusStore,
+  resetSyncStatusStore,
+} from '../services/syncStatusStore';
 import { registerRecordingUploadWorker } from '../services/recordingSync';
 import { ApiUser } from '../types/api/responses';
 import { appStyles } from '../app/appStyles';
@@ -109,10 +113,12 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     startUploadProgressNotification();
     startUploadOrchestrator();
     const stopAutoResume = startDownloadQueueAutoResume();
+    void refreshSyncStatusStore();
     return () => {
       stopUploadProgressNotification();
       stopUploadOrchestrator();
       stopDownloadQueueAutoResume(stopAutoResume);
+      resetSyncStatusStore();
     };
     // userSwitchEpoch: stop/restart so pending downloads cannot resume for the previous account
   }, [isLoading, isAuthenticated, userSwitchEpoch]);
@@ -129,7 +135,10 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   const runPostLoginSync = useCallback(
     (email: string, preloadedUser?: ApiUser, onComplete?: () => void) => {
-      syncAllData(false, email, preloadedUser)
+      syncAllData(false, email, preloadedUser, {
+        // Clear Home full-screen spinner after Tier 1; Tier 2 keeps running (#670).
+        onTier1Complete: onComplete,
+      })
         .catch(e => {
           log.error('Post-login sync failed:', { error: e });
         })

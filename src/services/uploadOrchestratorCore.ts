@@ -101,10 +101,14 @@ export function createUploadOrchestrator(
   let phase: UploadPhase = 'idle';
   let completedChapters = 0;
   let totalChapters = 0;
+  /** Chapters that belong to the current pause/resume session (`bookId:chapterNumber`). */
+  let sessionKeys = new Set<string>();
   let isOnline = false;
   let isWifi = false;
   let connectionType = '';
   let started = false;
+  // Invalidate preflight work across stop/start, before an AbortController exists.
+  let lifecycleVersion = 0;
   let unsubConnectivity: (() => void) | null = null;
   let unsubPrefs: (() => void) | null = null;
   let sessionAbort: AbortController | null = null;
@@ -144,19 +148,50 @@ export function createUploadOrchestrator(
     return until !== null && deps.now() < until;
   };
 
-  const abortActiveSession = async (): Promise<void> => {
-    if (sessionAbort) {
-      sessionAbort.abort();
+  const chapterKey = (chapter: PendingUploadChapter): string =>
+    `${chapter.bookId}:${chapter.chapterNumber}`;
+
+  const clearSessionCounts = (): void => {
+    completedChapters = 0;
+    totalChapters = 0;
+    sessionKeys = new Set();
+  };
+
+  /**
+   * Fold the latest pending set into the frozen session. Completed is how many
+   * session keys are no longer pending, and it never drops below the last
+   * value. New pending keys join the session so Y can grow without resetting
+   * X to 0 (#600).
+   */
+  const applyPendingChapters = (pending: PendingUploadChapter[]): void => {
+    const pendingKeys = new Set(pending.map(chapterKey));
+    for (const key of pendingKeys) {
+      sessionKeys.add(key);
     }
-    if (sessionPromise) {
+    let finished = 0;
+    for (const key of sessionKeys) {
+      if (!pendingKeys.has(key)) {
+        finished += 1;
+      }
+    }
+    completedChapters = Math.max(completedChapters, finished);
+    totalChapters = sessionKeys.size;
+  };
+
+  const abortActiveSession = async (): Promise<void> => {
+    const abort = sessionAbort;
+    const promise = sessionPromise;
+    abort?.abort();
+    if (promise) {
       try {
-        await sessionPromise;
+        await promise;
       } catch {
         // aborted / failed sessions are expected
       }
     }
-    sessionAbort = null;
-    sessionPromise = null;
+    // A stopped lifecycle may already have been replaced while this unwinds.
+    if (sessionAbort === abort) sessionAbort = null;
+    if (sessionPromise === promise) sessionPromise = null;
   };
 
   const applyFreshTransportSnapshot = async (): Promise<void> => {
@@ -164,7 +199,9 @@ export function createUploadOrchestrator(
       return;
     }
 
+    const version = lifecycleVersion;
     const snapshot = await deps.getSessionTransportSnapshot();
+    if (!started || version !== lifecycleVersion) return;
     isOnline = snapshot.isOnline;
     isWifi = snapshot.isWifi;
     connectionType = snapshot.connectionType;
@@ -213,7 +250,29 @@ export function createUploadOrchestrator(
     return true;
   }
 
+  /**
+   * After a thrown transport interrupt there may be no NetInfo edge. Match
+   * connectivity pause cleanup, then re-probe via session transport snapshot
+   * after a nonzero delay (never 0ms) before evaluateAuto (#600).
+   */
+  function scheduleTransportRecheckAfterInterrupt(): void {
+    clearRetryTimer();
+    const delayMs = sessionRetryDelayMs(1);
+    log.info('Scheduling upload transport recheck after network interrupt', {
+      delayMs,
+    });
+    retryTimerCancel = schedule(() => {
+      retryTimerCancel = null;
+      void (async () => {
+        await applyFreshTransportSnapshot();
+        evaluateAuto();
+      })();
+    }, delayMs);
+  }
+
   const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
+    if (!started) return;
+    const version = lifecycleVersion;
     if (sessionPromise || sessionOpen) {
       rerunAfterSession = true;
       return;
@@ -234,6 +293,7 @@ export function createUploadOrchestrator(
       }
 
       await applyFreshTransportSnapshot();
+      if (!started || version !== lifecycleVersion) return;
 
       const uploadOverCellular = deps.getUploadOverCellular();
       const gate = transportAllowsTransfer({
@@ -262,24 +322,73 @@ export function createUploadOrchestrator(
       }
 
       const chapters = await deps.getPendingUploadChapters();
+      if (!started || version !== lifecycleVersion) return;
+      // Controls and connectivity may change while the queue read is pending,
+      // before there is an AbortController for pause/cancel/offline to abort.
+      if (isUserPaused()) {
+        phase = 'paused';
+        armPauseTimer();
+        return;
+      }
+      if (suppressAutoUntilOnlineEdge) {
+        return;
+      }
+      const currentGate = transportAllowsTransfer({
+        isOnline,
+        isWifi,
+        connectionType,
+        uploadOverCellular: deps.getUploadOverCellular(),
+      });
+      if (currentGate !== 'ok') {
+        const enteredWaitingWifi =
+          currentGate === 'waiting_wifi' && phase !== 'waiting_wifi';
+        phase = currentGate;
+        if (enteredWaitingWifi) {
+          deps.emit({ type: 'waiting_wifi' });
+        }
+        return;
+      }
       if (chapters.length === 0) {
         phase = 'idle';
+        clearSessionCounts();
         deps.emit({ type: 'idle' });
         return;
       }
 
       const abort = new AbortController();
       sessionAbort = abort;
-      completedChapters = 0;
-      totalChapters = chapters.length;
-      // Lock the session before awaiting claims so Cancel/parallel Sync Now
-      // cannot start a second runSession during the claim round-trip (#611).
-      phase = 'syncing';
-      deps.emit({ type: 'start', totalChapters: chapters.length });
-      log.info('Upload session started', {
-        reason,
-        totalChapters: chapters.length,
-      });
+      // Pause/Resume continues the same chapter keys. Counting `pending.length`
+      // treats a failed chapter that stayed queued, or a chapter recorded during
+      // the pause, as a smaller X (#600). Connectivity abort sets phase to
+      // `offline` while keeping sessionKeys — resume that too so progress is
+      // not reset to zero (#600). Lock syncing before the claim push so Cancel
+      // cannot start a second session (#611).
+      const resumePausedSession =
+        (phase === 'paused' || phase === 'offline') && sessionKeys.size > 0;
+      if (resumePausedSession) {
+        applyPendingChapters(chapters);
+        phase = 'syncing';
+        deps.emit({
+          type: 'progress',
+          completedChapters,
+          totalChapters,
+        });
+        log.info('Upload session resumed', {
+          reason,
+          completedChapters,
+          totalChapters,
+        });
+      } else {
+        sessionKeys = new Set();
+        completedChapters = 0;
+        applyPendingChapters(chapters);
+        phase = 'syncing';
+        deps.emit({ type: 'start', totalChapters });
+        log.info('Upload session started', {
+          reason,
+          totalChapters,
+        });
+      }
 
       const work = (async () => {
         try {
@@ -325,17 +434,27 @@ export function createUploadOrchestrator(
             if (abort.signal.aborted) {
               return;
             }
-            completedChapters += 1;
-            deps.emit({
-              type: 'progress',
-              completedChapters,
-              totalChapters,
-            });
+            const pending = await deps.getPendingUploadChapters();
+            if (abort.signal.aborted || version !== lifecycleVersion) {
+              return;
+            }
+            const before = completedChapters;
+            applyPendingChapters(pending);
+            if (completedChapters > before) {
+              deps.emit({
+                type: 'progress',
+                completedChapters,
+                totalChapters,
+              });
+            }
           }
           if (!abort.signal.aborted) {
             phase = 'idle';
-            deps.emit({ type: 'complete' });
             log.info('Upload session complete', { totalChapters });
+            // Clear before terminal emit so sync listeners (getSnapshot) never
+            // observe stale completed/total after complete (#600).
+            clearSessionCounts();
+            deps.emit({ type: 'complete' });
             sessionFailures = 0;
             clearRetryTimer();
           }
@@ -344,13 +463,22 @@ export function createUploadOrchestrator(
             return;
           }
           if (isUploadNetworkInterruptedError(error)) {
+            // Match onConnectivity drop: keep sessionKeys, clear retry budget,
+            // and mark link offline so evaluateAuto cannot assume reachability
+            // without a fresh snapshot / NetInfo edge (#600).
             log.info('Upload session paused after network drop', { error });
-            phase = 'idle';
-            deps.emit({ type: 'idle' });
+            clearRetryTimer();
+            sessionFailures = 0;
+            isOnline = false;
+            wasOnline = false;
+            phase = 'offline';
+            deps.emit({ type: 'paused', reason: 'connectivity' });
+            scheduleTransportRecheckAfterInterrupt();
             return;
           }
           log.error('Upload session failed', { error });
           phase = 'idle';
+          clearSessionCounts();
           deps.emit({ type: 'idle' });
           sessionFailures += 1;
           sessionResult.followUp = 'retry';
@@ -366,15 +494,18 @@ export function createUploadOrchestrator(
 
       await sessionPromise;
     } finally {
-      sessionOpen = false;
-      const shouldRerun = rerunAfterSession;
-      rerunAfterSession = false;
-      const retryArmed =
-        sessionResult.followUp === 'retry' ? scheduleSessionRetry() : false;
-      // A retry timer already covers work saved during the session. If the
-      // budget is spent, that timer is not armed — still start the save.
-      if (shouldRerun && !retryArmed) {
-        evaluateAuto();
+      // Late preflight results must not unlock or schedule a newer lifecycle.
+      if (version === lifecycleVersion) {
+        sessionOpen = false;
+        const shouldRerun = rerunAfterSession;
+        rerunAfterSession = false;
+        const retryArmed =
+          sessionResult.followUp === 'retry' ? scheduleSessionRetry() : false;
+        // A retry timer already covers work saved during the session. If the
+        // budget is spent, that timer is not armed — still start the save.
+        if (shouldRerun && !retryArmed) {
+          evaluateAuto();
+        }
       }
     }
   };
@@ -382,6 +513,7 @@ export function createUploadOrchestrator(
   const evaluateAuto = (): void => {
     evaluateChain = evaluateChain
       .then(async () => {
+        if (!started) return;
         const gate = transportAllowsTransfer({
           isOnline,
           isWifi,
@@ -469,6 +601,7 @@ export function createUploadOrchestrator(
         return;
       }
       started = true;
+      lifecycleVersion += 1;
       unsubConnectivity = deps.subscribeToConnectivity(onConnectivity);
       unsubPrefs = deps.subscribeToUploadOverCellular(() => {
         evaluateAuto();
@@ -482,6 +615,7 @@ export function createUploadOrchestrator(
         return;
       }
       started = false;
+      lifecycleVersion += 1;
       unsubConnectivity?.();
       unsubPrefs?.();
       unsubConnectivity = null;
@@ -491,6 +625,10 @@ export function createUploadOrchestrator(
       sessionFailures = 0;
       rerunAfterSession = false;
       void abortActiveSession();
+      // Detach the old lifecycle immediately, including unresolved preflight.
+      sessionAbort = null;
+      sessionPromise = null;
+      sessionOpen = false;
       phase = 'idle';
       log.info('Upload orchestrator stopped');
     },
@@ -519,6 +657,7 @@ export function createUploadOrchestrator(
       rerunAfterSession = false;
       await abortActiveSession();
       phase = 'idle';
+      clearSessionCounts();
       deps.emit({ type: 'cancelled' });
       log.info('Upload cancelled by user');
     },

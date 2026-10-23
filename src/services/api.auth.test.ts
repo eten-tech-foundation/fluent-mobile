@@ -116,6 +116,10 @@ describe('FluentAPI auth', () => {
       name: 'AuthError',
       message: 'Invalid or revoked session token',
     });
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain('/self/projects');
+    expect(url).not.toContain('/users/');
   });
 
   it.each([
@@ -157,6 +161,62 @@ describe('FluentAPI auth', () => {
     },
   );
 
+  it.each([
+    [
+      'getLanguage',
+      '/languages/3',
+      { id: 3, langName: 'English', langCodeIso6393: 'eng' },
+      3,
+    ],
+    [
+      'getBook',
+      '/books/41',
+      { id: 41, code: 'MRK', eng_display_name: 'Mark' },
+      41,
+    ],
+    [
+      'getBible',
+      '/bibles/10',
+      { id: 10, languageId: 3, name: 'Source', abbreviation: 'SRC' },
+      10,
+    ],
+  ] as const)(
+    '%s by-id sends Authorization bearer and throws AuthError on 401',
+    async (method, path, okBody, id) => {
+      authToken.set('catalog-token');
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(okBody),
+        headers: { get: () => null },
+      });
+
+      await (FluentAPI[method] as (rowId: number) => Promise<unknown>)(id);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `http://localhost:9999${path}`,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer catalog-token',
+          }),
+        }),
+      );
+
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        text: async () => JSON.stringify({ message: 'User not authenticated' }),
+      });
+
+      await expect(
+        (FluentAPI[method] as (rowId: number) => Promise<unknown>)(id),
+      ).rejects.toMatchObject({
+        name: 'AuthError',
+        message: 'User not authenticated',
+      });
+    },
+  );
+
   it('getPericopeSets sends Authorization bearer', async () => {
     authToken.set('catalog-token');
     fetchMock.mockResolvedValue({
@@ -191,6 +251,32 @@ describe('FluentAPI auth', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:9999/languages',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer explicit-token',
+        }),
+      }),
+    );
+  });
+
+  it('by-id catalog methods prefer an explicit bearer over the global token', async () => {
+    authToken.set('global-token');
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          id: 3,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+        }),
+      headers: { get: () => null },
+    });
+
+    await FluentAPI.getLanguage(3, 'explicit-token');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:9999/languages/3',
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer explicit-token',

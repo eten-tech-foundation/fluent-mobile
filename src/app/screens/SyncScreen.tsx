@@ -93,6 +93,7 @@ export default function SyncScreen() {
     hasUnuploadablePending,
     countsUnknown,
     hasClaimsOrSyncRetryWork,
+    hasDownloads,
     uploadProgress,
   });
 
@@ -195,6 +196,17 @@ export default function SyncScreen() {
   const startBusy =
     controlStatus === 'paused' ? false : isStartControlPending || isUploading;
 
+  const secondaryContent = renderSecondaryContent(
+    status,
+    progressUploaded,
+    progressTotal,
+    nextRetryAt,
+    isUploading,
+    pendingChapterCount,
+    hasPendingUploads,
+    hasFailedUploads,
+  );
+
   return (
     <ScreenContainer>
       <StackScreenHeader title="Sync" onBack={() => router.back()} />
@@ -250,18 +262,11 @@ export default function SyncScreen() {
             </Text>
           ) : null}
         </View>
-        <View style={styles.uploadSection}>
-          {renderSecondaryContent(
-            status,
-            progressUploaded,
-            progressTotal,
-            nextRetryAt,
-            isUploading,
-            pendingChapterCount,
-            hasPendingUploads,
-            hasFailedUploads,
-          )}
-        </View>
+        {secondaryContent ? (
+          <View style={styles.uploadSection} testID="sync-upload-section">
+            {secondaryContent}
+          </View>
+        ) : null}
         <View style={styles.controlsSection}>
           <SyncActionControls
             status={controlStatus}
@@ -327,23 +332,25 @@ function renderStatusLine(
   pendingChapterCount: number,
   countsUnknown: boolean,
 ) {
-  if (status === 'syncing' || isUploading) {
-    return (
-      <>
-        <Text style={styles.statusTitle}>Syncing…</Text>
-        <Text style={styles.statusSubtitle}>
-          Uploading your recordings to Fluent.
-        </Text>
-      </>
-    );
-  }
-
+  // Paused wins over a lingering take-upload flag so the status line, the
+  // progress card, and the controls all describe the same state (#600).
   if (status === 'paused') {
     return (
       <>
         <Text style={styles.statusTitle}>Paused</Text>
         <Text style={styles.statusSubtitle}>
           Upload will stay paused until you resume.
+        </Text>
+      </>
+    );
+  }
+
+  if (status === 'syncing' || isUploading) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>Syncing…</Text>
+        <Text style={styles.statusSubtitle}>
+          Uploading your recordings to Fluent.
         </Text>
       </>
     );
@@ -473,16 +480,15 @@ function renderSecondaryContent(
       );
 
     case 'pending':
-      if (!hasPendingUploads && !hasFailedUploads) {
+      // Queued rows are not active transfers (including offline pending work).
+      if (!isUploading || (!hasPendingUploads && !hasFailedUploads)) {
         return null;
       }
       return (
         <UploadProgressBar
-          uploadedChapters={isUploading ? uploadedChapters : 0}
+          uploadedChapters={uploadedChapters}
           totalChapters={
-            isUploading && totalChapters > 0
-              ? totalChapters
-              : pendingChapterCount
+            totalChapters > 0 ? totalChapters : pendingChapterCount
           }
         />
       );

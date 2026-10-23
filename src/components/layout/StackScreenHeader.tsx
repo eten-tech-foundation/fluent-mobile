@@ -1,8 +1,8 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import { SyncStatus, formatSyncStatusLabel } from '../../utils/syncStatusState';
 import { CloudSyncStatusIcon } from '../ui/CloudSyncStatusIcon';
-import { theme } from '../../theme';
+import { useThemedStyles } from '../../theme/useTheme';
 import { iconSizes, touchHitSlop } from '../../theme/iconSpecs';
 import { AppHeader, HeaderBackButton } from './AppHeader';
 
@@ -27,6 +27,7 @@ export function StackScreenHeader({
   subtitleLines = 1,
   backTestID,
 }: StackScreenHeaderProps) {
+  const styles = useStyles();
   return (
     <AppHeader
       tone="surface"
@@ -62,12 +63,13 @@ export function StackScreenHeader({
   );
 }
 
-const styles = StyleSheet.create({
-  syncButton: {
-    borderRadius: theme.radius.full,
-    padding: theme.spacing.xs + 2,
-  },
-  syncPlaceholder: {
-    width: iconSizes.header + 12,
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    syncButton: {
+      borderRadius: theme.radius.full,
+      padding: theme.spacing.xs + 2,
+    },
+    syncPlaceholder: {
+      width: iconSizes.header + 12,
+    },
+  }));

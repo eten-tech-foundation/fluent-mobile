@@ -6,6 +6,7 @@ const baseChapter: MyWorkChapter = {
   displayLabel: 'Luke 4',
   bookName: 'Luke',
   chapterNumber: 4,
+  assignmentStatus: 'draft',
   workflowStage: 'draft',
   syncState: 'synced',
   ownershipState: 'unassigned',

@@ -1,3 +1,5 @@
+import type { ApiPrepareOfflineResourceScope } from '../api/translationResources';
+
 export interface PrepareOfflineChapterRow {
   id: number;
   bookId: number;
@@ -5,6 +7,7 @@ export interface PrepareOfflineChapterRow {
   bookName: string;
   chapterNumber: number;
   assignedUserId: number | null;
+  bibleId: number;
 }
 
 export interface PrepareOfflineBookGroup {
@@ -36,6 +39,9 @@ export interface PrepareOfflineResourceManifestItem {
   aquiferContentId?: number;
   aquiferBibleId?: number;
   languageCode: string;
+  /** Actual per-resource coverage; never copy the requested range here. */
+  scope?: ApiPrepareOfflineResourceScope;
+  /** Legacy scope fields; only a single chapter is unambiguous. */
   bookCode?: string;
   startChapter?: number;
   endChapter?: number;
@@ -65,12 +71,19 @@ export interface PrepareOfflineResourceItem {
   groupName: string;
   label: string;
   bytes: number;
+  /**
+   * False when one or more remote members lack a usable byte size (wire 0 /
+   * omitted). Do not treat as free (#756). Defaults to true when omitted.
+   */
+  sizeKnown?: boolean;
   status: PrepareOfflineResourceStatus;
-  /** Partial progress (0–1) while queued, downloading, paused, cancelled, or failed. */
   progress?: number;
-  /** When set, enqueue uses this URL instead of the mock fixture (#446). */
-  sourceUrl?: string;
-  fileExt?: string;
+  /** Real manifest items this display row aggregates, for download enqueue. */
+  manifestMembers: PrepareOfflineResourceManifestItem[];
+  required: boolean;
+  removable: boolean;
+  /** Replaces the byte size text, e.g. "Included" for rows handled by sync. */
+  displayValue?: string;
 }
 
 export interface PrepareOfflineResourceGroup {
@@ -84,8 +97,7 @@ export interface PrepareOfflineCatalog {
 }
 
 export interface BuildPrepareOfflineCatalogInput {
-  projectId: number;
-  manifest: PrepareOfflineResourceManifestEntry[];
+  manifest: PrepareOfflineResourceManifestItem[];
   getResourceStatus: (resourceId: string) => PrepareOfflineResourceStatus;
   chapters: PrepareOfflineChapterRow[];
   selectedIds: Set<number>;

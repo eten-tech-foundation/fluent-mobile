@@ -3,6 +3,8 @@
  * Distinct from translator `/verse-audio` draft recordings.
  */
 
+import type { ApiPrepareOfflineResourceScope } from './translationResources';
+
 export type ApiSourceAudioProvider = 'dbl' | 'aquifer';
 
 export type ApiSourceAudioFormat = 'mp3' | 'webm';
@@ -50,4 +52,40 @@ export interface GetChapterSourceAudioParams {
   languageCode: string;
   bibleId: number;
   verse?: number;
+}
+export interface ApiSourceAudioManifestItem {
+  id: string;
+  tier: 1;
+  kind: 'audio';
+  resourceName: string;
+  label: string;
+  required: boolean;
+  removable: boolean;
+  bytesTotal: number;
+  sourceUrl: string;
+  fileExt: string;
+  languageCode: string;
+  scope?: ApiPrepareOfflineResourceScope;
+  /** Legacy scope fields; a multi-chapter range may be the request range. */
+  bookCode: string;
+  startChapter: number;
+  endChapter: number;
+  provider: ApiSourceAudioProvider;
+  aquiferBibleId?: number;
+}
+
+export interface ApiSourceAudioManifestResponse {
+  projectId: number;
+  sourceLanguageCode: string;
+  provider: ApiSourceAudioProvider;
+  items: ApiSourceAudioManifestItem[];
+  totalBytes: number;
+}
+
+export interface GetSourceAudioManifestParams {
+  languageCode: string;
+  bibleId: number;
+  bookCode: string;
+  startChapter: number;
+  endChapter: number;
 }

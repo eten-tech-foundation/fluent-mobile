@@ -3,10 +3,12 @@ import type { TranslationNoteItem } from '../types/resources/translationNotes';
 import { tipTapToPlainText } from '../utils/aquiferTipTapText';
 import {
   loadResourcesForVerseRange,
+  normalizeVerseRefs,
   verseRefsFromChapter,
   type ResourceVerseRef,
 } from '../utils/loadResourcesForVerseRange';
 import { FluentAPI } from './api';
+import { findDownloadedRows, readDownloadedJson } from './offlineResources';
 
 const DEFAULT_TN_LANGUAGE_CODE = 'eng';
 
@@ -25,6 +27,10 @@ export type LoadTranslationNotesParams = {
   verseRefs?: ResourceVerseRef[];
   /** Aquifer language for uW TN (defaults to English source). */
   languageCode?: string;
+  /** Active user id, needed to find this user's downloaded rows. */
+  userId?: number | null;
+  /** False when offline, so we never call the API. */
+  isOnline?: boolean;
 };
 
 type TipTapContentItem = {
@@ -93,9 +99,75 @@ export function parseTranslationNotesItem(
   return notes;
 }
 
+function resolveTranslationNotesRefs(
+  params: LoadTranslationNotesParams,
+): ResourceVerseRef[] {
+  return normalizeVerseRefs(
+    params.verseRefs && params.verseRefs.length > 0
+      ? params.verseRefs
+      : verseRefsFromChapter(
+          params.chapterNumber,
+          params.verseNumber,
+          params.verseNumbers,
+        ),
+  );
+}
+
+async function loadLocalTranslationNotesForRef(
+  params: LoadTranslationNotesParams,
+  bookCode: string,
+  ref: ResourceVerseRef,
+): Promise<TranslationNoteItem[] | null> {
+  const rows = await findDownloadedRows({
+    projectId: params.projectId,
+    userId: params.userId,
+    resourceName: 'Translation Notes',
+    kind: 'text',
+    bookCode,
+    chapterNumber: ref.chapterNumber,
+    verseNumber: ref.verseNumber,
+  });
+  if (rows === null) return null;
+
+  const notes: TranslationNoteItem[] = [];
+  let readAnyRow = false;
+  for (const row of rows) {
+    const content = await readDownloadedJson(row);
+    if (content === undefined) continue;
+    readAnyRow = true;
+    const item = {
+      id: row.resourceId ?? row.id,
+      name: row.label,
+      localizedName: row.label,
+      // JSON.parse yields whatever was persisted — the API content shape is a
+      // TipTap block array, so rewrap non-arrays to keep the parser happy.
+      content: Array.isArray(content) ? content : [content],
+    } as unknown as ApiTranslationNoteItem;
+    notes.push(...parseTranslationNotesItem(item));
+  }
+  // Every downloaded file was unreadable (missing/corrupt): fall back to the
+  // API instead of showing an empty section.
+  return readAnyRow ? notes : null;
+}
+
+function mergeNotesById(
+  into: TranslationNoteItem[],
+  next: TranslationNoteItem[],
+  seenIds: Set<string>,
+): void {
+  for (const note of next) {
+    if (seenIds.has(note.id)) continue;
+    seenIds.add(note.id);
+    into.push(note);
+  }
+}
+
 /**
- * Load uW Translation Notes for a drafting unit via fluent-api
- * translation-resources (fluent-api #274). Pericope units fan out (#593).
+ * Load uW Translation Notes for a drafting unit. Downloaded rows are used
+ * first (even online) for every verseRef in the unit; the fluent-api
+ * translation-resources call (fluent-api #274) only runs for refs with no
+ * usable local row, and only when online. Offline returns whatever was
+ * downloaded without calling the API (#578 / #593).
  */
 export async function loadTranslationNotesForUnit(
   params: LoadTranslationNotesParams,
@@ -114,18 +186,32 @@ export async function loadTranslationNotesForUnit(
     return [];
   }
 
+  const refs = resolveTranslationNotesRefs(params);
+  const localNotes: TranslationNoteItem[] = [];
+  const missingRefs: ResourceVerseRef[] = [];
+  const seenIds = new Set<string>();
+
+  for (const ref of refs) {
+    const local = await loadLocalTranslationNotesForRef(params, bookCode, ref);
+    if (local !== null) {
+      mergeNotesById(localNotes, local, seenIds);
+    } else {
+      missingRefs.push(ref);
+    }
+  }
+
+  // Offline: return whatever was downloaded; never call the API.
+  if (params.isOnline === false) {
+    return localNotes;
+  }
+
+  if (missingRefs.length === 0) {
+    return localNotes;
+  }
+
   const languageCode = params.languageCode?.trim() || DEFAULT_TN_LANGUAGE_CODE;
   const projectId = params.projectId;
-  const refs =
-    params.verseRefs && params.verseRefs.length > 0
-      ? params.verseRefs
-      : verseRefsFromChapter(
-          params.chapterNumber,
-          params.verseNumber,
-          params.verseNumbers,
-        );
-
-  return loadResourcesForVerseRange(refs, async ref => {
+  const remote = await loadResourcesForVerseRange(missingRefs, async ref => {
     const response = await FluentAPI.getTranslationNotes(
       projectId,
       bookCode,
@@ -136,4 +222,6 @@ export async function loadTranslationNotesForUnit(
     const items = Array.isArray(response?.items) ? response.items : [];
     return items.flatMap(parseTranslationNotesItem);
   });
+  mergeNotesById(localNotes, remote, seenIds);
+  return localNotes;
 }

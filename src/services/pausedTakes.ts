@@ -6,6 +6,15 @@ const log = logger.create('pausedTakes');
 
 export const PAUSED_TAKES_KV_KEY = 'paused_take_markers_v1';
 
+export type PausedTakeCapture = {
+  bibleTextId: number;
+  granularity: 'verse' | 'pericope';
+  startChapter: number;
+  startVerse: number;
+  endChapter: number;
+  endVerse: number;
+};
+
 export type PausedTakeMarker = {
   /** Session key — typically bibleTextId or chapterAssignmentId:verse */
   sessionKey: string;
@@ -15,14 +24,28 @@ export type PausedTakeMarker = {
   /** Optional navigation hints; if unresolvable, marker is orphaned. */
   chapterAssignmentId?: number;
   verseNumber?: number;
+  /** Capture span frozen at start, so recovery persists the same unit. */
+  capture?: PausedTakeCapture;
 };
+
+export function isValidMarker(value: unknown): value is PausedTakeMarker {
+  if (typeof value !== 'object' || value === null) return false;
+  const m = value as Record<string, unknown>;
+  return (
+    typeof m.sessionKey === 'string' &&
+    typeof m.elapsedMs === 'number' &&
+    typeof m.startedAt === 'string' &&
+    Array.isArray(m.segments) &&
+    m.segments.every(s => typeof s === 'string')
+  );
+}
 
 function readAll(): PausedTakeMarker[] {
   const raw = kvStorage.getItemSync(PAUSED_TAKES_KV_KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as PausedTakeMarker[]) : [];
+    return Array.isArray(parsed) ? parsed.filter(isValidMarker) : [];
   } catch {
     return [];
   }
@@ -63,15 +86,15 @@ export async function clearOrphanedPausedTakes(
     !isPausedTakeOrphaned(marker),
 ): Promise<number> {
   const markers = readAll();
-  const kept: PausedTakeMarker[] = [];
+  const removedVersions = new Set<string>();
   let removed = 0;
 
   for (const marker of markers) {
     if (resolveNavigable(marker)) {
-      kept.push(marker);
       continue;
     }
     removed += 1;
+    removedVersions.add(JSON.stringify(marker));
     for (const uri of marker.segments) {
       try {
         await deleteFile(uri);
@@ -84,7 +107,11 @@ export async function clearOrphanedPausedTakes(
     });
   }
 
-  writeAll(kept);
+  // File deletion yields to ongoing captures. Remove only the versions scanned
+  // above; a new or updated marker must not be overwritten by this snapshot.
+  writeAll(
+    readAll().filter(marker => !removedVersions.has(JSON.stringify(marker))),
+  );
   return removed;
 }
 

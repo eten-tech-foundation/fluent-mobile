@@ -5,8 +5,8 @@ import {
   PrepareOfflineResourceItem,
   PrepareOfflineResourceStatus,
 } from '../../types/prepareOffline/types';
-import { formatByteSize } from '../../utils/formatByteSize';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { formatResourceSizeLabel } from '../../utils/prepareOfflineSizeSemantics';
 import { SelectionCheckbox } from './SelectionCheckbox';
 import { ResourceDownloadProgressRing } from './ResourceDownloadProgressRing';
 
@@ -107,7 +107,6 @@ export function ResourceItemRow({
   const isDownloading = item.status === 'downloading';
   const isPaused = item.status === 'paused';
   const showProgressRing = isDownloading || isPaused;
-  const displayBytes = item.bytes;
 
   const rowContent = (
     <>
@@ -149,7 +148,7 @@ export function ResourceItemRow({
           />
         ) : null}
         <Text style={styles.size} testID={`resource-row-size-${item.id}`}>
-          {formatByteSize(displayBytes)}
+          {formatResourceSizeLabel(item)}
         </Text>
       </View>
     </>

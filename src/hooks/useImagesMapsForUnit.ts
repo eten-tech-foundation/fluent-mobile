@@ -49,11 +49,15 @@ function verseNumbersKeySafe(verseNumbers: number[] | undefined): string {
 /**
  * Section-scoped Images & Maps loader (#191). Failures stay local.
  * Ignores stale responses when the active unit changes mid-load.
- * Loads via fluent-api translation-resources (fluent-api #274); pericope fan-out (#593).
+ * Downloaded rows win; fluent-api translation-resources (fluent-api #274)
+ * is only hit when nothing usable is downloaded and the device is online.
+ * Online pericope units fan out across their verse refs (#593).
  */
 export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
   const {
     projectId,
+    userId,
+    isOnline,
     bookCode,
     chapterNumber,
     verseNumber,
@@ -105,6 +109,8 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
     try {
       const items = await loadImagesMapsForUnit({
         projectId,
+        userId,
+        isOnline,
         bookCode,
         chapterNumber,
         verseNumber,
@@ -142,6 +148,8 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
     }
   }, [
     projectId,
+    userId,
+    isOnline,
     bookCode,
     chapterNumber,
     verseNumber,

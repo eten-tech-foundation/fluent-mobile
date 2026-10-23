@@ -1,13 +1,8 @@
 import React from 'react';
-import {
-  TouchableOpacity,
-  View,
-  StyleSheet,
-  StyleProp,
-  ViewStyle,
-} from 'react-native';
+import { TouchableOpacity, View, StyleProp, ViewStyle } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { iconSizes, listIconStrokeWidth } from '../../theme';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 
 interface ListCardProps {
   children: React.ReactNode;
@@ -30,6 +25,8 @@ export function ListCard({
   testID,
   accessibilityLabel,
 }: ListCardProps) {
+  const theme = useTheme();
+  const styles = useStyles();
   const content = (
     <>
       {leading}
@@ -66,19 +63,20 @@ export function ListCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.listCard.backgroundColor,
-    borderRadius: theme.listCard.borderRadius,
-    borderWidth: 1,
-    borderColor: theme.listCard.borderColor,
-    paddingHorizontal: theme.listCard.paddingHorizontal,
-    paddingVertical: theme.listCard.paddingVertical,
-    gap: theme.listCard.gap,
-  },
-  content: {
-    flex: 1,
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.listCard.backgroundColor,
+      borderRadius: theme.listCard.borderRadius,
+      borderWidth: 1,
+      borderColor: theme.listCard.borderColor,
+      paddingHorizontal: theme.listCard.paddingHorizontal,
+      paddingVertical: theme.listCard.paddingVertical,
+      gap: theme.listCard.gap,
+    },
+    content: {
+      flex: 1,
+    },
+  }));

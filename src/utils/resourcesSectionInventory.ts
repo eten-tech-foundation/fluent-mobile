@@ -70,7 +70,8 @@ export function getInventoriedResourceSections(
 
 /**
  * Which section slots ResourcesTab should render.
- * Online + project → stream via fluent-api (all sections).
+ * Downloaded/inventoried sections always render; when online, all sections
+ * render so the API-first fallback can stream anything not downloaded.
  * Offline → Prepare Offline inventory only (#192).
  */
 export function getVisibleResourceSections(params: {

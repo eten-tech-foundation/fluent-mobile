@@ -8,17 +8,16 @@ import {
   ViewStyle,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { CloudOff } from 'lucide-react-native';
 import CloudOffUnsynced from '../../assets/icons/cloud-off-unsynced.svg';
 import {
   iconSizes,
   listIconStrokeWidth,
   syncStatusIcon,
-  theme,
+  type Theme,
 } from '../../theme';
+import { useTheme } from '../../theme/useTheme';
 import { SYNC_STATUS_LABELS, SyncStatus } from '../../utils/syncStatusState';
 
-const CLOUD_COLOR = theme.colors.primaryForeground;
 const CLOUD_PATH =
   'M5.516 16.07A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 3.501 7.327';
 const CHECK_PATH = 'm17 15-5.5 5.5L9 18';
@@ -178,18 +177,21 @@ function CloudUploadGlyph({
 /** Lucide `cloud` + centered static `refresh-cw` — download updates available. */
 function CloudNeedsSyncGlyph({
   size,
-  cloudColor = CLOUD_COLOR,
+  cloudColor,
 }: {
   size: number;
   cloudColor?: string;
 }) {
+  const theme = useTheme();
+  const resolvedCloudColor =
+    cloudColor === undefined ? theme.colors.primaryForeground : cloudColor;
   const overlay = size * syncStatusIcon.overlayScale;
   const inset = (size - overlay) / 2;
   const top = inset + size * syncStatusIcon.overlayOffsetY;
 
   return (
     <View style={[styles.frame, { width: size, height: size }]}>
-      <CloudOutline size={size} color={cloudColor} />
+      <CloudOutline size={size} color={resolvedCloudColor} />
       <View
         style={[
           styles.overlayCenter,
@@ -210,13 +212,16 @@ function CloudNeedsSyncGlyph({
 /** Lucide `cloud` + centered spinning `refresh-cw` overlay. */
 function CloudSyncingGlyph({
   size,
-  cloudColor = CLOUD_COLOR,
+  cloudColor,
   animated = true,
 }: {
   size: number;
   cloudColor?: string;
   animated?: boolean;
 }) {
+  const theme = useTheme();
+  const resolvedCloudColor =
+    cloudColor === undefined ? theme.colors.primaryForeground : cloudColor;
   const spin = useSpinAnimation(animated);
   const overlay = size * syncStatusIcon.overlayScale;
   const inset = (size - overlay) / 2;
@@ -224,7 +229,7 @@ function CloudSyncingGlyph({
 
   return (
     <View style={[styles.frame, { width: size, height: size }]}>
-      <CloudOutline size={size} color={cloudColor} />
+      <CloudOutline size={size} color={resolvedCloudColor} />
       <Animated.View
         style={[
           styles.overlayCenter,
@@ -249,66 +254,72 @@ interface GlyphOptions {
   cloudColor?: string;
 }
 
-const GLYPHS: Record<
+function glyphsForTheme(
+  theme: Theme,
+): Record<
   SyncStatus,
   (size: number, options?: GlyphOptions) => React.ReactElement
-> = {
-  online_synced: (size, options) => (
-    <CloudCheckGlyph
-      size={size}
-      cloudColor={options?.cloudColor ?? CLOUD_COLOR}
-      checkColor={theme.colors.syncStatusSynced}
-      animateCheck={options?.animateCheck}
-    />
-  ),
-  online_syncing: (size, options) => (
-    <CloudSyncingGlyph
-      size={size}
-      cloudColor={options?.cloudColor}
-      animated={options?.animated}
-    />
-  ),
-  online_uploading: (size, options) => (
-    <CloudSyncingGlyph
-      size={size}
-      cloudColor={options?.cloudColor}
-      animated={options?.animated}
-    />
-  ),
-  online_failed: (size, options) => (
-    <CloudUploadGlyph
-      size={size}
-      cloudColor={options?.cloudColor ?? CLOUD_COLOR}
-      arrowColor={theme.colors.destructive}
-      animated={false}
-    />
-  ),
-  online_needs_sync: (size, options) => (
-    <CloudNeedsSyncGlyph size={size} cloudColor={options?.cloudColor} />
-  ),
-  online_pending: (size, options) => (
-    <CloudUploadGlyph
-      size={size}
-      cloudColor={options?.cloudColor ?? CLOUD_COLOR}
-      arrowColor={theme.colors.syncStatusPending}
-      animated={options?.animated}
-    />
-  ),
-  offline_synced: (size, options) => (
-    <CloudOff
-      size={size}
-      color={options?.cloudColor ?? theme.colors.syncStatusOffline}
-      strokeWidth={listIconStrokeWidth}
-    />
-  ),
-  offline_pending: (size, options) => (
-    <CloudOffUnsynced
-      width={size}
-      height={size}
-      color={options?.cloudColor ?? theme.colors.syncStatusOffline}
-    />
-  ),
-};
+> {
+  const CLOUD_COLOR = theme.colors.primaryForeground;
+  return {
+    online_synced: (size, options) => (
+      <CloudCheckGlyph
+        size={size}
+        cloudColor={options?.cloudColor ?? CLOUD_COLOR}
+        checkColor={theme.colors.syncStatusSynced}
+        animateCheck={options?.animateCheck}
+      />
+    ),
+    online_syncing: (size, options) => (
+      <CloudSyncingGlyph
+        size={size}
+        cloudColor={options?.cloudColor}
+        animated={options?.animated}
+      />
+    ),
+    online_uploading: (size, options) => (
+      <CloudSyncingGlyph
+        size={size}
+        cloudColor={options?.cloudColor}
+        animated={options?.animated}
+      />
+    ),
+    online_failed: (size, options) => (
+      <CloudUploadGlyph
+        size={size}
+        cloudColor={options?.cloudColor ?? CLOUD_COLOR}
+        arrowColor={theme.colors.destructive}
+        animated={false}
+      />
+    ),
+    online_needs_sync: (size, options) => (
+      <CloudNeedsSyncGlyph size={size} cloudColor={options?.cloudColor} />
+    ),
+    online_pending: (size, options) => (
+      <CloudUploadGlyph
+        size={size}
+        cloudColor={options?.cloudColor ?? CLOUD_COLOR}
+        arrowColor={theme.colors.syncStatusPending}
+        animated={options?.animated}
+      />
+    ),
+    offline_synced: (size, options) => (
+      // #38: offline with nothing pending is gray cloud-check, not cloud-off.
+      <CloudCheckGlyph
+        size={size}
+        cloudColor={options?.cloudColor ?? theme.colors.syncStatusOffline}
+        checkColor={theme.colors.syncStatusOffline}
+      />
+    ),
+    offline_pending: (size, options) => (
+      <CloudOffUnsynced
+        width={size}
+        height={size}
+        color={options?.cloudColor ?? theme.colors.syncStatusOffline}
+      />
+    ),
+  };
+}
 
 function useSpinAnimation(animated: boolean) {
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -418,6 +429,7 @@ export function CloudSyncStatusIcon({
   animated = true,
   cloudColor,
 }: CloudSyncStatusIconProps) {
+  const glyphs = glyphsForTheme(useTheme());
   const { fadeAnim, scaleAnim, animateCheck } = useStatusTransition(status);
 
   return (
@@ -426,7 +438,7 @@ export function CloudSyncStatusIcon({
       accessibilityLabel={decorative ? undefined : SYNC_STATUS_LABELS[status]}
       style={[style, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}
     >
-      {GLYPHS[status](size, { animateCheck, animated, cloudColor })}
+      {glyphs[status](size, { animateCheck, animated, cloudColor })}
     </Animated.View>
   );
 }

@@ -27,6 +27,7 @@ import { ProjectsTab } from '../tabs/ProjectsTab';
 import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
+import { launchRecoveryGate } from '../../services/launchRecoveryGate';
 import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
 import { getPrepareOfflineDownloadStarted } from '../../services/storage';
 import { isEffectivelyOnlineForTransfer } from '../../utils/transportPolicy';
@@ -46,7 +47,8 @@ type AppDrawerNavigation = {
   openDrawer: () => void;
 };
 
-function HomeScreenBody({
+/** Exported for unit tests (#670 progressive login spinner). */
+export function HomeScreenBody({
   postLoginSyncActive,
   userSwitchEpoch,
 }: {
@@ -86,7 +88,9 @@ function HomeScreenBody({
     autoPromptRef.current = createPrepareOfflineAutoPromptController({
       isFocused: () => isFocusedRef.current,
       hasTransferResolved: () => hasTransferResolvedRef.current,
-      isSettling: () => isSettlingRef.current,
+      // Hold the auto-prompt while the launch recovery prompt is unanswered (#567).
+      isSettling: () =>
+        isSettlingRef.current || !launchRecoveryGate.isSettled(),
       getTransport: () => ({
         isOnline: isLinkOnlineRef.current,
         isWifi: isWifiRef.current,
@@ -189,6 +193,18 @@ function HomeScreenBody({
     };
   }, [autoPrompt]);
 
+  // Tier 1 clears postLoginSyncActive while Tier 2 keeps emitSyncStart active.
+  // Drop route newUserLoading + bump refreshKey so Home is interactive; header
+  // sync chrome still shows (#670).
+  const wasPostLoginSyncActiveRef = useRef(false);
+  useEffect(() => {
+    if (wasPostLoginSyncActiveRef.current && !postLoginSyncActive) {
+      setIsNewUserLoading(false);
+      setRefreshKey(key => key + 1);
+    }
+    wasPostLoginSyncActiveRef.current = postLoginSyncActive;
+  }, [postLoginSyncActive]);
+
   useEffect(() => {
     if (
       !needsDownloadSync ||
@@ -228,6 +244,22 @@ function HomeScreenBody({
     }
 
     return () => subscription.remove();
+  }, [autoPrompt]);
+
+  // Discard / nothing to recover: the gate settles while Home is focused, so
+  // Prepare for Offline may present immediately. Resume: the gate settles after
+  // the redirect to the Record tab, Home is blurred, evaluate bails on focus,
+  // and the eligibility effect below re-runs it when the user returns (#567).
+  useEffect(() => {
+    let cancelled = false;
+    void launchRecoveryGate.whenSettled().then(() => {
+      if (!cancelled) {
+        autoPrompt.request();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [autoPrompt]);
 
   useEffect(() => {

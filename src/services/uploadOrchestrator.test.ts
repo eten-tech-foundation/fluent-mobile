@@ -8,6 +8,7 @@ import {
 } from './uploadOrchestratorCore';
 import type { UploadSessionEvent } from './syncEvents';
 import type { PendingUploadChapter } from '../db/queries';
+import { UploadNetworkInterruptedError } from '../utils/networkError';
 
 jest.mock('../utils/logger', () => ({
   logger: {
@@ -32,8 +33,17 @@ function createHarness(options?: {
   chapters?: PendingUploadChapter[];
   uploadOverCellular?: boolean;
   workerDelayMs?: number;
+  /** Drop the first chapter, then block until abort (it already left the pending set). */
+  holdFirstChapterUntilAbort?: boolean;
+  /** Leave these chapters pending after uploadChapter returns (failed take still queued). */
+  retainPending?: PendingUploadChapter[];
+  /** Block this chapter until abort without removing it from the pending set. */
+  holdChapterNumber?: number;
   failUploads?: () => boolean;
+  /** Throw once when upload reaches this chapterNumber, before drop (stays pending). */
+  networkInterruptOnChapter?: number;
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
+  getPendingUploadChapters?: UploadOrchestratorDeps['getPendingUploadChapters'];
   pushPendingClaimsBeforeUpload?: UploadOrchestratorDeps['pushPendingClaimsBeforeUpload'];
 }) {
   let connListener: ConnListener | null = null;
@@ -48,12 +58,49 @@ function createHarness(options?: {
     { bookId: 1, chapterNumber: 2 },
   ];
 
+  let heldFirstChapter = false;
+  let heldChapterNumber = false;
+  let didNetworkInterrupt = false;
+  const sameChapter = (
+    left: PendingUploadChapter,
+    right: PendingUploadChapter,
+  ) =>
+    left.bookId === right.bookId && left.chapterNumber === right.chapterNumber;
+  const dropChapter = (chapter: PendingUploadChapter) => {
+    chapters = chapters.filter(item => !sameChapter(item, chapter));
+  };
+  const waitForAbort = (signal: AbortSignal) =>
+    new Promise<void>((_resolve, reject) => {
+      if (signal.aborted) {
+        reject(new Error('aborted'));
+        return;
+      }
+      signal.addEventListener('abort', () => reject(new Error('aborted')), {
+        once: true,
+      });
+    });
   const timers: ScheduledTimer[] = [];
 
   const worker: ChapterUploadWorker = {
     uploadChapter: async (chapter, signal) => {
       if (options?.failUploads?.()) {
         throw new Error('upload failed');
+      }
+      if (options?.holdFirstChapterUntilAbort && !heldFirstChapter) {
+        heldFirstChapter = true;
+        dropChapter(chapter);
+        uploaded.push(chapter);
+        await waitForAbort(signal);
+        return;
+      }
+      if (
+        options?.holdChapterNumber === chapter.chapterNumber &&
+        !heldChapterNumber
+      ) {
+        heldChapterNumber = true;
+        uploaded.push(chapter);
+        await waitForAbort(signal);
+        return;
       }
       if (options?.workerDelayMs) {
         await new Promise<void>((resolve, reject) => {
@@ -72,7 +119,22 @@ function createHarness(options?: {
       if (signal.aborted) {
         throw new Error('aborted');
       }
+      // Interrupt once before drop so this chapter stays pending; earlier
+      // chapters may already have emitted progress (#600).
+      if (
+        options?.networkInterruptOnChapter === chapter.chapterNumber &&
+        !didNetworkInterrupt
+      ) {
+        didNetworkInterrupt = true;
+        throw new UploadNetworkInterruptedError('link dropped mid-session');
+      }
       uploaded.push(chapter);
+      const retained = options?.retainPending?.some(item =>
+        sameChapter(item, chapter),
+      );
+      if (!retained) {
+        dropChapter(chapter);
+      }
     },
   };
 
@@ -90,7 +152,9 @@ function createHarness(options?: {
         prefListener = null;
       };
     },
-    getPendingUploadChapters: async () => chapters,
+    // Copy so in-loop dropChapter cannot skip later chapters in the session list.
+    getPendingUploadChapters:
+      options?.getPendingUploadChapters ?? (async () => [...chapters]),
     getPausedUntilMs: () => pausedUntilMs,
     setPausedUntilMs: ms => {
       pausedUntilMs = ms;
@@ -189,6 +253,361 @@ describe('uploadOrchestrator', () => {
     expect(h.orchestrator.getSnapshot().phase).toBe('idle');
   });
 
+  it('emits a fixed, monotonic chapter total for a multi-chapter session (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+        { bookId: 1, chapterNumber: 3 },
+      ],
+    });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'progress', completedChapters: 1, totalChapters: 3 },
+      { type: 'progress', completedChapters: 2, totalChapters: 3 },
+      { type: 'progress', completedChapters: 3, totalChapters: 3 },
+      { type: 'complete' },
+    ]);
+  });
+
+  it('clears session counts before complete/cancel so sync listeners see 0/0 (#600)', async () => {
+    async function runTerminal(opts: {
+      terminal: 'complete' | 'cancelled';
+      drive: (
+        orchestrator: ReturnType<typeof createUploadOrchestrator>,
+        releaseHold: () => void,
+      ) => Promise<void>;
+    }) {
+      let chapters: PendingUploadChapter[] = [{ bookId: 5, chapterNumber: 1 }];
+      const connBox: { current: ConnListener | null } = { current: null };
+      let releaseHold!: () => void;
+      const hold = new Promise<void>(resolve => {
+        releaseHold = resolve;
+      });
+      const snapshots: Array<{
+        type: string;
+        completedChapters: number;
+        totalChapters: number;
+      }> = [];
+      const orchestrator = createUploadOrchestrator({
+        subscribeToConnectivity: onChange => {
+          connBox.current = onChange;
+          return () => undefined;
+        },
+        getUploadOverCellular: () => false,
+        subscribeToUploadOverCellular: () => () => undefined,
+        getPendingUploadChapters: async () => chapters,
+        getPausedUntilMs: () => null,
+        setPausedUntilMs: () => undefined,
+        now: () => 1_000_000,
+        pauseWindowMs: PAUSE_WINDOW_MS,
+        worker: {
+          uploadChapter: async (_chapter, signal) => {
+            await Promise.race([
+              hold,
+              new Promise<never>((_resolve, reject) => {
+                if (signal.aborted) {
+                  reject(new Error('aborted'));
+                  return;
+                }
+                signal.addEventListener(
+                  'abort',
+                  () => reject(new Error('aborted')),
+                  { once: true },
+                );
+              }),
+            ]);
+            if (signal.aborted) {
+              throw new Error('aborted');
+            }
+            chapters = [];
+          },
+        },
+        emit: event => {
+          if (event.type === opts.terminal) {
+            const snap = orchestrator.getSnapshot();
+            snapshots.push({
+              type: event.type,
+              completedChapters: snap.completedChapters,
+              totalChapters: snap.totalChapters,
+            });
+          }
+        },
+      });
+      orchestrator.start();
+      if (!connBox.current) {
+        throw new Error('expected connectivity subscription');
+      }
+      connBox.current(true, true, false, 'wifi');
+      await new Promise<void>(r => setTimeout(r, 20));
+      await opts.drive(orchestrator, releaseHold);
+      const waitStart = Date.now();
+      while (!snapshots.some(s => s.type === opts.terminal)) {
+        if (Date.now() - waitStart > 2000) {
+          throw new Error(
+            `timed out waiting for ${opts.terminal}; got ${JSON.stringify(
+              snapshots,
+            )}`,
+          );
+        }
+        await new Promise<void>(r => setTimeout(r, 10));
+      }
+      expect(snapshots).toContainEqual({
+        type: opts.terminal,
+        completedChapters: 0,
+        totalChapters: 0,
+      });
+    }
+
+    await runTerminal({
+      terminal: 'complete',
+      drive: async (_orchestrator, releaseHold) => {
+        releaseHold();
+      },
+    });
+
+    await runTerminal({
+      terminal: 'cancelled',
+      drive: async (orchestrator, releaseHold) => {
+        const cancelPromise = orchestrator.cancel();
+        releaseHold();
+        await cancelPromise;
+      },
+    });
+  });
+
+  it('keeps exact progress after UploadNetworkInterruptedError mid-session (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+        { bookId: 1, chapterNumber: 3 },
+      ],
+      // Chapter 1 completes and emits progress; chapter 2 throws and stays pending.
+      networkInterruptOnChapter: 2,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() =>
+      h.events.some(
+        e =>
+          e.type === 'progress' &&
+          e.completedChapters === 1 &&
+          e.totalChapters === 3,
+      ),
+    );
+    await h.waitFor(() =>
+      h.events.some(e => e.type === 'paused' && e.reason === 'connectivity'),
+    );
+    expect(h.orchestrator.getSnapshot()).toMatchObject({
+      phase: 'offline',
+      completedChapters: 1,
+      totalChapters: 3,
+    });
+    expect(h.events.some(e => e.type === 'idle')).toBe(false);
+    expect(h.events.some(e => e.type === 'complete')).toBe(false);
+
+    const before = h.events.length;
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.events.some(e => e.type === 'complete'), 2000);
+    const after = h.events.slice(before);
+    expect(after.some(e => e.type === 'start')).toBe(false);
+    expect(after[0]).toEqual({
+      type: 'progress',
+      completedChapters: 1,
+      totalChapters: 3,
+    });
+  });
+
+  it('recovers from thrown network interrupt via bounded recheck without NetInfo (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ],
+      networkInterruptOnChapter: 2,
+      // Snapshot still reports online — no emitConnectivity after interrupt.
+      getSessionTransportSnapshot: async () => ({
+        isOnline: true,
+        isWifi: true,
+        connectionType: 'wifi',
+      }),
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() =>
+      h.events.some(
+        e =>
+          e.type === 'progress' &&
+          e.completedChapters === 1 &&
+          e.totalChapters === 2,
+      ),
+    );
+    await h.waitFor(() =>
+      h.events.some(e => e.type === 'paused' && e.reason === 'connectivity'),
+    );
+    expect(h.orchestrator.getSnapshot()).toMatchObject({
+      phase: 'offline',
+      completedChapters: 1,
+      totalChapters: 2,
+    });
+    expect(h.pendingTimers().map(t => t.delayMs)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+
+    const before = h.events.length;
+    h.fireTimer(sessionRetryDelayMs(1));
+    await h.waitFor(() => h.events.some(e => e.type === 'complete'), 2000);
+    const after = h.events.slice(before);
+    expect(after.some(e => e.type === 'start')).toBe(false);
+    expect(
+      after.some(
+        e =>
+          e.type === 'progress' &&
+          e.completedChapters === 1 &&
+          e.totalChapters === 2,
+      ),
+    ).toBe(true);
+  });
+
+  it('deferred interrupt recheck stays offline when snapshot remains down (#600)', async () => {
+    // Stay reachable until the interrupt so the session can make progress;
+    // only the post-interrupt recheck sees persistent offline (no NetInfo).
+    let snapshotOnline = true;
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ],
+      networkInterruptOnChapter: 2,
+      getSessionTransportSnapshot: async () => ({
+        isOnline: snapshotOnline,
+        isWifi: snapshotOnline,
+        connectionType: snapshotOnline ? 'wifi' : 'none',
+      }),
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() =>
+      h.events.some(
+        e =>
+          e.type === 'progress' &&
+          e.completedChapters === 1 &&
+          e.totalChapters === 2,
+      ),
+    );
+    await h.waitFor(() =>
+      h.events.some(e => e.type === 'paused' && e.reason === 'connectivity'),
+    );
+    expect(h.orchestrator.getSnapshot()).toMatchObject({
+      phase: 'offline',
+      completedChapters: 1,
+      totalChapters: 2,
+    });
+    expect(h.pendingTimers().map(t => t.delayMs)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+
+    snapshotOnline = false;
+    h.fireTimer(sessionRetryDelayMs(1));
+    await h.flush();
+    await h.flush();
+    expect(h.orchestrator.getSnapshot()).toMatchObject({
+      phase: 'offline',
+      completedChapters: 1,
+      totalChapters: 2,
+    });
+    expect(h.events.some(e => e.type === 'complete')).toBe(false);
+    expect(h.pendingTimers().filter(t => !t.cancelled)).toEqual([]);
+  });
+
+  it('keeps the session total when Resume follows a pause that finished the in-flight chapter (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+        { bookId: 1, chapterNumber: 3 },
+      ],
+      holdFirstChapterUntilAbort: true,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+
+    await h.orchestrator.pause();
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'paused', reason: 'user' },
+    ]);
+
+    await h.orchestrator.syncNow();
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'paused', reason: 'user' },
+      { type: 'progress', completedChapters: 1, totalChapters: 3 },
+      { type: 'progress', completedChapters: 2, totalChapters: 3 },
+      { type: 'progress', completedChapters: 3, totalChapters: 3 },
+      { type: 'complete' },
+    ]);
+  });
+
+  it('does not rewind progress when a failed chapter stays pending across pause (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ],
+      retainPending: [{ bookId: 1, chapterNumber: 1 }],
+      holdChapterNumber: 2,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 2);
+
+    await h.orchestrator.pause();
+
+    await h.orchestrator.syncNow();
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+
+    const progress = h.events.filter(event => event.type === 'progress');
+    expect(progress.map(event => event.completedChapters)).toEqual([0, 1]);
+    expect(progress.every(event => event.totalChapters === 2)).toBe(true);
+  });
+
+  it('keeps completed chapters when a new chapter is recorded during pause (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+        { bookId: 1, chapterNumber: 3 },
+      ],
+      holdFirstChapterUntilAbort: true,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+    await h.orchestrator.pause();
+
+    h.setChapters([
+      { bookId: 1, chapterNumber: 2 },
+      { bookId: 1, chapterNumber: 3 },
+      { bookId: 1, chapterNumber: 4 },
+    ]);
+    await h.orchestrator.syncNow();
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+
+    expect(h.events).toEqual([
+      { type: 'start', totalChapters: 3 },
+      { type: 'paused', reason: 'user' },
+      { type: 'progress', completedChapters: 1, totalChapters: 4 },
+      { type: 'progress', completedChapters: 2, totalChapters: 4 },
+      { type: 'progress', completedChapters: 3, totalChapters: 4 },
+      { type: 'progress', completedChapters: 4, totalChapters: 4 },
+      { type: 'complete' },
+    ]);
+  });
+
   it('pushes pending claims before uploading chapters (#611)', async () => {
     let releaseClaims!: () => void;
     const pushPendingClaimsBeforeUpload = jest.fn(
@@ -273,6 +692,37 @@ describe('uploadOrchestrator', () => {
     await h.waitFor(() => h.uploaded.length === 1);
   });
 
+  it('starts one session when connectivity events overlap the transport probe (#599)', async () => {
+    let releaseSnapshot!: () => void;
+    let snapshotCalls = 0;
+    const h = createHarness({
+      getSessionTransportSnapshot: () => {
+        snapshotCalls += 1;
+        return new Promise(resolve => {
+          releaseSnapshot = () =>
+            resolve({
+              isOnline: true,
+              isWifi: true,
+              connectionType: 'wifi',
+            });
+        });
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => snapshotCalls === 1);
+    h.emitConnectivity(true, true);
+    h.emitConnectivity(true, true);
+    await h.flush();
+    expect(snapshotCalls).toBe(1);
+
+    releaseSnapshot();
+    await h.waitFor(() => h.events.some(e => e.type === 'complete'));
+    expect(h.events.filter(e => e.type === 'start')).toHaveLength(1);
+    expect(h.events.filter(e => e.type === 'complete')).toHaveLength(1);
+    expect(h.uploaded).toHaveLength(2);
+  });
+
   it('does not auto-upload on cellular when uploadOverCellular is false', async () => {
     const h = createHarness({ uploadOverCellular: false });
     h.emitConnectivity(true, false);
@@ -328,6 +778,40 @@ describe('uploadOrchestrator', () => {
     h.emitConnectivity(true, true);
     await h.waitFor(() => h.uploaded.some(c => c.chapterNumber === 9));
     await h.waitFor(() => h.events.some(e => e.type === 'complete'));
+  });
+
+  it('resumes offline sessions with existing keys instead of resetting progress (#600)', async () => {
+    const h = createHarness({
+      chapters: [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ],
+      holdFirstChapterUntilAbort: true,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+    // Keys locked at start; mid-chapter abort has not yet folded completed.
+    expect(h.orchestrator.getSnapshot().totalChapters).toBe(2);
+
+    h.emitConnectivity(false, true);
+    await h.waitFor(() => h.orchestrator.getSnapshot().phase === 'offline');
+    expect(h.orchestrator.getSnapshot().totalChapters).toBe(2);
+
+    const eventsBeforeResume = h.events.length;
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.events.some(e => e.type === 'complete'));
+
+    const resumeEvents = h.events.slice(eventsBeforeResume);
+    // Must reuse session (progress), not emit a fresh start that zeroes X.
+    expect(resumeEvents.some(e => e.type === 'start')).toBe(false);
+    expect(
+      resumeEvents.some(
+        e =>
+          e.type === 'progress' &&
+          e.completedChapters >= 1 &&
+          e.totalChapters >= 2,
+      ),
+    ).toBe(true);
   });
 
   it('cancel stops upload and does not auto-retry until a new online edge', async () => {
@@ -618,4 +1102,447 @@ describe('uploadOrchestrator', () => {
     expect(h.pendingTimers()).toEqual([]);
     expect(h.uploaded.some(chapter => chapter.chapterNumber === 2)).toBe(true);
   });
+
+  it('preserves failed queued chapters across offline notification bursts and drains once on reconnect', async () => {
+    let fail = true;
+    const pending = [
+      { bookId: 1, chapterNumber: 1 },
+      { bookId: 1, chapterNumber: 2 },
+      { bookId: 9, chapterNumber: 3 },
+    ];
+    const h = createHarness({ failUploads: () => fail });
+    try {
+      h.emitConnectivity(true, true);
+      await h.flush();
+      expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([
+        sessionRetryDelayMs(1),
+      ]);
+
+      h.emitConnectivity(false, false);
+      h.setChapters(pending);
+      fail = false;
+      for (let index = 0; index < 5; index += 1) {
+        h.orchestrator.notifyPendingWork();
+      }
+      await h.flush();
+      expect(h.pendingTimers()).toEqual([]);
+      expect(h.uploaded).toEqual([]);
+      expect(h.orchestrator.getSnapshot().phase).toBe('offline');
+
+      h.emitConnectivity(true, true);
+      h.emitConnectivity(true, true);
+      h.orchestrator.notifyPendingWork();
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual(pending);
+      expect(h.events.filter(event => event.type === 'complete')).toHaveLength(
+        1,
+      );
+      expect(h.orchestrator.getSnapshot()).toMatchObject({
+        phase: 'idle',
+        completedChapters: 0,
+        totalChapters: 0,
+      });
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      h.orchestrator.stop();
+    }
+  });
+
+  it('keeps uploads paused when a pre-upload claim push resolves after the user pauses', async () => {
+    let finishClaims!: () => void;
+    const claims = new Promise<void>(resolve => {
+      finishClaims = resolve;
+    });
+    const h = createHarness({ pushPendingClaimsBeforeUpload: () => claims });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => h.events.some(event => event.type === 'start'));
+      await h.orchestrator.pause();
+      finishClaims();
+      h.orchestrator.notifyPendingWork();
+      await h.flush();
+      expect(h.uploaded).toEqual([]);
+      expect(h.orchestrator.getSnapshot()).toMatchObject({
+        phase: 'paused',
+        completedChapters: 0,
+        totalChapters: 2,
+      });
+      expect(h.getPausedUntilMs()).toBe(1_000_000 + PAUSE_WINDOW_MS);
+
+      await h.orchestrator.syncNow();
+      expect(h.uploaded).toEqual([
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ]);
+      expect(h.events.filter(event => event.type === 'complete')).toHaveLength(
+        1,
+      );
+      expect(h.getPausedUntilMs()).toBeNull();
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      finishClaims();
+      h.orchestrator.stop();
+    }
+  });
+
+  it('does not upload from an old session when a transport probe resolves after stop', async () => {
+    let finishProbe!: (value: {
+      isOnline: boolean;
+      isWifi: boolean;
+      connectionType: string;
+    }) => void;
+    const probe = new Promise<{
+      isOnline: boolean;
+      isWifi: boolean;
+      connectionType: string;
+    }>(resolve => {
+      finishProbe = resolve;
+    });
+    const getSessionTransportSnapshot = jest.fn(() => probe);
+    const h = createHarness({ getSessionTransportSnapshot });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(
+        () => getSessionTransportSnapshot.mock.calls.length === 1,
+      );
+      h.orchestrator.stop();
+      finishProbe({ isOnline: true, isWifi: true, connectionType: 'wifi' });
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([]);
+      expect(h.events.some(event => event.type === 'start')).toBe(false);
+      expect(h.events.some(event => event.type === 'complete')).toBe(false);
+      expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      h.orchestrator.stop();
+    }
+  });
+
+  it('does not start a worker when a pending-queue read resolves after stop', async () => {
+    let finishRead!: (chapters: PendingUploadChapter[]) => void;
+    const read = new Promise<PendingUploadChapter[]>(resolve => {
+      finishRead = resolve;
+    });
+    const getPendingUploadChapters = jest.fn(() => read);
+    const h = createHarness({ getPendingUploadChapters });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => getPendingUploadChapters.mock.calls.length === 1);
+      h.orchestrator.stop();
+      finishRead([{ bookId: 1, chapterNumber: 1 }]);
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([]);
+      expect(h.events.some(event => event.type === 'start')).toBe(false);
+      expect(h.events.some(event => event.type === 'complete')).toBe(false);
+      expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      h.orchestrator.stop();
+    }
+  });
+
+  it('lets a restarted lifecycle finish fresh work before an old transport probe settles', async () => {
+    type Transport = {
+      isOnline: boolean;
+      isWifi: boolean;
+      connectionType: string;
+    };
+    let finishOldProbe!: (value: Transport) => void;
+    const oldProbe = new Promise<Transport>(resolve => {
+      finishOldProbe = resolve;
+    });
+    const online = { isOnline: true, isWifi: true, connectionType: 'wifi' };
+    const getSessionTransportSnapshot = jest
+      .fn<Promise<Transport>, []>()
+      .mockImplementationOnce(() => oldProbe)
+      .mockResolvedValue(online);
+    const firstFresh = { bookId: 9, chapterNumber: 1 };
+    const secondFresh = { bookId: 9, chapterNumber: 2 };
+    const h = createHarness({
+      chapters: [firstFresh],
+      getSessionTransportSnapshot,
+    });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(
+        () => getSessionTransportSnapshot.mock.calls.length === 1,
+      );
+      h.orchestrator.stop();
+      h.orchestrator.start();
+      h.emitConnectivity(true, true);
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([firstFresh]);
+
+      finishOldProbe({
+        isOnline: false,
+        isWifi: false,
+        connectionType: 'none',
+      });
+      await h.flush();
+      h.setChapters([secondFresh]);
+      h.orchestrator.notifyPendingWork();
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([firstFresh, secondFresh]);
+      expect(h.events.filter(event => event.type === 'complete')).toHaveLength(
+        2,
+      );
+      expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      finishOldProbe(online);
+      h.orchestrator.stop();
+      await h.flush();
+    }
+  });
+
+  it('lets a restarted lifecycle drain fresh work without waiting for an old pending-queue read', async () => {
+    let finishOldRead!: (chapters: PendingUploadChapter[]) => void;
+    const oldRead = new Promise<PendingUploadChapter[]>(resolve => {
+      finishOldRead = resolve;
+    });
+    const fresh = { bookId: 9, chapterNumber: 3 };
+    let calls = 0;
+    const getPendingUploadChapters = jest.fn(
+      async (): Promise<PendingUploadChapter[]> => {
+        calls += 1;
+        if (calls === 1) return oldRead;
+        return h.uploaded.length === 0 ? [fresh] : [];
+      },
+    );
+    const h: ReturnType<typeof createHarness> = createHarness({
+      chapters: [fresh],
+      getPendingUploadChapters,
+    });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => getPendingUploadChapters.mock.calls.length === 1);
+      h.orchestrator.stop();
+      h.orchestrator.start();
+      h.emitConnectivity(true, true);
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([fresh]);
+      const completedEvents = [...h.events];
+
+      finishOldRead([{ bookId: 1, chapterNumber: 99 }]);
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([fresh]);
+      expect(h.events).toEqual(completedEvents);
+      expect(h.events.filter(event => event.type === 'complete')).toHaveLength(
+        1,
+      );
+      expect(h.orchestrator.getSnapshot()).toMatchObject({
+        phase: 'idle',
+        completedChapters: 0,
+        totalChapters: 0,
+      });
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      finishOldRead([]);
+      h.orchestrator.stop();
+      await h.flush();
+    }
+  });
+
+  it('does not let an old preflight finalizer unlock a restarted lifecycle still probing', async () => {
+    type Transport = {
+      isOnline: boolean;
+      isWifi: boolean;
+      connectionType: string;
+    };
+    let finishOld!: (value: Transport) => void;
+    let finishFresh!: (value: Transport) => void;
+    const old = new Promise<Transport>(resolve => {
+      finishOld = resolve;
+    });
+    const fresh = new Promise<Transport>(resolve => {
+      finishFresh = resolve;
+    });
+    const online = { isOnline: true, isWifi: true, connectionType: 'wifi' };
+    const getSessionTransportSnapshot = jest
+      .fn<Promise<Transport>, []>()
+      .mockImplementationOnce(() => old)
+      .mockImplementationOnce(() => fresh)
+      .mockResolvedValue(online);
+    const chapter = { bookId: 9, chapterNumber: 4 };
+    const h = createHarness({
+      chapters: [chapter],
+      getSessionTransportSnapshot,
+    });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(
+        () => getSessionTransportSnapshot.mock.calls.length === 1,
+      );
+      h.orchestrator.stop();
+      h.orchestrator.start();
+      h.emitConnectivity(true, true);
+      await h.flush();
+      expect(getSessionTransportSnapshot).toHaveBeenCalledTimes(2);
+
+      finishOld(online);
+      await h.flush();
+      h.orchestrator.notifyPendingWork();
+      h.emitConnectivity(true, true);
+      await h.flush();
+      expect(getSessionTransportSnapshot).toHaveBeenCalledTimes(2);
+      expect(h.uploaded).toEqual([]);
+      expect(h.events.some(event => event.type === 'start')).toBe(false);
+
+      finishFresh(online);
+      await h.flush();
+      await h.flush();
+      expect(h.uploaded).toEqual([chapter]);
+      expect(h.events.filter(event => event.type === 'start')).toHaveLength(1);
+      expect(h.events.filter(event => event.type === 'complete')).toHaveLength(
+        1,
+      );
+      expect(h.pendingTimers()).toEqual([]);
+    } finally {
+      finishOld(online);
+      finishFresh(online);
+      h.orchestrator.stop();
+      await h.flush();
+    }
+  });
+
+  it('ignores an old post-upload queue read instead of publishing progress into a restarted session', async () => {
+    const oldChapter = { bookId: 1, chapterNumber: 1 };
+    const freshChapters = [
+      { bookId: 9, chapterNumber: 2 },
+      { bookId: 9, chapterNumber: 3 },
+    ];
+    let finishOldRead!: (chapters: PendingUploadChapter[]) => void;
+    const oldRead = new Promise<PendingUploadChapter[]>(resolve => {
+      finishOldRead = resolve;
+    });
+    const getPendingUploadChapters = jest
+      .fn<Promise<PendingUploadChapter[]>, []>()
+      .mockResolvedValueOnce([oldChapter])
+      .mockImplementationOnce(() => oldRead)
+      .mockResolvedValue(freshChapters);
+    const h = createHarness({
+      chapters: [oldChapter],
+      getPendingUploadChapters,
+      holdChapterNumber: 2,
+    });
+    try {
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => getPendingUploadChapters.mock.calls.length === 2);
+      h.orchestrator.stop();
+      h.orchestrator.start();
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => h.uploaded.length === 2);
+      expect(h.orchestrator.getSnapshot()).toMatchObject({
+        phase: 'syncing',
+        completedChapters: 0,
+        totalChapters: 2,
+      });
+      const freshEvents = [...h.events];
+
+      finishOldRead([]);
+      await h.flush();
+      await h.flush();
+      expect(h.orchestrator.getSnapshot()).toMatchObject({
+        phase: 'syncing',
+        completedChapters: 0,
+        totalChapters: 2,
+      });
+      expect(h.events).toEqual(freshEvents);
+      expect(h.uploaded).toEqual([oldChapter, freshChapters[0]]);
+    } finally {
+      finishOldRead([]);
+      h.orchestrator.stop();
+      await h.flush();
+    }
+  });
+  it.each(['pause', 'cancel', 'offline'] as const)(
+    'honors %s while the initial pending-queue read is unresolved, then drains once after recovery',
+    async control => {
+      const pending = [
+        { bookId: 1, chapterNumber: 1 },
+        { bookId: 1, chapterNumber: 2 },
+      ];
+      let finishRead!: (chapters: PendingUploadChapter[]) => void;
+      const read = new Promise<PendingUploadChapter[]>(resolve => {
+        finishRead = resolve;
+      });
+      let calls = 0;
+      const getPendingUploadChapters = jest.fn(
+        async (): Promise<PendingUploadChapter[]> => {
+          calls += 1;
+          if (calls === 1) return read;
+          return pending.filter(
+            chapter =>
+              !h.uploaded.some(
+                uploaded =>
+                  uploaded.bookId === chapter.bookId &&
+                  uploaded.chapterNumber === chapter.chapterNumber,
+              ),
+          );
+        },
+      );
+      const h: ReturnType<typeof createHarness> = createHarness({
+        getPendingUploadChapters,
+      });
+      try {
+        h.emitConnectivity(true, true);
+        await h.waitFor(() => getPendingUploadChapters.mock.calls.length === 1);
+        if (control === 'pause') await h.orchestrator.pause();
+        else if (control === 'cancel') await h.orchestrator.cancel();
+        else h.emitConnectivity(false, false);
+        await h.flush();
+
+        finishRead(pending);
+        await h.flush();
+        await h.flush();
+        expect(h.uploaded).toEqual([]);
+        expect(h.events.some(event => event.type === 'start')).toBe(false);
+        expect(h.orchestrator.getSnapshot().phase).toBe(
+          control === 'pause'
+            ? 'paused'
+            : control === 'offline'
+            ? 'offline'
+            : 'idle',
+        );
+
+        if (control === 'pause') {
+          expect(h.getPausedUntilMs()).toBe(1_000_000 + PAUSE_WINDOW_MS);
+          await h.orchestrator.syncNow();
+        } else {
+          if (control === 'cancel') {
+            h.emitConnectivity(true, true);
+            h.orchestrator.notifyPendingWork();
+            await h.flush();
+            expect(h.uploaded).toEqual([]);
+            h.emitConnectivity(false, false);
+            await h.flush();
+          }
+          h.emitConnectivity(true, true);
+          await h.flush();
+          await h.flush();
+        }
+        expect(h.uploaded).toEqual(pending);
+        expect(
+          h.events.filter(event => event.type === 'complete'),
+        ).toHaveLength(1);
+        expect(h.pendingTimers()).toEqual([]);
+        expect(h.orchestrator.getSnapshot()).toMatchObject({
+          phase: 'idle',
+          completedChapters: 0,
+          totalChapters: 0,
+        });
+      } finally {
+        finishRead([]);
+        h.orchestrator.stop();
+        await h.flush();
+      }
+    },
+  );
 });

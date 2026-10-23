@@ -48,6 +48,24 @@ describe('PrepareOfflineDownloadFooter', () => {
     ).toHaveTextContent('Download 18 MB');
   });
 
+  it('shows incomplete total when unknown sizes remain (#756)', () => {
+    render(
+      <PrepareOfflineDownloadFooter
+        {...defaultProps}
+        totalBytes={2.4 * 1024 * 1024}
+        totalBytesIncomplete
+        downloadButtonLabel="Download at least 2.4 MB"
+      />,
+    );
+
+    expect(screen.getByTestId('prepare-offline-total-bytes')).toHaveTextContent(
+      'At least 2.4 MB',
+    );
+    expect(
+      screen.getByTestId('prepare-offline-total-bytes'),
+    ).not.toHaveTextContent(/^2\.4 MB$/);
+  });
+
   it('calls onDownload when the download button is pressed', () => {
     const onDownload = jest.fn();
     render(
@@ -144,10 +162,43 @@ describe('PrepareOfflineDownloadFooter', () => {
 
     const button = screen.getByTestId('prepare-offline-download-button');
     expect(button.props.accessibilityState?.disabled).toBe(true);
-    expect(
-      screen.getByTestId('prepare-offline-transport-blocked-hint'),
-    ).toBeTruthy();
+    expect(screen.getByTestId('prepare-offline-footer-hint')).toBeTruthy();
     fireEvent.press(button);
     expect(onDownload).not.toHaveBeenCalled();
+  });
+
+  it('shows retryable prepare errors without disabling download', () => {
+    const onDownload = jest.fn();
+    render(
+      <PrepareOfflineDownloadFooter
+        {...defaultProps}
+        onDownload={onDownload}
+        downloadErrorMessage="Could not prepare Bible text for offline. Try again."
+      />,
+    );
+
+    const button = screen.getByTestId('prepare-offline-download-button');
+    expect(button.props.accessibilityState?.disabled).toBe(false);
+    expect(screen.getByTestId('prepare-offline-footer-hint')).toHaveTextContent(
+      'Could not prepare Bible text for offline. Try again.',
+    );
+    fireEvent.press(button);
+    expect(onDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides stale prepare errors while transport is blocked without a message', () => {
+    render(
+      <PrepareOfflineDownloadFooter
+        {...defaultProps}
+        transportBlocked
+        downloadErrorMessage="Could not prepare Bible text for offline. Try again."
+      />,
+    );
+
+    expect(screen.queryByTestId('prepare-offline-footer-hint')).toBeNull();
+    expect(
+      screen.getByTestId('prepare-offline-download-button').props
+        .accessibilityState?.disabled,
+    ).toBe(true);
   });
 });

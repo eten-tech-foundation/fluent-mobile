@@ -1,10 +1,13 @@
 import type { ApiTranslationImageItem } from '../types/api/translationResources';
 import {
+  formatImageLicenseAttribution,
   loadImagesMapsForUnit,
   parseTranslationImageItem,
   setImagesMapsLoadFailureForTests,
 } from './imagesMaps';
 import { FluentAPI } from './api';
+import { findDownloadedRows } from './offlineResources';
+import type { DownloadQueueItem } from '../types/download/types';
 
 jest.mock('./api', () => ({
   FluentAPI: {
@@ -12,10 +15,31 @@ jest.mock('./api', () => ({
   },
 }));
 
+jest.mock('./offlineResources', () => ({
+  findDownloadedRows: jest.fn(),
+}));
+
+const mockFindRows = findDownloadedRows as jest.MockedFunction<
+  typeof findDownloadedRows
+>;
+
 const getTranslationImages =
   FluentAPI.getTranslationImages as jest.MockedFunction<
     typeof FluentAPI.getTranslationImages
   >;
+
+function downloadedRow(
+  overrides: Partial<DownloadQueueItem> = {},
+): DownloadQueueItem {
+  return {
+    id: '42-7-img-mrk-14',
+    tier: 3,
+    label: 'Jerusalem region map',
+    progress: 1,
+    status: 'completed',
+    ...overrides,
+  };
+}
 
 const sampleItem: ApiTranslationImageItem = {
   id: 279999,
@@ -27,8 +51,64 @@ const sampleItem: ApiTranslationImageItem = {
 };
 
 describe('parseTranslationImageItem', () => {
-  it('maps API image items to Resources items', () => {
+  it('maps API image items to Resources items with thumbnailUri (#594)', () => {
     expect(parseTranslationImageItem(sampleItem)).toEqual({
+      id: 'img-api-279999',
+      title: 'Locations in the Book of Mark',
+      uri: 'https://cdn.aquifer.bible/example.png',
+      thumbnailUri: 'https://cdn.aquifer.bible/example-thumb.png',
+    });
+  });
+
+  it('maps caption and attribution when present (#594)', () => {
+    expect(
+      parseTranslationImageItem({
+        ...sampleItem,
+        caption: '  Map of the region  ',
+        attribution: ' Aquifer Images ',
+      }),
+    ).toEqual({
+      id: 'img-api-279999',
+      title: 'Locations in the Book of Mark',
+      uri: 'https://cdn.aquifer.bible/example.png',
+      thumbnailUri: 'https://cdn.aquifer.bible/example-thumb.png',
+      caption: 'Map of the region',
+      attribution: 'Aquifer Images',
+    });
+  });
+
+  it('derives attribution from licenseInfo when attribution is omitted (#594)', () => {
+    expect(
+      parseTranslationImageItem({
+        ...sampleItem,
+        licenseInfo: {
+          title: 'CC BY-SA 4.0',
+          copyright: { holder: { name: 'UnfoldingWord' }, dates: '2020' },
+        },
+      })?.attribution,
+    ).toBe('CC BY-SA 4.0 · UnfoldingWord · 2020');
+  });
+
+  it('prefers explicit attribution over licenseInfo (#594)', () => {
+    expect(
+      parseTranslationImageItem({
+        ...sampleItem,
+        attribution: 'Explicit credit',
+        licenseInfo: {
+          title: 'CC BY-SA 4.0',
+          copyright: { holder: { name: 'UnfoldingWord' }, dates: '2020' },
+        },
+      })?.attribution,
+    ).toBe('Explicit credit');
+  });
+
+  it('omits thumbnailUri when thumbnailUrl matches url (#594)', () => {
+    expect(
+      parseTranslationImageItem({
+        ...sampleItem,
+        thumbnailUrl: sampleItem.url,
+      }),
+    ).toEqual({
       id: 'img-api-279999',
       title: 'Locations in the Book of Mark',
       uri: 'https://cdn.aquifer.bible/example.png',
@@ -45,10 +125,24 @@ describe('parseTranslationImageItem', () => {
   });
 });
 
+describe('formatImageLicenseAttribution', () => {
+  it('returns undefined for empty or non-object licenseInfo', () => {
+    expect(formatImageLicenseAttribution(undefined)).toBeUndefined();
+    expect(formatImageLicenseAttribution(null)).toBeUndefined();
+    expect(formatImageLicenseAttribution('cc')).toBeUndefined();
+  });
+});
+
 describe('loadImagesMapsForUnit', () => {
+  beforeEach(() => {
+    // Default: nothing downloaded → the API path is exercised.
+    mockFindRows.mockResolvedValue(null);
+  });
+
   afterEach(() => {
     setImagesMapsLoadFailureForTests(false);
     getTranslationImages.mockReset();
+    mockFindRows.mockReset();
   });
 
   it('returns [] when projectId is null', async () => {
@@ -104,6 +198,7 @@ describe('loadImagesMapsForUnit', () => {
         id: 'img-api-279999',
         title: 'Locations in the Book of Mark',
         uri: 'https://cdn.aquifer.bible/example.png',
+        thumbnailUri: 'https://cdn.aquifer.bible/example-thumb.png',
       },
     ]);
 
@@ -120,6 +215,73 @@ describe('loadImagesMapsForUnit', () => {
         verseNumber: 1,
       }),
     ).rejects.toThrow(/Failed to load Images & Maps/);
+  });
+
+  describe('download-first', () => {
+    it('uses downloaded images and skips the API, even when online', async () => {
+      mockFindRows.mockResolvedValue([
+        downloadedRow({ localFilePath: 'file:///downloads/map.png' }),
+      ]);
+      getTranslationImages.mockResolvedValue({ items: [sampleItem] });
+
+      await expect(
+        loadImagesMapsForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: true,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([
+        {
+          id: 'img-local-42-7-img-mrk-14',
+          title: 'Jerusalem region map',
+          uri: 'file:///downloads/map.png',
+        },
+      ]);
+      expect(getTranslationImages).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the API when nothing is downloaded and online', async () => {
+      mockFindRows.mockResolvedValue(null);
+      getTranslationImages.mockResolvedValue({ items: [sampleItem] });
+
+      await expect(
+        loadImagesMapsForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: true,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([
+        {
+          id: 'img-api-279999',
+          title: 'Locations in the Book of Mark',
+          uri: 'https://cdn.aquifer.bible/example.png',
+          thumbnailUri: 'https://cdn.aquifer.bible/example-thumb.png',
+        },
+      ]);
+      expect(getTranslationImages).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns empty offline when nothing is downloaded (#578)', async () => {
+      mockFindRows.mockResolvedValue(null);
+
+      await expect(
+        loadImagesMapsForUnit({
+          projectId: 7,
+          userId: 42,
+          isOnline: false,
+          bookCode: 'MRK',
+          chapterNumber: 14,
+          verseNumber: 2,
+        }),
+      ).resolves.toEqual([]);
+      expect(getTranslationImages).not.toHaveBeenCalled();
+    });
   });
 
   it('fans out across verseNumbers and dedupes by id (#593)', async () => {

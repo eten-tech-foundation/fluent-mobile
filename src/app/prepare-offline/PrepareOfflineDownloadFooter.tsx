@@ -15,18 +15,25 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react-native';
-import { formatByteSize } from '../../utils/formatByteSize';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
 import type { PrepareOfflineDownloadSession } from '../../hooks/usePrepareOfflineDownload';
+import {
+  formatDownloadTotalLabel,
+  type DownloadSizeSummary,
+} from '../../utils/prepareOfflineSizeSemantics';
 
 interface PrepareOfflineDownloadFooterProps {
   totalBytes: number;
+  /** When true, Total must not claim an exact complete byte total (#756). */
+  totalBytesIncomplete?: boolean;
   canDownload: boolean;
   downloadButtonLabel: string;
   session: PrepareOfflineDownloadSession;
   busy?: boolean;
   transportBlocked?: boolean;
   transportBlockedMessage?: string;
+  /** Retryable prepare failure — shown but does not disable Download. */
+  downloadErrorMessage?: string;
   onDownload: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -35,12 +42,14 @@ interface PrepareOfflineDownloadFooterProps {
 
 export function PrepareOfflineDownloadFooter({
   totalBytes,
+  totalBytesIncomplete = false,
   canDownload,
   downloadButtonLabel,
   session,
   busy = false,
   transportBlocked = false,
   transportBlockedMessage,
+  downloadErrorMessage,
   onDownload,
   onPause,
   onResume,
@@ -48,13 +57,22 @@ export function PrepareOfflineDownloadFooter({
 }: PrepareOfflineDownloadFooterProps) {
   const disabled = busy;
   const transferDisabled = busy || transportBlocked;
+  // Prefer transport while blocked (even with no message yet — e.g. pending
+  // connectivity) so a stale prepare error does not show beside a disabled button.
+  const footerHint = transportBlocked
+    ? transportBlockedMessage
+    : downloadErrorMessage;
+  const totalSummary: DownloadSizeSummary = {
+    knownBytes: totalBytes,
+    hasUnknown: totalBytesIncomplete,
+  };
 
   return (
     <View style={styles.footer} testID="prepare-offline-download-footer">
       <View style={styles.totalRow}>
         <Text style={styles.totalLabel}>Total download</Text>
         <Text style={styles.totalValue} testID="prepare-offline-total-bytes">
-          {formatByteSize(totalBytes)}
+          {formatDownloadTotalLabel(totalSummary)}
         </Text>
       </View>
 
@@ -145,12 +163,9 @@ export function PrepareOfflineDownloadFooter({
           </Text>
         </TouchableOpacity>
       )}
-      {transportBlocked && transportBlockedMessage ? (
-        <Text
-          style={styles.blockedHint}
-          testID="prepare-offline-transport-blocked-hint"
-        >
-          {transportBlockedMessage}
+      {footerHint ? (
+        <Text style={styles.blockedHint} testID="prepare-offline-footer-hint">
+          {footerHint}
         </Text>
       ) : null}
     </View>

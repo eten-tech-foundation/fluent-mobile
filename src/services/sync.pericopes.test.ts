@@ -113,10 +113,14 @@ describe('syncPericopes', () => {
 
     await syncPericopes();
 
-    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
-      bookCode: 'MRK',
-      etag: null,
-    });
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      99,
+      {
+        bookCode: 'MRK',
+        etag: null,
+      },
+      undefined,
+    );
     expect(upsertPericopeSet).toHaveBeenCalledWith(
       99,
       'MRK',
@@ -142,10 +146,14 @@ describe('syncPericopes', () => {
 
     await syncPericopes();
 
-    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(99, {
-      bookCode: 'MRK',
-      etag: '"etag-99"',
-    });
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      99,
+      {
+        bookCode: 'MRK',
+        etag: '"etag-99"',
+      },
+      undefined,
+    );
     expect(upsertPericopeSet).not.toHaveBeenCalled();
     expect(setPericopeBookVersion).toHaveBeenCalledWith(99, 'MRK', '"etag-99"');
   });
@@ -162,5 +170,71 @@ describe('syncPericopes', () => {
     expect(upsertPericopeSet).not.toHaveBeenCalled();
     // status 0 is a transient transport failure — sync does not persist KV error
     expect(setSyncError).not.toHaveBeenCalled();
+  });
+
+  it('calls getPericopeSet once per distinct book, not once per chapter', async () => {
+    jest.mocked(getProjectPericopeSetId).mockResolvedValue(99);
+    jest.mocked(getBundledPericopeSetVersion).mockReturnValue(null);
+    jest.mocked(getChaptersNeedingPericopeSync).mockResolvedValue([
+      {
+        projectId: 10,
+        bookId: 41,
+        bookCode: 'MRK',
+        chapterNumber: 1,
+      },
+      {
+        projectId: 10,
+        bookId: 41,
+        bookCode: 'MRK',
+        chapterNumber: 2,
+      },
+      {
+        projectId: 10,
+        bookId: 41,
+        bookCode: 'MRK',
+        chapterNumber: 3,
+      },
+      {
+        projectId: 10,
+        bookId: 40,
+        bookCode: 'MAT',
+        chapterNumber: 1,
+      },
+    ]);
+    jest.mocked(FluentAPI.getPericopeSet).mockResolvedValue({
+      status: 200,
+      etag: '"etag-99"',
+      data: [],
+    });
+
+    await syncPericopes();
+
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      99,
+      {
+        bookCode: 'MRK',
+        etag: null,
+      },
+      undefined,
+    );
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      99,
+      {
+        bookCode: 'MAT',
+        etag: null,
+      },
+      undefined,
+    );
+    for (const [, options] of jest.mocked(FluentAPI.getPericopeSet).mock
+      .calls) {
+      expect(options).not.toHaveProperty('chapterNumber');
+      expect(options).not.toHaveProperty('chapter');
+      expect(options).toEqual(
+        expect.objectContaining({
+          bookCode: expect.stringMatching(/^(MRK|MAT)$/),
+        }),
+      );
+    }
   });
 });

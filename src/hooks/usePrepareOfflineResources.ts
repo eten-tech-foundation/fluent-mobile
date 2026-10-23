@@ -7,6 +7,7 @@ import {
   computePendingBytes,
   computeTotalBytes,
   getEffectiveItems,
+  hasPendingDownloadWork,
   isItemCustomizeLocked,
 } from '../utils/prepareOfflineCatalog';
 
@@ -34,12 +35,13 @@ export function usePrepareOfflineResources({
 
   const {
     manifest,
+    manifestContexts,
     loading: manifestLoading,
     error: manifestError,
     inventoryVersion,
     getResourceStatus,
     getDefaultPackageDeselects,
-  } = usePrepareOfflineResourceData(projectId);
+  } = usePrepareOfflineResourceData(projectId, userId, chapters, selectedIds);
 
   const sessionKey =
     projectId !== null ? `${projectId}:${userId ?? 'none'}` : null;
@@ -57,24 +59,14 @@ export function usePrepareOfflineResources({
 
   const catalog = useMemo(() => {
     void inventoryVersion;
-    if (projectId === null) {
-      return { items: [], groups: [] };
-    }
+
     return buildPrepareOfflineCatalog({
-      projectId,
       manifest,
       getResourceStatus,
       chapters,
       selectedIds,
     });
-  }, [
-    projectId,
-    manifest,
-    getResourceStatus,
-    chapters,
-    selectedIds,
-    inventoryVersion,
-  ]);
+  }, [manifest, getResourceStatus, chapters, selectedIds, inventoryVersion]);
 
   const effectiveCatalog = useMemo(
     () => buildEffectiveCatalog(catalog, deselectedItemIds),
@@ -105,8 +97,16 @@ export function usePrepareOfflineResources({
       return false;
     }
 
-    return pendingBytes > 0;
-  }, [catalog.items.length, isAssignedUser, pendingBytes, selectedCount]);
+    // Unknown-size remote rows still need download even when known pending
+    // bytes sum to 0 (#756 measured Reference Images as 0 B).
+    return pendingBytes > 0 || hasPendingDownloadWork(selectedItems);
+  }, [
+    catalog.items.length,
+    isAssignedUser,
+    pendingBytes,
+    selectedCount,
+    selectedItems,
+  ]);
 
   const isItemSelected = useCallback(
     (itemId: string) => !deselectedItemIds.has(itemId),
@@ -143,6 +143,7 @@ export function usePrepareOfflineResources({
     canDownload,
     manifestLoading,
     manifestError,
+    manifestContexts,
     isItemSelected,
     toggleItemSelected,
   };

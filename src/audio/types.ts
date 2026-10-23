@@ -8,10 +8,15 @@ export type StopResult = {
   durationMs: number;
 };
 
+export type PauseResult = {
+  uri: string;
+  durationMs: number;
+};
+
 export type RecorderApi = {
   status: RecorderStatus;
   start(): Promise<void>;
-  pause(): Promise<void>;
+  pause(): Promise<PauseResult | null>;
   resume(): Promise<void>;
   stop(): Promise<StopResult>;
 };

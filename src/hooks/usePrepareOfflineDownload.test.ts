@@ -1,7 +1,27 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { usePrepareOfflineDownload } from './usePrepareOfflineDownload';
-import { PrepareOfflineCatalog } from '../types/prepareOffline/types';
+import type {
+  PrepareOfflineCatalog,
+  PrepareOfflineResourceManifestItem,
+} from '../types/prepareOffline/types';
 import { TRANSFER_OFFLINE_MESSAGE } from '../constants/messages';
+
+const MANIFEST_MEMBER: PrepareOfflineResourceManifestItem = {
+  id: 'source-bible-audio-MRK-1',
+  tier: 1,
+  kind: 'audio',
+  resourceName: 'Source Bible Audio',
+  label: 'Audio',
+  required: true,
+  removable: false,
+  bytesTotal: 1024,
+  sourceUrl: 'https://example.com/audio.mp3',
+  fileExt: 'mp3',
+  languageCode: 'eng',
+  bookCode: 'MRK',
+  startChapter: 1,
+  endChapter: 1,
+};
 
 const mockStart = jest.fn();
 const mockPause = jest.fn();
@@ -71,6 +91,15 @@ jest.mock('../services/prepareOfflineDownload', () => ({
   ),
 }));
 
+jest.mock('../services/prepareOfflineResources', () => ({
+  hydratePrepareOfflineTextContent: jest.fn(async (_projectId, items) => items),
+  persistSourceAudioMetaForManifestContexts: jest.fn(async () => undefined),
+}));
+
+jest.mock('../services/sync', () => ({
+  syncBibleTextsForChapters: jest.fn(async () => undefined),
+}));
+
 jest.mock('../services/storage', () => ({
   setPrepareOfflineDownloadStarted: jest.fn(),
   getPrepareOfflineDownloadStarted: jest.fn(() => false),
@@ -103,6 +132,9 @@ const catalog: PrepareOfflineCatalog = {
       label: 'Text',
       bytes: 1024,
       status: 'selected',
+      required: true,
+      removable: false,
+      manifestMembers: [MANIFEST_MEMBER],
     },
   ],
   groups: [],
@@ -111,6 +143,45 @@ const catalog: PrepareOfflineCatalog = {
 describe('usePrepareOfflineDownload', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    const {
+      hydratePrepareOfflineTextContent,
+      persistSourceAudioMetaForManifestContexts,
+    } = jest.requireMock('../services/prepareOfflineResources');
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    const {
+      getDownloadedResourcesByProject,
+      getResumableDownloadItems,
+      cancelProjectDownloadTransfers,
+    } = jest.requireMock('../db/repository');
+    const { getPrepareOfflineDownloadStarted } = jest.requireMock(
+      '../services/storage',
+    );
+    syncBibleTextsForChapters.mockReset().mockResolvedValue(undefined);
+    hydratePrepareOfflineTextContent
+      .mockReset()
+      .mockImplementation(async (_projectId: number, items: unknown) => items);
+    persistSourceAudioMetaForManifestContexts
+      .mockReset()
+      .mockResolvedValue(undefined);
+    enqueuePrepareOfflineDownload
+      .mockReset()
+      .mockResolvedValue(['tier-1-source-bible-text']);
+    getDownloadedResourcesByProject.mockReset().mockResolvedValue([]);
+    getResumableDownloadItems.mockReset().mockResolvedValue([
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0,
+        status: 'queued',
+        projectId: 1,
+      },
+    ]);
+    cancelProjectDownloadTransfers.mockReset().mockResolvedValue(undefined);
+    getPrepareOfflineDownloadStarted.mockReset().mockReturnValue(false);
     mockSnapshot = {
       items: [],
       completedCount: 0,
@@ -134,27 +205,6 @@ describe('usePrepareOfflineDownload', () => {
     mockResume.mockResolvedValue({ ok: true });
     mockCancel.mockResolvedValue(undefined);
     mockRefresh.mockResolvedValue(undefined);
-
-    const { enqueuePrepareOfflineDownload } = jest.requireMock(
-      '../services/prepareOfflineDownload',
-    );
-    enqueuePrepareOfflineDownload.mockResolvedValue([
-      'tier-1-source-bible-text',
-    ]);
-
-    const { getResumableDownloadItems, getDownloadedResourcesByProject } =
-      jest.requireMock('../db/repository');
-    getResumableDownloadItems.mockResolvedValue([
-      {
-        id: 'tier-1-source-bible-text',
-        tier: 1,
-        label: 'Text',
-        progress: 0,
-        status: 'queued',
-        projectId: 1,
-      },
-    ]);
-    getDownloadedResourcesByProject.mockResolvedValue([]);
   });
 
   it('starts in idle session', () => {
@@ -165,6 +215,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -172,15 +224,12 @@ describe('usePrepareOfflineDownload', () => {
   });
 
   it('shows downloading session immediately when handleDownload starts', async () => {
-    const { enqueuePrepareOfflineDownload } = jest.requireMock(
-      '../services/prepareOfflineDownload',
-    );
-    let resolveEnqueue: ((value: string[]) => void) | undefined;
-
-    enqueuePrepareOfflineDownload.mockImplementation(
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    let resolveSync: (() => void) | undefined;
+    syncBibleTextsForChapters.mockImplementation(
       () =>
-        new Promise<string[]>(resolve => {
-          resolveEnqueue = resolve;
+        new Promise<void>(resolve => {
+          resolveSync = resolve;
         }),
     );
 
@@ -191,6 +240,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -203,21 +254,18 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.busy).toBe(false);
 
     await act(async () => {
-      resolveEnqueue?.(['tier-1-source-bible-text']);
+      resolveSync?.();
       await downloadPromise;
     });
   });
 
   it('runs a cancel tapped during kickoff after enqueue finishes without starting the worker', async () => {
-    const { enqueuePrepareOfflineDownload } = jest.requireMock(
-      '../services/prepareOfflineDownload',
-    );
-    let resolveEnqueue: ((value: string[]) => void) | undefined;
-
-    enqueuePrepareOfflineDownload.mockImplementation(
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    let resolveSync: (() => void) | undefined;
+    syncBibleTextsForChapters.mockImplementation(
       () =>
-        new Promise<string[]>(resolve => {
-          resolveEnqueue = resolve;
+        new Promise<void>(resolve => {
+          resolveSync = resolve;
         }),
     );
 
@@ -228,6 +276,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -243,7 +293,7 @@ describe('usePrepareOfflineDownload', () => {
     });
 
     await act(async () => {
-      resolveEnqueue?.(['tier-1-source-bible-text']);
+      resolveSync?.();
       await downloadPromise;
     });
 
@@ -252,15 +302,12 @@ describe('usePrepareOfflineDownload', () => {
   });
 
   it('runs a pause tapped during kickoff after enqueue finishes without starting the worker', async () => {
-    const { enqueuePrepareOfflineDownload } = jest.requireMock(
-      '../services/prepareOfflineDownload',
-    );
-    let resolveEnqueue: ((value: string[]) => void) | undefined;
-
-    enqueuePrepareOfflineDownload.mockImplementation(
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    let resolveSync: (() => void) | undefined;
+    syncBibleTextsForChapters.mockImplementation(
       () =>
-        new Promise<string[]>(resolve => {
-          resolveEnqueue = resolve;
+        new Promise<void>(resolve => {
+          resolveSync = resolve;
         }),
     );
 
@@ -271,6 +318,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -286,7 +335,7 @@ describe('usePrepareOfflineDownload', () => {
     });
 
     await act(async () => {
-      resolveEnqueue?.(['tier-1-source-bible-text']);
+      resolveSync?.();
       await downloadPromise;
     });
 
@@ -314,6 +363,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -347,6 +398,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -382,6 +435,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -416,6 +471,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -442,6 +499,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -464,6 +523,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -500,6 +561,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -534,6 +597,7 @@ describe('usePrepareOfflineDownload', () => {
         progress: 1,
         status: 'completed',
         projectId: 1,
+        userId: 42,
       },
     ]);
 
@@ -544,6 +608,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -576,6 +642,7 @@ describe('usePrepareOfflineDownload', () => {
         progress: 1,
         status: 'completed',
         projectId: 1,
+        userId: 42,
       },
     ]);
 
@@ -591,6 +658,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog: completedCatalog,
         selectedItems: completedCatalog.items,
         canDownload: false,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -607,10 +676,13 @@ describe('usePrepareOfflineDownload', () => {
           id: 'tier-1-source-bible-audio',
           tier: 1,
           kind: 'audio',
-          groupName: 'Source Bible',
+          groupName: 'Source Bible Audio',
           label: 'Audio',
           bytes: 2048,
           status: 'selected',
+          required: true,
+          removable: false,
+          manifestMembers: [MANIFEST_MEMBER],
         },
       ],
       groups: [],
@@ -648,6 +720,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog: multiItemCatalog,
         selectedItems: multiItemCatalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -697,6 +771,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: false, // stale mock-status value, as it would be post-cancel
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -713,82 +789,6 @@ describe('usePrepareOfflineDownload', () => {
         items: catalog.items,
       }),
     );
-  });
-
-  it('keeps Download disabled for unassigned zero-chapter selection even with leftover resumable queue rows', () => {
-    // #580 / B.7: leftover queued/cancelled/failed/paused rows must not
-    // enable Download when pendingBytes is 0 (no chapter selected). Resume
-    // those rows through pause/resume controls instead.
-    mockSnapshot.items = [
-      {
-        id: 'tier-1-source-bible-text',
-        tier: 1,
-        label: 'Text',
-        progress: 0.25,
-        status: 'cancelled',
-        projectId: 1,
-      },
-      {
-        id: 'tier-1-source-bible-audio',
-        tier: 1,
-        label: 'Audio',
-        progress: 0,
-        status: 'queued',
-        projectId: 1,
-      },
-    ];
-
-    const emptyCatalog: PrepareOfflineCatalog = { items: [], groups: [] };
-
-    const { result } = renderHook(() =>
-      usePrepareOfflineDownload({
-        projectId: 1,
-        userId: 42,
-        catalog: emptyCatalog,
-        selectedItems: [],
-        canDownload: false,
-      }),
-    );
-
-    expect(result.current.canDownload).toBe(false);
-    expect(result.current.downloadButtonLabel).toBe('Download 0 B');
-  });
-
-  it('does not start the worker when Download is tapped with zero pending bytes and leftover queue', async () => {
-    const { enqueuePrepareOfflineDownload } = jest.requireMock(
-      '../services/prepareOfflineDownload',
-    );
-
-    mockSnapshot.items = [
-      {
-        id: 'tier-1-source-bible-text',
-        tier: 1,
-        label: 'Text',
-        progress: 0,
-        status: 'cancelled',
-        projectId: 1,
-      },
-    ];
-
-    const emptyCatalog: PrepareOfflineCatalog = { items: [], groups: [] };
-
-    const { result } = renderHook(() =>
-      usePrepareOfflineDownload({
-        projectId: 1,
-        userId: 42,
-        catalog: emptyCatalog,
-        selectedItems: [],
-        canDownload: false,
-      }),
-    );
-
-    await act(async () => {
-      await result.current.handleDownload();
-    });
-
-    expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
-    expect(mockStart).not.toHaveBeenCalled();
-    expect(result.current.canDownload).toBe(false);
   });
 
   it('blocks download when transport is not allowed on cellular', () => {
@@ -811,6 +811,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -842,6 +844,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -851,6 +855,200 @@ describe('usePrepareOfflineDownload', () => {
 
     expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
     expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a retryable footer error when bible text sync fails during prepare', async () => {
+    const { syncBibleTextsForChapters } = jest.requireMock('../services/sync');
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    syncBibleTextsForChapters.mockRejectedValueOnce(new Error('sync down'));
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+        bibleTextChapters: [{ bibleId: 10, bookId: 1, chapterNumber: 1 }],
+        manifestContexts: [],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
+    expect(result.current.transportBlocked).toBe(false);
+    expect(result.current.canDownload).toBe(true);
+    expect(result.current.downloadErrorMessage).toContain(
+      'Could not prepare Bible text',
+    );
+
+    syncBibleTextsForChapters.mockResolvedValueOnce(undefined);
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(syncBibleTextsForChapters).toHaveBeenCalledTimes(2);
+    expect(enqueuePrepareOfflineDownload).toHaveBeenCalledTimes(1);
+    expect(result.current.downloadErrorMessage).toBeUndefined();
+  });
+
+  it('surfaces a retryable footer error when text hydration fails during prepare', async () => {
+    const { hydratePrepareOfflineTextContent } = jest.requireMock(
+      '../services/prepareOfflineResources',
+    );
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    hydratePrepareOfflineTextContent.mockRejectedValueOnce(
+      new Error('No content returned for text item x'),
+    );
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
+    expect(result.current.transportBlocked).toBe(false);
+    expect(result.current.canDownload).toBe(true);
+    expect(result.current.downloadErrorMessage).toContain(
+      'Could not load resource content',
+    );
+
+    hydratePrepareOfflineTextContent.mockImplementationOnce(
+      async (_projectId: number, items: unknown) => items,
+    );
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(hydratePrepareOfflineTextContent).toHaveBeenCalledTimes(2);
+    expect(enqueuePrepareOfflineDownload).toHaveBeenCalledTimes(1);
+    expect(result.current.downloadErrorMessage).toBeUndefined();
+  });
+
+  it('surfaces a retryable footer error when enqueue throws during prepare', async () => {
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    enqueuePrepareOfflineDownload.mockRejectedValueOnce(
+      new Error('queue write failed'),
+    );
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(result.current.transportBlocked).toBe(false);
+    expect(result.current.canDownload).toBe(true);
+    expect(result.current.downloadErrorMessage).toContain(
+      'Could not start the download',
+    );
+
+    enqueuePrepareOfflineDownload.mockResolvedValueOnce(undefined);
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).toHaveBeenCalledTimes(2);
+    expect(result.current.downloadErrorMessage).toBeUndefined();
+  });
+
+  it('continues download when source-audio meta persist throws unexpectedly', async () => {
+    const { persistSourceAudioMetaForManifestContexts } = jest.requireMock(
+      '../services/prepareOfflineResources',
+    );
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+    persistSourceAudioMetaForManifestContexts.mockRejectedValueOnce(
+      new Error('unexpected meta failure'),
+    );
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).toHaveBeenCalledTimes(1);
+    expect(result.current.downloadErrorMessage).toBeUndefined();
+    expect(result.current.transportBlocked).toBe(false);
+  });
+
+  it('persists source-audio meta from manifestContexts at download time', async () => {
+    const { persistSourceAudioMetaForManifestContexts } = jest.requireMock(
+      '../services/prepareOfflineResources',
+    );
+    const contexts = [
+      {
+        languageCode: 'eng',
+        bookCode: 'MRK',
+        bookId: 20,
+        startChapter: 1,
+        endChapter: 2,
+        bibleId: 10,
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog,
+        selectedItems: catalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: contexts,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(persistSourceAudioMetaForManifestContexts).toHaveBeenCalledWith(
+      1,
+      contexts,
+    );
   });
 
   it('does not resume when handleResume is invoked on cellular with toggle off', async () => {
@@ -873,6 +1071,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -893,6 +1093,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -925,6 +1127,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -952,6 +1156,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -980,6 +1186,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -1003,6 +1211,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -1031,6 +1241,8 @@ describe('usePrepareOfflineDownload', () => {
           catalog,
           selectedItems: catalog.items,
           canDownload: true,
+          bibleTextChapters: [],
+          manifestContexts: [],
         }),
       { initialProps: { projectId: 1 } },
     );
@@ -1057,6 +1269,8 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
@@ -1095,11 +1309,277 @@ describe('usePrepareOfflineDownload', () => {
         catalog,
         selectedItems: catalog.items,
         canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
       }),
     );
 
     await waitFor(() => {
       expect(result.current.downloadButtonLabel).toBe('Download 1 KB');
+    });
+  });
+
+  it('keeps Download disabled for unassigned zero-chapter selection even with leftover resumable queue rows', () => {
+    // #580 / B.7: leftover queued/cancelled/failed/paused rows must not
+    // enable Download when pendingBytes is 0 (no chapter selected). Resume
+    // those rows through pause/resume controls instead.
+    mockSnapshot.items = [
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0.25,
+        status: 'cancelled',
+        projectId: 1,
+      },
+      {
+        id: 'tier-1-source-bible-audio',
+        tier: 1,
+        label: 'Audio',
+        progress: 0,
+        status: 'queued',
+        projectId: 1,
+      },
+    ];
+
+    const emptyCatalog: PrepareOfflineCatalog = { items: [], groups: [] };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog: emptyCatalog,
+        selectedItems: [],
+        canDownload: false,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    expect(result.current.canDownload).toBe(false);
+    expect(result.current.downloadButtonLabel).toBe('Download 0 B');
+  });
+
+  it('does not start the worker when Download is tapped with zero pending bytes and leftover queue', async () => {
+    const { enqueuePrepareOfflineDownload } = jest.requireMock(
+      '../services/prepareOfflineDownload',
+    );
+
+    mockSnapshot.items = [
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 0,
+        status: 'cancelled',
+        projectId: 1,
+      },
+    ];
+
+    const emptyCatalog: PrepareOfflineCatalog = { items: [], groups: [] };
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog: emptyCatalog,
+        selectedItems: [],
+        canDownload: false,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleDownload();
+    });
+
+    expect(enqueuePrepareOfflineDownload).not.toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
+    expect(result.current.canDownload).toBe(false);
+  });
+
+  it('fail-before/pass-after: footer totals use merged selected summary after completed size recovery (#756)', async () => {
+    const { getDownloadedResourcesByProject } =
+      jest.requireMock('../db/repository');
+
+    const unknownMember: PrepareOfflineResourceManifestItem = {
+      id: 'ref-img-1',
+      tier: 3,
+      kind: 'image',
+      resourceName: 'Reference Images',
+      label: 'Image',
+      required: false,
+      removable: true,
+      bytesTotal: 0,
+      sourceUrl: 'https://example.com/img.jpg',
+      fileExt: 'jpg',
+      languageCode: 'eng',
+    };
+    const knownMember: PrepareOfflineResourceManifestItem = {
+      ...MANIFEST_MEMBER,
+      id: 'known-audio-1',
+      bytesTotal: 1024,
+    };
+
+    const selectedCatalog: PrepareOfflineCatalog = {
+      items: [
+        {
+          id: 'Source Bible:audio',
+          tier: 1,
+          kind: 'audio',
+          groupName: 'Source Bible',
+          label: 'Audio',
+          bytes: 1024,
+          sizeKnown: true,
+          status: 'selected',
+          required: true,
+          removable: false,
+          manifestMembers: [knownMember],
+        },
+        {
+          id: 'Reference Images:image',
+          tier: 3,
+          kind: 'image',
+          groupName: 'Reference Images',
+          label: 'Image',
+          bytes: 0,
+          sizeKnown: false,
+          status: 'selected',
+          required: false,
+          removable: true,
+          manifestMembers: [unknownMember],
+        },
+      ],
+      groups: [],
+    };
+
+    getDownloadedResourcesByProject.mockResolvedValue([
+      {
+        id: '1-42-known-audio-1',
+        resourceId: 'known-audio-1',
+        tier: 1,
+        label: 'Audio',
+        progress: 1,
+        status: 'completed',
+        projectId: 1,
+        userId: 42,
+        bytesTotal: 1024,
+      },
+      {
+        id: '1-42-ref-img-1',
+        resourceId: 'ref-img-1',
+        tier: 3,
+        label: 'Image',
+        progress: 1,
+        status: 'completed',
+        projectId: 1,
+        userId: 42,
+        bytesTotal: 4096,
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog: selectedCatalog,
+        selectedItems: selectedCatalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.totalBytes).toBe(5120);
+      expect(result.current.totalBytesIncomplete).toBe(false);
+    });
+    // CTA path already uses mergedSelectedItems — totals must agree.
+    expect(result.current.downloadButtonLabel).toBe('All on device');
+  });
+
+  it('fail-before/pass-after: merged footer keeps incomplete + Included/zero semantics (#756)', async () => {
+    const { getDownloadedResourcesByProject } =
+      jest.requireMock('../db/repository');
+
+    const unknownMember: PrepareOfflineResourceManifestItem = {
+      id: 'ref-img-2',
+      tier: 3,
+      kind: 'image',
+      resourceName: 'Reference Images',
+      label: 'Image',
+      required: false,
+      removable: true,
+      bytesTotal: 0,
+      sourceUrl: 'https://example.com/img2.jpg',
+      fileExt: 'jpg',
+      languageCode: 'eng',
+    };
+
+    const selectedCatalog: PrepareOfflineCatalog = {
+      items: [
+        {
+          id: 'Source Bible:text',
+          tier: 1,
+          kind: 'text',
+          groupName: 'Source Bible',
+          label: 'Text',
+          bytes: 0,
+          sizeKnown: true,
+          displayValue: 'Included',
+          status: 'completed',
+          required: true,
+          removable: false,
+          manifestMembers: [],
+        },
+        {
+          id: 'Reference Images:image',
+          tier: 3,
+          kind: 'image',
+          groupName: 'Reference Images',
+          label: 'Image',
+          bytes: 0,
+          sizeKnown: false,
+          status: 'selected',
+          required: false,
+          removable: true,
+          manifestMembers: [unknownMember],
+        },
+      ],
+      groups: [],
+    };
+
+    // Completed without positive bytesTotal — wire 0 ambiguity; stay incomplete.
+    getDownloadedResourcesByProject.mockResolvedValue([
+      {
+        id: '1-42-ref-img-2',
+        resourceId: 'ref-img-2',
+        tier: 3,
+        label: 'Image',
+        progress: 1,
+        status: 'completed',
+        projectId: 1,
+        userId: 42,
+        bytesTotal: 0,
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      usePrepareOfflineDownload({
+        projectId: 1,
+        userId: 42,
+        catalog: selectedCatalog,
+        selectedItems: selectedCatalog.items,
+        canDownload: true,
+        bibleTextChapters: [],
+        manifestContexts: [],
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.totalBytes).toBe(0);
+      expect(result.current.totalBytesIncomplete).toBe(true);
     });
   });
 });
