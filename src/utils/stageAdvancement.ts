@@ -155,8 +155,9 @@ export function getStageAdvanceVisibility({
 }
 
 /**
- * True when the drafter must not capture on open Peer Check (#442, fluent-api
- * edit policy). PM-assigned Peer Check uses a different rule set.
+ * True when this user must not capture on Peer Check (#442, fluent-api edit
+ * policy). Open Peer Check blocks the drafter. Once a peer checker is
+ * assigned, only that person may capture.
  */
 export function isDrafterBlockedFromOpenPeerCheckCapture(
   chapterData: StageAdvanceChapterData,
@@ -169,7 +170,7 @@ export function isDrafterBlockedFromOpenPeerCheckCapture(
     return false;
   }
   if (typeof chapterData.peerCheckerId === 'number') {
-    return false;
+    return chapterData.peerCheckerId !== currentUserId;
   }
   return chapterData.assignedUserId === currentUserId;
 }

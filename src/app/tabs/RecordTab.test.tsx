@@ -1348,6 +1348,25 @@ describe('RecordTab', () => {
 
     expect(screen.getByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeTruthy();
     expect(screen.queryByTestId('stage-advance-button')).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    });
+  });
+
+  it('disables record for the drafter when a Peer Checker is already assigned', async () => {
+    renderTab(undefined, {
+      chapterData: {
+        ...chapterData,
+        status: 'peer_check',
+        assignedUserId: 42,
+        peerCheckerId: 99,
+      },
+    });
+
+    expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    });
   });
 
   it('assigns the tapping peer when confirming Send to Community Review on open Peer Check', async () => {

@@ -417,6 +417,32 @@ describe('isDrafterBlockedFromOpenPeerCheckCapture', () => {
     ).toBe(false);
   });
 
+  it('blocks the drafter when a Peer Checker is already assigned', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: 20,
+        },
+        10,
+      ),
+    ).toBe(true);
+  });
+
+  it('blocks another peer when a Peer Checker is already assigned', () => {
+    expect(
+      isDrafterBlockedFromOpenPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: 20,
+        },
+        99,
+      ),
+    ).toBe(true);
+  });
+
   it('allows the drafter during Drafting', () => {
     expect(
       isDrafterBlockedFromOpenPeerCheckCapture(
