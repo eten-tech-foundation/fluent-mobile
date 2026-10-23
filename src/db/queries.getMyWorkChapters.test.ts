@@ -95,14 +95,15 @@ describe('getMyWorkChapters', () => {
 
     const chapters = await getMyWorkChapters(7);
     const sql = String(mockExecute.mock.calls[0]?.[0] ?? '');
-
-    expect(sql).toContain('pu.project_id');
-    expect(sql).toContain('b.code AS book_code');
-    expect(sql).toContain('ca.project_unit_id');
-    expect(sql).toContain('ca.bible_id');
-    expect(sql).toContain('ca.book_id');
-    expect(sql).toContain('ca.assigned_user_id');
-    expect(sql).toContain('ca.peer_checker_id');
+    // JOIN clauses also mention these columns — assert the SELECT list only.
+    const selectList = sql.slice(0, sql.indexOf('FROM chapter_assignments'));
+    expect(selectList).toContain('pu.project_id');
+    expect(selectList).toContain('b.code AS book_code');
+    expect(selectList).toContain('ca.project_unit_id');
+    expect(selectList).toContain('ca.bible_id');
+    expect(selectList).toContain('ca.book_id');
+    expect(selectList).toContain('ca.assigned_user_id');
+    expect(selectList).toContain('ca.peer_checker_id');
 
     expect(chapters).toHaveLength(1);
     expect(chapters[0]).toMatchObject({

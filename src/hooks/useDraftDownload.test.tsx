@@ -78,4 +78,40 @@ describe('useDraftDownload', () => {
       expect(result.current.state.status).toBe('downloading');
     });
   });
+
+  it('keeps prior idle chip state when getDraftDownloadState rejects and retries on poll', async () => {
+    jest.useFakeTimers();
+    mockGetDraftDownloadState
+      .mockRejectedValueOnce(new Error('disk unavailable'))
+      .mockResolvedValue({
+        chapterAssignmentId: 9,
+        role: 'peer_check',
+        status: 'ready',
+        phase: 'idle',
+        progress: 1,
+        readyAtMs: 1,
+      });
+
+    try {
+      const { result } = renderHook(() => useDraftDownload(request));
+
+      await waitFor(() => {
+        expect(mockGetDraftDownloadState).toHaveBeenCalled();
+      });
+      expect(result.current.state.status).toBe('idle');
+
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+
+      await waitFor(() => {
+        expect(result.current.state.status).toBe('ready');
+      });
+      expect(mockGetDraftDownloadState.mock.calls.length).toBeGreaterThanOrEqual(
+        2,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

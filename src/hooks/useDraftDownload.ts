@@ -115,10 +115,15 @@ export function useDraftDownload(request: DraftDownloadRequest | null): {
   }, [stableKey, refresh]);
 
   useEffect(() => {
+    if (!stableKey) return;
+    // Include idle so a first-paint getDraftDownloadState rejection retries
+    // without waiting for a queue event (poll was previously only armed for
+    // downloading/queued/ready).
     if (
       state.status !== 'downloading' &&
       state.status !== 'queued' &&
-      state.status !== 'ready'
+      state.status !== 'ready' &&
+      state.status !== 'idle'
     ) {
       return;
     }
@@ -126,7 +131,7 @@ export function useDraftDownload(request: DraftDownloadRequest | null): {
       void refresh();
     }, 500);
     return () => clearInterval(id);
-  }, [state.status, refresh]);
+  }, [stableKey, state.status, refresh]);
 
   const start = useCallback(async () => {
     const current = requestRef.current;

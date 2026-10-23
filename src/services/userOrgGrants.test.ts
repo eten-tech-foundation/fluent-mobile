@@ -376,7 +376,7 @@ describe('refreshUserOrgGrants', () => {
       'token-1',
     );
     expect(getUserOrgGrants('1')).toEqual({ status: 'known', grants: [] });
-    expect(mockGetActiveUserId).not.toHaveBeenCalledWith('2');
+    expect(mockGetActiveUserId).not.toHaveBeenCalled();
   });
 
   it('does not fabricate empty grants on network failure', async () => {

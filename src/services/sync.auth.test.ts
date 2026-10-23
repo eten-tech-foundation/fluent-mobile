@@ -516,6 +516,29 @@ describe('refreshChapterMetadataIfOnline', () => {
     expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
   });
 
+  it('emits sync-complete after metadata refresh finishes (success, clear, or early exit)', async () => {
+    const emitSpy = jest
+      .spyOn(syncEvents, 'emitSyncComplete')
+      .mockImplementation(() => {});
+
+    try {
+      await refreshChapterMetadataIfOnline(2);
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+
+      emitSpy.mockClear();
+      mockGetConnectivitySnapshot.mockResolvedValueOnce({
+        isOnline: false,
+        isWifi: false,
+        isCellular: false,
+        connectionType: 'none',
+      });
+      await refreshChapterMetadataIfOnline(2);
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      emitSpy.mockRestore();
+    }
+  });
+
   it("passes this user's stored token to sync calls without mutating global authToken", async () => {
     (getCredentials as jest.Mock).mockResolvedValue({
       token: 'user-2-specific-token',
@@ -2313,18 +2336,55 @@ describe('org grant hydration wiring (#452 prerequisite)', () => {
     expect(registerOrder).toBeLessThan(persistOrder);
   });
 
-  it('refreshes grants after incremental token capture and before claims/master', async () => {
+  it('starts master while grants refresh still pending (overlap with claims)', async () => {
+    const cursor = '2024-01-01T00:00:00.000Z';
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (getUserIdSync as jest.Mock).mockReturnValue('2');
+    (getLastSyncedAt as jest.Mock).mockReturnValue(cursor);
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(cursor);
+    (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue(cursor);
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+    userHasLocalChapterAssignments.mockResolvedValue(true);
 
-    await syncAllData(true);
+    let resolveGrants: () => void = () => undefined;
+    let resolveLanguages: (value: unknown) => void = () => undefined;
+    mockRefreshUserOrgGrants.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          resolveGrants = resolve;
+        }),
+    );
+    (FluentAPI.getLanguages as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveLanguages = resolve;
+        }),
+    );
 
-    expect(mockRefreshUserOrgGrants).toHaveBeenCalledWith('2', 'valid-token');
-    const refreshOrder = mockRefreshUserOrgGrants.mock.invocationCallOrder[0];
-    const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
-    const projectsOrder = (FluentAPI.getUserProjects as jest.Mock).mock
-      .invocationCallOrder[0];
-    expect(refreshOrder).toBeLessThan(claimsOrder);
-    expect(refreshOrder).toBeLessThan(projectsOrder);
+    const pending = syncAllData(true);
+
+    // Master (getLanguages) and claims must start before grants refresh resolves.
+    // Re-awaiting refresh before masterPromise would leave getLanguages uncalled here.
+    await waitFor(() => {
+      expect(mockRefreshUserOrgGrants).toHaveBeenCalledWith('2', 'valid-token');
+      expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+      expect(FluentAPI.getLanguages).toHaveBeenCalledWith(
+        cursor,
+        'valid-token',
+      );
+    });
+    expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+
+    resolveGrants();
+    await new Promise<void>(resolve => {
+      setImmediate(resolve);
+    });
+    expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+
+    resolveLanguages([]);
+    await pending;
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'valid-token');
   });
 
   it('refreshes grants in syncAllUsers project loop with each captured token', async () => {
