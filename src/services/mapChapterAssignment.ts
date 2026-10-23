@@ -62,7 +62,11 @@ export function mapApiChapterAssignment(
     chapterStatus: normalizeChapterStatus(api.chapterStatus ?? api.status),
     submittedTime: api.submittedTime ?? undefined,
     updatedAt: api.updatedAt ?? undefined,
-    stageEnteredAt: normalizeStageEnteredAt(api.stageEnteredAt),
+    stageEnteredAt: normalizeStageEnteredAt(
+      api.stageEnteredAt ??
+        (api as { stage_entered_at?: string | null }).stage_entered_at ??
+        undefined,
+    ),
     totalVerses: nonNegativeInt(api.totalVerses),
     completedVerses: nonNegativeInt(api.completedVerses),
     ...(typeof hasConflict === 'boolean' ? { hasConflict } : {}),

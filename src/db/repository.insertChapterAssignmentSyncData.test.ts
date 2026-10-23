@@ -207,7 +207,10 @@ function createSyncTestDb() {
             row.status = existing.status;
             row.peer_checker_id = existing.peer_checker_id;
             // Only preserve timestamp when the upsert SQL includes the SAQ CASE.
-            if (/stage_entered_at/i.test(sql)) {
+            if (
+              /stage_entered_at = CASE/i.test(sql) &&
+              /THEN chapter_assignments\.stage_entered_at/i.test(sql)
+            ) {
               row.stage_entered_at = existing.stage_entered_at ?? null;
             }
           }

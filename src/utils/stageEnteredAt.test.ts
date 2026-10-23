@@ -8,6 +8,9 @@ describe('normalizeStageEnteredAt', () => {
     expect(normalizeStageEnteredAt('2025-04-01T15:30:00+00:00')).toBe(
       '2025-04-01T15:30:00+00:00',
     );
+    expect(normalizeStageEnteredAt('2025-04-01 15:30:00.000Z')).toBe(
+      '2025-04-01 15:30:00.000Z',
+    );
   });
 
   it('returns null for omitted, blank, or invalid values', () => {

@@ -205,6 +205,21 @@ describe('mapApiChapterAssignment', () => {
     expect(invalid.stageEnteredAt).toBeNull();
   });
 
+  it('maps stage_entered_at snake_case and space-separated datetimes', () => {
+    const snake = mapApiChapterAssignment({
+      chapterAssignmentId: 34,
+      projectId: 2,
+      projectUnitId: 2,
+      bibleId: 4,
+      bookId: 12,
+      chapterNumber: 5,
+      chapterStatus: 'draft',
+      stage_entered_at: '2025-04-01 15:30:00.000Z',
+    } as Parameters<typeof mapApiChapterAssignment>[0]);
+
+    expect(snake.stageEnteredAt).toBe('2025-04-01 15:30:00.000Z');
+  });
+
   it('ORs audio-take hasConflict with claim conflict', () => {
     const audioOnly = mapApiChapterAssignment({
       chapterAssignmentId: 19,
