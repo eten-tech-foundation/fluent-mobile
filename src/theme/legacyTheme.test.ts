@@ -144,6 +144,10 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
       expect(resolved.elevation.raised).toContain(
         nextColorRoles[mode].borderHighlight,
       );
+      // fade/reading runs from the mode's clear to its page color.
+      expect(resolved.fade.reading).toBe(
+        `linear-gradient(to bottom, ${nextColorRoles[mode].bgClear}, ${nextColorRoles[mode].bgDefault})`,
+      );
       expect(resolveTheme('legacy', mode)).toBe(legacyTheme);
     }
     expect(resolveTheme('next')).toBe(nextThemes.hardware);

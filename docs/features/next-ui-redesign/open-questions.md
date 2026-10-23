@@ -34,11 +34,11 @@ The token-level detail is in the
   `nextTypography.fontFamily`).
   Google Sans Flex would need static weight files, since RN on Android doesn't
   drive variable font axes.
-- **Q2 · Gradients, strokes and `space/48`** *(design)*. `fade/reading`,
-  `gradient/accent` and `Fluent Gradient` aren't encoded yet. `stroke/1` and
-  `stroke/2` land with #693. `space/48` is the screen top inset in Figma (code
-  would use safe-area insets). Needed before the reading fade and note
-  overlays.
+- **Q2 · Gradients, strokes and `space/48`** *(design)*. `fade/reading` is
+  encoded as `theme.fade.reading`; `gradient/accent` and `Fluent Gradient`
+  aren't yet. `stroke/1` and `stroke/2` land with #693. `space/48` is the
+  screen top inset in Figma (code would use safe-area insets). Needed before
+  the note overlays.
 
 ### Components
 

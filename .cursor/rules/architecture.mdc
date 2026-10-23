@@ -46,6 +46,7 @@ alwaysApply: true
 1. Prefer a component in `src/app/screens/` for stack routes (or `src/app/tabs/` for nested drafting/list surfaces)
 2. Add a route file under `src/routes/(app)/(stack)/` or `src/routes/(auth)/`
 3. Add an `hrefs` helper in `src/navigation/hrefs.ts` when the screen takes params
+4. **Next UI screens** live in `src/app/v2/screens/`. Swap them in at the route file by UI version (`useUiVersion() === 'next' ? <NextScreen /> : <LegacyScreen />`), with the same params. A Next screen with no Legacy counterpart (e.g. `passage.tsx`) gets a plain route file in the same stack. There's no separate v2 route tree.
 
 ## Database cautions
 
