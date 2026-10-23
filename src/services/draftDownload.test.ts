@@ -284,6 +284,39 @@ describe('startDraftDownload', () => {
     expect(mockWorkerEnqueueAdditional).toHaveBeenCalled();
   });
 
+  it('replaces existing draft text row on re-download (stable resource id)', async () => {
+    mockGetByPrefix.mockResolvedValue([
+      {
+        id: `1-7-${audioResourceId}`,
+        resourceId: audioResourceId,
+        status: 'completed',
+        kind: 'audio',
+        progress: 1,
+        localFilePath: 'file:///audio.m4a',
+        projectId: 1,
+      },
+      {
+        id: '1-7-draft-text-9',
+        resourceId: 'draft-text-9',
+        status: 'completed',
+        kind: 'text',
+        progress: 1,
+        localFilePath: 'file:///old-text.json',
+        projectId: 1,
+        serializedContent: null,
+      },
+    ]);
+
+    const result = await startDraftDownload(request);
+    expect(result.ok).toBe(true);
+    expect(mockWorkerDropItems).toHaveBeenCalledWith(['1-7-draft-text-9']);
+    expect(mockDeleteItem).toHaveBeenCalledWith('1-7-draft-text-9');
+    expect(mockDeleteFile).toHaveBeenCalledWith(1, 'file:///old-text.json');
+    expect(mockEnqueue).toHaveBeenCalled();
+    const inputs = mockEnqueue.mock.calls[0]?.[0] as Array<{ id: string }>;
+    expect(inputs.map(i => i.id)).toContain('draft-text-9');
+  });
+
   it('rejects when any chapter unit lacks an exact active take', async () => {
     mockGetChapterVerseAudio.mockResolvedValue({
       items: [

@@ -53,6 +53,9 @@ export function useDraftDownload(request: DraftDownloadRequest | null): {
   const requestRef = useRef(request);
   const keyRef = useRef(requestKey(request));
   const refreshGenRef = useRef(0);
+  /** One getDraftDownloadState in flight; coalesce overlapping polls. */
+  const refreshInFlightRef = useRef(false);
+  const refreshQueuedRef = useRef(false);
 
   useEffect(() => {
     requestRef.current = request;
@@ -60,23 +63,36 @@ export function useDraftDownload(request: DraftDownloadRequest | null): {
     if (keyRef.current !== nextKey) {
       keyRef.current = nextKey;
       refreshGenRef.current += 1;
+      refreshQueuedRef.current = false;
       setState(request ? idleState(request) : NULL_STATE);
     }
   }, [request]);
 
   const refresh = useCallback(async () => {
-    const current = requestRef.current;
-    const key = requestKey(current);
-    if (!current || !key) return;
-    const generation = ++refreshGenRef.current;
-    const next = await getDraftDownloadState(current);
-    if (
-      generation !== refreshGenRef.current ||
-      requestKey(requestRef.current) !== key
-    ) {
+    if (refreshInFlightRef.current) {
+      refreshQueuedRef.current = true;
       return;
     }
-    setState(next);
+    refreshInFlightRef.current = true;
+    try {
+      do {
+        refreshQueuedRef.current = false;
+        const current = requestRef.current;
+        const key = requestKey(current);
+        if (!current || !key) return;
+        const generation = ++refreshGenRef.current;
+        const next = await getDraftDownloadState(current);
+        if (
+          generation !== refreshGenRef.current ||
+          requestKey(requestRef.current) !== key
+        ) {
+          continue;
+        }
+        setState(next);
+      } while (refreshQueuedRef.current);
+    } finally {
+      refreshInFlightRef.current = false;
+    }
   }, []);
 
   const stableKey = requestKey(request);

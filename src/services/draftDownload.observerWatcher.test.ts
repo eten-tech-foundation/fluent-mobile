@@ -434,6 +434,77 @@ describe('observer scripture watcher integration', () => {
     expect(manifest.sourceScriptureError).toBeUndefined();
   });
 
+  it('skips getBibleTexts while scripture row is queued/downloading/paused', async () => {
+    let manifest = baseManifest();
+    mockReadManifest.mockImplementation(async () => manifest);
+    mockWriteManifest.mockImplementation(async next => {
+      manifest = { ...manifest, ...next };
+      return 'file:///manifest.json';
+    });
+
+    mockGetByPrefix.mockResolvedValue([
+      {
+        id: `1-7-${audioResourceId}`,
+        resourceId: audioResourceId,
+        status: 'queued',
+        kind: 'audio',
+        progress: 0,
+        userId: 7,
+        projectId: 1,
+      },
+      {
+        id: '1-7-draft-text-9',
+        resourceId: 'draft-text-9',
+        status: 'queued',
+        kind: 'text',
+        progress: 0,
+        userId: 7,
+        projectId: 1,
+      },
+    ]);
+
+    await startDraftDownload(observerRequest);
+    await flush();
+
+    const scriptureQueued = {
+      id: '1-7-draft-scripture-9',
+      resourceId: 'draft-scripture-9',
+      status: 'queued' as const,
+      kind: 'text' as const,
+      progress: 0,
+      userId: 7,
+      projectId: 1,
+    };
+    mockGetByPrefix.mockResolvedValue([
+      ...completedAudioAndTextRows(),
+      scriptureQueued,
+    ]);
+    mockGetBibleTexts.mockClear();
+
+    emitDownloadQueueChanged();
+    await flush();
+    await flush();
+    expect(mockGetBibleTexts).not.toHaveBeenCalled();
+
+    mockGetByPrefix.mockResolvedValue([
+      ...completedAudioAndTextRows(),
+      { ...scriptureQueued, status: 'downloading' },
+    ]);
+    emitDownloadQueueChanged();
+    await flush();
+    await flush();
+    expect(mockGetBibleTexts).not.toHaveBeenCalled();
+
+    mockGetByPrefix.mockResolvedValue([
+      ...completedAudioAndTextRows(),
+      { ...scriptureQueued, status: 'paused' },
+    ]);
+    emitDownloadQueueChanged();
+    await flush();
+    await flush();
+    expect(mockGetBibleTexts).not.toHaveBeenCalled();
+  });
+
   it('tombstone after fetch prevents scripture enqueue', async () => {
     let manifest = baseManifest();
     mockReadManifest.mockImplementation(async () => manifest);

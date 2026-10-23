@@ -358,6 +358,14 @@ async function enqueueObserverScriptureSnapshot(
   if (existing?.status === 'completed' && existing.localFilePath) {
     if (await fileExists(existing.localFilePath)) return;
   }
+  if (
+    existing &&
+    (existing.status === 'queued' ||
+      existing.status === 'downloading' ||
+      existing.status === 'paused')
+  ) {
+    return;
+  }
 
   const response = await FluentAPI.getBibleTexts(request.bibleId, [
     { bookId: request.bookId, chapterNumber: request.chapterNumber },
@@ -827,11 +835,11 @@ export async function startDraftDownload(
       ),
     }));
 
-    const keepIds = new Set<string>([
-      ...units.map(unit => unit.resourceId),
-      draftTextResourceId(request.chapterAssignmentId),
-    ]);
+    // Drop draft text before stale cleanup so re-download replaces content
+    // (stable resource id + NULL sourceUrl would otherwise no-op the upsert).
+    const keepIds = new Set<string>(units.map(unit => unit.resourceId));
     await removeStaleDraftRows(request, keepIds);
+    keepIds.add(draftTextResourceId(request.chapterAssignmentId));
 
     const manifest: DraftDownloadManifest = {
       chapterAssignmentId: request.chapterAssignmentId,
