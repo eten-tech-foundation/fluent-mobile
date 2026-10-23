@@ -79,9 +79,9 @@ export function useMyWorkChapters(refreshKey = 0) {
         return;
       }
       log.error('Error loading my work chapters', { error });
-      if (resolveValidatedMyWorkUserId() === requestUserId) {
-        setChapters([]);
-      }
+      // Fail closed like the success path: clear even if the account changed
+      // during the await so prior-account rows cannot linger.
+      setChapters([]);
     }
   }, []);
 

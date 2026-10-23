@@ -25,8 +25,6 @@ jest.mock('../../services/userOrgGrants', () => ({
   hasProjectObserverGrant: jest.fn(() => false),
 }));
 
-import { hasProjectObserverGrant } from '../../services/userOrgGrants';
-
 const mockHasProjectObserverGrant =
   hasProjectObserverGrant as jest.MockedFunction<
     typeof hasProjectObserverGrant

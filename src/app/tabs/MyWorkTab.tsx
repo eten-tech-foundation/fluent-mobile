@@ -15,6 +15,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { MyWorkRow } from '../../components/ui/MyWorkRow';
 import { PhaseStatusIcon } from '../../components/ui/PhaseStatusIcon';
+import { isUserProjectMember } from '../../db/repository';
 import { hrefs } from '../../navigation/hrefs';
 import { getObserverDraftDestination } from '../../navigation/observerDraft';
 import { getActiveUserId } from '../../services/storage';
@@ -97,6 +98,28 @@ export function MyWorkTab({
     }
 
     if (access === 'observer') {
+      // Grant snapshot alone is not enough after list SQL — re-check
+      // user_projects membership with the same generation/account guards.
+      const stillMember = await isUserProjectMember(
+        syncedUserId,
+        chapter.projectId,
+      );
+      if (pressGenerationRef.current !== pressGeneration) {
+        return;
+      }
+      const midRaw = getActiveUserId();
+      const midSynced = parseUserId();
+      if (
+        !stillMember ||
+        !midRaw ||
+        midSynced === null ||
+        midRaw !== String(midSynced) ||
+        midSynced !== syncedUserId ||
+        !getObserverProjectIds(String(midSynced)).includes(chapter.projectId)
+      ) {
+        return;
+      }
+
       // Guarded helper revalidates account/grant pre- and post-await.
       // Null must not fall back to mutable verse-detail.
       const destination = await getObserverDraftDestination({
@@ -106,22 +129,37 @@ export function MyWorkTab({
       if (pressGenerationRef.current !== pressGeneration) {
         return;
       }
+      if (destination === null) {
+        return;
+      }
       const afterRaw = getActiveUserId();
       const afterSynced = parseUserId();
       if (
         !afterRaw ||
         afterSynced === null ||
         afterRaw !== String(afterSynced) ||
-        afterSynced !== syncedUserId
-      ) {
-        return;
-      }
-      if (
+        afterSynced !== syncedUserId ||
         !getObserverProjectIds(String(afterSynced)).includes(chapter.projectId)
       ) {
         return;
       }
-      if (destination === null) {
+      const memberAfter = await isUserProjectMember(
+        afterSynced,
+        chapter.projectId,
+      );
+      if (pressGenerationRef.current !== pressGeneration) {
+        return;
+      }
+      const finalRaw = getActiveUserId();
+      const finalSynced = parseUserId();
+      if (
+        !memberAfter ||
+        !finalRaw ||
+        finalSynced === null ||
+        finalRaw !== String(finalSynced) ||
+        finalSynced !== syncedUserId ||
+        !getObserverProjectIds(String(finalSynced)).includes(chapter.projectId)
+      ) {
         return;
       }
       router.push(destination);

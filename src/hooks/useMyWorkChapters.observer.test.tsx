@@ -51,10 +51,12 @@ const mockParseUserId = parseUserId as jest.MockedFunction<typeof parseUserId>;
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>(res => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
     resolve = res;
+    reject = rej;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 const observerChapter: MyWorkChapter = {
@@ -247,6 +249,38 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(result.current.loading).toBe(false);
     });
     expect(mockGetMyWorkChapters).not.toHaveBeenCalled();
+    expect(result.current.chapters).toEqual([]);
+  });
+
+  it('clears published rows on load error even after an account switch', async () => {
+    mockRefreshChapterMetadataIfOnline.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => useMyWorkChapters());
+
+    await waitFor(() => {
+      expect(result.current.chapters).toEqual([observerChapter]);
+    });
+
+    const failing = deferred<MyWorkChapter[]>();
+    mockGetMyWorkChapters.mockReturnValueOnce(failing.promise);
+
+    let refreshDone!: Promise<void>;
+    await act(async () => {
+      refreshDone = result.current.refresh();
+    });
+    await waitFor(() => {
+      expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2);
+    });
+
+    // Account changed during the failed await — still fail closed.
+    mockParseUserId.mockReturnValue(8);
+    mockGetActiveUserId.mockReturnValue('8');
+    mockGetObserverProjectIds.mockReturnValue([]);
+
+    await act(async () => {
+      failing.reject(new Error('query failed'));
+      await refreshDone;
+    });
+
     expect(result.current.chapters).toEqual([]);
   });
 });
