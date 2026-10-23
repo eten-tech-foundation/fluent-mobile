@@ -194,6 +194,58 @@ const theologicalChapter: MyWorkChapter = {
   ...myWorkIds,
 };
 
+const peerChapter: MyWorkChapter = {
+  id: 12,
+  displayLabel: 'Luke 5',
+  bookName: 'Luke',
+  chapterNumber: 5,
+  assignmentStatus: 'peer_check',
+  workflowStage: 'peer_check',
+  syncState: 'synced',
+  ownershipState: 'mine',
+  completedVerses: 1,
+  totalVerses: 5,
+  downloadedVerses: 5,
+  hasConflict: false,
+  lastActivityLabel: 'Jun 2, 2024',
+  projectName: 'Gospel of Luke',
+  targetLanguageName: 'Baka',
+};
+
+const linguistChapter: MyWorkChapter = {
+  id: 13,
+  displayLabel: 'Luke 6',
+  bookName: 'Luke',
+  chapterNumber: 6,
+  assignmentStatus: 'linguist_check',
+  workflowStage: null,
+  syncState: 'synced',
+  ownershipState: 'unassigned',
+  completedVerses: 1,
+  totalVerses: 5,
+  downloadedVerses: 5,
+  hasConflict: false,
+  projectName: 'Gospel of Luke',
+  targetLanguageName: 'Baka',
+};
+
+const theologicalChapter: MyWorkChapter = {
+  id: 14,
+  displayLabel: 'Luke 7',
+  bookName: 'Luke',
+  chapterNumber: 7,
+  assignmentStatus: 'theological_check',
+  workflowStage: null,
+  syncState: 'synced',
+  ownershipState: 'unassigned',
+  completedVerses: 1,
+  totalVerses: 5,
+  downloadedVerses: 5,
+  hasConflict: false,
+  projectName: 'Gospel of Luke',
+  targetLanguageName: 'Baka',
+};
+
 describe('MyWorkTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
