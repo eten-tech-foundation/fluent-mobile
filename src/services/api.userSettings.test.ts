@@ -104,4 +104,37 @@ describe('FluentAPI user settings (#754)', () => {
       displayMode: true,
     });
   });
+
+  it('getSelfSettings preserves opaque non-displayMode preference fields (#777)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          settings: {
+            displayMode: 'pericope',
+            suppressTooltip: true,
+            keep: 'yes',
+          },
+          updatedAt: '2026-01-04T00:00:00.000Z',
+          settingsCapabilities: { partialMerge: true, displayMode: true },
+        }),
+      headers: { get: () => null },
+    });
+
+    const result = await FluentAPI.getSelfSettings('account-token');
+
+    // Client contract still surfaces opaque keys; mobile must not auto-apply
+    // displayMode (#777), but other preference fields remain readable.
+    expect(result.settings).toEqual({
+      displayMode: 'pericope',
+      suppressTooltip: true,
+      keep: 'yes',
+    });
+    expect(result.settingsCapabilities).toEqual({
+      partialMerge: true,
+      displayMode: true,
+    });
+    expect(authToken.get()).toBe('global-token');
+  });
 });
