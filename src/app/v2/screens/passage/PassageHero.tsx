@@ -8,7 +8,7 @@ import Animated, {
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated';
-import type { usePassage } from '../../../../hooks/usePassage';
+import type { PassageTake, usePassage } from '../../../../hooks/usePassage';
 import { useThemedStyles } from '../../../../theme/useTheme';
 import { HeroActions } from './HeroActions';
 import { HeroHeader } from './HeroHeader';
@@ -36,6 +36,7 @@ export interface HeroLayout {
  */
 export function PassageHero({
   passage,
+  takes,
   downloadState,
   progress,
   expanded,
@@ -54,6 +55,7 @@ export function PassageHero({
   onDownload,
 }: {
   passage: Ready;
+  takes: PassageTake[];
   downloadState: ReturnType<typeof usePassage>['downloadState'];
   progress: SharedValue<number>;
   expanded: boolean;
@@ -100,6 +102,7 @@ export function PassageHero({
         />
         <HeroActions
           passage={passage}
+          takes={takes}
           downloadState={downloadState}
           progress={progress}
           expanded={expanded}

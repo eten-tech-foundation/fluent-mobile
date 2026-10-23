@@ -186,6 +186,7 @@ const idleAudio: VerseAudioApi = {
   playbackStatus: 'idle' as const,
   errorMessage: null,
   recoveredElapsedMs: 0,
+  getMetering: () => null,
   positionMs: 0,
   durationMs: 0,
   start: jest.fn(),

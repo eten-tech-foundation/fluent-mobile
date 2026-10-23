@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
+  LayoutAnimationConfig,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
+  ZoomIn,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { CheckBold, PauseFill, PlayFill } from './icons';
+import { NEXT_SPRING } from './motion';
 import { ProgressRing } from './ProgressRing';
 import { RoundButton } from './RoundButton';
 import { useTheme, useThemedStyles } from '../../theme/useTheme';
 
-/** Rises with a little give, like a key coming up out of the surface. */
-const RISE_SPRING = { damping: 16, stiffness: 260, mass: 1 };
 /** How small the button starts as it grows out of the ring's center. */
 const RISE_FROM = 0.6;
 const UNHEARD_DOT = 8;
@@ -66,7 +67,7 @@ export function TrackRow({
     };
     rise.value = reduceMotion
       ? withTiming(live ? 1 : 0, { duration: theme.motion.releaseMs }, done)
-      : withSpring(live ? 1 : 0, RISE_SPRING, done);
+      : withSpring(live ? 1 : 0, NEXT_SPRING, done);
   }, [live, reduceMotion, rise, theme.motion.releaseMs]);
 
   const buttonStyle = useAnimatedStyle(() => ({
@@ -117,45 +118,50 @@ export function TrackRow({
     : 'not heard yet';
 
   return (
-    <View style={styles.row} testID={testID}>
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={`${title}, ${status}`}
-        style={styles.text}
-      >
-        <Text style={[styles.title, live && styles.titleLive]}>{title}</Text>
-        <Text style={styles.meta}>{meta}</Text>
-      </Pressable>
-      <ProgressRing value={listened} accessibilityLabel={`${title} listened`}>
-        <Pressable onPress={onPress} accessible={false} style={styles.layer}>
-          <Animated.View style={glyphStyle}>
-            {heard ? (
-              <CheckBold
-                color={theme.roles.accentPrimary}
-                size={theme.controlSizes.icon24}
-              />
-            ) : listened === 0 ? (
-              <View
-                style={styles.unheard}
-                testID={testID ? `${testID}-unheard` : undefined}
-              />
-            ) : null}
-          </Animated.View>
+    <LayoutAnimationConfig skipEntering>
+      <View style={styles.row} testID={testID}>
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={`${title}, ${status}`}
+          style={styles.text}
+        >
+          <Text style={[styles.title, live && styles.titleLive]}>{title}</Text>
+          <Text style={styles.meta}>{meta}</Text>
         </Pressable>
-        {showButton ? (
-          <Animated.View style={buttonStyle}>
-            <RoundButton
-              icon={state === 'playing' ? PauseFill : PlayFill}
-              accessibilityLabel={
-                state === 'playing' ? `Pause ${title}` : `Play ${title}`
-              }
-              onPress={onToggle}
-              testID={testID ? `${testID}-toggle` : undefined}
-            />
-          </Animated.View>
-        ) : null}
-      </ProgressRing>
-    </View>
+        <ProgressRing value={listened} accessibilityLabel={`${title} listened`}>
+          <Pressable onPress={onPress} accessible={false} style={styles.layer}>
+            <Animated.View style={glyphStyle}>
+              {heard ? (
+                // Scales in when a step finishes (not when the list first shows).
+                <Animated.View entering={ZoomIn.springify()}>
+                  <CheckBold
+                    color={theme.roles.accentPrimary}
+                    size={theme.controlSizes.icon24}
+                  />
+                </Animated.View>
+              ) : listened === 0 ? (
+                <View
+                  style={styles.unheard}
+                  testID={testID ? `${testID}-unheard` : undefined}
+                />
+              ) : null}
+            </Animated.View>
+          </Pressable>
+          {showButton ? (
+            <Animated.View style={buttonStyle}>
+              <RoundButton
+                icon={state === 'playing' ? PauseFill : PlayFill}
+                accessibilityLabel={
+                  state === 'playing' ? `Pause ${title}` : `Play ${title}`
+                }
+                onPress={onToggle}
+                testID={testID ? `${testID}-toggle` : undefined}
+              />
+            </Animated.View>
+          ) : null}
+        </ProgressRing>
+      </View>
+    </LayoutAnimationConfig>
   );
 }

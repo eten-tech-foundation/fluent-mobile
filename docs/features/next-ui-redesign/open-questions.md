@@ -54,10 +54,10 @@ The token-level detail is in the
   variant lifting or the long variant scrolling, so two values are code-side
   guesses: the short variant lifts to 16pt, and the long variant's recording
   front holds two thirds across before scrolling.
-- **Q6 · Live mic levels** *(dev)*. The recorder doesn't enable metering
-  today, so the long Level wave uses simulated levels in the gallery. Wiring
-  it means turning on expo-audio metering in the recording engine and mapping
-  dB to 0–1 levels. Touches recording, so it needs device QA.
+- **Q6 · Live mic levels** *(dev)*. Metering is on in the recording engine,
+  and the Next player's take card draws live levels (`useLiveLevels` maps dB
+  to 0–1). Saved takes keep their wave only for the session, since levels
+  aren't stored. Touches recording, so it needs device QA.
 - **Q20 · Contrast of unplayed and resting marks** *(design)*. Figma binds
   unplayed Wave bars to `fg/inactive`, and the Level wave's resting ticks use
   it too. That's about 1.5:1 on `bg/default` in Canvas and Hardware (WCAG
@@ -145,6 +145,12 @@ translator hears them all last.
 - **Q17 · What Previous / Next skip in the player** *(design)*. Verse,
   pericope or track? Record already moves between pericopes; track skip
   depends on Q11.
+- **Q25 · Values with no Foundations token** *(design)*. The book and passage
+  pages use a few values Figma doesn't define: one spring for the sheet, take
+  fan and Track row (`NEXT_SPRING`), 0.7 opacity on a pressed book cover, the
+  hero's 36 × 4 grab handle, a 12pt check on the fan's official badge, the
+  Track row's 8pt unheard dot, and no glow on the official take card (Figma
+  shows one, which is a gradient-style effect like Q2).
 
 ## Decided
 

@@ -658,6 +658,9 @@ export function useVerseAudio({
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
+    // The last take is still saving; the reducer would drop this START and
+    // leave the mic running with nothing on screen.
+    if (state === 'saving') return;
     // Wait until capture metadata resolves so pericope mode cannot persist as verse.
     if (draftingUnit === 'pericope' && recordingUnit === null) return;
 
@@ -735,6 +738,7 @@ export function useVerseAudio({
     projectUnitId,
     recording,
     recordingUnit,
+    state,
     verseNumber,
   ]);
 
@@ -1430,6 +1434,8 @@ export function useVerseAudio({
     playbackStatus: playback.status,
     errorMessage,
     recoveredElapsedMs,
+    /** Live input level in dBFS while recording, for the Level wave. */
+    getMetering: recording.getMetering,
     positionMs: playback.positionMs,
     durationMs: playback.durationMs,
     start,
