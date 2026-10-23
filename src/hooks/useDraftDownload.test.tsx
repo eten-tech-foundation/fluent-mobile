@@ -107,9 +107,9 @@ describe('useDraftDownload', () => {
       await waitFor(() => {
         expect(result.current.state.status).toBe('ready');
       });
-      expect(mockGetDraftDownloadState.mock.calls.length).toBeGreaterThanOrEqual(
-        2,
-      );
+      expect(
+        mockGetDraftDownloadState.mock.calls.length,
+      ).toBeGreaterThanOrEqual(2);
     } finally {
       jest.useRealTimers();
     }
