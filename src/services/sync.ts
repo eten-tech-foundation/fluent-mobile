@@ -33,7 +33,7 @@ import {
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
-import { isApiError, isRetryableApiError } from '../types/api/errors';
+import { ApiError, isApiError, isRetryableApiError } from '../types/api/errors';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import type { ChapterAssignment, Project } from '../types/db/types';
 import { getConnectivitySnapshot } from './connectivity';
@@ -157,6 +157,33 @@ function mapBibleTextRow(
   };
 }
 
+function bibleChapterKey(bookId: number, chapterNumber: number): string {
+  return `${bookId}:${chapterNumber}`;
+}
+
+function formatMissingBibleTextChapter(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  reason: string,
+): string {
+  return `bible ${bibleId} book ${bookId} ch ${chapterNumber} (${reason})`;
+}
+
+/** Full-fetch missing-resource 404 — isolate and continue; do not retry. */
+function isMissingBibleTextResource404(error: unknown): boolean {
+  return isApiError(error) && error.status === 404;
+}
+
+/** Errors that must still abort the chunk so retrySyncStep / auth handling apply. */
+function shouldRethrowBibleTextFetchError(error: unknown): boolean {
+  return (
+    isAuthError(error) ||
+    isRetryableApiError(error) ||
+    isTransientTransportFailure(error)
+  );
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -198,6 +225,17 @@ async function retrySyncStep<T>(
         if (userId) {
           await handleSyncAuthFailure(userId);
         }
+        throw error;
+      }
+
+      // Client 4xx (e.g. accumulated missing bible-text chapters as 404) — do not
+      // burn retries re-fetching chunks that already succeeded.
+      if (isApiError(error) && error.isTerminal) {
+        log.error(`${stepName} failed: terminal error`, {
+          error: errorMessage,
+          status: error.status,
+        });
+        setSyncError(errorKey, errorMessage);
         throw error;
       }
 
@@ -904,6 +942,7 @@ export async function syncBibleTexts(
       });
 
       let totalTextsInserted = 0;
+      const missingChapterFailures: string[] = [];
       const db = getDatabase();
 
       for (const [bibleId, chapters] of bibleGroups) {
@@ -946,6 +985,8 @@ export async function syncBibleTexts(
             }
           }
 
+          const isFullFetch = !cursor;
+
           log.info('Fetching chunk', {
             bibleId,
             chunkIndex,
@@ -953,19 +994,85 @@ export async function syncBibleTexts(
             incremental: Boolean(cursor),
           });
 
-          const response = await FluentAPI.getBibleTexts(
-            bibleId,
-            chunk,
-            cursor,
-          );
-
-          const books: ApiBook[] = response.data;
+          let books: ApiBook[];
+          try {
+            const response = await FluentAPI.getBibleTexts(
+              bibleId,
+              chunk,
+              cursor,
+            );
+            books = response.data;
+          } catch (error) {
+            if (shouldRethrowBibleTextFetchError(error)) {
+              throw error;
+            }
+            if (isFullFetch && isMissingBibleTextResource404(error)) {
+              for (const chapter of chunk) {
+                missingChapterFailures.push(
+                  formatMissingBibleTextChapter(
+                    bibleId,
+                    chapter.bookId,
+                    chapter.chapterNumber,
+                    '404',
+                  ),
+                );
+              }
+              log.warn(
+                'Full bible text fetch returned 404; recording missing chapters',
+                {
+                  bibleId,
+                  chunkIndex,
+                  chapterCount: chunk.length,
+                },
+              );
+              continue;
+            }
+            throw error;
+          }
 
           if (!Array.isArray(books)) {
             throw new Error(`Invalid bible text response for bible ${bibleId}`);
           }
 
-          const textsWithBibleId = books.map((book: ApiBook) => ({
+          if (isFullFetch) {
+            const returnedByKey = new Map<string, ApiBook>();
+            for (const book of books) {
+              returnedByKey.set(
+                bibleChapterKey(book.bookId, book.chapterNumber),
+                book,
+              );
+            }
+            for (const chapter of chunk) {
+              const returned = returnedByKey.get(
+                bibleChapterKey(chapter.bookId, chapter.chapterNumber),
+              );
+              const hasVerses =
+                returned !== undefined &&
+                Array.isArray(returned.verses) &&
+                returned.verses.length > 0;
+              if (!hasVerses) {
+                missingChapterFailures.push(
+                  formatMissingBibleTextChapter(
+                    bibleId,
+                    chapter.bookId,
+                    chapter.chapterNumber,
+                    returned === undefined
+                      ? 'absent from full-fetch response'
+                      : 'empty verses',
+                  ),
+                );
+              }
+            }
+          }
+
+          // Skip chapters with no verses before insert (full-fetch also records
+          // them as missing above).
+          const booksToInsert = books.filter(
+            (book: ApiBook) =>
+              Array.isArray(book.verses) && book.verses.length > 0,
+          );
+
+          const textsWithBibleId = booksToInsert.map((book: ApiBook) => ({
             bibleId,
             bookId: book.bookId,
             chapterNumber: book.chapterNumber,
@@ -995,6 +1102,18 @@ export async function syncBibleTexts(
       );
       const uniqueBiblesCount = result.rows?.[0]?.count || 0;
       setSyncCount(KV_KEYS.SYNC_COUNT_BIBLES, Number(uniqueBiblesCount));
+
+      if (missingChapterFailures.length > 0) {
+        log.warn('Bible texts sync finished with missing chapters', {
+          textsInserted: totalTextsInserted,
+          uniqueBiblesInDb: uniqueBiblesCount,
+          missingChapterCount: missingChapterFailures.length,
+        });
+        throw new ApiError(
+          404,
+          `Missing bible text chapter(s): ${missingChapterFailures.join('; ')}`,
+        );
+      }
 
       log.info('Bible texts sync completed', {
         textsInserted: totalTextsInserted,

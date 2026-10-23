@@ -882,6 +882,12 @@ describe('syncAllUsers auth handling', () => {
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
     jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
 
+    mockGetConnectivitySnapshot.mockResolvedValue({
+      isOnline: true,
+      isWifi: true,
+      isCellular: false,
+      connectionType: 'wifi',
+    });
     (getActiveUserId as jest.Mock).mockReturnValue('2');
     (getKnownUserIds as jest.Mock).mockReturnValue(['1', '2']);
     (getLastSyncedAt as jest.Mock).mockReturnValue('2026-06-01T00:00:00.000Z');
@@ -980,7 +986,15 @@ describe('syncAllUsers auth handling', () => {
     getChaptersToSync.mockResolvedValue(
       new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
     );
-    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          bookId: 1,
+          chapterNumber: 1,
+          verses: [{ id: 1001, verseNumber: 1, text: 'In the beginning' }],
+        },
+      ],
+    });
 
     await syncAllUsers();
 
@@ -1059,7 +1073,17 @@ describe('syncAllUsers auth handling', () => {
     getChaptersToSync.mockResolvedValue(
       new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
     );
-    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+    // Valid payload so the assertion stays on #177 cursor drop; empty full-fetch
+    // missing-chapter failure is covered in sync.steps.test.ts.
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          bookId: 1,
+          chapterNumber: 1,
+          verses: [{ id: 1001, verseNumber: 1, text: 'In the beginning' }],
+        },
+      ],
+    });
 
     await syncAllUsers();
 
@@ -1317,7 +1341,25 @@ describe('syncAllData progressive login (#670 / #679)', () => {
         abbreviation: `B${id}`,
       }),
     );
-    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+    // Echo requested chapters so full-fetch no longer looks like "all missing".
+    (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+      async (
+        _bibleId: number,
+        chapters: Array<{ bookId: number; chapterNumber: number }>,
+      ) => ({
+        data: chapters.map(chapter => ({
+          bookId: chapter.bookId,
+          chapterNumber: chapter.chapterNumber,
+          verses: [
+            {
+              id: chapter.bookId * 100 + chapter.chapterNumber,
+              verseNumber: 1,
+              text: 'verse',
+            },
+          ],
+        })),
+      }),
+    );
     userHasLocalProjects.mockResolvedValue(false);
     userHasLocalChapterAssignments.mockResolvedValue(false);
     userNeedsAssigneeRepair.mockResolvedValue(false);
