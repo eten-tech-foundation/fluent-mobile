@@ -7,6 +7,7 @@ import {
   loadObserverSourceVerses,
   resolveObserverDraftChapterAccess,
 } from '../services/observerDraftChapter';
+import { enrichObserverDraftUnitsWithLocalPericope } from '../services/observerDraftPericopeEnrichment';
 import { onAuthReauthRequired, onSyncComplete } from '../services/syncEvents';
 import { getActiveUserId, getKnownUserIds } from '../services/storage';
 import { hasProjectObserverGrant } from '../services/userOrgGrants';
@@ -31,6 +32,8 @@ function mapUnits(bundle: DraftChapterLocalBundle | null): ObserverDraftUnit[] {
     conflictStatus: unit.conflictStatus,
     // Pass published coverage through — never invent bounds here.
     coverage: unit.coverage ?? null,
+    pericopeNumber: null,
+    pericopeSetId: null,
   }));
 }
 
@@ -250,6 +253,31 @@ export function useObserverDraftChapter(input: {
         return;
       }
 
+      const scopeBeforeEnrich = readCurrentScope(
+        chapterAssignmentId,
+        projectId,
+      );
+      if (
+        !scopesMatch(loadScope, scopeBeforeEnrich) ||
+        !scopeHasLiveGrant(scopeBeforeEnrich) ||
+        scopeBeforeEnrich.accountId !== access.userId ||
+        access.assignment.projectId === null
+      ) {
+        setStored(emptyStored(scopeBeforeEnrich, false));
+        return;
+      }
+
+      // Local-only pericope ids for #451 — coverage-gated; never invent bounds.
+      const draftUnits = await enrichObserverDraftUnitsWithLocalPericope({
+        units: mapUnits(bundle),
+        projectId: access.assignment.projectId,
+        bookId: access.assignment.bookId,
+        chapterNumber: access.assignment.chapterNumber,
+      });
+      if (cancelled) {
+        return;
+      }
+
       const scopeFinal = readCurrentScope(chapterAssignmentId, projectId);
       if (
         !scopesMatch(loadScope, scopeFinal) ||
@@ -267,7 +295,7 @@ export function useObserverDraftChapter(input: {
         accountId: scopeFinal.accountId,
         assignment: access.assignment,
         sourceVerses,
-        draftUnits: mapUnits(bundle),
+        draftUnits,
         unitChapters,
         bundleStatus: bundle?.status ?? null,
       });

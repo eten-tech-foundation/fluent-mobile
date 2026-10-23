@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { CommentIndicator } from '../../components/comments/CommentIndicator';
 import { DraftTakeRow } from '../../components/ui/DraftTakeRow';
 import { usePlaybackEngine } from '../../hooks/usePlaybackEngine';
 import { theme } from '../../theme';
@@ -30,6 +31,9 @@ export type ObserverDraftUnit = {
    * (honest anchor label). Do not invent verse bounds when missing.
    */
   coverage?: ObserverDraftAudioCoverage | null;
+  /** Optional local pericope identity for #451 comment anchors/indicators. */
+  pericopeNumber?: string | null;
+  pericopeSetId?: number | null;
 };
 
 /**
@@ -47,6 +51,9 @@ export type ObserverDraftUnitAnchor = {
   verseNumber: number;
   chapterNumber: number;
   chapterAssignmentId: string | number;
+  /** When set, open/filter/create use pericope API459 anchor. */
+  pericopeNumber?: string | null;
+  pericopeSetId?: number | null;
 };
 
 export type ObserverDraftTabProps = {
@@ -65,6 +72,18 @@ export type ObserverDraftTabProps = {
   isActive: boolean;
   unresolvedConflictPlaybackPolicy: ObserverUnresolvedConflictPlaybackPolicy;
   onSelectUnit?: (anchor: ObserverDraftUnitAnchor) => void;
+  /**
+   * #451: per-verse retained comment counts (roots+replies+Unconnected with
+   * that bibleTextId). Missing / unknown → no indicator (fail-closed).
+   */
+  commentCountByBibleTextId?: ReadonlyMap<number, number>;
+  /** #451: per-pericope retained comment counts when units carry pericope ids. */
+  commentCountByPericopeNumber?: ReadonlyMap<string, number>;
+  /**
+   * Opens the chapter comment drawer for the tapped verse/pericope (#451).
+   * Invoked from both the row press and the indicator.
+   */
+  onOpenComments?: (anchor: ObserverDraftUnitAnchor) => void;
 };
 
 const DRAFT_TEXT_UNAVAILABLE = 'Draft text unavailable';
@@ -158,6 +177,9 @@ export function ObserverDraftTab({
   isActive,
   unresolvedConflictPlaybackPolicy,
   onSelectUnit,
+  commentCountByBibleTextId,
+  commentCountByPericopeNumber,
+  onOpenComments,
 }: ObserverDraftTabProps) {
   const playback = usePlaybackEngine();
   // Depend on stable method identities — the playback bag rebinds every tick.
@@ -321,20 +343,62 @@ export function ObserverDraftTab({
     [latestIdentityFor],
   );
 
+  const buildUnitAnchor = useCallback(
+    (unit: ObserverDraftUnit): ObserverDraftUnitAnchor => ({
+      bibleTextId: unit.bibleTextId,
+      verseNumber: unit.verseNumber,
+      chapterNumber,
+      chapterAssignmentId,
+      pericopeNumber: unit.pericopeNumber ?? null,
+      pericopeSetId: unit.pericopeSetId ?? null,
+    }),
+    [chapterAssignmentId, chapterNumber],
+  );
+
+  const commentCountForUnit = useCallback(
+    (unit: ObserverDraftUnit): number | undefined => {
+      const verseCount = commentCountByBibleTextId?.get(unit.bibleTextId);
+      const pericopeNumber = unit.pericopeNumber;
+      const pericopeCount =
+        typeof pericopeNumber === 'string' &&
+        pericopeNumber.length > 0 &&
+        commentCountByPericopeNumber
+          ? commentCountByPericopeNumber.get(pericopeNumber)
+          : undefined;
+      const verse =
+        typeof verseCount === 'number' && Number.isFinite(verseCount)
+          ? verseCount
+          : 0;
+      const pericope =
+        typeof pericopeCount === 'number' && Number.isFinite(pericopeCount)
+          ? pericopeCount
+          : 0;
+      const total = verse + pericope;
+      // Fail-closed: unknown / zero → hide indicator (CommentIndicator).
+      return total > 0 ? total : undefined;
+    },
+    [commentCountByBibleTextId, commentCountByPericopeNumber],
+  );
+
+  /** #451: tap verse/pericope row opens the half drawer (not indicator-only). */
   const handleSelectUnit = useCallback(
     (unit: ObserverDraftUnit) => {
       if (!hasAccess || !isActive) {
         return;
       }
       setSelectedBibleTextId(unit.bibleTextId);
-      onSelectUnit?.({
-        bibleTextId: unit.bibleTextId,
-        verseNumber: unit.verseNumber,
-        chapterNumber,
-        chapterAssignmentId,
-      });
+      const anchor = buildUnitAnchor(unit);
+      onSelectUnit?.(anchor);
+      onOpenComments?.(anchor);
     },
-    [chapterAssignmentId, chapterNumber, hasAccess, isActive, onSelectUnit],
+    [buildUnitAnchor, hasAccess, isActive, onOpenComments, onSelectUnit],
+  );
+
+  const handleOpenComments = useCallback(
+    (unit: ObserverDraftUnit) => {
+      handleSelectUnit(unit);
+    },
+    [handleSelectUnit],
   );
 
   const handlePlayPause = useCallback(
@@ -532,6 +596,11 @@ export function ObserverDraftTab({
               >
                 {item.verseNumber}
               </Text>
+              <CommentIndicator
+                count={commentCountForUnit(item)}
+                onPress={() => handleOpenComments(item)}
+                testID={`observer-draft-comment-${item.bibleTextId}`}
+              />
             </View>
             {hasDraftText(item.draftText) ? (
               <Text
@@ -591,6 +660,8 @@ export function ObserverDraftTab({
       );
     },
     [
+      commentCountForUnit,
+      handleOpenComments,
       handlePlayPause,
       handleSeek,
       handleSelectUnit,

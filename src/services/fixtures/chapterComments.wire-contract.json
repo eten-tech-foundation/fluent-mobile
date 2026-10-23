@@ -1,0 +1,61 @@
+{
+  "description": "Pinned fluent-api PR #459 draft chapter comments wire for mobile #451. Routes from draft-comments.route.ts at tip dfad78d / lock-serialize d263764. Backend undeployed at pin time; examples are schema-derived / service-test shaped — no live HTTP claim.",
+  "baseline": {
+    "issue": 458,
+    "pr459Heads": {
+      "lockSerialize": "d2637641478eda0ffde8b47cbb1cf949afbee0df",
+      "tip": "dfad78d7438caad4391ad77d2e442e7c921f88e1"
+    },
+    "routes": [
+      "GET /chapter-assignments/{chapterAssignmentId}/comments",
+      "POST /chapter-assignments/{chapterAssignmentId}/comments",
+      "POST /chapter-assignments/{chapterAssignmentId}/comments/audio",
+      "POST /chapter-assignments/{chapterAssignmentId}/comments/replies",
+      "PUT /chapter-assignments/{chapterAssignmentId}/comments/{commentId}/reaction",
+      "DELETE /chapter-assignments/{chapterAssignmentId}/comments/{commentId}/reaction"
+    ],
+    "httpFixtureAtPin": false
+  },
+  "examples": {
+    "listEmpty": {
+      "provenance": "Schema-derived empty list body.",
+      "payload": {
+        "connected": [],
+        "unconnected": []
+      }
+    },
+    "textComment": {
+      "provenance": "Schema-shaped top-level text comment for parser/API unit tests.",
+      "payload": {
+        "id": 11,
+        "projectId": 3,
+        "chapterAssignmentId": 9,
+        "parentCommentId": null,
+        "author": {
+          "userId": 7,
+          "displayName": "Ada Observer",
+          "roleDisplay": "Observer"
+        },
+        "createdAt": "2026-10-22T12:00:00.000Z",
+        "bodyKind": "text",
+        "text": "Please check verse 2",
+        "emoji": null,
+        "audio": null,
+        "anchor": {
+          "kind": "verse",
+          "bibleId": 1,
+          "bookId": 40,
+          "chapterNumber": 1,
+          "bibleTextId": 401,
+          "verseNumber": 2,
+          "pericopeSetId": null,
+          "pericopeNumber": null,
+          "pericopeTitle": null
+        },
+        "connectionState": "connected",
+        "reactions": [],
+        "currentUserReaction": null
+      }
+    }
+  }
+}

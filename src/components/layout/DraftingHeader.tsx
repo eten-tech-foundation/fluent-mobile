@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { SyncStatus } from '../../utils/syncStatusState';
 import { PageHeaderSyncButton } from '../ui/PageHeaderSyncButton';
 import { AccountInitialsButton } from '../ui/AccountInitialsButton';
@@ -16,6 +16,8 @@ interface DraftingHeaderProps {
   accountLastName?: string;
   accountEmail?: string;
   onAccountPress?: () => void;
+  /** Optional trailing control before sync (e.g. #451 Record comments entry). */
+  rightAccessory?: ReactNode;
 }
 
 export function DraftingHeader({
@@ -29,6 +31,7 @@ export function DraftingHeader({
   accountLastName,
   accountEmail,
   onAccountPress,
+  rightAccessory,
 }: DraftingHeaderProps) {
   return (
     <AppHeader
@@ -39,6 +42,7 @@ export function DraftingHeader({
       left={<HeaderBackButton onPress={onBack} testID="drafting-header-back" />}
       right={
         <>
+          {rightAccessory}
           {syncStatus && onSyncPress ? (
             <PageHeaderSyncButton
               syncStatus={syncStatus}

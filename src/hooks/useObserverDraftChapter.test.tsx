@@ -5,6 +5,8 @@ const mockGetChapterAssignmentById = jest.fn();
 const mockGetChapterAssignmentsWithBooks = jest.fn();
 const mockGetBibleTexts = jest.fn();
 const mockGetDraftChapterLocalBundle = jest.fn();
+const mockGetProjectPericopeSetId = jest.fn();
+const mockGetPericopeForVerse = jest.fn();
 const mockGetActiveUserId = jest.fn(() => '7');
 const mockGetKnownUserIds = jest.fn(() => ['7', '8']);
 const mockHasProjectObserverGrant = jest.fn(
@@ -28,6 +30,18 @@ jest.mock('../db/queries', () => ({
     mockGetChapterAssignmentsWithBooks(projectUnitId),
   getBibleTexts: (bibleId: number, bookId: number, chapterNumber: number) =>
     mockGetBibleTexts(bibleId, bookId, chapterNumber),
+  getPericopeForVerse: (
+    bookId: number,
+    chapterNumber: number,
+    verseNumber: number,
+    pericopeSetId: number,
+  ) =>
+    mockGetPericopeForVerse(bookId, chapterNumber, verseNumber, pericopeSetId),
+}));
+
+jest.mock('../db/repository', () => ({
+  getProjectPericopeSetId: (projectId: number) =>
+    mockGetProjectPericopeSetId(projectId),
 }));
 
 jest.mock('../services/draftDownload', () => ({
@@ -123,6 +137,8 @@ describe('useObserverDraftChapter scope projection', () => {
     );
     mockGetChapterAssignmentsWithBooks.mockResolvedValue([]);
     mockGetBibleTexts.mockResolvedValue([]);
+    mockGetProjectPericopeSetId.mockResolvedValue(null);
+    mockGetPericopeForVerse.mockResolvedValue(null);
     mockGetChapterAssignmentById.mockImplementation(async (id: number) =>
       id === 1002 ? assignment1002 : assignment1001,
     );
@@ -370,9 +386,141 @@ describe('useObserverDraftChapter scope projection', () => {
       expect(result.current.hasAccess).toBe(true);
       expect(result.current.draftUnits[0]?.coverage).toBeNull();
     });
+    expect(result.current.draftUnits[0]?.pericopeNumber).toBeNull();
+    expect(result.current.draftUnits[0]?.pericopeSetId).toBeNull();
+    expect(mockGetProjectPericopeSetId).not.toHaveBeenCalled();
     const { startDraftDownload } = jest.requireMock(
       '../services/draftDownload',
     );
     expect(startDraftDownload).not.toHaveBeenCalled();
+  });
+
+  it('enriches pericope coverage units from local project set + verse lookup', async () => {
+    mockGetProjectPericopeSetId.mockResolvedValue(12);
+    mockGetPericopeForVerse.mockResolvedValue({
+      pericopeNumber: '1.2',
+      pericopeTitle: 'Title',
+      section: null,
+      verses: [
+        { chapterNumber: 1, verseNumber: 1 },
+        { chapterNumber: 1, verseNumber: 2 },
+      ],
+    });
+    mockGetDraftChapterLocalBundle.mockResolvedValue(
+      bundleFor(1001, 'Draft', {
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 2,
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useObserverDraftChapter({
+        chapterAssignmentId: 1001,
+        projectId: 9,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasAccess).toBe(true);
+      expect(result.current.draftUnits[0]).toEqual(
+        expect.objectContaining({
+          pericopeNumber: '1.2',
+          pericopeSetId: 12,
+          coverage: expect.objectContaining({ granularity: 'pericope' }),
+        }),
+      );
+    });
+    expect(mockGetProjectPericopeSetId).toHaveBeenCalledWith(9);
+    expect(mockGetPericopeForVerse).toHaveBeenCalledWith(40, 1, 1, 12);
+  });
+
+  it('fails closed on missing project pericope set without inventing ids', async () => {
+    mockGetProjectPericopeSetId.mockResolvedValue(null);
+    mockGetDraftChapterLocalBundle.mockResolvedValue(
+      bundleFor(1001, 'Draft', {
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 2,
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useObserverDraftChapter({
+        chapterAssignmentId: 1001,
+        projectId: 9,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasAccess).toBe(true);
+      expect(result.current.draftUnits[0]?.coverage?.granularity).toBe(
+        'pericope',
+      );
+    });
+    expect(result.current.draftUnits[0]?.pericopeNumber).toBeNull();
+    expect(result.current.draftUnits[0]?.pericopeSetId).toBeNull();
+    expect(mockGetPericopeForVerse).not.toHaveBeenCalled();
+  });
+
+  it('clears enriched units on account switch and revoked observer grant', async () => {
+    mockGetProjectPericopeSetId.mockResolvedValue(12);
+    mockGetPericopeForVerse.mockResolvedValue({
+      pericopeNumber: '1.2',
+      pericopeTitle: 'Title',
+      section: null,
+      verses: [{ chapterNumber: 1, verseNumber: 1 }],
+    });
+    mockGetDraftChapterLocalBundle.mockResolvedValue(
+      bundleFor(1001, 'Draft', {
+        granularity: 'pericope',
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 2,
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({
+        chapterAssignmentId,
+        projectId,
+      }: {
+        chapterAssignmentId: number | null;
+        projectId: number | null;
+      }) => useObserverDraftChapter({ chapterAssignmentId, projectId }),
+      { initialProps: { chapterAssignmentId: 1001, projectId: 9 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.draftUnits[0]?.pericopeNumber).toBe('1.2');
+    });
+
+    mockGetActiveUserId.mockReturnValue('8');
+    mockUserSwitchEpoch = 1;
+    rerender({ chapterAssignmentId: 1001, projectId: 9 });
+
+    expect(result.current.hasAccess).toBe(false);
+    expect(result.current.draftUnits).toEqual([]);
+
+    mockGetActiveUserId.mockReturnValue('7');
+    mockUserSwitchEpoch = 2;
+    mockHasProjectObserverGrant.mockReturnValue(true);
+    rerender({ chapterAssignmentId: 1001, projectId: 9 });
+
+    await waitFor(() => {
+      expect(result.current.draftUnits[0]?.pericopeNumber).toBe('1.2');
+    });
+
+    mockHasProjectObserverGrant.mockReturnValue(false);
+    rerender({ chapterAssignmentId: 1001, projectId: 9 });
+
+    expect(result.current.hasAccess).toBe(false);
+    expect(result.current.draftUnits).toEqual([]);
+    expect(result.current.assignment).toBeNull();
   });
 });

@@ -434,6 +434,8 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
       verseNumber: 3,
       chapterNumber: 1,
       chapterAssignmentId: 1001,
+      pericopeNumber: null,
+      pericopeSetId: null,
     });
     expect(screen.getByLabelText(/selected/i)).toBeTruthy();
 
@@ -668,6 +670,8 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
       verseNumber: 3,
       chapterNumber: 1,
       chapterAssignmentId: 1001,
+      pericopeNumber: null,
+      pericopeSetId: null,
     });
   });
 
@@ -719,6 +723,80 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
       expect(mockPlaybackLoad).not.toHaveBeenCalled();
       expect(mockPlaybackResume).not.toHaveBeenCalled();
       expect(screen.queryByText(/conflict/i)).toBeNull();
+    });
+  });
+
+  it('opens comments from verse/pericope row tap and from the indicator', async () => {
+    const onOpenComments = jest.fn();
+    const onSelectUnit = jest.fn();
+    view = await renderTab({
+      commentCountByBibleTextId: new Map([[101, 3]]),
+      onOpenComments,
+      onSelectUnit,
+    });
+
+    expect(
+      screen.getByTestId('observer-draft-comment-101-count'),
+    ).toHaveTextContent('3');
+
+    fireEvent.press(screen.getByTestId('observer-draft-verse-row-3'));
+    expect(onSelectUnit).toHaveBeenCalledTimes(1);
+    expect(onOpenComments).toHaveBeenCalledTimes(1);
+    expect(onOpenComments).toHaveBeenCalledWith({
+      bibleTextId: 101,
+      verseNumber: 3,
+      chapterNumber: 1,
+      chapterAssignmentId: 1001,
+      pericopeNumber: null,
+      pericopeSetId: null,
+    });
+
+    fireEvent.press(screen.getByTestId('observer-draft-comment-101-press'));
+    expect(onOpenComments).toHaveBeenCalledTimes(2);
+  });
+
+  it('sums verse + pericope comment indicator counts when unit carries pericopeNumber', async () => {
+    view = await renderTab({
+      units: [
+        unit({
+          bibleTextId: 101,
+          verseNumber: 3,
+          pericopeNumber: '1.2',
+          pericopeSetId: 3,
+        }),
+      ],
+      commentCountByBibleTextId: new Map([[101, 9]]),
+      commentCountByPericopeNumber: new Map([['1.2', 2]]),
+    });
+
+    expect(
+      screen.getByTestId('observer-draft-comment-101-count'),
+    ).toHaveTextContent('11');
+  });
+
+  it('opens comments with enriched pericope anchor fields when present', async () => {
+    const onOpenComments = jest.fn();
+    view = await renderTab({
+      units: [
+        unit({
+          bibleTextId: 101,
+          verseNumber: 3,
+          pericopeNumber: '1.2',
+          pericopeSetId: 12,
+        }),
+      ],
+      commentCountByPericopeNumber: new Map([['1.2', 2]]),
+      onOpenComments,
+    });
+
+    fireEvent.press(screen.getByTestId('observer-draft-comment-101-press'));
+    expect(onOpenComments).toHaveBeenCalledWith({
+      bibleTextId: 101,
+      verseNumber: 3,
+      chapterNumber: 1,
+      chapterAssignmentId: 1001,
+      pericopeNumber: '1.2',
+      pericopeSetId: 12,
     });
   });
 });

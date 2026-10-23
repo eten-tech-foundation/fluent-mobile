@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { render, screen } from '@testing-library/react-native';
 import { DraftingHeader } from './DraftingHeader';
 
@@ -25,6 +26,23 @@ describe('DraftingHeader', () => {
     );
 
     expect(screen.getByText('Genesis 1')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Online · all synced. Open Sync page.'),
+    ).toBeTruthy();
+  });
+
+  it('renders optional rightAccessory before sync', () => {
+    render(
+      <DraftingHeader
+        title="Genesis 1"
+        onBack={jest.fn()}
+        syncStatus="online_synced"
+        onSyncPress={jest.fn()}
+        rightAccessory={<Text testID="header-accessory">Comments</Text>}
+      />,
+    );
+
+    expect(screen.getByTestId('header-accessory')).toBeTruthy();
     expect(
       screen.getByLabelText('Online · all synced. Open Sync page.'),
     ).toBeTruthy();

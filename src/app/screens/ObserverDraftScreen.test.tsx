@@ -119,8 +119,62 @@ jest.mock('../../db/queries', () => ({
 
 jest.mock('../../services/storage', () => ({
   getActiveUserId: () => mockGetActiveUserId(),
+  getUserIdSync: () => mockGetActiveUserId(),
   getKnownUserIds: () => mockGetKnownUserIds(),
 }));
+
+const mockOpenForVerse = jest.fn();
+const mockCommentsSurface = {
+  drawerVisible: false,
+  comments: [],
+  loading: false,
+  canCompose: false,
+  canReact: false,
+  isRecording: false,
+  recordedAudioUri: null,
+  playingCommentId: null,
+  chapterCommentCount: 2,
+  commentCountByBibleTextId: new Map([[501, 2]]),
+  commentCountByPericopeNumber: new Map(),
+  composerText: '',
+  composerBodyEmoji: null,
+  openForAnchor: jest.fn(),
+  openForVerse: mockOpenForVerse,
+  openForPericope: jest.fn(),
+  openChapter: jest.fn(),
+  dismiss: jest.fn(),
+  onRecordStart: jest.fn(),
+  onRecordStop: jest.fn(),
+  onClearRecordedAudio: jest.fn(),
+  onComposerTextChange: jest.fn(),
+  onComposerBodyEmojiChange: jest.fn(),
+  onSend: jest.fn(async () => false),
+  onReaction: jest.fn(),
+  onPlayPauseCommentAudio: jest.fn(),
+  onReplyRootChange: jest.fn(),
+  refresh: jest.fn(),
+};
+
+const mockUseDraftCommentsSurface = jest.fn(
+  (_options?: unknown) => mockCommentsSurface,
+);
+
+jest.mock('../../hooks/useDraftCommentsSurface', () => ({
+  useDraftCommentsSurface: (options: unknown) =>
+    mockUseDraftCommentsSurface(options),
+}));
+
+jest.mock('../../components/comments/DraftCommentsSurface', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  return {
+    DraftCommentsDrawerHost: (props: { testID?: string }) =>
+      MockReact.createElement(View, {
+        testID: props.testID ?? 'draft-comments-drawer',
+      }),
+    DraftCommentsEntryButton: () => null,
+  };
+});
 
 jest.mock('../../services/userOrgGrants', () => ({
   hasProjectObserverGrant: (userId: string, projectId: number) =>
@@ -179,7 +233,7 @@ jest.mock('../tabs/BibleTab', () => {
 
 jest.mock('../tabs/ObserverDraftTab', () => {
   const MockReact = require('react');
-  const { View, Text } = require('react-native');
+  const { Pressable, View, Text } = require('react-native');
   const {
     formatCanonicalObserverDraftLabel,
   } = require('../tabs/observerDraftCoverageLabel');
@@ -200,6 +254,8 @@ jest.mock('../tabs/ObserverDraftTab', () => {
       }>;
       unresolvedConflictPlaybackPolicy: string;
       hasAccess: boolean;
+      commentCountByBibleTextId?: ReadonlyMap<number, number>;
+      onOpenComments?: (anchor: { bibleTextId: number }) => void;
     }) =>
       MockReact.createElement(
         View,
@@ -207,6 +263,13 @@ jest.mock('../tabs/ObserverDraftTab', () => {
           testID: 'observer-draft-tab',
           accessibilityLabel: `policy:${props.unresolvedConflictPlaybackPolicy}`,
         },
+        MockReact.createElement(
+          Text,
+          {
+            testID: 'observer-draft-comment-count-501',
+          },
+          String(props.commentCountByBibleTextId?.get(501) ?? 'none'),
+        ),
         props.hasAccess
           ? props.units.map(unit =>
               MockReact.createElement(
@@ -232,6 +295,17 @@ jest.mock('../tabs/ObserverDraftTab', () => {
                     unit.verseNumber,
                     unit.coverage,
                   ),
+                ),
+                MockReact.createElement(
+                  Pressable,
+                  {
+                    testID: `mock-open-comments-${unit.bibleTextId}`,
+                    onPress: () =>
+                      props.onOpenComments?.({
+                        bibleTextId: unit.bibleTextId,
+                      }),
+                  },
+                  MockReact.createElement(Text, null, 'Open comments'),
                 ),
               ),
             )
@@ -585,5 +659,59 @@ describe('ObserverDraftScreen', () => {
       expect(screen.getByTestId('observer-draft-no-access')).toBeTruthy();
     });
     expect(mockGetDraftChapterLocalBundle).not.toHaveBeenCalled();
+  });
+
+  it('keeps Bible tab free of comment affordances', async () => {
+    renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bible-tab')).toBeTruthy();
+      expect(screen.getByTestId('observer-draft-bible-pane')).toBeTruthy();
+    });
+    // Bible pane hosts only BibleTab — no comment entry / indicator chrome.
+    expect(screen.getByTestId('bible-tab')).toBeTruthy();
+    expect(screen.queryByLabelText('Open comments')).toBeNull();
+    expect(mockOpenForVerse).not.toHaveBeenCalled();
+    expect(mockUseDraftCommentsSurface).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: false,
+        canCompose: false,
+        canReact: false,
+      }),
+    );
+  });
+
+  it('wires read-only draft comments counts, open handler, and drawer host', async () => {
+    renderScreen();
+
+    await waitFor(() => {
+      expect(mockUseDraftCommentsSurface).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canCompose: false,
+          canReact: false,
+          chapterAssignmentId: 1001,
+        }),
+      );
+      expect(screen.getByTestId('observer-draft-tab-draft')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('observer-draft-tab-draft'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('observer-draft-tab')).toBeTruthy();
+      expect(screen.getByTestId('observer-draft-comments-drawer')).toBeTruthy();
+      expect(mockUseDraftCommentsSurface).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enabled: true,
+          canCompose: false,
+          canReact: false,
+        }),
+      );
+    });
+    expect(
+      screen.getByTestId('observer-draft-comment-count-501'),
+    ).toHaveTextContent('2');
+
+    fireEvent.press(screen.getByTestId('mock-open-comments-501'));
+    expect(mockOpenForVerse).toHaveBeenCalledWith(501);
   });
 });
