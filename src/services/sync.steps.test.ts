@@ -91,6 +91,11 @@ jest.mock('./api', () => ({
   },
 }));
 
+jest.mock('./userOrgGrants', () => ({
+  persistOrgGrantsFromUserResponse: jest.fn(),
+  refreshUserOrgGrants: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('./keychain', () => ({
   clearCredentials: jest.fn().mockResolvedValue(undefined),
   getCredentials: jest.fn(),

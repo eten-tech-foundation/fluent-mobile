@@ -42,6 +42,10 @@ import {
   syncPendingChapterClaims,
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
+import {
+  persistOrgGrantsFromUserResponse,
+  refreshUserOrgGrants,
+} from './userOrgGrants';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import {
   flattenApiPericopeSetGroups,
@@ -288,6 +292,7 @@ export async function syncUser(email?: string, preloadedUser?: ApiUser) {
       } else {
         registerKnownUser(userIdStr, userEmail);
       }
+      persistOrgGrantsFromUserResponse(userIdStr, user);
 
       const existingCreds = await getCredentials(userIdStr);
       if (existingCreds?.token) {
@@ -1467,6 +1472,7 @@ export async function syncAllUsers(): Promise<void> {
             : undefined;
 
           try {
+            await refreshUserOrgGrants(userId, token);
             await syncProjects(userIdNum, token);
             await syncMilestones(userIdNum, token);
             const { didFullSync, partialSkipWarning } =
@@ -1584,6 +1590,7 @@ export async function syncAllData(
       try {
         let userId: number;
         let sessionToken: string | undefined;
+        let grantsRefreshPromise: Promise<void> | undefined;
         if (isIncremental) {
           const existingUserIdStr = getUserIdSync();
           if (!existingUserIdStr) throw new Error('No user ID found');
@@ -1595,6 +1602,12 @@ export async function syncAllData(
             throw new AuthError('No session token. Please sign in again.');
           }
           sessionToken = creds.token;
+          // Warm Sync Now: do not await grants before claims∥master (#771).
+          // Kick off refresh here; awaited alongside claims below.
+          grantsRefreshPromise = refreshUserOrgGrants(
+            existingUserIdStr,
+            sessionToken,
+          );
         } else {
           const user = await syncUser(email, preloadedUser);
           userId = user.id;
@@ -1621,8 +1634,14 @@ export async function syncAllData(
 
         if (isIncremental) {
           // Warm Sync Now: claims overlap master fetch; projects wait for both.
+          // Org-grant refresh runs with claims so getUserByEmail does not
+          // serialize ahead of the #771 overlap.
           masterPromise = syncMasterData(sessionToken);
-          await syncPendingChapterClaimsForUser(userId);
+          // grantsRefreshPromise is always assigned in the isIncremental branch above.
+          await Promise.all([
+            syncPendingChapterClaimsForUser(userId),
+            grantsRefreshPromise!,
+          ]);
           await masterPromise;
           await syncPericopeSets(sessionToken);
           await syncProjects(userId, sessionToken);
@@ -1883,6 +1902,7 @@ export async function refreshChapterMetadataIfOnline(
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
       await maybeBackfillMasterDataOnRefresh(sessionToken);
+      await refreshUserOrgGrants(userIdStr, sessionToken);
       await syncProjects(userId, sessionToken);
       await syncMilestones(userId, sessionToken);
 
@@ -1910,6 +1930,9 @@ export async function refreshChapterMetadataIfOnline(
       });
     } finally {
       inFlightMetadataRefresh.delete(userId);
+      // Home useSyncStatus resamples metadata sync_error_* on this event;
+      // refresh clears (or sets) those keys without bumping refreshKey.
+      emitSyncComplete();
     }
   })();
 

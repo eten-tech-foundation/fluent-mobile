@@ -18,6 +18,11 @@ export interface SyncStatusInputs {
   hasFailedUploads?: boolean;
   /** Local SQLite is missing server assignment data (download sync needed). */
   needsDownloadSync?: boolean;
+  /**
+   * Persisted metadata sync_error_* and/or active-user reauth — Sync retry
+   * work with empty media queues (same chrome as needsDownloadSync).
+   */
+  hasSyncRetryWork?: boolean;
 }
 
 export function deriveSyncStatus({
@@ -27,6 +32,7 @@ export function deriveSyncStatus({
   isUploading = false,
   hasFailedUploads = false,
   needsDownloadSync = false,
+  hasSyncRetryWork = false,
 }: SyncStatusInputs): SyncStatus {
   if (!isOnline) {
     return hasPendingUploads || hasFailedUploads
@@ -50,7 +56,7 @@ export function deriveSyncStatus({
     return 'online_pending';
   }
 
-  if (needsDownloadSync) {
+  if (needsDownloadSync || hasSyncRetryWork) {
     return 'online_needs_sync';
   }
 
