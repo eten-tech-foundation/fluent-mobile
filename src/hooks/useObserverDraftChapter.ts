@@ -122,8 +122,13 @@ function projectVisibleState(
   live: LoadScope,
 ): Omit<ObserverDraftChapterState, 'refresh'> {
   if (!scopesMatch(stored.scope, live) || !scopeHasLiveGrant(live)) {
+    const awaitingGrantedLoad =
+      !scopesMatch(stored.scope, live) &&
+      live.chapterAssignmentId !== null &&
+      live.projectId !== null &&
+      scopeHasLiveGrant(live);
     return {
-      loading: false,
+      loading: awaitingGrantedLoad,
       hasAccess: false,
       accountId: live.accountId,
       assignment: null,

@@ -117,6 +117,20 @@ describe('useObserverDraftChapter scope projection', () => {
     );
   });
 
+  it('reports loading while stored scope lags live ids and grant', async () => {
+    mockGetDraftChapterLocalBundle.mockImplementation(
+      () => new Promise(() => {}),
+    );
+
+    const { result } = renderHook(() =>
+      useObserverDraftChapter({ chapterAssignmentId: 1001, projectId: 9 }),
+    );
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.hasAccess).toBe(false);
+    expect(result.current.draftUnits).toEqual([]);
+  });
+
   it('hides prior bundle synchronously on account switch while deferred load is in flight', async () => {
     const resolvers: Array<(value: unknown) => void> = [];
     mockGetDraftChapterLocalBundle.mockImplementation(
