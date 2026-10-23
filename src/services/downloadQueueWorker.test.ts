@@ -1,5 +1,33 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { DownloadQueueWorker } from './downloadQueueWorker';
+
+jest.mock('../utils/logger', () => {
+  const mockWorkerLog = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  };
+  return {
+    logger: {
+      create: () => mockWorkerLog,
+    },
+    mockWorkerLog,
+  };
+});
+
+const { mockWorkerLog } = jest.requireMock('../utils/logger') as {
+  mockWorkerLog: {
+    debug: jest.Mock;
+    info: jest.Mock;
+    warn: jest.Mock;
+    error: jest.Mock;
+  };
+};
+
+import {
+  DownloadQueueWorker,
+  isMissingNativeDownloadObjectError,
+} from './downloadQueueWorker';
 import type { DownloadQueueItem } from '../types/download/types';
 import { resetFileSystemMock } from '../test/mocks/expo-file-system';
 
@@ -81,6 +109,32 @@ function spyResumable(overrides: Record<string, unknown> = {}) {
       } as unknown as FileSystem.DownloadResumable),
   );
 }
+
+describe('isMissingNativeDownloadObjectError', () => {
+  it('matches Expo FS / Android IOException phrasing', () => {
+    expect(
+      isMissingNativeDownloadObjectError(
+        new Error(
+          "Call to function 'ExponentFileSystem.downloadResumablePauseAsync' has been rejected.\n→ Caused by: java.io.IOException: No download object available",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isMissingNativeDownloadObjectError('No download object available'),
+    ).toBe(true);
+  });
+
+  it('fails closed for unrelated and malformed values', () => {
+    expect(isMissingNativeDownloadObjectError(new Error('ENOSPC'))).toBe(false);
+    expect(isMissingNativeDownloadObjectError(null)).toBe(false);
+    expect(isMissingNativeDownloadObjectError(undefined)).toBe(false);
+    expect(
+      isMissingNativeDownloadObjectError({
+        message: 'No download object available',
+      }),
+    ).toBe(false);
+  });
+});
 
 describe('DownloadQueueWorker', () => {
   beforeEach(() => {
@@ -559,6 +613,73 @@ describe('DownloadQueueWorker', () => {
       );
       expect(worker.getState()).toBe('idle');
       expect(mockMarkDownloadItemFailed).not.toHaveBeenCalled();
+    });
+
+    it('does not error-log when pauseAsync on cancel reports missing native download object', async () => {
+      // #793: Expo FS pauseAsync can reject with
+      // "No download object available" while cancel still completes benignly.
+      const pauseAsync = jest
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            "Call to function 'ExponentFileSystem.downloadResumablePauseAsync' has been rejected.\n→ Caused by: java.io.IOException: No download object available",
+          ),
+        );
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
+        pauseAsync,
+      });
+      const resolver = jest
+        .fn()
+        .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
+
+      const worker = new DownloadQueueWorker(resolver);
+      void worker.start([makeItem()]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      await worker.cancel();
+
+      expect(pauseAsync).toHaveBeenCalled();
+      expect(mockMarkDownloadItemCancelled).toHaveBeenCalledWith(
+        'item-1',
+        undefined,
+      );
+      expect(worker.getState()).toBe('idle');
+      expect(mockWorkerLog.error).not.toHaveBeenCalled();
+      expect(mockWorkerLog.info).toHaveBeenCalledWith(
+        expect.stringMatching(/native download object/i),
+        expect.objectContaining({ itemId: 'item-1' }),
+      );
+    });
+
+    it('still error-logs genuine pauseAsync failures during cancel', async () => {
+      const pauseAsync = jest
+        .fn()
+        .mockRejectedValue(new Error('ENOSPC: no space left on device'));
+      spyResumable({
+        downloadAsync: jest.fn().mockReturnValue(new Promise(() => {})),
+        pauseAsync,
+      });
+      const resolver = jest
+        .fn()
+        .mockResolvedValue({ url: 'https://example.com/x.mp3', ext: 'mp3' });
+
+      const worker = new DownloadQueueWorker(resolver);
+      void worker.start([makeItem()]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      await worker.cancel();
+
+      expect(mockMarkDownloadItemCancelled).toHaveBeenCalledWith(
+        'item-1',
+        undefined,
+      );
+      expect(mockWorkerLog.error).toHaveBeenCalledWith(
+        'Failed to pause on cancel',
+        expect.objectContaining({ itemId: 'item-1' }),
+      );
     });
 
     it('cancel after pause reuses saved pause state without calling pauseAsync again', async () => {

@@ -42,7 +42,6 @@ import {
   syncPendingChapterClaims,
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
-import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
 import {
   persistOrgGrantsFromUserResponse,
   refreshUserOrgGrants,
@@ -1355,7 +1354,6 @@ export async function syncAllUsers(): Promise<void> {
 
           try {
             await refreshUserOrgGrants(userId, token);
-            await syncDisplayModeSettingsForUser(userId, token);
             await syncProjects(userIdNum, token);
             await syncMilestones(userIdNum, token);
             const { didFullSync, partialSkipWarning } =
@@ -1515,7 +1513,6 @@ export async function syncAllData(
           await syncPendingChapterClaimsForUser(userId);
           await masterPromise;
           await syncPericopeSets(sessionToken);
-          await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
           await syncProjects(userId, sessionToken);
           await syncMilestones(userId, sessionToken);
 
@@ -1536,7 +1533,6 @@ export async function syncAllData(
           // await the full world catalogue before Home unblocks.
           await syncPendingChapterClaimsForUser(userId);
           await syncPericopeSets(sessionToken);
-          await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
           await syncProjects(userId, sessionToken, { seedFkParents: true });
           await syncMilestones(userId, sessionToken);
 
@@ -1585,7 +1581,6 @@ export async function syncAllData(
           // after Tier 1 so Home is not blocked on world languages/books/bibles.
           await syncPendingChapterClaimsForUser(userId);
           await syncPericopeSets(sessionToken);
-          await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
           await syncProjects(userId, sessionToken, { seedFkParents: true });
           await syncMilestones(userId, sessionToken);
 
