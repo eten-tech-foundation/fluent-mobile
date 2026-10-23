@@ -112,6 +112,8 @@ describe('usePassage', () => {
       })),
       downloaded: true,
       recordedStatus: 'partial',
+      assignment: expect.objectContaining({ id: 5, chapterNumber: 14 }),
+      chapterVerseCount: 4,
       takes: [
         {
           id: 'a',

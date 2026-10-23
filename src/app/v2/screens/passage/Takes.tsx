@@ -7,8 +7,11 @@ import { formatLastActivity } from '../../../../utils/formatLastActivity';
 import type { Ready } from './steps';
 
 /** Like a music app's "Updated 3d ago": how many takes, and when. */
-export function takesLine(passage: Ready) {
-  const { takes, recordedStatus } = passage;
+export function takesLine(
+  passage: Ready,
+  takes: PassageTake[] = passage.takes,
+) {
+  const { recordedStatus } = passage;
   if (takes.length === 0) {
     if (recordedStatus === 'recorded') return 'Recorded verse by verse';
     if (recordedStatus === 'partial') return 'Partly recorded';

@@ -1,47 +1,143 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { HardwarePanel } from '../../../../components/ui/HardwarePanel';
 import {
   EjectFill,
+  PauseFill,
   PlayFill,
   RecordFill,
   SkipBackFill,
   SkipForwardFill,
+  StopFill,
 } from '../../../../components/ui/icons';
 import { Key } from '../../../../components/ui/Key';
+import { useTheme } from '../../../../theme/useTheme';
+import type { NextIconProps } from '../../../../components/ui/icons';
+
+/** Figma's Record key: the dot is red at rest and while recording. */
+function RecordDot({ size }: NextIconProps) {
+  const theme = useTheme();
+  return <RecordFill color={theme.roles.accentRecord} size={size} />;
+}
+
+/** How long one breath of the live Stop key takes, in and out (ms). */
+const BREATH_MS = 900;
+const BREATH_LOW = 0.45;
 
 /**
- * The player's Hardware panel; the player chrome puts it in Hardware. Until playback and recording are wired, the
- * keys that would act open Legacy drafting at this passage.
+ * Red Stop that breathes while a take records, a calm "live" signal.
+ * Visual only: haptics stay silent for the whole take.
+ */
+function StopRed({ size }: NextIconProps) {
+  const theme = useTheme();
+  const reduceMotion = useReducedMotion();
+  const breath = useSharedValue(1);
+  useEffect(() => {
+    if (reduceMotion) return;
+    breath.value = withRepeat(
+      withSequence(
+        withTiming(BREATH_LOW, { duration: BREATH_MS }),
+        withTiming(1, { duration: BREATH_MS }),
+      ),
+      -1,
+    );
+    return () => cancelAnimation(breath);
+  }, [reduceMotion, breath]);
+  const style = useAnimatedStyle(() => ({ opacity: breath.value }));
+  return (
+    <Animated.View style={style}>
+      <StopFill color={theme.roles.accentRecord} size={size} />
+    </Animated.View>
+  );
+}
+
+export interface RecordKeys {
+  recording: boolean;
+  /** A take recovered after a crash: Record resumes it, the next key saves it. */
+  recovered: boolean;
+  /** Can't record here right now; the footer says why. */
+  recordDisabled: boolean;
+  onRecord: () => void;
+  onSave: () => void;
+  playing: boolean;
+  /** Nothing to play yet, or a take is being captured. */
+  playDisabled: boolean;
+  onPlay: () => void;
+}
+
+/**
+ * The player's Hardware panel; the player chrome puts it in Hardware. Record mode captures real takes through the
+ * shared record session; Listen mode's keys open Legacy drafting until
+ * playback is wired.
  */
 export function PlayerKeys({
   recordMode,
   onRecordModeChange,
+  modeLocked,
+  record,
   onOpenDrafting,
 }: {
   recordMode: boolean;
   onRecordModeChange: (record: boolean) => void;
+  /** Locked for the whole take. */
+  modeLocked: boolean;
+  record: RecordKeys;
   onOpenDrafting: () => void;
 }) {
   return (
     <HardwarePanel
       recordMode={recordMode}
       onRecordModeChange={onRecordModeChange}
+      modeLocked={modeLocked}
     >
       {recordMode ? (
         <>
           <Key
-            icon={RecordFill}
-            accessibilityLabel="Record in drafting"
-            onPress={onOpenDrafting}
+            icon={record.recording ? StopRed : RecordDot}
+            accessibilityLabel={
+              record.recording
+                ? 'Stop recording'
+                : record.recovered
+                ? 'Resume take'
+                : 'Record'
+            }
+            announceLatched={false}
+            active={record.recording}
+            disabled={record.recordDisabled}
+            onPress={record.onRecord}
             style={styles.key}
+            testID="passage-key-record"
           />
-          <Key
-            icon={PlayFill}
-            accessibilityLabel="Play takes in drafting"
-            onPress={onOpenDrafting}
-            style={styles.key}
-          />
+          {record.recovered ? (
+            <Key
+              icon={StopFill}
+              accessibilityLabel="Stop and save take"
+              onPress={record.onSave}
+              style={styles.key}
+              testID="passage-key-save"
+            />
+          ) : (
+            <Key
+              icon={record.playing ? PauseFill : PlayFill}
+              accessibilityLabel={record.playing ? 'Pause take' : 'Play take'}
+              announceLatched={false}
+              active={record.playing}
+              disabled={record.playDisabled}
+              onPress={record.onPlay}
+              style={styles.key}
+              testID="passage-key-play"
+            />
+          )}
+          {/* What Eject does is open (Q3 in open-questions.md). */}
           <Key
             icon={EjectFill}
             accessibilityLabel="Eject"
