@@ -5,6 +5,7 @@ import {
 } from '../db/downloadQueueRepository';
 import { deleteDownloadResourceFile } from './downloadStorage';
 import {
+  draftDownloadManifestExists,
   readDraftDownloadManifest,
   writeDraftDownloadPurgeTombstone,
   type DraftDownloadManifest,
@@ -125,14 +126,29 @@ function ownedResourceIds(manifest: DraftDownloadManifest): Set<string> | null {
 export async function maybePurgeDraftDownloadsAfterPersistedStageChange(
   input: PersistedStageChangePurgeInput,
 ): Promise<PurgeDraftDownloadsResult | null> {
-  if (!isStrictlyForwardStageExit(input.fromStatus, input.toStatus)) {
-    return null;
-  }
-  const leftStage = normalizeStatus(input.fromStatus);
+  const forward = isStrictlyForwardStageExit(input.fromStatus, input.toStatus);
+  const leftStage = forward
+    ? normalizeStatus(input.fromStatus)
+    : normalizeStatus(input.fromStatus) ?? normalizeStatus(input.toStatus);
   const role = roleForStageExit(leftStage);
   if (!role || leftStage === null) {
     return null;
   }
+
+  if (!forward) {
+    // Incomplete prior purge: tombstone still lists units → retry deletes even
+    // when from === to (repository writers only enter through this guard).
+    const existing = await readDraftDownloadManifest({
+      projectId: input.projectId,
+      userId: input.userId,
+      chapterAssignmentId: input.chapterAssignmentId,
+      role,
+    });
+    if (!existing?.purged || existing.units.length === 0) {
+      return null;
+    }
+  }
+
   return purgeDraftDownloadsOnStageExit({
     projectId: input.projectId,
     userId: input.userId,
@@ -166,12 +182,24 @@ export async function purgeDraftDownloadsOnStageExit(
   };
 
   const previous = await readDraftDownloadManifest(identity);
-  // Tombstone first so async scripture/audio writers cannot recreate cache.
-  await writeDraftDownloadPurgeTombstone(identity, previous);
-
-  // Fail safe: no owned list → do not delete queue/files (retry needs preserved units).
+  // Missing file → empty-units tombstone is fine. File present but
+  // unreadable/invalid → skip tombstone so units are not wiped to [].
   if (!previous) {
-    log.info('Stage-exit purge skipped deletes; missing/invalid manifest', {
+    const filePresent = await draftDownloadManifestExists(identity);
+    if (filePresent) {
+      log.info(
+        'Stage-exit purge skipped; manifest exists but failed read/validate',
+        {
+          chapterAssignmentId: input.chapterAssignmentId,
+          userId: input.userId,
+          role: input.role,
+          leftStage: input.leftStage,
+        },
+      );
+      return { deletedCount: 0, failedIds: [] };
+    }
+    await writeDraftDownloadPurgeTombstone(identity, null);
+    log.info('Stage-exit purge skipped deletes; missing manifest', {
       chapterAssignmentId: input.chapterAssignmentId,
       userId: input.userId,
       role: input.role,
@@ -179,6 +207,9 @@ export async function purgeDraftDownloadsOnStageExit(
     });
     return { deletedCount: 0, failedIds: [] };
   }
+
+  // Tombstone first so async scripture/audio writers cannot recreate cache.
+  await writeDraftDownloadPurgeTombstone(identity, previous);
 
   const owned = ownedResourceIds(previous);
   if (owned === null) {

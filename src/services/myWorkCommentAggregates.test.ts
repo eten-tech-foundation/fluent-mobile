@@ -242,7 +242,9 @@ describe('myWorkCommentAggregates', () => {
       currentUserHasCommented: false,
     });
     mockGetActiveUserId.mockReturnValue('7');
-    mockGetCommentAggregate.mockRejectedValueOnce(new AuthError('session expired'));
+    mockGetCommentAggregate.mockRejectedValueOnce(
+      new AuthError('session expired'),
+    );
 
     await refreshMyWorkCommentAggregates({
       userId: '7',
@@ -252,7 +254,9 @@ describe('myWorkCommentAggregates', () => {
 
     expect(mockSetReauthRequired).toHaveBeenCalledWith('7');
     expect(mockEmitAuthReauthRequired).toHaveBeenCalledWith('7');
-    expect(getCommentAggregateCacheEntry('7', 9)).toEqual({ status: 'unknown' });
+    expect(getCommentAggregateCacheEntry('7', 9)).toEqual({
+      status: 'unknown',
+    });
   });
 
   it('does not reauth a new account when an old auth error completes after token rotation', async () => {

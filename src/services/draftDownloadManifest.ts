@@ -103,6 +103,17 @@ export async function writeDraftDownloadManifest(
  * identity mismatch, or any unit.resourceId is not the exact assignment audio
  * identity (prevents forged/foreign draft-audio ids from being consumed).
  */
+/** True when the on-disk manifest file exists (even if unreadable/invalid). */
+export async function draftDownloadManifestExists(
+  identity: DraftManifestIdentity,
+): Promise<boolean> {
+  try {
+    return await fileExists(manifestPath(identity));
+  } catch {
+    return false;
+  }
+}
+
 export async function readDraftDownloadManifest(
   identity: DraftManifestIdentity,
 ): Promise<DraftDownloadManifest | null> {

@@ -3,6 +3,7 @@ const mockDeleteItem = jest.fn();
 const mockDeleteFile = jest.fn();
 const mockMarkCancelled = jest.fn();
 const mockReadManifest = jest.fn();
+const mockManifestExists = jest.fn();
 const mockWriteTombstone = jest.fn();
 const mockDropItems = jest.fn();
 
@@ -18,6 +19,8 @@ jest.mock('./downloadStorage', () => ({
 }));
 
 jest.mock('./draftDownloadManifest', () => ({
+  draftDownloadManifestExists: (...args: unknown[]) =>
+    mockManifestExists(...args),
   readDraftDownloadManifest: (...args: unknown[]) => mockReadManifest(...args),
   writeDraftDownloadPurgeTombstone: (...args: unknown[]) =>
     mockWriteTombstone(...args),
@@ -90,6 +93,7 @@ function observerManifest(overrides: Record<string, unknown> = {}) {
 describe('purgeDraftDownloadsOnStageExit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockManifestExists.mockResolvedValue(false);
     mockReadManifest.mockImplementation(async (identity: { role: string }) => {
       if (identity.role === 'peer_check') return peerManifest();
       return null;
@@ -185,8 +189,9 @@ describe('purgeDraftDownloadsOnStageExit', () => {
     expect(result.deletedCount).toBe(2);
   });
 
-  it('fails safe on missing/corrupt own manifest: tombstone only, no deletes', async () => {
+  it('fails safe on missing own manifest: empty tombstone only, no deletes', async () => {
     mockReadManifest.mockResolvedValue(null);
+    mockManifestExists.mockResolvedValue(false);
     const result = await purgeDraftDownloadsOnStageExit({
       projectId: 1,
       userId: 7,
@@ -194,9 +199,27 @@ describe('purgeDraftDownloadsOnStageExit', () => {
       role: 'peer_check',
       leftStage: 'peer_check',
     });
-    expect(mockWriteTombstone).toHaveBeenCalled();
+    expect(mockWriteTombstone).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'peer_check' }),
+      null,
+    );
     expect(mockGetByPrefix).not.toHaveBeenCalled();
     expect(mockDropItems).not.toHaveBeenCalled();
+    expect(result).toEqual({ deletedCount: 0, failedIds: [] });
+  });
+
+  it('skips tombstone when own manifest file exists but fails read/validate', async () => {
+    mockReadManifest.mockResolvedValue(null);
+    mockManifestExists.mockResolvedValue(true);
+    const result = await purgeDraftDownloadsOnStageExit({
+      projectId: 1,
+      userId: 7,
+      chapterAssignmentId: 9,
+      role: 'peer_check',
+      leftStage: 'peer_check',
+    });
+    expect(mockWriteTombstone).not.toHaveBeenCalled();
+    expect(mockGetByPrefix).not.toHaveBeenCalled();
     expect(result).toEqual({ deletedCount: 0, failedIds: [] });
   });
 
@@ -669,4 +692,23 @@ describe('persisted-stage purge gating', () => {
       expect(mockWriteTombstone).not.toHaveBeenCalled();
     },
   );
+
+  it('retries purge when same-stage write finds purged manifest still listing units', async () => {
+    mockReadManifest.mockImplementation(async (identity: { role: string }) => {
+      if (identity.role === 'peer_check') {
+        return peerManifest({ purged: true, purgeGeneration: 1 });
+      }
+      return null;
+    });
+    const result = await maybePurgeDraftDownloadsAfterPersistedStageChange({
+      projectId: 1,
+      userId: 7,
+      chapterAssignmentId: 9,
+      fromStatus: 'peer_check',
+      toStatus: 'peer_check',
+    });
+    expect(result).not.toBeNull();
+    expect(mockWriteTombstone).toHaveBeenCalled();
+    expect(mockDropItems).toHaveBeenCalled();
+  });
 });
