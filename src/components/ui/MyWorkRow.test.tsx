@@ -3,6 +3,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { MyWorkChapter } from '../../types/db/types';
 import { getActiveUserId } from '../../services/storage';
 import { parseUserId } from '../../utils/parseUserId';
+import { hasProjectObserverGrant } from '../../services/userOrgGrants';
 import { MyWorkRow } from './MyWorkRow';
 
 const mockStart = jest.fn();
@@ -273,7 +274,8 @@ describe('MyWorkRow', () => {
     expect(queryByTestId('my-work-draft-download-2')).toBeNull();
   });
 
-  it('preserves request ids while eligible and nulls after live eligibility loss', () => {
+  it('nulls download hook on review stage without observer grant', () => {
+    (hasProjectObserverGrant as jest.Mock).mockReturnValue(false);
     const { rerender, queryByTestId } = render(
       <MyWorkRow chapter={peerChapter} onPress={jest.fn()} />,
     );
