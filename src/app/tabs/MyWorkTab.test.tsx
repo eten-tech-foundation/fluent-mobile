@@ -81,6 +81,7 @@ jest.mock('../../hooks/useDraftDownload', () => ({
 const mockGetActiveUserId = jest.fn(() => '7');
 const mockParseUserId = jest.fn(() => 7);
 const mockGetObserverProjectIds = jest.fn(() => [] as number[]);
+const mockGetTranslatorProjectIds = jest.fn(() => [] as number[]);
 const mockGetObserverDraftDestination = jest.fn();
 const mockIsUserProjectMember = jest.fn(
   async (_userId: number, _projectId: number): Promise<boolean> => true,
@@ -97,12 +98,24 @@ jest.mock('../../utils/parseUserId', () => ({
 jest.mock('../../services/userOrgGrants', () => ({
   hasProjectObserverGrant: () => false,
   getObserverProjectIds: () => mockGetObserverProjectIds(),
+  // MyWorkRow → classifyMyWorkDraftDownloadRole may read Translator grants.
+  getUserOrgGrants: () => ({ status: 'unknown' as const }),
 }));
 
 jest.mock('../../db/repository', () => ({
   isUserProjectMember: (userId: number, projectId: number) =>
     mockIsUserProjectMember(userId, projectId),
 }));
+
+jest.mock('../../utils/myWorkDraftDownload', () => {
+  const actual = jest.requireActual(
+    '../../utils/myWorkDraftDownload',
+  ) as Record<string, unknown>;
+  return {
+    ...actual,
+    getTranslatorProjectIds: () => mockGetTranslatorProjectIds(),
+  };
+});
 
 jest.mock('../../navigation/observerDraft', () => ({
   getObserverDraftDestination: (args: {
@@ -246,6 +259,7 @@ describe('MyWorkTab', () => {
     mockGetActiveUserId.mockReturnValue('7');
     mockParseUserId.mockReturnValue(7);
     mockGetObserverProjectIds.mockReturnValue([]);
+    mockGetTranslatorProjectIds.mockReturnValue([]);
     mockGetObserverDraftDestination.mockResolvedValue(observerHref);
     mockIsUserProjectMember.mockResolvedValue(true);
   });
@@ -487,6 +501,59 @@ describe('MyWorkTab', () => {
     await waitFor(() => {
       expect(mockIsUserProjectMember).toHaveBeenCalledTimes(2);
     });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('routes open Peer Check rows to verse-detail when Translator grant is live', async () => {
+    mockGetTranslatorProjectIds.mockReturnValue([3]);
+    useMyWorkChapters.mockReturnValue({
+      chapters: [
+        {
+          ...peerChapter,
+          peerCheckerId: null,
+          listAccess: 'open_peer',
+        },
+      ],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-12'));
+
+    expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/(app)/(stack)/verse-detail',
+      params: {
+        chapterId: '12',
+        chapterName: 'Luke 5',
+        projectName: 'Gospel of Luke',
+        language: 'Baka',
+      },
+    });
+  });
+
+  it('blocks open Peer Check navigation when Translator grant is revoked before press', async () => {
+    mockGetTranslatorProjectIds.mockReturnValue([]);
+    useMyWorkChapters.mockReturnValue({
+      chapters: [
+        {
+          ...peerChapter,
+          peerCheckerId: null,
+          listAccess: 'open_peer',
+        },
+      ],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-12'));
+
     expect(mockPush).not.toHaveBeenCalled();
   });
 

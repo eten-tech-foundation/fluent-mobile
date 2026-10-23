@@ -2,6 +2,7 @@ import {
   buildMyWorkChapterFilter,
   classifyMyWorkListAccess,
   getMyWorkChapterQueryParams,
+  isEligibleOpenPeerCheckNonDrafter,
   MY_WORK_CHAPTER_STATUSES,
   MY_WORK_OBSERVER_REVIEW_STATUSES,
   normalizeMyWorkGrantProjectIds,
@@ -18,12 +19,13 @@ describe('myWorkChapterFilter', () => {
     ]);
   });
 
-  it('keeps assigned-only SQL when grant project IDs are empty/unknown', () => {
-    const filter = buildMyWorkChapterFilter(7, []);
+  it('keeps assigned-only SQL when grant and translator project IDs are empty/unknown', () => {
+    const filter = buildMyWorkChapterFilter(7, [], []);
     expect(filter.whereSql).toContain('ca.assigned_user_id = ?');
     expect(filter.whereSql).toContain('ca.peer_checker_id = ?');
     expect(filter.whereSql).not.toContain('user_projects');
     expect(filter.whereSql).not.toContain('community_review');
+    expect(filter.whereSql).not.toContain('peer_checker_id IS NULL');
     expect(filter.params).toEqual(getMyWorkChapterQueryParams(7));
   });
 
@@ -52,7 +54,72 @@ describe('myWorkChapterFilter', () => {
     ]);
   });
 
-  it('classifies assigned peer/draft rows and grant-verified Observer rows only', () => {
+  it('adds open Peer Check branch with translator project IDs and membership', () => {
+    const filter = buildMyWorkChapterFilter(7, [], [3, 3, -1, 9]);
+
+    expect(filter.whereSql).toContain('ca.peer_checker_id IS NULL');
+    expect(filter.whereSql).toContain('ca.assigned_user_id IS NOT NULL');
+    expect(filter.whereSql).toContain('ca.assigned_user_id != ?');
+    expect(filter.whereSql).toContain('pu.project_id IN (?, ?)');
+    expect(filter.whereSql).toContain('FROM user_projects up');
+    expect(filter.params).toEqual([
+      MY_WORK_CHAPTER_STATUSES.NOT_STARTED,
+      MY_WORK_CHAPTER_STATUSES.DRAFT,
+      7,
+      MY_WORK_CHAPTER_STATUSES.PEER_CHECK,
+      7,
+      MY_WORK_CHAPTER_STATUSES.PEER_CHECK,
+      7,
+      3,
+      9,
+      7,
+    ]);
+  });
+
+  it('mirrors open Peer Check non-drafter semantics without stage imports', () => {
+    expect(
+      isEligibleOpenPeerCheckNonDrafter(
+        {
+          status: 'peer_check',
+          assignedUserId: 9,
+          peerCheckerId: null,
+        },
+        7,
+      ),
+    ).toBe(true);
+    expect(
+      isEligibleOpenPeerCheckNonDrafter(
+        {
+          status: 'peer_check',
+          assignedUserId: 7,
+          peerCheckerId: undefined,
+        },
+        7,
+      ),
+    ).toBe(false);
+    expect(
+      isEligibleOpenPeerCheckNonDrafter(
+        {
+          status: 'peer_check',
+          assignedUserId: 9,
+          peerCheckerId: 20,
+        },
+        7,
+      ),
+    ).toBe(false);
+    expect(
+      isEligibleOpenPeerCheckNonDrafter(
+        {
+          status: 'peer_check',
+          assignedUserId: undefined,
+          peerCheckerId: null,
+        },
+        7,
+      ),
+    ).toBe(false);
+  });
+
+  it('classifies assigned, open_peer, and grant-verified Observer rows', () => {
     expect(
       classifyMyWorkListAccess({
         userId: 7,
@@ -72,8 +139,57 @@ describe('myWorkChapterFilter', () => {
         peerCheckerId: 7,
         projectId: 3,
         grantProjectIds: [3],
+        translatorProjectIds: [3],
       }),
     ).toBe('assigned');
+
+    expect(
+      classifyMyWorkListAccess({
+        userId: 7,
+        assignmentStatus: 'peer_check',
+        assignedUserId: 9,
+        peerCheckerId: null,
+        projectId: 3,
+        grantProjectIds: [],
+        translatorProjectIds: [3],
+      }),
+    ).toBe('open_peer');
+
+    expect(
+      classifyMyWorkListAccess({
+        userId: 7,
+        assignmentStatus: 'peer_check',
+        assignedUserId: 7,
+        peerCheckerId: null,
+        projectId: 3,
+        grantProjectIds: [],
+        translatorProjectIds: [3],
+      }),
+    ).toBeNull();
+
+    expect(
+      classifyMyWorkListAccess({
+        userId: 7,
+        assignmentStatus: 'peer_check',
+        assignedUserId: 9,
+        peerCheckerId: null,
+        projectId: 3,
+        grantProjectIds: [],
+        translatorProjectIds: [],
+      }),
+    ).toBeNull();
+
+    expect(
+      classifyMyWorkListAccess({
+        userId: 7,
+        assignmentStatus: 'peer_check',
+        assignedUserId: 9,
+        peerCheckerId: null,
+        projectId: 3,
+        grantProjectIds: [3],
+        translatorProjectIds: [],
+      }),
+    ).toBeNull();
 
     expect(
       classifyMyWorkListAccess({
