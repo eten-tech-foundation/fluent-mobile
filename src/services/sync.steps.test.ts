@@ -11,7 +11,6 @@ import {
   syncPendingChapterClaimsForUser,
   syncProjects,
 } from './sync';
-import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
 import { getCredentials } from './keychain';
 import {
   clearSyncError,
@@ -90,10 +89,6 @@ jest.mock('./api', () => ({
       updatedAt: null,
     }),
   },
-}));
-
-jest.mock('./displayModeSettingsSync', () => ({
-  syncDisplayModeSettingsForUser: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('./keychain', () => ({
@@ -1075,7 +1070,7 @@ describe('sync step orchestration', () => {
   });
 });
 
-describe('syncAllUsers displayMode wiring', () => {
+describe('syncAllUsers displayMode device-local (#777)', () => {
   const { userHasLocalProjects, userHasLocalChapterAssignments } =
     jest.requireMock('../db/repository') as {
       userHasLocalProjects: jest.Mock;
@@ -1124,20 +1119,20 @@ describe('syncAllUsers displayMode wiring', () => {
     __resetFullSyncSingleFlightForTests();
   });
 
-  it('invokes syncDisplayModeSettingsForUser with each user id and bearer', async () => {
+  it('does not call /self/settings when remote advertises displayMode capability', async () => {
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: { displayMode: 'verse', suppressTooltip: true },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
 
     await syncAllUsers();
 
-    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
-      '1',
-      'user-1-token',
-    );
-    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
-      '2',
-      'user-2-token',
-    );
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
+    expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
   });
 });

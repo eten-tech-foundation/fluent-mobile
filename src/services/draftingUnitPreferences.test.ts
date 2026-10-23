@@ -64,6 +64,24 @@ describe('draftingUnitPreference', () => {
       mockStore.set('user1:drafting_unit', 'not-a-real-unit');
       expect(getDraftingUnit('user1')).toBe('verse');
     });
+
+    it('reads clean seeded per-account KV without dirty (#777)', () => {
+      // Existing device-local selection: drafting_unit only, no dirty/pending.
+      mockStore.set('userA:drafting_unit', 'pericope');
+      mockStore.set('userB:drafting_unit', 'verse');
+
+      expect(getDraftingUnit('userA')).toBe('pericope');
+      expect(getDraftingUnit('userB')).toBe('verse');
+      expect(isDraftingUnitDirty('userA')).toBe(false);
+      expect(isDraftingUnitDirty('userB')).toBe(false);
+
+      resetDraftingUnitPreferenceRuntimeForTests();
+
+      expect(getDraftingUnit('userA')).toBe('pericope');
+      expect(getDraftingUnit('userB')).toBe('verse');
+      expect(mockStore.get('userA:drafting_unit')).toBe('pericope');
+      expect(mockStore.get('userB:drafting_unit')).toBe('verse');
+    });
   });
 
   describe('setDraftingUnit', () => {
