@@ -51,6 +51,19 @@ pnpm-lock.yaml
 .maestro/**/*.png
 .maestro/**/*.mp4
 
+# qa717 live-log reader local artifacts (raw dumps, sanitized receipts, cursor)
+# Do not commit restricted raw logs or local checkpoint state/receipts.
+scripts/qa717-easy-ui-batch/**/raw-logcat.txt
+scripts/qa717-easy-ui-batch/**/raw-*.txt
+scripts/qa717-easy-ui-batch/**/receipts.jsonl
+scripts/qa717-easy-ui-batch/**/sanitized-receipts.jsonl
+scripts/qa717-easy-ui-batch/**/*.receipt.jsonl
+scripts/qa717-easy-ui-batch/**/cursor.json
+scripts/qa717-easy-ui-batch/**/cursor-state.json
+scripts/qa717-easy-ui-batch/**/*.cursor.json
+scripts/qa717-easy-ui-batch/**/__pycache__/
+scripts/qa717-easy-ui-batch/**/*.py[cod]
+
 # Expo CNG — native projects are generated locally and in CI
 .expo/
 dist/
