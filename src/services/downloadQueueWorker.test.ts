@@ -150,6 +150,186 @@ describe('DownloadQueueWorker', () => {
     expect(worker.getState()).toBe('idle');
   });
 
+  it('enqueueAdditional appends while downloading and de-dupes active/queued ids', async () => {
+    let resolveFirst!: (value: { uri: string }) => void;
+    const firstPending = new Promise<{ uri: string }>(resolve => {
+      resolveFirst = resolve;
+    });
+    const createSpy = jest
+      .spyOn(FileSystem, 'createDownloadResumable')
+      .mockImplementation(
+        (_url, dest) =>
+          ({
+            downloadAsync: jest.fn().mockImplementation(async () => {
+              if (dest.includes('item-1')) {
+                await firstPending;
+              }
+              await FileSystem.writeAsStringAsync(dest, 'mock-bytes');
+              return { uri: dest };
+            }),
+            pauseAsync: jest.fn(),
+            resumeAsync: jest.fn(),
+          } as unknown as FileSystem.DownloadResumable),
+      );
+
+    const worker = new DownloadQueueWorker(async () => ({
+      url: 'https://example.com/x.mp3',
+      ext: 'mp3',
+    }));
+    const startPromise = worker.start([makeItem({ id: 'item-1' })]);
+    await flushMicrotasks();
+
+    worker.enqueueAdditional([
+      makeItem({ id: 'item-1' }),
+      makeItem({ id: 'item-2', label: 'Draft' }),
+    ]);
+    resolveFirst({ uri: 'file:///docs/downloads/1/item-1.mp3' });
+    await startPromise;
+
+    expect(createSpy).toHaveBeenCalled();
+    expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
+      'item-2',
+      expect.any(String),
+      expect.any(Number),
+    );
+  });
+
+  it('dropItems during deferred resolver cancels shifted item; re-enqueue completes once', async () => {
+    let resolveDraft!: (value: { url: string; ext: string }) => void;
+    const draftResolverPending = new Promise<{ url: string; ext: string }>(
+      resolve => {
+        resolveDraft = resolve;
+      },
+    );
+    let draftResolveCount = 0;
+    const resolver = jest
+      .fn()
+      .mockImplementation(async (item: DownloadQueueItem) => {
+        if (item.id === 'draft-resolving') {
+          draftResolveCount += 1;
+          if (draftResolveCount === 1) {
+            return draftResolverPending;
+          }
+          return { url: 'https://example.com/draft-retry.mp3', ext: 'mp3' };
+        }
+        return { url: 'https://example.com/pfo.mp3', ext: 'mp3' };
+      });
+    const createSpy = spyResumable();
+
+    const worker = new DownloadQueueWorker(resolver);
+    const startPromise = worker.start([
+      makeItem({ id: 'draft-resolving', label: 'Draft audio' }),
+      makeItem({ id: 'pfo-unrelated', label: 'PFO audio', tier: 2 }),
+    ]);
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(resolver).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'draft-resolving' }),
+    );
+    expect(createSpy).not.toHaveBeenCalled();
+
+    // Stage-exit purge while resolver is still pending — active is null.
+    await worker.dropItems(['draft-resolving']);
+    worker.enqueueAdditional([
+      makeItem({ id: 'draft-resolving', label: 'Draft audio' }),
+    ]);
+
+    // Stale first resolver result must not complete the dropped claim.
+    resolveDraft({ url: 'https://example.com/draft.mp3', ext: 'mp3' });
+    await startPromise;
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
+      'pfo-unrelated',
+      expect.any(String),
+      expect.any(Number),
+    );
+    const completedIds = mockMarkDownloadItemCompleted.mock.calls.map(
+      call => call[0],
+    );
+    expect(completedIds.filter(id => id === 'draft-resolving')).toHaveLength(1);
+    expect(completedIds).toContain('pfo-unrelated');
+    // First (cancelled) resolver must not be the completion path; second run completes.
+    expect(draftResolveCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('enqueueAdditional de-dupes the resolving (pre-active) item id', async () => {
+    let resolveDraft!: (value: { url: string; ext: string }) => void;
+    const draftResolverPending = new Promise<{ url: string; ext: string }>(
+      resolve => {
+        resolveDraft = resolve;
+      },
+    );
+    const resolver = jest
+      .fn()
+      .mockImplementation(async () => draftResolverPending);
+    spyResumable();
+
+    const worker = new DownloadQueueWorker(resolver);
+    const startPromise = worker.start([makeItem({ id: 'draft-resolving' })]);
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    worker.enqueueAdditional([
+      makeItem({ id: 'draft-resolving' }),
+      makeItem({ id: 'item-extra' }),
+    ]);
+
+    resolveDraft({ url: 'https://example.com/x.mp3', ext: 'mp3' });
+    await startPromise;
+
+    expect(
+      resolver.mock.calls.filter(c => c[0].id === 'draft-resolving'),
+    ).toHaveLength(1);
+    expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
+      'item-extra',
+      expect.any(String),
+      expect.any(Number),
+    );
+  });
+
+  it('dropItems removes pending ids and does not clear unrelated paused state', async () => {
+    const worker = new DownloadQueueWorker(async () => ({
+      url: 'https://example.com/x.mp3',
+      ext: 'mp3',
+    }));
+    // Seed a paused session with a pending second item via private state through start+pause.
+    let resolveDownload!: (value: { uri: string }) => void;
+    const pending = new Promise<{ uri: string }>(resolve => {
+      resolveDownload = resolve;
+    });
+    jest.spyOn(FileSystem, 'createDownloadResumable').mockImplementation(
+      (_url, dest) =>
+        ({
+          downloadAsync: jest.fn().mockImplementation(async () => {
+            await pending;
+            await FileSystem.writeAsStringAsync(dest, 'mock-bytes');
+            return { uri: dest };
+          }),
+          pauseAsync: jest.fn().mockResolvedValue({
+            url: 'https://example.com/x.mp3',
+            fileUri: dest,
+            options: {},
+            resumeData: 'resume-token',
+          }),
+          resumeAsync: jest.fn(),
+        } as unknown as FileSystem.DownloadResumable),
+    );
+
+    const startPromise = worker.start([
+      makeItem({ id: 'item-1' }),
+      makeItem({ id: 'item-2' }),
+    ]);
+    await flushMicrotasks();
+    await worker.pause('user');
+    await worker.dropItems(['item-2']);
+    expect(worker.getState()).toBe('paused');
+    resolveDownload({ uri: 'file:///docs/downloads/1/item-1.mp3' });
+    await startPromise;
+  });
+
   it('processes a single item end to end and returns to idle', async () => {
     spyResumable();
     const resolver = jest
@@ -655,6 +835,41 @@ describe('DownloadQueueWorker', () => {
       'item-1',
       'file:///docs/downloads/1/item-1.mp3',
       expect.any(Number),
+    );
+  });
+
+  it('prefers a freshly resolved URL over a stale saved SAS url on resume', async () => {
+    const resumeAsync = jest.fn().mockImplementation(async () => {
+      await FileSystem.writeAsStringAsync(
+        'file:///docs/downloads/1/item-1.m4a',
+        'mock-bytes',
+      );
+      return { uri: 'file:///docs/downloads/1/item-1.m4a' };
+    });
+    const createSpy = spyResumable({
+      downloadAsync: jest.fn(),
+      resumeAsync,
+    });
+    const resolver = jest.fn().mockResolvedValue({
+      url: 'https://example.com/fresh-sas',
+      ext: 'm4a',
+    });
+    const resumeData = JSON.stringify({
+      url: 'https://example.com/expired-sas',
+      fileUri: 'file:///docs/downloads/1/item-1.m4a',
+      options: {},
+      resumeData: 'resume-token',
+    });
+
+    const worker = new DownloadQueueWorker(resolver);
+    await worker.start([makeItem({ status: 'paused', resumeData })]);
+
+    expect(createSpy).toHaveBeenCalledWith(
+      'https://example.com/fresh-sas',
+      'file:///docs/downloads/1/item-1.m4a',
+      {},
+      expect.any(Function),
+      'resume-token',
     );
   });
 

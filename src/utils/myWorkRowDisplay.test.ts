@@ -17,6 +17,14 @@ const baseChapter: MyWorkChapter = {
   lastActivityLabel: 'Jun 1, 2024',
   projectName: 'Gospel of Luke',
   targetLanguageName: 'Baka',
+  projectUnitId: 11,
+  projectId: 3,
+  bibleId: 5,
+  bookId: 42,
+  bookCode: 'LUK',
+  assignedUserId: null,
+  peerCheckerId: null,
+  listAccess: 'assigned',
 };
 
 describe('getMyWorkRowDisplay', () => {

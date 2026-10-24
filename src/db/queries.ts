@@ -10,8 +10,9 @@ import {
 } from '../utils/formatLastActivity';
 import { deriveProjectSyncState } from '../utils/projectSyncState';
 import {
-  getMyWorkChapterQueryParams,
-  MY_WORK_CHAPTER_WHERE,
+  buildMyWorkChapterFilter,
+  classifyMyWorkListAccess,
+  normalizeMyWorkGrantProjectIds,
 } from '../utils/myWorkChapterFilter';
 import { getBadgeStage, getWorkflowStage } from '../utils/workflowStage';
 import {
@@ -667,13 +668,56 @@ function mapChapterRowCore(
 function mapMyWorkChapterRow(
   row: DBTypes.MyWorkChapterRow,
   currentUserId: number,
-): DBTypes.MyWorkChapter {
+  grantProjectIds: readonly number[],
+  translatorProjectIds: readonly number[],
+): DBTypes.MyWorkChapter | null {
+  const projectUnitId = Number(row.project_unit_id);
+  const projectId = Number(row.project_id);
+  const bibleId = Number(row.bible_id);
+  const bookId = Number(row.book_id);
+  const assignedUserId =
+    row.assigned_user_id == null ? null : Number(row.assigned_user_id);
+  const peerCheckerId =
+    row.peer_checker_id == null ? null : Number(row.peer_checker_id);
+  const bookCode =
+    typeof row.book_code === 'string' ? row.book_code.trim() : '';
+  const safeProjectId = Number.isFinite(projectId) ? projectId : 0;
+  const safeAssignedUserId =
+    assignedUserId != null && Number.isFinite(assignedUserId)
+      ? assignedUserId
+      : null;
+  const safePeerCheckerId =
+    peerCheckerId != null && Number.isFinite(peerCheckerId)
+      ? peerCheckerId
+      : null;
+
+  const listAccess = classifyMyWorkListAccess({
+    userId: currentUserId,
+    assignmentStatus: row.status,
+    assignedUserId: safeAssignedUserId,
+    peerCheckerId: safePeerCheckerId,
+    projectId: safeProjectId,
+    grantProjectIds,
+    translatorProjectIds,
+  });
+  if (listAccess === null) {
+    return null;
+  }
+
   return {
     ...mapChapterRowCore(row, currentUserId),
     assignmentStatus: row.status,
     workflowStage: getBadgeStage(row.status),
     projectName: row.project_name,
     targetLanguageName: row.target_language_name,
+    projectUnitId: Number.isFinite(projectUnitId) ? projectUnitId : 0,
+    projectId: safeProjectId,
+    bibleId: Number.isFinite(bibleId) ? bibleId : 0,
+    bookId: Number.isFinite(bookId) ? bookId : 0,
+    bookCode,
+    assignedUserId: safeAssignedUserId,
+    peerCheckerId: safePeerCheckerId,
+    listAccess,
   };
 }
 
@@ -738,10 +782,29 @@ export async function getMilestoneChapters(
   }
 }
 
+export type GetMyWorkChaptersOptions = {
+  /** Project IDs with a known Project Observer grant for the active user. */
+  grantProjectIds?: readonly number[];
+  /** Project IDs with a known Project Translator grant for open Peer Check. */
+  translatorProjectIds?: readonly number[];
+};
+
 export async function getMyWorkChapters(
   userId: number,
+  options?: GetMyWorkChaptersOptions,
 ): Promise<DBTypes.MyWorkChapter[]> {
   const db = getDatabase();
+  const grantProjectIds = normalizeMyWorkGrantProjectIds(
+    options?.grantProjectIds,
+  );
+  const translatorProjectIds = normalizeMyWorkGrantProjectIds(
+    options?.translatorProjectIds,
+  );
+  const filter = buildMyWorkChapterFilter(
+    userId,
+    grantProjectIds,
+    translatorProjectIds,
+  );
   try {
     const result = await db.execute(
       `SELECT
@@ -753,6 +816,10 @@ export async function getMyWorkChapters(
         ca.submitted_time,
         ca.assigned_user_id,
         ca.peer_checker_id,
+        ca.project_unit_id,
+        ca.bible_id,
+        pu.project_id,
+        b.code AS book_code,
         b.eng_display_name AS book_name,
         p.name AS project_name,
         tl.lang_name AS target_language_name,
@@ -771,14 +838,18 @@ export async function getMyWorkChapters(
       JOIN projects p ON pu.project_id = p.id
       LEFT JOIN languages tl ON p.target_language_id = tl.id
       ${RECORDINGS_JOIN_CA}
-      WHERE ${MY_WORK_CHAPTER_WHERE}
+      WHERE ${filter.whereSql}
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      [userId, ...getMyWorkChapterQueryParams(userId)],
+      [userId, ...filter.params],
     );
 
     const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];
-    const chapters = rows.map(row => mapMyWorkChapterRow(row, userId));
+    const chapters = rows
+      .map(row =>
+        mapMyWorkChapterRow(row, userId, grantProjectIds, translatorProjectIds),
+      )
+      .filter((chapter): chapter is DBTypes.MyWorkChapter => chapter !== null);
 
     log.info('My work chapters fetched', { count: chapters.length });
     return chapters;
