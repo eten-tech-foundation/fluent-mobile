@@ -143,8 +143,11 @@ export async function enqueueDownloadItems(
         : newDownloadQueueId();
       const resourceId = rawResourceId ?? id;
 
-      // Same catalog id + same URL → keep existing row (incl. completed).
+      // Same catalog id + same URL + same payload → keep existing row (incl. completed).
       // Same id + changed URL → reset to queued so Aquifer re-uploads refetch (#446).
+      // Same id + null URL + changed serialized_content → reset so draft-text
+      // re-enqueue refreshes translated verses (stable draft-text-<assignmentId>).
+      // SQLite `IS NOT` is null-safe (both-NULL → false), unlike `!=`.
       const result = await tx.execute(
         `INSERT INTO download_queue (
            id, project_id, user_id, tier, kind, resource_name, label, source_url,
@@ -168,7 +171,10 @@ export async function enqueueDownloadItems(
            verse_start = excluded.verse_start,
            verse_end = excluded.verse_end,
            updated_at = excluded.updated_at
-         WHERE download_queue.source_url IS NOT excluded.source_url
+         WHERE (
+             download_queue.source_url IS NOT excluded.source_url
+             OR download_queue.serialized_content IS NOT excluded.serialized_content
+           )
            AND download_queue.status != 'downloading'`,
         [
           id,
