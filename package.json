@@ -9,6 +9,7 @@
     "android": "expo run:android",
     "lint": "eslint .",
     "architecture-guard": "node ./scripts/architecture-guard.mjs --ci",
+    "verify:remux-audio": "node ./scripts/verify-remux-audio.mjs",
     "api:coverage": "node ./scripts/api-coverage.mjs",
     "start": "expo start",
     "prebuild": "expo prebuild --clean --platform android",

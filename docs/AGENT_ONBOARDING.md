@@ -206,6 +206,7 @@ Keep changes **small and scoped** — avoid drive-by refactors.
 - **Colocated:** `src/**/*.test.ts(x)` — e.g. `src/utils/logger.test.ts`, `src/services/recordingSync.test.ts`.
 - **Live API test:** `fluent-api.test.ts` is **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
 - **Maestro (opt-in Android E2E):** harness + domain smokes + multi-account — see [guides/maestro.md](./guides/maestro.md). Playbook maps QA journeys → flows; residual manual listed there. Hosted runs: EAS Workflow `.eas/workflows/maestro-android.yml` (`npm run maestro:eas`). **Not** a PR/CI merge gate; does not replace Needs QA? / nightly handoff ([guides/qa-process.md](./guides/qa-process.md)).
+- **Remux audio proof (#719):** Jest mocks cannot decode remux output. Host check: `npm run verify:remux-audio` (or `node scripts/verify-remux-audio.mjs <take.m4a>`) runs ffprobe/ffmpeg against `fixtures/audio/1khz-tone.aac` or an adb-pulled remuxed take under `files/recordings/`. Missing input fails. **Not** a CI / instrumented-test job.
 - **Gap:** `src/db/` has partial unit coverage — prefer adding tests when changing queries/repository.
 
 When adding features: mock `op-sqlite`, navigation, and sync in screen tests following existing patterns. Reset shared Expo mocks in `beforeEach` when mutating secure-store/file-system state.
@@ -220,6 +221,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | New table / column | `schema.ts` → prefer versioned migrations (`#110`) → repository inserts → queries → types |
 | Manual re-sync | Sync page / header sync → `useSync` / `syncAllUsers` |
 | PR workflow | `/start-issue` (full loop), `/create-pr-branch`, `/generate-pr-description`, `/create-pr` (alias `/open-pr`) — canonical: `.claude/commands/` |
+| Assert remuxed take is non-silent | `npm run verify:remux-audio -- /path/to/take.m4a`. See `scripts/verify-remux-audio.mjs` (adb pull `files/recordings/` via `run-as com.eten.fluent`) |
 
 ## Risk areas (change carefully)
 
