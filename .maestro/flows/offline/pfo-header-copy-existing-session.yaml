@@ -1,0 +1,66 @@
+# Prepare for Offline: exact header and instruction copy on an existing session.
+# No project selection, checkbox, Download, preference, sync or auth actions.
+# Source: PrepareForOfflineScreen.tsx INSTRUCTION + StackScreenHeader.
+#
+# Required env (fail if absent/invalid — no skip fallback):
+# - MAESTRO_FIXTURE_PROJECT_ID: digits /^[1-9][0-9]*$/ — the project row that
+#   must be listed (the signed-in account must be assigned to it).
+# Fixture-blocked: needs a signed-in account with that project row.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+  - fixture-blocked
+---
+- runScript:
+    file: ../../shared/scripts/pfo-selector-values.js
+    env:
+      MAESTRO_PFO_SELECTOR_PHASE: setup
+- assertTrue: ${typeof output.fixtureProjectId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureProjectId)}
+- assertTrue: ${typeof output.projectRowIdRe === 'string' && output.projectRowIdRe.length > 0}
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-.*'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-prepare-offline'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-prepare-offline'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+- assertVisible:
+    id: ${output.projectRowIdRe}
+- assertVisible:
+    text: '^Prepare for Offline$'
+- assertVisible:
+    text: '^Download project resources to work without a connection\.$'
+- assertVisible:
+    id: 'stack-header-back'
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- assertNotVisible:
+    id: 'login-email-input'
