@@ -42,6 +42,7 @@ pnpm-lock.yaml
 .env.*
 !.env.example
 !.env.maestro.example
+!.env.maestro.qa.example
 .envrc
 
 # Maestro E2E (local artifacts; flows under .maestro/ are committed)
