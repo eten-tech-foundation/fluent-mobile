@@ -2,21 +2,28 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { getApiBaseUrl } from '../config/apiBaseUrl';
 import type { PendingUploadChapter } from '../db/queries';
 import {
+  clearRecordingDeletion,
+  getPendingRecordingDeletions,
   getPendingRecordings,
   getLatestVersionToken,
   markRecordingAndChapterConflicted,
   markRecordingFailed,
   markRecordingUploaded,
+  raiseVerseVersionToken,
   setRecordingSyncStatus,
   updateRecordingVersionToken,
 } from '../db/repository';
-import type { PendingRecording } from '../types/db/types';
+import type {
+  PendingRecording,
+  PendingRecordingDeletion,
+} from '../types/db/types';
 import { logger } from '../utils/logger';
 import {
   isNetworkTransportError,
   UploadNetworkInterruptedError,
 } from '../utils/networkError';
 import { hasUsableRecordingRange } from '../utils/recordingRange';
+import { isApiError } from '../types/api/errors';
 import { FluentAPI } from './api';
 import { isAuthError } from './authError';
 import { authToken } from './authToken';
@@ -25,6 +32,7 @@ import { getActiveUserId, setReauthRequired } from './storage';
 import {
   blobKeyFromVerseAudioResponse,
   outcomeFromVerseAudioFailure,
+  takeIdFromVerseAudioResponse,
 } from './verseAudioContract';
 import {
   emitAuthReauthRequired,
@@ -147,26 +155,41 @@ export type UploadTokenResolution = {
  * Prefer the capture-time owner's stored token so upload attribution stays
  * stable even if another account is active (#105). Falls back to the pass token.
  */
-export async function resolveUploadTokenForRecording(
-  recording: PendingRecording,
+export async function resolveOwnerAuthToken(
+  recordedByUserId: number | null,
   fallbackToken: string,
+  context: { id: string },
 ): Promise<UploadTokenResolution> {
-  if (
-    recording.recordedByUserId === null ||
-    !Number.isFinite(recording.recordedByUserId)
-  ) {
+  if (recordedByUserId === null || !Number.isFinite(recordedByUserId)) {
     return { token: fallbackToken, userId: getActiveUserId() || null };
   }
-  const userId = String(recording.recordedByUserId);
+  const userId = String(recordedByUserId);
   const creds = await getCredentials(userId);
   if (creds?.token) {
     return { token: creds.token, userId };
   }
   log.warn('Owner credentials missing; using active pass token', {
-    recordingId: recording.id,
-    recordedByUserId: recording.recordedByUserId,
+    id: context.id,
+    recordedByUserId,
   });
   return { token: fallbackToken, userId: getActiveUserId() || null };
+}
+
+export async function resolveUploadTokenForRecording(
+  recording: PendingRecording,
+  fallbackToken: string,
+): Promise<UploadTokenResolution> {
+  return resolveOwnerAuthToken(recording.recordedByUserId, fallbackToken, {
+    id: recording.id,
+  });
+}
+
+/**
+ * Canonical and selected takes become the server's active take; other takes
+ * upload as stored-only alternates (#716).
+ */
+function shouldActivateTake(recording: PendingRecording): boolean {
+  return recording.isCanonical || recording.isSelected;
 }
 
 async function uploadOneRecording(
@@ -255,6 +278,7 @@ async function uploadOneRecording(
     try {
       await assertLocalFileExists(recording.localFilePath);
 
+      const activate = shouldActivateTake(recording);
       const durationSeconds =
         recording.durationMs !== null && Number.isFinite(recording.durationMs)
           ? recording.durationMs / 1000
@@ -281,11 +305,16 @@ async function uploadOneRecording(
           ...(pericopeRange
             ? { granularity: 'pericope' as const, ...pericopeRange }
             : {}),
+          activate,
         },
         token,
       );
 
-      if (response.conflictStatus === 'conflict') {
+      const serverTakeId = takeIdFromVerseAudioResponse(response, activate);
+
+      // A stored-only take never changes the active selection, so a unit
+      // already in conflict says nothing about this take.
+      if (activate && response.conflictStatus === 'conflict') {
         // Set flag BEFORE transaction to prevent retries if transaction fails.
         // Upload already succeeded on server; transaction failure should not retry.
         didMarkConflicted = true;
@@ -293,11 +322,13 @@ async function uploadOneRecording(
           recording.id,
           recording.bibleTextId,
           response.versionToken,
+          serverTakeId,
         );
         log.info('Recording uploaded with conflict', {
           recordingId: recording.id,
           versionToken: response.versionToken,
           recordedByUserId: recording.recordedByUserId,
+          serverTakeId,
         });
         throwIfAborted(signal);
         return 'conflicted';
@@ -306,7 +337,12 @@ async function uploadOneRecording(
       const blobKey = blobKeyFromVerseAudioResponse(response);
       // Server acceptance is distinct from the following local acknowledgement.
       didAcceptCleanResponse = true;
-      await markRecordingUploaded(recording.id, blobKey, response.versionToken);
+      await markRecordingUploaded(
+        recording.id,
+        blobKey,
+        response.versionToken,
+        serverTakeId,
+      );
       didMarkUploaded = true;
       log.info('Recording uploaded', {
         recordingId: recording.id,
@@ -430,6 +466,138 @@ function chapterKey(recording: PendingRecording): string {
   return `${recording.bookId}:${recording.chapterNumber}`;
 }
 
+async function deleteOneRecordingTake(
+  deletion: PendingRecordingDeletion,
+  options: {
+    signal?: AbortSignal;
+    delay: (ms: number) => Promise<void>;
+    maxAttempts: number;
+    token: string;
+    tokenUserId: string | null;
+  },
+): Promise<'deleted' | 'failed'> {
+  const { signal, delay, maxAttempts, token, tokenUserId } = options;
+  let lastMessage = 'Delete take failed';
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    throwIfAborted(signal);
+    try {
+      const { versionToken } = await FluentAPI.deleteVerseAudioTake(
+        {
+          projectUnitId: deletion.projectUnitId,
+          bibleTextId: deletion.bibleTextId,
+          takeId: deletion.serverTakeId,
+        },
+        token,
+      );
+      await clearRecordingDeletion(deletion.id);
+      // Deleting the active take promotes another one and bumps the token;
+      // the local promotion's activating upload must not send a stale base.
+      if (versionToken !== null) {
+        await raiseVerseVersionToken(
+          deletion.bibleTextId,
+          deletion.projectUnitId,
+          versionToken,
+        );
+      }
+      log.info('Recording take deleted on server', {
+        deletionId: deletion.id,
+        serverTakeId: deletion.serverTakeId,
+      });
+      return 'deleted';
+    } catch (error) {
+      if (isAbortError(error) || signal?.aborted) {
+        throwIfAborted(signal);
+        throw error;
+      }
+
+      if (isApiError(error) && error.status === 404) {
+        await clearRecordingDeletion(deletion.id);
+        log.info('Recording take already absent on server', {
+          deletionId: deletion.id,
+          serverTakeId: deletion.serverTakeId,
+        });
+        return 'deleted';
+      }
+
+      if (isAuthError(error)) {
+        if (tokenUserId) {
+          await handleUploadAuthFailure(tokenUserId);
+        }
+        log.error('Recording take delete auth failure', {
+          deletionId: deletion.id,
+          tokenUserId,
+          error: error.message,
+        });
+        throw error;
+      }
+
+      lastMessage =
+        error instanceof Error ? error.message : 'Delete take failed';
+      if (attempt === maxAttempts) {
+        if (isNetworkTransportError(error)) {
+          log.info(
+            'Take delete paused after network failure; leaving pending',
+            {
+              deletionId: deletion.id,
+              attempt,
+              message: lastMessage,
+            },
+          );
+          throw new UploadNetworkInterruptedError(lastMessage);
+        }
+        log.error('Recording take delete failed', {
+          deletionId: deletion.id,
+          attempt,
+          message: lastMessage,
+        });
+        return 'failed';
+      }
+
+      log.warn('Recording take delete retrying', {
+        deletionId: deletion.id,
+        attempt,
+        maxAttempts,
+        message: lastMessage,
+      });
+      await delay(attempt * 500);
+    }
+  }
+
+  return 'failed';
+}
+
+async function runDeletePass(
+  token: string,
+  options: {
+    signal?: AbortSignal;
+    delay: (ms: number) => Promise<void>;
+    maxAttempts: number;
+  },
+): Promise<void> {
+  const pending = await getPendingRecordingDeletions();
+  if (pending.length === 0) {
+    return;
+  }
+
+  log.info('Starting recording delete pass', { count: pending.length });
+
+  for (const deletion of pending) {
+    throwIfAborted(options.signal);
+    const { token: deleteToken, userId: tokenUserId } =
+      await resolveOwnerAuthToken(deletion.recordedByUserId, token, {
+        id: deletion.id,
+      });
+    await deleteOneRecordingTake(deletion, {
+      signal: options.signal,
+      delay: options.delay,
+      maxAttempts: options.maxAttempts,
+      token: deleteToken,
+      tokenUserId,
+    });
+  }
+}
+
 async function runUploadPass(
   token: string,
   options: RecordingSyncOptions = {},
@@ -439,6 +607,11 @@ async function runUploadPass(
 
   const delay = options.delay ?? defaultDelay;
   const maxAttempts = options.maxAttempts ?? MAX_UPLOAD_ATTEMPTS;
+  await runDeletePass(token, {
+    signal: options.signal,
+    delay,
+    maxAttempts,
+  });
   const pending = await getPendingRecordings(options.chapter);
 
   log.info('Starting recording upload pass', {

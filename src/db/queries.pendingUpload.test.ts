@@ -83,7 +83,7 @@ describe('pending upload queries (#545)', () => {
     const countSql = String(mockExecute.mock.calls[0]?.[0]);
     // PM rule: canonical is the take sent as the selected take. Selected-only
     // rows on a verse with a canonical take (same text + unit) are excluded.
-    expect(countSql).toContain('NOT EXISTS');
+    expect(countSql).toMatch(/NOT \(\s*r\.is_selected = 1\s*AND EXISTS/);
     expect(countSql).toContain('c.bible_text_id = r.bible_text_id');
     expect(countSql).toContain('c.is_canonical = 1');
 
@@ -91,8 +91,18 @@ describe('pending upload queries (#545)', () => {
     mockExecute.mockResolvedValue({ rows: [] });
     await getPendingUploadChapters();
     const chaptersSql = String(mockExecute.mock.calls[0]?.[0]);
-    expect(chaptersSql).toContain('NOT EXISTS');
+    expect(chaptersSql).toMatch(/NOT \(\s*r\.is_selected = 1\s*AND EXISTS/);
     expect(chaptersSql).toContain('c.is_canonical = 1');
+  });
+
+  it('uploadable pending queries count non-selected verse takes but not non-selected pericope takes (#716)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+    await getPendingUploadCount();
+    const countSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(countSql).not.toMatch(/OR \(\s*r\.is_selected = 1 AND/);
+    expect(countSql).toMatch(
+      /r\.granularity IS NOT 'pericope'\s*OR r\.is_canonical = 1\s*OR r\.is_selected = 1/,
+    );
   });
 
   it('getUnsyncedRecordingCount includes pericope takes not yet on the server', async () => {

@@ -366,6 +366,8 @@ export interface RecordingRow {
   is_canonical: number;
   sync_status: RecordingSyncStatus;
   version_token: number | null;
+  /** Server take id from the PUT response (fluent-api#465 / #716). */
+  server_take_id?: number | null;
   upload_error: string | null;
   created_at: string;
   updated_at: string;
@@ -402,6 +404,19 @@ export interface PendingRecording {
   startVerse: number | null;
   endChapter: number | null;
   endVerse: number | null;
+  /** Canonical or selected takes activate on the server; other takes do not (#716). */
+  isCanonical: boolean;
+  isSelected: boolean;
+}
+
+/** A take deleted on device whose server copy is still to be removed (#716). */
+export interface PendingRecordingDeletion {
+  /** Local recording id of the deleted take. */
+  id: string;
+  projectUnitId: number;
+  bibleTextId: number;
+  serverTakeId: number;
+  recordedByUserId: number | null;
 }
 
 export const CHAPTER_ASSIGNMENT_STATUS = {

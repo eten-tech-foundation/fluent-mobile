@@ -1406,3 +1406,34 @@ describe('download_queue scoped identity migration (#504)', () => {
     await expect(scopeDownloadQueueIdentity(db)).resolves.not.toThrow();
   });
 });
+
+describe('recording server take id + delete queue migration (#716)', () => {
+  it('baseline schema includes server_take_id and recording_deletions', () => {
+    const recordingsSql = createTableQueries.find(q =>
+      q.includes('CREATE TABLE IF NOT EXISTS recordings'),
+    );
+    expect(recordingsSql).toContain('server_take_id');
+    expect(
+      createTableQueries.some(q =>
+        q.includes('CREATE TABLE IF NOT EXISTS recording_deletions'),
+      ),
+    ).toBe(true);
+  });
+
+  it('adds server_take_id and creates recording_deletions when upgrading from v20', async () => {
+    const db = createFakeDb(20);
+    db._tables.set('recordings', {
+      columns: new Set(['id', 'bible_text_id', 'sync_status', 'updated_at']),
+      rows: [{ id: 'rec_1', bible_text_id: 10, sync_status: 'uploaded' }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'recordings', 'server_take_id')).toBe(true);
+    expect(db._tables.has('recording_deletions')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+    expect(CURRENT_SCHEMA_VERSION).toBe(21);
+  });
+});
