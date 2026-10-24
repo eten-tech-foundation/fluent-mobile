@@ -15,17 +15,83 @@ source "${ROOT}/scripts/maestro-common.sh"
 
 export PATH="${HOME}/.maestro/bin:${PATH}"
 
+# Dev (default): .env.maestro. QA: scripts/maestro-test-qa.sh sets LANE=qa + .env.maestro.qa.
+if [[ "${MAESTRO_ENV_LANE:-}" == 'qa' ]]; then
+  ENV_FILE="${MAESTRO_ENV_FILE:-${ROOT}/.env.maestro.qa}"
+  if [[ "$(basename "${ENV_FILE}")" != "${MAESTRO_QA_ENV_BASENAME}" ]]; then
+    echo "error: QA lane refuses env file $(basename "${ENV_FILE}"); use ${MAESTRO_QA_ENV_BASENAME}" >&2
+    exit 2
+  fi
+  if [[ ! -f "${ENV_FILE}" ]]; then
+    echo "error: QA env file missing. Copy .env.maestro.qa.example to .env.maestro.qa" >&2
+    exit 2
+  fi
+  load_maestro_env_literal "${ENV_FILE}"
+  # Refuse file/shell/CLI base overrides before fixture preflight and adb.
+  assert_and_pin_maestro_qa_env "${ENV_FILE}" "$@" || exit 2
+else
+  ENV_FILE="${MAESTRO_ENV_FILE:-${ROOT}/.env.maestro}"
+  if [[ -f "${ENV_FILE}" ]]; then
+    load_maestro_env_literal "${ENV_FILE}"
+  else
+    # Shell-exported MAESTRO_* / role aliases still resolve to EMAIL(_2).
+    resolve_maestro_role_aliases
+    resolve_maestro_launch_defaults
+  fi
+fi
+
+# Optional ordered journey: literal paths relative to the list file, one per line.
+# Preflight the children, then give Maestro one parent flow so order is explicit.
+FLOW_LIST=""
+FORWARDED=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --flow-list)
+      if [[ -n "${FLOW_LIST}" || $# -lt 2 || -z "$2" ]]; then
+        echo "error: --flow-list requires exactly one list file" >&2
+        exit 2
+      fi
+      FLOW_LIST="$2"
+      shift 2
+      ;;
+    --flow-list=*)
+      echo "error: use --flow-list PATH" >&2
+      exit 2
+      ;;
+    *) FORWARDED+=("$1"); shift ;;
+  esac
+done
+JOURNEY_DIR=""
+cleanup_journey() {
+  if [[ -n "${JOURNEY_DIR}" ]]; then rm -rf "${JOURNEY_DIR}"; fi
+}
+trap cleanup_journey EXIT
+PREFLIGHT_ARGS=()
+if [[ -n "${FLOW_LIST}" ]]; then
+  JOURNEY_DIR="$(mktemp -d "${TMPDIR:-/tmp}/fluent-maestro-journey.XXXXXX")"
+  node "${ROOT}/scripts/maestro-journey.cjs" "${FLOW_LIST}" "${JOURNEY_DIR}" ${FORWARDED[@]+"${FORWARDED[@]}"}
+  while IFS= read -r flow; do PREFLIGHT_ARGS+=("${flow}"); done < "${JOURNEY_DIR}/paths.txt"
+  PREFLIGHT_ARGS=(${FORWARDED[@]+"${FORWARDED[@]}"} "${PREFLIGHT_ARGS[@]}")
+  set -- ${FORWARDED[@]+"${FORWARDED[@]}"} "${JOURNEY_DIR}/journey.yaml"
+else
+  PREFLIGHT_ARGS=(${FORWARDED[@]+"${FORWARDED[@]}"})
+  set -- ${FORWARDED[@]+"${FORWARDED[@]}"}
+fi
+
+# Missing fixture chapter is BLOCKED before adb start-server / device selection.
+set +e
+RECURSIVE=()
+if [[ -n "${FLOW_LIST}" ]]; then RECURSIVE=(--recursive); fi
+node "${ROOT}/scripts/maestro-fixture-guard.cjs" --preflight ${RECURSIVE[@]+"${RECURSIVE[@]}"} -- ${PREFLIGHT_ARGS[@]+"${PREFLIGHT_ARGS[@]}"}
+preflight_status=$?
+set -e
+if [[ "${preflight_status}" -ne 0 ]]; then
+  exit "${preflight_status}"
+fi
+
 if ! command -v maestro >/dev/null 2>&1; then
   echo "error: maestro not found. Run: npm run maestro:install" >&2
   exit 1
-fi
-
-if [[ -f "${ROOT}/.env.maestro" ]]; then
-  load_maestro_env_literal "${ROOT}/.env.maestro"
-else
-  # Shell-exported MAESTRO_* / role aliases still resolve to EMAIL(_2).
-  resolve_maestro_role_aliases
-  resolve_maestro_launch_defaults
 fi
 
 # Android-only: never fall through to a local iOS Simulator when adb is empty.
@@ -69,6 +135,7 @@ scrub_on_exit() {
   if [[ -d "${ROOT}/.maestro/test_output" ]]; then
     bash "${ROOT}/scripts/maestro-scrub-artifacts.sh" "${ROOT}/.maestro/test_output" || true
   fi
+  cleanup_journey
   exit "${code}"
 }
 trap scrub_on_exit EXIT
