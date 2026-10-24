@@ -153,6 +153,12 @@ describe('purgeDraftDownloadsOnStageExit', () => {
       '1-7-source-bible-audio-MRK-1',
     );
     expect(mockDeleteItem).not.toHaveBeenCalledWith('1-7-recording-authored');
+    // Successful purge clears units so later same-stage persists stop retrying.
+    expect(mockWriteTombstone).toHaveBeenCalledTimes(2);
+    expect(mockWriteTombstone).toHaveBeenLastCalledWith(
+      expect.objectContaining({ role: 'peer_check' }),
+      expect.objectContaining({ units: [] }),
+    );
   });
 
   it('retains queue row when file delete fails (retryable)', async () => {
@@ -167,6 +173,16 @@ describe('purgeDraftDownloadsOnStageExit', () => {
     expect(result.failedIds).toEqual([`1-7-${AUDIO_ID}`, `1-7-${TEXT_ID}`]);
     expect(mockDeleteItem).not.toHaveBeenCalled();
     expect(mockMarkCancelled).toHaveBeenCalled();
+    // Failed deletes must keep units on the tombstone for a later retry.
+    expect(mockWriteTombstone).toHaveBeenCalledTimes(1);
+    expect(mockWriteTombstone).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'peer_check' }),
+      expect.objectContaining({
+        units: expect.arrayContaining([
+          expect.objectContaining({ resourceId: AUDIO_ID }),
+        ]),
+      }),
+    );
   });
 
   it('retries deletes from a prior tombstone that preserved units', async () => {
@@ -735,5 +751,24 @@ describe('persisted-stage purge gating', () => {
       expect.anything(),
     );
     expect(mockDropItems).toHaveBeenCalled();
+  });
+
+  it('stops retrying once a successful purge clears tombstone units', async () => {
+    mockReadManifest.mockImplementation(async (identity: { role: string }) => {
+      if (identity.role === 'peer_check') {
+        return peerManifest({ purged: true, purgeGeneration: 2, units: [] });
+      }
+      return null;
+    });
+    const result = await maybePurgeDraftDownloadsAfterPersistedStageChange({
+      projectId: 1,
+      userId: 7,
+      chapterAssignmentId: 9,
+      fromStatus: 'community_review',
+      toStatus: 'community_review',
+    });
+    expect(result).toBeNull();
+    expect(mockWriteTombstone).not.toHaveBeenCalled();
+    expect(mockDropItems).not.toHaveBeenCalled();
   });
 });

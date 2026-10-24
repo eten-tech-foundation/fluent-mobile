@@ -297,6 +297,17 @@ export async function purgeDraftDownloadsOnStageExit(
     }
   }
 
+  // Clear units once every owned delete succeeds so destination→destination
+  // retries stop re-reading manifests / rewriting the tombstone forever.
+  if (failedIds.length === 0) {
+    await writeDraftDownloadPurgeTombstone(identity, {
+      ...previous,
+      units: [],
+      // First tombstone already used previous.gen + 1; bump once more for clear.
+      purgeGeneration: (previous.purgeGeneration ?? 0) + 1,
+    });
+  }
+
   log.info('Purged draft downloads on stage exit', {
     chapterAssignmentId: input.chapterAssignmentId,
     userId: input.userId,

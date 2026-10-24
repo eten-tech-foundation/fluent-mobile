@@ -149,12 +149,15 @@ export async function deleteDraftDownloadManifest(
   await FileSystem.deleteAsync(path, { idempotent: true });
 }
 
-/** Write a purged tombstone so async scripture/audio writers stop. */
+/**
+ * Write a purged tombstone so async scripture/audio writers stop.
+ * Callers keep `previous.units` while deletes may still fail (retry), then
+ * rewrite with `units: []` once the purge finishes with no failures.
+ */
 export async function writeDraftDownloadPurgeTombstone(
   identity: DraftManifestIdentity,
   previous: DraftDownloadManifest | null,
 ): Promise<void> {
-  // Keep units so a failed file-delete purge can retry owned ids safely.
   const tombstone: DraftDownloadManifest = {
     chapterAssignmentId: identity.chapterAssignmentId,
     projectId: identity.projectId,
