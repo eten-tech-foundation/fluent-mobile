@@ -58,7 +58,41 @@ describe('pending upload queries (#545)', () => {
       expect(sql).toContain(fragment);
     }
     expect(sql).toContain('JOIN bible_texts');
-    expect(sql).not.toContain('project_unit_id');
+    // project_unit_id appears only in the #701 canonical-deferral subquery —
+    // never for assignment resolution in this count.
+    expect(sql.match(/project_unit_id/g)).toHaveLength(2);
+    expect(sql).toContain('c.project_unit_id IS r.project_unit_id');
+  });
+
+  it('uploadable pending queries include canonical rows regardless of owner (#701)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+    await getPendingUploadCount();
+    const countSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(countSql).toContain('r.is_canonical = 1');
+
+    mockExecute.mockReset();
+    mockExecute.mockResolvedValue({ rows: [] });
+    await getPendingUploadChapters();
+    const chaptersSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(chaptersSql).toContain('r.is_canonical = 1');
+  });
+
+  it('uploadable pending queries defer selected takes while the verse has a canonical take (#701)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+    await getPendingUploadCount();
+    const countSql = String(mockExecute.mock.calls[0]?.[0]);
+    // PM rule: canonical is the take sent as the selected take. Selected-only
+    // rows on a verse with a canonical take (same text + unit) are excluded.
+    expect(countSql).toContain('NOT EXISTS');
+    expect(countSql).toContain('c.bible_text_id = r.bible_text_id');
+    expect(countSql).toContain('c.is_canonical = 1');
+
+    mockExecute.mockReset();
+    mockExecute.mockResolvedValue({ rows: [] });
+    await getPendingUploadChapters();
+    const chaptersSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(chaptersSql).toContain('NOT EXISTS');
+    expect(chaptersSql).toContain('c.is_canonical = 1');
   });
 
   it('getUnsyncedRecordingCount includes pericope takes not yet on the server', async () => {

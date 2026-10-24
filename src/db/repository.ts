@@ -1018,6 +1018,15 @@ export async function userHasLocalChapterAssignments(
  *
  * Pericope takes (#584) upload via PUT /verse-audio/{projectUnitId}/range
  * (fluent-api#377); verse takes keep the single-bibleTextId path.
+ *
+ * #701: pending canonical designations are included even when not the
+ * owner's active draft — designation alone must sync (replaces #279, where
+ * it was sent only with the owning account's upload).
+ *
+ * #701 PM rule: the canonical take is what syncs as the server's selected
+ * take. When a verse (+unit) has a canonical take, a merely-selected
+ * pending take is deferred — it becomes eligible again once the canonical
+ * designation moves off the verse.
  */
 export async function getPendingRecordings(chapter?: {
   bookId: number;
@@ -1069,7 +1078,18 @@ export async function getPendingRecordings(chapter?: {
        END AS project_unit_id
      FROM recordings r
      JOIN bible_texts bt ON bt.id = r.bible_text_id
-     WHERE r.is_selected = 1
+     WHERE (
+       r.is_canonical = 1
+       OR (
+         r.is_selected = 1
+         AND NOT EXISTS (
+           SELECT 1 FROM recordings c
+           WHERE c.bible_text_id = r.bible_text_id
+             AND c.is_canonical = 1
+             AND c.project_unit_id IS r.project_unit_id
+         )
+       )
+     )
        AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
        AND r.sync_status NOT IN ('uploaded', 'conflicted')
        AND r.bible_text_id > 0
@@ -1334,15 +1354,23 @@ export async function markRecordingAndChapterConflicted(
 
 export async function getLatestVersionToken(
   bibleTextId: number,
+  projectUnitId: number | null,
 ): Promise<number | undefined> {
   const db = getDatabase();
+  // The server keeps one version token per (projectUnitId, bibleTextId).
+  // Scope the MAX to this unit; a higher token from another unit for the
+  // same verse is not accepted for this unit, and the server returns 200
+  // without changing the active take (no 409).
   const result = await db.execute(
-    `SELECT version_token FROM recordings
-     WHERE bible_text_id = ? AND version_token IS NOT NULL
-     ORDER BY updated_at DESC LIMIT 1`,
-    [bibleTextId],
+    `SELECT MAX(version_token) AS version_token FROM recordings
+     WHERE bible_text_id = ?
+       AND project_unit_id IS ?
+       AND version_token IS NOT NULL`,
+    [bibleTextId, projectUnitId],
   );
-  const row = (result?.rows as { version_token: number }[] | undefined)?.[0];
+  const row = (
+    result?.rows as { version_token: number | null }[] | undefined
+  )?.[0];
   return row?.version_token ?? undefined;
 }
 

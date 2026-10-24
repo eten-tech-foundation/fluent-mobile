@@ -790,20 +790,44 @@ export async function getMyWorkChapters(
   }
 }
 
-/**
- * Same eligibility as `getPendingRecordings` (positive bible_text_id,
- * INNER JOIN bible_texts). Active-user scope stays on these UI queries (#105).
- * Verse and pericope takes are uploadable (#584); stitched display rows are not.
- */
-const UPLOADABLE_PENDING_WHERE = `
-  r.is_selected = 1
-  AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
-  AND r.sync_status NOT IN ('uploaded', 'conflicted')
-  AND r.bible_text_id > 0
-`;
-
+/** SQL predicate + params scoping a row to the active user (#105). */
 function recordedByUserPredicate(alias: string, userId: number | null): string {
   return `${alias}.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}`;
+}
+
+/**
+ * Same eligibility as `getPendingRecordings` (positive bible_text_id,
+ * INNER JOIN bible_texts). Verse and pericope takes are uploadable (#584);
+ * stitched display rows are not.
+ *
+ * Active-user scope stays on these UI queries (#105) for the user's own
+ * drafts. #701: a pending canonical designation must sync under whichever
+ * account is active (upload uses the owner's credentials), so canonical
+ * rows are counted regardless of owner.
+ *
+ * #701 PM rule: the canonical take is what syncs as the server's selected
+ * take. A merely-selected pending take on a verse that has a canonical take
+ * (same bible text + unit) is deferred — excluded here so pending counts
+ * only reflect work the upload worker will actually send.
+ */
+function uploadablePendingWhere(userId: number | null): string {
+  return `
+    (
+      r.is_canonical = 1
+      OR (
+        r.is_selected = 1 AND ${recordedByUserPredicate('r', userId)}
+        AND NOT EXISTS (
+          SELECT 1 FROM recordings c
+          WHERE c.bible_text_id = r.bible_text_id
+            AND c.is_canonical = 1
+            AND c.project_unit_id IS r.project_unit_id
+        )
+      )
+    )
+    AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
+    AND r.sync_status NOT IN ('uploaded', 'conflicted')
+    AND r.bible_text_id > 0
+  `;
 }
 
 /** Selected recordings the upload orchestrator will actually process. */
@@ -815,8 +839,7 @@ export async function getPendingUploadCount(): Promise<number> {
       `SELECT COUNT(*) AS count
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE ${UPLOADABLE_PENDING_WHERE}
-         AND ${recordedByUserPredicate('r', userId)};`,
+       WHERE ${uploadablePendingWhere(userId)};`,
       userId === null ? [] : [userId],
     );
     return Number(result.rows?.[0]?.count) || 0;
@@ -1054,8 +1077,7 @@ export async function getPendingUploadChapters(): Promise<
       `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE ${UPLOADABLE_PENDING_WHERE}
-         AND ${recordedByUserPredicate('r', userId)}
+       WHERE ${uploadablePendingWhere(userId)}
        ORDER BY bt.book_id, bt.chapter_number`,
       userId === null ? [] : [userId],
     );
