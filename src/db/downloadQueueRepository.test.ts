@@ -89,11 +89,15 @@ async function mockExecute(
     ];
     const existing = rows.find(r => r.id === id);
     if (existing) {
-      // Mirrors ON CONFLICT(id) DO UPDATE … WHERE source_url IS NOT excluded
-      // AND status != 'downloading' (#446).
+      // Mirrors ON CONFLICT(id) DO UPDATE … WHERE (source_url IS NOT excluded
+      // OR serialized_content IS NOT excluded) AND status != 'downloading'
+      // (#446 + draft-text null-URL refresh).
+      const sourceUnchanged = existing.source_url === sourceUrl;
+      const contentUnchanged =
+        (existing.serialized_content ?? null) === (serializedContent ?? null);
       if (
-        existing.source_url === sourceUrl ||
-        existing.status === 'downloading'
+        existing.status === 'downloading' ||
+        (sourceUnchanged && contentUnchanged)
       ) {
         return { rows: [], rowsAffected: 0 };
       }
@@ -517,6 +521,103 @@ describe('downloadQueueRepository', () => {
     expect(row.progress).toBe(0);
     expect(row.source_url).toBe('https://cdn.example/a_v2.mp3');
     expect(row.local_file_path).toBeNull();
+  });
+
+  it('re-queues a completed null-URL row when serialized_content changes (draft-text)', async () => {
+    const resourceId = 'draft-text-9';
+    const [id] = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'v1' }]),
+      },
+    ]);
+    await markDownloadItemCompleted(id, 'file:///local/draft-text.json');
+
+    const samePayload = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'v1' }]),
+      },
+    ]);
+    expect(samePayload).toEqual([]);
+    expect(__getDownloadQueueRows()[0].status).toBe('completed');
+    expect(__getDownloadQueueRows()[0].serialized_content).toBe(
+      JSON.stringify([{ id: 1, content: 'v1' }]),
+    );
+
+    const changed = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'v2' }]),
+      },
+    ]);
+    expect(changed).toEqual([`1-${TEST_USER_ID}-${resourceId}`]);
+    const row = __getDownloadQueueRows()[0];
+    expect(row.status).toBe('queued');
+    expect(row.progress).toBe(0);
+    expect(row.source_url).toBeNull();
+    expect(row.local_file_path).toBeNull();
+    expect(row.serialized_content).toBe(
+      JSON.stringify([{ id: 1, content: 'v2' }]),
+    );
+  });
+
+  it('refreshes serialized_content on a failed null-URL row without waiting for delete', async () => {
+    const resourceId = 'draft-text-9';
+    const [id] = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'stale' }]),
+      },
+    ]);
+    await markDownloadItemFailed(id);
+
+    const refreshed = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'fresh' }]),
+      },
+    ]);
+    expect(refreshed).toEqual([`1-${TEST_USER_ID}-${resourceId}`]);
+    expect(__getDownloadQueueRows()[0].status).toBe('queued');
+    expect(__getDownloadQueueRows()[0].serialized_content).toBe(
+      JSON.stringify([{ id: 1, content: 'fresh' }]),
+    );
   });
 
   it('enqueues items in tier order regardless of input array order', async () => {
