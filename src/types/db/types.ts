@@ -87,6 +87,20 @@ export interface MyWorkChapter {
    * Set only after verified eligibility (not status alone).
    */
   listAccess: MyWorkListAccess;
+  /**
+   * Per-account comment aggregate attached in the My Work hook (#703).
+   * Not a SQLite column. Only `status: 'known'` may drive icons; unknown /
+   * missing must not show fabricated 0/false. `originatingUserId` lets the row
+   * reject stale props from another account without waiting for a refresh.
+   */
+  commentAggregate?:
+    | {
+        status: 'known';
+        commentCount: number;
+        currentUserHasCommented: boolean;
+        originatingUserId: string;
+      }
+    | { status: 'unknown' };
 }
 
 export interface ProjectChapter {

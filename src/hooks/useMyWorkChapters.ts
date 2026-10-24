@@ -3,6 +3,11 @@ import { useFocusEffect } from 'expo-router';
 import { getMyWorkChapters } from '../db/queries';
 import { MyWorkChapter } from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
+import { getCredentials } from '../services/keychain';
+import {
+  getCommentAggregateCacheEntry,
+  refreshMyWorkCommentAggregates,
+} from '../services/myWorkCommentAggregates';
 import { getActiveUserId } from '../services/storage';
 import { getObserverProjectIds } from '../services/userOrgGrants';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
@@ -44,6 +49,29 @@ function filterChaptersForCurrentGrants(
   });
 }
 
+function attachCachedCommentAggregates(
+  chapters: MyWorkChapter[],
+  userId: string,
+): MyWorkChapter[] {
+  return chapters.map(chapter => {
+    const entry = getCommentAggregateCacheEntry(userId, chapter.id);
+    if (entry.status !== 'known') {
+      // Strip any prior known prop; unknown/missing must not surface 0/false.
+      const { commentAggregate: _dropped, ...rest } = chapter;
+      return rest;
+    }
+    return {
+      ...chapter,
+      commentAggregate: {
+        status: 'known',
+        commentCount: entry.commentCount,
+        currentUserHasCommented: entry.currentUserHasCommented,
+        originatingUserId: userId,
+      },
+    };
+  });
+}
+
 export function useMyWorkChapters(refreshKey = 0) {
   const [chapters, setChapters] = useState<MyWorkChapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,9 +90,10 @@ export function useMyWorkChapters(refreshKey = 0) {
 
     const generation = ++loadGenerationRef.current;
     const requestUserId = userId;
+    const requestUserIdStr = String(requestUserId);
     // Unknown/revoked grant snapshots yield [] — fail closed for those branches.
-    const grantProjectIds = getObserverProjectIds(String(requestUserId));
-    const translatorProjectIds = getTranslatorProjectIds(String(requestUserId));
+    const grantProjectIds = getObserverProjectIds(requestUserIdStr);
+    const translatorProjectIds = getTranslatorProjectIds(requestUserIdStr);
 
     try {
       const next = await getMyWorkChapters(requestUserId, {
@@ -86,13 +115,69 @@ export function useMyWorkChapters(refreshKey = 0) {
       const currentTranslatorIds = getTranslatorProjectIds(
         String(currentUserId),
       );
-      setChapters(
-        filterChaptersForCurrentGrants(
-          next,
-          currentGrantIds,
-          currentTranslatorIds,
-        ),
+      const eligible = filterChaptersForCurrentGrants(
+        next,
+        currentGrantIds,
+        currentTranslatorIds,
       );
+      // Publish SQLite rows + cached aggregates immediately; network refresh
+      // must not delay the chapter list or clear rows on credential/refresh errors.
+      setChapters(
+        attachCachedCommentAggregates(eligible, String(currentUserId)),
+      );
+
+      // Optional aggregate wave: credentials + refresh + re-attach. Entirely
+      // behind a void boundary so rejections never hit the outer catch (which
+      // would clear already-published chapter rows) and never hold loading.
+      void (async () => {
+        try {
+          const refreshUserId = resolveValidatedMyWorkUserId();
+          if (
+            refreshUserId !== requestUserId ||
+            loadGenerationRef.current !== generation
+          ) {
+            return;
+          }
+          const refreshUserIdStr = String(refreshUserId);
+          const creds = await getCredentials(refreshUserIdStr);
+          if (
+            loadGenerationRef.current !== generation ||
+            resolveValidatedMyWorkUserId() !== refreshUserId
+          ) {
+            return;
+          }
+          if (!creds?.token) {
+            return;
+          }
+          const sessionToken = creds.token;
+          const assignmentIds = eligible.map(chapter => chapter.id);
+
+          await refreshMyWorkCommentAggregates({
+            userId: refreshUserIdStr,
+            sessionToken,
+            chapterAssignmentIds: assignmentIds,
+          });
+          if (loadGenerationRef.current !== generation) {
+            return;
+          }
+          const stillUserId = resolveValidatedMyWorkUserId();
+          if (stillUserId !== refreshUserId) {
+            return;
+          }
+          // Re-read grant eligibility so a late aggregate wave cannot reintroduce
+          // revoked Observer / open-peer rows.
+          const stillEligible = filterChaptersForCurrentGrants(
+            eligible,
+            getObserverProjectIds(String(stillUserId)),
+            getTranslatorProjectIds(String(stillUserId)),
+          );
+          setChapters(
+            attachCachedCommentAggregates(stillEligible, String(stillUserId)),
+          );
+        } catch (error) {
+          log.warn('Comment aggregate background refresh failed', { error });
+        }
+      })();
     } catch (error) {
       if (loadGenerationRef.current !== generation) {
         return;

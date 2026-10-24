@@ -1,0 +1,28 @@
+{
+  "description": "Pinned fluent-api PR #459 (issue #458) chapter comment-aggregate wire for mobile #703. Backend undeployed at pin time (0038 migration collision + pending CodeRabbit); no runtime HTTP claim. No /comment-aggregate HTTP fixture exists at this pin — examples below are labeled by provenance.",
+  "baseline": {
+    "issue": 458,
+    "pr459Head": "40fa2e5657fc91cbac24c3473fd572e702db0684",
+    "endpoint": "GET /chapter-assignments/{chapterAssignmentId}/comment-aggregate",
+    "schemaExport": "chapterCommentAggregateSchema",
+    "httpFixtureAtPin": false
+  },
+  "examples": {
+    "serviceUnitTestExtracted": {
+      "provenance": "Extracted from draft-comments.service.test.ts at pin ('aggregate counts all retained comments and ignores reaction-only presence').",
+      "payload": {
+        "chapterAssignmentId": 9,
+        "commentCount": 4,
+        "currentUserHasCommented": false
+      }
+    },
+    "schemaDerivedZeroFalse": {
+      "provenance": "Schema-derived valid zero/false body from chapterCommentAggregateSchema (positive chapterAssignmentId, nonnegative commentCount, boolean marker). Not copied from an HTTP fixture.",
+      "payload": {
+        "chapterAssignmentId": 1,
+        "commentCount": 0,
+        "currentUserHasCommented": false
+      }
+    }
+  }
+}

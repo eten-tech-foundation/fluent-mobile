@@ -1,7 +1,11 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { MyWorkChapter } from '../../types/db/types';
-import { getActiveUserId } from '../../services/storage';
+import {
+  getActiveUserId,
+  getKnownUserIds,
+  isReauthRequired,
+} from '../../services/storage';
 import { parseUserId } from '../../utils/parseUserId';
 import { MyWorkRow } from './MyWorkRow';
 
@@ -14,6 +18,8 @@ jest.mock('../../hooks/useDraftDownload', () => ({
 
 jest.mock('../../services/storage', () => ({
   getActiveUserId: jest.fn(),
+  getKnownUserIds: jest.fn(),
+  isReauthRequired: jest.fn(),
 }));
 
 jest.mock('../../utils/parseUserId', () => ({
@@ -33,7 +39,9 @@ const mockHasProjectObserverGrant =
 
 jest.mock('lucide-react-native', () => {
   const ReactNative = require('react-native');
-  const Mock = () => <ReactNative.View />;
+  const Mock = ({ testID }: { testID?: string }) => (
+    <ReactNative.View testID={testID} />
+  );
   return {
     CloudCheck: Mock,
     CloudOff: Mock,
@@ -42,6 +50,8 @@ jest.mock('lucide-react-native', () => {
     Users: Mock,
     TriangleAlert: Mock,
     User: Mock,
+    MessageSquare: Mock,
+    MessageSquareCheck: Mock,
   };
 });
 
@@ -82,6 +92,12 @@ jest.mock('./DraftDownloadChip', () => {
 
 const mockGetActiveUserId = getActiveUserId as jest.MockedFunction<
   typeof getActiveUserId
+>;
+const mockGetKnownUserIds = getKnownUserIds as jest.MockedFunction<
+  typeof getKnownUserIds
+>;
+const mockIsReauthRequired = isReauthRequired as jest.MockedFunction<
+  typeof isReauthRequired
 >;
 const mockParseUserId = parseUserId as jest.MockedFunction<typeof parseUserId>;
 
@@ -164,6 +180,8 @@ describe('MyWorkRow', () => {
     jest.clearAllMocks();
     mockGetActiveUserId.mockReturnValue('7');
     mockParseUserId.mockReturnValue(7);
+    mockGetKnownUserIds.mockReturnValue(['7']);
+    mockIsReauthRequired.mockReturnValue(false);
     mockHasProjectObserverGrant.mockReturnValue(false);
     mockStart.mockResolvedValue({ ok: true });
     mockUseDraftDownload.mockReturnValue({
@@ -352,5 +370,147 @@ describe('MyWorkRow', () => {
 
     fireEvent.press(getByTestId('my-work-draft-download-3'));
     expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('shows message-square + known zero count for the matching account', () => {
+    const { getByTestId, getByLabelText, queryByTestId } = render(
+      <MyWorkRow
+        chapter={{
+          ...baseChapter,
+          commentAggregate: {
+            status: 'known',
+            commentCount: 0,
+            currentUserHasCommented: false,
+            originatingUserId: '7',
+          },
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(getByTestId('my-work-row-comment-icon-1')).toBeTruthy();
+    expect(getByTestId('my-work-row-comment-count-1').props.children).toBe(0);
+    expect(getByLabelText('0 comments')).toBeTruthy();
+    expect(queryByTestId('my-work-row-comment-check-1')).toBeNull();
+  });
+
+  it('shows message-square-check when the current user has commented', () => {
+    const { getByTestId, getByLabelText } = render(
+      <MyWorkRow
+        chapter={{
+          ...baseChapter,
+          commentAggregate: {
+            status: 'known',
+            commentCount: 4,
+            currentUserHasCommented: true,
+            originatingUserId: '7',
+          },
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(getByTestId('my-work-row-comment-check-1')).toBeTruthy();
+    expect(getByTestId('my-work-row-comment-count-1').props.children).toBe(4);
+    expect(getByLabelText('4 comments, you commented')).toBeTruthy();
+  });
+
+  it('hides unknown aggregates and does not fabricate zero', () => {
+    const { queryByTestId } = render(
+      <MyWorkRow
+        chapter={{
+          ...baseChapter,
+          commentAggregate: { status: 'unknown' },
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(queryByTestId('my-work-row-comment-1')).toBeNull();
+  });
+
+  it('blocks stale comment props from another account without refresh', () => {
+    const { queryByTestId } = render(
+      <MyWorkRow
+        chapter={{
+          ...baseChapter,
+          commentAggregate: {
+            status: 'known',
+            commentCount: 3,
+            currentUserHasCommented: true,
+            originatingUserId: '8',
+          },
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(queryByTestId('my-work-row-comment-1')).toBeNull();
+  });
+
+  it('hides stale known comment props after account registration is removed', () => {
+    const staleKnownChapter = {
+      ...baseChapter,
+      commentAggregate: {
+        status: 'known' as const,
+        commentCount: 0,
+        currentUserHasCommented: false,
+        originatingUserId: '7',
+      },
+    };
+    const { queryByTestId, rerender } = render(
+      <MyWorkRow chapter={staleKnownChapter} onPress={jest.fn()} />,
+    );
+
+    expect(queryByTestId('my-work-row-comment-1')).toBeTruthy();
+    mockGetKnownUserIds.mockReturnValue([]);
+    rerender(<MyWorkRow chapter={staleKnownChapter} onPress={jest.fn()} />);
+    expect(queryByTestId('my-work-row-comment-1')).toBeNull();
+  });
+
+  it('hides stale known comment props when reauth is required', () => {
+    const staleKnownChapter = {
+      ...baseChapter,
+      commentAggregate: {
+        status: 'known' as const,
+        commentCount: 0,
+        currentUserHasCommented: false,
+        originatingUserId: '7',
+      },
+    };
+    const { queryByTestId, rerender } = render(
+      <MyWorkRow chapter={staleKnownChapter} onPress={jest.fn()} />,
+    );
+
+    expect(queryByTestId('my-work-row-comment-1')).toBeTruthy();
+    mockIsReauthRequired.mockReturnValue(true);
+    rerender(<MyWorkRow chapter={staleKnownChapter} onPress={jest.fn()} />);
+    expect(queryByTestId('my-work-row-comment-1')).toBeNull();
+  });
+
+  it('keeps download chip and row tap independent of comment indicators', () => {
+    const onPress = jest.fn();
+    const { getByTestId } = render(
+      <MyWorkRow
+        chapter={{
+          ...peerChapter,
+          commentAggregate: {
+            status: 'known',
+            commentCount: 1,
+            currentUserHasCommented: false,
+            originatingUserId: '7',
+          },
+        }}
+        onPress={onPress}
+      />,
+    );
+
+    expect(getByTestId('my-work-row-comment-2')).toBeTruthy();
+    fireEvent.press(getByTestId('my-work-draft-download-2'));
+    expect(mockStart).toHaveBeenCalledTimes(1);
+    expect(onPress).not.toHaveBeenCalled();
+
+    fireEvent.press(getByTestId('my-work-row-2'));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

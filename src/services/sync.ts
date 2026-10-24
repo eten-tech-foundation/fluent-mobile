@@ -646,7 +646,7 @@ export async function syncChapterAssignments(
 
       if (allAssignments.length > 0) {
         const { insertedCount, skipped } =
-          await insertChapterAssignmentSyncData(allAssignments);
+          await insertChapterAssignmentSyncData(allAssignments, userId);
         if (insertedCount === 0) {
           throw new Error(
             `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
@@ -721,7 +721,7 @@ async function syncUserChapterWork(
 
       if (mapped.length > 0) {
         const { insertedCount, skipped } =
-          await insertChapterAssignmentSyncData(mapped);
+          await insertChapterAssignmentSyncData(mapped, userId);
         if (insertedCount === 0) {
           throw new Error(
             `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,

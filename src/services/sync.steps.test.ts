@@ -565,13 +565,16 @@ describe('sync step orchestration', () => {
         undefined,
         undefined,
       );
-      expect(insertChapterAssignmentSyncDataMock).toHaveBeenCalledWith([
-        expect.objectContaining({
-          chapterAssignmentId: 11,
-          projectId: 5,
-          chapterStatus: 'in_progress',
-        }),
-      ]);
+      expect(insertChapterAssignmentSyncDataMock).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            chapterAssignmentId: 11,
+            projectId: 5,
+            chapterStatus: 'in_progress',
+          }),
+        ],
+        2,
+      );
       expect(insertUserProjectsMock).toHaveBeenCalledWith(2, [5]);
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_chapters', 3);
       expect(clearSyncErrorMock).toHaveBeenCalledWith(

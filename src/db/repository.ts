@@ -586,15 +586,52 @@ export type InsertChapterAssignmentSyncResult = {
   skipped: SkippedChapterAssignment[];
 };
 
+type ChapterAssignmentStageSnapshot = {
+  id: number;
+  status: string | null;
+  projectId: number;
+};
+
 export async function insertChapterAssignmentSyncData(
   assignments: DBTypes.ChapterAssignment[],
+  /**
+   * Sync-session account. Captured by callers before any await so mid-flight
+   * active-account switches cannot retarget stage-exit purge.
+   */
+  userId: number,
 ): Promise<InsertChapterAssignmentSyncResult> {
+  // Capture before first await — never re-resolve via getActiveUserId afterward.
+  const syncUserId =
+    typeof userId === 'number' && Number.isFinite(userId) && userId > 0
+      ? userId
+      : null;
+
   const db = getDatabase();
   const userIds = collectAssigneeIds(assignments);
   let insertedCount = 0;
   let skipped: SkippedChapterAssignment[] = [];
+  let beforeSnapshots = new Map<number, ChapterAssignmentStageSnapshot>();
+  let afterSnapshots = new Map<number, ChapterAssignmentStageSnapshot>();
+  let snapshotCaptureFailed = false;
 
   await db.transaction(async (tx: Transaction) => {
+    const assignmentIds = assignments
+      .map(a => a.chapterAssignmentId)
+      .filter((id): id is number => typeof id === 'number' && id > 0);
+    // before+after in the same write txn so concurrent commits cannot skew the pair.
+    try {
+      beforeSnapshots = await readChapterAssignmentStageSnapshots(
+        tx,
+        assignmentIds,
+      );
+    } catch (error) {
+      snapshotCaptureFailed = true;
+      beforeSnapshots = new Map();
+      log.warn('Stage-exit before-snapshot failed inside assignment sync txn', {
+        error,
+      });
+    }
+
     const { stubbedCount } = await ensureUserStubs(tx, userIds);
     const parentContext = await loadChapterAssignmentParentContext(tx);
     const unitsMapForFilter = resolveProjectUnitsForSync(
@@ -610,6 +647,7 @@ export async function insertChapterAssignmentSyncData(
     const validAssignments = partitioned.valid;
     skipped = partitioned.skipped;
     insertedCount = validAssignments.length;
+    const persistedIds = validAssignments.map(a => a.chapterAssignmentId);
     const unitsMap = resolveProjectUnitsForSync(
       validAssignments,
       parentContext.knownProjectIds,
@@ -651,7 +689,38 @@ export async function insertChapterAssignmentSyncData(
     for (const assignment of validAssignments) {
       await insertChapterAssignmentTx(tx, assignment);
     }
+
+    try {
+      afterSnapshots = await readChapterAssignmentStageSnapshots(
+        tx,
+        persistedIds,
+      );
+    } catch (error) {
+      snapshotCaptureFailed = true;
+      afterSnapshots = new Map();
+      log.warn('Stage-exit after-snapshot failed inside assignment sync txn', {
+        error,
+      });
+    }
   });
+
+  // Purge only after successful commit. Snapshot/module/purge errors must not
+  // fail the already-committed stage write. Rollback never reaches here.
+  // #770 pending status-skip leaves status unchanged → same from/to → no purge.
+  if (snapshotCaptureFailed) {
+    log.warn(
+      'Skipping stage-exit draft purge; in-txn snapshot capture failed',
+      {
+        syncUserId,
+      },
+    );
+  } else {
+    await purgeDraftDownloadsAfterPersistedStageSnapshots({
+      userId: syncUserId,
+      before: beforeSnapshots,
+      after: afterSnapshots,
+    });
+  }
 
   return { insertedCount, skipped };
 }
@@ -1225,10 +1294,122 @@ export async function resolveChapterClaimQueueEntry(id: number): Promise<void> {
   });
 }
 
+type SqlExecutor = Pick<Transaction, 'execute'>;
+
+function resolveStageExitActorUserId(override?: number): number | null {
+  if (typeof override === 'number' && override > 0) {
+    return override;
+  }
+  // Lazy require keeps repository importable in unit tests that mock storage.
+  try {
+    const { getActiveUserId } =
+      require('../services/storage') as typeof import('../services/storage');
+    const id = Number(getActiveUserId());
+    return Number.isFinite(id) && id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readChapterAssignmentStageSnapshots(
+  executor: SqlExecutor,
+  chapterAssignmentIds: number[],
+): Promise<Map<number, ChapterAssignmentStageSnapshot>> {
+  const out = new Map<number, ChapterAssignmentStageSnapshot>();
+  if (chapterAssignmentIds.length === 0) return out;
+  const placeholders = chapterAssignmentIds.map(() => '?').join(', ');
+  const result = await executor.execute(
+    `SELECT ca.id AS id, ca.status AS status, pu.project_id AS project_id
+     FROM chapter_assignments ca
+     INNER JOIN project_units pu ON pu.id = ca.project_unit_id
+     WHERE ca.id IN (${placeholders})`,
+    chapterAssignmentIds,
+  );
+  for (const row of (result.rows ?? []) as Array<{
+    id: number;
+    status: string | null;
+    project_id: number;
+  }>) {
+    const projectId = Number(row.project_id);
+    if (!Number.isFinite(projectId) || projectId <= 0) continue;
+    out.set(Number(row.id), {
+      id: Number(row.id),
+      status: row.status ?? null,
+      projectId,
+    });
+  }
+  return out;
+}
+
+async function purgeDraftDownloadsAfterPersistedStageSnapshots(args: {
+  userId: number | null;
+  before: Map<number, ChapterAssignmentStageSnapshot>;
+  after: Map<number, ChapterAssignmentStageSnapshot>;
+}): Promise<void> {
+  if (args.userId === null) {
+    if (args.after.size > 0) {
+      log.warn('Skipping stage-exit draft purge; no actor userId', {
+        assignmentCount: args.after.size,
+      });
+    }
+    return;
+  }
+  if (args.after.size === 0) {
+    return;
+  }
+
+  let maybePurge: typeof import('../services/draftDownloadPurge').maybePurgeDraftDownloadsAfterPersistedStageChange;
+  try {
+    // Lazy require avoids circular init with download services in pure DB tests.
+    ({ maybePurgeDraftDownloadsAfterPersistedStageChange: maybePurge } =
+      require('../services/draftDownloadPurge') as typeof import('../services/draftDownloadPurge'));
+  } catch (error) {
+    log.warn('Stage-exit draft purge module unavailable after status persist', {
+      error,
+      userId: args.userId,
+    });
+    return;
+  }
+
+  for (const [id, afterSnap] of args.after) {
+    const beforeSnap = args.before.get(id);
+    if (
+      beforeSnap !== undefined &&
+      beforeSnap.projectId !== afterSnap.projectId
+    ) {
+      log.warn('Skipping stage-exit draft purge; project identity changed', {
+        chapterAssignmentId: id,
+        fromProjectId: beforeSnap.projectId,
+        toProjectId: afterSnap.projectId,
+      });
+      continue;
+    }
+    try {
+      await maybePurge({
+        projectId: afterSnap.projectId,
+        userId: args.userId,
+        chapterAssignmentId: id,
+        fromStatus: beforeSnap?.status ?? null,
+        toStatus: afterSnap.status,
+      });
+    } catch (error) {
+      log.warn('Stage-exit draft download purge failed after status persist', {
+        error,
+        chapterAssignmentId: id,
+        userId: args.userId,
+        fromStatus: beforeSnap?.status ?? null,
+        toStatus: afterSnap.status,
+      });
+    }
+  }
+}
+
 /**
  * Immediately apply a local stage advance and enqueue it in the same
  * transaction (#257). Optional peerCheckerId is set when an unassigned Peer
  * Check is sent to Community Review. Drain owns the server PATCH.
+ * userId scopes #508/#704 stage-exit purge — capture before any await so
+ * mid-flight active switches cannot retarget purge.
  */
 export async function updateChapterAssignmentStatusLocally(
   chapterAssignmentId: number,
@@ -1236,10 +1417,31 @@ export async function updateChapterAssignmentStatusLocally(
   peerCheckerId: number | undefined,
   userId: number,
 ): Promise<void> {
+  // Capture before first await — never re-resolve active account afterward.
+  const actorUserId = resolveStageExitActorUserId(userId);
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
   const submittedTime = new Date().toISOString();
+  let before = new Map<number, ChapterAssignmentStageSnapshot>();
+  let after = new Map<number, ChapterAssignmentStageSnapshot>();
+  let snapshotCaptureFailed = false;
+
   await db.transaction(async (tx: Transaction) => {
+    try {
+      before = await readChapterAssignmentStageSnapshots(tx, [
+        chapterAssignmentId,
+      ]);
+    } catch (error) {
+      snapshotCaptureFailed = true;
+      before = new Map();
+      log.warn('Stage-exit before-snapshot failed inside local status txn', {
+        error,
+        chapterAssignmentId,
+      });
+    }
+
+    // #257 queue fromStatus must come from the pre-update row (independent of
+    // purge snapshot success).
     const current = await tx.execute(
       `SELECT status FROM chapter_assignments WHERE id = ?`,
       [chapterAssignmentId],
@@ -1283,15 +1485,46 @@ export async function updateChapterAssignmentStatusLocally(
         [status, submittedTime, updatedAt, status, chapterAssignmentId],
       );
     }
-    if (!currentRow) return;
-    await insertStageAdvanceQueueEntry(tx, {
-      chapterAssignmentId,
-      userId,
-      fromStatus: String(currentRow.status ?? ''),
-      toStatus: status,
-      peerCheckerId: peerCheckerId ?? null,
-      createdAt: updatedAt,
-    });
+    if (currentRow) {
+      await insertStageAdvanceQueueEntry(tx, {
+        chapterAssignmentId,
+        userId,
+        fromStatus: String(currentRow.status ?? ''),
+        toStatus: status,
+        peerCheckerId: peerCheckerId ?? null,
+        createdAt: updatedAt,
+      });
+    }
+
+    try {
+      after = await readChapterAssignmentStageSnapshots(tx, [
+        chapterAssignmentId,
+      ]);
+    } catch (error) {
+      snapshotCaptureFailed = true;
+      after = new Map();
+      log.warn('Stage-exit after-snapshot failed inside local status txn', {
+        error,
+        chapterAssignmentId,
+      });
+    }
+  });
+
+  if (snapshotCaptureFailed) {
+    log.warn(
+      'Skipping stage-exit draft purge; in-txn snapshot capture failed',
+      {
+        chapterAssignmentId,
+        userId: actorUserId,
+      },
+    );
+    return;
+  }
+
+  await purgeDraftDownloadsAfterPersistedStageSnapshots({
+    userId: actorUserId,
+    before,
+    after,
   });
 }
 
