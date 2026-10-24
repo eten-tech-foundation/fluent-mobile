@@ -145,8 +145,7 @@ function createRecordingConflictTestDb() {
       // #701 PM rule: canonical is what syncs as the selected take. A
       // selected-only row is deferred while the same verse has a canonical
       // take (all fixture rows share a unit — the real SQL also matches on
-      // project_unit_id). #716: every other take uploads, except
-      // non-selected pericope takes (range endpoint has no `activate`).
+      // project_unit_id). #716: every other take uploads.
       const hasCanonical = (bibleTextId: number) =>
         recordings.some(
           c => c.bible_text_id === bibleTextId && c.is_canonical === 1,
@@ -159,9 +158,6 @@ function createRecordingConflictTestDb() {
               r.is_selected === 1 &&
               hasCanonical(r.bible_text_id)
             ) &&
-            (r.granularity !== 'pericope' ||
-              r.is_canonical === 1 ||
-              r.is_selected === 1) &&
             r.sync_status !== 'uploaded' &&
             r.sync_status !== 'conflicted' &&
             r.bible_text_id > 0 &&
@@ -616,7 +612,7 @@ describe('recording upload conflict repository helpers (#256)', () => {
     ]);
   });
 
-  it('getPendingRecordings keeps non-selected pericope takes local until the range endpoint supports activate (#716)', async () => {
+  it('getPendingRecordings includes non-selected pericope takes (#716)', async () => {
     const db = createRecordingConflictTestDb();
     db.__recordings.push({
       id: 'rec-pericope-alt',
@@ -640,7 +636,10 @@ describe('recording upload conflict repository helpers (#256)', () => {
     setDatabase(db as never);
 
     const pending = await getPendingRecordings();
-    expect(pending.map(r => r.id)).toEqual(['rec-pending']);
+    expect(pending.map(r => r.id)).toEqual(['rec-pending', 'rec-pericope-alt']);
+    expect(pending[1]).toEqual(
+      expect.objectContaining({ granularity: 'pericope', isSelected: false }),
+    );
   });
 
   it('markRecordingUploaded stores server_take_id when provided and keeps it otherwise (#716)', async () => {

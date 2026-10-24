@@ -1031,8 +1031,6 @@ export async function userHasLocalChapterAssignments(
  * Every take not yet uploaded (not uploaded/conflicted), selected or not
  * (#716). Canonical and selected takes upload with `activate=true`; other
  * takes upload with `activate=false` so the server's active take is unchanged.
- * The range endpoint has no `activate` field yet, so non-selected pericope
- * takes stay local until it does.
  *
  * Pericope takes (#584) upload via PUT /verse-audio/{projectUnitId}/range
  * (fluent-api#377); verse takes keep the single-bibleTextId path.
@@ -1091,11 +1089,6 @@ export async function getPendingRecordings(chapter?: {
        )
      )
        AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
-       AND (
-         r.granularity IS NOT 'pericope'
-         OR r.is_canonical = 1
-         OR r.is_selected = 1
-       )
        AND r.sync_status NOT IN ('uploaded', 'conflicted')
        AND r.bible_text_id > 0
        ${chapterFilter}
@@ -1483,11 +1476,6 @@ const PROJECT_UNIT_PENDING_UPLOAD_GUARD = `
       AND bt.book_id = ca.book_id
       AND bt.chapter_number = ca.chapter_number
     INNER JOIN recordings r ON r.bible_text_id = bt.id
-      AND (
-        r.granularity IS NOT 'pericope'
-        OR r.is_canonical = 1
-        OR r.is_selected = 1
-      )
       AND r.sync_status NOT IN ('uploaded', 'conflicted')
       AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)
     WHERE ca.project_unit_id = pu.id

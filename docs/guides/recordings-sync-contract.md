@@ -43,10 +43,9 @@ JSON matching `verseAudioResponseSchema`: `id`, `projectUnitId`, `bibleTextId`, 
 
 ### Every take uploads; per-take delete (#716 / fluent-api#465)
 
-- Every verse take uploads, not only the selected one. Canonical and selected takes send `activate=true`; other takes send `activate=false`, which stores the take without changing the server's active take, `versionToken`, or conflict status. A selected take is still deferred while its verse has a canonical take (#701).
+- Every take (verse and pericope) uploads, not only the selected one. Canonical and selected takes send `activate=true`; other takes send `activate=false`, which stores the take without changing the server's active take, `versionToken`, or conflict status. A selected take is still deferred while its verse has a canonical take (#701).
 - The response `takeId` is stored as `recordings.server_take_id`. Without `takeId` (API not yet on #465), only an activated upload can fall back to `activeTakeId`.
 - Deleting a take that has a `server_take_id` queues a row in `recording_deletions`. The next upload pass sends `DELETE /verse-audio/{projectUnitId}/{bibleTextId}/takes/{takeId}` with the owner's token before uploading, treats `404` as done, and raises the unit's local `versionToken` from the response (the server promotes another take when the active one is deleted).
-- The range endpoint has no `activate` field yet, so non-selected pericope takes stay local.
 - Takes uploaded before #716 have no `server_take_id`; deleting them locally does not delete the server copy.
 - Requires fluent-api#465 deployed first: older APIs ignore `activate` and would make every uploaded take active.
 

@@ -880,8 +880,7 @@ function recordedByUserPredicate(alias: string, userId: number | null): string {
  * take. A merely-selected pending take on a verse that has a canonical take
  * (same bible text + unit) is deferred, so it is excluded here and pending
  * counts only reflect work the upload worker will actually send. Non-selected
- * verse takes count too: every verse take uploads (#716). Non-selected
- * pericope takes wait for `activate` on the range endpoint.
+ * takes count too: every take uploads (#716).
  */
 function uploadablePendingWhere(userId: number | null): string {
   return `
@@ -901,11 +900,6 @@ function uploadablePendingWhere(userId: number | null): string {
       )
     )
     AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
-    AND (
-      r.granularity IS NOT 'pericope'
-      OR r.is_canonical = 1
-      OR r.is_selected = 1
-    )
     AND r.sync_status NOT IN ('uploaded', 'conflicted')
     AND r.bible_text_id > 0
   `;

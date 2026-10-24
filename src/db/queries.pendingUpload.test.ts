@@ -95,14 +95,11 @@ describe('pending upload queries (#545)', () => {
     expect(chaptersSql).toContain('c.is_canonical = 1');
   });
 
-  it('uploadable pending queries count non-selected verse takes but not non-selected pericope takes (#716)', async () => {
+  it('uploadable pending queries count non-selected takes (#716)', async () => {
     mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
     await getPendingUploadCount();
     const countSql = String(mockExecute.mock.calls[0]?.[0]);
     expect(countSql).not.toMatch(/OR \(\s*r\.is_selected = 1 AND/);
-    expect(countSql).toMatch(
-      /r\.granularity IS NOT 'pericope'\s*OR r\.is_canonical = 1\s*OR r\.is_selected = 1/,
-    );
   });
 
   it('getUnsyncedRecordingCount includes pericope takes not yet on the server', async () => {
