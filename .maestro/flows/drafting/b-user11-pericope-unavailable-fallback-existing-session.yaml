@@ -1,0 +1,124 @@
+# Existing project1/member11/milestone18/assignment1033; local chapter pericope rows0.
+# Bible fallback only; no Record-tab entry, capture/play/stage/assignment write.
+# Reversible ordinary local preference restored from Pericope to original Verse.
+appId: com.eten.fluent
+tags: [drafting, existing-session, reversible-preference, guard]
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556' && typeof MAESTRO_B_PERICOPE_ROWS !== 'undefined' && MAESTRO_B_PERICOPE_ROWS === '0'}
+- assertVisible:
+    id: '^home-tab-projects$'
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-menu-active-11$'
+- tapOn:
+    id: '^settings-menu-more-settings$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^settings-drafting-unit-verse$'
+    direction: DOWN
+    timeout: 10000
+- assertVisible:
+    id: '^settings-drafting-unit-verse$'
+    selected: true
+- tapOn:
+    id: '^settings-drafting-unit-pericope$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-drafting-unit-pericope$'
+    selected: true
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-projects$'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: '^milestone-row-18$'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: '^milestone-row-18$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1033$'
+    timeout: 15000
+- assertVisible: '^Hindi IRV$'
+- tapOn:
+    id: '^chapter-row-1033$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^bible-pericope-unavailable$'
+    timeout: 20000
+- assertVisible: "^Pericopes aren't available for this project\\. Showing verses instead\\.$"
+- assertVisible: '^Psalms 1$'
+- assertVisible:
+    id: '^drafting-tab-bible$'
+    selected: true
+- assertVisible:
+    id: '^bible-verse-row-1$'
+- assertNotVisible:
+    id: '^bible-tab-loading$'
+- takeScreenshot: b-user11-psalm1-pericope-unavailable-friendly-verse-fallback
+- tapOn:
+    id: '^drafting-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-1033$'
+    timeout: 10000
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- runFlow:
+    when:
+      visible:
+        id: '^prepare-offline-screen$'
+    commands:
+      - tapOn:
+          id: '^stack-header-back$'
+          waitToSettleTimeoutMs: 500
+      - extendedWaitUntil:
+          visible:
+            id: '^project-row-1$'
+          timeout: 10000
+      - tapOn:
+          id: '^stack-header-back$'
+          waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-settings-button$'
+    timeout: 15000
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-menu-active-11$'
+- tapOn:
+    id: '^settings-menu-more-settings$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^settings-drafting-unit-verse$'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: '^settings-drafting-unit-verse$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-drafting-unit-verse$'
+    selected: true
+- takeScreenshot: b-user11-original-verse-preference-restored
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-projects$'
+    timeout: 15000

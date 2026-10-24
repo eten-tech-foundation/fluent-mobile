@@ -1,0 +1,78 @@
+{
+  "schema": "metadata-control-live-ledger-reconciliation/v1",
+  "utc": "2026-10-22T00:01:31Z",
+  "rows": {
+    "C-0017-01": "complete_for_requirement / PASS",
+    "D-0438-01": "complete_for_requirement / PASS"
+  },
+  "caveats": [
+    "normal Sync Now UI / upload-inclusive Sync Now path NOT claimed for C-0017",
+    "DEV+E2E reviewed metadata control invokes shared production runUsersMetadataPhase only",
+    "Do not invent distinct HTTP request counts from inspector duplicate notifications",
+    "No permanent Maestro/VCS/ETag mandatory gates invented for D-0438",
+    "Source cleanup other-owner"
+  ],
+  "artifacts": {
+    "RESULT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/metadata-control-live-20261021/RESULT.md",
+      "sha256": "2c6de9940c309229728e6f4af1fdf26acae372fa687492e753e778e95b43da38",
+      "bytes": 3597
+    },
+    "network-trace.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/metadata-control-live-20261021/network-trace.json",
+      "sha256": "fb7e53d59ae061e3d4ff1e97d2d26d3cceb29846372747b9285c9722f488a49f",
+      "bytes": 37802
+    },
+    "phase-events.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/metadata-control-live-20261021/phase-events.json",
+      "sha256": "aa2a43adf31907fd8d1944a6af5cb92b9086001f164ca6785089e01b7f7dec0f",
+      "bytes": 17545
+    },
+    "before-cursors.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/metadata-control-live-20261021/before-cursors.txt",
+      "sha256": "e80b52791958653bb8c3ca4a790b0f5a39d479920a0932b491fd0804dd963d4c",
+      "bytes": 250
+    },
+    "after-cursors.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/metadata-control-live-20261021/after-cursors.txt",
+      "sha256": "ade5858a266ca66b04672dcc9f5ecfe8336ef7aafe8a19d333cda252dfaae6a9",
+      "bytes": 289
+    },
+    "before-counts.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/metadata-control-live-20261021/before-counts.txt",
+      "sha256": "ab8ad0513c088f47b9603067a4bf460bd2217ec42bd89001c29ece9f36a96621",
+      "bytes": 127
+    },
+    "after-counts.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/metadata-control-live-20261021/after-counts.txt",
+      "sha256": "859d8f3a8c6667478689b4dfb211994af5b3ec8fee8fbffd0f60607085185e37",
+      "bytes": 127
+    },
+    "home9-restored.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/metadata-control-live-20261021/home9-restored.xml",
+      "sha256": "ef04db31faa37a28f3fbb7de2b912d2ab25d43872d63d0debbdac11547c4d505",
+      "bytes": 27660
+    },
+    "runtime-status.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/metadata-control-live-20261021/runtime-status.xml",
+      "sha256": "14a0139da195723bd30d6f40131c9ed11baf2b0649daf2c6048fd1d03b4aab45",
+      "bytes": 21182
+    }
+  },
+  "counts": {
+    "before": {
+      "complete_for_requirement": 46,
+      "partial": 17,
+      "not_run": 23
+    },
+    "after": {
+      "complete_for_requirement": 48,
+      "partial": 15,
+      "not_run": 23
+    }
+  },
+  "rows_touched": [
+    "C-0017-01",
+    "D-0438-01"
+  ]
+}

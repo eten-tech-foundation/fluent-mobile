@@ -1,0 +1,308 @@
+# D-0623-01: one synthetic pericope take (1 Peter 1:13–16) then Verse-mode
+# delete confirmation Cancel. Project12/milestone19/assignment1183/user10.
+# Root native preflight: Home12→switch10, app mic granted, hostmicoff, nine
+# owner10 vv1-9 hashes preserved, target 13-16 empty. NEVER confirm Delete.
+# No network/auth/reset/stage/second-take. Finally restore Verse/Legacy/12.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - mutating
+  - d0623
+---
+- runScript: ../../shared/scripts/d0623-pericope-delete-cancel-values.js
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+# Cached switch 12 → 10
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- tapOn:
+    id: 'settings-menu-account-10'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+# Pericope drafting unit for capture
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-active-10'
+    timeout: 15000
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-drafting-unit-verse'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'settings-drafting-unit-pericope'
+- assertVisible:
+    id: 'settings-drafting-unit-pericope'
+    selected: true
+- assertVisible:
+    id: 'settings-ui-version-legacy'
+    selected: true
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- runFlow: ../../shared/nav/open-fixture-chapter-from-milestone.yaml
+- tapOn:
+    id: 'drafting-tab-bible'
+- extendedWaitUntil:
+    visible:
+      id: 'bible-tab'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      text: ${output.d0623CardTextRe}
+    direction: DOWN
+    timeout: 20000
+    speed: 70
+    centerElement: true
+- tapOn:
+    text: ${output.d0623CardTextRe}
+- extendedWaitUntil:
+    visible:
+      id: 'record-verse-reference'
+      text: ${output.d0623RecordReferenceRe}
+    timeout: 15000
+- assertVisible:
+    id: 'record-start-button'
+- assertNotVisible:
+    id: ${output.d0623TakeRowRe}
+- tapOn:
+    id: 'record-start-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-pause-button'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'record-duration'
+      text: '^(0:(0[1-9]|[1-5][0-9])|[1-9][0-9]?:[0-5][0-9])$'
+    timeout: 8000
+- tapOn:
+    id: 'record-stop-button'
+- extendedWaitUntil:
+    visible:
+      id: ${output.d0623TakeRowRe}
+    timeout: 20000
+- assertVisible:
+    id: ${output.d0623TakeRowRe}
+    index: 0
+- assertNotVisible:
+    id: ${output.d0623TakeRowRe}
+    index: 1
+- assertVisible:
+    id: ${output.d0623TakeSyncRe}
+    text: '^(pending|uploaded|failed)$'
+- assertVisible:
+    text: ${output.d0623TakeSubtitleRe}
+- assertNotVisible:
+    id: 'record-stop-button'
+- takeScreenshot: d0623-pericope-13-16-saved
+# Switch to Verse mode for delete-confirm Cancel
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-1183'
+    timeout: 15000
+- tapOn:
+    id: 'stack-header-back'
+- repeat:
+    times: 3
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-settings-button'
+    timeout: 20000
+- tapOn:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-drafting-unit-verse'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'settings-drafting-unit-verse'
+- assertVisible:
+    id: 'settings-drafting-unit-verse'
+    selected: true
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- runFlow: ../../shared/nav/open-fixture-chapter-from-milestone.yaml
+- tapOn:
+    id: 'drafting-tab-bible'
+- scrollUntilVisible:
+    element:
+      id: ${output.d0623VerseRowRe}
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: ${output.d0623VerseRowRe}
+- extendedWaitUntil:
+    visible:
+      id: 'record-verse-reference'
+      text: '^1 Peter 1:13$'
+    timeout: 15000
+- assertVisible:
+    id: ${output.d0623TakeRowRe}
+- assertVisible:
+    text: ${output.d0623TakeSubtitleRe}
+# Delete ONLY to raise range confirmation; Cancel ONLY — never Delete confirm
+- tapOn:
+    id: ${output.d0623DeleteSelectedRe}
+- extendedWaitUntil:
+    visible:
+      text: ${output.d0623AlertTitleRe}
+    timeout: 10000
+- assertVisible:
+    text: ${output.d0623AlertBodyRe}
+- tapOn:
+    text: 'Cancel'
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertNotVisible:
+    text: ${output.d0623AlertTitleRe}
+- assertVisible:
+    id: ${output.d0623TakeRowRe}
+- assertVisible:
+    text: ${output.d0623TakeSubtitleRe}
+# Retain across covered verses 14-16
+- tapOn:
+    id: 'record-next-verse'
+- extendedWaitUntil:
+    visible:
+      id: 'record-verse-reference'
+      text: '^1 Peter 1:14$'
+    timeout: 10000
+- assertVisible:
+    id: ${output.d0623TakeRowRe}
+- tapOn:
+    id: 'record-next-verse'
+- extendedWaitUntil:
+    visible:
+      id: 'record-verse-reference'
+      text: '^1 Peter 1:15$'
+    timeout: 10000
+- assertVisible:
+    id: ${output.d0623TakeRowRe}
+- tapOn:
+    id: 'record-next-verse'
+- extendedWaitUntil:
+    visible:
+      id: 'record-verse-reference'
+      text: '^1 Peter 1:16$'
+    timeout: 10000
+- assertVisible:
+    id: ${output.d0623TakeRowRe}
+- takeScreenshot: d0623-cancel-retained-verse16
+# Restore account 12 (Verse already selected)
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-1183'
+    timeout: 15000
+- tapOn:
+    id: 'stack-header-back'
+- repeat:
+    times: 3
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-settings-button'
+    timeout: 20000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-account-12'
+    timeout: 15000
+- tapOn:
+    id: 'settings-menu-account-12'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-active-12'
+    timeout: 15000
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-drafting-unit-verse'
+    direction: DOWN
+    timeout: 10000
+- assertVisible:
+    id: 'settings-drafting-unit-verse'
+    selected: true
+- assertVisible:
+    id: 'settings-ui-version-legacy'
+    selected: true
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- assertNotVisible:
+    id: 'login-email-input'
+- takeScreenshot: d0623-restored-home12

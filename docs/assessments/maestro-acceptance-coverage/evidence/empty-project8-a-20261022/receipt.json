@@ -1,0 +1,141 @@
+{
+  "schema": "empty-project8-ledger-reconciliation/v1",
+  "utc": "2026-10-22T01:20:08Z",
+  "rows": {
+    "D-0188-03": "complete_for_requirement / PASS",
+    "D-0504-01": "complete_for_requirement / PASS"
+  },
+  "geometry": {
+    "hostBounds": "[0,274][1080,2159]",
+    "messageBounds": "[202,1185][877,1248]",
+    "hostCenter": [
+      540.0,
+      1216.5
+    ],
+    "messageCenter": [
+      539.5,
+      1216.5
+    ],
+    "deltaPx": [
+      -0.5,
+      0.0
+    ],
+    "resourceSections": []
+  },
+  "oracle": {
+    "schema": "d0504-d0188-project8-empty-oracle-sanitized/v1",
+    "observedAtUtc": "2026-10-22T01:02:19.574Z",
+    "url": "https://qa.api.fluent.bible/projects/8/translation-resources/manifest?languageCode=kan&bookCode=1PE&startChapter=5&endChapter=5&includeContent=false",
+    "query": {
+      "languageCode": "kan",
+      "bookCode": "1PE",
+      "startChapter": 5,
+      "endChapter": 5,
+      "includeContent": false
+    },
+    "fixtureContextFromMainAudit": {
+      "assignmentId": 484,
+      "projectName": "Mobile Testing",
+      "bibleId": 308
+    },
+    "response": {
+      "projectId": 8,
+      "sourceLanguageCode": "kan",
+      "items": [],
+      "totalBytes": 0,
+      "truncated": false
+    },
+    "tier2Count": 0,
+    "tier3Count": 0,
+    "completeEmptyTranslationResourceSet": true,
+    "httpStatus": "Not exposed by supported browser page read",
+    "limits": "Establishes no translation-resource items for requested chapter/language at observation time. Does not attest source-audio absence, device readmodel readiness, cache state, empty-message rendering or geometry.",
+    "notes": [
+      "Complete empty translation-resource set for project8/kan/1PE5; items=[].",
+      "Does not attest source-audio absence or transfer bound; Audio 0B on device is known size baseline, not absence proof."
+    ]
+  },
+  "preservation": {
+    "takes11_unchanged": true,
+    "original_225_resource_hashes_unchanged": true,
+    "new_source_audio_meta_json_262B": [
+      "files/downloads/8/source-audio-meta/EST-1.json",
+      "files/downloads/8/source-audio-meta/EST-2.json",
+      "files/downloads/8/source-audio-meta/EST-4.json",
+      "files/downloads/8/source-audio-meta/PSA-2.json"
+    ],
+    "cache_count_now": 229,
+    "queue_completed": 205,
+    "claims": 0,
+    "home_pm9_restored": true
+  },
+  "artifacts": {
+    "RESULT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/empty-project8-a-20261022/RESULT.md",
+      "sha256": "732c9668f650a87d7521cf8935c109c40d263e60832bb241238c3dc4852897d6",
+      "bytes": 3524
+    },
+    "actual-resources.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/empty-project8-a-20261022/actual-resources.xml",
+      "sha256": "6f1770774e01f8e1aeb4b3964ba4bbb1f222c4c366ea782dbda02f9943c3d8c3",
+      "bytes": 25630
+    },
+    "actual-resources.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/empty-project8-a-20261022/actual-resources.png",
+      "sha256": "54a264cccf1e2d23c90deeb7b78bd4da5c15f4d5417df090c8b5e6cc067862d4",
+      "bytes": 55724
+    },
+    "geometry.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/empty-project8-a-20261022/geometry.json",
+      "sha256": "edc7bfc50f2c22a9671cabe2db2a73173e6dda2ce755ff8c1d4d5547342168a2",
+      "bytes": 240
+    },
+    "pfo-settled.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/empty-project8-a-20261022/pfo-settled.xml",
+      "sha256": "c8b81eaf429907bead555542e2893183e935b588b66e93a46206aa9aaa49637b",
+      "bytes": 30822
+    },
+    "pfo-settled.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/empty-project8-a-20261022/pfo-settled.png",
+      "sha256": "45aad17cf2f7e17bd5788775a73aac46175abfa5577bb2b662cf77023cbf4b8b",
+      "bytes": 136872
+    },
+    "pfo-only-484.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/empty-project8-a-20261022/pfo-only-484.xml",
+      "sha256": "24437d3e47dc31f8efecdc6a2a00155ace9ba9da16f51cbf09c48f52f64997f8",
+      "bytes": 70875
+    },
+    "pfo-original-selection-restored.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/empty-project8-a-20261022/pfo-original-selection-restored.xml",
+      "sha256": "6cb7a8dd78481d0b1e26bc9ea98dca4a49740fd9efdfea2fddf42442e8323471",
+      "bytes": 22961
+    },
+    "final-home9.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/empty-project8-a-20261022/final-home9.xml",
+      "sha256": "ef04db31faa37a28f3fbb7de2b912d2ab25d43872d63d0debbdac11547c4d505",
+      "bytes": 27660
+    },
+    "sanitized-empty-oracle.json": {
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/evidence/empty-project8-a-20261022/sanitized-empty-oracle.json",
+      "sha256": "9febcc3dfafd5b6d5fb3ea48b2b1b571c4c8fc95594f520467a467e8960f1ce2"
+    }
+  },
+  "counts": {
+    "before": {
+      "complete_for_requirement": 50,
+      "partial": 14,
+      "not_run": 22
+    },
+    "after": {
+      "complete_for_requirement": 52,
+      "partial": 12,
+      "not_run": 22
+    }
+  },
+  "caveats": [
+    "No normal Download / Maestro automation PASS",
+    "Audio 0B is not source-audio absence or transfer bound",
+    "Do not claim zero added files \u2014 4 metadata JSON retained",
+    "Pending 404/cellular gate held untouched"
+  ]
+}

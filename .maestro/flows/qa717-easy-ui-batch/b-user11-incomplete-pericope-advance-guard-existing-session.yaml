@@ -1,0 +1,124 @@
+# B-0013-01 incomplete Pericope last-unit stage-advance guard (read-only).
+# Fixture993: own Draft Exodus1 / FCBH 3 pericopes / 0 selected takes.
+# Distinct from retained zero-Verse1184 and 9of25 Verse negatives.
+# No capture/playback/stage confirm. Driver finally restores Verse/Home.
+appId: com.eten.fluent
+tags:
+  - record
+  - existing-session
+  - read-only
+  - guard
+---
+- assertTrue: ${typeof MAESTRO_B_USER_ID !== 'undefined' && MAESTRO_B_USER_ID === '11' && typeof MAESTRO_B_SERIAL !== 'undefined' && MAESTRO_B_SERIAL === 'emulator-5556' && typeof MAESTRO_B_CHAPTER_ID !== 'undefined' && MAESTRO_B_CHAPTER_ID === '993' && typeof MAESTRO_B_INCOMPLETE_PERICOPE_ATTESTATION !== 'undefined' && MAESTRO_B_INCOMPLETE_PERICOPE_ATTESTATION === 'draft-exo1-fcbh3-zero-takes-drafter11-peer10'}
+- assertNotVisible:
+    id: '^login-email-input$'
+- assertVisible:
+    id: '^home-tab-my-work$'
+- tapOn:
+    id: '^home-settings-button$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^settings-menu-active-11$'
+    timeout: 15000
+- assertVisible:
+    id: '^settings-menu-active-11$'
+- tapOn:
+    id: '^settings-menu-more-settings$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^settings-drafting-unit-verse$'
+    direction: DOWN
+    timeout: 10000
+- assertVisible:
+    id: '^settings-drafting-unit-verse$'
+    selected: true
+- tapOn:
+    id: '^settings-drafting-unit-pericope$'
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: '^settings-drafting-unit-pericope$'
+    selected: true
+- tapOn:
+    id: '^stack-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-my-work$'
+    timeout: 15000
+- tapOn:
+    id: '^home-tab-my-work$'
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element:
+      id: '^my-work-row-993$'
+    direction: DOWN
+    speed: 80
+    timeout: 20000
+- assertVisible:
+    id: '^my-work-row-title-993$'
+    text: '^Exodus 1$'
+- tapOn:
+    id: '^my-work-row-993$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^drafting-tab-bar$'
+    timeout: 15000
+- tapOn:
+    id: '^drafting-tab-record$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-tab$'
+    timeout: 15000
+- assertVisible:
+    id: '^drafting-tab-record$'
+    selected: true
+- assertNotVisible:
+    id: '^record-pericope-unavailable$'
+- assertVisible:
+    id: '^record-verse-reference$'
+    text: '^Exodus 1:1–7$'
+- assertVisible:
+    id: '^record-next-verse$'
+    enabled: true
+- tapOn:
+    id: '^record-next-verse$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-verse-reference$'
+      text: '^Exodus 1:8–14$'
+    timeout: 10000
+- assertVisible:
+    id: '^record-next-verse$'
+    enabled: true
+- tapOn:
+    id: '^record-next-verse$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^record-verse-reference$'
+      text: '^Exodus 1:15–22$'
+    timeout: 10000
+- assertVisible:
+    id: '^record-next-verse$'
+    enabled: false
+- assertVisible:
+    id: '^record-prev-verse$'
+    enabled: true
+- assertNotVisible:
+    id: '^record-stop-button$'
+- assertNotVisible:
+    id: '^stage-advance-button$'
+- assertNotVisible:
+    id: '^stage-advance-confirm-sheet$'
+- tapOn:
+    id: '^drafting-header-back$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: '^home-tab-my-work$'
+    timeout: 15000

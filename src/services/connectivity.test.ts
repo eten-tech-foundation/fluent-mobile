@@ -1,6 +1,9 @@
+import * as apiBaseUrl from '../config/apiBaseUrl';
 import NetInfo from '@react-native-community/netinfo';
 import { waitFor } from '@testing-library/react-native';
 import {
+  checkServerReachable,
+  resolveServerOnline,
   getConnectivitySnapshot,
   getTransferTransportSnapshot,
   subscribeToConnectivity,
@@ -288,5 +291,172 @@ describe('connectivity', () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     unsubscribe();
+  });
+});
+
+describe('temporary QA717 allowlisted health trace', () => {
+  const secret = 'secret-token-body-header';
+  const originalDev = Object.getOwnPropertyDescriptor(globalThis, '__DEV__');
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    Object.defineProperty(globalThis, '__DEV__', {
+      value: true,
+      configurable: true,
+    });
+    jest
+      .spyOn(apiBaseUrl, 'getApiBaseUrl')
+      .mockReturnValue(
+        `https://user:password@qa.api.fluent.bible/private-path?token=${secret}`,
+      );
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+    if (originalDev) Object.defineProperty(globalThis, '__DEV__', originalDev);
+  });
+
+  it.each([
+    ['success', true, 200],
+    ['http_error', false, 503],
+    ['AbortError', false, null],
+    ['networkError', false, null],
+  ] as const)(
+    'logs only primitives for %s and preserves the return',
+    async (kind, expected, status) => {
+      const info = jest
+        .spyOn(console, 'info')
+        .mockImplementation(() => undefined);
+      const error = new Error(secret);
+      error.name = kind === 'AbortError' ? 'AbortError' : secret;
+      const response = {
+        ok: expected,
+        status,
+        headers: secret,
+        body: secret,
+        text: jest.fn(() => {
+          throw new Error('Response body must not be read');
+        }),
+      };
+      const request = jest.spyOn(globalThis, 'fetch');
+      if (kind === 'AbortError' || kind === 'networkError')
+        request.mockRejectedValue(error);
+      else request.mockResolvedValue(response as unknown as Response);
+      mockNetInfo.fetch.mockResolvedValue({ isConnected: true, type: 'wifi' });
+
+      await expect(getConnectivitySnapshot()).resolves.toEqual({
+        isOnline: expected,
+        isWifi: true,
+        isCellular: false,
+        connectionType: 'wifi',
+      });
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(request).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          method: 'GET',
+          signal: expect.any(AbortSignal),
+        }),
+      );
+      expect(response.text).not.toHaveBeenCalled();
+      expect(info).toHaveBeenCalledTimes(1);
+      const [prefix, trace] = info.mock.calls[0];
+      expect(prefix).toBe('[FLUENT_QA717_HEALTH_V1]');
+      expect(trace).toEqual({
+        host: 'qa.api.fluent.bible',
+        isConnected: true,
+        connectionType: 'wifi',
+        result: kind,
+        httpStatus: status,
+        elapsedMs: expect.any(Number),
+      });
+      expect(Object.keys(trace).sort()).toEqual(
+        [
+          'host',
+          'isConnected',
+          'connectionType',
+          'result',
+          'httpStatus',
+          'elapsedMs',
+        ].sort(),
+      );
+      for (const forbidden of [
+        secret,
+        'password',
+        '/private-path',
+        'token=',
+        'headers',
+        'stack',
+      ]) {
+        expect(JSON.stringify(info.mock.calls)).not.toContain(forbidden);
+      }
+    },
+  );
+
+  it('traces a disconnected link without adding a health request', async () => {
+    const info = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    const request = jest.spyOn(globalThis, 'fetch');
+    await expect(resolveServerOnline(false, secret)).resolves.toBe(false);
+    expect(request).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledWith(
+      '[FLUENT_QA717_HEALTH_V1]',
+      expect.objectContaining({
+        result: 'link_disconnected',
+        isConnected: false,
+        connectionType: 'unknown',
+      }),
+    );
+    expect(JSON.stringify(info.mock.calls)).not.toContain(secret);
+  });
+
+  it('preserves timeout cancellation and emits AbortError without raw exception fields', async () => {
+    jest.useFakeTimers();
+    try {
+      const info = jest
+        .spyOn(console, 'info')
+        .mockImplementation(() => undefined);
+      const request = jest.spyOn(globalThis, 'fetch').mockImplementation(
+        (_url, init) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new Error(secret)),
+            );
+          }),
+      );
+      const result = checkServerReachable();
+      await jest.advanceTimersByTimeAsync(5000);
+      await expect(result).resolves.toBe(false);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(info).toHaveBeenCalledWith(
+        '[FLUENT_QA717_HEALTH_V1]',
+        expect.objectContaining({
+          result: 'AbortError',
+          elapsedMs: 5000,
+        }),
+      );
+      expect(JSON.stringify(info.mock.calls)).not.toContain(secret);
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not log when DEV is disabled or let a logging failure change the result', async () => {
+    const info = jest.spyOn(console, 'info').mockImplementation(() => {
+      throw new Error(secret);
+    });
+    const request = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue({ ok: true, status: 200 } as Response);
+    await expect(checkServerReachable()).resolves.toBe(true);
+    Object.defineProperty(globalThis, '__DEV__', {
+      value: false,
+      configurable: true,
+    });
+    info.mockClear();
+    await expect(checkServerReachable()).resolves.toBe(true);
+    expect(info).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalledTimes(2);
   });
 });

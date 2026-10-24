@@ -1,0 +1,15 @@
+appId: com.eten.fluent
+---
+- runFlow: ../../shared/nav/goto-home.yaml
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- tapOn:
+    id: 'settings-menu-account-10'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 60000

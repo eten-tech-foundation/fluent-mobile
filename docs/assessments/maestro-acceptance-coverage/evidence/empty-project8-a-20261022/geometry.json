@@ -1,0 +1,17 @@
+{
+  "hostBounds": "[0,274][1080,2159]",
+  "messageBounds": "[202,1185][877,1248]",
+  "hostCenter": [
+    540.0,
+    1216.5
+  ],
+  "messageCenter": [
+    539.5,
+    1216.5
+  ],
+  "deltaPx": [
+    -0.5,
+    0.0
+  ],
+  "resourceSections": []
+}

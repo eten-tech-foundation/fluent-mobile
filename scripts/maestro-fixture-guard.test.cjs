@@ -379,6 +379,32 @@ describe('checked-in chapter navigation', () => {
   });
 });
 
+
+describe('recursive journey roots may own capture', () => {
+  const { preflightFromArgv } = require('./maestro-fixture-guard.cjs');
+  const flow = path.join(
+    root,
+    '.maestro/flows/qa717-easy-ui-batch/a-user10-d0623-pericope-delete-cancel-existing-session.yaml',
+  );
+  it('accepts D0623 mutating capture root with tagged milestone helper recursively', () => {
+    const result = preflightFromArgv({
+      chapterId: '1183',
+      milestoneId: '19',
+      projectId: '12',
+      allowlist: '12',
+      denylist: '944',
+      argv: ['--device', 'emulator-5554', flow],
+      recursive: true,
+      fixtureEnv: {
+        MAESTRO_FIXTURE_CHAPTER_ID: '1183',
+        MAESTRO_FIXTURE_MILESTONE_ID: '19',
+        MAESTRO_FIXTURE_PROJECT_ID: '12',
+      },
+    });
+    expect(result.ok).toBe(true);
+  });
+});
+
 describe('exact milestone fixture helper', () => {
   const flowPath = path.join(
     root,

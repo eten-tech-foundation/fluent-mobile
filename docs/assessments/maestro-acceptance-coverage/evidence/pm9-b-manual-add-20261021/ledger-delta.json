@@ -1,0 +1,85 @@
+{
+  "schema": "pm9-b-manual-add-ledger-delta/v1",
+  "updated_utc": "2026-10-21T19:00:00Z",
+  "rows": {
+    "A-0034-01": {
+      "execution_coverage": {
+        "from": "partial",
+        "to": "complete_for_requirement"
+      },
+      "live_status": {
+        "from": "BLOCKED",
+        "to": "PASS"
+      }
+    },
+    "C-0234-01": {
+      "execution_coverage": {
+        "from": "partial",
+        "to": "complete_for_requirement"
+      },
+      "live_status": {
+        "from": "BLOCKED",
+        "to": "PASS"
+      }
+    },
+    "A-0025-01": {
+      "unchanged": true
+    }
+  },
+  "eligible_current_atomic_execution_coverage": {
+    "before": {
+      "complete_for_requirement": 40,
+      "partial": 23,
+      "not_run": 23
+    },
+    "after": {
+      "complete_for_requirement": 42,
+      "partial": 21,
+      "not_run": 23
+    },
+    "delta": {
+      "complete_for_requirement": 2,
+      "partial": -2,
+      "not_run": 0
+    }
+  },
+  "eligible_current_atomic_live_status": {
+    "before": {
+      "PASS": 40,
+      "BLOCKED": 41,
+      "UNTESTED": 3,
+      "FAIL": 2
+    },
+    "after": {
+      "PASS": 42,
+      "BLOCKED": 39,
+      "UNTESTED": 3,
+      "FAIL": 2
+    }
+  },
+  "canonical_execution_coverage": {
+    "before": {
+      "complete_for_requirement": 49,
+      "partial": 60,
+      "not_run": 95
+    },
+    "after": {
+      "complete_for_requirement": 51,
+      "partial": 58,
+      "not_run": 95
+    }
+  },
+  "genuine_gaps": {
+    "A-0034-01": [],
+    "C-0234-01": [],
+    "A-0025-01": [
+      "Required login/API-path readiness and timing fixture unavailable; 43s full-sync interval is not Tier1 proof (row unchanged)"
+    ],
+    "nonblocking_qualifications": [
+      "Armed continuous mid-typing observer absent for A-0034; not a source-required criterion",
+      "No fully green Maestro automation for either row; literal retained behavior accepted per instruction"
+    ]
+  },
+  "C-0019_wording_preserved": true,
+  "requirements_rowcount": 204
+}

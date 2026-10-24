@@ -1,0 +1,25 @@
+{
+  "schema": "d0235-03-loading-branch-support/v1",
+  "utc": "2026-10-22T02:48:01Z",
+  "criterion_id": "D-0235-03",
+  "decision": "partial retained (loading added; error still missing)",
+  "counts_unchanged": {
+    "complete_for_requirement": 53,
+    "partial": 12,
+    "not_run": 21
+  },
+  "artifacts": {
+    "RESULT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-d0235-loading-20261022/RESULT.md",
+      "sha256": "6f3f840e948d7fce5c65f7cf6015c8d9127a92a82c1b90f8724252734623b3da"
+    },
+    "entry.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-d0235-loading-20261022/entry.xml",
+      "sha256": "4faf08157479f1519b8e9d6fb54e46feac2e23a4ddbecc6cb9c34f05baa530e1"
+    },
+    "settled.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-d0235-loading-20261022/settled.xml",
+      "sha256": "db32c9aec9a963e72549fe3d78145b18d09f023f9e7a295ba94c9a53c8c4b15b"
+    }
+  }
+}

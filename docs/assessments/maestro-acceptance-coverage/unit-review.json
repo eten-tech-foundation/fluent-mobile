@@ -1,0 +1,4700 @@
+{
+  "schema": "fluent-acceptance-unit-review/v1",
+  "generated_utc": "2026-10-20T05:06:00Z",
+  "pass": "unit_rules_classify_v1",
+  "inputs": [
+    "/tmp/fluent-acceptance-map/consolidated.json",
+    "/tmp/fluent-acceptance-map/CONTRACT.md"
+  ],
+  "freeze": {
+    "raw_candidate_requirements": 204,
+    "canonical_candidate_requirements": 202,
+    "exact_duplicate_aliases": {
+      "D-0235-01": "A-0004-01",
+      "A-0016-01": "C-0038-01"
+    },
+    "no_additional_requirements": true,
+    "no_domain_edits": true
+  },
+  "atomic_unit_definition": {
+    "formula": "one actor + one trigger/precondition + one independently falsifiable observable outcome",
+    "matrix_rule": "state/role/error matrices require separate cases",
+    "parent_groups": "non-additive vs children; do not count parent+child"
+  },
+  "inclusion_exclusion": {
+    "include": [
+      "current agreed user_behavior",
+      "current data_integrity conditional requirements"
+    ],
+    "exclude_from_unit_denominator": [
+      "process/CI/harness-only",
+      "epic parents",
+      "superseded",
+      "waived",
+      "deferred (retain with reason)",
+      "unresolved"
+    ],
+    "evidence_rule": "source/mock/native complementary ≠ UI runtime PASS",
+    "product_missing_rule": "product-missing/deferred ≠ out-of-scope discard"
+  },
+  "counts": {
+    "classified_ids": 204,
+    "by_requirement_kind": {
+      "user_behavior": 134,
+      "epic_parent": 46,
+      "data_integrity": 22,
+      "engineering_process": 2
+    },
+    "by_candidate_granularity_review": {
+      "group": 46,
+      "atomic": 148,
+      "summary": 10
+    },
+    "flagged_non_atomic": 56,
+    "unresolved_kind_or_granularity": 0,
+    "include_in_behavior_denominator_true": 145,
+    "whole_app_denominator": null,
+    "whole_app_percent": null
+  },
+  "limitations": [
+    "One-pass heuristic classification from consolidated fields only; no 308-history re-audit",
+    "Did not manufacture child splits or edit domain JSON",
+    "Unresolved when unclear rather than forcing atomic",
+    "Root consolidates classifications without percentage",
+    "204 raw IDs classified; 2 exact aliases noted (canonical 202)"
+  ],
+  "classifications": [
+    {
+      "id": "A-0001-01",
+      "domain": "identity_navigation",
+      "title": "My Work shows active-user assignments",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Compound and-clauses with multiple missing assertions",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0002-01",
+      "domain": "identity_navigation",
+      "title": "Projects/Milestones list is membership-scoped",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0003-01",
+      "domain": "identity_navigation",
+      "title": "Open project chapter list and navigate back",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0004-01",
+      "domain": "identity_navigation",
+      "title": "Drafting shell exposes Bible/Resources/Record tabs",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0005-01",
+      "domain": "identity_navigation",
+      "title": "Settings reachable; Prepare Offline and Sign Out present",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0006-01",
+      "domain": "identity_navigation",
+      "title": "Privacy Policy reachable from Settings and scrolls",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "has current_runtime PASS label — verify exact coverage separately"
+      ],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0007-01",
+      "domain": "identity_navigation",
+      "title": "Terms of Use reachable from Settings and scrolls",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "has current_runtime PASS label — verify exact coverage separately"
+      ],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0008-01",
+      "domain": "identity_navigation",
+      "title": "Account switcher lists saved accounts with 3-cap",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0009-01",
+      "domain": "identity_navigation",
+      "title": "Switching accounts updates active identity and scoped lists",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0010-01",
+      "domain": "identity_navigation",
+      "title": "Sync 401 soft-reauth without wiping credentials",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Compound and-clauses with multiple missing assertions",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0010-S41",
+      "domain": "identity_navigation",
+      "title": "HISTORICAL: hard clear credentials on Session token expired 401",
+      "mapped_granularity": "atomic",
+      "applicability": "superseded",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "superseded",
+        "note": "Retained with reason; not current unit"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0011-01",
+      "domain": "identity_navigation",
+      "title": "Cold launch restores authenticated session without network",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0012-01",
+      "domain": "identity_navigation",
+      "title": "Drawer Sign Out warns on unsynced recordings like Settings",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0013-01",
+      "domain": "identity_navigation",
+      "title": "Login screen gates unauthenticated users",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0014-01",
+      "domain": "identity_navigation",
+      "title": "Forgot-password is standalone navigable screen",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Issue #91 AC verified (live route/local retained + mocked-API success/failure); server reset-email OOS"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0015-01",
+      "domain": "identity_navigation",
+      "title": "Home My Work ↔ Projects tab switching",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "has current_runtime PASS label — verify exact coverage separately"
+      ],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0016-01",
+      "domain": "identity_navigation",
+      "title": "Home sync control opens Sync screen",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": "C-0038-01",
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "has current_runtime PASS label — verify exact coverage separately"
+      ],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0017-01",
+      "domain": "identity_navigation",
+      "title": "Prepare Offline entry and back navigation",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0018-01",
+      "domain": "identity_navigation",
+      "title": "Settings can switch UiVersion legacy|next at runtime",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0019-01",
+      "domain": "identity_navigation",
+      "title": "Drafting header initials when ≥2 accounts",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0020-01",
+      "domain": "identity_navigation",
+      "title": "Missing/unreachable API URL shows actionable error",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0021-01",
+      "domain": "identity_navigation",
+      "title": "Recordings attributed to active user at capture",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0022-01",
+      "domain": "identity_navigation",
+      "title": "My Work stage accordions and Observer/Peer Check population",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0023-01",
+      "domain": "identity_navigation",
+      "title": "Comment entry points, composer, and panel",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0024-01",
+      "domain": "identity_navigation",
+      "title": "My Work rows show comment count and commented marker",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0025-01",
+      "domain": "identity_navigation",
+      "title": "Login Tier 1 does not wait on full master catalogue",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Multiple independently falsifiable clauses/state matrix combined",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0026-01",
+      "domain": "identity_navigation",
+      "title": "Settings opens usable (not blank) after account switch",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0027-01",
+      "domain": "identity_navigation",
+      "title": "Multi-account isolation Maestro flows A–D exist",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0028-01",
+      "domain": "identity_navigation",
+      "title": "App navigates via Expo Router with auth gate preserved",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0029-01",
+      "domain": "identity_navigation",
+      "title": "UNRESOLVED: org role/grant allow-deny conformance on mobile",
+      "mapped_granularity": "summary_only",
+      "applicability": "unresolved",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Mapped as summary_only; not a single falsifiable outcome",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0030-01",
+      "domain": "identity_navigation",
+      "title": "Next UI Key component + gallery (flag-gated)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0031-01",
+      "domain": "identity_navigation",
+      "title": "Login client-side validation errors",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0032-01",
+      "domain": "identity_navigation",
+      "title": "Wrong credentials stay on Login with global error",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0033-01",
+      "domain": "identity_navigation",
+      "title": "Offline login shows connection error then recovers",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0034-01",
+      "domain": "identity_navigation",
+      "title": "Add-account does not hijack active session until switch",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "A-0035-01",
+      "domain": "identity_navigation",
+      "title": "Deep link home while signed-in/out recovery",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0001-01",
+      "domain": "recording_review",
+      "title": "Record and play local draft audio",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0001-00",
+      "domain": "recording_review",
+      "title": "PoC checkbox record/playback only",
+      "mapped_granularity": "summary_only",
+      "applicability": "superseded",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Mapped as summary_only; not a single falsifiable outcome",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0002-01",
+      "domain": "recording_review",
+      "title": "Mic permission dialog and deny path",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0002-02",
+      "domain": "recording_review",
+      "title": "Record Tab capture states and Review chrome",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0003-01",
+      "domain": "recording_review",
+      "title": "Multi-take cards with single selected take",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0004-01",
+      "domain": "recording_review",
+      "title": "expo-file-system audio storage paths",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0004-02",
+      "domain": "recording_review",
+      "title": "Recording engine start/pause/resume/stop",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0004-03",
+      "domain": "recording_review",
+      "title": "Playback engine play/pause/seek/stop",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Compound and-clauses with multiple missing assertions",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0004-04",
+      "domain": "recording_review",
+      "title": "useVerseAudio testable state machine",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0005-01",
+      "domain": "recording_review",
+      "title": "Recordings join via bible_text_id",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0006-01",
+      "domain": "recording_review",
+      "title": "Committed AAC remuxed to seekable M4A",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0006-02",
+      "domain": "recording_review",
+      "title": "Remuxed take must not be silent",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0007-01",
+      "domain": "recording_review",
+      "title": "Clear orphaned paused-take markers",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0008-01",
+      "domain": "recording_review",
+      "title": "Record tab loads; verse opens Record; mic released on stop",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0009-01",
+      "domain": "recording_review",
+      "title": "Active-user take isolation on shared device",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0010-01",
+      "domain": "recording_review",
+      "title": "Warn but allow record on taken chapters",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0011-01",
+      "domain": "recording_review",
+      "title": "Refresh assignment/stage on chapter list open",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0012-01",
+      "domain": "recording_review",
+      "title": "Send to next stage CTA on drafting/Record",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0013-01",
+      "domain": "recording_review",
+      "title": "Chapter advance requires full verse/pericope coverage",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0014-01",
+      "domain": "recording_review",
+      "title": "Block recording at Complete stage",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0015-01",
+      "domain": "recording_review",
+      "title": "Kill-safe pause recovery and leave prompt",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0016-01",
+      "domain": "recording_review",
+      "title": "Block drawer while recording/paused",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0017-01",
+      "domain": "recording_review",
+      "title": "No Maximum update depth on Review playback",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0018-01",
+      "domain": "recording_review",
+      "title": "Waveform centered; scrub seeks to tap",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0019-01",
+      "domain": "recording_review",
+      "title": "Mixed-mode recording and stitched playback",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0020-01",
+      "domain": "recording_review",
+      "title": "Current-stage assignment indicator",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0021-01",
+      "domain": "recording_review",
+      "title": "Implicit peer checker assignment",
+      "mapped_granularity": "summary_only",
+      "applicability": "unresolved",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Mapped as summary_only; not a single falsifiable outcome",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0022-01",
+      "domain": "recording_review",
+      "title": "Observer read-only draft view",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0023-01",
+      "domain": "recording_review",
+      "title": "Peer-check offline draft audio download chip",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0024-01",
+      "domain": "recording_review",
+      "title": "Next UI Waveform/Hardware gallery components",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "unresolved",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0025-01",
+      "domain": "recording_review",
+      "title": "Physical-device readiness checklist after Maestro",
+      "mapped_granularity": "atomic",
+      "applicability": "deferred",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "deferred_scope",
+        "note": "Deferred/open product scope retained — product-missing ≠ out-of-scope discard"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0026-01",
+      "domain": "recording_review",
+      "title": "Maestro Record happy-path and mic-deny edges",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0027-01",
+      "domain": "recording_review",
+      "title": "Play/record/re-record audit meta completion",
+      "mapped_granularity": "summary_only",
+      "applicability": "unresolved",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Mapped as summary_only; not a single falsifiable outcome",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0090-01",
+      "domain": "recording_review",
+      "title": "Epic: Audio recording & playback Expo modules",
+      "mapped_granularity": "summary_only",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Mapped as summary_only; not a single falsifiable outcome",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "B-0090-02",
+      "domain": "recording_review",
+      "title": "Epic: Multi-user projects (recording attribution slice)",
+      "mapped_granularity": "summary_only",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Mapped as summary_only; not a single falsifiable outcome",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "D-0235-01",
+      "domain": "reference_platform",
+      "title": "Drafting tabs: Bible / Resources / Record chrome switchable",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": "A-0004-01",
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "D-0188-01"
+      ]
+    },
+    {
+      "id": "D-0531-01",
+      "domain": "reference_platform",
+      "title": "Resources tab sections expand/collapse",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "D-0189-01",
+        "D-0190-01",
+        "D-0191-01"
+      ]
+    },
+    {
+      "id": "D-0408-01",
+      "domain": "reference_platform",
+      "title": "Source audio dock play control on Bible tab",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "D-0235-03",
+        "D-0412-01",
+        "D-0579-01",
+        "D-0579-02",
+        "D-0595-01"
+      ]
+    },
+    {
+      "id": "D-0594-01",
+      "domain": "reference_platform",
+      "title": "Images & Maps fullscreen open from Resources",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "D-0578-01",
+      "domain": "reference_platform",
+      "title": "Offline: Resources read Prepare-for-Offline download without network",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "D-0192-01",
+        "D-0591-01"
+      ]
+    },
+    {
+      "id": "D-0417-01",
+      "domain": "reference_platform",
+      "title": "Prepare Offline: Reference Images persisted as kind:image",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "D-0504-01",
+      "domain": "reference_platform",
+      "title": "Customize Download lists Tier 2/3 only from API availability",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Multiple independently falsifiable clauses/state matrix combined",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "D-0408-02",
+      "domain": "reference_platform",
+      "title": "Bible tab Verse/Pericope toggle updates unit cards and source player",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "D-0407-01",
+        "D-0409-01",
+        "D-0540-01"
+      ]
+    },
+    {
+      "id": "D-0702-01",
+      "domain": "reference_platform",
+      "title": "Prepare Offline Download control remains when chapters selected",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "D-0235-02",
+      "domain": "reference_platform",
+      "title": "Navigate My Work / Projects into drafting without auth wipe",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "D-0408-03",
+      "domain": "reference_platform",
+      "title": "Bible verse selection can enter Record tab (chrome only; no disposable record)",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "D-0564-01"
+      ]
+    },
+    {
+      "id": "D-0670-01",
+      "domain": "reference_platform",
+      "title": "Progressive first-login sync unblocks Home before full catalogue",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "D-0469-01",
+      "domain": "reference_platform",
+      "title": "Local bible_texts.id aligns with API verse identity for display/playback",
+      "mapped_granularity": "summary_only",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Mapped as summary_only; not a single falsifiable outcome",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "D-0585-01",
+      "domain": "reference_platform",
+      "title": "Pericope take upload gating / hydrate (cross-domain)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "D-0623-01"
+      ]
+    },
+    {
+      "id": "D-0048-01",
+      "domain": "reference_platform",
+      "title": "Bible rows: selected vs currently-playing visual states",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0048-02",
+      "domain": "reference_platform",
+      "title": "Bible tap selects unit without auto-playing source audio",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0235-03",
+      "domain": "reference_platform",
+      "title": "Source audio dock loading / empty / error chrome",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0412-01",
+      "domain": "reference_platform",
+      "title": "Shell source-audio shows Verse N/M (or unit) caption",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0579-01",
+      "domain": "reference_platform",
+      "title": "Offline: play downloaded source audio from local file first",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0579-02",
+      "domain": "reference_platform",
+      "title": "Offline without downloaded source audio shows unavailable (not spinner)",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0595-01",
+      "domain": "reference_platform",
+      "title": "Without verse timestamps, UI does not claim verse-accurate seek",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0188-01",
+      "domain": "reference_platform",
+      "title": "Resources tab remains visible as second drafting tab when empty",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0188-02",
+      "domain": "reference_platform",
+      "title": "Resources content follows active Bible/Record unit",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0188-03",
+      "domain": "reference_platform",
+      "title": "Centered empty message when unit has no resources",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0189-01",
+      "domain": "reference_platform",
+      "title": "Translation Notes section accordion when notes exist",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0189-02",
+      "domain": "reference_platform",
+      "title": "Translation Notes section hidden when no notes",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0190-01",
+      "domain": "reference_platform",
+      "title": "Translation Questions section accordion when questions exist",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0190-02",
+      "domain": "reference_platform",
+      "title": "Translation Questions section hidden when none",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0191-01",
+      "domain": "reference_platform",
+      "title": "Images & Maps section accordion when items exist",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0192-01",
+      "domain": "reference_platform",
+      "title": "Resources TN/TQ/Images come from Prepare Offline inventory model",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0591-01",
+      "domain": "reference_platform",
+      "title": "TN and TQ hide when loaded empty (like Images)",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0593-01",
+      "domain": "reference_platform",
+      "title": "Resources cover whole pericope range in pericope mode",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0407-01",
+      "domain": "reference_platform",
+      "title": "Settings Verse/Pericope toggle changes Bible and Record display unit",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0407-02",
+      "domain": "reference_platform",
+      "title": "Drafting unit preference persists per user",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0407-03",
+      "domain": "reference_platform",
+      "title": "Drafting unit preference syncs to account when online",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0409-01",
+      "domain": "reference_platform",
+      "title": "Record unit title shows verse ref or pericope range (never N of M)",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0409-02",
+      "domain": "reference_platform",
+      "title": "Record capture waveform ticks in verse mode (not pericope)",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0438-01",
+      "domain": "reference_platform",
+      "title": "Pericope boundaries hydrate via set-level sync (not chapter-loop HTTP)",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0447-01",
+      "domain": "reference_platform",
+      "title": "Known FIA/FCBH pericope sets bundled in APK seed",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0474-01",
+      "domain": "reference_platform",
+      "title": "Take card full pericope subtitle (withdrawn ticket)",
+      "mapped_granularity": "summary_only",
+      "applicability": "waived",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Mapped as summary_only; not a single falsifiable outcome",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0540-01",
+      "domain": "reference_platform",
+      "title": "Pericope mode next/prev advances by pericope",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0540-02",
+      "domain": "reference_platform",
+      "title": "Source Bible text shows full pericope verse range",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0564-01",
+      "domain": "reference_platform",
+      "title": "Bible unit tap opens Record via onOpenRecord",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0586-01",
+      "domain": "reference_platform",
+      "title": "Pericope-mode chapter completeness uses verse-coverage rules",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0588-01",
+      "domain": "reference_platform",
+      "title": "UI explains when project has no local pericope data",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0589-01",
+      "domain": "reference_platform",
+      "title": "Full pericope take label visible on Record with timer",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "D-0623-01",
+      "domain": "reference_platform",
+      "title": "Confirm before deleting a pericope take from Verse mode",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": []
+    },
+    {
+      "id": "C-0014-01",
+      "domain": "sync_offline",
+      "title": "Manual sync populates core SQLite catalogue tables without duplicates",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0016-01",
+      "domain": "sync_offline",
+      "title": "Bulk bible-texts skip-if-present (historical)",
+      "mapped_granularity": "atomic",
+      "applicability": "superseded",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "superseded",
+        "note": "Retained with reason; not current unit"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0017-01",
+      "domain": "sync_offline",
+      "title": "Sync trigger updates last_synced_at and per-table counts in KV",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0018-01",
+      "domain": "sync_offline",
+      "title": "Home inline four-state sync status row (historical UI)",
+      "mapped_granularity": "atomic",
+      "applicability": "superseded",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "superseded",
+        "note": "Retained with reason; not current unit"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0019-01",
+      "domain": "sync_offline",
+      "title": "Per-step sync errors (acceptance group)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "C-0019-02",
+        "C-0019-03",
+        "C-0019-04",
+        "C-0019-05"
+      ]
+    },
+    {
+      "id": "C-0019-02",
+      "domain": "sync_offline",
+      "title": "Failing sync step does not crash or block later steps",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0019-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0019-03",
+      "domain": "sync_offline",
+      "title": "Failed sync step persists sync_error_<step> key",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": "C-0019-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0019-04",
+      "domain": "sync_offline",
+      "title": "Sync/metadata chrome surfaces step error without global toast",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0019-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0019-05",
+      "domain": "sync_offline",
+      "title": "Transport-only sticky sync error clears after recovery",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0019-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0009-01",
+      "domain": "sync_offline",
+      "title": "Scaffold API call demonstrable (historical)",
+      "mapped_granularity": "atomic",
+      "applicability": "superseded",
+      "requirement_kind": "engineering_process",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Process/harness item — not user/data atomic AC unit",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "process_or_harness_only",
+        "note": "Exclude from user/data atomic denominator; retain for provenance"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0038-01",
+      "domain": "sync_offline",
+      "title": "Home cloud sync icon is sole entry and opens Sync screen",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "has current_runtime PASS label — verify exact coverage separately"
+      ],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0149-01",
+      "domain": "sync_offline",
+      "title": "Sync page shows status indicator and upload progress chrome",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0039-01",
+      "domain": "sync_offline",
+      "title": "Prepare for Offline auto-prompt follows connectivity profile matrix",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0050-01",
+      "domain": "sync_offline",
+      "title": "Prepare for Offline chapter selection (acceptance group)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "C-0050-02",
+        "C-0050-03",
+        "C-0050-04",
+        "C-0050-05"
+      ]
+    },
+    {
+      "id": "C-0050-02",
+      "domain": "sync_offline",
+      "title": "PFO header and instructional line",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0050-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0050-03",
+      "domain": "sync_offline",
+      "title": "Assigned chapters accordion collapsed and preselected",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0050-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0050-04",
+      "domain": "sync_offline",
+      "title": "Unassigned chapters accordion open/required",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0050-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0050-05",
+      "domain": "sync_offline",
+      "title": "PFO book select-all and chapter circle free select",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0050-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0051-01",
+      "domain": "sync_offline",
+      "title": "Prepare for Offline resource download CTA (acceptance group)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "C-0051-02",
+        "C-0051-03",
+        "C-0051-04",
+        "C-0051-05",
+        "C-0051-06"
+      ]
+    },
+    {
+      "id": "C-0051-02",
+      "domain": "sync_offline",
+      "title": "RESOURCES TO DOWNLOAD summary lists grouped sizes",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0051-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0051-03",
+      "domain": "sync_offline",
+      "title": "Tier1 locked; Customize deselects Tier2/3 only",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Multiple independently falsifiable clauses/state matrix combined",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0051-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0051-04",
+      "domain": "sync_offline",
+      "title": "Live total download size on Total row and Download CTA",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0051-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0051-05",
+      "domain": "sync_offline",
+      "title": "Download CTA enabled rules by assignment/selection",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0051-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0051-06",
+      "domain": "sync_offline",
+      "title": "Download start yields #52 controls and stops #39 auto re-surface",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0051-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0052-01",
+      "domain": "sync_offline",
+      "title": "Prepare for Offline download controls (acceptance group)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "C-0052-02",
+        "C-0052-03",
+        "C-0052-04",
+        "C-0052-05"
+      ]
+    },
+    {
+      "id": "C-0052-02",
+      "domain": "sync_offline",
+      "title": "Download CTA replaced by Pause + Cancel after start",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0052-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0052-03",
+      "domain": "sync_offline",
+      "title": "Pause ↔ Resume retains download progress",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0052-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0052-04",
+      "domain": "sync_offline",
+      "title": "Cancel restores Download CTA and keeps partials",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0052-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0052-05",
+      "domain": "sync_offline",
+      "title": "Download item chrome: active ring / completed check / untouched",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0052-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0053-01",
+      "domain": "sync_offline",
+      "title": "Prepare for Offline manage device storage",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0146-01",
+      "domain": "sync_offline",
+      "title": "Cellular upload/download toggle (acceptance group)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "C-0146-02",
+        "C-0146-03",
+        "C-0146-04",
+        "C-0146-05"
+      ]
+    },
+    {
+      "id": "C-0146-02",
+      "domain": "sync_offline",
+      "title": "Settings cellular toggle present and off by default",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0146-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0146-03",
+      "domain": "sync_offline",
+      "title": "Sync page cellular toggle mirrors Settings preference",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0146-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0146-04",
+      "domain": "sync_offline",
+      "title": "Cellular-off blocks Sync Now / upload with explanation",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0146-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0146-05",
+      "domain": "sync_offline",
+      "title": "Cellular-off blocks PFO download start (shared gate)",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0146-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0147-01",
+      "domain": "sync_offline",
+      "title": "Sync page Downloads section shows queue progress when queue >= 1",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0150-01",
+      "domain": "sync_offline",
+      "title": "Upload orchestrator: health-online, Wi-Fi auto, cellular gate, pause/cancel windows",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0151-01",
+      "domain": "sync_offline",
+      "title": "Sync action controls state matrix (acceptance group)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "C-0151-02",
+        "C-0151-03",
+        "C-0151-04",
+        "C-0151-05"
+      ]
+    },
+    {
+      "id": "C-0151-02",
+      "domain": "sync_offline",
+      "title": "Syncing state shows Pause + Cancel",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0151-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0151-03",
+      "domain": "sync_offline",
+      "title": "Paused state shows Resume + Sync Now + Cancel",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0151-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0151-04",
+      "domain": "sync_offline",
+      "title": "Pending Sync Now with cellular-off disabled explanation",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0151-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0151-05",
+      "domain": "sync_offline",
+      "title": "Upload/All Complete hides action controls",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0151-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0152-01",
+      "domain": "sync_offline",
+      "title": "Android FG-service upload notification with chapter progress",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0100-01",
+      "domain": "sync_offline",
+      "title": "Upload worker status machine (acceptance group)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "C-0100-02",
+        "C-0100-03",
+        "C-0100-04",
+        "C-0100-05"
+      ]
+    },
+    {
+      "id": "C-0100-02",
+      "domain": "sync_offline",
+      "title": "Upload worker status pending→uploading→uploaded|failed",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Multiple independently falsifiable clauses/state matrix combined",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": "C-0100-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0100-03",
+      "domain": "sync_offline",
+      "title": "Upload worker persists upload_error and blob_key",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": "C-0100-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0100-04",
+      "domain": "sync_offline",
+      "title": "Upload worker single-flight with bounded retries",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": "C-0100-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0100-05",
+      "domain": "sync_offline",
+      "title": "Upload worker reads local_file_path via expo-file-system",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": "C-0100-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0101-01",
+      "domain": "sync_offline",
+      "title": "Sync status UI updates live from upload worker transitions",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0102-01",
+      "domain": "sync_offline",
+      "title": "Verse-audio upload contract (supersedes POST /recordings/sync)",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0077-01",
+      "domain": "sync_offline",
+      "title": "R2 worker-pool architecture proposal (historical)",
+      "mapped_granularity": "atomic",
+      "applicability": "superseded",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "superseded",
+        "note": "Retained with reason; not current unit"
+      },
+      "evidence_caveats": [
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0177-01",
+      "domain": "sync_offline",
+      "title": "Assigned Record verses resolve bible_text_id; honest missing-text messaging",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0234-01",
+      "domain": "sync_offline",
+      "title": "Chapter-assignment sync does not FK-fail for PM with zero assignments",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0428-01",
+      "domain": "sync_offline",
+      "title": "Assignment sync persists assignee/peer_checker for never-signed-in users",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0256-01",
+      "domain": "sync_offline",
+      "title": "Offline audio take conflict detection with version token / content-hash",
+      "mapped_granularity": "atomic",
+      "applicability": "deferred",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "deferred_scope",
+        "note": "Deferred/open product scope retained — product-missing ≠ out-of-scope discard"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0257-01",
+      "domain": "sync_offline",
+      "title": "Durable local offline stage-advancement queue syncs on reconnect",
+      "mapped_granularity": "atomic",
+      "applicability": "deferred",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "deferred_scope",
+        "note": "Deferred/open product scope retained — product-missing ≠ out-of-scope discard"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0260-01",
+      "domain": "sync_offline",
+      "title": "Chapter list shows conflict indicator when has_conflict",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0267-01",
+      "domain": "sync_offline",
+      "title": "Chapter list claim/assignment ownership indicator",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "ready",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0268-01",
+      "domain": "sync_offline",
+      "title": "Online first recording auto-claims unassigned chapter",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0270-01",
+      "domain": "sync_offline",
+      "title": "Offline first recording provisionally claims chapter locally",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0271-01",
+      "domain": "sync_offline",
+      "title": "Reconnect claim sync remainder and conflict detection (parent open)",
+      "mapped_granularity": "atomic",
+      "applicability": "deferred",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "deferred_scope",
+        "note": "Deferred/open product scope retained — product-missing ≠ out-of-scope discard"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0611-01",
+      "domain": "sync_offline",
+      "title": "Pending offline claims push before reconnect upload and chapter-list refresh",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0610-01",
+      "domain": "sync_offline",
+      "title": "Surface offline claim conflicts when chapter held by another",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0446-01",
+      "domain": "sync_offline",
+      "title": "Download queue re-fetches when Aquifer sourceUrl changes for same contentId",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0483-01",
+      "domain": "sync_offline",
+      "title": "Projects tab loads after full offline sync without disk I/O error",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0508-01",
+      "domain": "sync_offline",
+      "title": "Observer offline draft download chip and payload",
+      "mapped_granularity": "atomic",
+      "applicability": "deferred",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Multiple independently falsifiable clauses/state matrix combined",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "deferred_scope",
+        "note": "Deferred/open product scope retained — product-missing ≠ out-of-scope discard"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0530-01",
+      "domain": "sync_offline",
+      "title": "Returning-online audit gaps closed to Overall Pass (group)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "unresolved",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0545-01",
+      "domain": "sync_offline",
+      "title": "Sync Now is not a silent no-op while pending uploads remain",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0548-01",
+      "domain": "sync_offline",
+      "title": "Sync page shows recordings.upload_error for failed takes",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0599-01",
+      "domain": "sync_offline",
+      "title": "Upload foreground service does not crash on reconnect sessions",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0601-01",
+      "domain": "sync_offline",
+      "title": "Reachability probes drop stale results and retry after network change",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0604-01",
+      "domain": "sync_offline",
+      "title": "Mid-upload network drop silent pause (acceptance group)",
+      "mapped_granularity": "acceptance_group",
+      "applicability": "current",
+      "requirement_kind": "epic_parent",
+      "candidate_granularity_review": "group",
+      "flagged_non_atomic": true,
+      "reason": "Parent acceptance_group / multi-clause umbrella; non-additive vs children",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "epic_parent_nonadditive",
+        "note": "Parent group non-additive; children/linked atomics carry falsifiable units"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": [
+        "C-0604-02",
+        "C-0604-03",
+        "C-0604-04",
+        "C-0604-05"
+      ]
+    },
+    {
+      "id": "C-0604-02",
+      "domain": "sync_offline",
+      "title": "Mid-upload network drop leaves take pending not failed",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0604-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0604-03",
+      "domain": "sync_offline",
+      "title": "Mid-upload drop pauses session silently",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0604-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0604-04",
+      "domain": "sync_offline",
+      "title": "Upload auto-resumes when server reachable after drop",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0604-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0604-05",
+      "domain": "sync_offline",
+      "title": "Friendly copy if network error reaches upload UI",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": "C-0604-01",
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0605-01",
+      "domain": "sync_offline",
+      "title": "Takes recorded while already online auto-queue upload",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0612-01",
+      "domain": "sync_offline",
+      "title": "Warm Sync Now skips full master catalogue and single-flights",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0613-01",
+      "domain": "sync_offline",
+      "title": "Uploads target the project unit recorded at capture time",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0620-01",
+      "domain": "sync_offline",
+      "title": "SQLite pending-count read failures are not treated as zero",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0642-01",
+      "domain": "sync_offline",
+      "title": "Master-data catalogue GETs use authenticated request path",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0675-01",
+      "domain": "sync_offline",
+      "title": "Sync uses /self list routes and clears cache on empty membership",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "fixture_blocked",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0294-01",
+      "domain": "sync_offline",
+      "title": "Sync passes per-request auth tokens (no global authToken mutate)",
+      "mapped_granularity": "atomic",
+      "applicability": "current",
+      "requirement_kind": "data_integrity",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": true,
+        "exclusion": null,
+        "note": "Current agreed behavior or data-integrity conditional requirement (candidate only; not runtime PASS)"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS",
+        "maestro readiness complementary_only"
+      ],
+      "maestro_readiness": "complementary_only",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0701-01",
+      "domain": "sync_offline",
+      "title": "Selected-take designation syncs without new audio",
+      "mapped_granularity": "atomic",
+      "applicability": "deferred",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "deferred_scope",
+        "note": "Deferred/open product scope retained — product-missing ≠ out-of-scope discard"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0716-01",
+      "domain": "sync_offline",
+      "title": "Upload and server-delete of all takes (not only selected)",
+      "mapped_granularity": "atomic",
+      "applicability": "deferred",
+      "requirement_kind": "user_behavior",
+      "candidate_granularity_review": "atomic",
+      "flagged_non_atomic": false,
+      "reason": null,
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "deferred_scope",
+        "note": "Deferred/open product scope retained — product-missing ≠ out-of-scope discard"
+      },
+      "evidence_caveats": [],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    },
+    {
+      "id": "C-0374-01",
+      "domain": "sync_offline",
+      "title": "sync.switchUser stub resolved (implement or remove)",
+      "mapped_granularity": "atomic",
+      "applicability": "unresolved",
+      "requirement_kind": "engineering_process",
+      "candidate_granularity_review": "summary",
+      "flagged_non_atomic": true,
+      "reason": "Process/harness item — not user/data atomic AC unit",
+      "exact_duplicate_alias_of": null,
+      "inclusion": {
+        "include_in_behavior_denominator": false,
+        "exclusion": "process_or_harness_only",
+        "note": "Exclude from user/data atomic denominator; retain for provenance"
+      },
+      "evidence_caveats": [
+        "source/mock/native/historical complementary ≠ UI runtime PASS"
+      ],
+      "maestro_readiness": "product_decision",
+      "parent_requirement_id": null,
+      "child_requirement_ids": null
+    }
+  ]
+}

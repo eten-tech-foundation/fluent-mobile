@@ -1,0 +1,20 @@
+# QA warm Sync: one Home → Sync navigation (session-preserving).
+# Uses shared goto-sync correction (relativePoint center + animation settle).
+# No auth/reset/clearState. No tap retry loops.
+appId: com.eten.fluent
+tags:
+  - qa-warm-temp
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-sync.yaml
+- assertVisible:
+    id: 'sync-screen'
+- assertVisible:
+    id: 'sync-upload-cellular-switch'
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000

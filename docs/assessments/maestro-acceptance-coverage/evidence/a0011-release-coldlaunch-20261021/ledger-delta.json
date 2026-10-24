@@ -1,0 +1,82 @@
+{
+  "schema": "a0011-release-coldlaunch-ledger-delta/v1",
+  "updated_utc": "2026-10-21T19:35:00Z",
+  "rows": {
+    "A-0011-01": {
+      "execution_coverage": {
+        "from": "partial",
+        "to": "complete_for_requirement"
+      },
+      "live_status": {
+        "from": "BLOCKED",
+        "to": "PASS"
+      }
+    },
+    "A-0025-01": {
+      "unchanged": true
+    },
+    "D-0447-01": {
+      "unchanged": true
+    }
+  },
+  "eligible_current_atomic_execution_coverage": {
+    "before": {
+      "complete_for_requirement": 42,
+      "partial": 21,
+      "not_run": 23
+    },
+    "after": {
+      "complete_for_requirement": 43,
+      "partial": 20,
+      "not_run": 23
+    },
+    "delta": {
+      "complete_for_requirement": 1,
+      "partial": -1,
+      "not_run": 0
+    }
+  },
+  "eligible_current_atomic_live_status": {
+    "before": {
+      "PASS": 42,
+      "BLOCKED": 39,
+      "UNTESTED": 3,
+      "FAIL": 2
+    },
+    "after": {
+      "PASS": 43,
+      "BLOCKED": 38,
+      "UNTESTED": 3,
+      "FAIL": 2
+    }
+  },
+  "canonical_execution_coverage": {
+    "before": {
+      "complete_for_requirement": 51,
+      "partial": 58,
+      "not_run": 95
+    },
+    "after": {
+      "complete_for_requirement": 52,
+      "partial": 57,
+      "not_run": 95
+    }
+  },
+  "canonical_live_status": {
+    "before": {
+      "PASS": 51,
+      "BLOCKED": 127,
+      "UNTESTED": 24,
+      "FAIL": 2
+    },
+    "after": {
+      "PASS": 52,
+      "BLOCKED": 126,
+      "UNTESTED": 24,
+      "FAIL": 2
+    }
+  },
+  "canonical_inventory": 202,
+  "requirements_rowcount": 204,
+  "prior_failed_expo_dev_launcher_history_preserved": true
+}

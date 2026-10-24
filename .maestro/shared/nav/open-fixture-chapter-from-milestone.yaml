@@ -2,6 +2,8 @@
 # Root independently verifies project/milestone/chapter/user linkage before run.
 # Runner retains mutating project allowlist/denylist and exact chapter pin checks.
 appId: com.eten.fluent
+tags:
+  - ordered-readonly
 ---
 - assertTrue: ${typeof MAESTRO_FIXTURE_MILESTONE_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_MILESTONE_ID))}
 - assertTrue: ${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID))}

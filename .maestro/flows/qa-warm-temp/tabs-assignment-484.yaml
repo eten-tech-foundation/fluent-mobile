@@ -1,0 +1,45 @@
+# TEMPORARY QA warm-only drafting tabs. No record-start / take capture.
+# Fixture: assignment 484.
+appId: com.eten.fluent
+tags:
+  - qa-warm-temp
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertVisible:
+    id: 'home-sync-button'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: 'my-work-row-484'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'my-work-row-484'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 30000
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- tapOn:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'resources-tab'
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000

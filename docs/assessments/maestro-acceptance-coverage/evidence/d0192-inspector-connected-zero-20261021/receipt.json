@@ -1,0 +1,102 @@
+{
+  "schema": "d0192-01-ledger-reconciliation/v1",
+  "utc": "2026-10-21T23:15:01Z",
+  "criterion_id": "D-0192-01",
+  "scenario_id": "D-SC-0192-01",
+  "decision": "complete_for_requirement / PASS",
+  "source_criterion": {
+    "coverage_behavior": "TN/TQ/Images via same PFO inventory/download model (not separate sync stack)",
+    "issue_192": "after resources synced, Resources displays them with NO NETWORK CALLS; not an explicit radio-offline-only condition",
+    "closing_path": "CONNECTED cached path with zero ALL Network events in Resources and Notes windows"
+  },
+  "mapping": {
+    "inventory_ui_match": "observed-inventory.csv TQ174757/TN217709/image2928 \u2194 rendered UI",
+    "resources_zero_events": 0,
+    "notes_zero_events": 0,
+    "positive_control_events": 72,
+    "per_window_outcome_label": "UNVALIDATED_POSITIVE_CONTROL (expected-negative; not standalone positive proof)",
+    "identity_proven": true,
+    "ack_before_windows": true
+  },
+  "artifacts": {
+    "RESOURCE-RESULT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/RESOURCE-RESULT.md",
+      "sha256": "4a06e3a769c16529e6f8c518c97a948cdefb0003f34fa0c56f7fd756d325c9c2",
+      "bytes": 2903
+    },
+    "resources-zero-trace.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/resources-zero-trace.json",
+      "sha256": "28bd9c2efacdf28c52f6028f5430218c438dd60718f71ce5cbfccecd691270e6",
+      "bytes": 1953
+    },
+    "notes-zero-trace.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/notes-zero-trace.json",
+      "sha256": "aeb774acae5e1099a93b86e83dbd94dd7f1f20b1af1e9ade858203d66541c111",
+      "bytes": 1953
+    },
+    "positive-control.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/positive-control.json",
+      "sha256": "6fbba1746c0f75cb53fa080a1ba5879c10f55bc61d521546071c02dea9d4a9ae",
+      "bytes": 1748
+    },
+    "observed-inventory.csv": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/observed-inventory.csv",
+      "sha256": "48a40722148b4e293a1a9f8d6959345131a1ec58516cb85a5007ea3eab1e156c",
+      "bytes": 364
+    },
+    "resources-observed.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/resources-observed.xml",
+      "sha256": "01157ac250ee4c04cac3113614e5f47af848f9f9f42077392a66e0792dd2f5dd",
+      "bytes": 53762
+    },
+    "resources-observed.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/resources-observed.png",
+      "sha256": "0f7dd47b5f307a46b1b7d92487d10ffc44eeb52d94685c729ad95ef35e74b2c8",
+      "bytes": 1356034
+    },
+    "tn-traced.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/tn-traced.xml",
+      "sha256": "d252bf0972a8690613342c8568e835b04448a04de458c28cce06b6e509883052",
+      "bytes": 56050
+    },
+    "actual-final-home.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/actual-final-home.xml",
+      "sha256": "b33e24d20b4c731a5858212c2cbf28fd257f8e416050d321861935ba768656aa",
+      "bytes": 23970
+    },
+    "notes-observed.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/notes-observed.xml",
+      "sha256": "d252bf0972a8690613342c8568e835b04448a04de458c28cce06b6e509883052",
+      "bytes": 56050
+    },
+    "restored-accordion.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0192-inspector-a-20261021/restored-accordion.xml",
+      "sha256": "01157ac250ee4c04cac3113614e5f47af848f9f9f42077392a66e0792dd2f5dd",
+      "bytes": 53762
+    }
+  },
+  "limitations": [
+    "Connected warm cached path \u2014 not a new airplane episode and not a claim of universal all-future/all-features behavior",
+    "Per-window UNVALIDATED_POSITIVE_CONTROL label reflects expected-negative zero-event windows; positive proof of observer is earlier positive-control.json (72 events)",
+    "ACK alone never claimed as zero-request proof",
+    "Initial Notes expansion 23:09:34 outside Resources window not credited",
+    "No new Maestro automation PASS; manual native UI + sanitized Network events",
+    "Isolated #192/PR761 complementary only (not re-run)",
+    "Prior offline zero-successful-fetch evidence retained as history, superseded as residual by this zero-attempt trace"
+  ],
+  "counts": {
+    "before": {
+      "complete_for_requirement": 45,
+      "partial": 18,
+      "not_run": 23
+    },
+    "after": {
+      "complete_for_requirement": 46,
+      "partial": 17,
+      "not_run": 23
+    }
+  },
+  "rows_touched": [
+    "D-0192-01"
+  ]
+}

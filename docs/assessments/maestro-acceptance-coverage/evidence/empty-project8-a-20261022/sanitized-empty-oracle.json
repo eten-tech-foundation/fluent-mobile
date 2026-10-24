@@ -1,0 +1,33 @@
+{
+  "schema": "d0504-d0188-project8-empty-oracle-sanitized/v1",
+  "observedAtUtc": "2026-10-22T01:02:19.574Z",
+  "url": "https://qa.api.fluent.bible/projects/8/translation-resources/manifest?languageCode=kan&bookCode=1PE&startChapter=5&endChapter=5&includeContent=false",
+  "query": {
+    "languageCode": "kan",
+    "bookCode": "1PE",
+    "startChapter": 5,
+    "endChapter": 5,
+    "includeContent": false
+  },
+  "fixtureContextFromMainAudit": {
+    "assignmentId": 484,
+    "projectName": "Mobile Testing",
+    "bibleId": 308
+  },
+  "response": {
+    "projectId": 8,
+    "sourceLanguageCode": "kan",
+    "items": [],
+    "totalBytes": 0,
+    "truncated": false
+  },
+  "tier2Count": 0,
+  "tier3Count": 0,
+  "completeEmptyTranslationResourceSet": true,
+  "httpStatus": "Not exposed by supported browser page read",
+  "limits": "Establishes no translation-resource items for requested chapter/language at observation time. Does not attest source-audio absence, device readmodel readiness, cache state, empty-message rendering or geometry.",
+  "notes": [
+    "Complete empty translation-resource set for project8/kan/1PE5; items=[].",
+    "Does not attest source-audio absence or transfer bound; Audio 0B on device is known size baseline, not absence proof."
+  ]
+}

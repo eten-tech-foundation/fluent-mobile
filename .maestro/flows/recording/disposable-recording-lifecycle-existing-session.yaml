@@ -1,0 +1,97 @@
+# ONE capture only. Root native preflight: account10/Home, cached10/9/12,
+# project12/milestone19/1183, verse6 bible_text34849 has zero takes; host mic off.
+# Root hard command budget130s; preserve first failure and take/native evidence.
+# No network/auth/reset/recovery/reload/delete/stage actions. No retry after Start.
+# Generated take ID is bound by root native postflight, not inferred from badge text.
+appId: com.eten.fluent
+tags:
+  - record
+  - existing-session
+  - fixture-blocked
+  - mutating
+  - disposable-lifecycle
+---
+- runScript: ../../shared/scripts/disposable-lifecycle-values.js
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: 'my-work-row-1183'
+    direction: DOWN
+    timeout: 30000
+    speed: 70
+    centerElement: true
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
+- tapOn:
+    id: 'drafting-tab-bible'
+- scrollUntilVisible:
+    element:
+      id: 'bible-verse-row-6'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'bible-verse-row-6'
+- extendedWaitUntil:
+    visible:
+      id: 'record-start-button'
+    timeout: 10000
+- assertVisible:
+    id: 'record-verse-reference'
+    text: ${output.lifecycleReferenceRe}
+- assertNotVisible:
+    id: ${output.lifecycleTakeRowRe}
+- assertNotVisible:
+    id: 'record-resume-button'
+- tapOn:
+    id: 'record-start-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-pause-button'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'record-duration'
+      text: '^(0:(0[1-9]|[1-5][0-9])|[1-9][0-9]?:[0-5][0-9])$'
+    timeout: 5000
+- runFlow:
+    file: disposable-background-return-existing-session.yaml
+    env:
+      # Legacy shared guard phase validates context only; child asserts ACTIVE
+      # capture before HOME, then copies actual frozen time after return.
+      MAESTRO_DISPOSABLE_PHASE: paused-before-reload
+- assertVisible:
+    id: 'record-verse-reference'
+    text: ${output.lifecycleReferenceRe}
+- assertVisible:
+    id: 'record-resume-button'
+- assertVisible:
+    id: 'record-duration'
+    text: ${output.disposablePausedTimeRe}
+- tapOn:
+    id: 'record-stop-button'
+- extendedWaitUntil:
+    visible:
+      id: ${output.lifecycleTakeRowRe}
+    timeout: 15000
+- assertVisible:
+    id: ${output.lifecycleTakeRowRe}
+    index: 0
+- assertNotVisible:
+    id: ${output.lifecycleTakeRowRe}
+    index: 1
+- assertVisible:
+    id: ${output.lifecycleTakeSyncRe}
+    text: '^(pending|uploaded)$'
+- copyTextFrom:
+    id: ${output.lifecycleTakeSyncRe}
+- evalScript: ${output.lifecycleSavedSyncStatus = String(maestro.copiedText)}
+- assertTrue: ${/^(pending|uploaded)$/.test(output.lifecycleSavedSyncStatus)}
+- assertVisible:
+    id: 'record-new-take-button'
+- assertNotVisible:
+    id: 'record-stop-button'
+- assertNotVisible:
+    id: 'record-pause-button'
+- takeScreenshot: disposable-1183-verse6-lifecycle-saved

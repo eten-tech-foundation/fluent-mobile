@@ -1,0 +1,25 @@
+{
+  "schema": "b1184-interrupted-attempt1-ledger-note/v1",
+  "utc": "2026-10-22T02:48:01Z",
+  "rows": [
+    "B-0016-01",
+    "B-0017-01"
+  ],
+  "decision": "not_run retained; automation failure history only; no active-guard/product FAIL claim",
+  "counts_unchanged": {
+    "complete_for_requirement": 53,
+    "partial": 12,
+    "not_run": 21
+  },
+  "artifacts": {
+    "RESULT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/RESULT.md",
+      "sha256": "1d78e3bd08de3f28b1e7e01c0062af52c261a8fb2ce88cc01397684ca5b85e1b"
+    },
+    "lifecycle_fix": {
+      "path": "/tmp/b1184-lifecycle-timeout-fix-result.md",
+      "sha256": "8321e75c74b774fb738bcf735940910065ded32aea9037598ce4e7b3575b026b"
+    }
+  },
+  "remaining_capture_budget": 1
+}

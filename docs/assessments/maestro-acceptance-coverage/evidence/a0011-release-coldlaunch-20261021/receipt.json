@@ -1,0 +1,160 @@
+{
+  "schema": "fluent-a0011-release-coldlaunch-reconciliation/v1",
+  "generated_utc": "2026-10-21T19:35:00Z",
+  "scope": "Narrow ledger reconciliation for A-0011-01 only; D-0447-01 static partial and A-0025-01 timing unchanged; no device/test/code/source-integration/git publication; canonical inventory remains 202",
+  "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021",
+  "files": [
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/RECEIPT.md",
+      "sha256": "8b735d7a35ac593c7e00a4b58d7cfd6f7a07aea27f7049a1f87245f78af75518",
+      "relative": "RECEIPT.md",
+      "bytes": 1815
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/b-restoration-verification.txt",
+      "sha256": "6bb43619e68c3d9d2b92018e6b2624afdcd6859a2069bd7c35ec6989d9efd5a6",
+      "relative": "b-restoration-verification.txt",
+      "bytes": 999
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/connectivity-offline.txt",
+      "sha256": "96e413bb45b1e4f9dbb3f9f43615474d8c8cc105a020a765f7b4bf10d018446d",
+      "relative": "connectivity-offline.txt",
+      "bytes": 29
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/pid-before.txt",
+      "sha256": "c05a5bccb0fa554c3a9257002d8827119501e8b3faaf2000970b0c4fb027c88c",
+      "relative": "pid-before.txt",
+      "bytes": 5
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/pid-after-stop.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "relative": "pid-after-stop.txt",
+      "bytes": 0
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/pid-after-coldstart.txt",
+      "sha256": "905929055657d6a0992a4ca3715d8130ed4bbcdf0cf3327fdb729e58c58ae1a7",
+      "relative": "pid-after-coldstart.txt",
+      "bytes": 5
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/temp-lifecycle.events",
+      "sha256": "ee18870922ef1782394c2b908b20382a0c2e8b3f7b3cec24deee46165e8c27f6",
+      "relative": "temp-lifecycle.events",
+      "bytes": 298
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/offline-cold-home.xml",
+      "sha256": "1e11f1578e4ae2a907331a57bf78e54da60e92fb70e22bd934855e56ab5fdf5f",
+      "relative": "offline-cold-home.xml",
+      "bytes": 20732
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/offline-cold-settled.xml",
+      "sha256": "1e11f1578e4ae2a907331a57bf78e54da60e92fb70e22bd934855e56ab5fdf5f",
+      "relative": "offline-cold-settled.xml",
+      "bytes": 20732
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/account-after-offline-coldstart.xml",
+      "sha256": "12cccebcd2a43115f864bfdecd2a88709a654f401f1451cdf46236c3b7e8cbd4",
+      "relative": "account-after-offline-coldstart.xml",
+      "bytes": 33975
+    }
+  ],
+  "artifact_scope": {
+    "apk_package": "com.eten.fluent",
+    "apk_version_name": "1.0.0",
+    "apk_version_code": 1,
+    "apk_bytes": 128667201,
+    "apk_host_sha256": "28af24f767d43ff67dfb9743049de9fa3d718ce3d528314f81029d4329e36b6b",
+    "build_kind": "supplied_embedded_release_nondebuggable",
+    "embedded_api": "https://qa.api.fluent.bible",
+    "source_commit_attestation": "unattested_not_required_for_verified_apk_behavior",
+    "emulator": "guest_Fluent_QA717_Release_API33_emulator5558",
+    "lane_note": "temporary_task_owned_guest_5558; original B5556 restoration verified separately"
+  },
+  "observed": {
+    "manual_signin": "PM9_account9_human_credentials_not_read",
+    "connectivity_offline": "Active default network: none",
+    "pid_before_force_stop": "5611",
+    "pid_after_force_stop": "",
+    "pid_after_coldstart": "6158",
+    "am_start": {
+      "component": "com.eten.fluent/.MainActivity",
+      "LaunchState": "COLD",
+      "TotalTime_ms": 1241,
+      "WaitTime_ms": 1274,
+      "note": "Android activity launch measurement only; not login/full-sync/Tier1 readiness timing (A-0025 unchanged)"
+    },
+    "am_proc_start_new_pid": true,
+    "offline_cold_home": {
+      "home_tab_projects": true,
+      "home_tab_my_work": true,
+      "login_email_input": false,
+      "offline_nothing_pending": true,
+      "metro_or_dev_launcher": false,
+      "package": "com.eten.fluent"
+    },
+    "account_after_offline_coldstart": {
+      "settings_menu_account_9": true,
+      "settings_menu_active_9": true,
+      "active_identity": "qa+fluentqa-pm@fluent.local",
+      "offline_indicator_retained": true
+    },
+    "b_restoration_verification": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/b-restoration-verification.txt",
+      "sha256": "6bb43619e68c3d9d2b92018e6b2624afdcd6859a2069bd7c35ec6989d9efd5a6",
+      "original_B5556_restored": true,
+      "temp_guest_5558_stopped": true,
+      "A5554_untouched": true
+    }
+  },
+  "adequacy": {
+    "A-0011-01": {
+      "source_scenario": "Force-stop then cold relaunch offline; restore authenticated prior active identity without network; not warm-foreground continuity",
+      "literal_met": true,
+      "basis": "Supplied release APK hostSHA256=28af24f767d43ff67dfb9743049de9fa3d718ce3d528314f81029d4329e36b6b (128667201 bytes, nondebuggable embedded QA bundle). Guest5558 offline (Active default network:none). Force-stop emptied pid; am start-W LaunchState=COLD; pid 5611\u21926158 with am_proc_start new process. Home home-tab-projects/my-work present, login-email-input absent, Offline\u00b7nothing pending, no Metro/devlauncher. Drawer proves settings-menu-active-9/account-9 retained offline. Prior Expo Dev launcher FAIL retained as history. Source commit unattested; behavior scoped to exact APK hash. B restoration gate file present.",
+      "genuine_unobserved_retained": []
+    },
+    "A-0025-01": {
+      "changed": false,
+      "note": "1241ms TotalTime is Android activity LaunchTime only; not login/full-sync/Tier1 timing."
+    },
+    "D-0447-01": {
+      "changed": false,
+      "note": "Static partial retained; no FIA set2 runtime proof this write."
+    }
+  },
+  "rows_updated": [
+    "A-0011-01"
+  ],
+  "rows_unchanged_explicit": [
+    "A-0025-01",
+    "D-0447-01"
+  ],
+  "prior_failed_expo_dev_launcher_history_preserved": true,
+  "eligible_current_atomic_execution_coverage": {
+    "before": {
+      "complete_for_requirement": 42,
+      "partial": 21,
+      "not_run": 23
+    },
+    "after": {
+      "complete_for_requirement": 43,
+      "partial": 20,
+      "not_run": 23
+    },
+    "delta": {
+      "complete_for_requirement": 1,
+      "partial": -1,
+      "not_run": 0
+    }
+  },
+  "canonical_inventory_unchanged": 202,
+  "no_whole_app_percentage": true,
+  "no_devices_tests_code_source_git_publication": true
+}

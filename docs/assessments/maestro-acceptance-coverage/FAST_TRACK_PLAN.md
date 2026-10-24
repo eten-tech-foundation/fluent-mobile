@@ -120,6 +120,8 @@ Preserve all takes, restore the primary account/network/device state, capture fi
 
 Matt’s ongoing execution preference: assign each blocked check a separate owner and exact dependency while both device owners advance runnable queue work. Retry a blocked check only after materially new evidence or a concrete correction. Never weaken assertions or safety constraints to obtain a pass.
 
+Update, 21 October 2026: use one owner per requirement/assertion across all work. Check retained evidence before dispatch; do not duplicate a device run or investigation because another worker is available. A rerun needs changed code, a genuinely missing assertion, stale fixture/build evidence, or failed verification. Assign the second device distinct ready work; reconcile existing evidence instead of repeating green checks. Keep this admission check lightweight. Recording and Sync edge cases follow the remaining ready UI checks.
+
 - Guest connectivity gates server-dependent work, not cached/offline/local UI tests.
 - Fresh authentication gates authenticated B work, not logged-out flows or harness authoring.
 - A populated catalogue fixture gates resource lifecycle proof, not other surfaces.
@@ -157,3 +159,36 @@ Read the current device state before every admission; six-take guards are histor
 and must not authorize new work. Verse7 is now populated and is not an empty capture
 fixture. Keep the original six metadata/file-hash receipts and all earlier failures.
 The guest runtime revision remains unattested.
+
+
+---
+
+## 8. Ongoing execution workflow (Matt-requested; docs update 2026-10-22)
+
+Concise actionable checklist — not a new framework. Evidence reconciliation (this ledger) stays separate from the next safe device execution.
+
+### Checklist
+1. **Prepare before execute** — fixture/oracle/guards ready before any side-effect Start/Download/capture.
+2. **Batch compatible checks** — one Maestro invocation; explicit serial; unique artifact paths per case.
+3. **Audit `launchApp` wrappers** — default restart/permissions behavior before calling anything read-only.
+4. **No global wait/animation tuning** as a substitute for correct readiness.
+5. **Finalize evidence reconciliation separately** from the next safe device execution (ledger writer ≠ device Start).
+6. **Watchdog** — armed and ready **before** side-effect; on expiry/failure: **no Start**.
+7. **Ownership** — one owner per device/file; no shared Metro temporary-patch bleed across lanes.
+8. **Measure real time** — completed criteria / setup / retry duration; do **not** treat launch counts or unit PASS as runtime coverage.
+
+### Current ready / blocked ownership (snapshot)
+| Lane / owner | State |
+|---|---|
+| **A (5554)** | Closed Home PM9; no active capture. Loading dock evidence logged for D-0235-03 (still partial — error missing). Cache baseline 230 (229 old hashes + MAT-2 meta JSON). |
+| **B (5556)** | Closed Home user11; no additional capture attempt. Attempt1 consumed (automation failure; zero Saved; zero-byte temp retained). **One budget remains** — held pending explicit budget/sequence permission. |
+| **Cursor fe990** | Lifecycle timeout fix complete off-device (3 failed → 3 pass; adapter 10 + guard 9 pass). Not a runtime capture PASS. |
+| **Ledger docs 4159** | Sole documentation/ledger writer for this update; no device/source/GitHub. |
+| **Parent browser fixture** | Independent owner; not this writer. |
+
+### Remaining high-yield dependencies (not auto-approved)
+- Download bound / transfer approval
+- Physical known-input audio
+- Deploy correct API / mobile prefs
+
+No blanket auto-approval inference from this checklist.

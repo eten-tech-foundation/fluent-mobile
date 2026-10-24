@@ -1,0 +1,260 @@
+# B-0011-01: assertion-only chapter-list assignment/stage refresh (issue #273).
+# Missing assertion only: after separately verified web assignment/stage change,
+# reopen View Project chapter list and assert ownership + WorkflowBadge stage.
+#
+# Two-phase receipts (YAML does not survive web mutation):
+#   before → external web receipt → after (same flow, distinct env/receipt ids).
+# Device A / user10 / project12 / milestone19. NEVER 1183/1184/944.
+# NOT runnable until MAESTRO_B0011_ADMISSION=ADMITTED after exact verification.
+# No capture/sync/stage/role/network writes. Preserve protected takes.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - read-only
+  - ordered-readonly
+  - fixture-blocked
+  - b0011
+---
+- runScript: ../../shared/scripts/b0011-stage-refresh-values.js
+- assertTrue: ${output.b0011Admitted === '1'}
+- assertTrue: ${output.b0011Phase === 'before' || output.b0011Phase === 'after'}
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+# Cached switch 12 → 10 (proven A5554 semantics)
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- tapOn:
+    id: 'settings-menu-account-10'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- assertVisible:
+    id: 'home-tab-projects'
+# Open View Project chapter list via milestone pin (same selectors as
+# open-fixture-chapter-from-milestone; do NOT tap into drafting).
+- tapOn:
+    id: 'home-tab-projects'
+- scrollUntilVisible:
+    element:
+      id: ${output.milestoneRowIdRe}
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: ${output.milestoneRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: ${output.chapterRowIdRe}
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: ${output.chapterRowIdRe}
+    containsDescendants:
+      - text: ${output.chapterLabelRe}
+      - text: ${output.stageLabelRe}
+# Ownership oracle (ownership-status-existing-session semantics)
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'mine'}
+    commands:
+      - assertVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-mine'
+            - text: '^Assigned to you$'
+      - assertNotVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-conflict-indicator'
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'other'}
+    commands:
+      - assertVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-other'
+            - text: '^Assigned to another translator$'
+      - assertNotVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-conflict-indicator'
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'unassigned'}
+    commands:
+      - assertNotVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-mine'
+      - assertNotVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-other'
+      - assertNotVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-conflict-indicator'
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'conflict'}
+    commands:
+      - assertVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-conflict-indicator'
+            - text: '^Unresolved recording conflict$'
+      - assertNotVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-mine'
+      - assertNotVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-other'
+# Leave list and reopen — refresh-on-open surface under test
+- assertVisible:
+    id: 'stack-header-back'
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- tapOn:
+    id: 'home-tab-projects'
+- scrollUntilVisible:
+    element:
+      id: ${output.milestoneRowIdRe}
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: ${output.milestoneRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: ${output.chapterRowIdRe}
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: ${output.chapterRowIdRe}
+    containsDescendants:
+      - text: ${output.chapterLabelRe}
+      - text: ${output.stageLabelRe}
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'mine'}
+    commands:
+      - assertVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-mine'
+            - text: '^Assigned to you$'
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'other'}
+    commands:
+      - assertVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-other'
+            - text: '^Assigned to another translator$'
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'unassigned'}
+    commands:
+      - assertNotVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-mine'
+      - assertNotVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-ownership-other'
+- runFlow:
+    when:
+      true: ${output.expectOwnership == 'conflict'}
+    commands:
+      - assertVisible:
+          id: ${output.chapterRowIdRe}
+          containsDescendants:
+            - id: 'chapter-conflict-indicator'
+            - text: '^Unresolved recording conflict$'
+- assertVisible:
+    id: 'stack-header-back'
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+# Restore active12 / cache 10,9,12
+- assertVisible:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-12'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-active-12'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- tapOn:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

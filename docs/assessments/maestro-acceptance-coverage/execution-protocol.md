@@ -10,6 +10,7 @@ This is an operator protocol for the existing flows, not a new runner. The compa
 - **944 is forbidden.** Do not record, reassign, claim, change stages, or download on historical assignments. New recording targets require a clearly labeled disposable QA fixture created through the supported web UI, with independently recorded IDs and expected outputs. Do not alter another user's existing fixture or grants.
 - Do not clear state, log out, add/remove accounts, reset databases, extract stored credentials, or invoke login/warm-session helpers to prepare these cases. If authorization/session state differs, stop dependent actions and preserve the user's changes. Use a supported secure sign-in flow only when separately needed and authorized.
 - Keep Metro, the app process and shared ADB/Maestro services intact. A bounded timeout may stop only the owned test process group. No forced sync, direct storage reversal, or broad auth/mutation suite is part of this protocol.
+- When a next criterion is blocked on an exclusive device/source owner, isolate that blocked task, prepare its flow/guard packet in parallel with distinct file ownership, and report completed criteria plus setup/retry timings without taking the live device or mutating the owner's frozen sources.
 
 ## Before a targeted run
 

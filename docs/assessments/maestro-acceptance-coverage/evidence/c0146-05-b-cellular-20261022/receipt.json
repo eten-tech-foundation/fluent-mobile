@@ -1,0 +1,166 @@
+{
+  "schema": "c0146-05-ledger-reconciliation/v1",
+  "utc": "2026-10-22T01:48:01Z",
+  "criterion_id": "C-0146-05",
+  "decision": "complete_for_requirement / PASS",
+  "mapping": {
+    "schema": "c0146-05-b-cellular-gate-sanitized/v1",
+    "device": "emulator-5556",
+    "pref_upload_over_cellular": false,
+    "network": {
+      "before": {
+        "activeDefaultNetwork": "101",
+        "agents": [
+          {
+            "id": "100",
+            "transport": "CELLULAR"
+          },
+          {
+            "id": "101",
+            "transport": "WIFI"
+          }
+        ]
+      },
+      "cellular": {
+        "activeDefaultNetwork": "100",
+        "agents": [
+          {
+            "id": "100",
+            "transport": "CELLULAR"
+          }
+        ]
+      },
+      "restored": {
+        "activeDefaultNetwork": "102",
+        "agents": [
+          {
+            "id": "100",
+            "transport": "CELLULAR"
+          },
+          {
+            "id": "102",
+            "transport": "WIFI"
+          }
+        ]
+      }
+    },
+    "ui": {
+      "online_ready_download_enabled": true,
+      "cellular_download_enabled": false,
+      "cellular_hint": "Connect to WiFi to upload and download. Or turn on Upload/Download over cellular in Settings.",
+      "wifi_restored_download_enabled": true,
+      "download_pressed": false
+    },
+    "notes": [
+      "PFO 2.1MB label is old baseline pre-757 display only \u2014 not a size/transfer oracle or bound claim.",
+      "No press of disabled Download; no queue enqueue; bounded approval honored.",
+      "No Maestro automation PASS; no upload-session coverage claimed."
+    ]
+  },
+  "artifacts": {
+    "RESULT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/RESULT.md",
+      "sha256": "37c2336b49a40ce84bea467552b4e2c3742f2de5751da01c93a23ed59827a7d2",
+      "bytes": 3260
+    },
+    "online-ready.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/online-ready.xml",
+      "sha256": "c8ad1995c0c3e50290c161703f2a86369b5a3ded11b936d3820c9aa1ef4c3d6e",
+      "bytes": 47531
+    },
+    "cellular-gate.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/cellular-gate.xml",
+      "sha256": "1dac4a25a1c0fab5faa1b5620ffc023a4e5d6653bb04443bd43e1b1a9dee2086",
+      "bytes": 47566
+    },
+    "cellular-gate.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/cellular-gate.png",
+      "sha256": "ae20c12107806c3213ce8bd5f05af5ae1edd831522682bc63dd970ca686bd3df",
+      "bytes": 204132
+    },
+    "wifi-restored.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/wifi-restored.xml",
+      "sha256": "c8ad1995c0c3e50290c161703f2a86369b5a3ded11b936d3820c9aa1ef4c3d6e",
+      "bytes": 47531
+    },
+    "network-before.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/network-before.json",
+      "sha256": "1b95d8454c7c959dd6e8d9d407f67b83fe9810fc9347eace42f757c3715b7a6e",
+      "bytes": 173
+    },
+    "network-cellular.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/network-cellular.json",
+      "sha256": "4dfc81c9afaa32f1533c3d3cedd3dcab325233b50eb05c5213caf1e20408d5cf",
+      "bytes": 115
+    },
+    "network-restored.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/network-restored.json",
+      "sha256": "b1cd5afa4e3f137d691efb81b73bf67f10ade41b0766919b1c63d04319b28cbb",
+      "bytes": 173
+    },
+    "final-home11.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/final-home11.xml",
+      "sha256": "587d5cba8f9f483176b18a2880fd5b83bbd49d4d7d38de8fa78ebe598738f286",
+      "bytes": 65439
+    },
+    "before-prefs.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/before-prefs.json",
+      "sha256": "6a5a7b469eb87dcf2cd55b8c3e0389e3b590b08ca349dad396573a820dc7bb9a",
+      "bytes": 50
+    },
+    "after-prefs.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/after-prefs.json",
+      "sha256": "6a5a7b469eb87dcf2cd55b8c3e0389e3b590b08ca349dad396573a820dc7bb9a",
+      "bytes": 50
+    },
+    "before-counts.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/before-counts.txt",
+      "sha256": "ddafe7ac338cbca346dc96be48c10c06ab399b4467463df4e080d4608ea67807",
+      "bytes": 34
+    },
+    "after-counts.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/after-counts.txt",
+      "sha256": "ddafe7ac338cbca346dc96be48c10c06ab399b4467463df4e080d4608ea67807",
+      "bytes": 34
+    },
+    "before-extra-prefs.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/before-extra-prefs.txt",
+      "sha256": "4789b6d737e3dfaf2f35032912d17b2e0276dc3fc5355e57c522f4f1368dbc46",
+      "bytes": 55
+    },
+    "after-extra-prefs.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/after-extra-prefs.txt",
+      "sha256": "4789b6d737e3dfaf2f35032912d17b2e0276dc3fc5355e57c522f4f1368dbc46",
+      "bytes": 55
+    },
+    "zero-restored.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0146-05-b-cellular-20261022/zero-restored.xml",
+      "sha256": "5c03ec756996762aece4e089400dd435a5561f1f90680e664e9805930c85eb33",
+      "bytes": 60156
+    },
+    "sanitized-gate.json": {
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/evidence/c0146-05-b-cellular-20261022/sanitized-gate.json",
+      "sha256": "17fe6a77c5c4f0ac9891cb3665ec53ed5af529a083031e000e335c1cbc937594"
+    }
+  },
+  "counts": {
+    "before": {
+      "complete_for_requirement": 52,
+      "partial": 12,
+      "not_run": 22
+    },
+    "after": {
+      "complete_for_requirement": 53,
+      "partial": 12,
+      "not_run": 21
+    }
+  },
+  "non_claims": [
+    "No press of disabled Download button",
+    "No transfer / queue enqueue",
+    "No Maestro automation PASS",
+    "No upload-session coverage",
+    "2.1MB PFO label is not a size/transfer bound oracle",
+    "A/source untouched; no device/source/GitHub/test ops in this write"
+  ]
+}

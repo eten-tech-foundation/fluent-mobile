@@ -262,6 +262,8 @@ function collectJourneyDependencies(files, env, fs, path) {
   const flows = [];
   const visiting = new Set();
   const visited = new Set();
+  // Selected journey roots may own capture/auth; nested deps must not.
+  const roots = new Set((files || []).map(f => path.resolve(f)));
   function visit(file) {
     file = path.resolve(file);
     if (visiting.has(file))
@@ -313,7 +315,8 @@ function collectJourneyDependencies(files, env, fs, path) {
         if (
           /record-(start|stop|pause|resume)-button|login-(email|password|submit)/.test(
             block,
-          )
+          ) &&
+          !roots.has(file)
         ) {
           throw new Error(
             `capture/auth action must remain independent: ${file}`,

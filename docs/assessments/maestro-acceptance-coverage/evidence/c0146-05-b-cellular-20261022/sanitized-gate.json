@@ -1,0 +1,54 @@
+{
+  "schema": "c0146-05-b-cellular-gate-sanitized/v1",
+  "device": "emulator-5556",
+  "pref_upload_over_cellular": false,
+  "network": {
+    "before": {
+      "activeDefaultNetwork": "101",
+      "agents": [
+        {
+          "id": "100",
+          "transport": "CELLULAR"
+        },
+        {
+          "id": "101",
+          "transport": "WIFI"
+        }
+      ]
+    },
+    "cellular": {
+      "activeDefaultNetwork": "100",
+      "agents": [
+        {
+          "id": "100",
+          "transport": "CELLULAR"
+        }
+      ]
+    },
+    "restored": {
+      "activeDefaultNetwork": "102",
+      "agents": [
+        {
+          "id": "100",
+          "transport": "CELLULAR"
+        },
+        {
+          "id": "102",
+          "transport": "WIFI"
+        }
+      ]
+    }
+  },
+  "ui": {
+    "online_ready_download_enabled": true,
+    "cellular_download_enabled": false,
+    "cellular_hint": "Connect to WiFi to upload and download. Or turn on Upload/Download over cellular in Settings.",
+    "wifi_restored_download_enabled": true,
+    "download_pressed": false
+  },
+  "notes": [
+    "PFO 2.1MB label is old baseline pre-757 display only \u2014 not a size/transfer oracle or bound claim.",
+    "No press of disabled Download; no queue enqueue; bounded approval honored.",
+    "No Maestro automation PASS; no upload-session coverage claimed."
+  ]
+}

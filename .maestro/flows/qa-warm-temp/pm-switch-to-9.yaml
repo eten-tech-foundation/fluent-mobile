@@ -1,0 +1,20 @@
+# TEMP: switch active account to userId 9 (PM email). No login.
+appId: com.eten.fluent
+---
+- runFlow: ../../shared/nav/goto-home.yaml
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- tapOn:
+    id: 'settings-menu-account-9'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 60000

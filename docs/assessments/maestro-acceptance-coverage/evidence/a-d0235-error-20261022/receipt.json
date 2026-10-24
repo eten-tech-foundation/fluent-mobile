@@ -1,0 +1,156 @@
+{
+  "schema": "d0235-03-source-error-retry-chrome-reconciliation/v1",
+  "utc": "2026-10-22T04:30:00Z",
+  "criterion_id": "D-0235-03",
+  "decision": "complete_for_requirement / PASS",
+  "literal_title": "Source audio dock loading / empty / error chrome",
+  "literal_behavior": "Given drafting with source-audio dock, when audio is loading, missing, or failed, then dock shows loading/empty/error chrome (not a silent stub).",
+  "branches": {
+    "empty": "prior retained (evidence/post-eod-empty-and-isolated)",
+    "loading": "prior retained (evidence/a-d0235-loading-20261022)",
+    "error_retry_chrome": "this case \u2014 source-audio-bar + enabled accessible Retry loading source audio + visible Retry"
+  },
+  "explicit_limitations": [
+    "Two ordinary Retry taps produced no observed loading/ready recovery",
+    "Not claiming successful recovery",
+    "Not claiming product Retry bug",
+    "Not claiming native/Maestro permanent repeatability",
+    "LogBox/dev banner preserved as development chrome"
+  ],
+  "postflight": {
+    "after_takes_equals_before_11": true,
+    "cache_preservation": {
+      "before": 230,
+      "after": 230,
+      "missing": [],
+      "added": [],
+      "changed": []
+    },
+    "after_queues": "205 completed + claims 0",
+    "after_sync_errors": "empty",
+    "final_home": "final-guarded-home.xml (active_user_id 9 / PM9; app closed before original-source restore)"
+  },
+  "count_delta": {
+    "before": {
+      "complete_for_requirement": 57,
+      "partial": 11,
+      "not_run": 18
+    },
+    "after": {
+      "complete_for_requirement": 58,
+      "partial": 10,
+      "not_run": 18
+    },
+    "eligible": 86
+  },
+  "artifacts": {
+    "CASE-SOURCE-RESULT.md": {
+      "path": "evidence/a-d0235-error-20261022/CASE-SOURCE-RESULT.md",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/CASE-SOURCE-RESULT.md",
+      "sha256": "ab0e3528d5150fdc20b7315088ceb6800dd5f2c5c32f72228cd8a7cec69b8901",
+      "bytes": 1749
+    },
+    "after-cache-hashes.txt": {
+      "path": "evidence/a-d0235-error-20261022/after-cache-hashes.txt",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/after-cache-hashes.txt",
+      "sha256": "a37574dd25816de18ef44ce8e35cde78129bd71d9eefd2ae4d1115473a2ba187",
+      "bytes": 26344
+    },
+    "after-prefs.json": {
+      "path": "evidence/a-d0235-error-20261022/after-prefs.json",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/after-prefs.json",
+      "sha256": "e636a0629c49b227c690d0084a1933ff47981bce3bf25a38e8c09cae1df5b54c",
+      "bytes": 89
+    },
+    "after-queues.txt": {
+      "path": "evidence/a-d0235-error-20261022/after-queues.txt",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/after-queues.txt",
+      "sha256": "177db7887c8d324a5d18ddd2c585edf881d9b01cfc698703212ed9beed2fb9ba",
+      "bytes": 36
+    },
+    "after-sync-errors.txt": {
+      "path": "evidence/a-d0235-error-20261022/after-sync-errors.txt",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/after-sync-errors.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "after-takes.json": {
+      "path": "evidence/a-d0235-error-20261022/after-takes.json",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/after-takes.json",
+      "sha256": "4ab5fd8f5bb09f8137fdf5e4b0220eb13ffe9c63ff75adc19cee995afb0d5870",
+      "bytes": 3582
+    },
+    "before-takes.json": {
+      "path": "evidence/a-d0235-error-20261022/before-takes.json",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/before-takes.json",
+      "sha256": "4ab5fd8f5bb09f8137fdf5e4b0220eb13ffe9c63ff75adc19cee995afb0d5870",
+      "bytes": 3582
+    },
+    "cache-preservation.json": {
+      "path": "evidence/a-d0235-error-20261022/cache-preservation.json",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/cache-preservation.json",
+      "sha256": "0b10452240129404acb912aecb8f5d170bfb27014ce878350c1089cc6c4008c1",
+      "bytes": 84
+    },
+    "final-guarded-home.xml": {
+      "path": "evidence/a-d0235-error-20261022/final-guarded-home.xml",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/final-guarded-home.xml",
+      "sha256": "f570aa4a4a9200ece806b1f02d255cfa4a913d1c30b2627b4a2cc356719c766f",
+      "bytes": 38846
+    },
+    "source-after-retry.png": {
+      "path": "evidence/a-d0235-error-20261022/source-after-retry.png",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/source-after-retry.png",
+      "sha256": "d9bd54a75d5aae3c0e42d41b4035ab6d4fcac73a07257c7da9550cdb1588e65e",
+      "bytes": 245390
+    },
+    "source-after-retry.xml": {
+      "path": "evidence/a-d0235-error-20261022/source-after-retry.xml",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/source-after-retry.xml",
+      "sha256": "215d4c774bbe6e599e4e079d9c0cb9c3e1b780302577ffa02d1d76617c0e3fc3",
+      "bytes": 43823
+    },
+    "source-error-first.png": {
+      "path": "evidence/a-d0235-error-20261022/source-error-first.png",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/source-error-first.png",
+      "sha256": "1b6fafe2d21891deb9af4ce8e717d9c8f9d22f64c8cc4f2d5a1bf315754bf272",
+      "bytes": 244703
+    },
+    "source-error-first.xml": {
+      "path": "evidence/a-d0235-error-20261022/source-error-first.xml",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/source-error-first.xml",
+      "sha256": "215d4c774bbe6e599e4e079d9c0cb9c3e1b780302577ffa02d1d76617c0e3fc3",
+      "bytes": 43823
+    },
+    "source-navigation-current.png": {
+      "path": "evidence/a-d0235-error-20261022/source-navigation-current.png",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/source-navigation-current.png",
+      "sha256": "dc6e874dabf4cf26cc89998e67b84b937fc45557b6e52201d8d7521ff8ce31cf",
+      "bytes": 128003
+    },
+    "source-retry-settled.xml": {
+      "path": "evidence/a-d0235-error-20261022/source-retry-settled.xml",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/source-retry-settled.xml",
+      "sha256": "215d4c774bbe6e599e4e079d9c0cb9c3e1b780302577ffa02d1d76617c0e3fc3",
+      "bytes": 43823
+    },
+    "source-retry-visible-label.png": {
+      "path": "evidence/a-d0235-error-20261022/source-retry-visible-label.png",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/source-retry-visible-label.png",
+      "sha256": "8e8384d306170bbc4244e81b7f8ed4ddc3f4d82062f7d25d19919a695e693068",
+      "bytes": 244981
+    },
+    "source-retry-visible-label.xml": {
+      "path": "evidence/a-d0235-error-20261022/source-retry-visible-label.xml",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/source-retry-visible-label.xml",
+      "sha256": "215d4c774bbe6e599e4e079d9c0cb9c3e1b780302577ffa02d1d76617c0e3fc3",
+      "bytes": 43823
+    },
+    "RESULT.md": {
+      "path": "evidence/a-d0235-error-20261022/RESULT.md",
+      "artifact_abs": "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/evidence/a-d0235-error-20261022/RESULT.md",
+      "sha256": "886a66399f5437a597e4a9e7f7e5cbec4f0750a412a38b22f0aa03e496758b18",
+      "bytes": 1474
+    }
+  }
+}

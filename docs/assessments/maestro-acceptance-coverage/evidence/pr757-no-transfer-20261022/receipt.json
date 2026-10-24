@@ -1,0 +1,121 @@
+{
+  "schema": "pr757-no-transfer-ledger-reconciliation/v1",
+  "utc": "2026-10-22T00:32:49Z",
+  "rows": {
+    "C-0051-02": "complete_for_requirement / PASS",
+    "C-0051-04": "complete_for_requirement / PASS"
+  },
+  "not_touched": [
+    "C-0052-01",
+    "C-0051-01",
+    "C-0051-03"
+  ],
+  "historical_negatives_retained": [
+    "artifacts/c0051-size-contradiction-20261021.md (0B vs 24,491,361; 2.4MB vs 26,957,219)"
+  ],
+  "artifacts": {
+    "RESULT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/RESULT.md",
+      "sha256": "ad5f37dfdf4c575878eef8b96a6e68591d7cfeb9653d8d37f62431d6acae7bd3",
+      "bytes": 4609
+    },
+    "mat1-customize.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat1-customize.xml",
+      "sha256": "72372f806a1d4861b3d137e336b1f28cc11106c92a09f500e4a7f6ae8a142cb8",
+      "bytes": 49497
+    },
+    "mat1-customize.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat1-customize.png",
+      "sha256": "0079c3b81f564d375faea955a66c8a9fe913fabce37034a686528d52b6804524",
+      "bytes": 197733
+    },
+    "mat1-footer.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat1-footer.xml",
+      "sha256": "361c87c97b6c0e6d5d9d80fe96675d0bb5983a57a6aca8bb42e8c86882042a2f",
+      "bytes": 64084
+    },
+    "mat1-footer.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat1-footer.png",
+      "sha256": "b9f31a8f79e873baa67e79fc33b8dc40e28712cecdb4b7ce21c25894f1f73a5f",
+      "bytes": 184997
+    },
+    "mat2-groups.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat2-groups.xml",
+      "sha256": "7da744851412aee4480220d4f99fed9169f7bb340e41d5562bfc7090766ead2a",
+      "bytes": 49475
+    },
+    "mat2-groups.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat2-groups.png",
+      "sha256": "f5e1c42f9819cb37c15740b6541404669fa169f1cc23247267e437873761abd7",
+      "bytes": 196124
+    },
+    "mat2-tw-off.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat2-tw-off.xml",
+      "sha256": "d6c39f9f52f109518c98e712e178ea932f6082f392b98a70a56b30515d91635e",
+      "bytes": 48503
+    },
+    "mat2-tw-off.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat2-tw-off.png",
+      "sha256": "39681bfbcebc75edd3c345d4b5474906991bd728fa9a536e4372c6d667982306",
+      "bytes": 197046
+    },
+    "mat2-tw-restored.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat2-tw-restored.xml",
+      "sha256": "7da744851412aee4480220d4f99fed9169f7bb340e41d5562bfc7090766ead2a",
+      "bytes": 49475
+    },
+    "zero-restored.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/zero-restored.xml",
+      "sha256": "950f56e352546858f044acf7946eaf1587441014cc0f8f2b2f85c9add4f4b769",
+      "bytes": 63510
+    },
+    "before-takes.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/before-takes.json",
+      "sha256": "fa1e8241efa1cfd5ac5a30765869a8a806339292b7e3f0271cde51504be50eb6",
+      "bytes": 3050
+    },
+    "after-takes.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/after-takes.json",
+      "sha256": "fa1e8241efa1cfd5ac5a30765869a8a806339292b7e3f0271cde51504be50eb6",
+      "bytes": 3050
+    },
+    "before-resource-hashes.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/before-resource-hashes.txt",
+      "sha256": "3a86b9e7f76b162e6121292239be01a65b76e0be434099224d8d56dda1eb285b",
+      "bytes": 25778
+    },
+    "after-resource-hashes.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/after-resource-hashes.txt",
+      "sha256": "3a86b9e7f76b162e6121292239be01a65b76e0be434099224d8d56dda1eb285b",
+      "bytes": 25778
+    },
+    "before-queues.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/before-queues.txt",
+      "sha256": "f8370b540846daaae9b9019ef09e26bf991773c6ec93a07169016fcb32544d81",
+      "bytes": 79
+    },
+    "after-queues.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/after-queues.txt",
+      "sha256": "f8370b540846daaae9b9019ef09e26bf991773c6ec93a07169016fcb32544d81",
+      "bytes": 79
+    }
+  },
+  "counts": {
+    "before": {
+      "complete_for_requirement": 48,
+      "partial": 15,
+      "not_run": 23
+    },
+    "after": {
+      "complete_for_requirement": 50,
+      "partial": 13,
+      "not_run": 23
+    }
+  },
+  "caveats": [
+    "Temporary merged 757 bundle observation only; source cleanup other-owner",
+    "No Download/transfer; no C-0052 closure; no Maestro PASS",
+    "No independent complete catalogue/cap required for truthful lower-bound UI",
+    "Historical failure evidence never deleted"
+  ]
+}

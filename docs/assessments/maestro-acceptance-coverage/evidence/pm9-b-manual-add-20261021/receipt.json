@@ -1,0 +1,127 @@
+{
+  "schema": "fluent-pm9-b-manual-add-reconciliation/v1",
+  "generated_utc": "2026-10-21T19:00:00Z",
+  "scope": "Narrow ledger reconciliation for A-0034-01 and C-0234-01 only; A-0025-01 unchanged; no device/test/code/git publication",
+  "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pm9-b-manual-add-20261021",
+  "files": [
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pm9-b-manual-add-20261021/RECEIPT.md",
+      "sha256": "3479976da6c2127923ca4aaf90147997cc383f52835d98c321773aedb6574aaa",
+      "relative": "RECEIPT.md"
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pm9-b-manual-add-20261021/safe-sync-events.txt",
+      "sha256": "1b25aa83bc38c56cff3f5632e551a2618188fd3981871b550c8c9e3b9833b151",
+      "relative": "safe-sync-events.txt"
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pm9-b-manual-add-20261021/account-sync-keys.txt",
+      "sha256": "e5ddc7e1cce52e6d407a57c8878e17f0aa2970158e902c55dda7262fcbf0f20d",
+      "relative": "account-sync-keys.txt"
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pm9-b-manual-add-20261021/counts.txt",
+      "sha256": "bd4c89c7239c56ce6e630afca4216993ee6f0596f2b09941ef9820ff77a793e0",
+      "relative": "counts.txt"
+    },
+    {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pm9-b-manual-add-20261021/persistent-error-keys.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "relative": "persistent-error-keys.txt"
+    }
+  ],
+  "observed": {
+    "device_lane": "B5556",
+    "before": {
+      "active_user_id": "11",
+      "known_user_ids": "11",
+      "users_table_had_9": false
+    },
+    "after_manual_add_no_explicit_switch": {
+      "active_user_id": "11",
+      "known_user_ids": "11,9",
+      "pm9_profile": "qa-pm",
+      "pm9_projects": [
+        "11",
+        "12",
+        "13"
+      ],
+      "pm9_assigned_or_peer_work": 0,
+      "recordings": 0,
+      "download_queue": 0,
+      "claim_queue": 0,
+      "persistent_sync_error_keys_nonempty": false,
+      "per_account_9_last_synced_at": "2026-10-21T18:50:34.431Z",
+      "global_last_synced_at": "2026-10-21T18:50:34.431Z"
+    },
+    "safe_sync_events_retained": [
+      {
+        "device_clock": "10-21 11:49:51.159",
+        "utc_implied_from_completion": null,
+        "line": "Starting sync...(isIncremental:false)"
+      },
+      {
+        "device_clock": "10-21 11:50:34.455",
+        "completion_timestamp": "2026-10-21T18:50:34.431Z",
+        "line": "Sync completed successfully"
+      }
+    ],
+    "full_sync_duration_approx_sec": 43,
+    "full_sync_is_not_login_or_tier1_timing": true,
+    "allowlisted_retained_log_query_since_device_1145": {
+      "Switched_active_user": 0,
+      "Post-login_sync_failed": 0,
+      "FOREIGN_KEY_constraint_failed": 0
+    },
+    "root_explicit_B_account_switch_after_add": false,
+    "observer_armed_during_manual_add": false,
+    "submitted_login_string_read": false,
+    "credentials_retained": false,
+    "A_selected_PM9_elsewhere_unchanged": true
+  },
+  "adequacy": {
+    "A-0034-01": {
+      "source_scenario": "Add B; before explicit switch still A; behavior through add",
+      "literal_met": true,
+      "basis": "Before active11/known11/users9absent; after active11/known11,9; no explicit switch; no Switched active user in retained allowlisted window. Mid-typing continuous observer not required by source scenario and was not armed; not invented as blocker.",
+      "genuine_unobserved_retained": []
+    },
+    "C-0234-01": {
+      "source_scenario": "PM zero-assignment fresh post-login/chapter-assignment sync without FK failure",
+      "literal_met": true,
+      "basis": "Manual AddAccount authenticated fresh PM9 (absent before); full sync start\u2192complete success; 9:last_synced_at equals global; projects3/assigned+peer0; no FK/post-login-fail lines; empty persistent-error-keys.",
+      "genuine_unobserved_retained": []
+    },
+    "A-0025-01": {
+      "changed": false,
+      "note": "43s interval is FULL SYNC duration only; not login/Tier1 timing. Instrumentation gap unchanged."
+    }
+  },
+  "rows_updated": [
+    "A-0034-01",
+    "C-0234-01"
+  ],
+  "rows_unchanged_explicit": [
+    "A-0025-01"
+  ],
+  "C-0019_wording_preserved": true,
+  "eligible_current_atomic_execution_coverage": {
+    "before": {
+      "complete_for_requirement": 40,
+      "partial": 23,
+      "not_run": 23
+    },
+    "after": {
+      "complete_for_requirement": 42,
+      "partial": 21,
+      "not_run": 23
+    },
+    "delta": {
+      "complete_for_requirement": 2,
+      "partial": -2,
+      "not_run": 0
+    }
+  },
+  "no_whole_app_percentage": true,
+  "no_devices_tests_code_git_publication": true
+}

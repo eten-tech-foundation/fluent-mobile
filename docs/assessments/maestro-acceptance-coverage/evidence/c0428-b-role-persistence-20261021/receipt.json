@@ -1,0 +1,112 @@
+{
+  "schema": "c0428-01-ledger-reconciliation/v1",
+  "utc": "2026-10-21T22:15:15Z",
+  "criterion_id": "C-0428-01",
+  "scenario_id": "C-S-0428-01",
+  "decision": "complete_for_requirement / PASS",
+  "source_criterion": {
+    "coverage_behavior": "After sync, assigned_user_id and peer_checker_id match API even when users never signed in locally; stub users created; no FK violations",
+    "coverage_expected": "Ids present; ownership indicators correct",
+    "issue_428": "Stub missing users for assignee/peerChecker; write both ids through; View Project other ownership; tests. PeerCheck STAGE not required.",
+    "not_required": [
+      "remain unknown after stub creation",
+      "PeerCheck stage",
+      "fresh sync this run",
+      "release5558 numeric ID inspection",
+      "new automation PASS"
+    ]
+  },
+  "mapping": {
+    "exact_ids": {
+      "1183": [
+        10,
+        11
+      ],
+      "1184": [
+        11,
+        10
+      ],
+      "1185": [
+        10,
+        11
+      ]
+    },
+    "stubs": {
+      "10": true,
+      "11": false
+    },
+    "never_signed_in_user": 10,
+    "ownership_ui": {
+      "1183": "other",
+      "1184": "mine",
+      "1185": "other"
+    },
+    "sync": "retained successful sync; no fresh sync claimed this run",
+    "web_pairings": "match authoritative retained web pairings for named assignments"
+  },
+  "artifacts": {
+    "RECEIPT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0428-b-role-persistence-20261021/RECEIPT.md",
+      "sha256": "1b9e271ad1981b539f0f1b171802bfc678eee92c21609de11170400bce40ed6a",
+      "bytes": 2154
+    },
+    "NEW-BASELINE.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0428-b-role-persistence-20261021/NEW-BASELINE.md",
+      "sha256": "8f5b14dba865b531bd95f9c1cf9228bd921decb313c4b23303278c3d2934a051",
+      "bytes": 3466
+    },
+    "roles.csv": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0428-b-role-persistence-20261021/roles.csv",
+      "sha256": "2621a48c754346fa033a82fe60ce334341099b2dbc044a25df0c7a51416b2c01",
+      "bytes": 122
+    },
+    "new-baseline-roles.csv": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0428-b-role-persistence-20261021/new-baseline-roles.csv",
+      "sha256": "2621a48c754346fa033a82fe60ce334341099b2dbc044a25df0c7a51416b2c01",
+      "bytes": 122
+    },
+    "ownership.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0428-b-role-persistence-20261021/ownership.xml",
+      "sha256": "0c1d1479e45dcb4a448452a4652a7c72b13b4a4c18ea25657872acc527c8a90d",
+      "bytes": 49755
+    },
+    "ownership.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0428-b-role-persistence-20261021/ownership.png",
+      "sha256": "f51b2b158e2cb5e7add849c1de1e37da870cf7c6e5606b07584bb133dd533241",
+      "bytes": 150117
+    },
+    "final-home.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/c0428-b-role-persistence-20261021/final-home.xml",
+      "sha256": "2fab2f75c82bc3afdd795a825218d3d3a9ab9b3b90d672317042097ff3e4b64c",
+      "bytes": 65431
+    }
+  },
+  "provenance_support": {
+    "pm9_manual_add": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pm9-b-manual-add-20261021/RECEIPT.md",
+    "original_baseline": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/release-coldlaunch-20261021/b-original-account-baseline.txt"
+  },
+  "limitations": [
+    "No fresh sync event captured in this run; persistence attributed to retained prior successful sync",
+    "Metro e2c88d27 + connectivity.ts hash is NEW explicit DEV baseline only \u2014 not historical server equivalence",
+    "Force-stop/start recovered rendering; no proven production defect or splash ClassNotFound causal claim",
+    "Only IDs and derived stub booleans read \u2014 no profile/token export",
+    "No new Maestro automation PASS claim",
+    "WITHDRAWN 1187/chapter5 synthetic fixture remains withdrawn",
+    "Release5558 UI-only history retained as support, not substituted for B same-device closure"
+  ],
+  "counts": {
+    "before": {
+      "complete_for_requirement": 44,
+      "partial": 19,
+      "not_run": 23
+    },
+    "after": {
+      "complete_for_requirement": 45,
+      "partial": 18,
+      "not_run": 23
+    }
+  },
+  "rows_touched": [
+    "C-0428-01"
+  ]
+}

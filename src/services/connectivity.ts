@@ -22,7 +22,68 @@ function ensureNetInfoConfigured() {
   configured = true;
 }
 
-export async function checkServerReachable(): Promise<boolean> {
+type HealthTraceResult =
+  | 'success'
+  | 'http_error'
+  | 'AbortError'
+  | 'networkError'
+  | 'link_disconnected';
+
+// Temporary QA717 diagnostic. All fields are primitives from this allowlist;
+// tracing must never affect health results or expose URLs/errors/responses.
+function traceHealthProbe(
+  startedAt: number,
+  result: HealthTraceResult,
+  state?: NetInfoLinkState,
+  response?: { status?: number },
+  error?: unknown,
+): void {
+  if (!__DEV__) return;
+  try {
+    const status = response?.status;
+    const connectionType = state?.type;
+    const allowedTypes = [
+      'none',
+      'unknown',
+      'wifi',
+      'cellular',
+      'ethernet',
+      'bluetooth',
+      'wimax',
+      'vpn',
+      'other',
+    ];
+    // eslint-disable-next-line no-console -- DEV-only info avoids a diagnostic LogBox overlay.
+    console.info('[FLUENT_QA717_HEALTH_V1]', {
+      host: new URL(getApiBaseUrl()).hostname,
+      isConnected:
+        typeof state?.isConnected === 'boolean' ? state.isConnected : null,
+      connectionType: allowedTypes.includes(connectionType ?? '')
+        ? connectionType
+        : 'unknown',
+      result:
+        result === 'networkError' &&
+        error instanceof Error &&
+        error.name === 'AbortError'
+          ? 'AbortError'
+          : result,
+      httpStatus:
+        Number.isInteger(status) &&
+        Number(status) >= 100 &&
+        Number(status) <= 599
+          ? status
+          : null,
+      elapsedMs: Math.max(0, Date.now() - startedAt),
+    });
+  } catch {
+    // A diagnostic failure must preserve the original request behavior.
+  }
+}
+
+export async function checkServerReachable(
+  state?: NetInfoLinkState,
+): Promise<boolean> {
+  const startedAt = Date.now();
   const controller = new AbortController();
   const timeout = setTimeout(
     () => controller.abort(),
@@ -35,8 +96,16 @@ export async function checkServerReachable(): Promise<boolean> {
       signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
     });
+    traceHealthProbe(startedAt, res.ok ? 'success' : 'http_error', state, res);
     return res.ok;
-  } catch {
+  } catch (error) {
+    traceHealthProbe(
+      startedAt,
+      controller.signal.aborted ? 'AbortError' : 'networkError',
+      state,
+      undefined,
+      error,
+    );
     return false;
   } finally {
     clearTimeout(timeout);
@@ -45,12 +114,15 @@ export async function checkServerReachable(): Promise<boolean> {
 
 export async function resolveServerOnline(
   isConnected: boolean | null,
+  connectionType = 'unknown',
 ): Promise<boolean> {
+  const state = { isConnected, type: connectionType };
   if (!isConnected) {
+    traceHealthProbe(Date.now(), 'link_disconnected', state);
     return false;
   }
 
-  return checkServerReachable();
+  return checkServerReachable(state);
 }
 
 /** Fluent `/health` reachability plus NetInfo type. `isOnline` is not link-layer. */
@@ -80,7 +152,7 @@ type NetInfoLinkState = {
 async function resolveConnectivityState(
   state: NetInfoLinkState,
 ): Promise<ServerReachabilitySnapshot> {
-  const isOnline = await resolveServerOnline(state.isConnected);
+  const isOnline = await resolveServerOnline(state.isConnected, state.type);
   return snapshotFromLinkState(state, isOnline);
 }
 
@@ -164,6 +236,7 @@ export function subscribeToConnectivity(
   const evaluate = async (state: NetInfoLinkState) => {
     const gen = ++generation;
     if (!state.isConnected) {
+      traceHealthProbe(Date.now(), 'link_disconnected', state);
       emit(snapshotFromLinkState(state, false), gen);
       return;
     }

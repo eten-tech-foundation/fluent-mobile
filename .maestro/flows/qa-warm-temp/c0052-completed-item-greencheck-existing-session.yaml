@@ -1,0 +1,164 @@
+# C-0052-05 PART branch — completed-item green check only (A5554 / PM9 / project13 MAT1).
+# Preconditions: 205 completed queue rows already on device; NO Download/Pause/Resume/Cancel.
+# Does NOT prove active-ring or untouched chrome. Does NOT claim full C-0052-05 PASS.
+# Nav mirrors proven PR755 / D-0702 / C-0051 warm path. EXTERNAL host finally restores 12.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+  - c0052
+  - c0052-05-completed
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertNotVisible:
+    id: 'settings-menu-more-settings'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+# Cached switch → PM9
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-9'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-9'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-prepare-offline'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-prepare-offline'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: '^project-row-13$'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: '^project-row-13$'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-download-footer'
+    timeout: 60000
+# Reveal Matthew1 resources (selection is journey only — not the PASS criterion)
+- scrollUntilVisible:
+    element:
+      text: '^Expand Matthew$'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: '^Expand Matthew$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: '^Collapse Matthew$'
+    timeout: 15000
+- assertVisible:
+    text: '^Chapter 1$'
+- tapOn:
+    text: '^Chapter 1$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: '^Matthew, 1 of 28 chapters selected$'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-resources-section'
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    id: 'prepare-offline-resources-section'
+# PART criterion: per-item completed green check (not Total / not download-complete banner)
+- assertVisible:
+    id: 'resource-status-completed'
+- takeScreenshot: c0052-completed-item-greencheck
+- assertNotVisible:
+    id: 'resource-download-progress-ring'
+- assertNotVisible:
+    id: 'prepare-offline-download-controls-downloading'
+- assertNotVisible:
+    id: 'prepare-offline-download-pause'
+- assertNotVisible:
+    id: 'prepare-offline-download-cancel'
+# Restore Matthew selection 1→0 (no transfer; no delete)
+- scrollUntilVisible:
+    element:
+      text: '^Chapter 1$'
+    direction: UP
+    timeout: 15000
+- tapOn:
+    text: '^Chapter 1$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: '^Matthew, 0 of 28 chapters selected$'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      text: '^Collapse Matthew$'
+    direction: UP
+    timeout: 15000
+- tapOn:
+    text: '^Collapse Matthew$'
+    waitToSettleTimeoutMs: 500
+# Leave PFO → Home as PM9; host external finally owns account-12 restore
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+- assertNotVisible:
+    id: 'login-email-input'

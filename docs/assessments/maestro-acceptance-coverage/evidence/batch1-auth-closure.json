@@ -26,7 +26,7 @@
   ],
   "utc": "2026-10-20T19:27:44.916276+00:00",
   "A-0031-01": "absent -> complete, client validation only",
-  "A-0014-01": "absent -> partial, recovery navigation/local errors",
+  "A-0014-01": "absent -> partial (batch1 live route/local); later complete_for_requirement via mocked-API component suite per #91 — see run-evidence/20261021-easy-ui-batch/a0014-acceptance-mapping.json",
   "counts": {
     "partial": 16,
     "complete_for_requirement": 11,

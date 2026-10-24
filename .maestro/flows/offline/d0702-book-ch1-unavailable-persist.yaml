@@ -1,0 +1,128 @@
+# D-0702-01 nested book probe (chapter-1 only).
+# Preconditions: already on project13 PFO detail (prepare-offline-resources-section).
+# Env (full anchored regex / labels — no JS):
+#   D0702_BOOK_ZERO / D0702_BOOK_ONE  e.g. ^Matthew, 0 of 28 chapters selected$
+#   D0702_EXPAND / D0702_COLLAPSE     e.g. ^Expand Matthew$
+# Selection UI only — NEVER tap prepare-offline-download-button / Pause / Resume /
+# Cancel. No available-download size arithmetic claim. Tolerate Download size suffix.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+  - ordered-readonly
+  - d0702
+  - nested
+---
+- assertTrue: ${typeof D0702_BOOK_ZERO === 'string' && D0702_BOOK_ZERO.length > 0}
+- assertTrue: ${typeof D0702_BOOK_ONE === 'string' && D0702_BOOK_ONE.length > 0}
+- assertTrue: ${typeof D0702_EXPAND === 'string' && D0702_EXPAND.length > 0}
+- assertTrue: ${typeof D0702_COLLAPSE === 'string' && D0702_COLLAPSE.length > 0}
+- assertVisible:
+    id: 'prepare-offline-resources-section'
+- assertVisible:
+    id: 'prepare-offline-download-footer'
+- assertVisible:
+    id: 'prepare-offline-download-button'
+    enabled: false
+- assertVisible:
+    text: '^Total download$'
+- assertVisible:
+    id: 'prepare-offline-total-bytes'
+# Expand target book (chapter circles hidden while collapsed).
+- scrollUntilVisible:
+    element:
+      text: ${D0702_EXPAND}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: ${D0702_EXPAND}
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: ${D0702_COLLAPSE}
+    timeout: 15000
+- assertVisible:
+    text: ${D0702_BOOK_ZERO}
+- assertVisible:
+    text: '^Chapter 1$'
+    checked: false
+# 0 → 1
+- tapOn:
+    text: '^Chapter 1$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: ${D0702_BOOK_ONE}
+    timeout: 15000
+- assertVisible:
+    text: '^Selected chapters \\([1-9][0-9]*\\)$'
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-download-button'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'prepare-offline-download-footer'
+- assertVisible:
+    text: '^Total download$'
+- assertVisible:
+    id: 'prepare-offline-total-bytes'
+- assertVisible:
+    id: 'prepare-offline-download-button'
+    enabled: false
+# Tolerate legitimate size suffix; never bare ^Download$.
+- assertVisible:
+    text: '^Download .+$'
+- extendedWaitUntil:
+    visible:
+      text: '^Couldn''t load downloadable resources for the selected chapters\. Check your connection and try again\.$'
+    timeout: 60000
+- assertVisible:
+    id: 'prepare-offline-footer-hint'
+- assertNotVisible:
+    text: '^Loading resources for the selected chapters…$'
+- assertNotVisible:
+    id: 'prepare-offline-download-controls-downloading'
+# 1 → 0 (restore this book's selection)
+- scrollUntilVisible:
+    element:
+      text: '^Chapter 1$'
+    direction: UP
+    timeout: 15000
+- tapOn:
+    text: '^Chapter 1$'
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: ${D0702_BOOK_ZERO}
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-download-button'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'prepare-offline-download-footer'
+- assertVisible:
+    text: '^Total download$'
+- assertVisible:
+    id: 'prepare-offline-download-button'
+    enabled: false
+- assertVisible:
+    text: '^Download .+$'
+- assertNotVisible:
+    id: 'prepare-offline-download-controls-downloading'
+# Collapse book — leave other books untouched at zero.
+- scrollUntilVisible:
+    element:
+      text: ${D0702_COLLAPSE}
+    direction: UP
+    timeout: 15000
+- tapOn:
+    text: ${D0702_COLLAPSE}
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      text: ${D0702_EXPAND}
+    timeout: 15000

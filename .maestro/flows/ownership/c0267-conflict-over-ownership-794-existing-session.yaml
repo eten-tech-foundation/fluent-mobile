@@ -1,0 +1,98 @@
+# C-0267-01 partial: conflict-over-ownership suppression on existing chapter794.
+# Fixture (device A / user10): project8 unit16 "Milestone 4" / Psalms 2 /
+# assignment794 / assigned_user_id=10 / has_conflict=1 / draft. Read-only
+# chapter-list asserts only (MAESTRO_EXPECT_RECORD_WARNING=none). Never
+# capture/claim/stage/sync.
+#
+# This single flow: cached switch 12→10, ownership-status conflict branch,
+# restore 12. Host must preflight active12/cache10,9,12 before run.
+appId: com.eten.fluent
+tags:
+  - ownership
+  - existing-session
+  - read-only
+  - fixture-blocked
+---
+- assertTrue: ${typeof MAESTRO_C0267_CONFLICT_794_ATTESTATION !== 'undefined' && String(MAESTRO_C0267_CONFLICT_794_ATTESTATION).trim() === '1'}
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+# Cached switch 12 → 10
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- tapOn:
+    id: 'settings-menu-account-10'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+# Conflict row on ViewProject (env pins project/chapter/ownership).
+- runFlow:
+    file: ownership-status-existing-session.yaml
+    env:
+      MAESTRO_FIXTURE_PROJECT_NAME: 'Milestone 4'
+      MAESTRO_FIXTURE_CHAPTER_LABEL: 'Psalms 2'
+      MAESTRO_EXPECT_OWNERSHIP: conflict
+      MAESTRO_EXPECT_RECORD_WARNING: none
+# Restore 12
+- assertVisible:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-12'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-active-12'
+    timeout: 15000
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- assertNotVisible:
+    id: 'login-email-input'

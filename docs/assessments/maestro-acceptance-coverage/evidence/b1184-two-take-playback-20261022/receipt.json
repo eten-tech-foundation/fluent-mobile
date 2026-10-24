@@ -1,0 +1,118 @@
+{
+  "schema": "b0017-01-ledger-reconciliation/v1",
+  "utc": "2026-10-22T03:56:12Z",
+  "criterion_id": "B-0017-01",
+  "decision": "complete_for_requirement / PASS",
+  "literal": "Playing/pausing/switching takes never triggers Maximum update depth exceeded (#298/#569)",
+  "takes": [
+    {
+      "id": "rec_mvizptmz_n8fvbz1t",
+      "duration_ms": 50563,
+      "status": "uploaded"
+    },
+    {
+      "id": "rec_mvj04utl_0pmdryiq",
+      "duration_ms": 69785,
+      "status": "uploaded"
+    }
+  ],
+  "maximumUpdateDepthMatches": 0,
+  "postWindowLogLines": 703,
+  "B-0016-01": "not_run retained",
+  "device_baselines": {
+    "A5554": "11 saved takes; cache 230 unchanged",
+    "B5556": "2 uploaded saved takes + retained 0-byte AAC; closed Home11 then app stopped",
+    "aggregate_saved_takes": 13
+  },
+  "artifacts": {
+    "RESULT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/RESULT.md",
+      "sha256": "13968cbe71b78533c43797f5efce1cfce23b2de685ccfcc18521c8da231fd51e",
+      "bytes": 3171
+    },
+    "after-playback.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/after-playback.xml",
+      "sha256": "8b1fb2cb737ba279d0a0a2b830cfe3ad116fe03366203f9c488508fc794f27ec",
+      "bytes": 85093
+    },
+    "playback-error-observation.json": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/playback-error-observation.json",
+      "sha256": "fa18e85ad5219e7901703bd585cd06da9a26342b7b097dd5f14d5ded671d985c",
+      "bytes": 112
+    },
+    "play-take1.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/play-take1.png",
+      "sha256": "1a4fde8515350f8b8b42b7dbb194dc8eca9c5331ecc6ef1e2f31f4caa79da009",
+      "bytes": 147425
+    },
+    "pause-take1.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/pause-take1.png",
+      "sha256": "d701bdb003a64acc7b13b1c83278fdc9bf17d7a9b07d322a69659dfacf24bcfb",
+      "bytes": 147980
+    },
+    "switch-playing-take2.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/switch-playing-take2.png",
+      "sha256": "3873de30ff9c04fa7cc9f76d83e3149d612edcb4053132b3385af881c2e7bab4",
+      "bytes": 147313
+    },
+    "pause-take2.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/pause-take2.png",
+      "sha256": "9339bb367dffe30f15a7b2f68948198ed6508e0c6f1f119274fb66818c6dd1bd",
+      "bytes": 148575
+    },
+    "switch-back-take1.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/switch-back-take1.png",
+      "sha256": "a835a918e00290a605182e9fd982e1b9437124efbf44b9c5925356aba206077b",
+      "bytes": 147328
+    },
+    "two-saved-hashes-before-playback.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/two-saved-hashes-before-playback.txt",
+      "sha256": "85897e78bdd6a1ffcf54448c8e1c78855a1d627eb02f638f08c315e94d1d0167",
+      "bytes": 218
+    },
+    "two-saved-hashes-after-playback.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/two-saved-hashes-after-playback.txt",
+      "sha256": "85897e78bdd6a1ffcf54448c8e1c78855a1d627eb02f638f08c315e94d1d0167",
+      "bytes": 218
+    },
+    "final-recordings-queues.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/final-recordings-queues.txt",
+      "sha256": "47e678b05c18260aa42cc3848cd50adc5194b8f870636d00f40b510897f56638",
+      "bytes": 117
+    },
+    "closed-home11.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/closed-home11.xml",
+      "sha256": "9fc4b34031e3d4007fd243801a42f1a0eb4db4a84c303fe7115b3560b25a54c6",
+      "bytes": 67690
+    },
+    "ATTEMPT1-INTERRUPTED.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/ATTEMPT1-INTERRUPTED.md",
+      "sha256": "1d78e3bd08de3f28b1e7e01c0062af52c261a8fb2ce88cc01397684ca5b85e1b",
+      "bytes": 2402
+    },
+    "retained-zero-artifact.txt": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/b1184-two-take-20261022/retained-zero-artifact.txt",
+      "sha256": "f4f361f9c9afda7b1a5b4a4639637a25a0a056fbf20c81ab5f75d4c827bb2475",
+      "bytes": 76
+    }
+  },
+  "counts": {
+    "before": {
+      "complete_for_requirement": 53,
+      "partial": 12,
+      "not_run": 21
+    },
+    "after": {
+      "complete_for_requirement": 54,
+      "partial": 12,
+      "not_run": 20
+    }
+  },
+  "non_claims": [
+    "No permanent Maestro automation PASS",
+    "No audible/human listening quality claim",
+    "Capture under-30 overruns retained (not success)",
+    "B-0016 drawer criterion not closed",
+    "No fresh capture for playback sequence"
+  ]
+}

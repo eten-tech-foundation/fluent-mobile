@@ -1,0 +1,27 @@
+# TEMPORARY: drafting already open on assignment 484. No Home/open-row/setup.
+appId: com.eten.fluent
+tags:
+  - qa-warm-temp
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'drafting-tab-bar'
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- tapOn:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'resources-tab'
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000

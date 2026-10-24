@@ -1,0 +1,54 @@
+[
+  {
+    "epoch": 1792642383.093,
+    "event": "pericope_sets_observed"
+  },
+  {
+    "epoch": 1792642383.094,
+    "event": "pericope_sets_observed"
+  },
+  {
+    "epoch": 1792642383.097,
+    "event": "injected_projects_fault"
+  },
+  {
+    "epoch": 1792642383.625,
+    "event": "injected_projects_fault"
+  },
+  {
+    "epoch": 1792642384.641,
+    "event": "injected_projects_fault"
+  },
+  {
+    "epoch": 1792642384.658,
+    "event": "injected_projects_fault"
+  },
+  {
+    "epoch": 1792642384.66,
+    "event": "injected_projects_fault"
+  },
+  {
+    "epoch": 1792642384.66,
+    "event": "user_step_failure"
+  },
+  {
+    "epoch": 1792642393.505,
+    "event": "bible_texts_complete"
+  },
+  {
+    "epoch": 1792642393.507,
+    "event": "metadata_finished_active_error"
+  },
+  {
+    "epoch": 1792642393.508,
+    "event": "injected_projects_fault"
+  },
+  {
+    "epoch": 1792642393.508,
+    "event": "metadata_finished_error"
+  },
+  {
+    "epoch": 1792642393.51,
+    "event": "injected_projects_fault"
+  }
+]

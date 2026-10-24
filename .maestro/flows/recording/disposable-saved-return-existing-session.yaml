@@ -1,0 +1,38 @@
+# Read-only navigation/checkpoint for an independently verified existing take.
+# No capture/save/delete/reload/reset/auth/sync/network commands.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - fixture-blocked
+  - disposable-checkpoint
+  - record
+---
+- runScript: ../../shared/scripts/disposable-session-values.js
+- assertTrue: ${output.disposablePhase === 'saved'}
+- assertVisible:
+    id: home-tab-my-work
+- tapOn:
+    id: home-tab-my-work
+- scrollUntilVisible:
+    element:
+      id: my-work-row-${MAESTRO_FIXTURE_CHAPTER_ID}
+    direction: DOWN
+    timeout: 30000
+    speed: 70
+    centerElement: true
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
+- tapOn:
+    id: drafting-tab-bible
+- scrollUntilVisible:
+    element:
+      id: bible-verse-row-${MAESTRO_DISPOSABLE_VERSE}
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: bible-verse-row-${MAESTRO_DISPOSABLE_VERSE}
+- runFlow: disposable-capture-recovery-existing-session.yaml
+- assertVisible:
+    id: record-take-row-${MAESTRO_DISPOSABLE_TAKE_ID}
+- assertVisible:
+    id: ${output.disposableTakeSyncRe}
+    text: '^(pending|uploaded)$'

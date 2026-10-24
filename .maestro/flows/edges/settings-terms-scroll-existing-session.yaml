@@ -1,0 +1,97 @@
+# Terms of Use actual scrolling — existing account12 only, no auth changes.
+# A-0007-01: distinct from the earlier open/back-only legal navigation receipt.
+# Exact anchors: TermsOfUsePage.tsx document title inside the ScrollView and
+# its final paragraph. Scope title to ScrollView so fixed header cannot pass.
+# Viewport precondition: final paragraph must start offscreen. If content fits,
+# classify the failed precondition as BLOCKED viewport fixture, not product FAIL.
+# No device/font/window changes to force overflow; no acceptance/agree action.
+# Root owns one bounded device run; authoring/static parse is not runtime PASS.
+# Forbidden: login/reset/logout/clearState/network/preference/capture/playback.
+appId: com.eten.fluent
+tags:
+  - edges
+  - existing-session
+  - read-only
+  - fixture-blocked
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-terms-of-use'
+- extendedWaitUntil:
+    visible:
+      id: 'terms-of-use-scroll'
+    timeout: 15000
+# The document title is separate from the fixed StackScreenHeader title.
+- assertVisible:
+    text: '^Terms of Use$'
+    childOf:
+      id: 'terms-of-use-scroll'
+# Hard overflow precondition; never skip or turn already-visible into a PASS.
+- assertNotVisible:
+    text: '^If AI services are provided by third parties, the processing of text data will comply with Fluent’s Privacy Policy, which describes what data may be transmitted and how it is protected\.$'
+    childOf:
+      id: 'terms-of-use-scroll'
+- scrollUntilVisible:
+    element:
+      text: '^If AI services are provided by third parties, the processing of text data will comply with Fluent’s Privacy Policy, which describes what data may be transmitted and how it is protected\.$'
+      childOf:
+        id: 'terms-of-use-scroll'
+    direction: DOWN
+    timeout: 20000
+- assertVisible:
+    text: '^If AI services are provided by third parties, the processing of text data will comply with Fluent’s Privacy Policy, which describes what data may be transmitted and how it is protected\.$'
+    childOf:
+      id: 'terms-of-use-scroll'
+- assertNotVisible:
+    text: '^Terms of Use$'
+    childOf:
+      id: 'terms-of-use-scroll'
+- assertVisible:
+    id: 'terms-of-use-scroll-back'
+- assertNotVisible:
+    id: 'login-email-input'
+- tapOn:
+    id: 'terms-of-use-scroll-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+# Verify retained active/cached identities without switching or authenticating.
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- back
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

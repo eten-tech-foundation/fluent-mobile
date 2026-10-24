@@ -1,0 +1,86 @@
+# #735 affected LIVE regression SMOKE ONLY, not controlled deferred-race proof.
+# Requires root-observed normal automatic Home PFO detail after active12to10;
+# native active10/cache10,9,12 and integrationc4a1425e(or successor) preflight.
+# MAESTRO_PFO735_NAVIGATION_CONTEXT_VERIFIED=1. Root caps90s; unavailable automatic
+# PFO entry/API health is precondition-blocked, not a reason to retry catalogue.
+# Distinct isolated deferred-race1red/8green evidence remains separate.
+# No download, preference/logout/capture/network/auth/storage actions.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - prepared-phase
+  - read-only
+  - pfo735-navigation-smoke
+---
+- runScript: ../../shared/scripts/pfo735-navigation-smoke-context.js
+- assertVisible:
+    id: prepare-offline-screen
+- assertVisible:
+    text: '^Assigned chapters \([0-9]+\)$'
+- assertNotVisible:
+    id: login-email-input
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: project-row-12
+    timeout: 10000
+- assertVisible:
+    id: prepare-offline-screen
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 10000
+- assertNotVisible:
+    id: prepare-offline-screen
+- tapOn:
+    id: home-settings-button
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: settings-menu-active-10
+    timeout: 10000
+- tapOn:
+    id: settings-menu-more-settings
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: settings-ui-version
+    timeout: 10000
+- assertVisible:
+    text: '^Settings$'
+- assertVisible:
+    id: stack-header-back
+- assertVisible:
+    id: settings-prepare-offline
+- assertNotVisible:
+    id: prepare-offline-screen
+- evalScript: ${output.pfo735SettingsDwellRequested = true}
+- runScript: ../../shared/scripts/pfo735-navigation-smoke-context.js
+- assertTrue: ${output.pfo735SettingsDwellComplete === true}
+- assertVisible:
+    text: '^Settings$'
+- assertVisible:
+    id: settings-ui-version
+- assertVisible:
+    id: settings-prepare-offline
+- assertNotVisible:
+    id: prepare-offline-screen
+- assertNotVisible:
+    id: login-email-input
+- takeScreenshot: pfo735-settings-stable-after-five-seconds
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-my-work
+    timeout: 10000
+- assertNotVisible:
+    id: prepare-offline-screen
+- assertNotVisible:
+    id: login-email-input

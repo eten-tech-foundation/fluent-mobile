@@ -1,0 +1,399 @@
+{
+  "generated_utc": "2026-10-22T19:42:30.439854+00:00",
+  "scope": "Six-feature assignment map plus reserved#679 ownership; no programming/PR/device action by this lane",
+  "current_remote_main": "200bb13c705f66cc00f107cc93095bee7247a8ba",
+  "local_primary_HEAD": "e2c88d27a8d07e48eca030642966302817ac204b",
+  "revision_binding": "Cursor inspected both local HEAD and local origin/main; origin/main SHA exactly matches fresh live GitHub branch snapshot. No git fetch or checkout occurred.",
+  "per_issue": [
+    {
+      "id": 505,
+      "title": "My Work stage accordions and Observer/Peer Check population",
+      "classification": "confirmed_absent",
+      "frontend": "missing",
+      "backend": "Observer grants/identity unknown (API); not proven by this inspection",
+      "evidence": [
+        {
+          "file": "src/app/tabs/MyWorkTab.tsx",
+          "lines": "37-78",
+          "why": "FlatList only; no stage accordions"
+        },
+        {
+          "file": "src/utils/myWorkChapterFilter.ts",
+          "lines": "7-20",
+          "why": "Only assignee not_started/draft or assigned peer_check; open peer and Observer excluded"
+        },
+        {
+          "file": "src/db/queries.ts",
+          "lines": "740-776",
+          "why": "getMyWorkChapters uses MY_WORK_CHAPTER_WHERE; no Observer population"
+        },
+        {
+          "file": "src/utils/stageAdvancement.ts",
+          "lines": "130-132",
+          "why": "Open peer exists for in-chapter stage UI only, not My Work list"
+        }
+      ],
+      "exists_on_other_inspected_refs": false
+    },
+    {
+      "id": 451,
+      "title": "Comment entry points, composer, and panel",
+      "classification": "confirmed_absent",
+      "frontend": "missing",
+      "backend": "comments API unknown; no mobile client surface",
+      "evidence": [
+        {
+          "file": "src/services/api.ts",
+          "lines": "rg: no comment endpoints",
+          "why": "No list/create comment API methods"
+        },
+        {
+          "file": "src/db/schema.ts|migrations.ts|types",
+          "lines": "rg: no comment tables/types",
+          "why": "No local comment persistence"
+        },
+        {
+          "file": "src/**",
+          "lines": "rg: no Composer/CommentPanel/CommentDrawer",
+          "why": "No UI entry/composer/panel"
+        }
+      ],
+      "exists_on_other_inspected_refs": false
+    },
+    {
+      "id": 703,
+      "title": "My Work rows show comment count and commented marker",
+      "classification": "confirmed_absent",
+      "frontend": "missing",
+      "backend": "depends on comments API (#451); unknown",
+      "evidence": [
+        {
+          "file": "src/types/db/types.ts",
+          "lines": "44-60",
+          "why": "MyWorkChapter has no comment count/marker fields"
+        },
+        {
+          "file": "src/components/ui/MyWorkRow.tsx",
+          "lines": "33-67",
+          "why": "Row chrome has badge/progress/ownership only"
+        },
+        {
+          "file": "src/db/queries.ts",
+          "lines": "746-767",
+          "why": "SELECT has no comment aggregates"
+        }
+      ],
+      "exists_on_other_inspected_refs": false
+    },
+    {
+      "id": 679,
+      "title": "Login Tier 1 does not wait on full master catalogue",
+      "classification": "partial",
+      "frontend": "partial_present",
+      "backend": "explicit fluent-api#373 scoped/seedable master dependency",
+      "evidence": [
+        {
+          "file": "src/services/sync.ts",
+          "lines": "1402-1407",
+          "why": "Documents residual; still awaits syncMasterData full catalogue in Tier1 path"
+        },
+        {
+          "file": "src/services/sync.ts",
+          "lines": "1427-1441",
+          "why": "Tier1 My Work texts + onTier1Complete exist (#670)"
+        },
+        {
+          "file": "src/navigation/AuthSessionProvider.tsx",
+          "lines": "139-140",
+          "why": "Wires onTier1Complete for Home loader"
+        },
+        {
+          "file": "repair/680-progressive-login@50ef0c19",
+          "lines": "sync.ts ~1399-1400",
+          "why": "Related merged PR680 lineage retains same fluent-api#373 residual comment"
+        }
+      ],
+      "exists_on_other_inspected_refs": "progressive Tier1 yes; #679 residual completion no"
+    },
+    {
+      "id": 452,
+      "title": "Observer read-only draft view",
+      "classification": "confirmed_absent",
+      "frontend": "missing",
+      "backend": "Observer identity/grants unknown (API)",
+      "evidence": [
+        {
+          "file": "src/** (app/hooks/navigation/types)",
+          "lines": "rg Observer empty",
+          "why": "No Observer role/permission path in source"
+        },
+        {
+          "file": "docs/product-behavior/roles-and-permissions.md",
+          "lines": "51",
+          "why": "States mobile has no grant router / observer dashboard equivalent"
+        },
+        {
+          "file": "src/app/tabs/RecordTab.tsx",
+          "lines": "1437",
+          "why": "canonicalReadOnly is take-state UI, not Observer browse matrix"
+        }
+      ],
+      "exists_on_other_inspected_refs": false
+    },
+    {
+      "id": 704,
+      "title": "Peer-check offline draft audio download chip",
+      "classification": "confirmed_absent",
+      "frontend": "missing_feature_path; shared download foundation reusable",
+      "backend": "downloadUrl present on verse-audio contract; peer list/hydrate completeness unknown",
+      "evidence": [
+        {
+          "file": "src/types/download/types.ts",
+          "lines": "11-33",
+          "why": "Queue kinds are PFO text/audio/image resources, not draft takes"
+        },
+        {
+          "file": "src/services/verseAudioContract.ts",
+          "lines": "119-149",
+          "why": "Parses downloadUrl on upload responses; no peer offline hydrate consumer"
+        },
+        {
+          "file": "src/utils/myWorkChapterFilter.ts",
+          "lines": "7-20",
+          "why": "Assigned peer_check list exists; no download chip"
+        },
+        {
+          "file": "src/services/downloadQueueWorker.ts|downloadQueueRepository.ts|downloadStorage.ts",
+          "lines": "shared",
+          "why": "Reuse targets for Group D; not draft-peer chip yet"
+        }
+      ],
+      "exists_on_other_inspected_refs": false
+    },
+    {
+      "id": 508,
+      "title": "Observer offline draft download chip and payload",
+      "classification": "confirmed_absent",
+      "frontend": "missing",
+      "backend": "Observer identity + draft audio availability unknown",
+      "evidence": [
+        {
+          "file": "src/**",
+          "lines": "rg: no Observer draft download chip/payload",
+          "why": "No Observer offline draft download surface"
+        },
+        {
+          "file": "deps",
+          "lines": "505+452+704 shared service",
+          "why": "Cannot complete without Observer foundation and draft-download service"
+        }
+      ],
+      "exists_on_other_inspected_refs": false
+    }
+  ],
+  "feature_PR_or_named_branch_owner": "No matching six-feature PR or named feature branch identified in bounded ID/keyword/head searches and34 live branches. This is not universal proof no work exists outside inspected refs.",
+  "adjacent_existing_work": [
+    {
+      "PR": 770,
+      "owner": "JonathanSeehagen",
+      "state": "open",
+      "branch": "jonathanseehagen/feature/257-local-stage-advancement-queue",
+      "overlap": "RecordTab, schema/migrations(v21), repository, API, sync, workflowStage; not MyWorkTab directly."
+    },
+    {
+      "PR": 361,
+      "owner": "mattrace-gloo",
+      "state": "closed/unmerged",
+      "branch": "mrace/feature/257-local-stage-advancement-queue",
+      "note": "Historical predecessor, not current merged implementation."
+    },
+    {
+      "PR": 727,
+      "owner": "jskager",
+      "state": "open",
+      "branch": "jskager/feature/v2-route-tree",
+      "note": "Next route-tree ownership; coordinate navigation boundary, not an implementation of these six."
+    }
+  ],
+  "groups": [
+    {
+      "id": "A",
+      "issues": [
+        505,
+        703
+      ],
+      "owner": "Exclusive implementation lane 01a16524-3ad6-7540-b31b-739e2354800d",
+      "surfaces": [
+        "src/app/tabs/MyWorkTab.tsx",
+        "src/components/ui/MyWorkRow.tsx",
+        "src/hooks/useMyWorkChapters.ts",
+        "src/db/queries.ts:getMyWorkChapters",
+        "src/utils/myWorkChapterFilter.ts",
+        "src/utils/myWorkRowDisplay.ts",
+        "src/types/db/types.ts:MyWorkChapter"
+      ],
+      "scope": "Stage accordions and actual Observer/open-peer population; comment count/current-user marker binding only when real comment data exists. This lane alone integrates row download chips and Observer navigation supplied by B/D. Implementation dispatched by parent; no competing coding in reconciliation lane.",
+      "dependencies": [
+        "Verified Observer identity/grant contract; no new backend stage-scope field (#505 expressly makes stage grouping client-side).",
+        "C supplies real comment aggregates; no stub counts/markers.",
+        "PR770 changes workflowStage/schema/repository; coordinate before shared integration."
+      ],
+      "owner_thread_id": "01a16524-3ad6-7540-b31b-739e2354800d"
+    },
+    {
+      "id": "B",
+      "issues": [
+        452
+      ],
+      "owner": "Exclusive implementation lane 01a16524-6252-74cb-9d89-35b26ed70002",
+      "surfaces": [
+        "Existing draft playback/review logic in src/app/tabs/RecordTab.tsx (reuse target, avoid competing edits)",
+        "Observer navigation/read-only screen and Bible/Draft tabs (new source surface)"
+      ],
+      "scope": "Dedicated Observer Bible+Draft read-only view, canonical playback only, no Resources or recording/take mutation. Reuse current player rather than implementing a second engine. Expose entry contract to A; do not edit MyWorkRow. Implementation dispatched by parent; no competing coding in reconciliation lane.",
+      "dependencies": [
+        "Server Observer identity/grants must be verified, not guessed from names/email.",
+        "API canonical take list/URL contract must be verified.",
+        "PR770 owns active RecordTab changes; isolate new view and coordinate any shared extraction."
+      ],
+      "owner_thread_id": "01a16524-6252-74cb-9d89-35b26ed70002"
+    },
+    {
+      "id": "C",
+      "issues": [
+        451
+      ],
+      "owner": "Exclusive implementation lane 01a16524-6252-74cb-9d89-35b26ed70002",
+      "surfaces": [
+        "src/services/api.ts (comment methods absent; shared integration lease required)",
+        "src/db/schema.ts and src/db/migrations.ts (comment persistence absent; shared integration lease required)",
+        "New comment repository/types/entry/composer/panel components"
+      ],
+      "scope": "Real comment contract and local state plus entry/composer/panel on target-language draft only. No Bible comment affordance. Export aggregate contract to A/#703 and entry integration to B/#452. Implementation dispatched by parent; no competing coding in reconciliation lane.",
+      "dependencies": [
+        "Comment backend model/endpoints and Observer identity are unverified; verify contracts before functional implementation.",
+        "PR770 changes schema/migrations/repository/API; reserve migration sequence and shared-file edits with parent/Jonathan.",
+        "Do not add placeholders or fabricate completed behavior."
+      ],
+      "owner_thread_id": "01a16524-6252-74cb-9d89-35b26ed70002"
+    },
+    {
+      "id": "D",
+      "issues": [
+        508,
+        704
+      ],
+      "owner": "Exclusive implementation lane 01a16524-8976-7588-9006-2300646ea004",
+      "surfaces": [
+        "src/services/downloadQueueWorker.ts (reuse)",
+        "src/services/downloadQueueWorkerSingleton.ts (reuse)",
+        "src/services/downloadStorage.ts (reuse)",
+        "src/db/downloadQueueRepository.ts (reuse)",
+        "src/types/download/types.ts",
+        "src/services/verseAudioContract.ts",
+        "New selected/canonical draft payload+hydrate adapter and reusable chip component"
+      ],
+      "scope": "Build common #508 download behavior once, then #704 adaptation as the issue explicitly requires. Observer includes draft text/selected audio plus source scripture; peer excludes source scripture. Manual-only download, progress/retry, incomplete entry allowed, stage-specific cache cleanup. A owns MyWorkRow chip wiring. No PFO pipeline rewrite. Implementation dispatched by parent; no competing coding in reconciliation lane.",
+      "dependencies": [
+        "Server selected/canonical take listing/download URLs must be verified; upload response downloadUrl parsing alone is insufficient.",
+        "#508 Observer delivery depends on A/B; #704 reuses #508 common mechanism.",
+        "No competing MyWorkRow/schema/API edits; shared-file integration is coordinated."
+      ],
+      "owner_thread_id": "01a16524-8976-7588-9006-2300646ea004"
+    },
+    {
+      "id": "E",
+      "issues": [
+        679
+      ],
+      "owner": "Exclusive implementation lane 01a1651e-4d88-7692-811f-eedeb273302a",
+      "surfaces": [
+        "src/services/sync.ts:Tier1/syncMasterData",
+        "src/navigation/AuthSessionProvider.tsx:onTier1Complete",
+        "Direct API#373 dependency"
+      ],
+      "scope": "Reserved. This lane does not implement, reverify or dispatch #679. Existing read-only finding: partial progressive-login foundation; full master wait remains. Implementation dispatched by parent; no competing coding in reconciliation lane.",
+      "dependencies": [
+        "Release deployment and native/login timing unproven.",
+        "Open draft PR770 at85ddeed4 requires future integration verification; not a landed regression."
+      ],
+      "owner_thread_id": "01a1651e-4d88-7692-811f-eedeb273302a",
+      "implementation_PR": "https://github.com/eten-tech-foundation/fluent-mobile/pull/771",
+      "implementation_state": "PR771 merged c9e82a905889f4c3cdc9d0916be944b4a3613925"
+    }
+  ],
+  "overrides_to_raw_Cursor_suggestions": [
+    "No fake/empty comment-count stubs as completed#703.",
+    "Use dedicated Observer view; do not assume canonicalReadOnly RecordTab is Observer view or race PR770 in RecordTab.",
+    "D owns shared download component/service; A alone wires MyWorkRow.",
+    "Respect#704 explicit reuse of#508 common behavior; do not build two download engines.",
+    "#679 belongs exclusively to the named worker."
+  ],
+  "source_evidence": [
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/issue-history-reconciliation-20261022/seven-feature-readonly-code-result-20261022.md",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/issue-history-reconciliation-20261022/seven-feature-readonly-code-result-20261022.json",
+    "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/issue-history-reconciliation-20261022/seven-feature-live-branch-PR-evidence-20261022.json"
+  ],
+  "runtime_status_changed": false,
+  "programming_started": "Started in the named external lanes only; reconciliation lane performs no programming",
+  "PRs_created": 0,
+  "implementation_handoff_recorded_utc": "2026-10-22T19:45:55.343450+00:00",
+  "mobile679_implementation_delivery": {
+    "receipt": "https://github.com/eten-tech-foundation/fluent-mobile/pull/771",
+    "metadata_receipt": "/tmp/mobile679-pr771-metadata-20261022.json",
+    "case_id": "A0025_mobile679_PR771_implementation_20261022",
+    "relation": "implementation_only_not_runtime_PASS",
+    "author": "mattrace-gloo",
+    "PR_state": "open; ready/non-draft",
+    "merged": false,
+    "head_commit": "e2c1d47ff58bdb91d70c1c211144ee6fbaf4b9a6",
+    "behavior": "Seed only required real FK parents via authenticated by-ID routes; unblock Tier1/Home; defer full catalogue before Tier2.",
+    "backend_scope": "Existing by-ID routes; no new API/schema work. API373 updatedAfter/#379 is not this seeding implementation.",
+    "local_validation_reported": {
+      "targeted_tests_PASS": 108,
+      "full_suites": 260,
+      "full_tests_PASS": 2302,
+      "source": "implementation lane / PR body; not rerun in audit-doc lane"
+    },
+    "CI": "pending reported; no CI read",
+    "runtime": "No merge/deployment/native QA/timing proof",
+    "process_disclosure": "Implementation lane disclosed rejected combined readiness/board update and improper no-op readiness retry; no board changes claimed or authorized. This lane performs no readiness/board mutation."
+  },
+  "mobile679_implementation_head_updates": [
+    {
+      "reported_utc": "2026-10-22T20:02:24.450409+00:00",
+      "PR": "https://github.com/eten-tech-foundation/fluent-mobile/pull/771",
+      "head_commit": "152a0d05",
+      "head_is_provided_abbreviation": true,
+      "change": "nonblocking test nit; production behavior unchanged",
+      "focused_sync_test_file": "60/60 PASS reported",
+      "CI": "all4 terminal success reported",
+      "CodeRabbit": "terminal success reported",
+      "evidence_source": "Parent implementation update; no new CI/GitHub scan in documentation lane",
+      "remaining": [
+        "device/live-login performance verification",
+        "integration with PR770"
+      ],
+      "board_owner": "01a16532; no duplicate board action",
+      "no_runtime_PASS": true
+    }
+  ],
+  "mobile679_implementation_state_updates": [
+    {
+      "reported_utc": "2026-10-22T20:10:18.278873+00:00",
+      "PR": "https://github.com/eten-tech-foundation/fluent-mobile/pull/771",
+      "state": "merged",
+      "merged_utc": "2026-10-22T20:07:09Z",
+      "merged_by": "mattrace-gloo",
+      "merge_commit_on_main": "c9e82a905889f4c3cdc9d0916be944b4a3613925",
+      "source": "Verified parent merge report; this reconciliation lane did not merge",
+      "remaining": [
+        "release deployment unproven",
+        "native cold/re-login timing and behavior unproven",
+        "future integration with open draft PR770 at85ddeed4; no landed regression claimed"
+      ],
+      "runtime_promotion": false,
+      "board_action": false
+    }
+  ]
+}

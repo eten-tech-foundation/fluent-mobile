@@ -1,0 +1,161 @@
+{
+  "schema": "d0447-01-ledger-reconciliation/v1",
+  "utc": "2026-10-21T21:26:58Z",
+  "criterion_id": "D-0447-01",
+  "scenario_id": "D-SC-0447-01",
+  "decision": "complete_for_requirement / PASS",
+  "source_criterion": {
+    "coverage_behavior": "Given app install, when pericope set seed is requested for mapped setId, then bundled FIA/FCBH JSON loads (version/hash map).",
+    "coverage_expected": [
+      "mapped setId loads; unknown\u2192null"
+    ],
+    "issue_447_requirement_notes": "Bundle FIA/FCBH pericope set JSON in APK; setId map + loadBundledPericopeSet; version/hash; unit tests. Atomic row excludes licensing/product-agreement scope. version OR hash; hash validation is not an implemented contract and is not a mandatory gate. Embedded VCS/source-commit attestation is not required by #447.",
+    "not_in_scope_for_this_row": [
+      "licensing/product agreement",
+      "issue438 absence-of-chapter HTTP trace",
+      "PR767 unserved hydration fix",
+      "fresh OFFLINE seed / live HTTP zero-request trace",
+      "final guest Pericope-mode cleanup (root UI batch pending)"
+    ]
+  },
+  "apk": {
+    "host_sha256": "28af24f767d43ff67dfb9743049de9fa3d718ce3d528314f81029d4329e36b6b",
+    "note": "Same supplied release APK previously verified on guest5558; current APK does not contain PR767."
+  },
+  "evidence_composite": {
+    "static_embedded_loader": {
+      "receipt": "/tmp/fluent-d0447-static-fa60bd07/bundle-disassembly.txt",
+      "proves": [
+        "Hermes loadBundledPericopeSet",
+        "setIds 1 and 2",
+        "normalization",
+        "null fallback",
+        "version 2026-09-04",
+        "array lengths 16910/16870"
+      ]
+    },
+    "unit_unknown_null_complementary": {
+      "file": "src/services/pericopeSets.test.ts",
+      "cases_from_coverage_csv_notes": "Tests mapped ids, unknown setId\u2192null, book miss\u2192null (lines 8-45 cited in issue-history coverage.csv#447). Not re-run this write.",
+      "relation": "complementary_loader_contract"
+    },
+    "runtime_fia_set2": {
+      "ranges": [
+        "1\u20135",
+        "6\u201312",
+        "13\u201316",
+        "17\u201325"
+      ],
+      "node_ids": [
+        "bible-pericope-pericope::1",
+        "bible-pericope-pericope::2",
+        "bible-pericope-pericope::3",
+        "bible-pericope-pericope::4"
+      ],
+      "identity_scheme": "bible-pericope-pericope::N",
+      "prior_unavailable_retained": true,
+      "artifacts": [
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0447-fia-project15-20261021/POST-REAUTH-RESULT.md",
+          "sha256": "189f6f5c2da694b77a22c20d99c7348d7a87568901df19f095bfcb6849254d14",
+          "bytes": 2731,
+          "exists": true
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0447-fia-project15-20261021/postsignin-fia-chapter1.xml",
+          "sha256": "509b51fb729a389d1959fee83c359379b04a9546816966e46ff602f59b2aa7ab",
+          "bytes": 66033,
+          "exists": true
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0447-fia-project15-20261021/postsignin-fia-chapter1.png",
+          "sha256": "7b043034c3fd452f6cfd783d76edc07f29793e6320f2ebf101b2836e697f0794",
+          "bytes": 158077,
+          "exists": true
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0447-fia-project15-20261021/fia-pericope-initial.xml",
+          "sha256": "c8dcc623a20fc48a9b96237f2ea0b3bf42126a27a197cb4e23ef5b7617b3d42e",
+          "bytes": 31489,
+          "exists": true
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0447-fia-project15-20261021/fia-pericope-settled.xml",
+          "sha256": "62c919b013c8e60321ce673fb7e5f2a0001de0f5538b0a9fc874c7d65a55dc65",
+          "bytes": 51254,
+          "exists": true
+        }
+      ]
+    },
+    "runtime_fcbh_set1": {
+      "ranges": [
+        "1\u20132",
+        "3\u20135",
+        "6\u20137",
+        "8\u20139",
+        "10\u201312",
+        "13\u201316",
+        "17\u201319",
+        "20\u201321",
+        "22\u201325"
+      ],
+      "node_ids": [
+        "bible-pericope-pericope:1:1",
+        "bible-pericope-pericope:2:1",
+        "bible-pericope-pericope:2:2",
+        "bible-pericope-pericope:2:3",
+        "bible-pericope-pericope:2:4",
+        "bible-pericope-pericope:3:1",
+        "bible-pericope-pericope:3:2",
+        "bible-pericope-pericope:3:3",
+        "bible-pericope-pericope:3:4"
+      ],
+      "identity_scheme": "bible-pericope-pericope:section:number",
+      "artifacts": [
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0447-fia-project15-20261021/fcbh-chapter1.xml",
+          "sha256": "d1ee9365cd48635b1042fc2b5eb000d5e0dd92de555ff753405efefc4fc04f10",
+          "bytes": 56871,
+          "exists": true
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0447-fia-project15-20261021/fcbh-chapter1-bottom.xml",
+          "sha256": "2bc9b8586e4a5358e00ecfcd6547ea4bf0a02cc51b6199923c58401eb4c8788e",
+          "bytes": 72000,
+          "exists": true
+        },
+        {
+          "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0447-fia-project15-20261021/fcbh-chapter1.png",
+          "sha256": "0bf7cdf6841d3f2e70e8c1d0bc6ff3ad4714345690e4c39940df8398bef56642",
+          "bytes": 181715,
+          "exists": true
+        }
+      ]
+    }
+  },
+  "non_claims": [
+    "No claim that PR767/issue766 fix is served in this APK",
+    "No live HTTP trace or fresh OFFLINE first-seed proof invented",
+    "Unknown-set null is loader-contract (static+unit), not a runtime unknown fixture observation",
+    "Issue438 owns separate absence-of-chapter HTTP row",
+    "Guest temporary Pericope mode cleanup is root-owned later UI batch; not asserted complete",
+    "No device/code/PR/source-served changes in this write"
+  ],
+  "counts": {
+    "before": {
+      "complete_for_requirement": 43,
+      "partial": 20,
+      "not_run": 23
+    },
+    "after_expected": {
+      "complete_for_requirement": 44,
+      "partial": 19,
+      "not_run": 23
+    }
+  },
+  "rows_touched": [
+    "D-0447-01"
+  ],
+  "canonical_inventory_unchanged": 202,
+  "eligible_unchanged": 86
+}

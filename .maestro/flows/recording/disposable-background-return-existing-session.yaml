@@ -1,0 +1,56 @@
+# Root exclusively prepares an ACTIVE disposable capture at project12/1183/user10.
+# No start/save/discard/reload/kill/auth/network actions. Run once, not in a sweep.
+# Required existing guard env and MAESTRO_DISPOSABLE_PHASE=paused-before-reload
+# for context validation only (active controls below prove the real start state).
+# No predeclared time: copy the frozen duration only after return proves paused.
+# This is a rendered-time checkpoint, not independent native elapsed/file proof.
+# Supported installed Maestro2.10: KeyCode.HOME; YamlLaunchApp.stopApp=false;
+# Maestro.launchApp skips Driver.stopApp when false. No process-kill is requested.
+# Process identity/native AppState marker+file evidence must be retained separately
+# by root. Launching an existing task may still affect navigation; assertions fail
+# if the same Record unit/paused controls are not retained.
+appId: com.eten.fluent
+tags:
+  - record
+  - existing-session
+  - fixture-blocked
+  - disposable-checkpoint
+  - background-driver
+---
+- runScript: ../../shared/scripts/disposable-session-values.js
+- assertTrue: ${output.disposablePhase === 'paused-before-reload'}
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'record-verse-reference'
+    text: ${output.disposableReferenceRe}
+- assertVisible:
+    id: 'record-pause-button'
+- assertVisible:
+    id: 'record-stop-button'
+- assertNotVisible:
+    id: 'record-resume-button'
+- pressKey: HOME
+- launchApp:
+    appId: com.eten.fluent
+    clearState: false
+    clearKeychain: false
+    stopApp: false
+- assertVisible:
+    id: 'record-resume-button'
+- assertVisible:
+    id: 'record-stop-button'
+- assertNotVisible:
+    id: 'record-pause-button'
+- copyTextFrom:
+    id: 'record-duration'
+- evalScript: >-
+    ${output.backgroundFrozenTime = (typeof maestro.copiedText === 'undefined' || maestro.copiedText === null) ? '' : String(maestro.copiedText)}
+- assertTrue: ${/^(0|[1-9][0-9]?):[0-5][0-9]$/.test(output.backgroundFrozenTime) && output.backgroundFrozenTime !== '0:00'}
+- runFlow:
+    file: disposable-capture-recovery-existing-session.yaml
+    env:
+      MAESTRO_DISPOSABLE_PHASE: background-paused
+      MAESTRO_DISPOSABLE_PAUSED_TIME: ${output.backgroundFrozenTime}

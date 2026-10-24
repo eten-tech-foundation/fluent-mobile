@@ -1,0 +1,173 @@
+# B-0010-01 local-only: PM user9 neither-assignee on project12/1185 (1 Peter 3:1).
+# #269: warning + allow Start; no upload-success criterion. HostmicOFF external.
+# ONE short synthetic Start→timer→Stop→local take. Preserve ALL10 owner10.
+# Never delete/stage/force-upload. Restore active12. B5556 untouched.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - mutating
+  - b0010
+  - disposable-local-capture
+---
+- runScript: ../../shared/scripts/b0010-pm9-taken-local-capture-values.js
+- assertTrue: ${output.b0010Ready === '1'}
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+# Cached switch 12 → 9
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-9'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- assertNotVisible:
+    id: 'login-email-input'
+# Open project12 / milestone19 / 1185 (scalar helper; IDs from maestro -e)
+- runFlow: ../../shared/nav/open-fixture-chapter-from-milestone.yaml
+- tapOn:
+    id: 'drafting-tab-bible'
+- extendedWaitUntil:
+    visible:
+      id: 'bible-tab'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: ${output.verseRowIdRe}
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: ${output.verseRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'record-start-button'
+    timeout: 15000
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'record-taken-warning'
+- assertVisible:
+    text: ${output.takenWarningRe}
+- assertVisible:
+    id: 'record-verse-reference'
+    text: ${output.referenceRe}
+- assertNotVisible:
+    id: ${output.takeRowRe}
+- extendedWaitUntil:
+    visible:
+      id: 'record-start-button'
+      enabled: true
+    timeout: 15000
+- tapOn:
+    id: 'record-start-button'
+- extendedWaitUntil:
+    visible:
+      id: 'record-pause-button'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'record-duration'
+      text: '^(0:0[2-9]|0:[1-5][0-9]|[1-9].*)$'
+    timeout: 8000
+- tapOn:
+    id: 'record-stop-button'
+- extendedWaitUntil:
+    visible:
+      id: ${output.takeRowRe}
+    timeout: 20000
+- assertVisible:
+    id: ${output.takeRowRe}
+    index: 0
+- assertNotVisible:
+    id: ${output.takeRowRe}
+    index: 1
+- assertVisible:
+    id: 'record-new-take-button'
+- assertNotVisible:
+    id: 'record-stop-button'
+- takeScreenshot: b0010-pm9-1185-v1-local-saved
+# Leave drafting → Home (do not hunt account-12 while still on 9)
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 30000
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+# Restore active12
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-9'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-12'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-active-12'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-10'
+# Dismiss drawer via Home tab (already active12 — do not tap account-12)
+- tapOn:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

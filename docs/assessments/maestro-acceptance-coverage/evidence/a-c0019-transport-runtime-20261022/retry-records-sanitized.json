@@ -1,0 +1,20 @@
+[
+  {
+    "epoch": 1792644127.038,
+    "event": "project_retry",
+    "attempt": 1,
+    "injected_signature_in_record": true
+  },
+  {
+    "epoch": 1792644127.561,
+    "event": "project_retry",
+    "attempt": 2,
+    "injected_signature_in_record": true
+  },
+  {
+    "epoch": 1792644128.58,
+    "event": "project_exhausted",
+    "attempt": null,
+    "injected_signature_in_record": true
+  }
+]

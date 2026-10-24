@@ -1,0 +1,152 @@
+# D-0188-03: centered empty Resources geometry on EXISTING fixture484.
+# Read-only. Reuses known empty copy (none_for_verse); does not re-prove
+# copy-only PASS. Requires online-empty + airplane-off preflight env.
+# Geometry host oracle runs AFTER Maestro exits on step hierarchy / bounds
+# artifacts (never concurrent uiautomator during Maestro — T7 device-server
+# death). Device A / user10. Restore active12 cache 10,9,12. B5556 untouched.
+# Forbidden: Download, sync, capture, playback, toggles, login/logout/reset,
+# clearState, DB write, network/permission change, app kill, stage writes,
+# protected takes / 1183 / 1184 / 1185 mutation.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - read-only
+  - ordered-readonly
+  - d0188-geometry
+---
+- runScript: ../../shared/scripts/d0188-centered-empty-values.js
+- assertTrue: ${output.d0188GeometryReady === '1'}
+- assertTrue: ${output.emptyFixture === '484'}
+- assertTrue: ${output.emptyKind === 'none_for_verse'}
+- assertTrue: ${output.emptyMessage === 'No resources available for this verse'}
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+# Cached switch 12 → 10
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-10'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- assertNotVisible:
+    id: 'login-email-input'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: 'my-work-row-484'
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: 'my-work-row-484'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 60000
+- tapOn:
+    id: 'drafting-tab-resources'
+- extendedWaitUntil:
+    notVisible:
+      id: 'resources-tab-loading'
+    timeout: 30000
+- assertVisible:
+    id: 'resources-tab'
+- assertVisible:
+    id: 'resources-tab-empty-message'
+- assertVisible:
+    text: ${output.emptyMessageRe}
+- assertNotVisible:
+    id: 'resources-section-translationNotes'
+- assertNotVisible:
+    id: 'resources-section-translationQuestions'
+- assertNotVisible:
+    id: 'resources-section-images'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: d0188-03-empty-resources-geometry
+# Keep empty Resources visible one settle beat so Maestro step hierarchy
+# artifacts capture host + message bounds for the postflight oracle.
+- assertVisible:
+    id: 'resources-tab'
+- assertVisible:
+    id: 'resources-tab-empty-message'
+# Return Home then restore active12
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 60000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-10'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-12'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-tab-my-work'

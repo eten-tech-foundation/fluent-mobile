@@ -1,0 +1,101 @@
+{
+  "schema": "c0019-02-03-04-caseS-ledger-reconciliation/v1",
+  "utc": "2026-10-22T04:25:00Z",
+  "criterion_ids": [
+    "C-0019-02",
+    "C-0019-03",
+    "C-0019-04"
+  ],
+  "decision": "complete_for_requirement / PASS (controlled DEV-fault runtime)",
+  "device": "A5554",
+  "account": 12,
+  "claims": {
+    "C-0019-02": "projects native failure does not crash; later bible_texts_complete (epoch 1792642393.505)",
+    "C-0019-03": "native KV sync_error_projects|e2e metadata fault: projects persisted (caseS-error-observed.txt)",
+    "C-0019-04": "sync-metadata-error text Sync failed: projects; no app global toast; RN LogBox banner present and preserved as distinct debug chrome"
+  },
+  "recovery": {
+    "native_key_cleared": "recovery-error-cleared.txt",
+    "all_users_synced_successfully_epoch": 1792642604.246,
+    "source": "CASE-S-RESULT.md operator receipt"
+  },
+  "explicit_non_claims": [
+    "not release / uninstrumented proof",
+    "not permanent Maestro repeatability",
+    "LogBox is not an app global toast",
+    "CONTROL-FAILURE.md is control tooling defect, not product evidence",
+    "D-0235 not altered / not proved here",
+    "B-0016-01 remains not_run; B-0017-01 remains complete"
+  ],
+  "artifacts": {
+    "CASE-S-RESULT.md": {
+      "path": "evidence/a-fault-runtime-20261022/CASE-S-RESULT.md",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/CASE-S-RESULT.md",
+      "sha256": "07807f468c0072b29f621d2d095c3aad0a5d65a17ccd88fd2206c1f1f3e6db58",
+      "bytes": 2000
+    },
+    "caseS-error-observed.txt": {
+      "path": "evidence/a-fault-runtime-20261022/caseS-error-observed.txt",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/caseS-error-observed.txt",
+      "sha256": "23078a5e572a3237db51280ef317b61a5cf6981363c1ded4afc48224c653092f",
+      "bytes": 49
+    },
+    "caseS-events-sanitized.json": {
+      "path": "evidence/a-fault-runtime-20261022/caseS-events-sanitized.json",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/caseS-events-sanitized.json",
+      "sha256": "88edd3c92bc2098ed338447203f31a5370f48914c785738614f0049e79f83662",
+      "bytes": 996
+    },
+    "caseS-settled.xml": {
+      "path": "evidence/a-fault-runtime-20261022/caseS-settled.xml",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/caseS-settled.xml",
+      "sha256": "1b21adbd2d337f8220df2848b5ba4c73527ea101357736eafd8be08f9ab682e2",
+      "bytes": 27295
+    },
+    "caseS-settled.png": {
+      "path": "evidence/a-fault-runtime-20261022/caseS-settled.png",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/caseS-settled.png",
+      "sha256": "f1d96728f0086f4e75207968ade5588de10a603de15ce42c46e74f1a44585169",
+      "bytes": 126310
+    },
+    "caseS-error-first-frame.png": {
+      "path": "evidence/a-fault-runtime-20261022/caseS-error-first-frame.png",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/caseS-error-first-frame.png",
+      "sha256": "9fabf330bf1868cf95492cd7d8874e2b9c654140e5e1a6e2f082661785b1337a",
+      "bytes": 110262
+    },
+    "caseS-current-frame.png": {
+      "path": "evidence/a-fault-runtime-20261022/caseS-current-frame.png",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/caseS-current-frame.png",
+      "sha256": "fcd99ee9f90b7a7dc0bd0393307e4ee1657e2b986f3a68a5adfe25f3dba18913",
+      "bytes": 126299
+    },
+    "caseS-corrected-after.xml": {
+      "path": "evidence/a-fault-runtime-20261022/caseS-corrected-after.xml",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/caseS-corrected-after.xml",
+      "sha256": "22076e9c401b69328644ea9ffe22bbe0a7ccbf9efe83aadd7ee8a00fece7a3d4",
+      "bytes": 24890
+    },
+    "recovery-error-cleared.txt": {
+      "path": "evidence/a-fault-runtime-20261022/recovery-error-cleared.txt",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/recovery-error-cleared.txt",
+      "sha256": "e50ab9cc40e7c7bbc2e7abb69d0b7354bae312dc3a94fa3ee301270ada74a8cd",
+      "bytes": 66
+    },
+    "recovery-startup-guard.json": {
+      "path": "evidence/a-fault-runtime-20261022/recovery-startup-guard.json",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/recovery-startup-guard.json",
+      "sha256": "6e073b70284856b7c41f907d2d542f0d6ece8434059cec90bcc0eab1cac28efb",
+      "bytes": 73
+    },
+    "CONTROL-FAILURE.md": {
+      "path": "evidence/a-fault-runtime-20261022/CONTROL-FAILURE.md",
+      "artifact_abs": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/a-fault-runtime-20261022/CONTROL-FAILURE.md",
+      "sha256": "458ffd22182fea7326d8ceaa9f1fe17b1a3596223aa948ee116fa9bfa8f833c4",
+      "bytes": 1225
+    }
+  },
+  "baseline_eligible": "canonical54complete12partial20notrun",
+  "after_eligible": "canonical57complete11partial18notrun",
+  "eligible_denominator": 86
+}

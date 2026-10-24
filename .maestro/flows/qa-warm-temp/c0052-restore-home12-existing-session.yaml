@@ -1,0 +1,80 @@
+# C-0052 cleanup: restore active12 + closed Home (A5554). No login/clearState.
+# Used when host uiautomator dump is unavailable; mirrors PR755 drawer Back dismiss.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - c0052
+  - restore
+---
+- repeat:
+    times: 6
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- assertVisible:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- runFlow:
+    when:
+      notVisible:
+        id: 'settings-menu-active-12'
+    commands:
+      - tapOn:
+          id: 'settings-menu-account-12'
+      - repeat:
+          times: 4
+          while:
+            visible:
+              id: 'prepare-offline-screen'
+          commands:
+            - tapOn:
+                id: 'stack-header-back'
+            - waitForAnimationToEnd:
+                timeout: 2000
+      - extendedWaitUntil:
+          visible:
+            id: 'home-tab-my-work'
+          timeout: 90000
+      - tapOn:
+          id: 'home-settings-button'
+      - extendedWaitUntil:
+          visible:
+            id: 'settings-drawer-content'
+          timeout: 15000
+      - assertVisible:
+          id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- assertVisible:
+    id: 'settings-menu-account-12'
+- pressKey: Back
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+- assertNotVisible:
+    id: 'login-email-input'

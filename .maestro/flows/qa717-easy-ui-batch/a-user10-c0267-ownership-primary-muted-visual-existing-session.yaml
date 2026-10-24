@@ -1,0 +1,155 @@
+# C-0267-01 visual branch: Legacy primary (mine 1185) vs muted (other 1184)
+# on project12/milestone19 chapter list. Issue #267. List-only — never open
+# drafting / capture / Sync. Screenshot retained for pixel oracle postflight.
+# Device A / user10. Restore active12. B5556 untouched.
+appId: com.eten.fluent
+tags:
+  - existing-session
+  - read-only
+  - ordered-readonly
+  - ownership
+  - c0267-visual
+---
+- runScript: ../../shared/scripts/c0267-ownership-visual-values.js
+- assertTrue: ${output.c0267VisualReady === '1'}
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-active-12'
+- assertVisible:
+    id: 'settings-menu-account-10'
+- tapOn:
+    id: 'settings-menu-account-10'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-tab-projects'
+- scrollUntilVisible:
+    element:
+      id: ${output.milestoneRowIdRe}
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: ${output.milestoneRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: ${output.mineRowIdRe}
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: ${output.mineRowIdRe}
+    containsDescendants:
+      - text: ${output.mineLabelRe}
+      - id: 'chapter-ownership-mine'
+      - text: '^Assigned to you$'
+- assertNotVisible:
+    id: ${output.mineRowIdRe}
+    containsDescendants:
+      - id: 'chapter-ownership-other'
+- assertNotVisible:
+    id: ${output.mineRowIdRe}
+    containsDescendants:
+      - id: 'chapter-conflict-indicator'
+- scrollUntilVisible:
+    element:
+      id: ${output.otherRowIdRe}
+    direction: UP
+    timeout: 15000
+- assertVisible:
+    id: ${output.otherRowIdRe}
+    containsDescendants:
+      - text: ${output.otherLabelRe}
+      - id: 'chapter-ownership-other'
+      - text: '^Assigned to another translator$'
+- assertNotVisible:
+    id: ${output.otherRowIdRe}
+    containsDescendants:
+      - id: 'chapter-ownership-mine'
+- assertNotVisible:
+    id: ${output.otherRowIdRe}
+    containsDescendants:
+      - id: 'chapter-conflict-indicator'
+# Ensure both rows visible for one screenshot (scroll mine into view again if needed)
+- scrollUntilVisible:
+    element:
+      id: ${output.mineRowIdRe}
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- assertVisible:
+    id: ${output.mineRowIdRe}
+- assertVisible:
+    id: ${output.otherRowIdRe}
+- takeScreenshot: c0267-ownership-primary-muted-1185-1184
+- assertVisible:
+    id: 'stack-header-back'
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-12'
+- tapOn:
+    id: 'settings-menu-account-12'
+- repeat:
+    times: 4
+    while:
+      visible:
+        id: 'prepare-offline-screen'
+    commands:
+      - tapOn:
+          id: 'stack-header-back'
+      - waitForAnimationToEnd:
+          timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 90000
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-menu-active-12'
+    timeout: 15000
+- assertVisible:
+    id: 'settings-menu-account-10'
+- assertVisible:
+    id: 'settings-menu-account-9'
+- tapOn:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

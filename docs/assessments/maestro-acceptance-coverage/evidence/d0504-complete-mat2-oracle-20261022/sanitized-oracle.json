@@ -1,0 +1,109 @@
+{
+  "schema": "d0504-mat2-metadata-oracle-sanitized/v1",
+  "observedAtUtc": "2026-10-22T00:37:53.542Z",
+  "projectId": 13,
+  "query": {
+    "languageCode": "eng",
+    "bookCode": "MAT",
+    "startChapter": 2,
+    "endChapter": 2,
+    "includeContent": false
+  },
+  "translationManifestUrl": "https://qa.api.fluent.bible/projects/13/translation-resources/manifest?languageCode=eng&bookCode=MAT&startChapter=2&endChapter=2&includeContent=false",
+  "truncated": false,
+  "totalItemCount": 220,
+  "nonImageCount": 192,
+  "imageCount": 28,
+  "imageAdvertisedBytes": 0,
+  "advertisedTextBytes": 515875,
+  "groups": [
+    {
+      "resourceName": "Translation Notes",
+      "tier": 2,
+      "count": 99,
+      "bytesTotal": 78497
+    },
+    {
+      "resourceName": "Translation Words",
+      "tier": 2,
+      "count": 49,
+      "bytesTotal": 310909
+    },
+    {
+      "resourceName": "Translation Questions",
+      "tier": 2,
+      "count": 15,
+      "bytesTotal": 5444
+    },
+    {
+      "resourceName": "Bible Commentary",
+      "tier": 3,
+      "count": 29,
+      "bytesTotal": 121025
+    }
+  ],
+  "itemsOmitted": true,
+  "itemRecordCountOmitted": 192,
+  "imageIdsExported": false,
+  "notes": [
+    "Sanitized canonical copy: family aggregates only; 192 text item records and any source URLs/bodies omitted.",
+    "Image side is aggregate count 28 only \u2014 no individual image ID/name/tier list in receipt; do not invent per-image ID equality.",
+    "API Translation Notes wire tier 2 \u2192 mobile required Tier1 via existing UW Translation Notes override; required vs Customize optional families are distinct.",
+    "Source audio NotFound / incomplete \u2014 audio bound NOT applicable to this translation-family comparison residual."
+  ],
+  "sourceAudio": {
+    "complete": false,
+    "visibleResponse": {
+      "message": "Not Found"
+    }
+  },
+  "transferBoundEstablished": false,
+  "familyUiComparison": {
+    "Translation Notes": {
+      "api": {
+        "tier": 2,
+        "count": 99,
+        "bytesTotal": 78497
+      },
+      "ui": "required Translation Notes 77KB (Tier1 override; not Customize optional)"
+    },
+    "Translation Words": {
+      "api": {
+        "tier": 2,
+        "count": 49,
+        "bytesTotal": 310909
+      },
+      "ui": "Customize Tier2 Translation Words 304KB"
+    },
+    "Translation Questions": {
+      "api": {
+        "tier": 2,
+        "count": 15,
+        "bytesTotal": 5444
+      },
+      "ui": "Customize Tier2 Translation Questions 5KB"
+    },
+    "Bible Commentary": {
+      "api": {
+        "tier": 3,
+        "count": 29,
+        "bytesTotal": 121025
+      },
+      "ui": "Customize Tier3 Bible Commentary 118KB"
+    },
+    "Reference Images": {
+      "api": {
+        "aggregateCount": 28,
+        "advertisedBytes": 0,
+        "idsExported": false
+      },
+      "ui": "Customize Tier3 Reference Images Unknown"
+    }
+  },
+  "customizeOptionalFamiliesExact": [
+    "Translation Words",
+    "Translation Questions",
+    "Bible Commentary",
+    "Reference Images"
+  ]
+}

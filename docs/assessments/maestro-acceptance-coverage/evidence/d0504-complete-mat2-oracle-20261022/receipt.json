@@ -1,0 +1,94 @@
+{
+  "schema": "d0504-01-ledger-reconciliation/v1",
+  "utc": "2026-10-22T00:43:15Z",
+  "criterion_id": "D-0504-01",
+  "decision": "partial / BLOCKED (not complete)",
+  "reason_not_complete": "Both MAT2 Tier2 and Tier3 populated; empty-tiers-hidden branch unobserved",
+  "remaining_precondition": "Authoritative empty Tier2 and/or Tier3 fixture with UI hide assertion; audio bound not applicable",
+  "mapping": {
+    "Translation Notes": {
+      "api": {
+        "tier": 2,
+        "count": 99,
+        "bytesTotal": 78497
+      },
+      "ui": "required Translation Notes 77KB (Tier1 override; not Customize optional)"
+    },
+    "Translation Words": {
+      "api": {
+        "tier": 2,
+        "count": 49,
+        "bytesTotal": 310909
+      },
+      "ui": "Customize Tier2 Translation Words 304KB"
+    },
+    "Translation Questions": {
+      "api": {
+        "tier": 2,
+        "count": 15,
+        "bytesTotal": 5444
+      },
+      "ui": "Customize Tier2 Translation Questions 5KB"
+    },
+    "Bible Commentary": {
+      "api": {
+        "tier": 3,
+        "count": 29,
+        "bytesTotal": 121025
+      },
+      "ui": "Customize Tier3 Bible Commentary 118KB"
+    },
+    "Reference Images": {
+      "api": {
+        "aggregateCount": 28,
+        "advertisedBytes": 0,
+        "idsExported": false
+      },
+      "ui": "Customize Tier3 Reference Images Unknown"
+    }
+  },
+  "notes_tier_mapping": "API/wire Tier2 Translation Notes \u2192 mobile required Tier1 via existing UW Translation Notes override; distinct from Customize optional families",
+  "oracle_limits": {
+    "textItems": 192,
+    "imageAggregate": 28,
+    "individualImageIds": false
+  },
+  "artifacts": {
+    "RESULT.md": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0504-complete-mat2-oracle-20261022/RESULT.md",
+      "sha256": "9fc23174726f88fee676ab41c827bb259992a137bedd5f094ca1b4ede9b718cd"
+    },
+    "sanitized-oracle.json": {
+      "path": "/Users/matt/Documents/Development/gloo/fluent-mobile/docs/assessments/maestro-acceptance-coverage/evidence/d0504-complete-mat2-oracle-20261022/sanitized-oracle.json",
+      "sha256": "074589386bc8a6aaac5e2a933c650f8fccde0401194a0c8e6da444c6af1571e9"
+    },
+    "mat2-groups.xml": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat2-groups.xml",
+      "sha256": "7da744851412aee4480220d4f99fed9169f7bb340e41d5562bfc7090766ead2a"
+    },
+    "historical_project15": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0504-positive-pfo-20261021/RECEIPT.md",
+      "sha256": "b5e5c4652daf9eda66e30da1c95fc75fb7b6ccf323be01d05034635a17c1ca74"
+    },
+    "mat2-groups.png": {
+      "path": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/pr757-no-transfer-20261022/mat2-groups.png",
+      "sha256": "f5e1c42f9819cb37c15740b6541404669fa169f1cc23247267e437873761abd7"
+    }
+  },
+  "historical_negative_retained": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0504-positive-pfo-20261021/RECEIPT.md",
+  "counts": {
+    "before": {
+      "complete_for_requirement": 50,
+      "partial": 13,
+      "not_run": 23
+    },
+    "after": {
+      "complete_for_requirement": 50,
+      "partial": 14,
+      "not_run": 22
+    }
+  },
+  "rows_touched": [
+    "D-0504-01"
+  ]
+}
