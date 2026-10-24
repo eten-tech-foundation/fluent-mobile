@@ -203,8 +203,16 @@ describe('getChaptersToSync', () => {
   });
 
   it('returns an empty Map when eligible user ids are empty', async () => {
+    // Catch-all empty Map on DB errors would also pass if an unscoped SELECT
+    // ran and the fake threw. Assert execute is never called for [].
+    const execute = jest.fn(async () => ({
+      rows: [{ bible_id: 10, book_id: 1, chapter_number: 1 }],
+    }));
+    setDatabase({ execute, transaction: jest.fn() } as never);
+
     const groups = await getChaptersToSync([]);
 
+    expect(execute).not.toHaveBeenCalled();
     expect(groups.size).toBe(0);
   });
 });
