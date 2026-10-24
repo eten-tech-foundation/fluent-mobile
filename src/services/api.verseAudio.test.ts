@@ -10,6 +10,7 @@ import { parseApiErrorBody } from './apiError';
 import {
   buildVerseAudioFormData,
   verseAudioRangeUploadPath,
+  verseAudioTakeDeletePath,
   verseAudioUploadPath,
 } from './verseAudioFormData';
 import {
@@ -91,6 +92,45 @@ describe('verseAudioFormData helpers', () => {
         baseVersionToken: 3,
       });
       expect(append).toHaveBeenCalledWith('baseVersionToken', '3');
+    } finally {
+      g.FormData = OriginalFormData;
+    }
+  });
+
+  it('builds the per-take DELETE path (#716)', () => {
+    expect(verseAudioTakeDeletePath(12, 3401, 55)).toBe(
+      '/verse-audio/12/3401/takes/55',
+    );
+  });
+
+  it.each([
+    [true, 'true'],
+    [false, 'false'],
+  ])('appends activate=%s as %s (#716)', async (activate, expected) => {
+    const append = jest.fn();
+    const g = globalThis as GlobalWithFormData;
+    const OriginalFormData = g.FormData;
+    g.FormData = jest.fn(() => ({ append })) as unknown as typeof g.FormData;
+
+    try {
+      const blob = { __blob: true } as unknown as Blob;
+      await buildVerseAudioFormData({ file: blob, activate });
+      expect(append).toHaveBeenCalledWith('activate', expected);
+    } finally {
+      g.FormData = OriginalFormData;
+    }
+  });
+
+  it('omits activate when not provided (#716)', async () => {
+    const append = jest.fn();
+    const g = globalThis as GlobalWithFormData;
+    const OriginalFormData = g.FormData;
+    g.FormData = jest.fn(() => ({ append })) as unknown as typeof g.FormData;
+
+    try {
+      const blob = { __blob: true } as unknown as Blob;
+      await buildVerseAudioFormData({ file: blob });
+      expect(append).not.toHaveBeenCalledWith('activate', expect.anything());
     } finally {
       g.FormData = OriginalFormData;
     }
@@ -433,5 +473,65 @@ describe('FluentAPI.uploadVerseAudio', () => {
       status: 0,
       isRetryable: true,
     } as Partial<ApiError>);
+  });
+});
+
+describe('FluentAPI.deleteVerseAudioTake (#716)', () => {
+  const fetchMock = jest.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(fetchMock as unknown as typeof fetch);
+    authToken.set('session-token');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    authToken.set(null);
+  });
+
+  it('DELETEs the take with the given bearer and returns the unit version token', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          ...successBody,
+          versionToken: 4,
+          activeTakeId: null,
+          downloadUrl: null,
+        }),
+    });
+
+    await expect(
+      FluentAPI.deleteVerseAudioTake(
+        { projectUnitId: 12, bibleTextId: 3401, takeId: 55 },
+        'owner-token',
+      ),
+    ).resolves.toEqual({ versionToken: 4 });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('http://localhost:9999/verse-audio/12/3401/takes/55');
+    expect(init.method).toBe('DELETE');
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      'Bearer owner-token',
+    );
+  });
+
+  it('throws ApiError 404 when the take is already gone', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => JSON.stringify({ error: 'Verse audio take not found' }),
+    });
+
+    await expect(
+      FluentAPI.deleteVerseAudioTake({
+        projectUnitId: 12,
+        bibleTextId: 3401,
+        takeId: 55,
+      }),
+    ).rejects.toMatchObject({ status: 404 } as Partial<ApiError>);
   });
 });
