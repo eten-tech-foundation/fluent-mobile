@@ -444,6 +444,12 @@ jest.mock('./db', () => ({
   }),
 }));
 
+import { prepareOfflineItemToEnqueueInputs } from '../utils/prepareOfflineQueueMapping';
+import type {
+  PrepareOfflineResourceItem,
+  PrepareOfflineResourceManifestItem,
+} from '../types/prepareOffline/types';
+import { getDownloadedResourceSections } from '../services/resourcesInventory';
 import {
   deleteDownloadItem,
   enqueueDownloadItems,
@@ -1353,5 +1359,44 @@ describe('downloadQueueRepository', () => {
     const row = __getDownloadQueueRows().find(r => r.id === id);
     expect(row?.status).toBe('queued');
     expect(row?.resume_data).toBe('{"resumeData":"partial"}');
+  });
+
+  it('maps Reference Images as kind image and surfaces imagesMaps after complete (#417)', async () => {
+    const member: PrepareOfflineResourceManifestItem = {
+      id: 'ref-img-gen-1',
+      tier: 3,
+      kind: 'image',
+      resourceName: 'Reference Images',
+      label: 'Genesis 1',
+      required: false,
+      removable: true,
+      bytesTotal: 40,
+      sourceUrl: 'https://cdn.example/gen1.png',
+      fileExt: 'png',
+      languageCode: 'eng',
+    };
+    const item: PrepareOfflineResourceItem = {
+      id: 'ref-images',
+      tier: 3,
+      kind: 'image',
+      groupName: 'Reference Images',
+      label: 'Reference Images',
+      bytes: 40,
+      status: 'selected',
+      manifestMembers: [member],
+      required: false,
+      removable: true,
+    };
+
+    const inputs = prepareOfflineItemToEnqueueInputs(item, 1, TEST_USER_ID);
+    expect(inputs[0]?.kind).toBe('image');
+    expect(inputs[0]?.resourceName).toBe('Reference Images');
+
+    const [id] = await enqueueDownloadItems(inputs);
+    await markDownloadItemCompleted(id, 'file:///docs/gen1.png', 40);
+
+    await expect(
+      getDownloadedResourceSections(1, TEST_USER_ID),
+    ).resolves.toContain('imagesMaps');
   });
 });
