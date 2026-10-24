@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getPrepareOfflineProjectContext } from '../db/queries.prepareOffline';
+import { AuthError } from '../services/authError';
 import {
   clearPrepareOfflineSessionInventory,
   fetchPrepareOfflineManifest,
@@ -8,6 +9,7 @@ import {
   refreshPrepareOfflineInventory,
   subscribePrepareOfflineInventory,
 } from '../services/prepareOfflineResources';
+import { ApiError } from '../types/api/errors';
 import {
   PrepareOfflineChapterRow,
   PrepareOfflineResourceManifestItem,
@@ -19,6 +21,43 @@ import {
 import { logger } from '../utils/logger';
 
 const log = logger.create('usePrepareOfflineResourceData');
+
+function manifestFailureExceptionName(err: unknown): string {
+  if (err instanceof AuthError) return 'AuthError';
+  if (err instanceof ApiError) return 'ApiError';
+  if (err instanceof TypeError) return 'TypeError';
+  if (err instanceof Error) return 'Error';
+  return 'Unknown';
+}
+
+// Never forward the error, its name/code, or arbitrary string fields.
+function logManifestFailureDiagnostic(
+  err: unknown,
+  failureStage: string,
+  projectId: number,
+  selectedChapterCount: number,
+): void {
+  if (!(globalThis as { __DEV__?: boolean }).__DEV__) return;
+  const apiStatus =
+    err instanceof ApiError &&
+    Number.isInteger(err.status) &&
+    (err.status === 0 || (err.status >= 100 && err.status <= 599))
+      ? err.status
+      : undefined;
+  const truncated =
+    err instanceof Error &&
+    err.message ===
+      `[prepareOfflineResources] manifest truncated for project ${projectId}`;
+  log.warn('Prepare Offline manifest load failed', {
+    timestamp: new Date().toISOString(),
+    event: 'prepare_offline_manifest_failure',
+    projectId,
+    selectedChapterCount,
+    exceptionName: manifestFailureExceptionName(err),
+    classification: truncated ? 'truncated_manifest' : failureStage,
+    ...(apiStatus !== undefined ? { apiStatus } : {}),
+  });
+}
 
 /**
  * Loads Prepare for Offline manifest + inventory via the resources service.
@@ -63,6 +102,7 @@ export function usePrepareOfflineResourceData(
     async function loadManifest() {
       setLoading(true);
       setError(null);
+      let failureStage = 'local_context';
 
       try {
         const projectContext = await getPrepareOfflineProjectContext(
@@ -72,12 +112,14 @@ export function usePrepareOfflineResourceData(
           throw new Error(`No source language found for project ${projectId}`);
         }
 
+        failureStage = 'chapter_context';
         const contexts = buildManifestContexts(
           chapters,
           selectedIds,
           projectContext.sourceLanguageCode,
         );
 
+        failureStage = 'manifest';
         const responses = await Promise.all(
           contexts.map(ctx => fetchPrepareOfflineManifest(projectId!, ctx)),
         );
@@ -92,6 +134,12 @@ export function usePrepareOfflineResourceData(
         }
       } catch (err) {
         if (!cancelled) {
+          logManifestFailureDiagnostic(
+            err,
+            failureStage,
+            projectId!,
+            selectedIds.size,
+          );
           setError(err);
           setManifest([]);
           setManifestContexts([]);
