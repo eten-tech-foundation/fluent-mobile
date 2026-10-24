@@ -72,8 +72,9 @@ import {
   setReauthRequired,
   isBibleTextsServerIdRemapPending,
   clearBibleTextsServerIdRemapPending,
-  getMasterDataLastSyncedAt,
-  setMasterDataLastSyncedAt,
+  getMasterDataUpdatedAt,
+  setMasterDataUpdatedAt,
+  type MasterDataCollection,
 } from '../services/storage';
 import {
   clearTempCredentials,
@@ -394,6 +395,62 @@ async function seedAssignmentMasterParents(
   await insertMasterData(languages.map(mapApiLanguage), books, bibles);
 }
 
+type MasterDataUpdatedAtRow = {
+  updatedAt?: string | null;
+  id?: number;
+};
+
+function parseUpdatedAtMs(value: string): number | null {
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Inclusive server filter is `updatedAt >= updatedAfter`. Keep the original
+ * server string of the latest parseable `updatedAt` so the next query repeats
+ * ties instead of inventing a device watermark. Empty rows or
+ * missing/unparseable timestamps keep `prior` and warn (#763).
+ */
+function maxUpdatedAt(
+  rows: ReadonlyArray<MasterDataUpdatedAtRow>,
+  prior: string,
+  collection: MasterDataCollection,
+): string {
+  if (rows.length === 0) {
+    return prior;
+  }
+
+  let best = prior;
+  let bestMs = prior ? parseUpdatedAtMs(prior) : null;
+
+  for (const row of rows) {
+    const raw = row.updatedAt;
+    if (typeof raw !== 'string' || raw.length === 0) {
+      log.warn('Master data item missing updatedAt; keeping prior cursor', {
+        collection,
+        id: row.id,
+      });
+      return prior;
+    }
+
+    const ms = parseUpdatedAtMs(raw);
+    if (ms === null) {
+      log.warn(
+        'Master data item has unparseable updatedAt; keeping prior cursor',
+        { collection, id: row.id, updatedAt: raw },
+      );
+      return prior;
+    }
+
+    if (bestMs === null || ms > bestMs) {
+      best = raw;
+      bestMs = ms;
+    }
+  }
+
+  return best;
+}
+
 export async function syncMasterData(
   sessionToken?: string,
   options?: SyncMasterDataOptions,
@@ -402,27 +459,39 @@ export async function syncMasterData(
     'Master data sync',
     KV_KEYS.SYNC_ERROR_MASTER_DATA,
     async () => {
-      const updatedAfter = options?.forceFull
+      const storedLanguages = getMasterDataUpdatedAt('languages');
+      const storedBooks = getMasterDataUpdatedAt('books');
+      const storedBibles = getMasterDataUpdatedAt('bibles');
+      const languagesCursor = options?.forceFull
         ? undefined
-        : getMasterDataLastSyncedAt() || undefined;
+        : storedLanguages || undefined;
+      const booksCursor = options?.forceFull
+        ? undefined
+        : storedBooks || undefined;
+      const biblesCursor = options?.forceFull
+        ? undefined
+        : storedBibles || undefined;
 
       log.info('Syncing master data...', {
-        incremental: Boolean(updatedAfter),
-        updatedAfter,
+        languagesCursor: Boolean(languagesCursor),
+        booksCursor: Boolean(booksCursor),
+        biblesCursor: Boolean(biblesCursor),
       });
 
       const languages = await FluentAPI.getLanguages(
-        updatedAfter,
+        languagesCursor,
         sessionToken,
       );
-      const books = await FluentAPI.getBooks(updatedAfter, sessionToken);
-      const bibles = await FluentAPI.getBibles(updatedAfter, sessionToken);
+      const books = await FluentAPI.getBooks(booksCursor, sessionToken);
+      const bibles = await FluentAPI.getBibles(biblesCursor, sessionToken);
 
       log.info('Master data fetched', {
         languagesCount: languages?.length,
         booksCount: books?.length,
         biblesCount: bibles?.length,
-        incremental: Boolean(updatedAfter),
+        languagesCursor: Boolean(languagesCursor),
+        booksCursor: Boolean(booksCursor),
+        biblesCursor: Boolean(biblesCursor),
       });
 
       await insertMasterData(
@@ -430,7 +499,19 @@ export async function syncMasterData(
         books,
         bibles,
       );
-      setMasterDataLastSyncedAt(new Date().toISOString());
+
+      setMasterDataUpdatedAt(
+        'languages',
+        maxUpdatedAt(languages ?? [], storedLanguages, 'languages'),
+      );
+      setMasterDataUpdatedAt(
+        'books',
+        maxUpdatedAt(books ?? [], storedBooks, 'books'),
+      );
+      setMasterDataUpdatedAt(
+        'bibles',
+        maxUpdatedAt(bibles ?? [], storedBibles, 'bibles'),
+      );
       log.info('Master data sync completed');
     },
   );
