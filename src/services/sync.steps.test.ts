@@ -247,6 +247,10 @@ describe('sync step orchestration', () => {
     getRecordingLinkedChaptersToSyncMock.mockResolvedValue(new Map());
     isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
     getMasterDataLastSyncedAtMock.mockReturnValue('');
+    // Prefer known-user catalogue scoping; leave active unset so AuthError
+    // paths that only call handleSyncAuthFailure when active is set stay clean.
+    (getKnownUserIds as jest.Mock).mockReturnValue(['1']);
+    (getActiveUserId as jest.Mock).mockReturnValue(undefined);
   });
 
   describe('syncMasterData', () => {
@@ -772,12 +776,64 @@ describe('sync step orchestration', () => {
   });
 
   describe('syncBibleTexts', () => {
+    beforeEach(() => {
+      // Bare ensure (DraftingScreen) scopes to active user only.
+      (getActiveUserId as jest.Mock).mockReturnValue('1');
+      (getKnownUserIds as jest.Mock).mockReturnValue(['1', '2']);
+    });
+
     it('short-circuits when there are no chapters to sync', async () => {
       await syncBibleTexts();
 
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([1]);
       expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_bibles', 0);
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_bible_texts');
+    });
+
+    it('passes explicit eligibleUserIds to getChaptersToSync', async () => {
+      await syncBibleTexts(undefined, { eligibleUserIds: [2, 3] });
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([2, 3]);
+      expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
+    });
+
+    it('scopes bare syncBibleTexts to the active user only when many accounts are known', async () => {
+      (getKnownUserIds as jest.Mock).mockReturnValue(['4', '5']);
+      (getActiveUserId as jest.Mock).mockReturnValue('5');
+
+      await syncBibleTexts();
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([5]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([4, 5]);
+    });
+
+    it('uses known-user union for getChaptersToSync when remap is pending', async () => {
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      (getKnownUserIds as jest.Mock).mockReturnValue(['4', '5']);
+      (getActiveUserId as jest.Mock).mockReturnValue('5');
+
+      await syncBibleTexts();
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([4, 5]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([5]);
+
+      getChaptersToSyncMock.mockClear();
+      await syncBibleTexts(undefined, { eligibleUserIds: [5] });
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([4, 5]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([5]);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('returns empty catalogue selection when there is no active user', async () => {
+      // Production shape: storage returns '' when unset (not undefined).
+      (getActiveUserId as jest.Mock).mockReturnValue('');
+
+      await syncBibleTexts();
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([0]);
     });
 
     it('uses explicit chapterGroups instead of getChaptersToSync (#670)', async () => {

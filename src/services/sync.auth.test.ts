@@ -644,6 +644,7 @@ describe('syncAllData auth handling', () => {
 
     (getUserIdSync as jest.Mock).mockReturnValue('2');
     (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
     (getLastSyncedAt as jest.Mock).mockReturnValue('2026-06-01T00:00:00.000Z');
     (getLastAssignmentSyncAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
@@ -1031,11 +1032,24 @@ describe('syncAllUsers auth handling', () => {
 
     await syncAllUsers();
 
+    expect(getChaptersToSync).toHaveBeenCalledWith([1, 2]);
     expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
       1,
       [{ bookId: 1, chapterNumber: 1 }],
       undefined,
     );
+  });
+
+  it('scopes catalogue bible-text selection to the union of known users', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    getChaptersToSync.mockResolvedValue(new Map());
+
+    await syncAllUsers();
+
+    expect(getChaptersToSync).toHaveBeenCalledWith([1, 2]);
+    expect(getChaptersToSync).not.toHaveBeenCalledWith([]);
   });
 
   it('forces full assignment sync when user has projects but no local assignments', async () => {
@@ -1669,6 +1683,9 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     (getCredentials as jest.Mock).mockResolvedValue({
       token: 'mywork-only-token',
     });
+    // Multi-account device: remap pass must union known users, not just
+    // eligibleUserIds:[2] from syncAllData.
+    (getKnownUserIds as jest.Mock).mockReturnValue(['1', '2']);
     // Assignments are only My Work — Tier 2 exclude empties the remainder.
     getChaptersToSync.mockResolvedValue(
       new Map([[10, [{ bookId: 41, chapterNumber: 1 }]]]),
@@ -1700,6 +1717,10 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     await syncAllData(false, preloadedUser.email, preloadedUser, {
       onTier1Complete: jest.fn(),
     });
+
+    // Remap pending: catalogue selection uses known-user union so clearing
+    // remap does not leave other accounts' chapters unmapped.
+    expect(getChaptersToSync).toHaveBeenCalledWith([1, 2]);
 
     expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
     expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
