@@ -34,6 +34,8 @@ import {
   resetSyncStatusStore,
 } from '../services/syncStatusStore';
 import { registerRecordingUploadWorker } from '../services/recordingSync';
+import { isE2eDownloadAutoResumeHoldEnabled } from '../config/e2eDownloadAutoResumeGuard';
+import { isE2eUploadHoldEnabled } from '../config/e2eUploadHoldGuard';
 import { ApiUser } from '../types/api/responses';
 import { appStyles } from '../app/appStyles';
 import { theme } from '../theme';
@@ -111,8 +113,20 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     }
 
     startUploadProgressNotification();
-    startUploadOrchestrator();
-    const stopAutoResume = startDownloadQueueAutoResume();
+    // E2E holds (DEV + E2E mode + QA API only). Upload hold: with no
+    // orchestrator, notifyPendingUploads is a no-op and Sync-page upload
+    // controls report "not started". Download hold: auto-resume only.
+    if (isE2eUploadHoldEnabled()) {
+      log.info('E2E upload hold: leaving upload orchestrator stopped');
+    } else {
+      startUploadOrchestrator();
+    }
+    let stopAutoResume: (() => void) | null = null;
+    if (isE2eDownloadAutoResumeHoldEnabled()) {
+      log.info('E2E download hold: skipping download queue auto-resume');
+    } else {
+      stopAutoResume = startDownloadQueueAutoResume();
+    }
     void refreshSyncStatusStore();
     return () => {
       stopUploadProgressNotification();
