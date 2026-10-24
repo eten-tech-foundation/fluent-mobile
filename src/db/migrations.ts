@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 20;
+export const CURRENT_SCHEMA_VERSION = 21;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -670,6 +670,11 @@ export const migrations: Migration[] = [
     name: 'download_queue_scoped_identity',
     up: scopeDownloadQueueIdentity,
   },
+  {
+    version: 21,
+    name: 'download_queue_reference_images_kind',
+    up: backfillDownloadQueueReferenceImagesKind,
+  },
 ];
 
 /**
@@ -710,6 +715,26 @@ async function addRecordingsProjectUnitId(db: SqlExecutor): Promise<void> {
        LIMIT 1
      )
      WHERE project_unit_id IS NULL`,
+  );
+}
+
+/**
+ * Legacy Prepare Offline persisted Reference Images as `kind = 'text'`.
+ * Resources offline gating requires `kind = 'image'` for the `imagesMaps`
+ * slot (#417). New enqueue already writes `image` (PR #676).
+ */
+export async function backfillDownloadQueueReferenceImagesKind(
+  db: SqlExecutor,
+): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(download_queue)');
+  if (!info.rows.length) {
+    return;
+  }
+  await db.execute(
+    `UPDATE download_queue
+        SET kind = 'image'
+      WHERE resource_name = 'Reference Images'
+        AND kind = 'text'`,
   );
 }
 
