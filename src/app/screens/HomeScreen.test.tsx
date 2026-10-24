@@ -1,6 +1,7 @@
 import React from 'react';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
+import { hrefs } from '../../navigation/hrefs';
 
 jest.mock('react-native-bootsplash', () => ({
   hide: jest.fn().mockResolvedValue(undefined),
@@ -14,9 +15,10 @@ jest.mock('../../navigation/AuthSessionProvider', () => ({
 }));
 
 const mockLocalSearchParams: { newUserLoading?: string } = {};
+const mockPush = jest.fn();
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPush }),
   useNavigation: () => ({ openDrawer: jest.fn() }),
   useLocalSearchParams: () => mockLocalSearchParams,
   useIsFocused: () => true,
@@ -115,7 +117,19 @@ jest.mock('../../components/layout/PageHeader', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
   return {
-    PageHeader: () => MockReact.createElement(View, { testID: 'page-header' }),
+    PageHeader: ({
+      leftIcon,
+      rightIcon,
+    }: {
+      leftIcon?: React.ReactNode;
+      rightIcon?: React.ReactNode;
+    }) =>
+      MockReact.createElement(
+        View,
+        { testID: 'page-header' },
+        leftIcon,
+        rightIcon,
+      ),
   };
 });
 
@@ -132,9 +146,24 @@ jest.mock('../../components/ui/SettingsButton', () => ({
   SettingsButton: () => null,
 }));
 
-jest.mock('../../components/ui/PageHeaderSyncButton', () => ({
-  PageHeaderSyncButton: () => null,
-}));
+jest.mock('../../components/ui/PageHeaderSyncButton', () => {
+  const MockReact = require('react');
+  const { Pressable } = require('react-native');
+  return {
+    PageHeaderSyncButton: ({
+      onPress,
+      onPressIn,
+    }: {
+      onPress?: () => void;
+      onPressIn?: () => void;
+    }) =>
+      MockReact.createElement(Pressable, {
+        testID: 'home-sync-button',
+        onPress,
+        onPressIn,
+      }),
+  };
+});
 
 jest.mock('../../components/ui/ReauthBanner', () => ({
   ReauthBanner: () => null,
@@ -145,6 +174,7 @@ import { HomeScreenBody } from './HomeScreen';
 describe('HomeScreenBody progressive login (#670)', () => {
   beforeEach(() => {
     delete mockLocalSearchParams.newUserLoading;
+    mockPush.mockClear();
   });
 
   it('dismisses full-screen loading when Tier 1 clears while sync continues', async () => {
@@ -190,5 +220,37 @@ describe('HomeScreenBody progressive login (#670)', () => {
     expect(screen.getByTestId('my-work-tab')).toBeTruthy();
 
     unmount();
+  });
+});
+
+describe('HomeScreenBody Sync navigation (#721)', () => {
+  beforeEach(() => {
+    delete mockLocalSearchParams.newUserLoading;
+    mockPush.mockClear();
+  });
+
+  it('keeps the Sync button mounted while settling and navigates on tap', () => {
+    render(<HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />);
+
+    expect(screen.getByTestId('home-loading')).toBeTruthy();
+    const syncButton = screen.getByTestId('home-sync-button');
+    expect(syncButton).toBeTruthy();
+
+    fireEvent(syncButton, 'pressIn');
+    fireEvent.press(syncButton);
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+  });
+
+  it('ignores a duplicate Sync press while navigation is in flight', () => {
+    render(<HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />);
+
+    const syncButton = screen.getByTestId('home-sync-button');
+    fireEvent.press(syncButton);
+    fireEvent.press(syncButton);
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
   });
 });
