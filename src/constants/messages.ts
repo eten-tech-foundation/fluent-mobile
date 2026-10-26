@@ -132,6 +132,9 @@ export const RECORD_NOT_OPEN =
   "Recording isn't open on this chapter right now.";
 export const RECORD_MAX_TAKES =
   'This passage has 5 takes. Delete one to record another.';
+/** The cap counts verse-by-verse takes too (#623), which the player doesn't show. */
+export const RECORD_MAX_VERSE_TAKES =
+  'A verse here has 5 takes. Delete one in drafting to record.';
 export const RECORD_NO_PERICOPE =
   "This passage isn't split into pericopes yet, so it can't be recorded here.";
 export const RECORD_RECOVERED_TAKE =

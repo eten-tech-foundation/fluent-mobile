@@ -62,6 +62,7 @@ jest.mock('../../../hooks/useRecordSession', () => ({
     drafterCaptureBlocked: false,
     captureDisabled: mockSession.captureDisabled,
     pericopeUnavailable: mockSession.pericopeUnavailable,
+    activeRecordingUnit: { coveredViews: [] },
     ensureMic: mockEnsureMic,
   }),
 }));
@@ -278,6 +279,21 @@ describe('PassageScreen', () => {
     expect(
       screen.getByText(
         'An unfinished take was recovered. Resume it, or stop to save it.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('says why Record is off when a verse is at the take limit', () => {
+    mockSession = { ...mockSession, canRecordNewTake: false };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    expect(
+      screen.getByTestId('passage-key-record').props.accessibilityState,
+    ).toMatchObject({ disabled: true });
+    expect(
+      screen.getByText(
+        'A verse here has 5 takes. Delete one in drafting to record.',
       ),
     ).toBeTruthy();
   });

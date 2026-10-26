@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import {
   RECORD_MAX_TAKES,
+  RECORD_MAX_VERSE_TAKES,
   RECORD_NO_PERICOPE,
   RECORD_NOT_OPEN,
   RECORD_RECOVERED_TAKE,
@@ -165,8 +166,11 @@ export function useRecorder({
         ? RECORD_NOT_OPEN
         : noPericope
         ? RECORD_NO_PERICOPE
-        : atCap && passageTakes.length >= MAX_RECORDING_TAKES
-        ? RECORD_MAX_TAKES
+        : atCap && session.activeRecordingUnit !== null
+        ? // The cap is per verse, so verse-by-verse takes count too.
+          passageTakes.length >= MAX_RECORDING_TAKES
+          ? RECORD_MAX_TAKES
+          : RECORD_MAX_VERSE_TAKES
         : null);
 
   async function record() {
