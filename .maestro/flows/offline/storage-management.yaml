@@ -41,3 +41,10 @@ tags:
     commands:
       - assertVisible:
           id: 'storage-project-.*'
+- scrollUntilVisible:
+    element:
+      id: 'manage-device-storage-section'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'storage-available-bytes'

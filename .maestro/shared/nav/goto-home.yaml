@@ -1,5 +1,7 @@
 # Reach Home tabs from Sync / Settings / Prepare Offline / drafting.
 appId: com.eten.fluent
+tags:
+  - ordered-readonly
 ---
 - runFlow: ../ensure/ensure-no-modal.yaml
 - runFlow:
@@ -20,6 +22,9 @@ appId: com.eten.fluent
         id: 'settings-prepare-offline'
     commands:
       - back
+# prepare-offline-screen: do NOT use system `back` here — ensure-no-modal
+# (above and below) already dismisses it with stack-header-back only, because
+# system Back can overshoot to the Android launcher. No redundant PFO branch.
 - runFlow: ../ensure/ensure-no-modal.yaml
 - extendedWaitUntil:
     visible:

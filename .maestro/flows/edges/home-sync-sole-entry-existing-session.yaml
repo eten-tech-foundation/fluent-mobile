@@ -1,0 +1,66 @@
+# Home exposes exactly one Sync entry (the header button) on both tabs, with no
+# inline Sync Now / pause / resume / cancel controls. Existing session only.
+# MAESTRO_PREPARED_PHASE_OK=1 attests the operator verified the prepared Home
+# state (signed in, no active work) before running. Any other value fails.
+# No Sync Now/retry/preferences/accounts/network/auth/recording/download actions.
+appId: com.eten.fluent
+tags: [edges, existing-session, read-only, prepared-phase, fixture-blocked]
+---
+- assertTrue: ${typeof MAESTRO_PREPARED_PHASE_OK !== 'undefined' && MAESTRO_PREPARED_PHASE_OK === '1'}
+- assertVisible:
+    id: home-tab-my-work
+- assertNotVisible:
+    id: login-email-input
+- tapOn:
+    id: home-tab-my-work
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-my-work
+    selected: true
+- assertVisible:
+    id: home-sync-button
+- assertNotVisible:
+    id: 'sync-action-(sync-now|pause|resume|cancel)'
+- assertNotVisible: '^Sync Now$'
+- assertNotVisible:
+    id: sync-screen
+- takeScreenshot: home-my-work-single-sync-entry
+- tapOn:
+    id: home-tab-projects
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-projects
+    selected: true
+- assertVisible:
+    id: home-sync-button
+- assertNotVisible:
+    id: 'sync-action-(sync-now|pause|resume|cancel)'
+- assertNotVisible: '^Sync Now$'
+- assertNotVisible:
+    id: sync-screen
+- takeScreenshot: home-projects-single-sync-entry
+- tapOn:
+    id: home-sync-button
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: sync-screen
+    timeout: 10000
+- assertNotVisible:
+    id: login-email-input
+- takeScreenshot: sync-screen-shell
+- tapOn:
+    id: stack-header-back
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible:
+      id: home-tab-projects
+    timeout: 10000
+- tapOn:
+    id: home-tab-my-work
+    waitToSettleTimeoutMs: 500
+- assertVisible:
+    id: home-tab-my-work
+    selected: true
+- assertNotVisible:
+    id: sync-screen

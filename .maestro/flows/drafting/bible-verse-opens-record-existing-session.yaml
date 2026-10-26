@@ -1,0 +1,69 @@
+# Tapping a Bible verse opens Record at that verse.
+# Existing signed-in session, exact My Work chapter and verse row required.
+# Required: MAESTRO_FIXTURE_CHAPTER_ID (positive integer),
+# MAESTRO_FIXTURE_VERSE_NUMBER (positive integer), MAESTRO_EXPECT_RECORD_REFERENCE
+# (exact rendered reference ending in :<verse>, e.g. <book> <chapter>:<verse>).
+# No Record-tab tap, capture, playback, claim, sync, login, or state reset.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - read-only
+  - fixture-blocked
+---
+- runScript: ../../shared/scripts/bible-record-values.js
+- assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId)}
+- assertTrue: ${typeof output.fixtureVerseNumber === 'string' && /^[1-9][0-9]*$/.test(output.fixtureVerseNumber)}
+- assertTrue: ${typeof output.expectRecordReference === 'string' && output.expectRecordReference.length > 0 && output.expectRecordReference.endsWith(':' + output.fixtureVerseNumber)}
+- assertTrue: ${typeof output.myWorkRowIdRe === 'string' && RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId) === true && RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId + '0') === false}
+- assertTrue: ${typeof output.bibleVerseRowIdRe === 'string' && RegExp(output.bibleVerseRowIdRe).test('bible-verse-row-' + output.fixtureVerseNumber) === true && RegExp(output.bibleVerseRowIdRe).test('bible-verse-row-' + output.fixtureVerseNumber + '0') === false}
+- assertTrue: ${typeof output.recordReferenceRe === 'string' && RegExp(output.recordReferenceRe).test(output.expectRecordReference) === true && RegExp(output.recordReferenceRe).test(output.expectRecordReference + 'X') === false && RegExp(output.recordReferenceRe).test('X' + output.expectRecordReference) === false}
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: ${output.myWorkRowIdRe}
+    direction: DOWN
+    timeout: 30000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- tapOn:
+    id: ${output.myWorkRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 30000
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- scrollUntilVisible:
+    element:
+      id: ${output.bibleVerseRowIdRe}
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: ${output.bibleVerseRowIdRe}
+- tapOn:
+    id: ${output.bibleVerseRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'record-tab'
+    timeout: 15000
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'record-verse-reference'
+    text: ${output.recordReferenceRe}
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'
