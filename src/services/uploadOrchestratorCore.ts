@@ -96,17 +96,13 @@ export type UploadOrchestrator = {
    * running. Explicit syncNow still runs.
    */
   setDraftingHold: (held: boolean) => Promise<void>;
-  /**
-   * Start one automatic session even while the drafting hold is on.
-   * Used when the person leaves one chapter for another on the same screen.
-   */
-  flushAutoDespiteHold: () => void;
   getSnapshot: () => UploadOrchestratorSnapshot;
 };
 
 /** Pure upload session orchestrator (injectable deps for unit tests). */
 export function createUploadOrchestrator(
   deps: UploadOrchestratorDeps,
+  options?: { initialDraftingHold?: boolean },
 ): UploadOrchestrator {
   let phase: UploadPhase = 'idle';
   let completedChapters = 0;
@@ -129,10 +125,8 @@ export function createUploadOrchestrator(
    * Drafting screen is focused and the app is in the foreground. Automatic
    * uploads wait until the hold lifts.
    */
-  let draftingHold = false;
+  let draftingHold = Boolean(options?.initialDraftingHold);
   let holdChain: Promise<void> = Promise.resolve();
-  /** One automatic evaluate may start even while draftingHold is on. */
-  let passHoldOnce = false;
   let wasOnline = false;
   let evaluateChain: Promise<void> = Promise.resolve();
   const schedule = deps.schedule ?? defaultSchedule;
@@ -288,10 +282,7 @@ export function createUploadOrchestrator(
     }, delayMs);
   }
 
-  const runSession = async (
-    reason: 'auto' | 'sync_now',
-    options?: { bypassHold?: boolean },
-  ): Promise<void> => {
+  const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
     if (!started) return;
     const version = lifecycleVersion;
     if (sessionPromise || sessionOpen) {
@@ -341,8 +332,7 @@ export function createUploadOrchestrator(
       if (reason === 'auto' && suppressAutoUntilOnlineEdge) {
         return;
       }
-      const bypassHold = Boolean(options?.bypassHold);
-      if (reason === 'auto' && draftingHold && !bypassHold) {
+      if (reason === 'auto' && draftingHold) {
         return;
       }
 
@@ -358,7 +348,7 @@ export function createUploadOrchestrator(
       if (suppressAutoUntilOnlineEdge) {
         return;
       }
-      if (reason === 'auto' && draftingHold && !bypassHold) {
+      if (reason === 'auto' && draftingHold) {
         return;
       }
       const currentGate = transportAllowsTransfer({
@@ -542,9 +532,7 @@ export function createUploadOrchestrator(
     evaluateChain = evaluateChain
       .then(async () => {
         if (!started) return;
-        const bypassHold = passHoldOnce;
-        passHoldOnce = false;
-        if (draftingHold && !bypassHold) {
+        if (draftingHold) {
           return;
         }
         const gate = transportAllowsTransfer({
@@ -585,7 +573,7 @@ export function createUploadOrchestrator(
         }
 
         // Do not await — keeps the evaluate chain free for later triggers.
-        void runSession('auto', { bypassHold });
+        void runSession('auto');
       })
       .catch(error => {
         log.error('Upload orchestrator evaluate failed', { error });
@@ -630,9 +618,8 @@ export function createUploadOrchestrator(
 
   const applyDraftingHold = async (held: boolean): Promise<void> => {
     if (held) {
-      // Do not abort an in-flight session. Leaving one chapter for another
-      // (or coming back from Home) should let that send finish. The hold
-      // only blocks the next automatic start.
+      // Do not abort an in-flight session. The hold only blocks the next
+      // automatic start.
       draftingHold = true;
       return;
     }
@@ -740,18 +727,6 @@ export function createUploadOrchestrator(
         () => undefined,
       );
       return task;
-    },
-
-    flushAutoDespiteHold() {
-      if (!started) {
-        return;
-      }
-      passHoldOnce = true;
-      if (sessionPromise || sessionOpen) {
-        rerunAfterSession = true;
-        return;
-      }
-      evaluateAuto();
     },
 
     getSnapshot: snapshot,

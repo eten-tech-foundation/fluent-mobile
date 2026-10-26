@@ -45,6 +45,7 @@ function createHarness(options?: {
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
   getPendingUploadChapters?: UploadOrchestratorDeps['getPendingUploadChapters'];
   pushPendingClaimsBeforeUpload?: UploadOrchestratorDeps['pushPendingClaimsBeforeUpload'];
+  initialDraftingHold?: boolean;
 }) {
   let connListener: ConnListener | null = null;
   let prefListener: ((value: boolean) => void) | null = null;
@@ -176,7 +177,9 @@ function createHarness(options?: {
     pushPendingClaimsBeforeUpload: options?.pushPendingClaimsBeforeUpload,
   };
 
-  const orchestrator = createUploadOrchestrator(deps);
+  const orchestrator = createUploadOrchestrator(deps, {
+    initialDraftingHold: options?.initialDraftingHold,
+  });
   orchestrator.start();
 
   return {
@@ -1607,27 +1610,19 @@ describe('uploadOrchestrator', () => {
     expect(h.uploaded).toEqual([{ bookId: 4, chapterNumber: 1 }]);
   });
 
-  it('starts one auto session despite the hold when drafting flushes pending work', async () => {
+  it('keeps the hold when created with initialDraftingHold', async () => {
     const h = createHarness({
       chapters: [{ bookId: 8, chapterNumber: 1 }],
+      initialDraftingHold: true,
     });
-    await h.orchestrator.setDraftingHold(true);
     h.emitConnectivity(true, true);
     await h.flush();
-    expect(h.uploaded).toEqual([]);
-
-    h.orchestrator.flushAutoDespiteHold();
-    await h.flush();
-    await h.flush();
-
-    expect(h.uploaded).toEqual([{ bookId: 8, chapterNumber: 1 }]);
-
-    h.setChapters([{ bookId: 8, chapterNumber: 2 }]);
     h.orchestrator.notifyPendingWork();
     await h.flush();
     await h.flush();
 
-    expect(h.uploaded).toEqual([{ bookId: 8, chapterNumber: 1 }]);
+    expect(h.uploaded).toEqual([]);
+    expect(h.events.some(event => event.type === 'start')).toBe(false);
   });
 
   it('keeps a 24h pause after the drafting hold lifts', async () => {

@@ -13,7 +13,6 @@ import { setLastActiveTab } from '../../utils/draftingTabState';
 const mockBack = jest.fn();
 const mockPush = jest.fn();
 const mockSetDraftingUploadHold = jest.fn();
-const mockFlushDraftingUploads = jest.fn();
 const mockRouteParams = {
   chapterId: '5',
   chapterName: 'Mark 14',
@@ -49,8 +48,6 @@ const mockDiscard = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../services/uploadOrchestrator', () => ({
   setDraftingUploadHold: (...args: unknown[]) =>
     mockSetDraftingUploadHold(...args),
-  flushDraftingUploads: (...args: unknown[]) =>
-    mockFlushDraftingUploads(...args),
 }));
 
 jest.mock('expo-router', () => ({
@@ -592,6 +589,14 @@ describe('DraftingScreen onChapterClaimed', () => {
       expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(true);
     });
 
+    it('does not release the hold on iOS inactive', async () => {
+      await renderDrafting();
+      mockSetDraftingUploadHold.mockClear();
+
+      appStateListener?.('inactive');
+      expect(mockSetDraftingUploadHold).not.toHaveBeenCalled();
+    });
+
     it('keeps the hold when switching drafting tabs', async () => {
       await renderDrafting();
       lastNavigationListener('focus')();
@@ -605,23 +610,20 @@ describe('DraftingScreen onChapterClaimed', () => {
       expect(mockSetDraftingUploadHold).not.toHaveBeenCalled();
     });
 
-    it('flushes pending uploads when the chapter changes', async () => {
+    it('does not flush uploads when the chapter id changes on the same screen', async () => {
       const view = render(<DraftingScreen />);
       await waitFor(() => {
         expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
       });
-      lastNavigationListener('focus')();
-      expect(mockFlushDraftingUploads).not.toHaveBeenCalled();
+      mockSetDraftingUploadHold.mockClear();
 
       mockRouteParams.chapterId = '9';
       mockRouteParams.chapterName = 'Mark 15';
       await act(async () => {
         view.rerender(<DraftingScreen />);
       });
-      await waitFor(() => {
-        expect(mockFlushDraftingUploads).toHaveBeenCalled();
-      });
-      expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(true);
+
+      expect(mockSetDraftingUploadHold).not.toHaveBeenCalled();
     });
   });
 });

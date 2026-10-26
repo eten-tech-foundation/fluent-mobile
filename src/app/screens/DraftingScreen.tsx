@@ -43,10 +43,7 @@ import { syncBibleTexts, syncMasterData } from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
 import { setRecordCaptureGate } from '../../navigation/recordCaptureGate';
-import {
-  flushDraftingUploads,
-  setDraftingUploadHold,
-} from '../../services/uploadOrchestrator';
+import { setDraftingUploadHold } from '../../services/uploadOrchestrator';
 import {
   parseRequiredNumber,
   parseRequiredString,
@@ -240,7 +237,6 @@ export default function DraftingScreen() {
   // Backgrounding the app does: the person is no longer using the screen.
   const screenFocusedRef = useRef(false);
   const appActiveRef = useRef(AppState.currentState === 'active');
-  const previousChapterIdRef = useRef(chapterId);
   const syncDraftingUploadHold = useCallback(() => {
     void setDraftingUploadHold(
       screenFocusedRef.current && appActiveRef.current,
@@ -257,6 +253,10 @@ export default function DraftingScreen() {
       syncDraftingUploadHold();
     });
     const appStateSub = AppState.addEventListener('change', nextState => {
+      // Match recordingAppState: ignore iOS `inactive` (Control Center).
+      if (nextState === 'inactive') {
+        return;
+      }
       appActiveRef.current = nextState === 'active';
       syncDraftingUploadHold();
     });
@@ -273,18 +273,6 @@ export default function DraftingScreen() {
       void setDraftingUploadHold(false);
     };
   }, [navigation, syncDraftingUploadHold]);
-
-  // Same screen, new chapter: no blur, so kick one automatic upload for
-  // the chapter that was just left. The hold stays on for the new chapter.
-  useEffect(() => {
-    if (previousChapterIdRef.current === chapterId) {
-      return;
-    }
-    previousChapterIdRef.current = chapterId;
-    if (screenFocusedRef.current && appActiveRef.current) {
-      flushDraftingUploads();
-    }
-  }, [chapterId]);
 
   const goBack = useCallback(() => {
     router.back();
