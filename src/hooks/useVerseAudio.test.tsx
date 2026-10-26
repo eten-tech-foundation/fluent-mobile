@@ -496,6 +496,32 @@ describe('useVerseAudio', () => {
     expect(result.current.loadedTakeId).toBe('rec_1');
   });
 
+  it("won't start the mic again while the last take is saving", async () => {
+    const uri = 'file:///tmp/take.aac';
+    mockRecordingStop.mockImplementation(async () => {
+      mockRecordingState.status = 'idle';
+      return { uri, durationMs: 900 };
+    });
+    persistTake.mockImplementation(() => new Promise(() => {}));
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+    await act(async () => {
+      await result.current.start();
+    });
+    act(() => {
+      void result.current.stop();
+    });
+    await waitFor(() => expect(result.current.state).toBe('saving'));
+    mockRecordingStart.mockClear();
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+  });
+
   it('persists a single segment when pause/resume reuses the same file', async () => {
     const uri = 'file:///tmp/take.aac';
     mockRecordingPause.mockImplementation(async () => {

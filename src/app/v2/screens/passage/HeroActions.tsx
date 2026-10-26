@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ArrowDown, PlayFill } from '../../../../components/ui/icons';
 import { RoundButton } from '../../../../components/ui/RoundButton';
-import type { usePassage } from '../../../../hooks/usePassage';
+import type { PassageTake, usePassage } from '../../../../hooks/usePassage';
 import { useThemedStyles } from '../../../../theme/useTheme';
 import { RecordAction } from './RecordAction';
 import { type Ready } from './steps';
@@ -20,6 +20,7 @@ import { takesLine } from './Takes';
  */
 export function HeroActions({
   passage,
+  takes,
   downloadState,
   progress,
   expanded,
@@ -30,6 +31,8 @@ export function HeroActions({
   onDownload,
 }: {
   passage: Ready;
+  /** The passage's takes, live as they're recorded. */
+  takes: PassageTake[];
   downloadState: ReturnType<typeof usePassage>['downloadState'];
   progress: SharedValue<number>;
   expanded: boolean;
@@ -84,7 +87,7 @@ export function HeroActions({
       onLayout={e => onLayout(Math.round(e.nativeEvent.layout.height))}
     >
       <Text style={styles.meta} testID="passage-takes-meta">
-        {takesLine(passage)}
+        {takesLine(passage, takes)}
       </Text>
       {/* Like a music app: one labelled primary, plain circles beside. */}
       <View style={styles.row}>
@@ -98,9 +101,7 @@ export function HeroActions({
           testID="passage-listen"
         />
         <RecordAction
-          accessibilityLabel={
-            passage.takes.length > 0 ? 'Record a take' : 'Record'
-          }
+          accessibilityLabel={takes.length > 0 ? 'Record a take' : 'Record'}
           onPress={onRecord}
           testID="passage-record"
         />

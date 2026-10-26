@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   BackHandler,
   ScrollView,
   StyleSheet,
@@ -10,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture } from 'react-native-gesture-handler';
 import {
   interpolate,
+  LayoutAnimationConfig,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -17,6 +19,13 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { NEXT_SPRING } from '../../../../components/ui/motion';
+import {
+  CAPTURE_LEAVE_DISCARD,
+  CAPTURE_LEAVE_MESSAGE,
+  CAPTURE_LEAVE_RESUME,
+  CAPTURE_LEAVE_TITLE,
+} from '../../../../constants/messages';
 import { useHaptics } from '../../../../hooks/useHaptics';
 import type { usePassage } from '../../../../hooks/usePassage';
 import { ColorModeScope, useTheme } from '../../../../theme/useTheme';
@@ -27,9 +36,9 @@ import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys } from './PlayerKeys';
 import { useScriptMetrics } from './scriptMetrics';
 import { type Ready } from './steps';
+import { TakeFan } from './TakeFan';
+import { useRecorder } from './useRecorder';
 
-/** Firm, barely any bounce; a drag's release speed carries into it. */
-const SHEET_SPRING = { damping: 26, stiffness: 220, mass: 1 };
 /** How far the hero drags before a release opens or closes it. */
 const SNAP_AT = 0.35;
 const FLING = 500;
@@ -45,12 +54,17 @@ const FLING = 500;
  */
 export function Sheet({
   passage,
+  userId,
+  onReload,
   onBack,
   onOpenDrafting,
   onDownload,
   downloadState,
 }: {
   passage: Ready;
+  userId: number | null;
+  /** Re-reads the passage, e.g. after recording claims its chapter. */
+  onReload: () => void;
   onBack: () => void;
   onOpenDrafting: () => void;
   onDownload: () => void;
@@ -81,6 +95,8 @@ export function Sheet({
   const range = Math.max(1, container - collapsed);
   const fullScript = Math.max(preview, container - headerBottom - panel);
   const pageWidth = headerWidth;
+  const recorder = useRecorder({ passage, userId, onReload });
+  const { capturing } = recorder;
   const goToPage = useCallback(
     (index: number) => {
       setPage(index);
@@ -105,18 +121,20 @@ export function Sheet({
       };
       progress.value = reduceMotion
         ? withTiming(target, { duration: 0 }, done)
-        : withSpring(target, { ...SHEET_SPRING, velocity }, done);
+        : withSpring(target, { ...NEXT_SPRING, velocity }, done);
     },
     [progress, reduceMotion, settled, goToPage],
   );
   /** Opens on the script, or on a listening material's page. */
   const open = useCallback(
     (record: boolean, atPage = 0) => {
-      setRecordMode(record);
-      goToPage(record ? 0 : atPage);
+      // A take in progress (or recovered) always opens on the recorder.
+      const toRecord = record || capturing;
+      setRecordMode(toRecord);
+      goToPage(toRecord ? 0 : atPage);
       animateTo(true);
     },
-    [animateTo, goToPage],
+    [animateTo, goToPage, capturing],
   );
   // Recording is always of the script.
   const changeMode = useCallback(
@@ -127,14 +145,33 @@ export function Sheet({
     [goToPage],
   );
 
+  // A take in progress asks first, like leaving a verse in the Record tab.
+  const { discardCapture } = recorder;
+  const close = useCallback(() => {
+    if (!capturing) {
+      animateTo(false);
+      return;
+    }
+    Alert.alert(CAPTURE_LEAVE_TITLE, CAPTURE_LEAVE_MESSAGE, [
+      { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
+      {
+        text: CAPTURE_LEAVE_DISCARD,
+        style: 'destructive',
+        onPress: () => {
+          void discardCapture().then(() => animateTo(false));
+        },
+      },
+    ]);
+  }, [capturing, animateTo, discardCapture]);
+
   useEffect(() => {
     if (!expanded) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      animateTo(false);
+      close();
       return true;
     });
     return () => sub.remove();
-  }, [expanded, animateTo]);
+  }, [expanded, close]);
 
   // The collapsed hero drags open; once open, only the header drags it
   // closed, so the script keeps its own scrolling.
@@ -180,6 +217,7 @@ export function Sheet({
       <ColorModeScope value="canvas">
         <PassageHero
           passage={passage}
+          takes={recorder.takes}
           downloadState={downloadState}
           progress={progress}
           expanded={expanded}
@@ -195,7 +233,7 @@ export function Sheet({
             pageWidth,
           }}
           openGesture={drag(!expanded)}
-          closeGesture={drag(expanded)}
+          closeGesture={drag(expanded && !capturing)}
           pagerRef={pagerRef}
           scriptRef={scriptRef}
           onHeaderLayout={(height, width) => {
@@ -206,7 +244,7 @@ export function Sheet({
           onPageChange={setPage}
           onOpen={record => open(record)}
           onBack={onBack}
-          onClose={() => animateTo(false)}
+          onClose={close}
           onDownload={onDownload}
         />
       </ColorModeScope>
@@ -222,19 +260,26 @@ export function Sheet({
         shown={expanded}
         style={chromeStyle}
         onLayout={measure(setPanel)}
+        fanShown={recordMode}
+        fan={
+          <LayoutAnimationConfig skipEntering>
+            <TakeFan {...recorder.fan} visible={recordMode} />
+          </LayoutAnimationConfig>
+        }
         footer={
           <Footer
             passage={passage}
             page={page}
             recordMode={recordMode}
-            takes={passage.takes}
-            onOpenDrafting={onOpenDrafting}
+            record={recorder.footer}
           />
         }
         keys={
           <PlayerKeys
             recordMode={recordMode}
             onRecordModeChange={changeMode}
+            modeLocked={capturing}
+            record={recorder.keys}
             onOpenDrafting={onOpenDrafting}
           />
         }

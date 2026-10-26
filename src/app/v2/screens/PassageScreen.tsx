@@ -9,6 +9,7 @@ import {
   parseRequiredString,
 } from '../../../navigation/routeParams';
 import { useThemedStyles } from '../../../theme/useTheme';
+import { parseUserId } from '../../../utils/parseUserId';
 import { Sheet } from './passage/Sheet';
 
 /**
@@ -33,7 +34,8 @@ export default function PassageScreen() {
   const chapterName = parseRequiredString(raw.chapterName, 'chapterName');
   const projectName = parseRequiredString(raw.projectName, 'projectName');
   const language = parseRequiredString(raw.language, 'language');
-  const { passage, download, downloadState } = usePassage(
+  const userId = parseUserId();
+  const { passage, download, downloadState, reload } = usePassage(
     chapterId,
     anchorVerse,
     projectUnitId,
@@ -76,6 +78,8 @@ export default function PassageScreen() {
     <View style={styles.screen}>
       <Sheet
         passage={passage}
+        userId={userId}
+        onReload={reload}
         onBack={() => router.back()}
         onOpenDrafting={openDrafting}
         onDownload={download}
