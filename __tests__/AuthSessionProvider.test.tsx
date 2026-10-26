@@ -50,7 +50,8 @@ const mockStartDownloadQueueAutoResume = jest.fn(() => jest.fn());
 const mockStopDownloadQueueAutoResume = jest.fn();
 jest.mock('../src/services/downloadQueueAutoResume', () => ({
   startDownloadQueueAutoResume: () => mockStartDownloadQueueAutoResume(),
-  stopDownloadQueueAutoResume: () => mockStopDownloadQueueAutoResume(),
+  stopDownloadQueueAutoResume: (...args: unknown[]) =>
+    mockStopDownloadQueueAutoResume(...args),
 }));
 
 jest.mock('../src/services/recordingSync', () => ({
@@ -67,6 +68,17 @@ jest.mock('../src/services/syncStatusStore', () => ({
 jest.mock('../src/services/uploadProgressNotification', () => ({
   startUploadProgressNotification: () => mockStartUploadProgressNotification(),
   stopUploadProgressNotification: () => mockStopUploadProgressNotification(),
+}));
+
+const mockIsE2eUploadHoldEnabled = jest.fn(() => false);
+jest.mock('../src/config/e2eUploadHoldGuard', () => ({
+  isE2eUploadHoldEnabled: () => mockIsE2eUploadHoldEnabled(),
+}));
+
+const mockIsE2eDownloadAutoResumeHoldEnabled = jest.fn(() => false);
+jest.mock('../src/config/e2eDownloadAutoResumeGuard', () => ({
+  isE2eDownloadAutoResumeHoldEnabled: () =>
+    mockIsE2eDownloadAutoResumeHoldEnabled(),
 }));
 
 import {
@@ -107,7 +119,22 @@ describe('AuthSessionProvider', () => {
     jest.clearAllMocks();
     mockRestoreSession.mockResolvedValue({ authenticated: false });
     mockSyncAllData.mockResolvedValue(undefined);
+    mockIsE2eUploadHoldEnabled.mockReturnValue(false);
+    mockIsE2eDownloadAutoResumeHoldEnabled.mockReturnValue(false);
   });
+
+  async function renderRestoredSession() {
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    const utils = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+    await waitFor(() => {
+      expect(utils.getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    return utils;
+  }
 
   it('bootstraps session, then renders children', async () => {
     const { getByTestId, queryByTestId } = render(
@@ -138,6 +165,60 @@ describe('AuthSessionProvider', () => {
     });
     expect(mockStartUploadOrchestrator).toHaveBeenCalled();
     expect(mockStartUploadProgressNotification).toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).toHaveBeenCalled();
+  });
+
+  it('E2E upload hold leaves the orchestrator stopped; downloads and sync unaffected', async () => {
+    mockIsE2eUploadHoldEnabled.mockReturnValue(true);
+    const { getByTestId } = await renderRestoredSession();
+
+    expect(mockStartUploadOrchestrator).not.toHaveBeenCalled();
+    expect(mockStartUploadProgressNotification).toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).toHaveBeenCalled();
+    expect(mockRefreshSyncStatusStore).toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in'));
+    });
+    expect(mockSyncAllData).toHaveBeenCalled();
+  });
+
+  it('E2E download hold skips auto-resume; upload orchestrator and sync unaffected', async () => {
+    mockIsE2eDownloadAutoResumeHoldEnabled.mockReturnValue(true);
+    const { getByTestId } = await renderRestoredSession();
+
+    expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
+    expect(mockStartUploadOrchestrator).toHaveBeenCalled();
+    expect(mockRefreshSyncStatusStore).toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in'));
+    });
+    expect(mockSyncAllData).toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-out'));
+    });
+    expect(mockStopDownloadQueueAutoResume).toHaveBeenCalledWith(null);
+  });
+
+  it('E2E holds apply together and survive an account switch', async () => {
+    mockIsE2eUploadHoldEnabled.mockReturnValue(true);
+    mockIsE2eDownloadAutoResumeHoldEnabled.mockReturnValue(true);
+    const { getByTestId } = await renderRestoredSession();
+
+    await act(async () => {
+      fireEvent.press(getByTestId('switch-user'));
+    });
+    expect(mockResetSyncStatusStore).toHaveBeenCalledTimes(1);
+    expect(mockStartUploadOrchestrator).not.toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-out'));
+    });
+    expect(getByTestId('auth-flag').props.children).toBe('no');
+    expect(mockStopUploadOrchestrator).toHaveBeenCalled();
   });
 
   it('signIn runs post-login sync with sync-active UI', async () => {

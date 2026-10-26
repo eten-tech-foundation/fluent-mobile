@@ -1,5 +1,5 @@
 {
-  "$schemaComment": "Disposable Maestro ownership/claim fixture roles (#574). Labels come from .env.maestro — never hardcode shared QA project chapters here.",
+  "$schemaComment": "Disposable Maestro ownership/claim fixture roles (#574 / #607). Labels come from .env.maestro - never hardcode shared QA project chapters here.",
   "version": 1,
   "description": "Deterministic assignment roles for a dedicated disposable Fluent project. Run npm run maestro:fixtures:verify before ownership Maestro suites.",
   "roles": {
@@ -13,7 +13,7 @@
       "envLabel": "MAESTRO_FIXTURE_OTHER_LABEL",
       "expectedOwnership": "other",
       "expectedConflict": false,
-      "notes": "Assigned to another translator (or peerChecker ≠ MAESTRO_EMAIL at Peer Check). Taken-warning Record path."
+      "notes": "Assigned to MAESTRO_EMAIL_2 (or peerChecker ≠ MAESTRO_EMAIL at Peer Check). Taken-warning Record path."
     },
     "unassigned": {
       "envLabel": "MAESTRO_FIXTURE_UNASSIGNED_LABEL",
@@ -26,22 +26,20 @@
       "expectedOwnership": "unassigned",
       "expectedConflict": false,
       "expectedStatus": "not_started",
-      "notes": "Disposable unassigned chapter for online auto-claim. Must stay not_started — clear via API leaves draft and cannot be claimed. After a successful auto-claim run, rotate MAESTRO_FIXTURE_CLAIM_LABEL or reset Status in Fluent web; the suite does not restore burned chapters."
+      "notes": "Disposable unassigned chapter for online auto-claim. Seed restores via PATCH reset-selected (fluent-api#464); 404 falls back to rotating this label."
     },
     "conflict": {
       "envLabel": "MAESTRO_FIXTURE_CONFLICT_LABEL",
       "expectedOwnership": null,
       "expectedConflict": true,
-      "optional": true,
-      "notes": "Chapter with hasConflict=true for list + Record conflict chrome. Optional until seed exists."
+      "notes": "Chapter with hasConflict=true (verified via GET chapter-assignments/progress). Seeded by three verse-audio takes; the third uses a stale baseVersionToken."
     },
     "openPeerCheck": {
       "envLabel": "MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL",
       "expectedOwnership": "unassigned",
       "expectedConflict": false,
       "expectedStatus": "peer_check",
-      "optional": true,
-      "notes": "Peer Check with no peerChecker. Optional until seed exists."
+      "notes": "Peer Check with no peerChecker. Seed: assign-selected MAESTRO_EMAIL_2 as drafter, then that translator PATCH submit."
     }
   },
   "env": {

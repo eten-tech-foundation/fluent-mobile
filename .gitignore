@@ -88,3 +88,21 @@ expo-env.d.ts
 .superpowers
 # Maestro CLI local --test-output-dir (may contain env in logs)
 test_output/
+
+# Local agent config
+.codex/
+.agents/
+
+# Nested local git worktrees
+/worktrees/
+
+# Local QA runtime evidence (device DB copies, Maestro logs, screenshots).
+# The 20261021 easy-ui-batch receipts are already tracked and stay committed.
+docs/assessments/**/run-evidence/*
+!docs/assessments/maestro-acceptance-coverage/run-evidence/20261021-easy-ui-batch/
+docs/assessments/**/*.db
+docs/assessments/**/*.db-shm
+docs/assessments/**/*.db-wal
+docs/assessments/**/*.sqlite
+docs/assessments/**/*.sqlite-shm
+docs/assessments/**/*.sqlite-wal

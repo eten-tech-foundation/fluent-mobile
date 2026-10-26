@@ -2,6 +2,8 @@
 # Repeat — sync can re-push Prepare-for-Offline after the first dismiss.
 # Only use stack-header-back for PFO (never system Back — overshoots to launcher).
 appId: com.eten.fluent
+tags:
+  - ordered-readonly
 ---
 - runFlow: ../../helpers/dismiss-expo-dev-menu.yaml
 - repeat:
