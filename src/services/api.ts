@@ -41,6 +41,7 @@ import {
   type ClaimChapterAssignmentResponse,
   type NormalizedClaimChapterAssignmentResponse,
 } from '../types/api/chapterClaim';
+import type { ApiChapterAssignment } from '../types/api/types';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
 import type {
   PutUserSettingsBody,
@@ -367,16 +368,29 @@ export const FluentAPI = {
       token,
     ),
 
+  /** Authenticated assignment read used to verify a stage transition. */
+  getChapterAssignment: (
+    chapterAssignmentId: number,
+    token?: string,
+  ): Promise<ApiChapterAssignment> =>
+    authedRequest<ApiChapterAssignment>(
+      `/chapter-assignments/${chapterAssignmentId}`,
+      undefined,
+      token,
+    ),
+
   /**
    * Advance a chapter assignment to the next workflow stage (online path).
    * Offline queue / reconnect handling is #257.
    */
   submitChapterAssignment: (
     chapterAssignmentId: number,
+    token?: string,
   ): Promise<SubmitChapterAssignmentResponse> =>
     authedRequest<SubmitChapterAssignmentResponse>(
       `/chapter-assignments/${chapterAssignmentId}/submit`,
       { method: 'PATCH' },
+      token,
     ),
 
   getBibleTexts: (

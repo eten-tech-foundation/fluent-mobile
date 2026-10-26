@@ -1,4 +1,5 @@
 import { FluentAPI } from './api';
+import { getChapterAssignmentPullRevision } from '../utils/chapterCompletionSyncGuard';
 import { isTransientTransportFailure } from '../types/api/errors';
 import { isAuthError, AuthError } from './authError';
 import { mapApiChapterAssignment } from './mapChapterAssignment';
@@ -735,6 +736,7 @@ export async function syncChapterAssignments(
         excludeProjectIds,
       });
 
+      const pullRevision = getChapterAssignmentPullRevision();
       const response = await FluentAPI.getChapterAssignments(
         userId,
         updatedAfter,
@@ -755,7 +757,7 @@ export async function syncChapterAssignments(
 
       if (allAssignments.length > 0) {
         const { insertedCount, skipped } =
-          await insertChapterAssignmentSyncData(allAssignments);
+          await insertChapterAssignmentSyncData(allAssignments, pullRevision);
         if (insertedCount === 0) {
           throw new Error(
             `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
@@ -806,6 +808,7 @@ async function syncUserChapterWork(
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
     async () => {
       partialSkipWarning = undefined;
+      const pullRevision = getChapterAssignmentPullRevision();
       const response = await FluentAPI.getUserChapterAssignments(
         userId,
         sessionToken,
@@ -830,7 +833,7 @@ async function syncUserChapterWork(
 
       if (mapped.length > 0) {
         const { insertedCount, skipped } =
-          await insertChapterAssignmentSyncData(mapped);
+          await insertChapterAssignmentSyncData(mapped, pullRevision);
         if (insertedCount === 0) {
           throw new Error(
             `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
