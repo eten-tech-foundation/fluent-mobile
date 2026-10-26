@@ -23,7 +23,7 @@ type MockTake = {
   isSelected: boolean;
   durationMs: number;
 };
-let mockSession = {
+const sessionDefaults = {
   state: 'idle' as string,
   captureActive: false,
   isTaken: false,
@@ -33,6 +33,7 @@ let mockSession = {
   pericopeUnavailable: false,
   takes: [] as MockTake[],
 };
+let mockSession = { ...sessionDefaults };
 const take = (n: number): MockTake => ({
   id: `t${n}`,
   takeNumber: n,
@@ -180,16 +181,7 @@ const hidden = { includeHiddenElements: true };
 describe('PassageScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSession = {
-      state: 'idle',
-      captureActive: false,
-      isTaken: false,
-      stageLocked: false,
-      captureDisabled: false,
-      canRecordNewTake: true,
-      pericopeUnavailable: false,
-      takes: [],
-    };
+    mockSession = { ...sessionDefaults };
     mockPassage = ready;
     mockDownloadState = 'idle';
   });
@@ -433,11 +425,14 @@ describe('PassageScreen', () => {
     );
   });
 
-  it('only plays other takes on a stage-locked chapter, without changing the pick', () => {
+  it('only plays takes on a stage-locked chapter: no pick, official or delete', () => {
     const takes = [take(1), { ...take(2), isSelected: true }];
     mockSession = { ...mockSession, takes };
     const { unmount } = render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
+    expect(screen.getByLabelText('Take 1').props.accessibilityActions).toEqual([
+      { name: 'delete', label: 'Delete' },
+    ]);
     fireEvent.press(screen.getByTestId('passage-take-official'));
     expect(mockSetCanonical).toHaveBeenCalledWith('t2');
     fireEvent.press(screen.getByTestId('passage-fan-1'));
@@ -450,6 +445,9 @@ describe('PassageScreen', () => {
     fireEvent.press(screen.getByTestId('passage-record'));
 
     expect(screen.queryByTestId('passage-take-official')).toBeNull();
+    expect(
+      screen.getByLabelText('Take 1').props.accessibilityActions,
+    ).toBeUndefined();
     fireEvent.press(screen.getByTestId('passage-fan-1'));
     expect(mockSelectTake).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();

@@ -337,7 +337,7 @@ export function useRecorder({
       takes: fan,
       frontId,
       onSelect: selectTake,
-      onDelete: held ? undefined : deleteTake,
+      onDelete: held || session.stageLocked ? undefined : deleteTake,
     },
     footer,
     keys,
