@@ -7,6 +7,7 @@ import { SyncStatus, formatSyncStatusLabel } from '../../utils/syncStatusState';
 interface PageHeaderSyncButtonProps {
   syncStatus: SyncStatus;
   onPress: () => void;
+  onPressIn?: () => void;
   /** Cloud outline color — use foreground on white headers. */
   cloudColor?: string;
   /** Sanitized recordings.upload_error when status is online_failed. */
@@ -16,12 +17,14 @@ interface PageHeaderSyncButtonProps {
 export function PageHeaderSyncButton({
   syncStatus,
   onPress,
+  onPressIn,
   cloudColor,
   failedErrorText,
 }: PageHeaderSyncButtonProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
+      onPressIn={onPressIn}
       style={styles.syncSlot}
       accessibilityLabel={formatSyncStatusLabel(syncStatus, {
         failedErrorText,
