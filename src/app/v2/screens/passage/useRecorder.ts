@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   RECORD_MAX_TAKES,
   RECORD_MAX_VERSE_TAKES,
@@ -48,6 +48,8 @@ export function useRecorder({
     onChapterClaimed: onReload,
   });
   const { verseAudio } = session;
+  /** On a stage-locked chapter, the take tapped forward to play; the pick stays. */
+  const [lockedFront, setLockedFront] = useState<string | null>(null);
   const capturing = session.captureActive;
   /** Paused only happens after a crash: a recovered take waiting on Resume or Stop. */
   const live = verseAudio.state === 'recording';
@@ -95,10 +97,18 @@ export function useRecorder({
     passageTakes.reduce((n, t) => Math.max(n, t.takeNumber), 0) + 1;
   // The new take keeps its tile and wave from Stop until it's saved.
   const held = capturing || verseAudio.state === 'saving';
+  const pickedTake =
+    passageTakes.find(t => t.id === verseAudio.selectedTake?.id) ??
+    passageTakes[passageTakes.length - 1] ??
+    null;
+  const lockedTake = session.stageLocked
+    ? passageTakes.find(t => t.id === lockedFront)
+    : undefined;
   const fan: FanTake[] = passageTakes.map(t => ({
     id: t.id,
     takeNumber: t.takeNumber,
     official: t.id === verseAudio.ownCanonicalTakeId,
+    selected: t.id === pickedTake?.id,
   }));
   if (held) {
     fan.push({
@@ -116,11 +126,7 @@ export function useRecorder({
       placeholder: true,
     });
   }
-  const frontTake = held
-    ? null
-    : passageTakes.find(t => t.id === verseAudio.selectedTake?.id) ??
-      passageTakes[passageTakes.length - 1] ??
-      null;
+  const frontTake = held ? null : lockedTake ?? pickedTake;
   const frontId = held ? 'recording' : frontTake?.id ?? 'placeholder';
   const playingFront =
     frontTake !== null && verseAudio.playingTakeId === frontTake.id;
@@ -144,7 +150,9 @@ export function useRecorder({
             : 0,
         recording: false,
         official: frontTake.id === verseAudio.ownCanonicalTakeId,
-        onToggleOfficial: () => void verseAudio.setCanonical(frontTake.id),
+        onToggleOfficial: session.stageLocked
+          ? undefined
+          : () => void verseAudio.setCanonical(frontTake.id),
       }
     : {
         takeNumber: 1,
@@ -228,7 +236,10 @@ export function useRecorder({
     fan: {
       takes: fan,
       frontId,
-      onSelect: (id: string) => void verseAudio.selectTake(id),
+      onSelect: (id: string) =>
+        session.stageLocked
+          ? setLockedFront(id)
+          : void verseAudio.selectTake(id),
     },
     footer,
     keys,

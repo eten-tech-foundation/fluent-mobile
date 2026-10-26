@@ -101,9 +101,7 @@ export function HeroActions({
           testID="passage-listen"
         />
         <RecordAction
-          accessibilityLabel={
-            passage.takes.length > 0 ? 'Record a take' : 'Record'
-          }
+          accessibilityLabel={takes.length > 0 ? 'Record a take' : 'Record'}
           onPress={onRecord}
           testID="passage-record"
         />

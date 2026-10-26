@@ -30,6 +30,8 @@ export interface FanTake {
   id: string;
   takeNumber: number;
   official: boolean;
+  /** The chapter's picked take, which may not be the one in front. */
+  selected?: boolean;
   /** The take being recorded now; drawn in front with a red edge. */
   recording?: boolean;
   /** Dashed slot where the next take lands; in front before the first. */
@@ -244,7 +246,7 @@ function Tile({
     : take.placeholder
     ? 'not recorded yet'
     : `${take.official ? 'official' : ''}${
-        front ? `${take.official ? ', ' : ''}selected` : ''
+        take.selected ? `${take.official ? ', ' : ''}selected` : ''
       }`;
 
   return (

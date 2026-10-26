@@ -26,7 +26,7 @@ describe('TakeFan', () => {
       <TakeFan
         takes={[
           { id: 'a', takeNumber: 1, official: true },
-          { id: 'b', takeNumber: 2, official: false },
+          { id: 'b', takeNumber: 2, official: false, selected: true },
         ]}
         frontId="b"
         onSelect={onSelect}

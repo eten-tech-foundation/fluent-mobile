@@ -11,14 +11,26 @@ const mockStart = jest.fn(async () => {});
 const mockStop = jest.fn(async () => {});
 const mockDiscard = jest.fn(async () => {});
 const mockEnsureMic = jest.fn(async () => true);
-let mockSession = {
+const mockSelectTake = jest.fn();
+const mockSetCanonical = jest.fn();
+const mockPlayTake = jest.fn();
+const sessionDefaults = {
   state: 'idle' as string,
   captureActive: false,
   isTaken: false,
+  stageLocked: false,
   captureDisabled: false,
   canRecordNewTake: true,
   pericopeUnavailable: false,
+  takes: [] as {
+    id: string;
+    takeNumber: number;
+    isSelected: boolean;
+    granularity: 'pericope';
+    createdAt: string;
+  }[],
 };
+let mockSession = { ...sessionDefaults };
 let mockPassage: Passage = { status: 'loading' };
 let mockDownloadState: PassageDownload = 'idle';
 
@@ -38,16 +50,16 @@ jest.mock('../../../hooks/useRecordSession', () => ({
   useRecordSession: () => ({
     verseAudio: {
       state: mockSession.state,
-      takes: [],
-      selectedTake: null,
+      takes: mockSession.takes,
+      selectedTake: mockSession.takes.find(t => t.isSelected) ?? null,
       start: mockStart,
       stop: mockStop,
       resume: jest.fn(),
       discardCapture: mockDiscard,
       pausePlayback: jest.fn(),
-      playTake: jest.fn(),
-      selectTake: jest.fn(),
-      setCanonical: jest.fn(),
+      playTake: mockPlayTake,
+      selectTake: mockSelectTake,
+      setCanonical: mockSetCanonical,
       ownCanonicalTakeId: null,
       getMetering: () => null,
       canRecordNewTake: mockSession.canRecordNewTake,
@@ -58,7 +70,7 @@ jest.mock('../../../hooks/useRecordSession', () => ({
     captureActive: mockSession.captureActive,
     syncingMessage: null,
     isTaken: mockSession.isTaken,
-    stageLocked: false,
+    stageLocked: mockSession.stageLocked,
     drafterCaptureBlocked: false,
     captureDisabled: mockSession.captureDisabled,
     pericopeUnavailable: mockSession.pericopeUnavailable,
@@ -142,14 +154,7 @@ const hidden = { includeHiddenElements: true };
 describe('PassageScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSession = {
-      state: 'idle',
-      captureActive: false,
-      isTaken: false,
-      captureDisabled: false,
-      canRecordNewTake: true,
-      pericopeUnavailable: false,
-    };
+    mockSession = { ...sessionDefaults };
     mockPassage = ready;
     mockDownloadState = 'idle';
   });
@@ -320,6 +325,48 @@ describe('PassageScreen', () => {
     expect(
       screen.getByTestId('passage-key-record').props.accessibilityState,
     ).toMatchObject({ disabled: true });
+  });
+
+  it('only plays other takes on a stage-locked chapter, without changing the pick', () => {
+    const takes = [
+      {
+        id: 'a',
+        takeNumber: 1,
+        isSelected: false,
+        granularity: 'pericope' as const,
+        createdAt: '2026-10-19T10:00:00Z',
+      },
+      {
+        id: 'b',
+        takeNumber: 2,
+        isSelected: true,
+        granularity: 'pericope' as const,
+        createdAt: '2026-10-20T10:00:00Z',
+      },
+    ];
+    mockSession = { ...mockSession, takes };
+    const { unmount } = render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    fireEvent.press(screen.getByTestId('passage-take-official'));
+    expect(mockSetCanonical).toHaveBeenCalledWith('b');
+    fireEvent.press(screen.getByTestId('passage-fan-1'));
+    expect(mockSelectTake).toHaveBeenCalledWith('a');
+    unmount();
+    jest.clearAllMocks();
+
+    mockSession = { ...mockSession, takes, stageLocked: true };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    expect(screen.queryByTestId('passage-take-official')).toBeNull();
+    fireEvent.press(screen.getByTestId('passage-fan-1'));
+    expect(mockSelectTake).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();
+    expect(screen.getByLabelText('Take 1')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('passage-key-play'));
+    expect(mockPlayTake).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'a' }),
+    );
   });
 
   it('asks before closing the player on a take in progress', () => {
