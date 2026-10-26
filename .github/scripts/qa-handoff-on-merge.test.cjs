@@ -49,6 +49,73 @@ Refs #275
 1. Read the docs
 `;
 
+/** Full standard PR template shape (inline checklist marker + standalone block). */
+function fullTemplateBody({ yesChecked = false, noChecked = false } = {}) {
+  const yes = yesChecked ? 'x' : ' ';
+  const no = noChecked ? 'x' : ' ';
+  return `### TLDR
+
+Ship the feature.
+
+### Reviewer checklist
+
+- [ ] GitHub issue linked in Details (\`Refs #NNN\` — do **not** use \`Closes\` / \`Fixes\` / \`Resolves\`; use \`Refs: none\` only for explicit no-ticket chores)
+- [ ] How to verify steps completed or valid waiver noted below
+- [ ] Acceptance criteria met, **or** unmet AC waived **in the issue** with linked follow-up (see \`AGENTS.md\`)
+- [ ] Scope limited to this issue — no adjacent tickets implemented/stubbed without approval
+- [ ] **Needs QA?** decided (see \`docs/guides/qa-process.md\`)
+
+### Details
+
+Refs #679
+
+**Needs QA?**
+
+- [${no}] No — engineering-only (docs, CI, refactor, logging, etc.)
+- [${yes}] Yes — post-merge nightly QA (see \`docs/guides/qa-process.md\`)
+
+**Type of change:**
+
+- [x] Bug fix
+
+#### Technical changes
+
+- \`.github/scripts/qa-handoff-on-merge.cjs\`
+
+#### Testing
+
+Focused unit tests for the handoff parser.
+
+### How to verify
+
+1. npm test -- --ci .github/scripts/qa-handoff-on-merge.test.cjs
+
+**Expected:** Parser reads the standalone Needs QA block.
+
+### Follow-ups
+
+None.
+`;
+}
+
+const FULL_TEMPLATE_YES = fullTemplateBody({ yesChecked: true });
+const FULL_TEMPLATE_NO = fullTemplateBody({ noChecked: true });
+const FULL_TEMPLATE_NEITHER = fullTemplateBody();
+const FULL_TEMPLATE_BOTH = fullTemplateBody({
+  yesChecked: true,
+  noChecked: true,
+});
+const INLINE_MARKER_ONLY = `### Reviewer checklist
+
+- [ ] **Needs QA?** decided (see \`docs/guides/qa-process.md\`)
+
+### Details
+
+Refs #1
+
+No standalone Needs QA block here.
+`;
+
 describe('needsQaYes / needsQaNo', () => {
   it('detects checked Yes under Needs QA?', () => {
     expect(needsQaYes(NEEDS_QA_YES_BODY)).toBe(true);
@@ -68,21 +135,44 @@ describe('needsQaYes / needsQaNo', () => {
   });
 
   it('matches uppercase X checkbox', () => {
-    expect(
-      needsQaYes('**Needs QA?**\n\n- [X] Yes — device QA'),
-    ).toBe(true);
-    expect(
-      needsQaNo('**Needs QA?**\n\n- [X] No — engineering-only'),
-    ).toBe(true);
+    expect(needsQaYes('**Needs QA?**\n\n- [X] Yes — device QA')).toBe(true);
+    expect(needsQaNo('**Needs QA?**\n\n- [X] No — engineering-only')).toBe(
+      true,
+    );
   });
 
   it('does not match checked No outside the Needs QA section', () => {
-    expect(
-      needsQaNo('Refs #1\n\n- [x] No — unrelated checklist item'),
-    ).toBe(false);
-    expect(
-      needsQaYes('Refs #1\n\n- [x] Yes — unrelated checklist item'),
-    ).toBe(false);
+    expect(needsQaNo('Refs #1\n\n- [x] No — unrelated checklist item')).toBe(
+      false,
+    );
+    expect(needsQaYes('Refs #1\n\n- [x] Yes — unrelated checklist item')).toBe(
+      false,
+    );
+  });
+
+  it('full template with Yes checked uses standalone block (PR #771 shape)', () => {
+    expect(needsQaYes(FULL_TEMPLATE_YES)).toBe(true);
+    expect(needsQaNo(FULL_TEMPLATE_YES)).toBe(false);
+  });
+
+  it('full template with No checked uses standalone block', () => {
+    expect(needsQaNo(FULL_TEMPLATE_NO)).toBe(true);
+    expect(needsQaYes(FULL_TEMPLATE_NO)).toBe(false);
+  });
+
+  it('full template with neither checked stays unset', () => {
+    expect(needsQaYes(FULL_TEMPLATE_NEITHER)).toBe(false);
+    expect(needsQaNo(FULL_TEMPLATE_NEITHER)).toBe(false);
+  });
+
+  it('full template with both checked keeps Yes and No true (ambiguous safety)', () => {
+    expect(needsQaYes(FULL_TEMPLATE_BOTH)).toBe(true);
+    expect(needsQaNo(FULL_TEMPLATE_BOTH)).toBe(true);
+  });
+
+  it('inline checklist marker alone does not invent Yes or No', () => {
+    expect(needsQaYes(INLINE_MARKER_ONLY)).toBe(false);
+    expect(needsQaNo(INLINE_MARKER_ONLY)).toBe(false);
   });
 });
 
