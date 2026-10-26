@@ -64,11 +64,13 @@ import { createApiError } from './apiError';
 import {
   parseVerseAudioListResponse,
   parseVerseAudioResponse,
+  versionTokenFromVerseAudioBody,
 } from './verseAudioContract';
 import { parseTranslatedVersesResponse } from './translatedVerseContract';
 import {
   buildVerseAudioFormData,
   verseAudioRangeUploadPath,
+  verseAudioTakeDeletePath,
   verseAudioUploadPath,
 } from './verseAudioFormData';
 
@@ -396,6 +398,28 @@ export const FluentAPI = {
     params: UploadVerseAudioParams,
     token?: string,
   ): Promise<VerseAudioResponse> => uploadVerseAudioRequest(params, token),
+
+  /**
+   * Delete one take by id (fluent-api#465 / #716).
+   * `DELETE /verse-audio/{projectUnitId}/{bibleTextId}/takes/{takeId}`.
+   */
+  deleteVerseAudioTake: (
+    params: {
+      projectUnitId: number;
+      bibleTextId: number;
+      takeId: number;
+    },
+    token?: string,
+  ): Promise<{ versionToken: number | null }> =>
+    authedRequest<unknown>(
+      verseAudioTakeDeletePath(
+        params.projectUnitId,
+        params.bibleTextId,
+        params.takeId,
+      ),
+      { method: 'DELETE' },
+      token,
+    ).then(versionTokenFromVerseAudioBody),
 
   /**
    * Chapter draft audio listing (#508 / #704).

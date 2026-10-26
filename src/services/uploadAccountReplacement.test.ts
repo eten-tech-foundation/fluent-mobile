@@ -41,16 +41,20 @@ jest.mock('../db/queries', () => ({
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
     mockGetPendingRecordings(...args),
+  getPendingRecordingDeletions: async () => [],
+  clearRecordingDeletion: jest.fn(),
   getLatestVersionToken: async () => undefined,
   setRecordingSyncStatus: (...args: unknown[]) => mockSetStatus(...args),
   markRecordingUploaded: (...args: unknown[]) => mockMarkUploaded(...args),
   markRecordingAndChapterConflicted: jest.fn(),
   markRecordingFailed: jest.fn(),
   updateRecordingVersionToken: jest.fn(),
+  raiseVerseVersionToken: jest.fn(),
 }));
 jest.mock('./api', () => ({
   FluentAPI: {
     uploadVerseAudio: (...args: unknown[]) => mockUploadVerseAudio(...args),
+    deleteVerseAudioTake: jest.fn(),
   },
 }));
 jest.mock('./connectivity', () => ({
@@ -113,6 +117,8 @@ const recordings: PendingRecording[] = [
     startVerse: null,
     endChapter: null,
     endVerse: null,
+    isCanonical: false,
+    isSelected: true,
   },
   {
     id: 'fresh-owner-take',
@@ -127,6 +133,8 @@ const recordings: PendingRecording[] = [
     startVerse: null,
     endChapter: null,
     endVerse: null,
+    isCanonical: false,
+    isSelected: true,
   },
 ];
 const uploaded = new Set<string>();
