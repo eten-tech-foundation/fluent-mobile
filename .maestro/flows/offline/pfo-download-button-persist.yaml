@@ -1,0 +1,181 @@
+# Prepare Offline: Download control remains through chapter select/deselect.
+#
+# Selection UI only — NEVER tap prepare-offline-download-button / Pause /
+# Resume / Cancel, and never start a network download session.
+#
+# Preconditions (fail visibly if unmet — no skip/auth fallback):
+# - App already running with a logged-in session (not login screen).
+# - Home + Settings → Prepare for Offline reachable.
+# - MAESTRO_FIXTURE_PROJECT_ID: required string digits /^[1-9][0-9]*$/
+# - MAESTRO_PFO_BOOK_NAME: required nonempty; matched as anchored escaped
+#   ^Select all chapters in <book>$ (BookSectionHeader accessibilityLabel).
+# - Assigned-translator fixture: accordion starts collapsed as
+#   "Assigned chapters (n)" (unassigned / wrong chrome → FAIL).
+#
+# Computed selectors: inline String(...).replace escape only — do NOT assign
+# helper functions on output.* (Maestro does not persist them across contexts;
+# textRegex becomes "undefined").
+#
+# Selection is ephemeral for this probe: toggles prove selected-count
+# transitions via bounded wait for label change (not instant stale copy)
+# and Download chrome persistence. Does NOT claim restoration of the prior
+# partial chapter selection. Navigation restore claim: Home only.
+#
+# Forbidden: clearState, ensure-on-login, login-*, ensure-warm-home,
+# ensure-warm-session, Discard recovered-recording, Download tap, airplane
+# toggles, preference toggles, optional when:-skipped assertions.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+---
+- runScript:
+    file: ../../shared/scripts/pfo-selector-values.js
+    env:
+      MAESTRO_PFO_SELECTOR_PHASE: setup
+- assertTrue: ${typeof output.fixtureProjectId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureProjectId)}
+- assertTrue: ${typeof output.pfoBookName === 'string' && output.pfoBookName.length > 0}
+- assertTrue: ${typeof output.projectRowIdRe === 'string' && output.projectRowIdRe.length > 0}
+- assertTrue: ${typeof output.pfoBookSelectRe === 'string' && output.pfoBookSelectRe.length > 0}
+- assertTrue: ${typeof output.assignedCountLabelRe === 'string' && output.assignedCountLabelRe.length > 0}
+- assertTrue: ${RegExp(output.projectRowIdRe).test('project-row-' + output.fixtureProjectId) === true}
+- assertTrue: ${RegExp(output.projectRowIdRe).test('project-row-' + output.fixtureProjectId + '0') === false}
+- assertTrue: ${RegExp(output.pfoBookSelectRe).test('Select all chapters in ' + output.pfoBookName) === true}
+- assertTrue: ${RegExp(output.pfoBookSelectRe).test('Select all chapters in ' + output.pfoBookName + 'X') === false && RegExp(output.pfoBookSelectRe).test('Select all chapters in X' + output.pfoBookName) === false}
+- assertTrue: ${RegExp(output.assignedCountLabelRe).test('Assigned chapters (1)') === true && RegExp(output.assignedCountLabelRe).test('Assigned chapters') === false}
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-prepare-offline'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-prepare-offline'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: ${output.projectRowIdRe}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: ${output.projectRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-resources-section'
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-download-footer'
+    timeout: 30000
+- assertVisible:
+    id: 'prepare-offline-download-button'
+# Assigned fixture: accordion starts collapsed — expand (required, not optional).
+- assertVisible:
+    text: ${output.assignedCountLabelRe}
+- tapOn:
+    text: ${output.assignedCountLabelRe}
+- extendedWaitUntil:
+    visible:
+      text: ${output.pfoBookSelectRe}
+    timeout: 15000
+- copyTextFrom:
+    text: ${output.assignedCountLabelRe}
+- runScript:
+    file: ../../shared/scripts/pfo-selector-values.js
+    env:
+      MAESTRO_PFO_SELECTOR_PHASE: before
+- assertTrue: ${typeof output.pfoCountBefore === 'string' && output.pfoCountBefore.length > 0}
+- assertTrue: ${typeof output.pfoCountBeforeRe === 'string' && output.pfoCountBeforeRe.length > 0}
+- assertTrue: ${RegExp(output.pfoCountBeforeRe).test(output.pfoCountBefore) === true}
+# Toggle book via anchored escaped accessibilityLabel.
+- tapOn:
+    text: ${output.pfoBookSelectRe}
+# Bounded wait until prior count label is gone (avoid stale same-text copy).
+- extendedWaitUntil:
+    notVisible:
+      text: ${output.pfoCountBeforeRe}
+    timeout: 15000
+- copyTextFrom:
+    text: ${output.assignedCountLabelRe}
+- runScript:
+    file: ../../shared/scripts/pfo-selector-values.js
+    env:
+      MAESTRO_PFO_SELECTOR_PHASE: first
+- assertTrue: ${typeof output.pfoCountAfterFirst === 'string' && output.pfoCountAfterFirst.length > 0 && output.pfoCountAfterFirst != output.pfoCountBefore}
+- assertTrue: ${typeof output.pfoCountAfterFirstRe === 'string' && output.pfoCountAfterFirstRe.length > 0}
+- assertTrue: ${RegExp(output.pfoCountAfterFirstRe).test(output.pfoCountAfterFirst) === true}
+# The footer follows the expanded book list inside the same ScrollView.
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-download-button'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'prepare-offline-download-button'
+- assertVisible:
+    id: 'prepare-offline-download-footer'
+- assertNotVisible:
+    id: 'prepare-offline-download-controls-downloading'
+# Second toggle (opposite direction) — ephemeral selection; not a restore claim.
+- scrollUntilVisible:
+    element:
+      text: ${output.pfoBookSelectRe}
+    direction: UP
+    timeout: 15000
+- tapOn:
+    text: ${output.pfoBookSelectRe}
+# Bring the positive count label back on screen before testing its transition.
+- scrollUntilVisible:
+    element:
+      text: ${output.assignedCountLabelRe}
+    direction: UP
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible:
+      text: ${output.pfoCountAfterFirstRe}
+    timeout: 15000
+- copyTextFrom:
+    text: ${output.assignedCountLabelRe}
+- runScript:
+    file: ../../shared/scripts/pfo-selector-values.js
+    env:
+      MAESTRO_PFO_SELECTOR_PHASE: second
+- assertTrue: ${typeof output.pfoCountAfterSecond === 'string' && output.pfoCountAfterSecond.length > 0 && output.pfoCountAfterSecond != output.pfoCountAfterFirst}
+# The footer follows the expanded book list inside the same ScrollView.
+- scrollUntilVisible:
+    element:
+      id: 'prepare-offline-download-button'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'prepare-offline-download-button'
+- assertNotVisible:
+    id: 'prepare-offline-download-controls-downloading'
+# Leave PFO without starting download; restore Home navigation only.
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- tapOn:
+    id: 'stack-header-back'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'
