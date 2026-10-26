@@ -1522,6 +1522,66 @@ describe('useVerseAudio', () => {
     expect(mockPlaybackStop.mock.calls).toHaveLength(stopsBefore);
   });
 
+  describe('seek (#833)', () => {
+    it('seeks the explicit target take instead of the selected one', async () => {
+      const ownTake = makeTake();
+      const sharedTake = makeTake({
+        id: 'rec_9',
+        localFilePath: '/recordings/rec_9.m4a',
+        isSelected: false,
+      });
+      loadTakes.mockResolvedValue([ownTake]);
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.takes).toHaveLength(1));
+
+      await act(async () => {
+        await result.current.seek(500, sharedTake);
+      });
+
+      expect(mockPlaybackLoad).toHaveBeenCalledWith('/recordings/rec_9.m4a');
+      expect(mockPlaybackSeek).toHaveBeenCalledWith(500);
+      expect(result.current.loadedTakeId).toBe('rec_9');
+    });
+
+    it('resolves the loaded take from allTakes when it is not one of mine', async () => {
+      const ownTake = makeTake();
+      const sharedTake = makeTake({
+        id: 'rec_9',
+        localFilePath: '/recordings/rec_9.m4a',
+        isSelected: false,
+      });
+      loadTakes.mockResolvedValue([ownTake]);
+      const loadAllTakes = jest.fn().mockResolvedValue([
+        { ...ownTake, ownerDisplayName: 'Me' },
+        { ...sharedTake, ownerDisplayName: 'John Doe' },
+      ]);
+
+      const { result } = renderHook(() =>
+        useVerseAudio({ ...verseAudioArgs(), loadAllTakes }),
+      );
+      await waitFor(() => expect(result.current.allTakes).toHaveLength(2));
+
+      // Another recorder's take is what is in the player, but it is absent
+      // from my own `takes` list.
+      await act(async () => {
+        await result.current.playTake(sharedTake);
+      });
+      expect(result.current.loadedTakeId).toBe('rec_9');
+      mockPlaybackLoad.mockClear();
+      mockPlaybackSeek.mockClear();
+
+      await act(async () => {
+        await result.current.seek(500);
+      });
+
+      // Without the allTakes lookup this would fall back to the selected
+      // own take (rec_1).
+      expect(mockPlaybackLoad).toHaveBeenCalledWith('/recordings/rec_9.m4a');
+      expect(mockPlaybackSeek).toHaveBeenCalledWith(500);
+    });
+  });
+
   describe('seekStitched', () => {
     it('while playing: load + seek, then resume without play/replace', async () => {
       loadTakes.mockResolvedValue([makeTake()]);

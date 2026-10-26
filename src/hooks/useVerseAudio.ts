@@ -1215,11 +1215,14 @@ export function useVerseAudio({
    * takes are remuxed via {@link getRemuxNativeModule} on commit (#233).
    */
   const seek = useCallback(
-    async (ms: number) => {
+    async (ms: number, target?: Recording) => {
       const take =
+        target ??
         (loadedTakeId !== null
-          ? takes.find(t => t.id === loadedTakeId)
-          : null) ?? selectedTake;
+          ? takes.find(t => t.id === loadedTakeId) ??
+            allTakes.find(t => t.id === loadedTakeId)
+          : null) ??
+        selectedTake;
       if (!take?.localFilePath) return;
       playbackLoadInFlightRef.current = true;
       try {
@@ -1250,7 +1253,7 @@ export function useVerseAudio({
         setPlaybackLoadGate(n => n + 1);
       }
     },
-    [clearStitchQueue, loadedTakeId, playback, selectedTake, takes],
+    [allTakes, clearStitchQueue, loadedTakeId, playback, selectedTake, takes],
   );
 
   /** Pause draft review playback (design review control shows Pause while playing). */

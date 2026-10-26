@@ -812,7 +812,7 @@ describe('RecordTab', () => {
     fireEvent(scrubber, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
-    expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
   });
 
   it('scrubs the selected take before it has ever been played', () => {
@@ -836,7 +836,7 @@ describe('RecordTab', () => {
     fireEvent(scrubber, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
-    expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
   });
 
   it('notifies captureActive during recording and clears after stop', async () => {
@@ -1183,6 +1183,44 @@ describe('RecordTab', () => {
       expect(headers[0]).toHaveTextContent('Maria Santos');
       expect(headers[1]).toHaveTextContent('John Doe');
       expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
+    });
+
+    it('scrubs an unplayed take recorded by someone else (#833)', () => {
+      const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
+      const sharedTake = makeOwnedTake({
+        id: 'rec_9',
+        takeNumber: 2,
+        recordedByUserId: 2,
+        ownerDisplayName: 'John Doe',
+        durationMs: 13000,
+        isSelected: false,
+      });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [ownTake],
+        // My own take is the selected one — scrubbing must never land on it.
+        selectedTake: ownTake,
+        hasMultipleRecorders: true,
+        allTakes: [sharedTake],
+        // Never played: the row has to scrub from a cold player.
+        playingTakeId: null,
+        loadedTakeId: null,
+      });
+
+      renderTab();
+      fireEvent.press(screen.getByTestId('take-view-all'));
+
+      const scrubber = screen.getByLabelText('Draft waveform scrubber');
+      fireEvent(scrubber, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(scrubber, 'responderGrant', {
+        nativeEvent: { locationX: 50 },
+      });
+
+      expect(idleAudio.seek).toHaveBeenCalledWith(6500, sharedTake);
+      expect(idleAudio.seek).not.toHaveBeenCalledWith(6500, ownTake);
     });
   });
 
@@ -1610,6 +1648,40 @@ describe('RecordTab', () => {
       // ...but no canonical control is pressable.
       expect(screen.queryAllByTestId('shared-take-canonical')).toHaveLength(0);
       expect(idleAudio.setCanonical).not.toHaveBeenCalled();
+    });
+
+    it('scrubs an unplayed, unselected take at Complete (#833)', () => {
+      const take = makeTake({
+        id: 'rec_1',
+        durationMs: 13000,
+        isSelected: false,
+      });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [take],
+        // Nothing selected and nothing in the player: select is hidden at
+        // Complete, so there is no "selected take" escape hatch to scrub.
+        selectedTake: null,
+        playingTakeId: null,
+        loadedTakeId: null,
+      });
+
+      renderTab(undefined, { chapterData: completeChapter });
+
+      const scrubber = screen.getByLabelText('Draft waveform scrubber');
+      fireEvent(scrubber, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(scrubber, 'responderGrant', {
+        nativeEvent: { locationX: 50 },
+      });
+
+      // Explicit take target — resolving through selectedTake would be null.
+      expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
+      // Complete-stage controls are unchanged (#684 lock still applies).
+      expect(screen.queryByTestId('record-take-select-rec_1')).toBeNull();
+      expect(screen.queryByTestId('record-delete-button-rec_1')).toBeNull();
     });
   });
 

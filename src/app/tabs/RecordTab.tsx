@@ -1503,6 +1503,7 @@ export function RecordTab({
                           verseAudio.playingTakeId === take.id ||
                           (verseAudio.loadedTakeId === take.id &&
                             verseAudio.playbackStatus === 'paused');
+                        const isSeekable = verseAudio.loadedTakeId === take.id;
                         return (
                           <View key={take.id} style={styles.takeItemSpacing}>
                             <SharedTakeRow
@@ -1529,6 +1530,13 @@ export function RecordTab({
                                   : () => {
                                       void verseAudio.setCanonical(take.id);
                                     }
+                              }
+                              onSeek={
+                                isSeekable
+                                  ? ms => {
+                                      void verseAudio.seek(ms, take);
+                                    }
+                                  : undefined
                               }
                             />
                           </View>
