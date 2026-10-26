@@ -10,8 +10,9 @@ import {
 } from '../utils/formatLastActivity';
 import { deriveProjectSyncState } from '../utils/projectSyncState';
 import {
-  getMyWorkChapterQueryParams,
-  MY_WORK_CHAPTER_WHERE,
+  buildMyWorkChapterFilter,
+  classifyMyWorkListAccess,
+  normalizeMyWorkGrantProjectIds,
 } from '../utils/myWorkChapterFilter';
 import { getBadgeStage, getWorkflowStage } from '../utils/workflowStage';
 import {
@@ -667,13 +668,56 @@ function mapChapterRowCore(
 function mapMyWorkChapterRow(
   row: DBTypes.MyWorkChapterRow,
   currentUserId: number,
-): DBTypes.MyWorkChapter {
+  grantProjectIds: readonly number[],
+  translatorProjectIds: readonly number[],
+): DBTypes.MyWorkChapter | null {
+  const projectUnitId = Number(row.project_unit_id);
+  const projectId = Number(row.project_id);
+  const bibleId = Number(row.bible_id);
+  const bookId = Number(row.book_id);
+  const assignedUserId =
+    row.assigned_user_id == null ? null : Number(row.assigned_user_id);
+  const peerCheckerId =
+    row.peer_checker_id == null ? null : Number(row.peer_checker_id);
+  const bookCode =
+    typeof row.book_code === 'string' ? row.book_code.trim() : '';
+  const safeProjectId = Number.isFinite(projectId) ? projectId : 0;
+  const safeAssignedUserId =
+    assignedUserId != null && Number.isFinite(assignedUserId)
+      ? assignedUserId
+      : null;
+  const safePeerCheckerId =
+    peerCheckerId != null && Number.isFinite(peerCheckerId)
+      ? peerCheckerId
+      : null;
+
+  const listAccess = classifyMyWorkListAccess({
+    userId: currentUserId,
+    assignmentStatus: row.status,
+    assignedUserId: safeAssignedUserId,
+    peerCheckerId: safePeerCheckerId,
+    projectId: safeProjectId,
+    grantProjectIds,
+    translatorProjectIds,
+  });
+  if (listAccess === null) {
+    return null;
+  }
+
   return {
     ...mapChapterRowCore(row, currentUserId),
     assignmentStatus: row.status,
     workflowStage: getBadgeStage(row.status),
     projectName: row.project_name,
     targetLanguageName: row.target_language_name,
+    projectUnitId: Number.isFinite(projectUnitId) ? projectUnitId : 0,
+    projectId: safeProjectId,
+    bibleId: Number.isFinite(bibleId) ? bibleId : 0,
+    bookId: Number.isFinite(bookId) ? bookId : 0,
+    bookCode,
+    assignedUserId: safeAssignedUserId,
+    peerCheckerId: safePeerCheckerId,
+    listAccess,
   };
 }
 
@@ -738,10 +782,29 @@ export async function getMilestoneChapters(
   }
 }
 
+export type GetMyWorkChaptersOptions = {
+  /** Project IDs with a known Project Observer grant for the active user. */
+  grantProjectIds?: readonly number[];
+  /** Project IDs with a known Project Translator grant for open Peer Check. */
+  translatorProjectIds?: readonly number[];
+};
+
 export async function getMyWorkChapters(
   userId: number,
+  options?: GetMyWorkChaptersOptions,
 ): Promise<DBTypes.MyWorkChapter[]> {
   const db = getDatabase();
+  const grantProjectIds = normalizeMyWorkGrantProjectIds(
+    options?.grantProjectIds,
+  );
+  const translatorProjectIds = normalizeMyWorkGrantProjectIds(
+    options?.translatorProjectIds,
+  );
+  const filter = buildMyWorkChapterFilter(
+    userId,
+    grantProjectIds,
+    translatorProjectIds,
+  );
   try {
     const result = await db.execute(
       `SELECT
@@ -753,6 +816,10 @@ export async function getMyWorkChapters(
         ca.submitted_time,
         ca.assigned_user_id,
         ca.peer_checker_id,
+        ca.project_unit_id,
+        ca.bible_id,
+        pu.project_id,
+        b.code AS book_code,
         b.eng_display_name AS book_name,
         p.name AS project_name,
         tl.lang_name AS target_language_name,
@@ -771,14 +838,18 @@ export async function getMyWorkChapters(
       JOIN projects p ON pu.project_id = p.id
       LEFT JOIN languages tl ON p.target_language_id = tl.id
       ${RECORDINGS_JOIN_CA}
-      WHERE ${MY_WORK_CHAPTER_WHERE}
+      WHERE ${filter.whereSql}
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      [userId, ...getMyWorkChapterQueryParams(userId)],
+      [userId, ...filter.params],
     );
 
     const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];
-    const chapters = rows.map(row => mapMyWorkChapterRow(row, userId));
+    const chapters = rows
+      .map(row =>
+        mapMyWorkChapterRow(row, userId, grantProjectIds, translatorProjectIds),
+      )
+      .filter((chapter): chapter is DBTypes.MyWorkChapter => chapter !== null);
 
     log.info('My work chapters fetched', { count: chapters.length });
     return chapters;
@@ -790,20 +861,44 @@ export async function getMyWorkChapters(
   }
 }
 
-/**
- * Same eligibility as `getPendingRecordings` (positive bible_text_id,
- * INNER JOIN bible_texts). Active-user scope stays on these UI queries (#105).
- * Verse and pericope takes are uploadable (#584); stitched display rows are not.
- */
-const UPLOADABLE_PENDING_WHERE = `
-  r.is_selected = 1
-  AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
-  AND r.sync_status NOT IN ('uploaded', 'conflicted')
-  AND r.bible_text_id > 0
-`;
-
+/** SQL predicate + params scoping a row to the active user (#105). */
 function recordedByUserPredicate(alias: string, userId: number | null): string {
   return `${alias}.recorded_by_user_id ${userId === null ? 'IS NULL' : '= ?'}`;
+}
+
+/**
+ * Same eligibility as `getPendingRecordings` (positive bible_text_id,
+ * INNER JOIN bible_texts). Verse and pericope takes are uploadable (#584);
+ * stitched display rows are not.
+ *
+ * Active-user scope stays on these UI queries (#105) for the user's own
+ * drafts. #701: a pending canonical designation must sync under whichever
+ * account is active (upload uses the owner's credentials), so canonical
+ * rows are counted regardless of owner.
+ *
+ * #701 PM rule: the canonical take is what syncs as the server's selected
+ * take. A merely-selected pending take on a verse that has a canonical take
+ * (same bible text + unit) is deferred — excluded here so pending counts
+ * only reflect work the upload worker will actually send.
+ */
+function uploadablePendingWhere(userId: number | null): string {
+  return `
+    (
+      r.is_canonical = 1
+      OR (
+        r.is_selected = 1 AND ${recordedByUserPredicate('r', userId)}
+        AND NOT EXISTS (
+          SELECT 1 FROM recordings c
+          WHERE c.bible_text_id = r.bible_text_id
+            AND c.is_canonical = 1
+            AND c.project_unit_id IS r.project_unit_id
+        )
+      )
+    )
+    AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
+    AND r.sync_status NOT IN ('uploaded', 'conflicted')
+    AND r.bible_text_id > 0
+  `;
 }
 
 /** Selected recordings the upload orchestrator will actually process. */
@@ -815,8 +910,7 @@ export async function getPendingUploadCount(): Promise<number> {
       `SELECT COUNT(*) AS count
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE ${UPLOADABLE_PENDING_WHERE}
-         AND ${recordedByUserPredicate('r', userId)};`,
+       WHERE ${uploadablePendingWhere(userId)};`,
       userId === null ? [] : [userId],
     );
     return Number(result.rows?.[0]?.count) || 0;
@@ -1054,8 +1148,7 @@ export async function getPendingUploadChapters(): Promise<
       `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
        FROM recordings r
        JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE ${UPLOADABLE_PENDING_WHERE}
-         AND ${recordedByUserPredicate('r', userId)}
+       WHERE ${uploadablePendingWhere(userId)}
        ORDER BY bt.book_id, bt.chapter_number`,
       userId === null ? [] : [userId],
     );

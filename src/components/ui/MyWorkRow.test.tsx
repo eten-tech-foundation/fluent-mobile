@@ -1,13 +1,41 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { MyWorkChapter } from '../../types/db/types';
+import { getActiveUserId } from '../../services/storage';
+import { parseUserId } from '../../utils/parseUserId';
+import { hasProjectObserverGrant } from '../../services/userOrgGrants';
 import { MyWorkRow } from './MyWorkRow';
+
+const mockStart = jest.fn();
+const mockUseDraftDownload = jest.fn();
+
+jest.mock('../../hooks/useDraftDownload', () => ({
+  useDraftDownload: (...args: unknown[]) => mockUseDraftDownload(...args),
+}));
+
+jest.mock('../../services/storage', () => ({
+  getActiveUserId: jest.fn(),
+}));
+
+jest.mock('../../utils/parseUserId', () => ({
+  parseUserId: jest.fn(),
+}));
+
+jest.mock('../../services/userOrgGrants', () => ({
+  hasProjectObserverGrant: jest.fn(() => false),
+}));
+
+const mockHasProjectObserverGrant =
+  hasProjectObserverGrant as jest.MockedFunction<
+    typeof hasProjectObserverGrant
+  >;
 
 jest.mock('lucide-react-native', () => {
   const ReactNative = require('react-native');
   const Mock = () => <ReactNative.View />;
   return {
     CloudCheck: Mock,
+    CloudOff: Mock,
     CloudUpload: Mock,
     ChevronRight: Mock,
     Users: Mock,
@@ -34,6 +62,28 @@ jest.mock('./ChapterOwnershipIndicator', () => {
   };
 });
 
+jest.mock('./DraftDownloadChip', () => {
+  const ReactNative = require('react-native');
+  return {
+    DraftDownloadChip: ({
+      onPress,
+      testID,
+    }: {
+      onPress: () => void;
+      testID?: string;
+    }) => (
+      <ReactNative.Pressable testID={testID} onPress={onPress}>
+        <ReactNative.View />
+      </ReactNative.Pressable>
+    ),
+  };
+});
+
+const mockGetActiveUserId = getActiveUserId as jest.MockedFunction<
+  typeof getActiveUserId
+>;
+const mockParseUserId = parseUserId as jest.MockedFunction<typeof parseUserId>;
+
 const baseChapter: MyWorkChapter = {
   id: 1,
   displayLabel: 'Mark 1',
@@ -50,9 +100,84 @@ const baseChapter: MyWorkChapter = {
   lastActivityLabel: 'Yesterday',
   projectName: 'Demo',
   targetLanguageName: 'English',
+  projectUnitId: 11,
+  projectId: 3,
+  bibleId: 5,
+  bookId: 41,
+  bookCode: 'MRK',
+  assignedUserId: 7,
+  peerCheckerId: null,
+  listAccess: 'assigned',
+};
+
+const peerChapter: MyWorkChapter = {
+  ...baseChapter,
+  id: 2,
+  displayLabel: 'Mark 2',
+  chapterNumber: 2,
+  assignmentStatus: 'peer_check',
+  workflowStage: 'peer_check',
+  assignedUserId: 9,
+  peerCheckerId: 7,
+};
+
+const observerChapter: MyWorkChapter = {
+  ...baseChapter,
+  id: 3,
+  displayLabel: 'Mark 3',
+  chapterNumber: 3,
+  assignmentStatus: 'community_review',
+  workflowStage: 'community_review',
+  assignedUserId: null,
+  peerCheckerId: null,
+  listAccess: 'observer',
+};
+
+const peerRequest = {
+  chapterAssignmentId: 2,
+  projectUnitId: 11,
+  projectId: 3,
+  userId: 7,
+  bibleId: 5,
+  bookId: 41,
+  bookCode: 'MRK',
+  chapterNumber: 2,
+  role: 'peer_check' as const,
+};
+
+const observerRequest = {
+  chapterAssignmentId: 3,
+  projectUnitId: 11,
+  projectId: 3,
+  userId: 7,
+  bibleId: 5,
+  bookId: 41,
+  bookCode: 'MRK',
+  chapterNumber: 3,
+  role: 'observer' as const,
 };
 
 describe('MyWorkRow', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetActiveUserId.mockReturnValue('7');
+    mockParseUserId.mockReturnValue(7);
+    mockHasProjectObserverGrant.mockReturnValue(false);
+    mockStart.mockResolvedValue({ ok: true });
+    mockUseDraftDownload.mockReturnValue({
+      state: {
+        chapterAssignmentId: 0,
+        role: 'peer_check',
+        status: 'idle',
+        phase: 'idle',
+        progress: 0,
+        readyAtMs: null,
+      },
+      start: mockStart,
+      refresh: jest.fn(),
+    });
+  });
+
   it('renders the conflict indicator beside cloud sync when hasConflict', () => {
     const onPress = jest.fn();
     const { getByTestId, getByText } = render(
@@ -110,5 +235,121 @@ describe('MyWorkRow', () => {
     expect(getByText('Mark 1')).toBeTruthy();
     expect(getByText('Yesterday')).toBeTruthy();
     expect(queryByText('Draft')).toBeNull();
+  });
+
+  it('keeps a stable chip column and omits the chip when ineligible', () => {
+    const { getByTestId, queryByTestId } = render(
+      <MyWorkRow chapter={baseChapter} onPress={jest.fn()} />,
+    );
+
+    expect(getByTestId('my-work-row-chip-column-1')).toBeTruthy();
+    expect(queryByTestId('my-work-draft-download-1')).toBeNull();
+    expect(mockUseDraftDownload).toHaveBeenCalledWith(null);
+  });
+
+  it('wires the download chip for assigned peer_check without auto-start or row navigation', () => {
+    const onPress = jest.fn();
+    const { getByTestId } = render(
+      <MyWorkRow chapter={peerChapter} onPress={onPress} />,
+    );
+
+    expect(mockUseDraftDownload).toHaveBeenCalledWith(peerRequest);
+    expect(mockStart).not.toHaveBeenCalled();
+
+    fireEvent.press(getByTestId('my-work-draft-download-2'));
+    expect(mockStart).toHaveBeenCalledTimes(1);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it('nulls the download hook after account switch leaves a stale peer row', () => {
+    const { rerender, queryByTestId } = render(
+      <MyWorkRow chapter={peerChapter} onPress={jest.fn()} />,
+    );
+
+    expect(mockUseDraftDownload).toHaveBeenLastCalledWith(peerRequest);
+    expect(queryByTestId('my-work-draft-download-2')).toBeTruthy();
+
+    mockGetActiveUserId.mockReturnValue('8');
+    mockParseUserId.mockReturnValue(8);
+    rerender(<MyWorkRow chapter={peerChapter} onPress={jest.fn()} />);
+
+    expect(mockUseDraftDownload).toHaveBeenLastCalledWith(null);
+    expect(queryByTestId('my-work-draft-download-2')).toBeNull();
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('nulls the download hook when synced id drifts from active account', () => {
+    mockGetActiveUserId.mockReturnValue('8');
+    mockParseUserId.mockReturnValue(7);
+
+    const { queryByTestId } = render(
+      <MyWorkRow chapter={peerChapter} onPress={jest.fn()} />,
+    );
+
+    expect(mockUseDraftDownload).toHaveBeenCalledWith(null);
+    expect(queryByTestId('my-work-draft-download-2')).toBeNull();
+  });
+
+  it('nulls the download hook when peer is assigned to another user', () => {
+    const { queryByTestId } = render(
+      <MyWorkRow
+        chapter={{
+          ...peerChapter,
+          peerCheckerId: 9,
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(mockUseDraftDownload).toHaveBeenCalledWith(null);
+    expect(queryByTestId('my-work-draft-download-2')).toBeNull();
+  });
+
+  it('nulls download hook on review stage without observer grant', () => {
+    (hasProjectObserverGrant as jest.Mock).mockReturnValue(false);
+    const { rerender, queryByTestId } = render(
+      <MyWorkRow chapter={peerChapter} onPress={jest.fn()} />,
+    );
+    expect(mockUseDraftDownload).toHaveBeenLastCalledWith(peerRequest);
+
+    rerender(
+      <MyWorkRow
+        chapter={{
+          ...peerChapter,
+          assignmentStatus: 'community_review',
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(mockUseDraftDownload).toHaveBeenLastCalledWith(null);
+    expect(queryByTestId('my-work-draft-download-2')).toBeNull();
+  });
+
+  it('does not start Observer download when grant is revoked before tap without rerender', () => {
+    mockHasProjectObserverGrant.mockReturnValue(true);
+    const { getByTestId } = render(
+      <MyWorkRow chapter={observerChapter} onPress={jest.fn()} />,
+    );
+
+    expect(mockUseDraftDownload).toHaveBeenCalledWith(observerRequest);
+    mockHasProjectObserverGrant.mockReturnValue(false);
+
+    fireEvent.press(getByTestId('my-work-draft-download-3'));
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('does not start download when account switches before tap without rerender', () => {
+    mockHasProjectObserverGrant.mockReturnValue(true);
+    const { getByTestId } = render(
+      <MyWorkRow chapter={observerChapter} onPress={jest.fn()} />,
+    );
+
+    expect(mockUseDraftDownload).toHaveBeenCalledWith(observerRequest);
+    mockGetActiveUserId.mockReturnValue('8');
+    mockParseUserId.mockReturnValue(8);
+
+    fireEvent.press(getByTestId('my-work-draft-download-3'));
+    expect(mockStart).not.toHaveBeenCalled();
   });
 });

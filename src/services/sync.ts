@@ -33,7 +33,7 @@ import {
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
-import { isApiError, isRetryableApiError } from '../types/api/errors';
+import { ApiError, isApiError, isRetryableApiError } from '../types/api/errors';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
 import type { ChapterAssignment, Project } from '../types/db/types';
 import { getConnectivitySnapshot } from './connectivity';
@@ -43,6 +43,10 @@ import {
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
 import { syncPendingStageAdvances } from './stageAdvanceSync';
+import {
+  persistOrgGrantsFromUserResponse,
+  refreshUserOrgGrants,
+} from './userOrgGrants';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import {
   flattenApiPericopeSetGroups,
@@ -158,6 +162,33 @@ function mapBibleTextRow(
   };
 }
 
+function bibleChapterKey(bookId: number, chapterNumber: number): string {
+  return `${bookId}:${chapterNumber}`;
+}
+
+function formatMissingBibleTextChapter(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  reason: string,
+): string {
+  return `bible ${bibleId} book ${bookId} ch ${chapterNumber} (${reason})`;
+}
+
+/** Full-fetch missing-resource 404 — isolate and continue; do not retry. */
+function isMissingBibleTextResource404(error: unknown): boolean {
+  return isApiError(error) && error.status === 404;
+}
+
+/** Errors that must still abort the chunk so retrySyncStep / auth handling apply. */
+function shouldRethrowBibleTextFetchError(error: unknown): boolean {
+  return (
+    isAuthError(error) ||
+    isRetryableApiError(error) ||
+    isTransientTransportFailure(error)
+  );
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -199,6 +230,17 @@ async function retrySyncStep<T>(
         if (userId) {
           await handleSyncAuthFailure(userId);
         }
+        throw error;
+      }
+
+      // Client 4xx (e.g. accumulated missing bible-text chapters as 404) — do not
+      // burn retries re-fetching chunks that already succeeded.
+      if (isApiError(error) && error.isTerminal) {
+        log.error(`${stepName} failed: terminal error`, {
+          error: errorMessage,
+          status: error.status,
+        });
+        setSyncError(errorKey, errorMessage);
         throw error;
       }
 
@@ -251,6 +293,7 @@ export async function syncUser(email?: string, preloadedUser?: ApiUser) {
       } else {
         registerKnownUser(userIdStr, userEmail);
       }
+      persistOrgGrantsFromUserResponse(userIdStr, user);
 
       const existingCreds = await getCredentials(userIdStr);
       if (existingCreds?.token) {
@@ -860,6 +903,11 @@ export type SyncBibleTextsOptions = {
    * texts already ran). Still counts as unscoped for server-id remap clear.
    */
   excludeChapterGroups?: BibleChapterGroup;
+  /**
+   * Known/eligible account ids whose `user_projects` membership scopes the
+   * full-catalogue chapter selection when `chapterGroups` is omitted.
+   */
+  eligibleUserIds?: number[];
 };
 
 export async function syncBibleTexts(
@@ -883,7 +931,35 @@ export async function syncBibleTexts(
         cursorForSync = undefined;
       }
 
-      const bibleGroups = options?.chapterGroups ?? (await getChaptersToSync());
+      // Bare UI callers (e.g. DraftingScreen ensure) omit eligibleUserIds — scope
+      // to the active account only. Multi-account syncAllUsers must pass the
+      // known-user union explicitly; do not fall back to snapshotKnownUserIds().
+      // getActiveUserId() returns '' when unset — reject before Number('') → 0.
+      const activeRaw = getActiveUserId();
+      const activeUserId = Number(activeRaw);
+      const defaultEligibleUserIds =
+        activeRaw !== '' && Number.isFinite(activeUserId) ? [activeUserId] : [];
+      // Remap clear is global after a successful getChaptersToSync pass — cover
+      // every known account's chapters (same union idea as syncAllUsers), not
+      // just eligibleUserIds / active-only. Scoped chapterGroups passes keep
+      // remap pending and do not use this path.
+      let catalogueEligibleUserIds =
+        options?.eligibleUserIds ?? defaultEligibleUserIds;
+      if (remapPending && !options?.chapterGroups) {
+        const knownUserIds = getKnownUserIds() ?? [];
+        const idsForRemap =
+          knownUserIds.length > 0
+            ? knownUserIds
+            : activeRaw !== ''
+            ? [activeRaw]
+            : [];
+        catalogueEligibleUserIds = idsForRemap
+          .map(id => Number(id))
+          .filter(id => Number.isFinite(id));
+      }
+      const bibleGroups =
+        options?.chapterGroups ??
+        (await getChaptersToSync(catalogueEligibleUserIds));
       // Tier 2 (#670): skip My Work chapters already fetched in Tier 1 without
       // switching to a scoped pass (scoped passes must not clear remap).
       if (!options?.chapterGroups && options?.excludeChapterGroups) {
@@ -928,6 +1004,7 @@ export async function syncBibleTexts(
       });
 
       let totalTextsInserted = 0;
+      const missingChapterFailures: string[] = [];
       const db = getDatabase();
 
       for (const [bibleId, chapters] of bibleGroups) {
@@ -970,6 +1047,8 @@ export async function syncBibleTexts(
             }
           }
 
+          const isFullFetch = !cursor;
+
           log.info('Fetching chunk', {
             bibleId,
             chunkIndex,
@@ -977,19 +1056,85 @@ export async function syncBibleTexts(
             incremental: Boolean(cursor),
           });
 
-          const response = await FluentAPI.getBibleTexts(
-            bibleId,
-            chunk,
-            cursor,
-          );
-
-          const books: ApiBook[] = response.data;
+          let books: ApiBook[];
+          try {
+            const response = await FluentAPI.getBibleTexts(
+              bibleId,
+              chunk,
+              cursor,
+            );
+            books = response.data;
+          } catch (error) {
+            if (shouldRethrowBibleTextFetchError(error)) {
+              throw error;
+            }
+            if (isFullFetch && isMissingBibleTextResource404(error)) {
+              for (const chapter of chunk) {
+                missingChapterFailures.push(
+                  formatMissingBibleTextChapter(
+                    bibleId,
+                    chapter.bookId,
+                    chapter.chapterNumber,
+                    '404',
+                  ),
+                );
+              }
+              log.warn(
+                'Full bible text fetch returned 404; recording missing chapters',
+                {
+                  bibleId,
+                  chunkIndex,
+                  chapterCount: chunk.length,
+                },
+              );
+              continue;
+            }
+            throw error;
+          }
 
           if (!Array.isArray(books)) {
             throw new Error(`Invalid bible text response for bible ${bibleId}`);
           }
 
-          const textsWithBibleId = books.map((book: ApiBook) => ({
+          if (isFullFetch) {
+            const returnedByKey = new Map<string, ApiBook>();
+            for (const book of books) {
+              returnedByKey.set(
+                bibleChapterKey(book.bookId, book.chapterNumber),
+                book,
+              );
+            }
+            for (const chapter of chunk) {
+              const returned = returnedByKey.get(
+                bibleChapterKey(chapter.bookId, chapter.chapterNumber),
+              );
+              const hasVerses =
+                returned !== undefined &&
+                Array.isArray(returned.verses) &&
+                returned.verses.length > 0;
+              if (!hasVerses) {
+                missingChapterFailures.push(
+                  formatMissingBibleTextChapter(
+                    bibleId,
+                    chapter.bookId,
+                    chapter.chapterNumber,
+                    returned === undefined
+                      ? 'absent from full-fetch response'
+                      : 'empty verses',
+                  ),
+                );
+              }
+            }
+          }
+
+          // Skip chapters with no verses before insert (full-fetch also records
+          // them as missing above).
+          const booksToInsert = books.filter(
+            (book: ApiBook) =>
+              Array.isArray(book.verses) && book.verses.length > 0,
+          );
+
+          const textsWithBibleId = booksToInsert.map((book: ApiBook) => ({
             bibleId,
             bookId: book.bookId,
             chapterNumber: book.chapterNumber,
@@ -1019,6 +1164,18 @@ export async function syncBibleTexts(
       );
       const uniqueBiblesCount = result.rows?.[0]?.count || 0;
       setSyncCount(KV_KEYS.SYNC_COUNT_BIBLES, Number(uniqueBiblesCount));
+
+      if (missingChapterFailures.length > 0) {
+        log.warn('Bible texts sync finished with missing chapters', {
+          textsInserted: totalTextsInserted,
+          uniqueBiblesInDb: uniqueBiblesCount,
+          missingChapterCount: missingChapterFailures.length,
+        });
+        throw new ApiError(
+          404,
+          `Missing bible text chapter(s): ${missingChapterFailures.join('; ')}`,
+        );
+      }
 
       log.info('Bible texts sync completed', {
         textsInserted: totalTextsInserted,
@@ -1183,7 +1340,7 @@ type FullSyncEntry = {
 let latestFullSync: FullSyncEntry | null = null;
 
 function snapshotKnownUserIds(): Set<string> {
-  const known = getKnownUserIds();
+  const known = getKnownUserIds() ?? [];
   if (known.length > 0) return new Set(known);
   const activeUserId = getActiveUserId();
   return new Set(activeUserId ? [activeUserId] : []);
@@ -1372,6 +1529,7 @@ export async function syncAllUsers(): Promise<void> {
             : undefined;
 
           try {
+            await refreshUserOrgGrants(userId, token);
             await syncProjects(userIdNum, token);
             await syncMilestones(userIdNum, token);
             const { didFullSync, partialSkipWarning } =
@@ -1421,7 +1579,10 @@ export async function syncAllUsers(): Promise<void> {
             (deviceHasLocalProjects ? deviceLastSyncedAt : undefined);
 
         await syncPericopes();
-        await syncBibleTexts(bibleTextUpdatedAfter);
+        const eligibleUserIds = userIdsToSync
+          .map(id => Number(id))
+          .filter(id => Number.isFinite(id));
+        await syncBibleTexts(bibleTextUpdatedAfter, { eligibleUserIds });
 
         const userSyncCompletedAt = new Date().toISOString();
         for (const userId of usersPendingCursorUpdate) {
@@ -1490,6 +1651,7 @@ export async function syncAllData(
       try {
         let userId: number;
         let sessionToken: string | undefined;
+        let grantsRefreshPromise: Promise<void> | undefined;
         if (isIncremental) {
           const existingUserIdStr = getUserIdSync();
           if (!existingUserIdStr) throw new Error('No user ID found');
@@ -1501,6 +1663,12 @@ export async function syncAllData(
             throw new AuthError('No session token. Please sign in again.');
           }
           sessionToken = creds.token;
+          // Warm Sync Now: do not await grants before claims∥master (#771).
+          // Kick off refresh here; awaited alongside claims below.
+          grantsRefreshPromise = refreshUserOrgGrants(
+            existingUserIdStr,
+            sessionToken,
+          );
         } else {
           const user = await syncUser(email, preloadedUser);
           userId = user.id;
@@ -1527,8 +1695,14 @@ export async function syncAllData(
 
         if (isIncremental) {
           // Warm Sync Now: claims overlap master fetch; projects wait for both.
+          // Org-grant refresh runs with claims so getUserByEmail does not
+          // serialize ahead of the #771 overlap.
           masterPromise = syncMasterData(sessionToken);
-          await syncPendingChapterClaimsForUser(userId);
+          // grantsRefreshPromise is always assigned in the isIncremental branch above.
+          await Promise.all([
+            syncPendingChapterClaimsForUser(userId),
+            grantsRefreshPromise!,
+          ]);
           await masterPromise;
           await syncPericopeSets(sessionToken);
           await syncProjects(userId, sessionToken);
@@ -1544,7 +1718,9 @@ export async function syncAllData(
           assignmentPartialSkipWarning = partialSkipWarning;
           bibleTextUpdatedAfter = didFullSync ? undefined : assignmentCursor;
           await syncPericopes();
-          await syncBibleTexts(bibleTextUpdatedAfter);
+          await syncBibleTexts(bibleTextUpdatedAfter, {
+            eligibleUserIds: [userId],
+          });
           notifyTier1Complete();
         } else if (localProjectIdsBefore.length === 0) {
           // Login Tier 1 (#679): seed only FK parents My Work needs — do not
@@ -1593,6 +1769,7 @@ export async function syncAllData(
           // server-id remap can still clear after remaining + recording-linked.
           await syncBibleTexts(undefined, {
             excludeChapterGroups: myWorkChapterGroups,
+            eligibleUserIds: [userId],
           });
         } else {
           // Re-login (#670/#679): My Work + scoped seeds first; full catalogue
@@ -1663,6 +1840,7 @@ export async function syncAllData(
             : userAssignmentCursor;
           await syncBibleTexts(bibleTextUpdatedAfter, {
             excludeChapterGroups: myWorkChapterGroups,
+            eligibleUserIds: [userId],
           });
         }
 
@@ -1791,6 +1969,7 @@ export async function refreshChapterMetadataIfOnline(
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
       await maybeBackfillMasterDataOnRefresh(sessionToken);
+      await refreshUserOrgGrants(userIdStr, sessionToken);
       await syncProjects(userId, sessionToken);
       await syncMilestones(userId, sessionToken);
 
@@ -1819,6 +1998,9 @@ export async function refreshChapterMetadataIfOnline(
       });
     } finally {
       inFlightMetadataRefresh.delete(userId);
+      // Home useSyncStatus resamples metadata sync_error_* on this event;
+      // refresh clears (or sets) those keys without bumping refreshKey.
+      emitSyncComplete();
     }
   })();
 

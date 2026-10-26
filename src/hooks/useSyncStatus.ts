@@ -1,7 +1,11 @@
+import { useEffect, useState } from 'react';
 import { usePreferences } from './usePreferences';
 import { useConnectivity } from './useConnectivity';
 import { useLocalSyncHealth } from './useLocalSyncHealth';
 import { usePendingUploads } from './usePendingUploads';
+import { useReauthRequired } from './useReauthRequired';
+import { onSyncComplete } from '../services/syncEvents';
+import { hasPersistedMetadataSyncErrors } from '../utils/metadataSyncErrors';
 import { deriveSyncStatus } from '../utils/syncStatusState';
 import { isEffectivelyOnlineForTransfer } from '../utils/transportPolicy';
 
@@ -34,6 +38,24 @@ export function useSyncStatus({
     uploadProgress,
   } = usePendingUploads(refreshKey);
   const { needsDownloadSync } = useLocalSyncHealth(refreshKey);
+  const { reauthRequired } = useReauthRequired();
+  // Effect below is the single reader for persisted metadata errors (mount +
+  // refreshKey). Avoid lazy useState init so we do not double-read on mount.
+  const [hasMetadataSyncError, setHasMetadataSyncError] = useState(false);
+
+  useEffect(() => {
+    setHasMetadataSyncError(hasPersistedMetadataSyncErrors());
+  }, [refreshKey]);
+
+  useEffect(() => {
+    return onSyncComplete(() => {
+      setHasMetadataSyncError(hasPersistedMetadataSyncErrors());
+    });
+  }, []);
+
+  // Metadata sync_error_* / active-user reauth only — do not fold into
+  // needsDownloadSync (Home auto-repair stays assignee-repair-only).
+  const hasSyncRetryWork = hasMetadataSyncError || reauthRequired;
 
   const effectivelyOnline =
     hasResolved &&
@@ -54,6 +76,7 @@ export function useSyncStatus({
       isUploading,
       hasFailedUploads,
       needsDownloadSync,
+      hasSyncRetryWork,
     }),
     isOnline: effectivelyOnline,
     pendingCount,
@@ -64,5 +87,6 @@ export function useSyncStatus({
     isUploading,
     uploadProgress,
     needsDownloadSync,
+    hasSyncRetryWork,
   };
 }

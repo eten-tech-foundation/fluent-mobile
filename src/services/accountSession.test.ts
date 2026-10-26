@@ -40,6 +40,12 @@ jest.mock('./storage', () => ({
   switchActiveUser: (...args: unknown[]) => mockSwitchActiveUser(...args),
 }));
 
+const mockClearUserOrgGrantSnapshot = jest.fn();
+jest.mock('./userOrgGrants', () => ({
+  clearUserOrgGrantSnapshot: (...args: unknown[]) =>
+    mockClearUserOrgGrantSnapshot(...args),
+}));
+
 jest.mock('../utils/logger', () => ({
   logger: { create: () => ({ info: jest.fn(), error: jest.fn() }) },
 }));
@@ -86,6 +92,7 @@ describe('accountSession', () => {
 
       expect(mockClearCredentials).toHaveBeenCalledWith('active-1');
       expect(mockResolveReauthForUser).toHaveBeenCalledWith('active-1');
+      expect(mockClearUserOrgGrantSnapshot).toHaveBeenCalledWith('active-1');
       expect(mockSetItemSync).toHaveBeenCalledWith(
         'known_user_ids',
         'bad-2,good-3',
@@ -115,6 +122,7 @@ describe('accountSession', () => {
 
       expect(mockClearCredentials).toHaveBeenCalledWith('active-1');
       expect(mockResolveReauthForUser).toHaveBeenCalledWith('active-1');
+      expect(mockClearUserOrgGrantSnapshot).toHaveBeenCalledWith('active-1');
       expect(mockSignOut).toHaveBeenCalled();
     });
   });

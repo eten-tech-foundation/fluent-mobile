@@ -22,6 +22,8 @@ type Row = {
   queue_order: number;
   created_at: string;
   updated_at: string;
+  resource_id?: string | null;
+  serialized_content?: string | null;
 };
 
 let rows: Row[] = [];
@@ -66,6 +68,8 @@ async function mockExecute(
       queueOrder,
       createdAt,
       updatedAt,
+      serializedContent,
+      resourceId,
     ] = params as [
       string,
       number,
@@ -80,14 +84,20 @@ async function mockExecute(
       number,
       string,
       string,
+      string | null,
+      string,
     ];
     const existing = rows.find(r => r.id === id);
     if (existing) {
-      // Mirrors ON CONFLICT(id) DO UPDATE … WHERE source_url IS NOT excluded
-      // AND status != 'downloading' (#446).
+      // Mirrors ON CONFLICT(id) DO UPDATE … WHERE (source_url IS NOT excluded
+      // OR serialized_content IS NOT excluded) AND status != 'downloading'
+      // (#446 + draft-text null-URL refresh).
+      const sourceUnchanged = existing.source_url === sourceUrl;
+      const contentUnchanged =
+        (existing.serialized_content ?? null) === (serializedContent ?? null);
       if (
-        existing.source_url === sourceUrl ||
-        existing.status === 'downloading'
+        existing.status === 'downloading' ||
+        (sourceUnchanged && contentUnchanged)
       ) {
         return { rows: [], rowsAffected: 0 };
       }
@@ -98,6 +108,8 @@ async function mockExecute(
       existing.progress = 0;
       existing.local_file_path = null;
       existing.resume_data = null;
+      existing.serialized_content = serializedContent;
+      existing.resource_id = resourceId;
       existing.updated_at = updatedAt;
       return { rows: [], rowsAffected: 1 };
     }
@@ -119,6 +131,8 @@ async function mockExecute(
       queue_order: queueOrder,
       created_at: createdAt,
       updated_at: updatedAt,
+      serialized_content: serializedContent,
+      resource_id: resourceId,
     });
     return { rows: [], rowsAffected: 1 };
   }
@@ -261,6 +275,51 @@ async function mockExecute(
     return { rows: [], rowsAffected };
   }
 
+  if (
+    normalized.startsWith("UPDATE download_queue SET status = 'queued'") &&
+    normalized.includes("status IN ('failed', 'cancelled', 'paused')")
+  ) {
+    const [updatedAt, ...ids] = params as [string, ...string[]];
+    const idSet = new Set(ids);
+    let rowsAffected = 0;
+    rows = rows.map(r => {
+      if (
+        idSet.has(r.id) &&
+        (r.status === 'failed' ||
+          r.status === 'cancelled' ||
+          r.status === 'paused')
+      ) {
+        rowsAffected += 1;
+        return { ...r, status: 'queued', updated_at: updatedAt };
+      }
+      return r;
+    });
+    return { rows: [], rowsAffected };
+  }
+
+  if (
+    normalized.includes('COALESCE(resource_id, id) LIKE ?') &&
+    normalized.startsWith('SELECT * FROM download_queue')
+  ) {
+    const [projectId, userId, likePattern] = params as [number, number, string];
+    const prefix = likePattern.endsWith('%')
+      ? likePattern.slice(0, -1)
+      : likePattern;
+    return {
+      rows: rows
+        .filter(r => {
+          const resourceId = r.resource_id ?? r.id;
+          return (
+            r.project_id === projectId &&
+            r.user_id === userId &&
+            resourceId.startsWith(prefix)
+          );
+        })
+        .sort((a, b) => a.queue_order - b.queue_order)
+        .map(clone),
+    };
+  }
+
   if (normalized.startsWith('DELETE FROM download_queue WHERE id = ?')) {
     const id = params[0] as string;
     const before = rows.length;
@@ -390,6 +449,7 @@ import {
   enqueueDownloadItems,
   getDownloadedResourcesInventory,
   getDownloadedResourcesByProject,
+  getDownloadQueueItemsByResourcePrefix,
   getDownloadQueueSnapshot,
   getResumableDownloadItems,
   markDownloadItemCompleted,
@@ -397,6 +457,7 @@ import {
   cancelProjectDownloadTransfers,
   markDownloadItemFailed,
   markDownloadItemPaused,
+  requeueDownloadItems,
   updateDownloadItemProgress,
   markDownloadItemDownloading,
 } from './downloadQueueRepository';
@@ -460,6 +521,103 @@ describe('downloadQueueRepository', () => {
     expect(row.progress).toBe(0);
     expect(row.source_url).toBe('https://cdn.example/a_v2.mp3');
     expect(row.local_file_path).toBeNull();
+  });
+
+  it('re-queues a completed null-URL row when serialized_content changes (draft-text)', async () => {
+    const resourceId = 'draft-text-9';
+    const [id] = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'v1' }]),
+      },
+    ]);
+    await markDownloadItemCompleted(id, 'file:///local/draft-text.json');
+
+    const samePayload = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'v1' }]),
+      },
+    ]);
+    expect(samePayload).toEqual([]);
+    expect(__getDownloadQueueRows()[0].status).toBe('completed');
+    expect(__getDownloadQueueRows()[0].serialized_content).toBe(
+      JSON.stringify([{ id: 1, content: 'v1' }]),
+    );
+
+    const changed = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'v2' }]),
+      },
+    ]);
+    expect(changed).toEqual([`1-${TEST_USER_ID}-${resourceId}`]);
+    const row = __getDownloadQueueRows()[0];
+    expect(row.status).toBe('queued');
+    expect(row.progress).toBe(0);
+    expect(row.source_url).toBeNull();
+    expect(row.local_file_path).toBeNull();
+    expect(row.serialized_content).toBe(
+      JSON.stringify([{ id: 1, content: 'v2' }]),
+    );
+  });
+
+  it('refreshes serialized_content on a failed null-URL row without waiting for delete', async () => {
+    const resourceId = 'draft-text-9';
+    const [id] = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'stale' }]),
+      },
+    ]);
+    await markDownloadItemFailed(id);
+
+    const refreshed = await enqueueDownloadItems([
+      {
+        id: resourceId,
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft chapter',
+        label: 'Draft text',
+        fileExt: 'json',
+        serializedContent: JSON.stringify([{ id: 1, content: 'fresh' }]),
+      },
+    ]);
+    expect(refreshed).toEqual([`1-${TEST_USER_ID}-${resourceId}`]);
+    expect(__getDownloadQueueRows()[0].status).toBe('queued');
+    expect(__getDownloadQueueRows()[0].serialized_content).toBe(
+      JSON.stringify([{ id: 1, content: 'fresh' }]),
+    );
   });
 
   it('enqueues items in tier order regardless of input array order', async () => {
@@ -1131,5 +1289,69 @@ describe('downloadQueueRepository', () => {
     const row = __getDownloadQueueRows().find(r => r.id === id);
     expect(row?.status).toBe('completed');
     expect(row?.progress).toBe(1);
+  });
+
+  it('lists rows by resource_id prefix for draft chapter downloads', async () => {
+    await enqueueDownloadItems([
+      {
+        id: 'draft-audio-9-3401',
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Draft Chapter',
+        label: 'Draft audio',
+      },
+      {
+        id: 'draft-text-9',
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'text',
+        resourceName: 'Draft Chapter',
+        label: 'Draft text',
+      },
+      {
+        id: 'source-bible-audio-MRK-1',
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Source Bible Audio',
+        label: 'Audio',
+      },
+    ]);
+
+    const draftRows = await getDownloadQueueItemsByResourcePrefix(
+      1,
+      TEST_USER_ID,
+      'draft-',
+    );
+    expect(draftRows.map(r => r.resourceId).sort()).toEqual([
+      'draft-audio-9-3401',
+      'draft-text-9',
+    ]);
+  });
+
+  it('requeues failed items without clearing resume_data', async () => {
+    const [id] = await enqueueDownloadItems([
+      {
+        id: 'draft-audio-9-3401',
+        projectId: 1,
+        userId: TEST_USER_ID,
+        tier: 1,
+        kind: 'audio',
+        resourceName: 'Draft Chapter',
+        label: 'Draft audio',
+      },
+    ]);
+    await markDownloadItemDownloading(id);
+    await markDownloadItemPaused(id, '{"resumeData":"partial"}');
+    await markDownloadItemFailed(id);
+
+    await requeueDownloadItems([id]);
+    const row = __getDownloadQueueRows().find(r => r.id === id);
+    expect(row?.status).toBe('queued');
+    expect(row?.resume_data).toBe('{"resumeData":"partial"}');
   });
 });

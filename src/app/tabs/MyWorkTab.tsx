@@ -15,8 +15,16 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { MyWorkRow } from '../../components/ui/MyWorkRow';
 import { PhaseStatusIcon } from '../../components/ui/PhaseStatusIcon';
+import { isUserProjectMember } from '../../db/repository';
 import { hrefs } from '../../navigation/hrefs';
+import { getObserverDraftDestination } from '../../navigation/observerDraft';
+import { getActiveUserId } from '../../services/storage';
+import { getObserverProjectIds } from '../../services/userOrgGrants';
+import { MyWorkChapter } from '../../types/db/types';
 import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { classifyMyWorkListAccess } from '../../utils/myWorkChapterFilter';
+import { getTranslatorProjectIds } from '../../utils/myWorkDraftDownload';
+import { parseUserId } from '../../utils/parseUserId';
 import {
   groupMyWorkChaptersByStage,
   MyWorkAccordionStage,
@@ -50,6 +58,7 @@ export function MyWorkTab({
     useState<MyWorkExpandedStagesState>(EMPTY_EXPANDED_STATE);
   const expandedStateRef = useRef(expandedState);
   expandedStateRef.current = expandedState;
+  const pressGenerationRef = useRef(0);
 
   const groups = groupMyWorkChaptersByStage(chapters);
   const groupStagesKey = groups.map(group => group.stage).join('|');
@@ -62,6 +71,126 @@ export function MyWorkTab({
       reconcileExpandedMyWorkStages(groupStages, expandedStateRef.current),
     );
   }, [groupStagesKey]);
+
+  const openChapter = async (chapter: MyWorkChapter) => {
+    const pressGeneration = ++pressGenerationRef.current;
+
+    // Reclassify from live account + grants — stale listAccess must not route.
+    const activeRaw = getActiveUserId();
+    const syncedUserId = parseUserId();
+    if (
+      !activeRaw ||
+      syncedUserId === null ||
+      activeRaw !== String(syncedUserId)
+    ) {
+      return;
+    }
+    const grantProjectIds = getObserverProjectIds(String(syncedUserId));
+    const translatorProjectIds = getTranslatorProjectIds(String(syncedUserId));
+    const access = classifyMyWorkListAccess({
+      userId: syncedUserId,
+      assignmentStatus: chapter.assignmentStatus,
+      assignedUserId: chapter.assignedUserId,
+      peerCheckerId: chapter.peerCheckerId,
+      projectId: chapter.projectId,
+      grantProjectIds,
+      translatorProjectIds,
+    });
+    if (access === null) {
+      return;
+    }
+
+    if (access === 'observer') {
+      // Grant snapshot alone is not enough after list SQL — re-check
+      // user_projects membership with the same generation/account guards.
+      const stillMember = await isUserProjectMember(
+        syncedUserId,
+        chapter.projectId,
+      );
+      if (pressGenerationRef.current !== pressGeneration) {
+        return;
+      }
+      const midRaw = getActiveUserId();
+      const midSynced = parseUserId();
+      if (
+        !stillMember ||
+        !midRaw ||
+        midSynced === null ||
+        midRaw !== String(midSynced) ||
+        midSynced !== syncedUserId ||
+        !getObserverProjectIds(String(midSynced)).includes(chapter.projectId)
+      ) {
+        return;
+      }
+
+      // Guarded helper revalidates account/grant pre- and post-await.
+      // Null must not fall back to mutable verse-detail.
+      const destination = await getObserverDraftDestination({
+        chapterAssignmentId: chapter.id,
+        projectId: chapter.projectId,
+      });
+      if (pressGenerationRef.current !== pressGeneration) {
+        return;
+      }
+      if (destination === null) {
+        return;
+      }
+      const afterRaw = getActiveUserId();
+      const afterSynced = parseUserId();
+      if (
+        !afterRaw ||
+        afterSynced === null ||
+        afterRaw !== String(afterSynced) ||
+        afterSynced !== syncedUserId ||
+        !getObserverProjectIds(String(afterSynced)).includes(chapter.projectId)
+      ) {
+        return;
+      }
+      const memberAfter = await isUserProjectMember(
+        afterSynced,
+        chapter.projectId,
+      );
+      if (pressGenerationRef.current !== pressGeneration) {
+        return;
+      }
+      const finalRaw = getActiveUserId();
+      const finalSynced = parseUserId();
+      if (
+        !memberAfter ||
+        !finalRaw ||
+        finalSynced === null ||
+        finalRaw !== String(finalSynced) ||
+        finalSynced !== syncedUserId ||
+        !getObserverProjectIds(String(finalSynced)).includes(chapter.projectId)
+      ) {
+        return;
+      }
+      router.push(destination);
+      return;
+    }
+
+    // Assigned + open_peer: existing verse-detail peer route (PR #538 /
+    // fb634e598e2f83ebef07e89c8ff495964c8a0940). Recheck Translator grant
+    // immediately before navigate — fail closed on revoke/account drift.
+    if (access === 'open_peer') {
+      if (
+        !getTranslatorProjectIds(String(syncedUserId)).includes(
+          chapter.projectId,
+        )
+      ) {
+        return;
+      }
+    }
+
+    router.push(
+      hrefs.verseDetail({
+        chapterId: chapter.id,
+        chapterName: chapter.displayLabel,
+        projectName: chapter.projectName,
+        language: chapter.targetLanguageName,
+      }),
+    );
+  };
 
   if (loading || (isSyncing && chapters.length === 0)) {
     return <LoadingSpinner />;
@@ -153,16 +282,9 @@ export function MyWorkTab({
                     key={chapter.id}
                     chapter={chapter}
                     isSyncing={isSyncing}
-                    onPress={() =>
-                      router.push(
-                        hrefs.verseDetail({
-                          chapterId: chapter.id,
-                          chapterName: chapter.displayLabel,
-                          projectName: chapter.projectName,
-                          language: chapter.targetLanguageName,
-                        }),
-                      )
-                    }
+                    onPress={() => {
+                      void openChapter(chapter);
+                    }}
                   />
                 ))
               : null}

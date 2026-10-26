@@ -2,6 +2,7 @@ import { isApiError } from '../types/api/errors';
 import {
   verseAudioBlobKey,
   type VerseAudioConflictStatus,
+  type VerseAudioListResponse,
   type VerseAudioResponse,
   type VerseAudioTakeResponse,
 } from '../types/api/verseAudio';
@@ -84,7 +85,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function isConflictStatus(value: unknown): value is VerseAudioConflictStatus {
-  return value === 'clean' || value === 'conflict';
+  return value === 'clean' || value === 'conflict' || value === 'resolved';
 }
 
 function parseVerseAudioTake(data: unknown): VerseAudioTakeResponse {
@@ -251,5 +252,33 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
     takes: body.takes.map(parseVerseAudioTake),
     createdAt: body.createdAt,
     updatedAt: body.updatedAt,
+  };
+}
+
+/**
+ * Narrows JSON from `GET /verse-audio?projectUnitId&bibleId&bookId&chapterNumber`.
+ */
+export function parseVerseAudioListResponse(
+  data: unknown,
+): VerseAudioListResponse {
+  if (data === null || typeof data !== 'object') {
+    throw createApiError(500, 'Malformed verse audio list response');
+  }
+  const body = data as Record<string, unknown>;
+  if (!Array.isArray(body.items)) {
+    throw createApiError(
+      500,
+      'Malformed verse audio list response: missing items',
+    );
+  }
+  if (typeof body.hasConflict !== 'boolean') {
+    throw createApiError(
+      500,
+      'Malformed verse audio list response: missing hasConflict',
+    );
+  }
+  return {
+    items: body.items.map(parseVerseAudioResponse),
+    hasConflict: body.hasConflict,
   };
 }

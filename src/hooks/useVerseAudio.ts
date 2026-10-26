@@ -1338,6 +1338,7 @@ export function useVerseAudio({
           setLoadedTakeId(null);
         }
         await deleteTakeFn(id);
+        notifyPendingUploads();
         if (target?.localFilePath) {
           await deleteFile(target.localFilePath).catch(() => {
             // best-effort — DB row is already gone, don't block the UI on a stray file
@@ -1378,6 +1379,9 @@ export function useVerseAudio({
         clearStitchQueue();
         setPlayingTakeId(null);
         await selectTakeFn(id);
+        // Selection changes are syncable work now (#701) — queue an upload
+        // pass when transport allows instead of waiting for the next sync.
+        notifyPendingUploads();
         if (bibleTextId !== null) {
           setTakes(await loadTakesFn(bibleTextId));
         }
@@ -1396,6 +1400,8 @@ export function useVerseAudio({
     async (id: string) => {
       try {
         await designateCanonicalFn(id);
+        // A designation can create a pending upload on its own (#701).
+        notifyPendingUploads();
         if (
           bibleTextId !== null &&
           activeBibleTextIdRef.current === bibleTextId

@@ -162,7 +162,7 @@ describe('recordingSync', () => {
     const result = await syncPendingRecordings('tok-1', { delay });
 
     expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
-    expect(mockGetLatestVersionToken).toHaveBeenCalledWith(42);
+    expect(mockGetLatestVersionToken).toHaveBeenCalledWith(42, 12);
     expect(mockUploadVerseAudio).toHaveBeenCalledWith(
       expect.objectContaining({
         projectUnitId: 12,

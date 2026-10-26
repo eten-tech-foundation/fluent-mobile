@@ -100,6 +100,11 @@ jest.mock('./api', () => ({
   },
 }));
 
+jest.mock('./userOrgGrants', () => ({
+  persistOrgGrantsFromUserResponse: jest.fn(),
+  refreshUserOrgGrants: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('./keychain', () => ({
   clearCredentials: jest.fn().mockResolvedValue(undefined),
   getCredentials: jest.fn(),
@@ -252,6 +257,10 @@ describe('sync step orchestration', () => {
     getRecordingLinkedChaptersToSyncMock.mockResolvedValue(new Map());
     isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
     getMasterDataLastSyncedAtMock.mockReturnValue('');
+    // Prefer known-user catalogue scoping; leave active unset so AuthError
+    // paths that only call handleSyncAuthFailure when active is set stay clean.
+    (getKnownUserIds as jest.Mock).mockReturnValue(['1']);
+    (getActiveUserId as jest.Mock).mockReturnValue(undefined);
   });
 
   describe('syncMasterData', () => {
@@ -777,12 +786,64 @@ describe('sync step orchestration', () => {
   });
 
   describe('syncBibleTexts', () => {
+    beforeEach(() => {
+      // Bare ensure (DraftingScreen) scopes to active user only.
+      (getActiveUserId as jest.Mock).mockReturnValue('1');
+      (getKnownUserIds as jest.Mock).mockReturnValue(['1', '2']);
+    });
+
     it('short-circuits when there are no chapters to sync', async () => {
       await syncBibleTexts();
 
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([1]);
       expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_bibles', 0);
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_bible_texts');
+    });
+
+    it('passes explicit eligibleUserIds to getChaptersToSync', async () => {
+      await syncBibleTexts(undefined, { eligibleUserIds: [2, 3] });
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([2, 3]);
+      expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
+    });
+
+    it('scopes bare syncBibleTexts to the active user only when many accounts are known', async () => {
+      (getKnownUserIds as jest.Mock).mockReturnValue(['4', '5']);
+      (getActiveUserId as jest.Mock).mockReturnValue('5');
+
+      await syncBibleTexts();
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([5]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([4, 5]);
+    });
+
+    it('uses known-user union for getChaptersToSync when remap is pending', async () => {
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      (getKnownUserIds as jest.Mock).mockReturnValue(['4', '5']);
+      (getActiveUserId as jest.Mock).mockReturnValue('5');
+
+      await syncBibleTexts();
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([4, 5]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([5]);
+
+      getChaptersToSyncMock.mockClear();
+      await syncBibleTexts(undefined, { eligibleUserIds: [5] });
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([4, 5]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([5]);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('returns empty catalogue selection when there is no active user', async () => {
+      // Production shape: storage returns '' when unset (not undefined).
+      (getActiveUserId as jest.Mock).mockReturnValue('');
+
+      await syncBibleTexts();
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([0]);
     });
 
     it('uses explicit chapterGroups instead of getChaptersToSync (#670)', async () => {
@@ -1049,6 +1110,359 @@ describe('sync step orchestration', () => {
         jest.useRealTimers();
       }
     });
+
+    it('records all-empty full-fetch 404 as missing chapters and fails the step', async () => {
+      mockDbCount(0);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockRejectedValue(
+        new ApiError(404, 'Bible texts not found'),
+      );
+
+      await expect(syncBibleTexts()).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+      expect(insertBibleTextsMock).not.toHaveBeenCalled();
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):.*404/i),
+      );
+    });
+
+    it('fails empty full-fetch when #177 drops cursor despite updatedAfter (remap off)', async () => {
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(
+          /Missing bible text chapter\(s\):.*absent from full-fetch response/i,
+        ),
+      );
+    });
+
+    it('isolates #177 full-fetch 404 across bible groups (remap off + updatedAfter)', async () => {
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => {
+          if (bibleId === 10) {
+            throw new ApiError(404, 'Bible texts not found');
+          }
+          return {
+            data: [
+              {
+                bookId: 2,
+                chapterNumber: 1,
+                verses: [{ id: 2001, verseNumber: 1, text: 'Later bible' }],
+              },
+            ],
+          };
+        },
+      );
+
+      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        20,
+        [{ bookId: 2, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          bibleId: 20,
+          bookId: 2,
+          chapterNumber: 1,
+          verses: [expect.objectContaining({ id: 2001 })],
+        }),
+      ]);
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):.*404/i),
+      );
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+        expect.anything(),
+      );
+    });
+
+    it('stops before later bible groups when a non-404 fetch error is thrown', async () => {
+      jest.useFakeTimers();
+      mockDbCount(1);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => {
+          if (bibleId === 10) {
+            throw new ApiError(500, 'upstream failed');
+          }
+          return {
+            data: [
+              {
+                bookId: 2,
+                chapterNumber: 1,
+                verses: [{ id: 2001, verseNumber: 1, text: 'Later bible' }],
+              },
+            ],
+          };
+        },
+      );
+
+      try {
+        const pending = syncBibleTexts();
+        const expectation = expect(pending).rejects.toThrow(/upstream failed/i);
+        await jest.runAllTimersAsync();
+        await expectation;
+        const bibleIds = (FluentAPI.getBibleTexts as jest.Mock).mock.calls.map(
+          (call: unknown[]) => call[0],
+        );
+        expect(bibleIds.length).toBeGreaterThanOrEqual(1);
+        expect(bibleIds.every(id => id === 10)).toBe(true);
+        expect(insertBibleTextsMock).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('inserts returned chapters on partial full-fetch and still fails for missing', async () => {
+      mockDbCount(1);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [
+            10,
+            [
+              { bookId: 1, chapterNumber: 1 },
+              { bookId: 1, chapterNumber: 2 },
+            ],
+          ],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await expect(syncBibleTexts()).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+      expect(insertBibleTextsMock).toHaveBeenCalledTimes(1);
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          bibleId: 10,
+          bookId: 1,
+          chapterNumber: 1,
+          verses: [expect.objectContaining({ id: 9001 })],
+        }),
+      ]);
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(
+          /Missing bible text chapter\(s\):.*absent from full-fetch response/i,
+        ),
+      );
+    });
+
+    it('continues to a later bible group after an earlier full-fetch 404', async () => {
+      mockDbCount(1);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => {
+          if (bibleId === 10) {
+            throw new ApiError(404, 'Bible texts not found');
+          }
+          return {
+            data: [
+              {
+                bookId: 2,
+                chapterNumber: 1,
+                verses: [{ id: 2001, verseNumber: 1, text: 'Later bible' }],
+              },
+            ],
+          };
+        },
+      );
+
+      await expect(syncBibleTexts()).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        20,
+        [{ bookId: 2, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          bibleId: 20,
+          bookId: 2,
+          chapterNumber: 1,
+          verses: [expect.objectContaining({ id: 2001 })],
+        }),
+      ]);
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):.*404/i),
+      );
+    });
+
+    it('does not clear remap or sync error when missing chapters fail the step', async () => {
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+      try {
+        await expect(
+          syncBibleTexts('2026-01-01T00:00:00.000Z'),
+        ).rejects.toThrow(/Missing bible text chapter\(s\):/i);
+
+        expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_bible_texts',
+          expect.stringMatching(
+            /Missing bible text chapter\(s\):.*absent from full-fetch response/i,
+          ),
+        );
+        expect(clearSyncErrorMock).not.toHaveBeenCalledWith(
+          'sync_error_bible_texts',
+        );
+      } finally {
+        isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      }
+    });
+
+    it('treats full-fetch chapter with empty verses as missing', async () => {
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [],
+          },
+        ],
+      });
+
+      try {
+        await expect(syncBibleTexts()).rejects.toThrow(
+          /Missing bible text chapter\(s\):/i,
+        );
+
+        expect(insertBibleTextsMock).toHaveBeenCalledWith([]);
+        expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_bible_texts',
+          expect.stringMatching(
+            /Missing bible text chapter\(s\):.*empty verses/i,
+          ),
+        );
+      } finally {
+        isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      }
+    });
+
+    it('treats incremental empty data as success (no missing-chapter failure)', async () => {
+      mockDbCount(5);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        '2026-01-01T00:00:00.000Z',
+      );
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([]);
+      expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_bible_texts');
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+    });
+
+    it('does not isolate incremental 404 — aborts without fetching later bible groups', async () => {
+      mockDbCount(5);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockRejectedValue(
+        new ApiError(404, 'Bible texts not found'),
+      );
+
+      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).rejects.toThrow(
+        /Bible texts not found/,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        '2026-01-01T00:00:00.000Z',
+      );
+      expect(insertBibleTextsMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(/Bible texts not found/),
+      );
+    });
   });
 
   describe('syncBibleTextsForChapters', () => {
@@ -1075,6 +1489,75 @@ describe('sync step orchestration', () => {
       );
       expect(clearSyncErrorMock).not.toHaveBeenCalledWith(
         'sync_error_bible_texts',
+      );
+    });
+
+    it('fail-fast on 404 — does not isolate/continue like syncBibleTexts full-fetch', async () => {
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => {
+          if (bibleId === 10) {
+            throw new ApiError(404, 'Bible texts not found');
+          }
+          return {
+            data: [
+              {
+                bookId: 2,
+                chapterNumber: 1,
+                verses: [{ id: 2001, verseNumber: 1, text: 'Later bible' }],
+              },
+            ],
+          };
+        },
+      );
+
+      await expect(
+        syncBibleTextsForChapters([
+          { bibleId: 10, bookId: 1, chapterNumber: 1 },
+          { bibleId: 20, bookId: 2, chapterNumber: 1 },
+        ]),
+      ).rejects.toThrow(/Bible texts not found/);
+
+      const bibleIds = (FluentAPI.getBibleTexts as jest.Mock).mock.calls.map(
+        (call: unknown[]) => call[0],
+      );
+      expect(bibleIds).toEqual([10]);
+      expect(insertBibleTextsMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+        expect.stringMatching(/Bible texts not found/),
+      );
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.anything(),
+      );
+      // Distinct from #177 / #807 full-fetch missing-chapter accumulation.
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):/i),
+      );
+    });
+
+    it('does not treat empty prepare-offline payloads as full-fetch missing-chapter failures', async () => {
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+      await syncBibleTextsForChapters([
+        { bibleId: 10, bookId: 1, chapterNumber: 1 },
+      ]);
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(10, [
+        { bookId: 1, chapterNumber: 1 },
+      ]);
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([]);
+      expect(clearSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+      );
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.anything(),
+      );
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):/i),
       );
     });
   });
