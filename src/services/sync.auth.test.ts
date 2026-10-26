@@ -35,6 +35,8 @@ import {
   setPericopeBookVersion,
   setMasterDataLastSyncedAt,
   getMasterDataLastSyncedAt,
+  setMasterDataUpdatedAt,
+  getMasterDataUpdatedAt,
 } from './storage';
 import { getDatabase } from '../db/db';
 import {
@@ -124,6 +126,8 @@ jest.mock('./storage', () => ({
   getLastAssignmentSyncAt: jest.fn(),
   getMasterDataLastSyncedAt: jest.fn().mockReturnValue(''),
   setMasterDataLastSyncedAt: jest.fn(),
+  getMasterDataUpdatedAt: jest.fn().mockReturnValue(''),
+  setMasterDataUpdatedAt: jest.fn(),
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
@@ -1365,6 +1369,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     (getLastAssignmentSyncAt as jest.Mock).mockReturnValue('');
     (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
     (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue('');
+    (getMasterDataUpdatedAt as jest.Mock).mockReturnValue('');
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
     (FluentAPI.getLanguage as jest.Mock).mockImplementation(
@@ -1791,6 +1796,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(FluentAPI.getBook).toHaveBeenCalledWith(41, 'scoped-token');
     expect(FluentAPI.getLanguage).toHaveBeenCalledWith(3, 'scoped-token');
     expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
+    expect(setMasterDataUpdatedAt).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
 
     resolveLanguages([]);
@@ -1800,14 +1806,14 @@ describe('syncAllData progressive login (#670 / #679)', () => {
       undefined,
       'scoped-token',
     );
-    expect(setMasterDataLastSyncedAt).toHaveBeenCalledWith(expect.any(String));
+    expect(setMasterDataUpdatedAt).toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
       undefined,
       undefined,
       'scoped-token',
     );
-    const masterCursorOrder = (setMasterDataLastSyncedAt as jest.Mock).mock
+    const masterCursorOrder = (setMasterDataUpdatedAt as jest.Mock).mock
       .invocationCallOrder[0];
     const catalogueOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
       .invocationCallOrder[0];
@@ -1888,13 +1894,14 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(
       insertMasterData.mock.invocationCallOrder.length,
     ).toBeGreaterThanOrEqual(2);
+    expect(setMasterDataUpdatedAt).not.toHaveBeenCalled();
     expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
 
     resolveLanguages([]);
     await pending;
 
-    expect(setMasterDataLastSyncedAt).toHaveBeenCalledTimes(1);
+    expect(setMasterDataUpdatedAt).toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
       undefined,
@@ -1978,6 +1985,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
 
       // Error path may clear the Home spinner, but must not claim master/work success.
       expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
+      expect(setMasterDataUpdatedAt).not.toHaveBeenCalled();
       expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
       expect(setUserLastSyncedAt).not.toHaveBeenCalled();
     } finally {
@@ -1993,7 +2001,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     (getUserIdSync as jest.Mock).mockReturnValue('2');
     (getLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(cursor);
-    (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue(cursor);
+    (getMasterDataUpdatedAt as jest.Mock).mockReturnValue(cursor);
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
       data: [
         {
@@ -2014,7 +2022,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(FluentAPI.getLanguage).not.toHaveBeenCalled();
     expect(FluentAPI.getBook).not.toHaveBeenCalled();
     expect(FluentAPI.getBible).not.toHaveBeenCalled();
-    expect(setMasterDataLastSyncedAt).toHaveBeenCalledWith(expect.any(String));
+    expect(setMasterDataUpdatedAt).toHaveBeenCalled();
   });
 
   it('incremental Sync Now starts master while pending claims are unresolved (#679)', async () => {
@@ -2026,6 +2034,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     (getLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue(cursor);
+    (getMasterDataUpdatedAt as jest.Mock).mockReturnValue(cursor);
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     userHasLocalChapterAssignments.mockResolvedValue(true);
 
@@ -2143,12 +2152,13 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(FluentAPI.getBible).toHaveBeenCalledWith(88, peerToken);
     expect(FluentAPI.getBook).toHaveBeenCalledWith(40, peerToken);
     expect(FluentAPI.getLanguage).toHaveBeenCalledWith(6, peerToken);
+    expect(setMasterDataUpdatedAt).not.toHaveBeenCalled();
     expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
 
     resolveLanguages([]);
     await pending;
 
-    expect(setMasterDataLastSyncedAt).toHaveBeenCalledTimes(1);
+    expect(setMasterDataUpdatedAt).toHaveBeenCalled();
   });
 });
 
@@ -2413,6 +2423,7 @@ describe('org grant hydration wiring (#452 prerequisite)', () => {
     (getLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue(cursor);
+    (getMasterDataUpdatedAt as jest.Mock).mockReturnValue(cursor);
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     userHasLocalChapterAssignments.mockResolvedValue(true);
 
