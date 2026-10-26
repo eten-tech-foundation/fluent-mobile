@@ -1,0 +1,58 @@
+# Drafting Bible / Resources / Record tabs, existing session.
+# Requires: logged-in app, Home reachable, My Work contains the fixture chapter row.
+# MAESTRO_FIXTURE_CHAPTER_ID: required digits /^[1-9][0-9]*$/ (anchored row selector).
+# The row regex is built by an external runScript because inline evalScript
+# concat/regex output is undefined on the installed Maestro engine.
+# No login or clearState.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - ordered-readonly
+---
+- evalScript: >-
+    ${output.fixtureChapterId = (typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_ID).trim()}
+- assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId)}
+- runScript: ../../shared/scripts/fixture-row-values.js
+- assertTrue: ${typeof output.myWorkRowIdRe === 'string' && output.myWorkRowIdRe.length > 0}
+- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId) === true}
+- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId + '0') === false && RegExp(output.myWorkRowIdRe).test('my-work-row-0' + output.fixtureChapterId) === false}
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: ${output.myWorkRowIdRe}
+    direction: DOWN
+    timeout: 30000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- tapOn:
+    id: ${output.myWorkRowIdRe}
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 30000
+- tapOn:
+    id: 'drafting-tab-bible'
+- assertVisible:
+    id: 'bible-tab'
+- tapOn:
+    id: 'drafting-tab-resources'
+- assertVisible:
+    id: 'resources-tab'
+- tapOn:
+    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'record-tab'
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'
