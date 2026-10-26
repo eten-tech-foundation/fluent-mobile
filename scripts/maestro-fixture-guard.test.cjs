@@ -264,6 +264,17 @@ describe('checked-in npm Maestro lanes', () => {
     });
     expect(result.ok).toBe(true);
   });
+
+  it.each([
+    '.maestro/flows/recording/record-stop-play-delete.yaml',
+    '.maestro/flows/recording/recording-nav-guard.yaml',
+    '.maestro/flows/sync/record-to-synced.yaml',
+  ])('%s is tagged mutating and fixture-blocked', rel => {
+    const tags = parseFlowTags(fs.readFileSync(path.join(root, rel), 'utf8'));
+    expect(tags).toEqual(
+      expect.arrayContaining(['mutating', 'fixture-blocked']),
+    );
+  });
 });
 
 describe('exact milestone fixture helper', () => {
