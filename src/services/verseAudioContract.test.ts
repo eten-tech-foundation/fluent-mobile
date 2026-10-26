@@ -8,6 +8,8 @@ import {
   outcomeFromVerseAudioFailure,
   outcomeFromVerseAudioSuccess,
   parseVerseAudioResponse,
+  takeIdFromVerseAudioResponse,
+  versionTokenFromVerseAudioBody,
 } from './verseAudioContract';
 
 const validTake = {
@@ -202,5 +204,40 @@ describe('verseAudioContract', () => {
       parseVerseAudioResponse({ ...validResponse, durationSeconds: null })
         .durationSeconds,
     ).toBeNull();
+  });
+
+  it('parses takeId when present and rejects a non-numeric takeId (#716)', () => {
+    expect(
+      parseVerseAudioResponse({ ...validResponse, takeId: 11 }).takeId,
+    ).toBe(11);
+    expect(parseVerseAudioResponse(validResponse)).not.toHaveProperty('takeId');
+    expect(() =>
+      parseVerseAudioResponse({ ...validResponse, takeId: 'x' }),
+    ).toThrow(/takeId/);
+  });
+
+  it('resolves the server take id from takeId, else activeTakeId only when activated (#716)', () => {
+    expect(
+      takeIdFromVerseAudioResponse({ ...validResponse, takeId: 11 }, false),
+    ).toBe(11);
+    expect(takeIdFromVerseAudioResponse(validResponse, true)).toBe(10);
+    expect(takeIdFromVerseAudioResponse(validResponse, false)).toBeNull();
+  });
+
+  it('reads the unit version token from a take delete body (#716)', () => {
+    expect(
+      versionTokenFromVerseAudioBody({
+        ...validResponse,
+        versionToken: 5,
+        downloadUrl: null,
+        activeTakeId: null,
+      }),
+    ).toEqual({ versionToken: 5 });
+    expect(versionTokenFromVerseAudioBody(null)).toEqual({
+      versionToken: null,
+    });
+    expect(versionTokenFromVerseAudioBody({ versionToken: 'x' })).toEqual({
+      versionToken: null,
+    });
   });
 });

@@ -112,6 +112,7 @@ export const createTableQueries: string[] = [
       end_verse             INTEGER NOT NULL DEFAULT 0,
       sync_status           TEXT NOT NULL DEFAULT 'pending',
       version_token         INTEGER,
+      server_take_id        INTEGER,
       upload_error          TEXT,
       created_at            TEXT NOT NULL,
       updated_at            TEXT NOT NULL
@@ -198,6 +199,15 @@ export const createTableQueries: string[] = [
 
   `CREATE INDEX IF NOT EXISTS idx_saq_chapter_assignment ON stage_advance_queue(chapter_assignment_id);`,
   `CREATE INDEX IF NOT EXISTS idx_saq_status ON stage_advance_queue(sync_status);`,
+
+  `CREATE TABLE IF NOT EXISTS recording_deletions (
+      id                    TEXT PRIMARY KEY,
+      project_unit_id       INTEGER NOT NULL,
+      bible_text_id         INTEGER NOT NULL,
+      server_take_id        INTEGER NOT NULL,
+      recorded_by_user_id   INTEGER,
+      created_at            TEXT NOT NULL
+    );`,
 
   `CREATE TABLE IF NOT EXISTS pericope_sets (
       id          INTEGER PRIMARY KEY,

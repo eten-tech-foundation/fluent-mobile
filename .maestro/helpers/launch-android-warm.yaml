@@ -1,0 +1,6 @@
+# Relaunch without wiping app data. Auth and signed-out cases keep clearState.
+appId: com.eten.fluent
+---
+- launchApp:
+    clearState: false
+- runFlow: open-metro-deeplink.yaml

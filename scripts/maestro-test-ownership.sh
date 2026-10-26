@@ -17,6 +17,8 @@ fi
 missing=()
 [[ -z "${MAESTRO_EMAIL:-}" ]] && missing+=("MAESTRO_EMAIL")
 [[ -z "${MAESTRO_PASSWORD:-}" ]] && missing+=("MAESTRO_PASSWORD")
+[[ -z "${MAESTRO_EMAIL_2:-}" ]] && missing+=("MAESTRO_EMAIL_2")
+[[ -z "${MAESTRO_PASSWORD_2:-}" ]] && missing+=("MAESTRO_PASSWORD_2")
 [[ -z "${MAESTRO_PM_EMAIL:-}" ]] && missing+=("MAESTRO_PM_EMAIL")
 [[ -z "${MAESTRO_PM_PASSWORD:-}" ]] && missing+=("MAESTRO_PM_PASSWORD")
 [[ -z "${MAESTRO_FIXTURE_PROJECT_NAME:-}" ]] && missing+=("MAESTRO_FIXTURE_PROJECT_NAME")
@@ -24,32 +26,26 @@ missing=()
 [[ -z "${MAESTRO_FIXTURE_OTHER_LABEL:-}" ]] && missing+=("MAESTRO_FIXTURE_OTHER_LABEL")
 [[ -z "${MAESTRO_FIXTURE_UNASSIGNED_LABEL:-}" ]] && missing+=("MAESTRO_FIXTURE_UNASSIGNED_LABEL")
 [[ -z "${MAESTRO_FIXTURE_CLAIM_LABEL:-}" ]] && missing+=("MAESTRO_FIXTURE_CLAIM_LABEL")
+[[ -z "${MAESTRO_FIXTURE_CONFLICT_LABEL:-}" ]] && missing+=("MAESTRO_FIXTURE_CONFLICT_LABEL")
+[[ -z "${MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL:-}" ]] && missing+=("MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL")
 
 if ((${#missing[@]} > 0)); then
   echo "error: ownership suite requires credentials + fixture labels in env / .env.maestro:" >&2
   printf '  - %s\n' "${missing[@]}" >&2
-  echo "See .env.maestro.example and docs/guides/maestro.md (#574)." >&2
+  echo "See .env.maestro.example and docs/guides/maestro.md (#574 / #607)." >&2
   echo "Seed first: npm run maestro:fixtures:seed" >&2
   exit 1
 fi
 
-# Optional conflict / open Peer Check flows are excluded unless labels are set.
-EXCLUDE_TAGS=()
-OPTIONAL_EXCLUDES=()
-if [[ -z "${MAESTRO_FIXTURE_CONFLICT_LABEL:-}" ]]; then
-  OPTIONAL_EXCLUDES+=("ownership-conflict")
-fi
-if [[ -z "${MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL:-}" ]]; then
-  OPTIONAL_EXCLUDES+=("ownership-peer-check")
-fi
-if ((${#OPTIONAL_EXCLUDES[@]} > 0)); then
-  IFS=,
-  EXCLUDE_TAGS=(--exclude-tags "${OPTIONAL_EXCLUDES[*]}")
-  unset IFS
+if [[ "${MAESTRO_EMAIL_2}" == "${MAESTRO_PM_EMAIL}" ]]; then
+  echo "error: MAESTRO_EMAIL_2 must be a second Project Translator, not the PM." >&2
+  echo "Do not alias EMAIL_2 to MAESTRO_PM_EMAIL for ownership fixtures (#607)." >&2
+  exit 1
 fi
 
 echo "Seeding ownership fixtures against API…"
-# Local suite may rotate claim to the next pristine not_started chapter.
+# Prefer fluent-api#464 reset-selected to restore the claim chapter.
+# ALLOW_CLAIM_ROTATE remains a local fallback when that endpoint 404s.
 # --yes / MAESTRO_FIXTURE_CONFIRM=1 required so seed cannot silently rewrite
 # a live project when someone points env at the wrong id.
 MAESTRO_FIXTURE_ALLOW_CLAIM_ROTATE=1 \
@@ -71,6 +67,5 @@ node "${ROOT}/scripts/maestro-ownership-fixtures.mjs" verify
 exec bash "${ROOT}/scripts/maestro-test.sh" \
   --config .maestro/config.yaml \
   --include-tags ownership \
-  ${EXCLUDE_TAGS[@]+"${EXCLUDE_TAGS[@]}"} \
   .maestro \
   "$@"

@@ -8,6 +8,19 @@ import {
   PrepareOfflineResourceManifestItem,
   PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
+import { ApiError } from '../types/api/errors';
+import { logger } from '../utils/logger';
+
+const mockDiagnosticManifest = jest.fn();
+jest.mock('../db/queries.prepareOffline', () => ({
+  getPrepareOfflineProjectContext: async () => ({ sourceLanguageCode: 'eng' }),
+}));
+jest.mock('../services/prepareOfflineResources', () => ({
+  fetchPrepareOfflineManifest: (...args: unknown[]) =>
+    mockDiagnosticManifest(...args),
+  refreshPrepareOfflineInventory: async () => undefined,
+  subscribePrepareOfflineInventory: () => () => undefined,
+}));
 
 const TEXT_BYTES = 1_000;
 const AUDIO_BYTES = 2_000;
@@ -333,5 +346,57 @@ describe('usePrepareOfflineResources', () => {
     });
 
     expect(result.current.isItemSelected('Translation Words:text')).toBe(true);
+  });
+});
+
+describe('Prepare Offline development failure diagnostic', () => {
+  it('logs only primitive allowlisted fields, preserves the error, and stays silent outside development', async () => {
+    const { usePrepareOfflineResourceData } = jest.requireActual(
+      './usePrepareOfflineResourceData',
+    );
+    const secret = 'PRIVATE_TOKEN_EMAIL_URL_BODY_STACK';
+    const error = new ApiError(502, secret, secret, { token: secret });
+    error.name = secret;
+    error.stack = secret;
+    const transport = jest.fn();
+    const previousDev = (globalThis as { __DEV__?: boolean }).__DEV__;
+    logger.setTransport(transport);
+    try {
+      for (const development of [true, false]) {
+        (globalThis as { __DEV__?: boolean }).__DEV__ = development;
+        transport.mockClear();
+        mockDiagnosticManifest.mockRejectedValue(error);
+        const { result, unmount } = renderHook(() =>
+          usePrepareOfflineResourceData(12, 10, [chapter(1)], new Set([1])),
+        );
+        await waitFor(() => expect(result.current.error).toBe(error));
+        expect(result.current.manifest).toEqual([]);
+        if (development) {
+          expect(transport).toHaveBeenCalledTimes(1);
+          const context = transport.mock.calls[0][3];
+          expect(context).toEqual({
+            timestamp: expect.any(String),
+            event: 'prepare_offline_manifest_failure',
+            projectId: 12,
+            selectedChapterCount: 1,
+            exceptionName: 'ApiError',
+            classification: 'manifest',
+            apiStatus: 502,
+          });
+          expect(JSON.stringify(transport.mock.calls)).not.toContain(secret);
+          expect(
+            Object.values(context).every(value =>
+              ['string', 'number', 'boolean'].includes(typeof value),
+            ),
+          ).toBe(true);
+        } else {
+          expect(transport).not.toHaveBeenCalled();
+        }
+        unmount();
+      }
+    } finally {
+      (globalThis as { __DEV__?: boolean }).__DEV__ = previousDev;
+      logger.reset();
+    }
   });
 });

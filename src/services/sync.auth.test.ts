@@ -2,6 +2,7 @@ import { AuthError } from './authError';
 import { waitFor } from '@testing-library/react-native';
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
+import { logger } from '../utils/logger';
 import {
   clearCredentials,
   getCredentials,
@@ -35,6 +36,8 @@ import {
   setPericopeBookVersion,
   setMasterDataLastSyncedAt,
   getMasterDataLastSyncedAt,
+  setMasterDataUpdatedAt,
+  getMasterDataUpdatedAt,
 } from './storage';
 import { getDatabase } from '../db/db';
 import {
@@ -46,6 +49,7 @@ import {
   persistOrgGrantsFromUserResponse,
   refreshUserOrgGrants,
 } from './userOrgGrants';
+import { SYNC_PHASE_FIELDS, SYNC_PHASE_LOG_MESSAGE } from './syncPhaseTiming';
 
 jest.mock('./authToken', () => ({
   authToken: {
@@ -124,6 +128,8 @@ jest.mock('./storage', () => ({
   getLastAssignmentSyncAt: jest.fn(),
   getMasterDataLastSyncedAt: jest.fn().mockReturnValue(''),
   setMasterDataLastSyncedAt: jest.fn(),
+  getMasterDataUpdatedAt: jest.fn().mockReturnValue(''),
+  setMasterDataUpdatedAt: jest.fn(),
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
@@ -927,6 +933,122 @@ describe('syncAllData auth handling', () => {
   });
 });
 
+describe('sync phase timing instrumentation (#764)', () => {
+  const transport = jest.fn();
+
+  function timingContexts(): Record<string, unknown>[] {
+    return transport.mock.calls
+      .filter(
+        ([, tag, message]) =>
+          tag === 'SyncPhase' && message === SYNC_PHASE_LOG_MESSAGE,
+      )
+      .map(([, , , context]) => context as Record<string, unknown>);
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __resetFullSyncSingleFlightForTests();
+    transport.mockReset();
+    logger.setTransport(transport);
+    jest.spyOn(syncEvents, 'emitAuthReauthRequired');
+    jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
+    jest.spyOn(syncEvents, 'emitSyncComplete').mockImplementation(() => {});
+
+    (getUserIdSync as jest.Mock).mockReturnValue('2');
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    (getKnownUserIds as jest.Mock).mockReturnValue(['2']);
+    (getLastSyncedAt as jest.Mock).mockReturnValue('2026-06-01T00:00:00.000Z');
+    (getLastAssignmentSyncAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+    userHasLocalProjects.mockResolvedValue(true);
+    userHasLocalChapterAssignments.mockResolvedValue(true);
+    userNeedsAssigneeRepair.mockResolvedValue(false);
+    getChaptersToSync.mockResolvedValue(new Map());
+  });
+
+  afterEach(() => {
+    logger.reset();
+    jest.restoreAllMocks();
+    __resetFullSyncSingleFlightForTests();
+  });
+
+  it('keeps 401 as auth, emits allowlisted timing, and redacts credentials', async () => {
+    let now = 1_000;
+    jest.spyOn(Date, 'now').mockImplementation(() => {
+      now += 10;
+      return now;
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'revoked-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+      new AuthError('Invalid or revoked session token'),
+    );
+
+    await expect(syncAllData(true)).rejects.toThrow(AuthError);
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(1);
+    expect(setReauthRequired).toHaveBeenCalledWith('2');
+    expect(setSyncError).toHaveBeenCalledWith(
+      'sync_error_projects',
+      'Invalid or revoked session token',
+    );
+
+    const phases = timingContexts();
+    expect(phases.length).toBeGreaterThan(0);
+    expect(
+      phases.some(
+        entry => entry.phase === 'Project sync.attempt' && entry.attempt === 1,
+      ),
+    ).toBe(true);
+    expect(
+      phases.some(
+        entry => entry.phase === 'Project sync.total' && entry.attempt === 1,
+      ),
+    ).toBe(true);
+    for (const context of phases) {
+      expect(typeof context.elapsedMs).toBe('number');
+      expect(
+        Object.keys(context).every(key =>
+          (SYNC_PHASE_FIELDS as readonly string[]).includes(key),
+        ),
+      ).toBe(true);
+    }
+    expect(JSON.stringify(phases)).not.toMatch(
+      /revoked-token|user2@|Bearer|Invalid or revoked/i,
+    );
+  });
+
+  it('does not classify a non-auth failure as auth and still times the step', async () => {
+    jest.useFakeTimers();
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+      new Error('Network timeout'),
+    );
+
+    try {
+      const pending = syncAllData(true);
+      const expectation = expect(pending).rejects.toThrow('Network timeout');
+      await jest.advanceTimersByTimeAsync(500);
+      await jest.advanceTimersByTimeAsync(1000);
+      await expectation;
+    } finally {
+      jest.useRealTimers();
+    }
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(3);
+    expect(setReauthRequired).not.toHaveBeenCalled();
+    expect(syncEvents.emitAuthReauthRequired).not.toHaveBeenCalled();
+    expect(
+      timingContexts().filter(entry => entry.phase === 'Project sync.attempt'),
+    ).toHaveLength(3);
+    expect(
+      timingContexts().find(entry => entry.phase === 'Project sync.total')
+        ?.attempt,
+    ).toBe(3);
+  });
+});
+
 describe('syncAllUsers auth handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -1385,6 +1507,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     (getLastAssignmentSyncAt as jest.Mock).mockReturnValue('');
     (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
     (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue('');
+    (getMasterDataUpdatedAt as jest.Mock).mockReturnValue('');
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
     (FluentAPI.getLanguage as jest.Mock).mockImplementation(
@@ -1811,6 +1934,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(FluentAPI.getBook).toHaveBeenCalledWith(41, 'scoped-token');
     expect(FluentAPI.getLanguage).toHaveBeenCalledWith(3, 'scoped-token');
     expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
+    expect(setMasterDataUpdatedAt).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
 
     resolveLanguages([]);
@@ -1820,14 +1944,14 @@ describe('syncAllData progressive login (#670 / #679)', () => {
       undefined,
       'scoped-token',
     );
-    expect(setMasterDataLastSyncedAt).toHaveBeenCalledWith(expect.any(String));
+    expect(setMasterDataUpdatedAt).toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
       undefined,
       undefined,
       'scoped-token',
     );
-    const masterCursorOrder = (setMasterDataLastSyncedAt as jest.Mock).mock
+    const masterCursorOrder = (setMasterDataUpdatedAt as jest.Mock).mock
       .invocationCallOrder[0];
     const catalogueOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
       .invocationCallOrder[0];
@@ -1908,13 +2032,14 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(
       insertMasterData.mock.invocationCallOrder.length,
     ).toBeGreaterThanOrEqual(2);
+    expect(setMasterDataUpdatedAt).not.toHaveBeenCalled();
     expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
 
     resolveLanguages([]);
     await pending;
 
-    expect(setMasterDataLastSyncedAt).toHaveBeenCalledTimes(1);
+    expect(setMasterDataUpdatedAt).toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
       undefined,
@@ -1998,6 +2123,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
 
       // Error path may clear the Home spinner, but must not claim master/work success.
       expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
+      expect(setMasterDataUpdatedAt).not.toHaveBeenCalled();
       expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
       expect(setUserLastSyncedAt).not.toHaveBeenCalled();
     } finally {
@@ -2013,7 +2139,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     (getUserIdSync as jest.Mock).mockReturnValue('2');
     (getLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(cursor);
-    (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue(cursor);
+    (getMasterDataUpdatedAt as jest.Mock).mockReturnValue(cursor);
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
       data: [
         {
@@ -2034,7 +2160,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(FluentAPI.getLanguage).not.toHaveBeenCalled();
     expect(FluentAPI.getBook).not.toHaveBeenCalled();
     expect(FluentAPI.getBible).not.toHaveBeenCalled();
-    expect(setMasterDataLastSyncedAt).toHaveBeenCalledWith(expect.any(String));
+    expect(setMasterDataUpdatedAt).toHaveBeenCalled();
   });
 
   it('incremental Sync Now starts master while pending claims are unresolved (#679)', async () => {
@@ -2046,6 +2172,7 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     (getLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue(cursor);
+    (getMasterDataUpdatedAt as jest.Mock).mockReturnValue(cursor);
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     userHasLocalChapterAssignments.mockResolvedValue(true);
 
@@ -2163,12 +2290,13 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     expect(FluentAPI.getBible).toHaveBeenCalledWith(88, peerToken);
     expect(FluentAPI.getBook).toHaveBeenCalledWith(40, peerToken);
     expect(FluentAPI.getLanguage).toHaveBeenCalledWith(6, peerToken);
+    expect(setMasterDataUpdatedAt).not.toHaveBeenCalled();
     expect(setMasterDataLastSyncedAt).not.toHaveBeenCalled();
 
     resolveLanguages([]);
     await pending;
 
-    expect(setMasterDataLastSyncedAt).toHaveBeenCalledTimes(1);
+    expect(setMasterDataUpdatedAt).toHaveBeenCalled();
   });
 });
 
@@ -2433,6 +2561,7 @@ describe('org grant hydration wiring (#452 prerequisite)', () => {
     (getLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(cursor);
     (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue(cursor);
+    (getMasterDataUpdatedAt as jest.Mock).mockReturnValue(cursor);
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
     userHasLocalChapterAssignments.mockResolvedValue(true);
 
