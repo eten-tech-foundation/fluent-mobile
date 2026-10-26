@@ -1503,7 +1503,13 @@ export function RecordTab({
                           verseAudio.playingTakeId === take.id ||
                           (verseAudio.loadedTakeId === take.id &&
                             verseAudio.playbackStatus === 'paused');
-                        const isSeekable = verseAudio.loadedTakeId === take.id;
+                        // Scrubbable when it is the take in the player, or
+                        // when nothing is loaded yet — the first scrub then
+                        // loads this row (explicit target below), which is
+                        // what makes an unplayed All Takes row respond (#833).
+                        const isSeekable =
+                          verseAudio.loadedTakeId === take.id ||
+                          verseAudio.loadedTakeId === null;
                         return (
                           <View key={take.id} style={styles.takeItemSpacing}>
                             <SharedTakeRow
