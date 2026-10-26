@@ -45,7 +45,6 @@ import {
 } from '../db/repository';
 import { getConnectivitySnapshot } from './connectivity';
 import { syncPendingChapterClaims } from './chapterClaimSync';
-import { logger } from '../utils/logger';
 import {
   BIBLE_TEXT_PHASE,
   SYNC_PHASE_FIELDS,

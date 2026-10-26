@@ -44,6 +44,11 @@ export interface UploadVerseAudioParams {
   startVerse?: number;
   endChapter?: number;
   endVerse?: number;
+  /**
+   * Form field `activate` (fluent-api#465). `false` stores the take without
+   * changing the server's active take. Omitted means the server default (true).
+   */
+  activate?: boolean;
 }
 
 /** API wire values include `resolved` after POST /resolve (fluent-api main). */
@@ -73,6 +78,8 @@ export interface VerseAudioResponse {
   versionToken: number;
   conflictStatus: VerseAudioConflictStatus;
   activeTakeId: number | null;
+  /** Take written or matched by a PUT upload (fluent-api#465). Absent on GET. */
+  takeId?: number;
   verseNumber: number;
   downloadUrl: string;
   takes: VerseAudioTakeResponse[];
