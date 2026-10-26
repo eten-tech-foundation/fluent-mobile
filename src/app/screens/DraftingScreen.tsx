@@ -260,6 +260,11 @@ export default function DraftingScreen() {
       appActiveRef.current = nextState === 'active';
       syncDraftingUploadHold();
     });
+    // `focus` does not fire when this effect runs after the screen is already
+    // focused. Read the current state so Stop cannot upload before a later
+    // focus event.
+    screenFocusedRef.current = navigation.isFocused();
+    syncDraftingUploadHold();
     return () => {
       unsubFocus();
       unsubBlur();

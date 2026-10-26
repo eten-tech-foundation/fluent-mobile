@@ -22,8 +22,10 @@ type BeforeRemoveListener = (event: { preventDefault: () => void }) => void;
 const mockAddListener = jest.fn<jest.Mock, [string, BeforeRemoveListener]>(() =>
   jest.fn(),
 );
+const mockIsFocused = jest.fn(() => true);
 const mockNavigation = {
   addListener: mockAddListener,
+  isFocused: () => mockIsFocused(),
 };
 
 let capturedOnChapterClaimed: (() => void) | undefined;
@@ -265,6 +267,7 @@ const baseAssignment = {
 describe('DraftingScreen onChapterClaimed', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsFocused.mockReturnValue(true);
     mockRouteParams.chapterId = '5';
     mockRouteParams.chapterName = 'Mark 14';
     capturedOnChapterClaimed = undefined;
@@ -518,6 +521,7 @@ describe('DraftingScreen onChapterClaimed', () => {
 
     beforeEach(() => {
       appStateListener = null;
+      mockIsFocused.mockReturnValue(true);
       jest
         .spyOn(AppState, 'addEventListener')
         .mockImplementation((_type, listener) => {
@@ -549,7 +553,15 @@ describe('DraftingScreen onChapterClaimed', () => {
       });
     }
 
+    it('holds uploads when the screen is already focused on mount', async () => {
+      mockIsFocused.mockReturnValue(true);
+      await renderDrafting();
+
+      expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(true);
+    });
+
     it('holds uploads on focus and releases them on blur and unmount', async () => {
+      mockIsFocused.mockReturnValue(false);
       const view = render(<DraftingScreen />);
       await waitFor(() => {
         expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
