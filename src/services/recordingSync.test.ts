@@ -38,6 +38,10 @@ const mockGetActiveUserId = jest.fn();
 const mockSetReauthRequired = jest.fn();
 const mockEmitAuthReauthRequired = jest.fn();
 const mockEmitUploadSessionEvent = jest.fn();
+const mockGetPendingRecordingDeletions = jest.fn();
+const mockClearRecordingDeletion = jest.fn();
+const mockRaiseVerseVersionToken = jest.fn();
+const mockDeleteVerseAudioTake = jest.fn();
 
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
@@ -57,11 +61,19 @@ jest.mock('../db/repository', () => ({
   markRecordingFailed: (...args: unknown[]) => mockMarkRecordingFailed(...args),
   updateRecordingVersionToken: (...args: unknown[]) =>
     mockUpdateRecordingVersionToken(...args),
+  getPendingRecordingDeletions: (...args: unknown[]) =>
+    mockGetPendingRecordingDeletions(...args),
+  clearRecordingDeletion: (...args: unknown[]) =>
+    mockClearRecordingDeletion(...args),
+  raiseVerseVersionToken: (...args: unknown[]) =>
+    mockRaiseVerseVersionToken(...args),
 }));
 
 jest.mock('./api', () => ({
   FluentAPI: {
     uploadVerseAudio: (...args: unknown[]) => mockUploadVerseAudio(...args),
+    deleteVerseAudioTake: (...args: unknown[]) =>
+      mockDeleteVerseAudioTake(...args),
   },
 }));
 
@@ -105,6 +117,8 @@ function pendingRecording(
     startVerse: null,
     endChapter: null,
     endVerse: null,
+    isCanonical: false,
+    isSelected: true,
     ...overrides,
   };
 }
@@ -152,6 +166,10 @@ describe('recordingSync', () => {
     mockUploadVerseAudio.mockResolvedValue(successResponse());
     mockGetCredentials.mockResolvedValue(null);
     mockGetActiveUserId.mockReturnValue('2');
+    mockGetPendingRecordingDeletions.mockResolvedValue([]);
+    mockClearRecordingDeletion.mockResolvedValue(undefined);
+    mockRaiseVerseVersionToken.mockResolvedValue(undefined);
+    mockDeleteVerseAudioTake.mockResolvedValue({ versionToken: 3 });
   });
 
   afterEach(() => {
@@ -174,6 +192,7 @@ describe('recordingSync', () => {
       'rec-1',
       'unit-12/text-42',
       2,
+      9,
     );
     expect(mockMarkRecordingConflicted).not.toHaveBeenCalled();
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
@@ -313,6 +332,7 @@ describe('recordingSync', () => {
       'rec-pericope',
       'unit-12/text-42',
       2,
+      9,
     );
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
   });
@@ -362,9 +382,136 @@ describe('recordingSync', () => {
       'rec-1',
       42,
       4,
+      9,
     );
     expect(mockMarkRecordingUploaded).not.toHaveBeenCalled();
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('activates selected and canonical takes and stores other takes inactive (#716)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'sel', isSelected: true }),
+      pendingRecording({ id: 'canon', isSelected: false, isCanonical: true }),
+      pendingRecording({ id: 'alt', isSelected: false }),
+    ]);
+
+    await syncPendingRecordings('tok-1', { delay });
+
+    expect(
+      mockUploadVerseAudio.mock.calls.map(
+        ([params]) => (params as { activate?: boolean }).activate,
+      ),
+    ).toEqual([true, true, false]);
+  });
+
+  it('uses takeId for a stored-only take and ignores the unit conflict status (#716)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'alt', isSelected: false }),
+    ]);
+    mockUploadVerseAudio.mockResolvedValue(
+      successResponse({ conflictStatus: 'conflict', takeId: 31 }),
+    );
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
+      'alt',
+      'unit-12/text-42',
+      2,
+      31,
+    );
+    expect(mockMarkRecordingAndChapterConflicted).not.toHaveBeenCalled();
+  });
+
+  it('leaves server take id unknown for a stored-only take when the API omits takeId (#716)', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'alt', isSelected: false }),
+    ]);
+
+    await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockMarkRecordingUploaded).toHaveBeenCalledWith(
+      'alt',
+      'unit-12/text-42',
+      2,
+      null,
+    );
+  });
+
+  describe('queued take deletes (#716)', () => {
+    const deletion = {
+      id: 'rec-gone',
+      projectUnitId: 12,
+      bibleTextId: 42,
+      serverTakeId: 55,
+      recordedByUserId: 7,
+    };
+
+    it('deletes queued server takes before uploading and raises the unit token', async () => {
+      mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
+      mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
+      const order: string[] = [];
+      mockDeleteVerseAudioTake.mockImplementation(async () => {
+        order.push('delete');
+        return { versionToken: 6 };
+      });
+      mockUploadVerseAudio.mockImplementation(async () => {
+        order.push('upload');
+        return successResponse();
+      });
+
+      await syncPendingRecordings('tok-1', { delay });
+
+      expect(mockDeleteVerseAudioTake).toHaveBeenCalledWith(
+        { projectUnitId: 12, bibleTextId: 42, takeId: 55 },
+        'owner-tok',
+      );
+      expect(mockClearRecordingDeletion).toHaveBeenCalledWith('rec-gone');
+      expect(mockRaiseVerseVersionToken).toHaveBeenCalledWith(42, 12, 6);
+      expect(order).toEqual(['delete', 'upload']);
+    });
+
+    it('treats a 404 as already deleted', async () => {
+      mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
+      mockDeleteVerseAudioTake.mockRejectedValue(
+        new ApiError(404, 'Not found'),
+      );
+
+      await syncPendingRecordings('tok-1', { delay });
+
+      expect(mockClearRecordingDeletion).toHaveBeenCalledWith('rec-gone');
+      expect(mockRaiseVerseVersionToken).not.toHaveBeenCalled();
+    });
+
+    it('keeps the queue row after retryable failures and still uploads', async () => {
+      mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
+      mockDeleteVerseAudioTake.mockRejectedValue(
+        new ApiError(500, 'Server error'),
+      );
+
+      const result = await syncPendingRecordings('tok-1', { delay });
+
+      expect(mockDeleteVerseAudioTake).toHaveBeenCalledTimes(
+        MAX_UPLOAD_ATTEMPTS,
+      );
+      expect(mockClearRecordingDeletion).not.toHaveBeenCalled();
+      expect(result).toEqual({ uploaded: 1, conflicted: 0, failed: 0 });
+    });
+
+    it('flags reauth for the owner and stops the pass on an auth failure', async () => {
+      mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
+      mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
+      mockDeleteVerseAudioTake.mockRejectedValue(new AuthError('expired'));
+
+      await expect(
+        syncPendingRecordings('tok-1', { delay }),
+      ).rejects.toBeInstanceOf(AuthError);
+
+      expect(mockSetReauthRequired).toHaveBeenCalledWith('7');
+      expect(mockClearRecordingDeletion).not.toHaveBeenCalled();
+      expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    });
   });
 
   it('uploads with the recording owner token when credentials exist (#105)', async () => {
@@ -452,6 +599,7 @@ describe('recordingSync', () => {
       'rec-1',
       'unit-12/text-42',
       2,
+      9,
     );
   });
 
@@ -489,6 +637,7 @@ describe('recordingSync', () => {
       'rec-1',
       'unit-12/text-42',
       2,
+      9,
     );
   });
 
@@ -520,6 +669,7 @@ describe('recordingSync', () => {
       'rec-1',
       'unit-12/text-42',
       2,
+      9,
     );
   });
 
@@ -655,6 +805,7 @@ describe('recordingSync', () => {
       'rec-1',
       'unit-12/text-42',
       2,
+      9,
     );
     expect(mockSetRecordingSyncStatus).not.toHaveBeenCalledWith(
       'rec-2',

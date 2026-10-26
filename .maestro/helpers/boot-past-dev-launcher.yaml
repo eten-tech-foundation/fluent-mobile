@@ -1,22 +1,20 @@
-# After clearState + deep-link: reach app JS.
-# Prefer waiting for login/home. Only re-deep-link if still stuck on launcher
+# After launch (cold or warm): reach app JS.
+# One wait matches any app shell — a restored session must not pay a
+# login-only timeout first. Only re-deep-link if still stuck on launcher
 # and MAESTRO_LAUNCH_MODE=metro. Embedded e2e/nightly: Connect never appears.
+# Launch path only (always follows launchApp); never nest in ordered journeys.
 appId: com.eten.fluent
 ---
 # Fast path: JS already painting
 - extendedWaitUntil:
     visible:
-      id: 'login-email-input'
+      id: 'login-email-input|home-tab-my-work|auth-session-error|prepare-offline-screen'
     timeout: 60000
     optional: true
+# Short cold-start grace past the main wait; returns at once if already up.
 - extendedWaitUntil:
     visible:
-      id: 'auth-session-loading'
-    timeout: 5000
-    optional: true
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
+      id: 'login-email-input|home-tab-my-work|auth-session-error|prepare-offline-screen'
     timeout: 5000
     optional: true
 # Stuck on error dialog from a bad prior connect (metro only)

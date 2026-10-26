@@ -1,0 +1,70 @@
+# READ-ONLY: Resources tab EMPTY state for an EXISTING empty fixture chapter.
+#
+# Source: ResourcesTab.tsx empty host testID=resources-tab + EmptyState message
+# (messages.ts RESOURCES_EMPTY_MESSAGE / RESOURCES_NONE_FOR_VERSE_MESSAGE).
+#
+# Required env (fail if absent/invalid — no skip/auth/network fallback):
+# - MAESTRO_EXPECT_RESOURCES_EMPTY_FIXTURE
+#     Chapter assignment id for my-work-row-${…}.
+# - MAESTRO_EXPECT_RESOURCES_EMPTY_KIND = device_inventory | none_for_verse
+#     device_inventory → RESOURCES_EMPTY_MESSAGE
+#     none_for_verse → RESOURCES_NONE_FOR_VERSE_MESSAGE
+#
+# Forbidden: clearState, login/warm-session, airplane/network toggles,
+# Prepare for Offline download, section expansion that assumes content.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - read-only
+---
+# Complex selector values use external runScript, verified on installed Maestro.
+# UI assertions and fixture oracles remain unchanged.
+- runScript: ../../shared/scripts/resources-empty-values.js
+- assertTrue: ${output.emptyFixture.length > 0 && Number(output.emptyFixture) > 0}
+- assertTrue: ${['device_inventory','none_for_verse'].indexOf(output.emptyKind) >= 0}
+- assertTrue: ${output.emptyMessage.length > 0}
+- assertTrue: ${typeof output.emptyMessageRe === 'string' && output.emptyMessageRe.length > 0}
+
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-my-work'
+- scrollUntilVisible:
+    element:
+      id: 'my-work-row-${MAESTRO_EXPECT_RESOURCES_EMPTY_FIXTURE}'
+    direction: DOWN
+    timeout: 30000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- tapOn:
+    id: 'my-work-row-${MAESTRO_EXPECT_RESOURCES_EMPTY_FIXTURE}'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 30000
+- tapOn:
+    id: 'drafting-tab-resources'
+# Wait out resources-tab-loading then assert empty host + copy.
+- extendedWaitUntil:
+    notVisible:
+      id: 'resources-tab-loading'
+    timeout: 30000
+- assertVisible:
+    id: 'resources-tab'
+- assertVisible:
+    text: ${output.emptyMessageRe}
+- assertNotVisible:
+    id: 'resources-section-.*-toggle'
+- assertNotVisible:
+    id: 'resources-section-.*'
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'

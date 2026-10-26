@@ -2,6 +2,7 @@ import { getDatabase } from './db';
 import { emitRecordingDataChanged } from '../services/recordingDataEvents';
 import { logger } from '../utils/logger';
 import type {
+  PendingRecordingDeletion,
   Recording,
   RecordingGranularity,
   RecordingRow,
@@ -132,6 +133,36 @@ function normalizeProjectUnitId(raw: unknown): number | null {
   if (raw === null || raw === undefined) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * SQL resolving the project unit a take uploads to: the capture unit when
+ * set, else the chapter's assignment unit only when exactly one unit is
+ * assigned (never guess across units). `bt` must alias the take's
+ * bible_texts row; `unitExpr` is the capture unit expression.
+ * `unitExpr` is substituted three times, so each `?` inside it must be
+ * bound three times, in order.
+ */
+export function uploadProjectUnitSql(unitExpr: string): string {
+  return `CASE
+         WHEN ${unitExpr} IS NOT NULL AND ${unitExpr} > 0
+           THEN ${unitExpr}
+         ELSE (
+           SELECT ca.project_unit_id
+           FROM chapter_assignments ca
+           WHERE ca.bible_id = bt.bible_id
+             AND ca.book_id = bt.book_id
+             AND ca.chapter_number = bt.chapter_number
+             AND (
+               SELECT COUNT(DISTINCT ca2.project_unit_id)
+               FROM chapter_assignments ca2
+               WHERE ca2.bible_id = bt.bible_id
+                 AND ca2.book_id = bt.book_id
+                 AND ca2.chapter_number = bt.chapter_number
+             ) = 1
+           LIMIT 1
+         )
+       END`;
 }
 
 export type VerseTakeView = {
@@ -676,12 +707,50 @@ export async function selectRecordingTake(id: string): Promise<void> {
   }
 }
 
+/** Server take deletes queued by `deleteRecordingTake` (#716), oldest first. */
+export async function getPendingRecordingDeletions(): Promise<
+  PendingRecordingDeletion[]
+> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT id, project_unit_id, bible_text_id, server_take_id,
+            recorded_by_user_id
+     FROM recording_deletions
+     ORDER BY created_at ASC, id ASC`,
+  );
+  return (
+    (result.rows ?? []) as {
+      id: string;
+      project_unit_id: number;
+      bible_text_id: number;
+      server_take_id: number;
+      recorded_by_user_id: number | null;
+    }[]
+  ).map(row => ({
+    id: row.id,
+    projectUnitId: Number(row.project_unit_id),
+    bibleTextId: Number(row.bible_text_id),
+    serverTakeId: Number(row.server_take_id),
+    recordedByUserId:
+      row.recorded_by_user_id === null ? null : Number(row.recorded_by_user_id),
+  }));
+}
+
+/** Drop a queued server take delete once the server confirmed it (#716). */
+export async function clearRecordingDeletion(id: string): Promise<void> {
+  const db = getDatabase();
+  await db.execute(`DELETE FROM recording_deletions WHERE id = ?`, [id]);
+}
+
 /**
  * Delete a take by id. If it was selected, promote the highest remaining
  * `take_number` for that verse + owner (or leave none latest if empty) and
  * mark that promotion pending so the server's active take follows — unless a
  * canonical take supersedes it on that verse (#701, same rule as
  * `selectRecordingTake`).
+ *
+ * A take the server already holds (`server_take_id` set) is queued in
+ * `recording_deletions` so the next sync deletes the server copy (#716).
  *
  * No-ops (without error) if `id` doesn't exist or is owned by a different
  * user than the active account (#259). Unattributed rows
@@ -696,7 +765,8 @@ export async function deleteRecordingTake(id: string): Promise<void> {
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
       `SELECT bible_text_id, recorded_by_user_id, is_selected,
-              start_chapter, start_verse, end_chapter, end_verse, project_unit_id
+              start_chapter, start_verse, end_chapter, end_verse, project_unit_id,
+              server_take_id
        FROM recordings WHERE id = ?`,
       [id],
     );
@@ -710,6 +780,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
           end_chapter: number | null;
           end_verse: number | null;
           project_unit_id?: number | null;
+          server_take_id?: number | null;
         }
       | undefined;
     if (!row) {
@@ -737,6 +808,37 @@ export async function deleteRecordingTake(id: string): Promise<void> {
       normalizeProjectUnitId(row.project_unit_id),
       'r.project_unit_id',
     );
+
+    const serverTakeId = Number(row.server_take_id);
+    if (Number.isInteger(serverTakeId) && serverTakeId > 0) {
+      // #716: the server copy is removed on the next sync. The recording id
+      // doubles as the queue id since the row is deleted below. No unit
+      // resolves (ambiguous chapter assignment) means nothing to target.
+      // Three copies: uploadProjectUnitSql substitutes the CAST(?) three times.
+      const projectUnitId = normalizeProjectUnitId(row.project_unit_id);
+      await tx.execute(
+        `INSERT OR REPLACE INTO recording_deletions
+           (id, project_unit_id, bible_text_id, server_take_id,
+            recorded_by_user_id, created_at)
+         SELECT ?, unit_id, ?, ?, ?, ?
+         FROM (
+           SELECT ${uploadProjectUnitSql('CAST(? AS INTEGER)')} AS unit_id
+           FROM bible_texts bt WHERE bt.id = ?
+         )
+         WHERE unit_id IS NOT NULL`,
+        [
+          id,
+          bibleTextId,
+          serverTakeId,
+          row.recorded_by_user_id,
+          now,
+          projectUnitId,
+          projectUnitId,
+          projectUnitId,
+          bibleTextId,
+        ],
+      );
+    }
 
     await tx.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
     applied = true;

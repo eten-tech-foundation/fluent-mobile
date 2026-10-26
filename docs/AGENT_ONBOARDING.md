@@ -10,7 +10,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 **Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database and restores the auth session, then shows the navigator. After login (or when the user triggers sync), it syncs Fluent API data into SQLite so translators can browse **projects → chapters → drafting** (Bible / Resources / Record). The **Record** tab captures verse audio, persists takes to the `recordings` table, and uploads pending takes via `recordingSync` + `uploadOrchestrator` (see **Repository layout** and [recordings-sync-contract.md](guides/recordings-sync-contract.md)).
 
-Recording follow-up: wire source audio dock to real fetch + playback ([#235](https://github.com/eten-tech-foundation/fluent-mobile/issues/235)) — consumes fluent-api `GET /projects/.../source-audio/...` (fluent-api #282).
+Source audio (architecture, not a device pass): [`src/components/layout/SourceAudioShell.tsx`](../src/components/layout/SourceAudioShell.tsx) imports [`useSourceAudio`](../src/hooks/useSourceAudio.ts) and drives dock fetch/playback via that hook (FluentAPI source-audio + local cache). Scope is the drafting shell / Record-tab integration — not a claim that Nightly or hardware QA has signed off.
 
 ## Tech stack
 
@@ -90,7 +90,8 @@ Run from repo root after `npm install`:
 
 | Command | Purpose |
 |---------|---------|
-| `npm run lint` | ESLint (passes; 1 warning: unused `db` in `sync.ts`) |
+| `npm run lint` | ESLint (`eslint .`) |
+| `npm run architecture-guard` | Fail on UI-layer `fetch(` / `getDatabase(` / `executeSql` (`--ci`) |
 | `npm run format:check` | Prettier on `src/**/*.{ts,tsx}` |
 | `npm run format` | Prettier write (same glob as `format:check`) |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
@@ -102,7 +103,7 @@ Run from repo root after `npm install`:
 
 **Prebuild failures:** if `MainApplication does not exist` → `rm -rf android` then `npm run prebuild`.
 
-**Before claiming PR-ready:** format → lint → typecheck → test (see [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc)).
+**Before claiming PR-ready** (authoritative order in [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc)): `npm run format:check` → `npm run lint` → `npm run architecture-guard` → `npm run typecheck` → `npm test -- --ci`.
 
 ## Production release (Android)
 
@@ -206,6 +207,7 @@ Keep changes **small and scoped** — avoid drive-by refactors.
 - **Colocated:** `src/**/*.test.ts(x)` — e.g. `src/utils/logger.test.ts`, `src/services/recordingSync.test.ts`.
 - **Live API test:** `fluent-api.test.ts` is **skipped by default**; opt in with `RUN_LIVE_API_TESTS=1 npm test -- fluent-api.test.ts`.
 - **Maestro (opt-in Android E2E):** harness + domain smokes + multi-account — see [guides/maestro.md](./guides/maestro.md). Playbook maps QA journeys → flows; residual manual listed there. Hosted runs: EAS Workflow `.eas/workflows/maestro-android.yml` (`npm run maestro:eas`). **Not** a PR/CI merge gate; does not replace Needs QA? / nightly handoff ([guides/qa-process.md](./guides/qa-process.md)).
+- **Remux audio proof (#719):** Jest mocks cannot decode remux output. Host check: `npm run verify:remux-audio` (or `node scripts/verify-remux-audio.mjs <take.m4a>`) runs ffprobe/ffmpeg against `fixtures/audio/1khz-tone.aac` or an adb-pulled remuxed take under `files/recordings/`. Missing input fails. **Not** a CI / instrumented-test job.
 - **Gap:** `src/db/` has partial unit coverage — prefer adding tests when changing queries/repository.
 
 When adding features: mock `op-sqlite`, navigation, and sync in screen tests following existing patterns. Reset shared Expo mocks in `beforeEach` when mutating secure-store/file-system state.
@@ -220,6 +222,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | New table / column | `schema.ts` → prefer versioned migrations (`#110`) → repository inserts → queries → types |
 | Manual re-sync | Sync page / header sync → `useSync` / `syncAllUsers` |
 | PR workflow | `/start-issue` (full loop), `/create-pr-branch`, `/generate-pr-description`, `/create-pr` (alias `/open-pr`) — canonical: `.claude/commands/` |
+| Assert remuxed take is non-silent | `npm run verify:remux-audio -- /path/to/take.m4a`. See `scripts/verify-remux-audio.mjs` (adb pull `files/recordings/` via `run-as com.eten.fluent`) |
 
 ## Risk areas (change carefully)
 
