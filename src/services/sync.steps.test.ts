@@ -45,6 +45,12 @@ import {
 } from '../db/repository';
 import { getConnectivitySnapshot } from './connectivity';
 import { syncPendingChapterClaims } from './chapterClaimSync';
+import { logger } from '../utils/logger';
+import {
+  BIBLE_TEXT_PHASE,
+  SYNC_PHASE_FIELDS,
+  SYNC_PHASE_LOG_MESSAGE,
+} from './syncPhaseTiming';
 
 jest.mock('./connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
@@ -1891,6 +1897,325 @@ describe('sync step orchestration', () => {
         'sync_error_prepare_offline_bible_texts',
         expect.stringMatching(/Missing bible text chapter\(s\):/i),
       );
+    });
+  });
+
+  describe('phase timing instrumentation (#764)', () => {
+    const transport = jest.fn();
+
+    function timingContexts(): Record<string, unknown>[] {
+      return transport.mock.calls
+        .filter(
+          ([, tag, message]) =>
+            tag === 'SyncPhase' && message === SYNC_PHASE_LOG_MESSAGE,
+        )
+        .map(([, , , context]) => context as Record<string, unknown>);
+    }
+
+    beforeEach(() => {
+      transport.mockReset();
+      logger.setTransport(transport);
+      (getActiveUserId as jest.Mock).mockReturnValue('1');
+    });
+
+    afterEach(() => {
+      logger.reset();
+      jest.restoreAllMocks();
+    });
+
+    it('emits allowlisted attempt and total timing without changing auth classification', async () => {
+      const now = jest.spyOn(Date, 'now');
+      now
+        .mockReturnValueOnce(1_000)
+        .mockReturnValueOnce(1_000)
+        .mockReturnValueOnce(1_025)
+        .mockReturnValueOnce(1_040);
+      (FluentAPI.getLanguages as jest.Mock).mockRejectedValue(
+        new AuthError('User not authenticated'),
+      );
+
+      await expect(syncMasterData('session-tok')).rejects.toBeInstanceOf(
+        AuthError,
+      );
+
+      expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(1);
+      expect(setSyncErrorMock).toHaveBeenCalledTimes(1);
+
+      const phases = timingContexts();
+      expect(phases.map(entry => entry.phase)).toEqual([
+        'Master data sync.attempt',
+        'Master data sync.total',
+      ]);
+      expect(phases[0]).toEqual({
+        phase: 'Master data sync.attempt',
+        elapsedMs: 25,
+        attempt: 1,
+      });
+      expect(phases[1]).toEqual({
+        phase: 'Master data sync.total',
+        elapsedMs: 40,
+        attempt: 1,
+      });
+      for (const context of phases) {
+        expect(
+          Object.keys(context).every(key =>
+            (SYNC_PHASE_FIELDS as readonly string[]).includes(key),
+          ),
+        ).toBe(true);
+      }
+    });
+
+    it('times each retry attempt plus total and preserves transient classification', async () => {
+      jest.useFakeTimers();
+      (FluentAPI.getLanguages as jest.Mock).mockRejectedValue(
+        new ApiError(0, 'Unable to resolve host api.fluent.bible'),
+      );
+
+      try {
+        const pending = syncMasterData();
+        const expectation = expect(pending).rejects.toThrow(
+          'Unable to resolve host api.fluent.bible',
+        );
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+      } finally {
+        jest.useRealTimers();
+      }
+
+      expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(3);
+      expect(setSyncErrorMock).not.toHaveBeenCalled();
+
+      const phases = timingContexts().map(entry => entry.phase);
+      expect(phases).toEqual([
+        'Master data sync.attempt',
+        'Master data sync.attempt',
+        'Master data sync.attempt',
+        'Master data sync.total',
+      ]);
+      expect(
+        timingContexts()
+          .filter(entry => entry.phase === 'Master data sync.attempt')
+          .map(entry => entry.attempt),
+      ).toEqual([1, 2, 3]);
+      expect(
+        timingContexts().find(entry => entry.phase === 'Master data sync.total')
+          ?.attempt,
+      ).toBe(3);
+    });
+
+    it('records count check, combined fetchParse, write, and fullFetchReason', async () => {
+      mockDbCount(0);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      const phases = timingContexts();
+      expect(phases.map(entry => entry.phase)).toEqual([
+        BIBLE_TEXT_PHASE.reentry,
+        BIBLE_TEXT_PHASE.countCheck,
+        BIBLE_TEXT_PHASE.fetchParse,
+        BIBLE_TEXT_PHASE.write,
+        'Bible text sync.attempt',
+        'Bible text sync.total',
+      ]);
+      expect(
+        phases.find(entry => entry.phase === BIBLE_TEXT_PHASE.countCheck),
+      ).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+          fullFetchReason: 'missing_chapter',
+        }),
+      );
+      expect(
+        phases.find(entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse),
+      ).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+          fullFetchReason: 'missing_chapter',
+        }),
+      );
+      expect(
+        phases.find(entry => entry.phase === BIBLE_TEXT_PHASE.write),
+      ).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+          fullFetchReason: 'missing_chapter',
+        }),
+      );
+      const serialized = JSON.stringify(phases);
+      expect(serialized).not.toMatch(
+        /In the beginning|user@|Bearer|token|9001/i,
+      );
+      for (const context of phases) {
+        expect(
+          Object.keys(context).every(key =>
+            (SYNC_PHASE_FIELDS as readonly string[]).includes(key),
+          ),
+        ).toBe(true);
+      }
+    });
+
+    it('labels remap and no_cursor full-fetch reasons', async () => {
+      mockDbCount(2);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+      expect(
+        timingContexts().find(
+          entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse,
+        )?.fullFetchReason,
+      ).toBe('remap');
+      expect(
+        timingContexts().some(
+          entry => entry.phase === BIBLE_TEXT_PHASE.countCheck,
+        ),
+      ).toBe(false);
+
+      transport.mockClear();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      await syncBibleTexts();
+      expect(
+        timingContexts().find(
+          entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse,
+        )?.fullFetchReason,
+      ).toBe('no_cursor');
+
+      transport.mockClear();
+      mockDbCount(2);
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+      expect(
+        timingContexts().find(
+          entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse,
+        )?.fullFetchReason,
+      ).toBeUndefined();
+      expect(
+        timingContexts().some(
+          entry => entry.phase === BIBLE_TEXT_PHASE.countCheck,
+        ),
+      ).toBe(true);
+    });
+
+    it('omits fullFetchReason on incremental warm fetch and still times countCheck', async () => {
+      mockDbCount(12);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      const countCheck = timingContexts().find(
+        entry => entry.phase === BIBLE_TEXT_PHASE.countCheck,
+      );
+      const fetchParse = timingContexts().find(
+        entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse,
+      );
+      expect(countCheck).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+        }),
+      );
+      expect(countCheck).not.toHaveProperty('fullFetchReason');
+      expect(fetchParse).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+        }),
+      );
+      expect(fetchParse).not.toHaveProperty('fullFetchReason');
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        '2026-01-01T00:00:00.000Z',
+      );
+    });
+
+    it('records chunks already committed before a retry without changing order', async () => {
+      jest.useFakeTimers();
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => ({
+          data: [
+            {
+              bookId: bibleId === 10 ? 1 : 2,
+              chapterNumber: 1,
+              verses: [
+                {
+                  id: bibleId * 100,
+                  verseNumber: 1,
+                  text: 'secret verse text',
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      insertBibleTextsMock.mockImplementation(async rows => {
+        if (rows[0]?.bibleId === 20) {
+          throw new ApiError(500, 'write failed');
+        }
+      });
+
+      try {
+        const pending = syncBibleTexts();
+        const expectation = expect(pending).rejects.toThrow('write failed');
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+      } finally {
+        jest.useRealTimers();
+      }
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(6);
+      expect(insertBibleTextsMock).toHaveBeenCalledTimes(6);
+      expect(
+        timingContexts()
+          .filter(entry => entry.phase === BIBLE_TEXT_PHASE.reentry)
+          .map(entry => entry.chunks),
+      ).toEqual([0, 1, 1]);
+      const serialized = JSON.stringify(timingContexts());
+      expect(serialized).not.toMatch(/secret verse text|user@|Bearer/i);
     });
   });
 });
