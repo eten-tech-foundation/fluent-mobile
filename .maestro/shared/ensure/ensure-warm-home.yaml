@@ -1,0 +1,5 @@
+# Warm entry for domain flows. Does not clear app state.
+appId: com.eten.fluent
+---
+- runFlow: ../../helpers/launch-android-warm.yaml
+- runFlow: ensure-warm-session.yaml
