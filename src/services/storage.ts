@@ -14,8 +14,15 @@ export const KV_KEYS = {
   KNOWN_USER_IDS: 'known_user_ids',
   LAST_ASSIGNMENT_SYNC_AT: 'last_assignment_sync_at',
   LAST_SYNCED_AT: 'last_synced_at',
-  /** ISO timestamp of last successful languages/books/bibles sync. */
+  /**
+   * Legacy device-clock watermark. Read once to seed per-collection
+   * `updatedAt` cursors; new writes go to the collection keys only.
+   */
   LAST_MASTER_DATA_SYNCED_AT: 'last_master_data_synced_at',
+  LAST_MASTER_DATA_LANGUAGES_UPDATED_AT:
+    'last_master_data_languages_updated_at',
+  LAST_MASTER_DATA_BOOKS_UPDATED_AT: 'last_master_data_books_updated_at',
+  LAST_MASTER_DATA_BIBLES_UPDATED_AT: 'last_master_data_bibles_updated_at',
   SYNC_COUNT_PROJECTS: 'sync_count_projects',
   SYNC_COUNT_CHAPTERS: 'sync_count_chapters',
   SYNC_COUNT_BIBLES: 'sync_count_bibles',
@@ -62,6 +69,53 @@ export function getMasterDataLastSyncedAt(): string {
 export function setMasterDataLastSyncedAt(timestamp: string) {
   kvStorage.setItemSync(KV_KEYS.LAST_MASTER_DATA_SYNCED_AT, timestamp);
   log.info('Master data last synced timestamp updated', { timestamp });
+}
+
+export type MasterDataCollection = 'languages' | 'books' | 'bibles';
+
+const MASTER_DATA_UPDATED_AT_KEYS: Record<MasterDataCollection, string> = {
+  languages: KV_KEYS.LAST_MASTER_DATA_LANGUAGES_UPDATED_AT,
+  books: KV_KEYS.LAST_MASTER_DATA_BOOKS_UPDATED_AT,
+  bibles: KV_KEYS.LAST_MASTER_DATA_BIBLES_UPDATED_AT,
+};
+
+/**
+ * Per-collection server `updatedAt` cursor. Seeds once from the legacy
+ * `LAST_MASTER_DATA_SYNCED_AT` key when the collection key is empty.
+ */
+export function getMasterDataUpdatedAt(
+  collection: MasterDataCollection,
+): string {
+  const key = MASTER_DATA_UPDATED_AT_KEYS[collection];
+  const existing = kvStorage.getItemSync(key);
+  if (existing) {
+    return existing;
+  }
+
+  const legacy =
+    kvStorage.getItemSync(KV_KEYS.LAST_MASTER_DATA_SYNCED_AT) ?? '';
+  if (!legacy) {
+    return '';
+  }
+
+  kvStorage.setItemSync(key, legacy);
+  log.info('Seeded master-data cursor from legacy last-synced timestamp', {
+    collection,
+    timestamp: legacy,
+  });
+  return legacy;
+}
+
+/** Persist a collection cursor. Does not write the legacy synced-at key. */
+export function setMasterDataUpdatedAt(
+  collection: MasterDataCollection,
+  timestamp: string,
+): void {
+  if (!timestamp) {
+    return;
+  }
+  kvStorage.setItemSync(MASTER_DATA_UPDATED_AT_KEYS[collection], timestamp);
+  log.info('Master data updatedAt cursor stored', { collection, timestamp });
 }
 
 export function getSyncCount(

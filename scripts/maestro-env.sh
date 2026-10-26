@@ -2,7 +2,9 @@
 # Shared Maestro env helpers. Sourced by maestro-test.sh and wrappers.
 # Loads `.env.maestro` literally (no Bash expansion) when present.
 # Resolves translator / Account B aliases onto MAESTRO_EMAIL(_2) for flows + EAS.
-# Account B = member-without-assignments (MAESTRO_PM_* aliases kept for local readability).
+# Account B = member-without-assignments (MAESTRO_PM_* aliases kept for local
+# readability). Ownership fixtures (#607) require a distinct MAESTRO_EMAIL_2
+# Project Translator - do not rely on the PM alias for open Peer Check submit.
 # QA lane: scripts/maestro-test-qa.sh + .env.maestro.qa only; API base is pinned.
 
 # Immutable QA API host for Maestro runner env (not Metro/app JS proof).

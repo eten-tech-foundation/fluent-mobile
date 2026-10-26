@@ -252,14 +252,14 @@ jobs:
     environment: preview
     runs_on: linux-large-nested-virtualization
     # Requires EAS preview secrets: MAESTRO_EMAIL, MAESTRO_PASSWORD,
-    # MAESTRO_PM_EMAIL, MAESTRO_PM_PASSWORD, MAESTRO_FIXTURE_* labels.
+    # MAESTRO_EMAIL_2, MAESTRO_PASSWORD_2, MAESTRO_PM_EMAIL, MAESTRO_PM_PASSWORD,
+    # MAESTRO_FIXTURE_* labels including conflict + open Peer Check.
     # Seeds disposable project before flows (fail-closed — no claim rotation;
     # update preview MAESTRO_FIXTURE_CLAIM_LABEL when the chapter is burned).
     params:
       build_id: ${{ needs.build_android_e2e.outputs.build_id }}
       flow_path: .maestro
       include_tags: ownership
-      exclude_tags: ownership-conflict,ownership-peer-check
       maestro_version: '2.10.0'
       output_format: junit
       retries: 1

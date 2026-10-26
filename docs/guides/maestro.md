@@ -72,7 +72,7 @@ bash scripts/maestro-test-qa.sh --config .maestro/config.yaml .maestro/flows/har
 | Login validation | `edges/login-validation`, `edges/wrong-credentials` | — |
 | Mic permission deny | `edges/mic-denied` | OEM permission variants |
 | Offline login | `offline/login-offline` (+ adb helper) | Flaky airplane-mode OEMs |
-| Ownership / taken-warning / auto-claim | `ownership/*` (+ API fixtures) | Conflict / open Peer Check until status seeds exist |
+| Ownership / taken-warning / auto-claim | `ownership/*` (+ API fixtures, including conflict + open Peer Check) | Claim reset depends on fluent-api #464 (`reset-selected`); local suite rotates if that route 404s |
 | Forced reauth mid-session | — (blocked) | Needs backend token-revoke / E2E hook |
 | Production / Play Store | — | Never set `EXPO_PUBLIC_E2E_MODE` on production |
 
@@ -136,7 +136,7 @@ npm run maestro:eas -- -F suite=nightly
 - Account A (translator shape): `MAESTRO_EMAIL` / `MAESTRO_PASSWORD` — ≥1 chapter assignment, under 5-take cap
 - Account B (member-without-assignments): `MAESTRO_EMAIL_2` / `MAESTRO_PASSWORD_2` — project membership, no assignee rows
 - Optional aliases: `MAESTRO_TRANSLATOR_*`, `MAESTRO_PM_*` (resolved onto EMAIL(_2))
-- Ownership fixtures (#574): `MAESTRO_PM_*` must be a **Project Manager** on the disposable fixture project; plus `MAESTRO_FIXTURE_*` labels (see below)
+- Ownership fixtures (#574 / #607): `MAESTRO_PM_*` must be a **Project Manager** on the disposable fixture project; `MAESTRO_EMAIL_2` must be a second **Project Translator** (do not alias it to the PM); plus `MAESTRO_FIXTURE_*` labels including conflict + open Peer Check (see below)
 
 ```bash
 npm run maestro:install
@@ -145,14 +145,14 @@ cp .env.maestro.example .env.maestro         # Dev / local eng; never commit
 cp .env.maestro.qa.example .env.maestro.qa   # QA lane; blank *_PASSWORD; bash scripts/maestro-test-qa.sh …
 ```
 
-### Ownership / claim disposable fixtures (#574)
+### Ownership / claim disposable fixtures (#574 / #607)
 
-Do **not** mutate shared QA projects. Use a dedicated project the PM owns (example: `Source Audio QA — BSB` / id `432`) with at least two Project Translators.
+Do **not** mutate shared QA projects. Use a dedicated project the PM owns (example: `Source Audio QA - BSB` / id `432`) with at least two Project Translators. `MAESTRO_EMAIL_2` must be that second translator - not the PM.
 
-**API seed/reset (preferred — proven on dev):**
+**API seed/reset:**
 
 ```bash
-# .env.maestro needs MAESTRO_PM_* + MAESTRO_EMAIL + fixture labels
+# .env.maestro needs MAESTRO_PM_* + MAESTRO_EMAIL + MAESTRO_EMAIL_2 + fixture labels
 npm run maestro:fixtures:seed    # requires --yes / MAESTRO_FIXTURE_CONFIRM=1 (npm script passes --yes)
 npm run maestro:fixtures:verify
 npm run maestro:test:ownership
@@ -161,21 +161,25 @@ npm run maestro:test:ownership
 | Role | Example label | Seed behavior |
 | --- | --- | --- |
 | mine | `Mark 1` | `drafterId` = Maestro translator, `peerCheckerId` = other translator |
-| other | `Mark 9` | `drafterId` = other translator |
+| other | `Mark 9` | `drafterId` = other translator (`MAESTRO_EMAIL_2`) |
 | unassigned | `Mark 4` | No assignee (ownership icon absent; Record has no taken warning) |
-| claim | `Mark 7` | Must stay **`not_started` + unassigned** for `POST /claim` / auto-claim. Local `maestro:test:ownership` may rotate to the next pristine chapter (`MAESTRO_FIXTURE_ALLOW_CLAIM_ROTATE=1`). EAS fails closed — update the preview `MAESTRO_FIXTURE_CLAIM_LABEL` secret when burned. |
+| claim | `Mark 7` | Must stay **`not_started` + unassigned** for `POST /claim` / auto-claim. Seed calls `PATCH .../reset-selected` (fluent-api #464). If that route 404s, local `maestro:test:ownership` rotates to the next pristine chapter (`MAESTRO_FIXTURE_ALLOW_CLAIM_ROTATE=1`). EAS fails closed - update the preview `MAESTRO_FIXTURE_CLAIM_LABEL` secret when burned. |
+| conflict | `Mark 2` | Assign translator, then upload three verse-audio takes; the third reuses a stale `baseVersionToken`. Verify reads `hasConflict` from `GET .../chapter-assignments/progress`. |
+| open Peer Check | `Mark 3` | Manager `assign-selected` with `MAESTRO_EMAIL_2` as drafter and `peerCheckerId` null; that translator `PATCH /chapter-assignments/:id/submit`. |
 
 **Safety:** `seed` refuses to run without `--yes` / `MAESTRO_FIXTURE_CONFIRM=1`, and refuses a `MAESTRO_FIXTURE_PROJECT_ID` that is not on the PM's project list (or that disagrees with `MAESTRO_FIXTURE_PROJECT_NAME` when both are set). Point env only at a dedicated disposable fixture project.
 
-Endpoint used by seed (discovered from Fluent web Assign → Save):
+Endpoints used by seed:
 
-`PATCH /projects/:projectId/chapter-assignments/assign-selected`  
-`{ "assignments": [{ "chapterAssignmentId", "drafterId", "peerCheckerId" }] }`  
-Null `drafterId` / `peerCheckerId` clears assignees. Clearing a claimed chapter leaves status `draft` (claim pool is one-shot per chapter). After auto-claim, burned chapters stay assigned/`draft` — rotate `MAESTRO_FIXTURE_CLAIM_LABEL` or reset Status in Fluent web; the suite does not restore `not_started`.
+- `PATCH /projects/:projectId/chapter-assignments/assign-selected` - `{ "assignments": [{ "chapterAssignmentId", "drafterId", "peerCheckerId" }] }`. Null `drafterId` / `peerCheckerId` clears assignees.
+- `PUT /verse-audio/:projectUnitId/:bibleTextId` - conflict seed (stale `baseVersionToken` on the third take).
+- `PATCH /chapter-assignments/:id/submit` - open Peer Check (second translator).
+- `PATCH /projects/:projectId/chapter-assignments/reset-selected` - `{ "chapterAssignmentIds": number[] }` (fluent-api #464). Restores selected chapters to `not_started` + unassigned. A 404 means the route is not deployed yet; seed logs that and keeps the claim-label rotate fallback.
+- `GET /projects/:projectId/chapter-assignments/progress` - verify reads `hasConflict` here.
 
 Manifest: [`.maestro/fixtures/ownership-claim.manifest.json`](../../.maestro/fixtures/ownership-claim.manifest.json).
 
-**Browser fallback:** only if assign-selected is unavailable — use Fluent web with Maestro env logins. Conflict / open Peer Check roles still need status seeds the assignment API cannot set.
+**Browser fallback:** only if `assign-selected` itself is unavailable - use Fluent web with Maestro env logins. Conflict, open Peer Check, and claim restore are seeded through the API above.
 
 ## Debug APK + Metro + reverse
 
@@ -224,8 +228,8 @@ Set `MAESTRO_LAUNCH_MODE=embedded` in `.env.maestro` to make it the local defaul
 | `maestro:test:auth` / `:nav` / `:drafting` / `:record` / `:sync` / `:edges` | Dev | Area slices (exclude fixture-blocked) |
 | `maestro:test:empty-assignments` / `:pm` | Dev | Account B empty My Work |
 | `maestro:test:multi-account` | Dev | Isolation A–D |
-| `maestro:test:ownership` | Dev | Ownership / taken-warning / auto-claim (#574) |
-| `maestro:fixtures:seed` / `:verify` / `:reset` | Dev | Disposable assignment fixtures (#574) |
+| `maestro:test:ownership` | Dev | Ownership / taken-warning / auto-claim / conflict / open Peer Check (#574 / #607) |
+| `maestro:fixtures:seed` / `:verify` / `:reset` | Dev | Disposable assignment fixtures (#574 / #607) |
 | `maestro:test:offline-login` | Dev | Airplane-mode login error |
 | `maestro:test:stage1` | follows `MAESTRO_ENV_LANE` | Stage 1 batch, one Maestro invocation per pass (`5` = five consecutive passes) |
 | `maestro:eas` | hosted | Dispatch EAS workflow |
@@ -251,7 +255,7 @@ Set `MAESTRO_LAUNCH_MODE=embedded` in `.env.maestro` to make it the local defaul
 - Reauth forced path: blocked without backend token-revoke — residual manual.
 - Three-account cap / sign-out-with-other-remaining: residual manual ([qa-multi-account-nightly.md](qa-multi-account-nightly.md)).
 - Record at 5-take cap: fail-fast via `ensure-take-capacity`.
-- Ownership claim pool: after auto-claim, clearing assignees leaves `draft`; rotate `MAESTRO_FIXTURE_CLAIM_LABEL` to another pristine `not_started` chapter and re-seed.
+- Ownership claim pool: seed prefers `PATCH .../reset-selected` (fluent-api #464) to restore the same claim chapter. If that route 404s, local runs rotate `MAESTRO_FIXTURE_CLAIM_LABEL` to the next pristine `not_started` chapter.
 
 ## Out of scope
 
