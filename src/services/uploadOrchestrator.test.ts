@@ -1545,4 +1545,105 @@ describe('uploadOrchestrator', () => {
       }
     },
   );
+
+  it('does not auto-upload while the drafting screen holds uploads', async () => {
+    const h = createHarness({ chapters: [] });
+    await h.orchestrator.setDraftingHold(true);
+    h.emitConnectivity(true, true);
+    await h.flush();
+
+    h.setChapters([{ bookId: 8, chapterNumber: 4 }]);
+    h.orchestrator.notifyPendingWork();
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([]);
+    expect(h.events.some(event => event.type === 'start')).toBe(false);
+  });
+
+  it('lets an in-flight upload finish when the drafting hold turns on', async () => {
+    const h = createHarness({
+      workerDelayMs: 40,
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.orchestrator.getSnapshot().phase === 'syncing');
+
+    await h.orchestrator.setDraftingHold(true);
+    await h.flush();
+    await h.flush();
+
+    expect(h.orchestrator.getSnapshot().phase).toBe('syncing');
+    await h.waitFor(() => h.uploaded.length === 1);
+    expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 1 }]);
+  });
+
+  it('starts the pending upload when the drafting hold lifts', async () => {
+    const h = createHarness({
+      chapters: [{ bookId: 3, chapterNumber: 2 }],
+    });
+    await h.orchestrator.setDraftingHold(true);
+    h.emitConnectivity(true, true);
+    await h.flush();
+    expect(h.uploaded).toEqual([]);
+
+    await h.orchestrator.setDraftingHold(false);
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 2 }]);
+  });
+
+  it('still uploads when syncNow runs during the drafting hold', async () => {
+    const h = createHarness({
+      chapters: [{ bookId: 4, chapterNumber: 1 }],
+    });
+    await h.orchestrator.setDraftingHold(true);
+    h.emitConnectivity(true, true);
+    await h.flush();
+
+    await h.orchestrator.syncNow();
+
+    expect(h.uploaded).toEqual([{ bookId: 4, chapterNumber: 1 }]);
+  });
+
+  it('starts one auto session despite the hold when drafting flushes pending work', async () => {
+    const h = createHarness({
+      chapters: [{ bookId: 8, chapterNumber: 1 }],
+    });
+    await h.orchestrator.setDraftingHold(true);
+    h.emitConnectivity(true, true);
+    await h.flush();
+    expect(h.uploaded).toEqual([]);
+
+    h.orchestrator.flushAutoDespiteHold();
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([{ bookId: 8, chapterNumber: 1 }]);
+
+    h.setChapters([{ bookId: 8, chapterNumber: 2 }]);
+    h.orchestrator.notifyPendingWork();
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([{ bookId: 8, chapterNumber: 1 }]);
+  });
+
+  it('keeps a 24h pause after the drafting hold lifts', async () => {
+    const h = createHarness({ chapters: [] });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.orchestrator.pause();
+    h.setChapters([{ bookId: 5, chapterNumber: 1 }]);
+
+    await h.orchestrator.setDraftingHold(true);
+    await h.orchestrator.setDraftingHold(false);
+    await h.flush();
+    await h.flush();
+
+    expect(h.getPausedUntilMs()).not.toBeNull();
+    expect(h.orchestrator.getSnapshot().phase).toBe('paused');
+    expect(h.uploaded).toEqual([]);
+  });
 });

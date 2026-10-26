@@ -9,7 +9,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  AppState,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
@@ -36,6 +43,10 @@ import { syncBibleTexts, syncMasterData } from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
 import { setRecordCaptureGate } from '../../navigation/recordCaptureGate';
+import {
+  flushDraftingUploads,
+  setDraftingUploadHold,
+} from '../../services/uploadOrchestrator';
 import {
   parseRequiredNumber,
   parseRequiredString,
@@ -223,6 +234,52 @@ export default function DraftingScreen() {
       alertRecordingInProgress(() => router.back());
     });
   }, [alertRecordingInProgress, navigation, recordCaptureActive, router]);
+
+  // Automatic uploads wait while this screen is in use. Bible, Resources, and
+  // Record share the screen, so a tab change does not release the hold.
+  // Backgrounding the app does: the person is no longer using the screen.
+  const screenFocusedRef = useRef(false);
+  const appActiveRef = useRef(AppState.currentState === 'active');
+  const previousChapterIdRef = useRef(chapterId);
+  const syncDraftingUploadHold = useCallback(() => {
+    void setDraftingUploadHold(
+      screenFocusedRef.current && appActiveRef.current,
+    );
+  }, []);
+
+  useEffect(() => {
+    const unsubFocus = navigation.addListener('focus', () => {
+      screenFocusedRef.current = true;
+      syncDraftingUploadHold();
+    });
+    const unsubBlur = navigation.addListener('blur', () => {
+      screenFocusedRef.current = false;
+      syncDraftingUploadHold();
+    });
+    const appStateSub = AppState.addEventListener('change', nextState => {
+      appActiveRef.current = nextState === 'active';
+      syncDraftingUploadHold();
+    });
+    return () => {
+      unsubFocus();
+      unsubBlur();
+      appStateSub.remove();
+      screenFocusedRef.current = false;
+      void setDraftingUploadHold(false);
+    };
+  }, [navigation, syncDraftingUploadHold]);
+
+  // Same screen, new chapter: no blur, so kick one automatic upload for
+  // the chapter that was just left. The hold stays on for the new chapter.
+  useEffect(() => {
+    if (previousChapterIdRef.current === chapterId) {
+      return;
+    }
+    previousChapterIdRef.current = chapterId;
+    if (screenFocusedRef.current && appActiveRef.current) {
+      flushDraftingUploads();
+    }
+  }, [chapterId]);
 
   const goBack = useCallback(() => {
     router.back();

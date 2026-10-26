@@ -91,6 +91,16 @@ export type UploadOrchestrator = {
   syncNow: () => Promise<void>;
   /** A take was saved (or other pending work appeared) while the app is open. */
   notifyPendingWork: () => void;
+  /**
+   * While held, automatic uploads do not start. An in-flight session is left
+   * running. Explicit syncNow still runs.
+   */
+  setDraftingHold: (held: boolean) => Promise<void>;
+  /**
+   * Start one automatic session even while the drafting hold is on.
+   * Used when the person leaves one chapter for another on the same screen.
+   */
+  flushAutoDespiteHold: () => void;
   getSnapshot: () => UploadOrchestratorSnapshot;
 };
 
@@ -115,6 +125,14 @@ export function createUploadOrchestrator(
   let sessionPromise: Promise<void> | null = null;
   /** After cancel, suppress auto-start until the next reachability→online edge. */
   let suppressAutoUntilOnlineEdge = false;
+  /**
+   * Drafting screen is focused and the app is in the foreground. Automatic
+   * uploads wait until the hold lifts.
+   */
+  let draftingHold = false;
+  let holdChain: Promise<void> = Promise.resolve();
+  /** One automatic evaluate may start even while draftingHold is on. */
+  let passHoldOnce = false;
   let wasOnline = false;
   let evaluateChain: Promise<void> = Promise.resolve();
   const schedule = deps.schedule ?? defaultSchedule;
@@ -270,7 +288,10 @@ export function createUploadOrchestrator(
     }, delayMs);
   }
 
-  const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
+  const runSession = async (
+    reason: 'auto' | 'sync_now',
+    options?: { bypassHold?: boolean },
+  ): Promise<void> => {
     if (!started) return;
     const version = lifecycleVersion;
     if (sessionPromise || sessionOpen) {
@@ -320,6 +341,10 @@ export function createUploadOrchestrator(
       if (reason === 'auto' && suppressAutoUntilOnlineEdge) {
         return;
       }
+      const bypassHold = Boolean(options?.bypassHold);
+      if (reason === 'auto' && draftingHold && !bypassHold) {
+        return;
+      }
 
       const chapters = await deps.getPendingUploadChapters();
       if (!started || version !== lifecycleVersion) return;
@@ -331,6 +356,9 @@ export function createUploadOrchestrator(
         return;
       }
       if (suppressAutoUntilOnlineEdge) {
+        return;
+      }
+      if (reason === 'auto' && draftingHold && !bypassHold) {
         return;
       }
       const currentGate = transportAllowsTransfer({
@@ -514,6 +542,11 @@ export function createUploadOrchestrator(
     evaluateChain = evaluateChain
       .then(async () => {
         if (!started) return;
+        const bypassHold = passHoldOnce;
+        passHoldOnce = false;
+        if (draftingHold && !bypassHold) {
+          return;
+        }
         const gate = transportAllowsTransfer({
           isOnline,
           isWifi,
@@ -552,7 +585,7 @@ export function createUploadOrchestrator(
         }
 
         // Do not await — keeps the evaluate chain free for later triggers.
-        void runSession('auto');
+        void runSession('auto', { bypassHold });
       })
       .catch(error => {
         log.error('Upload orchestrator evaluate failed', { error });
@@ -592,6 +625,22 @@ export function createUploadOrchestrator(
       suppressAutoUntilOnlineEdge = false;
     }
 
+    evaluateAuto();
+  };
+
+  const applyDraftingHold = async (held: boolean): Promise<void> => {
+    if (held) {
+      // Do not abort an in-flight session. Leaving one chapter for another
+      // (or coming back from Home) should let that send finish. The hold
+      // only blocks the next automatic start.
+      draftingHold = true;
+      return;
+    }
+
+    draftingHold = false;
+    if (!started) {
+      return;
+    }
     evaluateAuto();
   };
 
@@ -677,6 +726,27 @@ export function createUploadOrchestrator(
       if (!started) {
         return;
       }
+      if (sessionPromise || sessionOpen) {
+        rerunAfterSession = true;
+        return;
+      }
+      evaluateAuto();
+    },
+
+    setDraftingHold(held: boolean): Promise<void> {
+      const task = holdChain.then(() => applyDraftingHold(held));
+      holdChain = task.then(
+        () => undefined,
+        () => undefined,
+      );
+      return task;
+    },
+
+    flushAutoDespiteHold() {
+      if (!started) {
+        return;
+      }
+      passHoldOnce = true;
       if (sessionPromise || sessionOpen) {
         rerunAfterSession = true;
         return;

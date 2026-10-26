@@ -146,3 +146,25 @@ export function notifyPendingUploads(): void {
   }
   singleton.notifyPendingWork();
 }
+
+/**
+ * Hold automatic uploads while the drafting screen is open and the app is
+ * in the foreground. No-op before the orchestrator starts. syncNow still runs.
+ */
+export async function setDraftingUploadHold(held: boolean): Promise<void> {
+  if (!singleton) {
+    return;
+  }
+  await singleton.setDraftingHold(held);
+}
+
+/**
+ * Start one automatic upload even while the drafting screen hold is on.
+ * No-op before the orchestrator starts.
+ */
+export function flushDraftingUploads(): void {
+  if (!singleton) {
+    return;
+  }
+  singleton.flushAutoDespiteHold();
+}

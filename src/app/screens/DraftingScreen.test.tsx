@@ -1,6 +1,7 @@
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -11,10 +12,19 @@ import { hrefs } from '../../navigation/hrefs';
 import { setLastActiveTab } from '../../utils/draftingTabState';
 const mockBack = jest.fn();
 const mockPush = jest.fn();
+const mockSetDraftingUploadHold = jest.fn();
+const mockFlushDraftingUploads = jest.fn();
+const mockRouteParams = {
+  chapterId: '5',
+  chapterName: 'Mark 14',
+};
 type BeforeRemoveListener = (event: { preventDefault: () => void }) => void;
 const mockAddListener = jest.fn<jest.Mock, [string, BeforeRemoveListener]>(() =>
   jest.fn(),
 );
+const mockNavigation = {
+  addListener: mockAddListener,
+};
 
 let capturedOnChapterClaimed: (() => void) | undefined;
 let capturedRecordTabHandlers: {
@@ -34,18 +44,20 @@ let capturedTabBarHandlers: {
 const mockResume = jest.fn().mockResolvedValue(undefined);
 const mockDiscard = jest.fn().mockResolvedValue(undefined);
 
+jest.mock('../../services/uploadOrchestrator', () => ({
+  setDraftingUploadHold: (...args: unknown[]) =>
+    mockSetDraftingUploadHold(...args),
+  flushDraftingUploads: (...args: unknown[]) =>
+    mockFlushDraftingUploads(...args),
+}));
+
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     back: mockBack,
     push: mockPush,
   }),
-  useNavigation: () => ({
-    addListener: mockAddListener,
-  }),
-  useLocalSearchParams: () => ({
-    chapterId: '5',
-    chapterName: 'Mark 14',
-  }),
+  useNavigation: () => mockNavigation,
+  useLocalSearchParams: () => mockRouteParams,
 }));
 
 jest.mock('../../utils/parseUserId', () => ({
@@ -253,6 +265,8 @@ const baseAssignment = {
 describe('DraftingScreen onChapterClaimed', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRouteParams.chapterId = '5';
+    mockRouteParams.chapterName = 'Mark 14';
     capturedOnChapterClaimed = undefined;
     capturedRecordTabHandlers = null;
     capturedHeaderHandlers = null;
@@ -487,12 +501,115 @@ describe('DraftingScreen onChapterClaimed', () => {
 
       fireEvent.press(screen.getByTestId('mock-record-tab-deactivate'));
 
-      capturedTabBarHandlers?.onTabChange?.('bible');
-      capturedHeaderHandlers?.onSyncPress?.();
+      act(() => {
+        capturedTabBarHandlers?.onTabChange?.('bible');
+        capturedHeaderHandlers?.onSyncPress?.();
+      });
 
       expect(Alert.alert).not.toHaveBeenCalled();
       expect(setLastActiveTab).toHaveBeenCalledWith(5, 'bible');
       expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+    });
+  });
+
+  describe('upload hold', () => {
+    type AppStateListener = (state: string) => void;
+    let appStateListener: AppStateListener | null = null;
+
+    beforeEach(() => {
+      appStateListener = null;
+      jest
+        .spyOn(AppState, 'addEventListener')
+        .mockImplementation((_type, listener) => {
+          appStateListener = listener as AppStateListener;
+          return { remove: jest.fn() };
+        });
+      Object.defineProperty(AppState, 'currentState', {
+        configurable: true,
+        value: 'active',
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    function lastNavigationListener(event: string): () => void {
+      const calls = mockAddListener.mock.calls.filter(
+        call => call[0] === event,
+      );
+      expect(calls.length).toBeGreaterThan(0);
+      return calls[calls.length - 1][1] as () => void;
+    }
+
+    async function renderDrafting() {
+      render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
+      });
+    }
+
+    it('holds uploads on focus and releases them on blur and unmount', async () => {
+      const view = render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
+      });
+
+      lastNavigationListener('focus')();
+      expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(true);
+
+      mockSetDraftingUploadHold.mockClear();
+      lastNavigationListener('blur')();
+      expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(false);
+
+      mockSetDraftingUploadHold.mockClear();
+      view.unmount();
+      expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(false);
+    });
+
+    it('releases the hold in the background and holds again when active', async () => {
+      await renderDrafting();
+      lastNavigationListener('focus')();
+      mockSetDraftingUploadHold.mockClear();
+
+      appStateListener?.('background');
+      expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(false);
+
+      mockSetDraftingUploadHold.mockClear();
+      appStateListener?.('active');
+      expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(true);
+    });
+
+    it('keeps the hold when switching drafting tabs', async () => {
+      await renderDrafting();
+      lastNavigationListener('focus')();
+      mockSetDraftingUploadHold.mockClear();
+
+      act(() => {
+        capturedTabBarHandlers?.onTabChange?.('resources');
+        capturedTabBarHandlers?.onTabChange?.('bible');
+      });
+
+      expect(mockSetDraftingUploadHold).not.toHaveBeenCalled();
+    });
+
+    it('flushes pending uploads when the chapter changes', async () => {
+      const view = render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
+      });
+      lastNavigationListener('focus')();
+      expect(mockFlushDraftingUploads).not.toHaveBeenCalled();
+
+      mockRouteParams.chapterId = '9';
+      mockRouteParams.chapterName = 'Mark 15';
+      await act(async () => {
+        view.rerender(<DraftingScreen />);
+      });
+      await waitFor(() => {
+        expect(mockFlushDraftingUploads).toHaveBeenCalled();
+      });
+      expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(true);
     });
   });
 });
