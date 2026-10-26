@@ -330,6 +330,39 @@ describe('DownloadQueueWorker', () => {
     await startPromise;
   });
 
+  it('downloads image rows as binary even when serializedContent is present', async () => {
+    spyResumable();
+    const resolver = jest
+      .fn()
+      .mockResolvedValue({ url: 'https://example.com/img.png', ext: 'png' });
+
+    const worker = new DownloadQueueWorker(resolver);
+    await worker.start([
+      makeItem({
+        id: 'ref-img-1',
+        kind: 'image',
+        resourceName: 'Reference Images',
+        label: 'Genesis 1',
+        fileExt: 'png',
+        serializedContent: '<svg />',
+      }),
+    ]);
+
+    expect(resolver).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'ref-img-1', kind: 'image' }),
+    );
+    expect(mockDownloadResourcePath).toHaveBeenCalledWith(
+      1,
+      'ref-img-1',
+      'png',
+    );
+    expect(mockMarkDownloadItemCompleted).toHaveBeenCalledWith(
+      'ref-img-1',
+      'file:///docs/downloads/1/ref-img-1.png',
+      expect.any(Number),
+    );
+  });
+
   it('processes a single item end to end and returns to idle', async () => {
     spyResumable();
     const resolver = jest

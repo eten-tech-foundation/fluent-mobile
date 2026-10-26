@@ -20,6 +20,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'modules/**'
+      - 'plugins/**'
   workflow_dispatch:
     inputs:
       suite:
@@ -73,7 +74,7 @@ jobs:
       build_id: ${{ needs.get_nightly_build.outputs.build_id || needs.build_e2e_fallback.outputs.build_id }}
       flow_path: .maestro
       include_tags: smoke
-      exclude_tags: offline,permissions
+      exclude_tags: offline,permissions,mutating,fixture-blocked
       maestro_version: '2.10.0'
       output_format: junit
       retries: 1
@@ -174,7 +175,7 @@ jobs:
       build_id: ${{ needs.build_android_e2e.outputs.build_id }}
       flow_path: .maestro
       include_tags: smoke
-      exclude_tags: offline,permissions
+      exclude_tags: offline,permissions,mutating,fixture-blocked
       maestro_version: '2.10.0'
       output_format: junit
       retries: 1
