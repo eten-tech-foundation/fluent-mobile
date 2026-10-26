@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -83,19 +83,16 @@ export function TakeFan({
   visible?: boolean;
   onSelect: (id: string) => void;
 }) {
-  const styles = useThemedStyles(() => ({
-    fan: {
-      height: TAKE_FAN_HEIGHT,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-  }));
   const front = Math.max(
     0,
     takes.findIndex(t => t.id === frontId),
   );
   return (
-    <View style={styles.fan} pointerEvents="box-none" testID="passage-take-fan">
+    <View
+      style={fanStyles.fan}
+      pointerEvents="box-none"
+      testID="passage-take-fan"
+    >
       {takes.map((take, i) => (
         <Tile
           key={take.placeholder ? 'placeholder' : take.takeNumber}
@@ -300,3 +297,11 @@ function Tile({
     </Animated.View>
   );
 }
+
+const fanStyles = StyleSheet.create({
+  fan: {
+    height: TAKE_FAN_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
