@@ -36,6 +36,15 @@ export async function insertStageAdvanceQueueEntry(
 ): Promise<void> {
   const createdAt = input.createdAt ?? new Date().toISOString();
   await executor.execute(
+    `DELETE FROM stage_advance_queue
+     WHERE chapter_assignment_id = ?
+       AND user_id = ?
+       AND from_status = ?
+       AND to_status = ?
+       AND sync_status = 'pending'`,
+    [input.chapterAssignmentId, input.userId, input.fromStatus, input.toStatus],
+  );
+  await executor.execute(
     `INSERT INTO stage_advance_queue
       (chapter_assignment_id, user_id, from_status, to_status, peer_checker_id, created_at, sync_status)
      VALUES (?, ?, ?, ?, ?, ?, 'pending')`,

@@ -170,6 +170,24 @@ describe('updateChapterAssignmentStatusLocally', () => {
       },
     ]);
   });
+
+  it('updates locally but does not enqueue when current status is missing', async () => {
+    const db = createStageAdvanceTestDb([
+      {
+        id: 7,
+        status: '',
+        peer_checker_id: null,
+        submitted_time: null,
+        updated_at: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    setDatabase(db as never);
+
+    await updateChapterAssignmentStatusLocally(7, 'peer_check', undefined, 9);
+
+    expect(db.__rows[0].status).toBe('peer_check');
+    expect(db.__queue).toEqual([]);
+  });
 });
 
 describe('setChapterAssignmentStatus', () => {

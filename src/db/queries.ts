@@ -1195,6 +1195,54 @@ export async function getPendingUploadChapters(): Promise<
   }
 }
 
+/**
+ * True when this assignment still has takes or take-deletes the upload
+ * worker will send. Drain must not PATCH Peer Check until this is false —
+ * the verse-audio API 404s once the chapter has left draft (#257).
+ * Query errors fail closed so a PATCH cannot race a stuck read.
+ */
+export async function assignmentHasPendingUploads(
+  chapterAssignmentId: number,
+  userId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT (
+         SELECT COUNT(*)
+         FROM recordings r
+         JOIN bible_texts bt ON bt.id = r.bible_text_id
+         JOIN chapter_assignments ca
+           ON ca.bible_id = bt.bible_id
+          AND ca.book_id = bt.book_id
+          AND ca.chapter_number = bt.chapter_number
+          AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)
+         WHERE ca.id = ?
+           AND ${uploadablePendingWhere(userId)}
+       ) + (
+         SELECT COUNT(*)
+         FROM recording_deletions d
+         JOIN bible_texts bt ON bt.id = d.bible_text_id
+         JOIN chapter_assignments ca
+           ON ca.bible_id = bt.bible_id
+          AND ca.book_id = bt.book_id
+          AND ca.chapter_number = bt.chapter_number
+          AND d.project_unit_id = ca.project_unit_id
+         WHERE ca.id = ?
+           AND ${pendingDeletionWhere(userId)}
+       ) AS count`,
+      [chapterAssignmentId, userId, chapterAssignmentId, userId],
+    );
+    return Number(result.rows?.[0]?.count ?? 0) > 0;
+  } catch (error) {
+    log.error('Error checking assignment pending uploads', {
+      chapterAssignmentId,
+      error,
+    });
+    return true;
+  }
+}
+
 export async function getBibleTexts(
   bibleId: number,
   bookId: number,

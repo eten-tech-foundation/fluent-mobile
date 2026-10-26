@@ -13,6 +13,7 @@ import {
   refreshChapterMetadataIfOnline,
   syncAllData,
   syncAllUsers,
+  syncPendingStageAdvancesForUser,
 } from './sync';
 import * as sync from './sync';
 import * as syncEvents from './syncEvents';
@@ -296,11 +297,25 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
       expect.any(String),
     );
     const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
-    const stageOrder = syncPendingStageAdvances.mock.invocationCallOrder[0];
-    const projectsOrder = (FluentAPI.getUserProjects as jest.Mock).mock
+    const assignmentOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
       .invocationCallOrder[0];
-    expect(claimsOrder).toBeLessThan(stageOrder);
-    expect(stageOrder).toBeLessThan(projectsOrder);
+    const stageOrder = syncPendingStageAdvances.mock.invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(assignmentOrder);
+    expect(assignmentOrder).toBeLessThan(stageOrder);
+  });
+
+  it('signals re-auth when stage-advance drain returns AuthError', async () => {
+    jest.spyOn(syncEvents, 'emitAuthReauthRequired');
+    syncPendingStageAdvances.mockRejectedValueOnce(
+      new AuthError('Invalid or revoked session token'),
+    );
+
+    await expect(
+      syncPendingStageAdvancesForUser(2, 'revoked-token'),
+    ).rejects.toThrow(AuthError);
+
+    expect(setReauthRequired).toHaveBeenCalledWith('2');
+    expect(syncEvents.emitAuthReauthRequired).toHaveBeenCalledWith('2');
   });
 
   it('runs chapter-work reconciliation with empty lists when the response is validly empty', async () => {
@@ -1349,14 +1364,15 @@ describe('syncAllUsers auth handling', () => {
 
     await waitFor(() => {
       expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
-      expect(syncPendingStageAdvances).toHaveBeenCalledWith(2, 'user-2-token');
     });
+    expect(syncPendingStageAdvances).not.toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
 
     resolveLanguages([]);
     await pending;
 
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(2, 'user-2-token');
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
 

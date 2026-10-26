@@ -75,10 +75,11 @@ export type UploadOrchestratorDeps = {
    */
   pushPendingClaimsBeforeUpload?: () => Promise<void>;
   /**
-   * Push queued stage advances after claims and before takes (#257).
-   * Soft-fail: a failed drain must not block audio upload.
+   * Push queued stage advances after takes finish (#257). Peer Check PATCH
+   * before verse-audio upload 404s ("Verse audio recording not found").
+   * Soft-fail: a failed drain must not fail the upload session.
    */
-  pushPendingStageAdvancesBeforeUpload?: () => Promise<void>;
+  pushPendingStageAdvancesAfterUpload?: () => Promise<void>;
 };
 
 export type UploadOrchestratorSnapshot = {
@@ -396,28 +397,31 @@ export function createUploadOrchestrator(
       }
 
       const work = (async () => {
+        const raceAbort = (task: Promise<void>): Promise<void> =>
+          Promise.race([
+            task,
+            new Promise<never>((_, reject) => {
+              if (abort.signal.aborted) {
+                reject(new Error('aborted'));
+                return;
+              }
+              abort.signal.addEventListener(
+                'abort',
+                () => {
+                  reject(new Error('aborted'));
+                },
+                { once: true },
+              );
+            }),
+          ]);
+
         try {
           // Claims must land before takes — reconnect auto-upload and Sync Now
           // otherwise race the full sync's claim step (~30s of master data) (#611).
           // Race abort so Cancel/pause do not hang on the claim round-trip.
           if (deps.pushPendingClaimsBeforeUpload) {
             try {
-              await Promise.race([
-                deps.pushPendingClaimsBeforeUpload(),
-                new Promise<never>((_, reject) => {
-                  if (abort.signal.aborted) {
-                    reject(new Error('aborted'));
-                    return;
-                  }
-                  abort.signal.addEventListener(
-                    'abort',
-                    () => {
-                      reject(new Error('aborted'));
-                    },
-                    { once: true },
-                  );
-                }),
-              ]);
+              await raceAbort(deps.pushPendingClaimsBeforeUpload());
             } catch (error) {
               if (abort.signal.aborted) {
                 return;
@@ -426,40 +430,6 @@ export function createUploadOrchestrator(
                 reason,
                 error,
               });
-            }
-          }
-          if (abort.signal.aborted) {
-            return;
-          }
-          if (deps.pushPendingStageAdvancesBeforeUpload) {
-            try {
-              await Promise.race([
-                deps.pushPendingStageAdvancesBeforeUpload(),
-                new Promise<never>((_, reject) => {
-                  if (abort.signal.aborted) {
-                    reject(new Error('aborted'));
-                    return;
-                  }
-                  abort.signal.addEventListener(
-                    'abort',
-                    () => {
-                      reject(new Error('aborted'));
-                    },
-                    { once: true },
-                  );
-                }),
-              ]);
-            } catch (error) {
-              if (abort.signal.aborted) {
-                return;
-              }
-              log.warn(
-                'Pending stage-advance push before upload failed; continuing',
-                {
-                  reason,
-                  error,
-                },
-              );
             }
           }
           if (abort.signal.aborted) {
@@ -485,6 +455,26 @@ export function createUploadOrchestrator(
                 completedChapters,
                 totalChapters,
               });
+            }
+          }
+          if (abort.signal.aborted) {
+            return;
+          }
+          // Takes first, then Peer Check — PATCH-before-upload 404s (#257).
+          if (deps.pushPendingStageAdvancesAfterUpload) {
+            try {
+              await raceAbort(deps.pushPendingStageAdvancesAfterUpload());
+            } catch (error) {
+              if (abort.signal.aborted) {
+                return;
+              }
+              log.warn(
+                'Pending stage-advance push after upload failed; continuing',
+                {
+                  reason,
+                  error,
+                },
+              );
             }
           }
           if (!abort.signal.aborted) {

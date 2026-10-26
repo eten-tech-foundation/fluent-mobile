@@ -4,6 +4,7 @@ import {
   subscribeToConnectivity,
 } from './connectivity';
 import { emitUploadSessionEvent } from './syncEvents';
+import { getCredentials } from './keychain';
 import {
   getActiveUserId,
   getSyncPausedUntilMs,
@@ -41,16 +42,17 @@ async function pushPendingClaimsBeforeUpload(): Promise<void> {
   await syncPendingChapterClaimsForUser(userId);
 }
 
-async function pushPendingStageAdvancesBeforeUpload(): Promise<void> {
+async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
   const activeUserId = getActiveUserId();
   const userId = Number(activeUserId);
   if (!Number.isFinite(userId) || userId <= 0) {
-    log.warn('Skipping stage-advance push before upload — no active user', {
+    log.warn('Skipping stage-advance push after upload — no active user', {
       activeUserId,
     });
     return;
   }
-  await syncPendingStageAdvancesForUser(userId);
+  const creds = await getCredentials(String(userId));
+  await syncPendingStageAdvancesForUser(userId, creds?.token);
 }
 
 export {
@@ -121,7 +123,7 @@ export function startUploadOrchestrator(
         ? workerOverride ?? null
         : chapterUploadWorker,
     pushPendingClaimsBeforeUpload,
-    pushPendingStageAdvancesBeforeUpload,
+    pushPendingStageAdvancesAfterUpload,
     ...restOverrides,
   };
 

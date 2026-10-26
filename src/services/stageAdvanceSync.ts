@@ -3,12 +3,16 @@ import {
   getPendingStageAdvances,
   type PendingStageAdvance,
 } from '../db/stageAdvanceQueueRepository';
+import { assignmentHasPendingUploads } from '../db/queries';
 import { setChapterAssignmentStatus } from '../db/repository';
+import { logger } from '../utils/logger';
 import { isApiError } from '../types/api/errors';
 import type { ApiChapterAssignment } from '../types/api/types';
 import { isAuthError } from './authError';
 import { FluentAPI } from './api';
 import { isStageAhead, pickLowerStageStatus } from '../utils/workflowStage';
+
+const log = logger.create('StageAdvanceSync');
 
 export type SyncPendingStageAdvancesResult = {
   synced: number;
@@ -16,10 +20,10 @@ export type SyncPendingStageAdvancesResult = {
   failed: number;
 };
 
-let inFlight: Promise<SyncPendingStageAdvancesResult> | null = null;
+const inFlight = new Map<number, Promise<SyncPendingStageAdvancesResult>>();
 
 export function __resetStageAdvanceSyncForTests(): void {
-  inFlight = null;
+  inFlight.clear();
 }
 
 function normalizeStatus(status: string): string {
@@ -39,28 +43,29 @@ async function dropResolved(
   serverStatus: string,
 ): Promise<void> {
   const toStatus = normalizeStatus(row.toStatus);
-  if (isStageAhead(serverStatus, toStatus)) {
-    await setChapterAssignmentStatus(
-      row.chapterAssignmentId,
-      pickLowerStageStatus(serverStatus, toStatus),
-    );
-  }
+  await setChapterAssignmentStatus(
+    row.chapterAssignmentId,
+    pickLowerStageStatus(serverStatus, toStatus),
+  );
   await deleteStageAdvanceQueueEntry(row.id);
 }
 
 /**
  * Push pending stage advances for one user. GET before every PATCH, including
- * a retry of a row left pending. A second overlapping call joins this pass.
+ * a retry of a row left pending. Overlapping calls for the same user join this
+ * pass; different users drain independently.
  */
 export async function syncPendingStageAdvances(
   userId: number,
   token?: string,
 ): Promise<SyncPendingStageAdvancesResult> {
-  if (inFlight) return inFlight;
-  inFlight = drainStageAdvances(userId, token).finally(() => {
-    inFlight = null;
+  const existing = inFlight.get(userId);
+  if (existing) return existing;
+  const pass = drainStageAdvances(userId, token).finally(() => {
+    inFlight.delete(userId);
   });
-  return inFlight;
+  inFlight.set(userId, pass);
+  return pass;
 }
 
 async function drainStageAdvances(
@@ -71,9 +76,16 @@ async function drainStageAdvances(
   let synced = 0;
   let dropped = 0;
   let failed = 0;
+  const holdAssignmentIds = new Set<number>();
 
   for (const row of pending) {
     if (row.userId !== userId) continue;
+    if (holdAssignmentIds.has(row.chapterAssignmentId)) continue;
+
+    const holdRest = (): void => {
+      // Later chained rows (same assignment, later from/to) stay pending.
+      holdAssignmentIds.add(row.chapterAssignmentId);
+    };
 
     let serverStatus: string | undefined;
     try {
@@ -85,6 +97,7 @@ async function drainStageAdvances(
     } catch (error) {
       if (isAuthError(error)) throw error;
       failed += 1;
+      holdRest();
       continue;
     }
 
@@ -93,6 +106,7 @@ async function drainStageAdvances(
 
     if (serverStatus === undefined) {
       failed += 1;
+      holdRest();
       continue;
     }
 
@@ -102,6 +116,7 @@ async function drainStageAdvances(
         dropped += 1;
       } catch {
         failed += 1;
+        holdRest();
       }
       continue;
     }
@@ -113,12 +128,36 @@ async function drainStageAdvances(
       } catch (error) {
         if (isAuthError(error)) throw error;
         failed += 1;
+        holdRest();
       }
       continue;
     }
 
     if (serverStatus !== fromStatus) {
+      // Known earlier stage: keep-lower and drop. Unknown/unexpected: leave
+      // pending so a later GET can still PATCH (#257 / review).
+      if (isStageAhead(fromStatus, serverStatus)) {
+        try {
+          await dropResolved(row, serverStatus);
+          dropped += 1;
+        } catch (error) {
+          if (isAuthError(error)) throw error;
+          failed += 1;
+          holdRest();
+        }
+        continue;
+      }
       failed += 1;
+      holdRest();
+      continue;
+    }
+
+    if (await assignmentHasPendingUploads(row.chapterAssignmentId, userId)) {
+      log.info('Holding stage advance until chapter uploads finish', {
+        chapterAssignmentId: row.chapterAssignmentId,
+        userId,
+      });
+      holdRest();
       continue;
     }
 
@@ -146,6 +185,7 @@ async function drainStageAdvances(
         }
       }
       failed += 1;
+      holdRest();
       continue;
     }
 
@@ -154,6 +194,7 @@ async function drainStageAdvances(
       synced += 1;
     } catch {
       failed += 1;
+      holdRest();
     }
   }
 

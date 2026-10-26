@@ -731,6 +731,7 @@ export async function syncPendingStageAdvancesForUser(
     return await syncPendingStageAdvances(userId, token);
   } catch (error) {
     if (isAuthError(error)) {
+      await handleSyncAuthFailure(String(userId));
       throw error;
     }
     log.warn('Stage-advance sync failed; leaving rows pending', {
@@ -1693,6 +1694,9 @@ export async function syncAllUsers(): Promise<void> {
                 assignmentCursor,
                 token,
               );
+            // Drain after the pull so keep-lower writes are not overwritten
+            // once the pending-row upsert freeze is gone. Rows with pending
+            // takes stay queued until those uploads finish (#257).
             await syncPendingStageAdvancesForUser(userIdNum, token);
             if (didFullSync) {
               anyUserDidFullAssignmentSync = true;

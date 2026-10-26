@@ -22,6 +22,30 @@ function createQueueTestDb() {
 
   const execute = async (query: string, params: unknown[] = []) => {
     const sql = query.replace(/\s+/g, ' ').trim();
+    if (
+      sql.startsWith('DELETE FROM stage_advance_queue') &&
+      sql.includes('from_status')
+    ) {
+      const [assignmentId, userId, fromStatus, toStatus] = params as [
+        number,
+        number,
+        string,
+        string,
+      ];
+      for (let i = rows.length - 1; i >= 0; i -= 1) {
+        const row = rows[i];
+        if (
+          row.chapter_assignment_id === Number(assignmentId) &&
+          row.user_id === Number(userId) &&
+          row.from_status === String(fromStatus) &&
+          row.to_status === String(toStatus) &&
+          row.sync_status === 'pending'
+        ) {
+          rows.splice(i, 1);
+        }
+      }
+      return { rows: [], rowsAffected: 1 };
+    }
     if (sql.startsWith('INSERT INTO stage_advance_queue')) {
       rows.push({
         id: nextId,
@@ -119,5 +143,47 @@ describe('stageAdvanceQueueRepository', () => {
 
     await expect(getPendingStageAdvances()).resolves.toEqual([]);
     expect(db.__rows).toHaveLength(0);
+  });
+
+  it('replaces a pending row with the same assignment from/to', async () => {
+    const db = createQueueTestDb();
+    setDatabase(db as never);
+
+    await enqueueStageAdvance({
+      chapterAssignmentId: 7,
+      userId: 9,
+      fromStatus: 'draft',
+      toStatus: 'peer_check',
+      createdAt: '2026-10-22T12:00:00.000Z',
+    });
+    await enqueueStageAdvance({
+      chapterAssignmentId: 7,
+      userId: 9,
+      fromStatus: 'draft',
+      toStatus: 'peer_check',
+      createdAt: '2026-10-22T12:05:00.000Z',
+    });
+    await enqueueStageAdvance({
+      chapterAssignmentId: 7,
+      userId: 9,
+      fromStatus: 'peer_check',
+      toStatus: 'community_review',
+      createdAt: '2026-10-22T12:06:00.000Z',
+    });
+
+    const pending = await getPendingStageAdvances();
+    expect(pending).toEqual([
+      expect.objectContaining({
+        chapterAssignmentId: 7,
+        fromStatus: 'draft',
+        toStatus: 'peer_check',
+        createdAt: '2026-10-22T12:05:00.000Z',
+      }),
+      expect.objectContaining({
+        chapterAssignmentId: 7,
+        fromStatus: 'peer_check',
+        toStatus: 'community_review',
+      }),
+    ]);
   });
 });

@@ -1271,10 +1271,12 @@ export async function updateChapterAssignmentStatusLocally(
       );
     }
     if (!currentRow) return;
+    const fromStatus = String(currentRow.status ?? '').trim();
+    if (!fromStatus) return;
     await insertStageAdvanceQueueEntry(tx, {
       chapterAssignmentId,
       userId,
-      fromStatus: String(currentRow.status ?? ''),
+      fromStatus,
       toStatus: status,
       peerCheckerId: peerCheckerId ?? null,
       createdAt: updatedAt,
