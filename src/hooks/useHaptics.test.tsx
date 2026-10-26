@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { renderHook } from '@testing-library/react-native';
 import * as Haptics from 'expo-haptics';
 import { useHaptics } from './useHaptics';
@@ -12,6 +13,9 @@ jest.mock('expo-haptics', () => ({
     Virtual_Key: 'virtual-key',
     Toggle_On: 'toggle-on',
     Toggle_Off: 'toggle-off',
+    Drag_Start: 'drag-start',
+    Gesture_End: 'gesture-end',
+    Long_Press: 'long-press',
   },
   performAndroidHapticsAsync: jest.fn(() => Promise.resolve()),
 }));
@@ -26,6 +30,8 @@ jest.mock('../services/storage', () => ({
 const perform = jest.mocked(Haptics.performAndroidHapticsAsync);
 
 describe('useHaptics', () => {
+  afterEach(() => jest.restoreAllMocks());
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockPreferenceStore();
@@ -54,6 +60,30 @@ describe('useHaptics', () => {
     expect(perform.mock.calls.map(call => call[0])).toEqual([
       'toggle-on',
       'toggle-off',
+    ]);
+  });
+
+  it('maps a drag pick-up and drop to the drag haptics in Next', () => {
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
+    setUiVersion('next');
+    const { result } = renderHook(() => useHaptics());
+    result.current.dragStart();
+    result.current.dragEnd();
+    expect(perform.mock.calls.map(call => call[0])).toEqual([
+      'drag-start',
+      'gesture-end',
+    ]);
+  });
+
+  it('falls back to haptics older Android has for a drag', () => {
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(29);
+    setUiVersion('next');
+    const { result } = renderHook(() => useHaptics());
+    result.current.dragStart();
+    result.current.dragEnd();
+    expect(perform.mock.calls.map(call => call[0])).toEqual([
+      'long-press',
+      'virtual-key',
     ]);
   });
 

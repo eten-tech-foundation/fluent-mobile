@@ -242,4 +242,36 @@ describe('waveformOffset', () => {
   it('does not scroll before the frame is measured', () => {
     expect(waveformOffset(330, 0)).toBe(0);
   });
+
+  it('steps a seekable waveform with TalkBack', () => {
+    const onSeek = jest.fn();
+    render(
+      <Waveform
+        verses={VERSES}
+        progress={0.5}
+        accessibilityLabel="Take 1 playback"
+        onSeek={onSeek}
+      />,
+    );
+    const wave = screen.getByLabelText('Take 1 playback');
+
+    expect(wave.props.accessibilityRole).toBe('adjustable');
+    fireEvent(wave, 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    fireEvent(wave, 'accessibilityAction', {
+      nativeEvent: { actionName: 'decrement' },
+    });
+    expect(onSeek.mock.calls.map(call => call[0])).toEqual([0.55, 0.45]);
+  });
+
+  it('stays a plain progress bar without onSeek', () => {
+    render(
+      <Waveform verses={VERSES} progress={0.5} accessibilityLabel="Source" />,
+    );
+
+    expect(screen.getByLabelText('Source').props.accessibilityRole).toBe(
+      'progressbar',
+    );
+  });
 });

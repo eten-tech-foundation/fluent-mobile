@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   interpolate,
   LayoutAnimationConfig,
@@ -7,6 +7,7 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { NEXT_SPRING } from '../../../../components/ui/motion';
 import { PageDots } from '../../../../components/ui/PageDots';
@@ -15,10 +16,13 @@ import {
   type WaveformVerse,
 } from '../../../../components/ui/Waveform';
 import type { PassageVerse } from '../../../../hooks/usePassage';
-import { useThemedStyles } from '../../../../theme/useTheme';
+import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import { OFFICIAL_TOGGLE } from './OfficialToggle';
 import { STEPS, type Ready } from './steps';
 import { BAR_MAX, BAR_MIN, TakeCard, WAVE_H, type FrontTake } from './TakeCard';
+
+/** Figma's scrim while a take is lifted: bg/default at 82% (Q25). */
+const SCRIM = 0.82;
 
 export interface RecordStatus {
   /** Why recording is off here, or null. */
@@ -36,13 +40,24 @@ export function Footer({
   page,
   recordMode,
   record,
+  dimmed = false,
 }: {
   passage: Ready;
   page: number;
   recordMode: boolean;
   record: RecordStatus;
+  /** A take is lifted: dim everything above the keys but the fan. */
+  dimmed?: boolean;
 }) {
+  const { motion } = useTheme();
   const reduceMotion = useReducedMotion();
+  const { height: screenHeight } = useWindowDimensions();
+  const dim = useSharedValue(dimmed ? 1 : 0);
+  useEffect(() => {
+    dim.value = withTiming(dimmed ? 1 : 0, {
+      duration: reduceMotion ? 0 : motion.releaseMs,
+    });
+  }, [dimmed, reduceMotion, dim, motion.releaseMs]);
   const mode = useSharedValue(recordMode ? 1 : 0);
   useEffect(() => {
     const to = recordMode ? 1 : 0;
@@ -68,7 +83,15 @@ export function Footer({
       minHeight: OFFICIAL_TOGGLE,
     },
     label: { ...t.type.label, color: t.roles.fgPrimary },
+    scrim: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: t.roles.bgDefault,
+    },
   }));
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: dim.value * SCRIM }));
   const listenStyle = useAnimatedStyle(() => ({
     opacity: interpolate(mode.value, [0, 0.5], [1, 0], 'clamp'),
     transform: [{ translateY: interpolate(mode.value, [0, 1], [0, -6]) }],
@@ -112,6 +135,11 @@ export function Footer({
           firstVerse={passage.verses[0]?.verseNumber ?? 1}
           mode={mode}
           shown={recordMode}
+        />
+        {/* Covers the script and header too, up to the keys. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.scrim, { top: -screenHeight }, scrimStyle]}
         />
       </View>
     </LayoutAnimationConfig>

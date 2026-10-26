@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 import {
   RECORD_MAX_TAKES,
   RECORD_MAX_VERSE_TAKES,
@@ -9,6 +10,7 @@ import {
 } from '../../../../constants/messages';
 import { MAX_RECORDING_TAKES } from '../../../../constants/recordingTakes';
 import { useLiveLevels } from '../../../../hooks/useLiveLevels';
+import { usePendingDelete } from '../../../../hooks/usePendingDelete';
 import type { PassageTake } from '../../../../hooks/usePassage';
 import { useRecordSession } from '../../../../hooks/useRecordSession';
 import type { RecordStatus } from './Footer';
@@ -26,10 +28,13 @@ import type { Ready } from './steps';
 export function useRecorder({
   passage,
   userId,
+  showing,
   onReload,
 }: {
   passage: Ready;
   userId: number | null;
+  /** The player is open in Record mode; leaving it commits a pending delete. */
+  showing: boolean;
   /** Re-reads the passage, e.g. after recording claims its chapter. */
   onReload: () => void;
 }) {
@@ -48,17 +53,32 @@ export function useRecorder({
     onChapterClaimed: onReload,
   });
   const { verseAudio } = session;
-  /** On a stage-locked chapter, the take tapped forward to play; the pick stays. */
-  const [lockedFront, setLockedFront] = useState<string | null>(null);
   const capturing = session.captureActive;
   /** Paused only happens after a crash: a recovered take waiting on Resume or Stop. */
   const live = verseAudio.state === 'recording';
   const recovered = verseAudio.state === 'paused';
+  // A deleted take waits out the undo window first; Legacy's deleteTake does
+  // the rest, including handing off the selection.
+  const deletion = usePendingDelete(async id => {
+    await verseAudio.deleteTake(id);
+    // The hero's takes line falls back to the loaded passage once none are left.
+    onReload();
+  });
+  // record() awaits a commit, then starts from the session as it is by then.
+  const latestAudio = useRef(verseAudio);
+  latestAudio.current = verseAudio;
+  /** A take just deleted shows in front, with its undo, until it's settled. */
+  const [frontOverride, setFrontOverride] = useState<string | null>(null);
+  /** On a stage-locked chapter, the take tapped forward to play; the pick stays. */
+  const [lockedFront, setLockedFront] = useState<string | null>(null);
+  /** A paused or scrubbed spot in a take, for Play to start from. */
+  const [parked, setParked] = useState<{ id: string; ms: number } | null>(null);
+  const isPassageTake = (t: { id: string; granularity: string }) =>
+    (session.effectiveUnit !== 'pericope' || t.granularity === 'pericope') &&
+    !deletion.hiddenIds.has(t.id);
   // Whole-passage takes, live, so a new take shows as soon as it's saved.
   const liveTakes: PassageTake[] = verseAudio.takes
-    .filter(
-      t => session.effectiveUnit !== 'pericope' || t.granularity === 'pericope',
-    )
+    .filter(isPassageTake)
     .map(t => ({
       id: t.id,
       takeNumber: t.takeNumber,
@@ -89,26 +109,26 @@ export function useRecorder({
   }, [verseAudio.takes]);
 
   const passageTakes = verseAudio.takes
-    .filter(
-      t => session.effectiveUnit !== 'pericope' || t.granularity === 'pericope',
-    )
+    .filter(isPassageTake)
     .sort((a, b) => a.takeNumber - b.takeNumber);
   const nextTakeNumber =
     passageTakes.reduce((n, t) => Math.max(n, t.takeNumber), 0) + 1;
   // The new take keeps its tile and wave from Stop until it's saved.
   const held = capturing || verseAudio.state === 'saving';
+  const pendingId = deletion.pending?.id ?? null;
+  // Only while that take's undo is open; after that the selected take leads.
+  const overrideId = frontOverride === pendingId ? frontOverride : null;
+  const leadId = overrideId ?? (session.stageLocked ? lockedFront : null);
   const pickedTake =
     passageTakes.find(t => t.id === verseAudio.selectedTake?.id) ??
     passageTakes[passageTakes.length - 1] ??
     null;
-  const lockedTake = session.stageLocked
-    ? passageTakes.find(t => t.id === lockedFront)
-    : undefined;
   const fan: FanTake[] = passageTakes.map(t => ({
     id: t.id,
     takeNumber: t.takeNumber,
     official: t.id === verseAudio.ownCanonicalTakeId,
     selected: t.id === pickedTake?.id,
+    deleted: t.id === pendingId,
   }));
   if (held) {
     fan.push({
@@ -126,10 +146,19 @@ export function useRecorder({
       placeholder: true,
     });
   }
-  const frontTake = held ? null : lockedTake ?? pickedTake;
+  const frontTake = held
+    ? null
+    : passageTakes.find(t => t.id === leadId) ?? pickedTake;
+  const frontDeleted = frontTake !== null && frontTake.id === pendingId;
   const frontId = held ? 'recording' : frontTake?.id ?? 'placeholder';
   const playingFront =
     frontTake !== null && verseAudio.playingTakeId === frontTake.id;
+  // Where Play picks up the front take: where it was paused or scrubbed to.
+  const frontLength = frontTake?.durationMs ?? 0;
+  const parkedMs =
+    parked !== null && frontTake !== null && parked.id === frontTake.id
+      ? parked.ms
+      : 0;
   const take: FrontTake = held
     ? {
         takeNumber: nextTakeNumber,
@@ -147,12 +176,22 @@ export function useRecorder({
         progress:
           playingFront && verseAudio.durationMs > 0
             ? verseAudio.positionMs / verseAudio.durationMs
+            : frontLength > 0
+            ? parkedMs / frontLength
             : 0,
+        onSeek:
+          frontDeleted || frontLength <= 0
+            ? undefined
+            : p => void scrubFront(p),
         recording: false,
-        official: frontTake.id === verseAudio.ownCanonicalTakeId,
-        onToggleOfficial: session.stageLocked
-          ? undefined
-          : () => void verseAudio.setCanonical(frontTake.id),
+        ...(frontDeleted
+          ? { official: false, onUndo: () => undoDelete() }
+          : {
+              official: frontTake.id === verseAudio.ownCanonicalTakeId,
+              onToggleOfficial: session.stageLocked
+                ? undefined
+                : () => void verseAudio.setCanonical(frontTake.id),
+            }),
       }
     : {
         takeNumber: 1,
@@ -164,7 +203,9 @@ export function useRecorder({
       };
   // The player only records whole passages, so no pericope means no recording.
   const noPericope = session.pericopeUnavailable;
-  const atCap = !held && !noPericope && !verseAudio.canRecordNewTake;
+  // A take waiting on undo is deleted first when Record is pressed.
+  const atCap =
+    !held && !noPericope && !deletion.pending && !verseAudio.canRecordNewTake;
   const blockedReason = recovered
     ? RECORD_RECOVERED_TAKE
     : session.syncingMessage ??
@@ -181,6 +222,48 @@ export function useRecorder({
           : RECORD_MAX_VERSE_TAKES
         : null);
 
+  function deleteTake(id: string) {
+    const target = passageTakes.find(t => t.id === id);
+    if (!target) return;
+    if (verseAudio.state === 'playing' && verseAudio.playingTakeId === id) {
+      void verseAudio.pausePlayback();
+    }
+    deletion.remove({ id, takeNumber: target.takeNumber });
+    setFrontOverride(id);
+    AccessibilityInfo.announceForAccessibility(
+      `Take ${target.takeNumber} deleted. Undo is on the take card.`,
+    );
+  }
+
+  function undoDelete() {
+    const target = deletion.pending;
+    deletion.undo();
+    if (target) {
+      AccessibilityInfo.announceForAccessibility(
+        `Take ${target.takeNumber} restored.`,
+      );
+    }
+  }
+
+  function selectTake(id: string) {
+    if (id === pendingId) {
+      undoDelete();
+      return;
+    }
+    setFrontOverride(null);
+    if (session.stageLocked) {
+      setLockedFront(id);
+      return;
+    }
+    void verseAudio.selectTake(id);
+  }
+
+  // Closing the player or leaving Record hides the undo, so it commits.
+  const { commit: commitDelete } = deletion;
+  useEffect(() => {
+    if (!showing) void commitDelete();
+  }, [showing, commitDelete]);
+
   async function record() {
     // A double tap on Stop lands here while the take saves.
     if (verseAudio.state === 'saving') return;
@@ -194,17 +277,34 @@ export function useRecorder({
     }
     if (session.stageLocked || noPericope) return;
     if (!(await session.ensureMic())) return;
+    // A new take counts toward the limit, so a pending delete goes first.
+    await deletion.commit();
     session.setElapsedMs(0);
-    await verseAudio.start();
+    await latestAudio.current.start();
   }
 
   async function playTake() {
     if (verseAudio.state === 'playing') {
+      if (playingFront) {
+        setParked({ id: frontTake.id, ms: verseAudio.positionMs });
+      }
       await verseAudio.pausePlayback();
       return;
     }
     // The take in front, which may not be the session's selected take.
-    if (frontTake) await verseAudio.playTake(frontTake);
+    if (!frontTake) return;
+    setParked(null);
+    await verseAudio.playTake(frontTake, parkedMs);
+  }
+
+  async function scrubFront(p: number) {
+    if (!frontTake) return;
+    const ms = Math.round(p * frontLength);
+    if (playingFront && verseAudio.state === 'playing') {
+      await verseAudio.seek(ms, frontTake.id);
+      return;
+    }
+    setParked({ id: frontTake.id, ms });
   }
 
   const footer: RecordStatus = {
@@ -224,7 +324,7 @@ export function useRecorder({
     onRecord: () => void record(),
     onSave: () => void verseAudio.stop(),
     playing: verseAudio.state === 'playing',
-    playDisabled: held || frontTake === null,
+    playDisabled: held || frontTake === null || frontDeleted,
     onPlay: () => void playTake(),
   };
 
@@ -236,10 +336,8 @@ export function useRecorder({
     fan: {
       takes: fan,
       frontId,
-      onSelect: (id: string) =>
-        session.stageLocked
-          ? setLockedFront(id)
-          : void verseAudio.selectTake(id),
+      onSelect: selectTake,
+      onDelete: held ? undefined : deleteTake,
     },
     footer,
     keys,
