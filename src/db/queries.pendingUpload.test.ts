@@ -120,6 +120,38 @@ describe('pending upload queries (#545)', () => {
     await expect(getUnsyncedRecordingCount()).rejects.toBe(failure);
   });
 
+  it('pending upload count and chapters include queued take deletions (#716)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+    await getPendingUploadCount();
+    const countSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(countSql).toContain('FROM recording_deletions d');
+    expect(countSql).toContain(
+      'JOIN bible_texts bt ON bt.id = d.bible_text_id',
+    );
+    expect(countSql).toContain('d.recorded_by_user_id = ?');
+    expect(mockExecute.mock.calls[0]?.[1]).toEqual([7, 7]);
+
+    mockExecute.mockReset();
+    mockExecute.mockResolvedValue({
+      rows: [
+        { book_id: 1, chapter_number: 2 },
+        { book_id: 1, chapter_number: 3 },
+      ],
+    });
+    await expect(getPendingUploadChapters()).resolves.toEqual([
+      { bookId: 1, chapterNumber: 2 },
+      { bookId: 1, chapterNumber: 3 },
+    ]);
+    const chaptersSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(chaptersSql).toContain('UNION');
+    expect(chaptersSql).toContain('FROM recording_deletions d');
+    expect(chaptersSql).toContain(
+      'JOIN bible_texts bt ON bt.id = d.bible_text_id',
+    );
+    expect(chaptersSql).toContain('d.recorded_by_user_id = ?');
+    expect(mockExecute.mock.calls[0]?.[1]).toEqual([7, 7]);
+  });
+
   it('getPendingUploadChapters only lists chapters with upload-eligible verse or pericope takes', async () => {
     mockExecute.mockResolvedValue({
       rows: [{ book_id: 1, chapter_number: 3 }],

@@ -905,17 +905,37 @@ function uploadablePendingWhere(userId: number | null): string {
   `;
 }
 
-/** Selected recordings the upload orchestrator will actually process. */
+/**
+ * Queued server take deletes for the active user (#716). A chapter whose
+ * only remaining work is one of these rows must still start the upload
+ * worker, which runs the delete pass before uploads.
+ */
+function pendingDeletionWhere(userId: number | null): string {
+  return `d.bible_text_id > 0 AND ${recordedByUserPredicate('d', userId)}`;
+}
+
+function pendingUploadUserParams(userId: number | null): number[] {
+  return userId === null ? [] : [userId, userId];
+}
+
+/** Recordings and queued take deletes the upload orchestrator will process. */
 export async function getPendingUploadCount(): Promise<number> {
   const db = getDatabase();
   const userId = parseUserId();
   try {
     const result = await db.execute(
-      `SELECT COUNT(*) AS count
-       FROM recordings r
-       JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE ${uploadablePendingWhere(userId)};`,
-      userId === null ? [] : [userId],
+      `SELECT (
+         SELECT COUNT(*)
+         FROM recordings r
+         JOIN bible_texts bt ON bt.id = r.bible_text_id
+         WHERE ${uploadablePendingWhere(userId)}
+       ) + (
+         SELECT COUNT(*)
+         FROM recording_deletions d
+         JOIN bible_texts bt ON bt.id = d.bible_text_id
+         WHERE ${pendingDeletionWhere(userId)}
+       ) AS count`,
+      pendingUploadUserParams(userId),
     );
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
@@ -1138,9 +1158,10 @@ export type PendingUploadChapter = {
 };
 
 /**
- * Distinct chapters with at least one upload-eligible take for the active
- * user (verse, bible_text_id > 0, JOIN bible_texts — same as
- * getPendingRecordings). Upload engine (#150) processes work per chapter.
+ * Distinct chapters with upload-eligible takes or a queued take delete for
+ * the active user (JOIN bible_texts). The upload engine (#150) returns
+ * before the delete pass when this list is empty, so a chapter whose only
+ * remaining work is `recording_deletions` must still appear here (#716).
  */
 export async function getPendingUploadChapters(): Promise<
   PendingUploadChapter[]
@@ -1149,12 +1170,19 @@ export async function getPendingUploadChapters(): Promise<
   const userId = parseUserId();
   try {
     const result = await db.execute(
-      `SELECT DISTINCT bt.book_id AS book_id, bt.chapter_number AS chapter_number
-       FROM recordings r
-       JOIN bible_texts bt ON bt.id = r.bible_text_id
-       WHERE ${uploadablePendingWhere(userId)}
-       ORDER BY bt.book_id, bt.chapter_number`,
-      userId === null ? [] : [userId],
+      `SELECT book_id, chapter_number FROM (
+         SELECT bt.book_id AS book_id, bt.chapter_number AS chapter_number
+         FROM recordings r
+         JOIN bible_texts bt ON bt.id = r.bible_text_id
+         WHERE ${uploadablePendingWhere(userId)}
+         UNION
+         SELECT bt.book_id AS book_id, bt.chapter_number AS chapter_number
+         FROM recording_deletions d
+         JOIN bible_texts bt ON bt.id = d.bible_text_id
+         WHERE ${pendingDeletionWhere(userId)}
+       )
+       ORDER BY book_id, chapter_number`,
+      pendingUploadUserParams(userId),
     );
     const rows = result.rows ?? [];
     return rows.map(row => ({

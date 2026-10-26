@@ -140,6 +140,8 @@ function normalizeProjectUnitId(raw: unknown): number | null {
  * set, else the chapter's assignment unit only when exactly one unit is
  * assigned (never guess across units). `bt` must alias the take's
  * bible_texts row; `unitExpr` is the capture unit expression.
+ * `unitExpr` is substituted three times, so each `?` inside it must be
+ * bound three times, in order.
  */
 export function uploadProjectUnitSql(unitExpr: string): string {
   return `CASE
@@ -812,6 +814,8 @@ export async function deleteRecordingTake(id: string): Promise<void> {
       // #716: the server copy is removed on the next sync. The recording id
       // doubles as the queue id since the row is deleted below. No unit
       // resolves (ambiguous chapter assignment) means nothing to target.
+      // Three copies: uploadProjectUnitSql substitutes the CAST(?) three times.
+      const projectUnitId = normalizeProjectUnitId(row.project_unit_id);
       await tx.execute(
         `INSERT OR REPLACE INTO recording_deletions
            (id, project_unit_id, bible_text_id, server_take_id,
@@ -828,7 +832,9 @@ export async function deleteRecordingTake(id: string): Promise<void> {
           serverTakeId,
           row.recorded_by_user_id,
           now,
-          ...Array(3).fill(normalizeProjectUnitId(row.project_unit_id)),
+          projectUnitId,
+          projectUnitId,
+          projectUnitId,
           bibleTextId,
         ],
       );
