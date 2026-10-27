@@ -356,9 +356,15 @@ export async function hydratePrepareOfflineTextContent(
   items: PrepareOfflineResourceItem[],
   contexts: FetchPrepareOfflineManifestParams[],
 ): Promise<PrepareOfflineResourceItem[]> {
-  // Only text rows that still need downloading need content.
+  // Fetch only when a pending text member has no usable byte source yet.
+  // URL-backed members go directly to the worker; already inline members
+  // must not acquire a dependency on another full-manifest request either.
+  const memberNeedsContent = (member: PrepareOfflineResourceManifestItem) =>
+    member.serializedContent === undefined && !member.sourceUrl;
   const needsContent = (item: PrepareOfflineResourceItem) =>
-    item.kind === 'text' && item.status !== 'completed';
+    item.kind === 'text' &&
+    item.status !== 'completed' &&
+    item.manifestMembers.some(memberNeedsContent);
 
   if (!items.some(needsContent)) {
     return items;
@@ -385,17 +391,16 @@ export async function hydratePrepareOfflineTextContent(
   return items.map(item => {
     if (!needsContent(item)) return item;
 
-    const manifestMembers = item.manifestMembers.map(member => ({
-      ...member,
-      serializedContent: contentById.get(member.id) ?? member.serializedContent,
-    }));
+    const manifestMembers = item.manifestMembers.map(member =>
+      memberNeedsContent(member)
+        ? { ...member, serializedContent: contentById.get(member.id) }
+        : member,
+    );
 
     // A member with neither inline content nor a sourceUrl can never be
     // downloaded — that's a real error. A URL-only member is fine: the
     // worker fetches it from sourceUrl.
-    const missing = manifestMembers.find(
-      m => m.serializedContent === undefined && !m.sourceUrl,
-    );
+    const missing = manifestMembers.find(memberNeedsContent);
     if (missing) {
       throw new Error(`No content returned for text item ${missing.id}`);
     }
