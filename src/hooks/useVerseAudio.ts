@@ -1010,7 +1010,7 @@ export function useVerseAudio({
 
   /** File checks + engine play, shared by single takes and stitched segments. */
   const playUri = useCallback(
-    async (path: string, isStale?: () => boolean) => {
+    async (path: string, isStale?: () => boolean, fromMs = 0) => {
       const exists = await fileExists(path);
       if (!exists) {
         throw new Error('Take file is missing on disk. Re-record this verse.');
@@ -1020,7 +1020,8 @@ export function useVerseAudio({
         throw new Error('Take file is empty (0 bytes). Re-record this verse.');
       }
       if (isStale?.()) return;
-      await playback.play(path);
+      if (fromMs > 0) await playback.resume(fromMs, path);
+      else await playback.play(path);
     },
     [playback],
   );
@@ -1032,16 +1033,7 @@ export function useVerseAudio({
       try {
         clearStitchQueue();
         setErrorMessage(null);
-        if (fromMs !== undefined && fromMs > 0) {
-          if (!(await fileExists(take.localFilePath))) {
-            throw new Error(
-              'Take file is missing on disk. Re-record this verse.',
-            );
-          }
-          await playback.resume(fromMs, take.localFilePath);
-        } else {
-          await playUri(take.localFilePath);
-        }
+        await playUri(take.localFilePath, undefined, fromMs);
         setPlayingTakeId(take.id);
         setLoadedTakeId(take.id);
         dispatch({ type: 'PLAY' });
@@ -1056,7 +1048,7 @@ export function useVerseAudio({
         setPlaybackLoadGate(n => n + 1);
       }
     },
-    [clearStitchQueue, playUri, playback],
+    [clearStitchQueue, playUri],
   );
 
   /**

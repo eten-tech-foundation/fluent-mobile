@@ -152,7 +152,11 @@ translator hears them all last.
   Track row's 8pt unheard dot, and no glow on the official take card (Figma
   shows one, which is a gradient-style effect like Q2). Deleting a take adds
   a 300ms hold to pick it up, a 5s undo window, the 82% scrim, the 22% red
-  tint over the bin and a 160ms drop. The undo card and the bin also use raw
+  tint over the bin, 16pt of slop around the bin, the bin growing in from 60%
+  and 8% more under a take, a 160ms drop that shrinks the take by 60%, and a
+  150ms fade on the undo card. Scrubbing steps 5% per TalkBack swipe and
+  holds the finger's spot until playback is within 2 bars of it, or 1s. The
+  undo card and the bin also use raw
   colors in Figma (2557-1257, 2557-1092); code maps them to
   `surface/sunken`, `border/highlight`, `surface/inverse` and `accent/record`,
   and the bin's lighter dashed ring to `fg/on-accent` at 40%.

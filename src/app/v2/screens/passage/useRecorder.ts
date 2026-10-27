@@ -85,7 +85,10 @@ export function useRecorder({
       selected: t.isSelected,
       recordedAt: t.createdAt,
     }));
-  const takes = liveTakes.length > 0 ? liveTakes : passage.takes;
+  const takes =
+    liveTakes.length > 0
+      ? liveTakes
+      : passage.takes.filter(t => !deletion.hiddenIds.has(t.id));
 
   // Live input levels for the take in progress, kept per take for this
   // session so a take just recorded still shows its wave.
@@ -294,7 +297,11 @@ export function useRecorder({
     // The take in front, which may not be the session's selected take.
     if (!frontTake) return;
     setParked(null);
-    await verseAudio.playTake(frontTake, parkedMs);
+    // Scrubbed to the very end, Play starts over.
+    await verseAudio.playTake(
+      frontTake,
+      parkedMs >= frontLength ? 0 : parkedMs,
+    );
   }
 
   async function scrubFront(p: number) {

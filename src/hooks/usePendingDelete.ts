@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { logger } from '../utils/logger';
+
+const log = logger.create('usePendingDelete');
+const logFailure = (error: unknown) =>
+  log.error('Failed to delete take', { error });
 
 /** How long a deleted take can be brought back (Q25). */
 export const UNDO_MS = 5000;
@@ -50,7 +55,7 @@ export function usePendingDelete(
       });
     chain.current = chain.current
       .then(() => commitRef.current(target.id))
-      .catch(() => undefined)
+      .catch(logFailure)
       .then(unhide);
     return chain.current;
   }, []);
@@ -76,7 +81,9 @@ export function usePendingDelete(
       clearTimer();
       const target = pendingRef.current;
       if (target) {
-        void chain.current.then(() => commitRef.current(target.id));
+        void chain.current
+          .then(() => commitRef.current(target.id))
+          .catch(logFailure);
       }
     },
     [],

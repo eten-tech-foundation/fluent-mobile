@@ -1,7 +1,14 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Waveform, waveformOffset, waveformJumps } from './Waveform';
+import {
+  Waveform,
+  nearestBar,
+  scrubSettled,
+  scrubTo,
+  waveformOffset,
+  waveformJumps,
+} from './Waveform';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
 jest.mock('../../services/storage', () => ({
@@ -242,6 +249,49 @@ describe('waveformOffset', () => {
   it('does not scroll before the frame is measured', () => {
     expect(waveformOffset(330, 0)).toBe(0);
   });
+});
+
+describe('scrubTo', () => {
+  it('moves like tape: dragging left goes forward, right goes back', () => {
+    expect(scrubTo(0.5, -50, 100)).toBe(1);
+    expect(scrubTo(0.5, -25, 100)).toBe(0.75);
+    expect(scrubTo(0.5, 25, 100)).toBe(0.25);
+  });
+
+  it('stays between the start and the end', () => {
+    expect(scrubTo(0.5, -500, 100)).toBe(1);
+    expect(scrubTo(0.5, 500, 100)).toBe(0);
+  });
+});
+
+describe('scrubSettled', () => {
+  it('holds the scrubbed spot until playback is within two bars of it', () => {
+    // 40 bars, so two bars is 0.05.
+    expect(scrubSettled(0.5, 0.2, 40)).toBe(false);
+    expect(scrubSettled(0.5, 0.44, 40)).toBe(false);
+    expect(scrubSettled(0.5, 0.46, 40)).toBe(true);
+    expect(scrubSettled(0.5, 0.54, 40)).toBe(true);
+  });
+});
+
+describe('nearestBar', () => {
+  it('picks the bar closest to the tap', () => {
+    const barX = [10, 14, 18, 40];
+    expect(nearestBar(barX, 0)).toBe(0);
+    expect(nearestBar(barX, 15)).toBe(0.25);
+    expect(nearestBar(barX, 35)).toBe(0.75);
+    expect(nearestBar(barX, 999)).toBe(0.75);
+  });
+
+  it('is the start when there are no bars', () => {
+    expect(nearestBar([], 20)).toBe(0);
+  });
+});
+
+describe('Waveform scrubbing', () => {
+  beforeEach(() => {
+    mockPreferenceStore();
+  });
 
   it('steps a seekable waveform with TalkBack', () => {
     const onSeek = jest.fn();
@@ -261,6 +311,9 @@ describe('waveformOffset', () => {
     });
     fireEvent(wave, 'accessibilityAction', {
       nativeEvent: { actionName: 'decrement' },
+    });
+    fireEvent(wave, 'accessibilityAction', {
+      nativeEvent: { actionName: 'activate' },
     });
     expect(onSeek.mock.calls.map(call => call[0])).toEqual([0.55, 0.45]);
   });

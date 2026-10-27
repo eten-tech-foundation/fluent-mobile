@@ -549,6 +549,99 @@ describe('useVerseAudio', () => {
     expect(result.current.playingTakeId).toBe('rec_1');
   });
 
+  it('still deletes the playing take when the player is already released', async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+    await act(async () => {
+      await result.current.playTake(take);
+    });
+    mockPlaybackStop.mockRejectedValue(new Error('player released'));
+    loadTakes.mockResolvedValue([]);
+    await act(async () => {
+      await result.current.deleteTake('rec_1');
+    });
+
+    expect(deleteTake).toHaveBeenCalledWith('rec_1');
+    expect(result.current.errorMessage).toBeNull();
+    expect(result.current.playingTakeId).toBeNull();
+    expect(result.current.state).toBe('idle');
+  });
+
+  it('plays a take from a start position', async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+    await act(async () => {
+      await result.current.playTake(take, 400);
+    });
+
+    expect(mockPlaybackResume).toHaveBeenCalledWith(400, take.localFilePath);
+    expect(mockPlaybackPlay).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('playing');
+    expect(result.current.playingTakeId).toBe('rec_1');
+  });
+
+  it('plays from the top when the start position is 0', async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+    await act(async () => {
+      await result.current.playTake(take, 0);
+    });
+
+    expect(mockPlaybackPlay).toHaveBeenCalledWith(take.localFilePath);
+    expect(mockPlaybackResume).not.toHaveBeenCalled();
+  });
+
+  it("won't play an empty take from a start position", async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+    mockFileSize.mockResolvedValue(0);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+    await act(async () => {
+      await result.current.playTake(take, 400);
+    });
+
+    expect(mockPlaybackResume).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('error');
+    expect(result.current.errorMessage).toMatch(/empty/i);
+  });
+
+  it('seeks the take it is given over the selected one', async () => {
+    const take = makeTake();
+    const other = makeTake({
+      id: 'rec_2',
+      takeNumber: 2,
+      isSelected: false,
+      localFilePath: '/recordings/rec_2.m4a',
+    });
+    loadTakes.mockResolvedValue([take, other]);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+    await act(async () => {
+      await result.current.seek(300, 'rec_2');
+    });
+
+    expect(mockPlaybackLoad).toHaveBeenCalledWith(other.localFilePath);
+    expect(mockPlaybackSeek).toHaveBeenCalledWith(300);
+    expect(result.current.loadedTakeId).toBe('rec_2');
+  });
+
   it('persists a single segment when pause/resume reuses the same file', async () => {
     const uri = 'file:///tmp/take.aac';
     mockRecordingPause.mockImplementation(async () => {

@@ -1,6 +1,15 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { UNDO_MS, usePendingDelete } from './usePendingDelete';
 
+const mockLogError = jest.fn();
+jest.mock('../utils/logger', () => ({
+  logger: {
+    create: () => ({
+      error: (...args: unknown[]) => mockLogError(...args),
+    }),
+  },
+}));
+
 describe('usePendingDelete', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
@@ -92,5 +101,19 @@ describe('usePendingDelete', () => {
     await act(async () => {});
 
     expect(commitDelete).toHaveBeenCalledWith('a');
+  });
+
+  it('logs a failed delete and shows the take again', async () => {
+    const error = new Error('db closed');
+    const commitDelete = jest.fn(() => Promise.reject(error));
+    const { result } = renderHook(() => usePendingDelete(commitDelete));
+
+    act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
+    await act(async () => result.current.commit());
+
+    expect(mockLogError).toHaveBeenCalledWith('Failed to delete take', {
+      error,
+    });
+    expect(result.current.hiddenIds.has('a')).toBe(false);
   });
 });

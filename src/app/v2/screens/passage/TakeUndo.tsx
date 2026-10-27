@@ -16,6 +16,7 @@ import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 /** Figma's deleted take card (2557-1257): a 56pt Undo over a 3pt timer. */
 const UNDO_BUTTON = 56;
 const TIMER_H = 3;
+/** How long the undo fades in over the take card (Q25). */
 const FADE_MS = 150;
 
 /**
@@ -37,9 +38,9 @@ export function TakeUndo({
   const timer = useSharedValue(1);
   useEffect(() => {
     timer.value = 1;
-    timer.value = reduceMotion
-      ? 0
-      : withTiming(0, { duration: UNDO_MS, easing: Easing.linear });
+    if (!reduceMotion) {
+      timer.value = withTiming(0, { duration: UNDO_MS, easing: Easing.linear });
+    }
   }, [takeLabel, reduceMotion, timer]);
   const timerStyle = useAnimatedStyle(() => ({
     width: `${timer.value * 100}%`,

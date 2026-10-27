@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { fanPlacement, TakeFan } from './TakeFan';
+import { fanPlacement, overBin, TakeFan } from './TakeFan';
 import { mockPreferenceStore } from '../../../../test/mocks/preferenceStore';
 
 jest.mock('../../../../assets/icons/trash-open.svg', () => {
@@ -20,6 +20,22 @@ describe('fanPlacement', () => {
     expect(fanPlacement(-1).x).toBeCloseTo(123 + 33 - 206);
     expect(fanPlacement(1).x).toBeCloseTo(-fanPlacement(-1).x);
     expect(fanPlacement(5).visible).toBe(false);
+  });
+});
+
+describe('overBin', () => {
+  // The bin is 140 across, its center 202 above the front take's.
+  it('counts a drop on the bin, or just past its edge', () => {
+    expect(overBin(0, 0, -202)).toBe(true);
+    expect(overBin(0, 80, -202)).toBe(true);
+    expect(overBin(-60, 60, -202)).toBe(true);
+  });
+
+  it('puts a take dropped anywhere else back', () => {
+    expect(overBin(0, 0, 0)).toBe(false);
+    expect(overBin(0, 90, -202)).toBe(false);
+    // A take from the side has to be dragged across to the bin.
+    expect(overBin(-120, 0, -202)).toBe(false);
   });
 });
 

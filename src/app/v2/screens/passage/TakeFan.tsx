@@ -84,15 +84,33 @@ const BIN = 140;
 const BIN_RISE = 202;
 const BIN_ICON_W = 60;
 const BIN_ICON_H = 66;
-/** A drop this close to the bin's edge still counts. */
+/** A drop this close to the bin's edge still counts (Q25). */
 const BIN_SLOP = 16;
+/** The bin grows in from 60% as a take lifts, and 8% more under it (Q25). */
+const BIN_FROM = 0.6;
+const BIN_GROW = 0.08;
+/** A take dropped in the bin shrinks by 60% as it falls in (Q25). */
+const DROP_SHRINK = 0.6;
 /** Figma tints the lifted take accent/record at 22% over the bin (Q25). */
 const OVER_TINT = 0.22;
+/** How long a take takes to fall into the bin (Q25). */
 const DROP_MS = 160;
 /** Figma's deleted chip: undo badge and timer bar. */
 const UNDO_BADGE = 28;
 const UNDO_ICON = 14;
 const TIMER_H = 3;
+
+/**
+ * Whether a take dragged by (dx, dy) from its slot at `tileX` is over the
+ * bin, which sits `BIN_RISE` above the fan's center.
+ */
+export function overBin(tileX: number, dx: number, dy: number): boolean {
+  'worklet';
+  const reach = BIN / 2 + BIN_SLOP;
+  const x = tileX + dx;
+  const y = dy + BIN_RISE;
+  return x * x + y * y < reach * reach;
+}
 
 /**
  * Takes as a fanned stack, as in Figma's Recorder: the selected take in
@@ -122,7 +140,10 @@ export function TakeFan({
 }) {
   const { roles } = useTheme();
   const reduceMotion = useReducedMotion();
-  const [lifted, setLifted] = useState(false);
+  // Counted, so a second finger's drop doesn't clear the first one's scrim.
+  const [lifts, setLifts] = useState(0);
+  const lifted = lifts > 0;
+  const onLift = (on: boolean) => setLifts(n => Math.max(0, n + (on ? 1 : -1)));
   const show = useSharedValue(0);
   const over = useSharedValue(0);
   const styles = useThemedStyles(t => ({
@@ -167,7 +188,13 @@ export function TakeFan({
   }, [lifted, reduceMotion, show]);
   const binStyle = useAnimatedStyle(() => ({
     opacity: show.value,
-    transform: [{ scale: (0.6 + 0.4 * show.value) * (1 + 0.08 * over.value) }],
+    transform: [
+      {
+        scale:
+          (BIN_FROM + (1 - BIN_FROM) * show.value) *
+          (1 + BIN_GROW * over.value),
+      },
+    ],
   }));
   const front = Math.max(
     0,
@@ -206,7 +233,7 @@ export function TakeFan({
               ? () => onDelete(take.id)
               : undefined
           }
-          onLift={setLifted}
+          onLift={onLift}
         />
       ))}
     </View>
@@ -261,6 +288,8 @@ function Tile({
   const liftedRef = useRef(false);
   const onLiftRef = useRef(onLift);
   onLiftRef.current = onLift;
+  const onDeleteRef = useRef(onDelete);
+  onDeleteRef.current = onDelete;
   // A take removed mid-drag (a sync reload) mustn't leave the scrim up.
   useEffect(
     () => () => {
@@ -327,9 +356,12 @@ function Tile({
       : withTiming(0, { duration: theme.motion.releaseMs });
     if (take.deleted) {
       timer.value = 1;
-      timer.value = reduceMotion
-        ? 0
-        : withTiming(0, { duration: UNDO_MS, easing: Easing.linear });
+      if (!reduceMotion) {
+        timer.value = withTiming(0, {
+          duration: UNDO_MS,
+          easing: Easing.linear,
+        });
+      }
     }
   }, [
     take.deleted,
@@ -352,9 +384,16 @@ function Tile({
     liftedRef.current = false;
     setLifted(false);
     onLift(false);
-    if (into) onDelete?.();
+    if (!into) return;
+    if (onDeleteRef.current) {
+      onDeleteRef.current();
+      return;
+    }
+    // Deleting turned off mid-drop (a take started): back to its slot.
+    drop.value = 0;
+    dragX.value = 0;
+    dragY.value = 0;
   };
-  const reach = BIN / 2 + BIN_SLOP;
   const pressMs = reduceMotion ? 0 : theme.motion.pressMs;
   const dropMs = reduceMotion ? 0 : DROP_MS;
   const still = reduceMotion;
@@ -368,9 +407,7 @@ function Tile({
     .onUpdate(e => {
       dragX.value = e.translationX;
       dragY.value = e.translationY;
-      const dx = x + e.translationX;
-      const dy = e.translationY + BIN_RISE;
-      const inside = dx * dx + dy * dy < reach * reach ? 1 : 0;
+      const inside = overBin(x, e.translationX, e.translationY) ? 1 : 0;
       if (inside !== inBin.value) {
         inBin.value = inside;
         over.value = withTiming(inside, { duration: pressMs });
@@ -378,9 +415,7 @@ function Tile({
     })
     .onEnd((e, success) => {
       // Decide from where the finger let go, not from the tint's animation.
-      const dx = x + e.translationX;
-      const dy = e.translationY + BIN_RISE;
-      const into = success && dx * dx + dy * dy < reach * reach;
+      const into = success && overBin(x, e.translationX, e.translationY);
       inBin.value = 0;
       lift.value = still ? 0 : withSpring(0, NEXT_SPRING);
       if (into) {
@@ -430,7 +465,7 @@ function Tile({
       transform: [
         { translateX: tx.value + dragX.value },
         { translateY: (1 - rise.value) * RISE_FROM + dragY.value },
-        { scale: resting * (1 - 0.6 * drop.value) },
+        { scale: resting * (1 - DROP_SHRINK * drop.value) },
       ],
     };
   });
