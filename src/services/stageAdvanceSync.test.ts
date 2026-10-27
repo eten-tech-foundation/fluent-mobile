@@ -200,6 +200,77 @@ describe('syncPendingStageAdvances', () => {
     expect(deleteRow).toHaveBeenCalledWith(1);
   });
 
+  it('keeps the row pending when the PATCH response is still below the target', async () => {
+    listPending.mockResolvedValue([
+      { ...draftToPeerCheck, fromStatus: 'not_started' },
+    ]);
+    getAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      projectId: 1,
+      projectUnitId: 1,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 4,
+      status: 'not_started',
+    });
+    submitAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      status: 'draft',
+    });
+
+    await expect(syncPendingStageAdvances(9, 'token-9')).resolves.toEqual({
+      synced: 0,
+      dropped: 0,
+      failed: 1,
+    });
+
+    expect(submitAssignment).toHaveBeenCalledTimes(1);
+    expect(deleteRow).not.toHaveBeenCalled();
+  });
+
+  it('deletes the row when the PATCH response reaches the target or omits status', async () => {
+    getAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      projectId: 1,
+      projectUnitId: 1,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 4,
+      status: 'draft',
+    });
+    submitAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      status: 'peer_check',
+    });
+
+    await expect(syncPendingStageAdvances(9)).resolves.toEqual({
+      synced: 1,
+      dropped: 0,
+      failed: 0,
+    });
+    expect(deleteRow).toHaveBeenCalledWith(1);
+  });
+
+  it('leaves the row pending when the server status is empty', async () => {
+    getAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      projectId: 1,
+      projectUnitId: 1,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 4,
+      status: '',
+    });
+
+    await expect(syncPendingStageAdvances(9)).resolves.toEqual({
+      synced: 0,
+      dropped: 0,
+      failed: 1,
+    });
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(deleteRow).not.toHaveBeenCalled();
+  });
+
   it('leaves the row pending when GET throws', async () => {
     getAssignment.mockRejectedValue(new Error('network'));
 
@@ -293,7 +364,9 @@ describe('syncPendingStageAdvances', () => {
     expect(setStatus).not.toHaveBeenCalled();
   });
 
-  it('joins an in-flight drain instead of starting a second GET', async () => {
+  it('joins an in-flight drain without a concurrent GET, then runs one more pass', async () => {
+    // The row is gone after the first pass, as in the real queue.
+    listPending.mockResolvedValueOnce([draftToPeerCheck]).mockResolvedValue([]);
     let release!: (value: Awaited<ReturnType<typeof getAssignment>>) => void;
     getAssignment.mockImplementation(
       () =>
@@ -322,6 +395,39 @@ describe('syncPendingStageAdvances', () => {
       { synced: 0, dropped: 1, failed: 0 },
     ]);
     expect(submitAssignment).not.toHaveBeenCalled();
+    // Initial pass + the rerun the joiner requested.
+    expect(listPending).toHaveBeenCalledTimes(2);
+  });
+
+  it('re-reads uploads on the rerun so a joiner triggered after takes finish can PATCH', async () => {
+    hasPendingUploads
+      .mockResolvedValueOnce(true) // stale pass: takes still uploading
+      .mockResolvedValue(false); // rerun: takes finished
+    getAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      projectId: 1,
+      projectUnitId: 1,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 4,
+      status: 'draft',
+    });
+    let releaseList!: () => void;
+    listPending.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          releaseList = () => resolve([draftToPeerCheck]);
+        }),
+    );
+
+    const first = syncPendingStageAdvances(9, 'token-9');
+    const second = syncPendingStageAdvances(9, 'token-9');
+    releaseList();
+
+    const [firstResult] = await Promise.all([first, second]);
+    expect(submitAssignment).toHaveBeenCalledTimes(1);
+    expect(deleteRow).toHaveBeenCalledWith(1);
+    expect(firstResult.synced).toBe(1);
   });
 
   it('starts independent drains for overlapping calls with different users', async () => {

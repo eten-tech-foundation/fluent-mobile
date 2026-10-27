@@ -1250,6 +1250,15 @@ export async function updateChapterAssignmentStatusLocally(
       [chapterAssignmentId],
     );
     const currentRow = current.rows?.[0] as { status?: string } | undefined;
+    // Never apply a local advance that cannot be queued: it would look sent
+    // but never reach the server, and the next pull would revert it.
+    if (!currentRow) {
+      throw new Error(
+        `Chapter assignment ${chapterAssignmentId} not found locally`,
+      );
+    }
+    // An empty status is the start of the chain (`'' → peer_check` is allowed).
+    const fromStatus = String(currentRow.status ?? '').trim() || 'not_started';
     if (peerCheckerId !== undefined) {
       await tx.execute(
         `UPDATE chapter_assignments
@@ -1270,9 +1279,6 @@ export async function updateChapterAssignmentStatusLocally(
         [status, submittedTime, updatedAt, chapterAssignmentId],
       );
     }
-    if (!currentRow) return;
-    const fromStatus = String(currentRow.status ?? '').trim();
-    if (!fromStatus) return;
     await insertStageAdvanceQueueEntry(tx, {
       chapterAssignmentId,
       userId,

@@ -171,7 +171,7 @@ describe('updateChapterAssignmentStatusLocally', () => {
     ]);
   });
 
-  it('updates locally but does not enqueue when current status is missing', async () => {
+  it('enqueues from=not_started when the current status is empty', async () => {
     const db = createStageAdvanceTestDb([
       {
         id: 7,
@@ -186,6 +186,26 @@ describe('updateChapterAssignmentStatusLocally', () => {
     await updateChapterAssignmentStatusLocally(7, 'peer_check', undefined, 9);
 
     expect(db.__rows[0].status).toBe('peer_check');
+    expect(db.__queue).toEqual([
+      {
+        chapter_assignment_id: 7,
+        user_id: 9,
+        from_status: 'not_started',
+        to_status: 'peer_check',
+        peer_checker_id: null,
+      },
+    ]);
+  });
+
+  it('throws without changing status or queueing when the assignment is missing locally', async () => {
+    const db = createStageAdvanceTestDb([]);
+    setDatabase(db as never);
+
+    await expect(
+      updateChapterAssignmentStatusLocally(7, 'peer_check', undefined, 9),
+    ).rejects.toThrow('not found locally');
+
+    expect(db.__rows).toEqual([]);
     expect(db.__queue).toEqual([]);
   });
 });

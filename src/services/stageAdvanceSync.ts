@@ -25,9 +25,17 @@ export type SyncPendingStageAdvancesResult = {
 };
 
 const inFlight = new Map<number, Promise<SyncPendingStageAdvancesResult>>();
+// A call that joins a pass already in flight may have been triggered after that
+// pass read its state (e.g. takes just finished uploading). Run one more pass.
+const rerunRequested = new Set<number>();
 
 export function __resetStageAdvanceSyncForTests(): void {
   inFlight.clear();
+  rerunRequested.clear();
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function normalizeStatus(status: string): string {
@@ -38,8 +46,10 @@ function readServerStatus(
   assignment: ApiChapterAssignment,
 ): string | undefined {
   const raw = assignment.status ?? assignment.chapterStatus;
-  if (raw === null || raw === undefined) return undefined;
-  return normalizeStatus(raw);
+  if (typeof raw !== 'string') return undefined;
+  const normalized = normalizeStatus(raw);
+  // An empty status is not a stage the server confirmed; do not write it locally.
+  return normalized === '' ? undefined : normalized;
 }
 
 async function dropResolved(
@@ -56,20 +66,39 @@ async function dropResolved(
 
 /**
  * Push pending stage advances for one user. GET before every PATCH, including
- * a retry of a row left pending. Overlapping calls for the same user join this
- * pass; different users drain independently.
+ * a retry of a row left pending. Overlapping calls for the same user join the
+ * pass in flight, which then runs once more so the joiner's trigger is not
+ * answered with a stale read; different users drain independently.
  */
 export async function syncPendingStageAdvances(
   userId: number,
   token?: string,
 ): Promise<SyncPendingStageAdvancesResult> {
   const existing = inFlight.get(userId);
-  if (existing) return existing;
-  const pass = drainStageAdvances(userId, token).finally(() => {
+  if (existing) {
+    rerunRequested.add(userId);
+    return existing;
+  }
+  const pass = runDrainPasses(userId, token).finally(() => {
+    rerunRequested.delete(userId);
     inFlight.delete(userId);
   });
   inFlight.set(userId, pass);
   return pass;
+}
+
+async function runDrainPasses(
+  userId: number,
+  token?: string,
+): Promise<SyncPendingStageAdvancesResult> {
+  const total = await drainStageAdvances(userId, token);
+  while (rerunRequested.delete(userId)) {
+    const next = await drainStageAdvances(userId, token);
+    total.synced += next.synced;
+    total.dropped += next.dropped;
+    total.failed += next.failed;
+  }
+  return total;
 }
 
 async function drainStageAdvances(
@@ -100,6 +129,10 @@ async function drainStageAdvances(
       serverStatus = readServerStatus(assignment);
     } catch (error) {
       if (isAuthError(error)) throw error;
+      log.warn('Leaving stage advance pending: GET assignment failed', {
+        chapterAssignmentId: row.chapterAssignmentId,
+        error: errorMessage(error),
+      });
       failed += 1;
       holdRest();
       continue;
@@ -109,6 +142,11 @@ async function drainStageAdvances(
     const toStatus = normalizeStatus(row.toStatus);
 
     if (serverStatus === undefined) {
+      log.warn('Leaving stage advance pending: server status missing', {
+        chapterAssignmentId: row.chapterAssignmentId,
+        fromStatus,
+        toStatus,
+      });
       failed += 1;
       holdRest();
       continue;
@@ -118,7 +156,11 @@ async function drainStageAdvances(
       try {
         await deleteStageAdvanceQueueEntry(row.id);
         dropped += 1;
-      } catch {
+      } catch (error) {
+        log.warn('Stage advance row delete failed; leaving pending', {
+          chapterAssignmentId: row.chapterAssignmentId,
+          error: errorMessage(error),
+        });
         failed += 1;
         holdRest();
       }
@@ -131,6 +173,10 @@ async function drainStageAdvances(
         dropped += 1;
       } catch (error) {
         if (isAuthError(error)) throw error;
+        log.warn('Stage advance keep-higher drop failed; leaving pending', {
+          chapterAssignmentId: row.chapterAssignmentId,
+          error: errorMessage(error),
+        });
         failed += 1;
         holdRest();
       }
@@ -141,10 +187,20 @@ async function drainStageAdvances(
       // Server behind `from`: keep-lower and drop.
       if (isStageAhead(fromStatus, serverStatus)) {
         try {
+          log.info('Server is behind the queued from-status; keeping lower', {
+            chapterAssignmentId: row.chapterAssignmentId,
+            fromStatus,
+            toStatus,
+            serverStatus,
+          });
           await dropResolved(row, serverStatus);
           dropped += 1;
         } catch (error) {
           if (isAuthError(error)) throw error;
+          log.warn('Stage advance keep-lower drop failed; leaving pending', {
+            chapterAssignmentId: row.chapterAssignmentId,
+            error: errorMessage(error),
+          });
           failed += 1;
           holdRest();
         }
@@ -180,8 +236,12 @@ async function drainStageAdvances(
       continue;
     }
 
+    let patched: Awaited<ReturnType<typeof FluentAPI.submitChapterAssignment>>;
     try {
-      await FluentAPI.submitChapterAssignment(row.chapterAssignmentId, token);
+      patched = await FluentAPI.submitChapterAssignment(
+        row.chapterAssignmentId,
+        token,
+      );
     } catch (error) {
       if (isAuthError(error)) throw error;
       if (isApiError(error) && error.status === 400) {
@@ -215,10 +275,33 @@ async function drainStageAdvances(
       continue;
     }
 
+    // One PATCH may advance only a single stage. If the response shows a known
+    // stage still below the target, keep the row so the next pass PATCHes again
+    // instead of deleting it and letting a pull revert the local advance.
+    const patchedStatus =
+      patched !== null && typeof patched === 'object'
+        ? readServerStatus(patched as ApiChapterAssignment)
+        : undefined;
+    if (patchedStatus !== undefined && isStageAhead(toStatus, patchedStatus)) {
+      log.warn('Stage advance PATCH landed below the target; leaving pending', {
+        chapterAssignmentId: row.chapterAssignmentId,
+        fromStatus,
+        toStatus,
+        patchedStatus,
+      });
+      failed += 1;
+      holdRest();
+      continue;
+    }
+
     try {
       await deleteStageAdvanceQueueEntry(row.id);
       synced += 1;
-    } catch {
+    } catch (error) {
+      log.warn('Stage advance row delete failed; leaving pending', {
+        chapterAssignmentId: row.chapterAssignmentId,
+        error: errorMessage(error),
+      });
       failed += 1;
       holdRest();
     }

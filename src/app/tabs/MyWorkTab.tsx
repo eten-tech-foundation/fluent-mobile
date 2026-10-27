@@ -95,6 +95,8 @@ export function MyWorkTab({
       projectId: chapter.projectId,
       grantProjectIds,
       translatorProjectIds,
+      // From the list snapshot: a stale `true` after a drain only opens
+      // verse-detail, which re-checks access itself.
       hasPendingStageAdvance: chapter.hasPendingStageAdvance,
     });
     if (access === null) {
