@@ -67,6 +67,14 @@ export function useRecorder({
   // record() awaits a commit, then starts from the session as it is by then.
   const latestAudio = useRef(verseAudio);
   latestAudio.current = verseAudio;
+  const showingRef = useRef(showing);
+  showingRef.current = showing;
+  useEffect(
+    () => () => {
+      showingRef.current = false;
+    },
+    [],
+  );
   /** A take just deleted shows in front, with its undo, until it's settled. */
   const [frontOverride, setFrontOverride] = useState<string | null>(null);
   /** On a stage-locked chapter, the take tapped forward to play; the pick stays. */
@@ -282,6 +290,8 @@ export function useRecorder({
     if (!(await session.ensureMic())) return;
     // A new take counts toward the limit, so a pending delete goes first.
     await deletion.commit();
+    // The player may have closed while the delete ran; don't record hidden.
+    if (!showingRef.current) return;
     session.setElapsedMs(0);
     await latestAudio.current.start();
   }

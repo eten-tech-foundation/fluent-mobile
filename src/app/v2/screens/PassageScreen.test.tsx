@@ -425,6 +425,30 @@ describe('PassageScreen', () => {
     );
   });
 
+  it("doesn't start recording if the player closed while the delete ran", async () => {
+    let finish = () => {};
+    mockDeleteTake.mockImplementationOnce(
+      () => new Promise<void>(resolve => (finish = resolve)),
+    );
+    mockSession = { ...mockSession, takes: [take(1), take(2)] };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    fireEvent(
+      screen.getByLabelText('Take 2, selected'),
+      'accessibilityAction',
+      { nativeEvent: { actionName: 'delete' } },
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(mockDeleteTake).toHaveBeenCalledWith('t2');
+    fireEvent.press(screen.getByTestId('passage-close'));
+    await act(async () => finish());
+
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
   it('only plays takes on a stage-locked chapter: no pick, official or delete', () => {
     const takes = [take(1), { ...take(2), isSelected: true }];
     mockSession = { ...mockSession, takes };
