@@ -97,12 +97,18 @@ export type UploadOrchestrator = {
   syncNow: () => Promise<void>;
   /** A take was saved (or other pending work appeared) while the app is open. */
   notifyPendingWork: () => void;
+  /**
+   * While held, automatic uploads do not start. An in-flight session is left
+   * running. Explicit syncNow still runs.
+   */
+  setDraftingHold: (held: boolean) => Promise<void>;
   getSnapshot: () => UploadOrchestratorSnapshot;
 };
 
 /** Pure upload session orchestrator (injectable deps for unit tests). */
 export function createUploadOrchestrator(
   deps: UploadOrchestratorDeps,
+  options?: { initialDraftingHold?: boolean },
 ): UploadOrchestrator {
   let phase: UploadPhase = 'idle';
   let completedChapters = 0;
@@ -121,6 +127,12 @@ export function createUploadOrchestrator(
   let sessionPromise: Promise<void> | null = null;
   /** After cancel, suppress auto-start until the next reachability→online edge. */
   let suppressAutoUntilOnlineEdge = false;
+  /**
+   * Drafting screen is focused and the app is in the foreground. Automatic
+   * uploads wait until the hold lifts.
+   */
+  let draftingHold = Boolean(options?.initialDraftingHold);
+  let holdChain: Promise<void> = Promise.resolve();
   let wasOnline = false;
   let evaluateChain: Promise<void> = Promise.resolve();
   const schedule = deps.schedule ?? defaultSchedule;
@@ -326,6 +338,9 @@ export function createUploadOrchestrator(
       if (reason === 'auto' && suppressAutoUntilOnlineEdge) {
         return;
       }
+      if (reason === 'auto' && draftingHold) {
+        return;
+      }
 
       const chapters = await deps.getPendingUploadChapters();
       if (!started || version !== lifecycleVersion) return;
@@ -337,6 +352,9 @@ export function createUploadOrchestrator(
         return;
       }
       if (suppressAutoUntilOnlineEdge) {
+        return;
+      }
+      if (reason === 'auto' && draftingHold) {
         return;
       }
       const currentGate = transportAllowsTransfer({
@@ -543,6 +561,9 @@ export function createUploadOrchestrator(
     evaluateChain = evaluateChain
       .then(async () => {
         if (!started) return;
+        if (draftingHold) {
+          return;
+        }
         const gate = transportAllowsTransfer({
           isOnline,
           isWifi,
@@ -621,6 +642,21 @@ export function createUploadOrchestrator(
       suppressAutoUntilOnlineEdge = false;
     }
 
+    evaluateAuto();
+  };
+
+  const applyDraftingHold = async (held: boolean): Promise<void> => {
+    if (held) {
+      // Do not abort an in-flight session. The hold only blocks the next
+      // automatic start.
+      draftingHold = true;
+      return;
+    }
+
+    draftingHold = false;
+    if (!started) {
+      return;
+    }
     evaluateAuto();
   };
 
@@ -711,6 +747,15 @@ export function createUploadOrchestrator(
         return;
       }
       evaluateAuto();
+    },
+
+    setDraftingHold(held: boolean): Promise<void> {
+      const task = holdChain.then(() => applyDraftingHold(held));
+      holdChain = task.then(
+        () => undefined,
+        () => undefined,
+      );
+      return task;
     },
 
     getSnapshot: snapshot,

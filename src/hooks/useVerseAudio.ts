@@ -330,9 +330,9 @@ export function useVerseAudio({
           : undefined;
       return checkMultipleRecorders
         ? checkMultipleRecorders(id)
-        : verseHasMultipleRecorders(id, undefined, view);
+        : verseHasMultipleRecorders(id, undefined, view, projectUnitId);
     },
-    [checkMultipleRecorders, chapterNumber, verseNumber],
+    [checkMultipleRecorders, chapterNumber, verseNumber, projectUnitId],
   );
 
   /**
