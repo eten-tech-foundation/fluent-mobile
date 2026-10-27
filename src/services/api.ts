@@ -217,6 +217,35 @@ async function claimChapterAssignmentRequest(
   return normalizeClaimResponse(api);
 }
 
+/** Wire shape for GET /chapter-assignments/:id (fluent-api returns `id`). */
+type ChapterAssignmentByIdWire = Omit<
+  ApiChapterAssignment,
+  'chapterAssignmentId'
+> & {
+  id?: number;
+  chapterAssignmentId?: number;
+};
+
+async function getChapterAssignmentRequest(
+  chapterAssignmentId: number,
+  token?: string,
+): Promise<ApiChapterAssignment> {
+  const api = await authedRequest<ChapterAssignmentByIdWire>(
+    `/chapter-assignments/${chapterAssignmentId}`,
+    undefined,
+    token,
+  );
+  const { id: wireId, ...rest } = api;
+  const resolvedId = api.chapterAssignmentId ?? wireId;
+  if (resolvedId === undefined) {
+    throw new Error('Chapter assignment response missing id');
+  }
+  return {
+    ...rest,
+    chapterAssignmentId: resolvedId,
+  };
+}
+
 function sourceAudioManifestPath(
   projectId: number,
   params: {
@@ -373,11 +402,7 @@ export const FluentAPI = {
     chapterAssignmentId: number,
     token?: string,
   ): Promise<ApiChapterAssignment> =>
-    authedRequest<ApiChapterAssignment>(
-      `/chapter-assignments/${chapterAssignmentId}`,
-      undefined,
-      token,
-    ),
+    getChapterAssignmentRequest(chapterAssignmentId, token),
 
   /**
    * Advance a chapter assignment to the next workflow stage (online path).
