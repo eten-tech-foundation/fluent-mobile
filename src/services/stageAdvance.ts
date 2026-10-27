@@ -4,6 +4,7 @@ import { markChapterCompleteConfirmed } from '../utils/chapterCompletionSyncGuar
 import { updateChapterAssignmentStatusLocally } from '../db/repository';
 import { logger } from '../utils/logger';
 import type { StageAdvanceDestination } from '../utils/stageAdvancement';
+import { normalizeChapterStatus } from './mapChapterAssignment';
 
 const log = logger.create('stageAdvance');
 
@@ -31,7 +32,9 @@ export async function confirmStageAdvancement(params: {
     if (current.chapterAssignmentId !== chapterAssignmentId) {
       throw new Error('Could not verify this chapter');
     }
-    const status = current.status ?? current.chapterStatus;
+    const status = normalizeChapterStatus(
+      current.chapterStatus ?? current.status,
+    );
     if (status !== 'complete') {
       if (status !== 'consultant_check') {
         throw new Error('Chapter stage changed. Sync and try again.');
@@ -43,7 +46,8 @@ export async function confirmStageAdvancement(params: {
       );
       if (
         confirmed.chapterAssignmentId !== chapterAssignmentId ||
-        (confirmed.status ?? confirmed.chapterStatus) !== 'complete'
+        normalizeChapterStatus(confirmed.chapterStatus ?? confirmed.status) !==
+          'complete'
       ) {
         throw new Error('Server has not confirmed Complete. Please try again.');
       }

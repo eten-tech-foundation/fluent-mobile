@@ -44,8 +44,14 @@ describe('confirmed Complete and assignment ingestion', () => {
     await insertChapterAssignmentSyncData([assignment]);
     jest
       .mocked(FluentAPI.getChapterAssignment)
-      .mockResolvedValueOnce({ ...assignment, status: 'consultant_check' })
-      .mockResolvedValueOnce({ ...assignment, status: 'complete' });
+      .mockResolvedValueOnce({
+        ...assignment,
+        chapterStatus: 'consultant_check',
+      })
+      .mockResolvedValueOnce({
+        ...assignment,
+        chapterStatus: 'complete',
+      });
     jest.mocked(FluentAPI.submitChapterAssignment).mockResolvedValue(null);
   });
 

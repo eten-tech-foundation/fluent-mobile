@@ -104,14 +104,18 @@ describe('confirmStageAdvancement', () => {
       destinationLabel: 'Complete',
     },
   };
-  const serverAssignment = (status: string, chapterAssignmentId = 7) => ({
+  const serverAssignment = (
+    status: string,
+    chapterAssignmentId = 7,
+    fields: { status?: string; chapterStatus?: string } = { status },
+  ) => ({
     chapterAssignmentId,
-    status,
     projectId: 1,
     projectUnitId: 580,
     bibleId: 1,
     bookId: 1,
     chapterNumber: 1,
+    ...fields,
   });
 
   it('only writes Complete after the server read confirms it', async () => {
@@ -201,6 +205,76 @@ describe('confirmStageAdvancement', () => {
     mockGet
       .mockResolvedValueOnce(serverAssignment('consultant_check'))
       .mockResolvedValueOnce(serverAssignment('complete', 8));
+    await expect(confirmStageAdvancement(complete)).rejects.toThrow(
+      'not confirmed',
+    );
+    expect(mockLocalUpdate).not.toHaveBeenCalled();
+  });
+
+  it('normalizes casing and whitespace on the pre-write status field', async () => {
+    mockGet
+      .mockResolvedValueOnce(
+        serverAssignment('consultant_check', 7, {
+          status: ' Consultant_Check ',
+        }),
+      )
+      .mockResolvedValueOnce(serverAssignment('complete'));
+    await confirmStageAdvancement(complete);
+    expect(mockSubmit).toHaveBeenCalledTimes(1);
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+  });
+
+  it('accepts chapterStatus-only payloads for both reads', async () => {
+    mockGet
+      .mockResolvedValueOnce(
+        serverAssignment('consultant_check', 7, {
+          chapterStatus: 'consultant_check',
+        }),
+      )
+      .mockResolvedValueOnce(
+        serverAssignment('complete', 7, { chapterStatus: ' Complete ' }),
+      );
+    await confirmStageAdvancement(complete);
+    expect(mockSubmit).toHaveBeenCalledTimes(1);
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+  });
+
+  it('prefers chapterStatus over conflicting status on the pre-write read', async () => {
+    mockGet
+      .mockResolvedValueOnce(
+        serverAssignment('consultant_check', 7, {
+          chapterStatus: 'consultant_check',
+          status: 'complete',
+        }),
+      )
+      .mockResolvedValueOnce(serverAssignment('complete'));
+    await confirmStageAdvancement(complete);
+    expect(mockSubmit).toHaveBeenCalledTimes(1);
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+  });
+
+  it('prefers chapterStatus over conflicting status on Complete readback', async () => {
+    mockGet
+      .mockResolvedValueOnce(serverAssignment('consultant_check'))
+      .mockResolvedValueOnce(
+        serverAssignment('complete', 7, {
+          chapterStatus: 'complete',
+          status: 'consultant_check',
+        }),
+      );
+    await confirmStageAdvancement(complete);
+    expect(mockSubmit).toHaveBeenCalledTimes(1);
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+  });
+
+  it('does not treat a padded non-complete readback as Complete', async () => {
+    mockGet
+      .mockResolvedValueOnce(serverAssignment('consultant_check'))
+      .mockResolvedValueOnce(
+        serverAssignment('consultant_check', 7, {
+          status: ' Consultant_Check ',
+        }),
+      );
     await expect(confirmStageAdvancement(complete)).rejects.toThrow(
       'not confirmed',
     );
