@@ -10,7 +10,11 @@ import { isApiError } from '../types/api/errors';
 import type { ApiChapterAssignment } from '../types/api/types';
 import { isAuthError } from './authError';
 import { FluentAPI } from './api';
-import { isStageAhead, pickLowerStageStatus } from '../utils/workflowStage';
+import {
+  getWorkflowStage,
+  isStageAhead,
+  pickLowerStageStatus,
+} from '../utils/workflowStage';
 
 const log = logger.create('StageAdvanceSync');
 
@@ -134,8 +138,7 @@ async function drainStageAdvances(
     }
 
     if (serverStatus !== fromStatus) {
-      // Known earlier stage: keep-lower and drop. Unknown/unexpected: leave
-      // pending so a later GET can still PATCH (#257 / review).
+      // Server behind `from`: keep-lower and drop.
       if (isStageAhead(fromStatus, serverStatus)) {
         try {
           await dropResolved(row, serverStatus);
@@ -147,9 +150,25 @@ async function drainStageAdvances(
         }
         continue;
       }
-      failed += 1;
-      holdRest();
-      continue;
+      // Unknown/unexpected status: leave pending so a later GET can still
+      // PATCH (#257 / review).
+      if (
+        getWorkflowStage(serverStatus) === null ||
+        getWorkflowStage(fromStatus) === null
+      ) {
+        log.warn('Leaving stage advance pending: unrecognized stage', {
+          chapterAssignmentId: row.chapterAssignmentId,
+          fromStatus,
+          toStatus,
+          serverStatus,
+        });
+        failed += 1;
+        holdRest();
+        continue;
+      }
+      // Otherwise the server moved forward from `from` but is still short of
+      // `to` (e.g. a new chapter queued not_started → peer_check; claim and
+      // takes upload moved it to draft). Continue to the PATCH from there.
     }
 
     if (await assignmentHasPendingUploads(row.chapterAssignmentId, userId)) {
@@ -184,6 +203,13 @@ async function drainStageAdvances(
           if (isAuthError(followUp)) throw followUp;
         }
       }
+      log.warn('Stage advance PATCH failed; leaving pending', {
+        chapterAssignmentId: row.chapterAssignmentId,
+        fromStatus,
+        toStatus,
+        serverStatus,
+        status: isApiError(error) ? error.status : undefined,
+      });
       failed += 1;
       holdRest();
       continue;

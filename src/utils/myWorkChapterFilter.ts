@@ -25,6 +25,17 @@ export type MyWorkObserverReviewStatus =
 export const MY_WORK_ASSIGNED_CHAPTER_WHERE = `(ca.status IN (?, ?) AND ca.assigned_user_id = ?)
   OR (ca.status = ? AND ca.peer_checker_id = ?)`;
 
+/**
+ * Drafter's chapter stays on My Work while their stage change is still queued
+ * (#257). After drain deletes the row, the usual status filter applies again.
+ */
+export const MY_WORK_PENDING_STAGE_WHERE = `EXISTS (
+    SELECT 1 FROM stage_advance_queue saq
+    WHERE saq.chapter_assignment_id = ca.id
+      AND saq.user_id = ?
+      AND saq.sync_status = 'pending'
+  )`;
+
 /** Assigned-only WHERE fragment (no Observer IN-list). */
 export const MY_WORK_CHAPTER_WHERE = MY_WORK_ASSIGNED_CHAPTER_WHERE;
 
@@ -205,6 +216,9 @@ export function buildMyWorkChapterFilter(
     params.push(...observer.params);
   }
 
+  branches.push(MY_WORK_PENDING_STAGE_WHERE);
+  params.push(userId);
+
   return {
     whereSql: branches.join(' OR '),
     params,
@@ -223,6 +237,7 @@ export function classifyMyWorkListAccess(input: {
   projectId: number;
   grantProjectIds: readonly number[];
   translatorProjectIds?: readonly number[];
+  hasPendingStageAdvance?: boolean;
 }): MyWorkListAccess | null {
   if (!isPositiveInteger(input.userId) || !isPositiveInteger(input.projectId)) {
     return null;
@@ -268,6 +283,11 @@ export function classifyMyWorkListAccess(input: {
     grantIds.includes(input.projectId)
   ) {
     return 'observer';
+  }
+
+  // Drafter keeps their row after Send until the queued stage syncs (#257).
+  if (input.hasPendingStageAdvance && input.assignedUserId === input.userId) {
+    return 'assigned';
   }
 
   return null;

@@ -130,6 +130,32 @@ describe('syncPendingStageAdvances', () => {
     );
   });
 
+  it('PATCHes and deletes when the server moved from the from-status but is still short of to (not_started row, server draft)', async () => {
+    // New chapter: Send offline queued not_started → peer_check. Claim + takes
+    // upload move the server to draft before the drain runs.
+    listPending.mockResolvedValue([
+      { ...draftToPeerCheck, fromStatus: 'not_started' },
+    ]);
+    getAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      projectId: 1,
+      projectUnitId: 1,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 4,
+      status: 'draft',
+    });
+
+    await expect(syncPendingStageAdvances(9, 'token-9')).resolves.toEqual({
+      synced: 1,
+      dropped: 0,
+      failed: 0,
+    });
+
+    expect(submitAssignment).toHaveBeenCalledWith(7, 'token-9');
+    expect(deleteRow).toHaveBeenCalledWith(1);
+  });
+
   it('deletes without PATCH when the server is already the to status', async () => {
     getAssignment.mockResolvedValue({
       chapterAssignmentId: 7,

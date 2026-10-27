@@ -137,10 +137,12 @@ describe('getMyWorkChapters', () => {
     expect(sql).not.toContain('user_projects');
     expect(params).toEqual([
       7,
+      7,
       MY_WORK_CHAPTER_STATUSES.NOT_STARTED,
       MY_WORK_CHAPTER_STATUSES.DRAFT,
       7,
       MY_WORK_CHAPTER_STATUSES.PEER_CHECK,
+      7,
       7,
     ]);
     expect(chapters).toHaveLength(1);
@@ -181,6 +183,7 @@ describe('getMyWorkChapters', () => {
     );
     expect(params).toEqual([
       7,
+      7,
       MY_WORK_CHAPTER_STATUSES.NOT_STARTED,
       MY_WORK_CHAPTER_STATUSES.DRAFT,
       7,
@@ -189,6 +192,7 @@ describe('getMyWorkChapters', () => {
       ...MY_WORK_OBSERVER_REVIEW_STATUSES,
       100,
       200,
+      7,
       7,
     ]);
 
@@ -221,5 +225,43 @@ describe('getMyWorkChapters', () => {
     expect(chapters).toHaveLength(1);
     expect(chapters[0]?.id).toBe(21);
     expect(chapters[0]?.listAccess).toBe('assigned');
+  });
+
+  it('keeps a drafter peer_check row with a yellow pending cloud while the stage is queued', async () => {
+    mockExecute.mockResolvedValue({
+      rows: [
+        row({
+          id: 30,
+          status: 'peer_check',
+          assigned_user_id: 7,
+          peer_checker_id: null,
+          recording_count: 4,
+          pending_count: 0,
+          has_pending_stage_advance: 1,
+        }),
+        row({
+          id: 31,
+          status: 'peer_check',
+          assigned_user_id: 7,
+          peer_checker_id: null,
+          recording_count: 4,
+          pending_count: 0,
+          has_pending_stage_advance: 0,
+        }),
+      ],
+    });
+
+    const chapters = await getMyWorkChapters(7);
+
+    expect(chapters).toHaveLength(1);
+    expect(chapters[0]).toMatchObject({
+      id: 30,
+      listAccess: 'assigned',
+      assignmentStatus: 'peer_check',
+      syncState: 'deviceOnly',
+      hasPendingStageAdvance: true,
+    });
+    const sql = String(mockExecute.mock.calls[0]?.[0] ?? '');
+    expect(sql).toContain('stage_advance_queue');
   });
 });

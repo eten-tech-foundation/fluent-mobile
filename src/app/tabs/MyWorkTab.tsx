@@ -95,6 +95,7 @@ export function MyWorkTab({
       projectId: chapter.projectId,
       grantProjectIds,
       translatorProjectIds,
+      hasPendingStageAdvance: chapter.hasPendingStageAdvance,
     });
     if (access === null) {
       return;
