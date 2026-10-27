@@ -137,6 +137,40 @@ export function WaveformEntry() {
           />
         </KeyDeck>
       </ColorModeScope>
+      <TakeWave />
+    </View>
+  );
+}
+
+/** A take's wave on the take card: drag it or tap a bar to scrub. */
+function TakeWave() {
+  const [progress, setProgress] = useState(0);
+  const styles = useThemedStyles(t => ({
+    take: {
+      backgroundColor: t.roles.bgDefault,
+      borderRadius: t.radius.sm,
+      paddingVertical: t.spacing.lg,
+      gap: t.spacing.sm,
+    },
+    label: {
+      ...t.type.meta,
+      color: t.roles.fgSecondary,
+      paddingHorizontal: t.spacing.lg,
+    },
+  }));
+
+  return (
+    <View style={styles.take}>
+      <Text style={styles.label}>
+        Take 2 · scrubbed to {Math.round(progress * 100)}%
+      </Text>
+      <Waveform
+        verses={VERSES}
+        progress={progress}
+        accessibilityLabel="Take 2 playback"
+        onSeek={setProgress}
+        testID="gallery-waveform-take"
+      />
     </View>
   );
 }

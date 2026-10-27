@@ -1,5 +1,6 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  type AccessibilityActionEvent,
   type LayoutChangeEvent,
   type StyleProp,
   View,
@@ -12,6 +13,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import { VerseChip, verseChipWidth } from './VerseChip';
 
@@ -24,6 +27,14 @@ const WINDOW_MARGIN = 64;
 const UNMEASURED_WIDTH = 480;
 /** Figma holds the playhead about a third of the way across (130 of 380). */
 const PLAYHEAD_ANCHOR = 1 / 3;
+/** How far TalkBack's swipe up or down moves a seekable waveform (Q25). */
+const SEEK_STEP = 0.05;
+/**
+ * After a scrub, the finger's spot shows until playback reports within this
+ * many bars of it, or this long has passed (Q25).
+ */
+const SETTLE_BARS = 2;
+const SETTLE_MS = 1000;
 
 export interface WaveformVerse {
   verse: number;
@@ -37,8 +48,40 @@ export interface WaveformProps {
   progress: number;
   /** What's playing; TalkBack reads it with the percent. */
   accessibilityLabel: string;
+  /**
+   * Makes it scrubbable: drag the strip like tape, or tap a bar. Called once,
+   * with 0–1, when the finger lifts.
+   */
+  onSeek?: (progress: number) => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
+}
+
+/**
+ * Where a drag lands: the strip moves under the playhead like tape, so
+ * dragging left by the bars' span goes from the start to the end.
+ */
+export function scrubTo(from: number, dx: number, barSpan: number): number {
+  'worklet';
+  return Math.min(1, Math.max(0, from - dx / Math.max(1, barSpan)));
+}
+
+/** Playback has caught up with a released scrub, so the finger's spot can go. */
+export function scrubSettled(
+  target: number,
+  playing: number,
+  bars: number,
+): boolean {
+  return Math.abs(playing - target) <= SETTLE_BARS / Math.max(1, bars);
+}
+
+/** The bar nearest `x` on the strip, as 0–1 through the waveform. */
+export function nearestBar(barX: readonly number[], x: number): number {
+  let nearest = 0;
+  for (let i = 1; i < barX.length; i++) {
+    if (Math.abs(barX[i] - x) < Math.abs(barX[nearest] - x)) nearest = i;
+  }
+  return barX.length > 0 ? nearest / barX.length : 0;
 }
 
 /** A seek (Next, Previous, scrubbing) jumps past the window margin. */
@@ -64,11 +107,17 @@ export function waveformOffset(playheadX: number, frameWidth: number): number {
  */
 export function Waveform({
   verses,
-  progress,
+  progress: playing,
   accessibilityLabel,
+  onSeek,
   style,
   testID,
 }: WaveformProps) {
+  // While a finger is scrubbing, it leads; playback catches up on release.
+  const [scrub, setScrub] = useState<{ p: number; released: boolean } | null>(
+    null,
+  );
+  const progress = scrub?.p ?? playing;
   const theme = useTheme();
   const styles = useThemedStyles(t => ({
     frame: { height: ROW_HEIGHT, overflow: 'hidden' },
@@ -202,46 +251,122 @@ export function Waveform({
     transform: [{ translateX: -offset.value }],
   }));
 
+  // Scrubbing. Dragging moves the strip under the playhead; a tap jumps to
+  // the bar under it.
+  const barSpan =
+    total > 0
+      ? layout.barX[total - 1] + BAR_WIDTH + spacing.xs - layout.barX[0]
+      : 1;
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearSettle = () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = null;
+  };
+  useEffect(() => clearSettle, []);
+  useEffect(() => {
+    if (scrub?.released && scrubSettled(scrub.p, playing, total)) {
+      clearSettle();
+      setScrub(null);
+    }
+  }, [playing, scrub, total]);
+  const preview = (p: number) => {
+    clearSettle();
+    setScrub({ p, released: false });
+  };
+  const cancel = () => setScrub(null);
+  const finish = (p: number) => {
+    const target = Math.min(1, Math.max(0, p));
+    clearSettle();
+    setScrub({ p: target, released: true });
+    settleTimer.current = setTimeout(() => setScrub(null), SETTLE_MS);
+    onSeek?.(target);
+  };
+  const tapAt = (x: number) => finish(nearestBar(layout.barX, x));
+  const scrubbable = onSeek !== undefined && total > 0;
+  // Where the drag started, pinned: the preview re-renders this mid-drag.
+  const base = scrub?.released ? scrub.p : Math.min(1, Math.max(0, playing));
+  const from = useSharedValue(0);
+  const drag = Gesture.Pan()
+    .enabled(scrubbable)
+    .activeOffsetX([-6, 6])
+    .failOffsetY([-12, 12])
+    .onStart(() => {
+      from.value = base;
+    })
+    .onUpdate(e => {
+      scheduleOnRN(preview, scrubTo(from.value, e.translationX, barSpan));
+    })
+    .onEnd((e, success) => {
+      if (success) {
+        scheduleOnRN(finish, scrubTo(from.value, e.translationX, barSpan));
+      } else {
+        scheduleOnRN(cancel);
+      }
+    });
+  const tap = Gesture.Tap()
+    .enabled(scrubbable)
+    .onEnd((e, success) => {
+      if (success) scheduleOnRN(tapAt, e.x + offset.value);
+    });
+  const onAccessibilityAction = (e: AccessibilityActionEvent) => {
+    const { actionName } = e.nativeEvent;
+    if (actionName !== 'increment' && actionName !== 'decrement') return;
+    const step = actionName === 'increment' ? SEEK_STEP : -SEEK_STEP;
+    onSeek?.(Math.min(1, Math.max(0, clamped + step)));
+  };
+
   return (
-    <View
-      style={[styles.frame, style]}
-      onLayout={onLayout}
-      accessible
-      accessibilityRole="progressbar"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
-      testID={testID}
-    >
-      <Animated.View
-        style={[styles.strip, stripStyle]}
-        importantForAccessibility="no-hide-descendants"
-        testID={testID ? `${testID}-strip` : undefined}
+    <GestureDetector gesture={Gesture.Race(drag, tap)}>
+      <View
+        style={[styles.frame, style]}
+        onLayout={onLayout}
+        accessible
+        accessibilityRole={scrubbable ? 'adjustable' : 'progressbar'}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityValue={{
+          min: 0,
+          max: 100,
+          now: Math.round(clamped * 100),
+        }}
+        accessibilityActions={
+          scrubbable
+            ? [{ name: 'increment' }, { name: 'decrement' }]
+            : undefined
+        }
+        onAccessibilityAction={scrubbable ? onAccessibilityAction : undefined}
+        testID={testID}
       >
-        {verses.map((v, vi) => (
-          <React.Fragment key={vi}>
-            <VerseChip
-              verse={v.verse}
-              current={layout.verseStart[vi] <= lastBar}
-              testID={testID ? `${testID}-verse-${v.verse}` : undefined}
-            />
-            {v.bars.length > 0 && !inWindow(vi) ? (
-              <View style={{ width: barsWidth(v.bars.length) }} />
-            ) : v.bars.length > 0 ? (
-              <VerseBars
-                bars={v.bars}
-                start={layout.verseStart[vi]}
-                played={Math.min(
-                  v.bars.length,
-                  Math.max(0, playedCount - layout.verseStart[vi]),
-                )}
-                styles={styles}
-                testID={testID}
+        <Animated.View
+          style={[styles.strip, stripStyle]}
+          importantForAccessibility="no-hide-descendants"
+          testID={testID ? `${testID}-strip` : undefined}
+        >
+          {verses.map((v, vi) => (
+            <React.Fragment key={vi}>
+              <VerseChip
+                verse={v.verse}
+                current={layout.verseStart[vi] <= lastBar}
+                testID={testID ? `${testID}-verse-${v.verse}` : undefined}
               />
-            ) : null}
-          </React.Fragment>
-        ))}
-      </Animated.View>
-    </View>
+              {v.bars.length > 0 && !inWindow(vi) ? (
+                <View style={{ width: barsWidth(v.bars.length) }} />
+              ) : v.bars.length > 0 ? (
+                <VerseBars
+                  bars={v.bars}
+                  start={layout.verseStart[vi]}
+                  played={Math.min(
+                    v.bars.length,
+                    Math.max(0, playedCount - layout.verseStart[vi]),
+                  )}
+                  styles={styles}
+                  testID={testID}
+                />
+              ) : null}
+            </React.Fragment>
+          ))}
+        </Animated.View>
+      </View>
+    </GestureDetector>
   );
 }
 

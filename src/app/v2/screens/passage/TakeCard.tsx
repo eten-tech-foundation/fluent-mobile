@@ -15,6 +15,7 @@ import { Waveform } from '../../../../components/ui/Waveform';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import { fitBars } from './fitBars';
 import { OFFICIAL_TOGGLE, OfficialToggle } from './OfficialToggle';
+import { TakeUndo } from './TakeUndo';
 
 /** Waveform's row height (Waveform ROW_HEIGHT). */
 export const WAVE_H = 52;
@@ -41,6 +42,10 @@ export interface FrontTake {
   official: boolean;
   /** Absent while recording or before the first take. */
   onToggleOfficial?: () => void;
+  /** Deleted, with the undo window open: the card offers Undo instead. */
+  onUndo?: () => void;
+  /** Scrub the take, 0–1; absent while recording or with nothing to play. */
+  onSeek?: (progress: number) => void;
 }
 
 export function formatElapsed(ms: number) {
@@ -75,6 +80,10 @@ export function TakeCard({
   const edge = useSharedValue(take.recording ? 1 : 0);
   const official = useSharedValue(take.official ? 1 : 0);
   const sweep = useSharedValue(1);
+  const undoing = take.onUndo !== undefined;
+  // The undo state stands in for the take's wave and row.
+  const live = shown && !undoing;
+  const gone = useSharedValue(undoing ? 1 : 0);
   const [waveWidth, setWaveWidth] = useState(0);
 
   useEffect(() => {
@@ -87,6 +96,11 @@ export function TakeCard({
       duration: reduceMotion ? 0 : OFFICIAL_MS,
     });
   }, [take.official, reduceMotion, official]);
+  useEffect(() => {
+    gone.value = withTiming(undoing ? 1 : 0, {
+      duration: reduceMotion ? 0 : EDGE_MS,
+    });
+  }, [undoing, reduceMotion, gone]);
   // A take coming to the front sweeps its wave in, left to right. One that
   // just stopped keeps the wave it drew.
   const wasRecording = useRef(take.recording);
@@ -122,6 +136,9 @@ export function TakeCard({
       borderRadius: t.radius.sm,
       borderWidth: t.stroke[1],
     },
+    // Set either way: Android keeps a dashed border once it's been drawn.
+    solid: { borderStyle: 'solid' },
+    dashed: { borderStyle: 'dashed' },
     clip: { overflow: 'hidden', height: WAVE_H },
     row: {
       flexDirection: 'row',
@@ -143,6 +160,11 @@ export function TakeCard({
       [0, 1],
       [roles.borderRim, roles.accentPrimary],
     );
+    const edgeColor = interpolateColor(
+      edge.value,
+      [0, 1],
+      [rimOrOfficial, roles.accentRecord],
+    );
     return {
       opacity: interpolate(mode.value, [0, 0.35], [0, 1], 'clamp'),
       top: interpolate(mode.value, [0, 1], [cardRowTop, spacing.xs]),
@@ -154,14 +176,15 @@ export function TakeCard({
         [roles.surfaceSunken, roles.accentPrimary],
       ),
       borderColor: interpolateColor(
-        edge.value,
+        gone.value,
         [0, 1],
-        [rimOrOfficial, roles.accentRecord],
+        [edgeColor, roles.borderHighlight],
       ),
     };
   });
   const contentStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(mode.value, [0.4, 1], [0, 1], 'clamp'),
+    opacity:
+      interpolate(mode.value, [0.4, 1], [0, 1], 'clamp') * (1 - gone.value),
     transform: [{ translateY: interpolate(mode.value, [0, 1], [6, 0]) }],
   }));
   const sweepStyle = useAnimatedStyle(() =>
@@ -175,9 +198,17 @@ export function TakeCard({
     waveWidth > 0
       ? Math.max(1, Math.floor((waveWidth - WAVE_LEAD) / BAR_SLOT))
       : 60;
+  // A take from before this session has no levels: flat bars still show
+  // the playhead and give scrubbing something to hold.
+  const flat = take.levels.length === 0 && (take.durationMs ?? 0) > 0;
   const takeBars = useMemo(
-    () => fitBars(take.levels, maxBars, take.recording).map(levelBar),
-    [take.levels, maxBars, take.recording],
+    () =>
+      fitBars(
+        flat ? new Array<number>(maxBars).fill(0) : take.levels,
+        maxBars,
+        take.recording,
+      ).map(levelBar),
+    [flat, take.levels, maxBars, take.recording],
   );
 
   return (
@@ -187,12 +218,14 @@ export function TakeCard({
       importantForAccessibility={shown ? 'auto' : 'no-hide-descendants'}
     >
       <Animated.View
-        style={[styles.card, cardStyle]}
+        style={[styles.card, undoing ? styles.dashed : styles.solid, cardStyle]}
         pointerEvents="none"
         testID="passage-take-card"
       />
       <Animated.View
         style={contentStyle}
+        pointerEvents={live ? 'auto' : 'none'}
+        importantForAccessibility={live ? 'auto' : 'no-hide-descendants'}
         onLayout={e => setWaveWidth(Math.round(e.nativeEvent.layout.width))}
       >
         <Animated.View style={[styles.clip, sweepStyle]}>
@@ -208,12 +241,17 @@ export function TakeCard({
                   )}`
                 : `${takeLabel} playback`
             }
+            onSeek={take.recording ? undefined : take.onSeek}
             style={waveWidth > 0 ? { width: waveWidth } : undefined}
             testID="passage-take-wave"
           />
         </Animated.View>
       </Animated.View>
-      <Animated.View style={[styles.row, contentStyle]}>
+      <Animated.View
+        style={[styles.row, contentStyle]}
+        pointerEvents={live ? 'auto' : 'none'}
+        importantForAccessibility={live ? 'auto' : 'no-hide-descendants'}
+      >
         {/* Keyed by take, so changing takes crossfades the label. */}
         <Animated.Text
           key={`label-${blockedReason ?? take.takeNumber}`}
@@ -241,6 +279,9 @@ export function TakeCard({
           />
         ) : null}
       </Animated.View>
+      {take.onUndo ? (
+        <TakeUndo takeLabel={takeLabel} shown={shown} onUndo={take.onUndo} />
+      ) : null}
     </View>
   );
 }

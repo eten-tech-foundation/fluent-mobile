@@ -169,7 +169,7 @@ Figma 07 · Tactile defines the state model. In code:
 
 Haptics are part of the design, so they go in the contract. Use the
 semantic `useHaptics()` hook in `src/hooks/useHaptics.ts`, never
-`expo-haptics` directly in components. It has `press()` and `toggle(on)` today; add a method when a component needs
+`expo-haptics` directly in components. It has `press()`, `toggle(on)`, `dragStart()` and `dragEnd()` today; add a method when a component needs
 one, using this mapping:
 
 | Interaction | Helper | Android constant |
@@ -180,7 +180,7 @@ one, using this mapping:
 | Segmented control, stepper tick | `haptics.tick()` | `Segment_Tick` |
 | Scrubbing past a verse or marker | `haptics.tick()` (throttled) | `Segment_Tick` |
 | Long press recognized | `haptics.longPress()` | `Long_Press` |
-| Drag picked up / dropped | `haptics.dragStart()` / `dragEnd()` | `Drag_Start` / `Gesture_End` |
+| Drag picked up / dropped | `haptics.dragStart()` / `dragEnd()` | `Drag_Start` / `Gesture_End` (`Long_Press` below API 34, `Virtual_Key` below API 30) |
 | Commit (advance stage, save take) | `haptics.confirm()` | `Confirm` |
 | Blocked or failed action | `haptics.reject()` | `Reject` |
 

@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import PassageScreen from './PassageScreen';
 import type { Passage, PassageDownload } from '../../../hooks/usePassage';
+import { UNDO_MS } from '../../../hooks/usePendingDelete';
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -11,9 +12,17 @@ const mockStart = jest.fn(async () => {});
 const mockStop = jest.fn(async () => {});
 const mockDiscard = jest.fn(async () => {});
 const mockEnsureMic = jest.fn(async () => true);
+const mockPlayTake = jest.fn(async () => {});
+const mockDeleteTake = jest.fn(async (_id: string) => {});
 const mockSelectTake = jest.fn();
 const mockSetCanonical = jest.fn();
-const mockPlayTake = jest.fn();
+type MockTake = {
+  id: string;
+  takeNumber: number;
+  granularity: string;
+  isSelected: boolean;
+  durationMs: number;
+};
 const sessionDefaults = {
   state: 'idle' as string,
   captureActive: false,
@@ -22,15 +31,16 @@ const sessionDefaults = {
   captureDisabled: false,
   canRecordNewTake: true,
   pericopeUnavailable: false,
-  takes: [] as {
-    id: string;
-    takeNumber: number;
-    isSelected: boolean;
-    granularity: 'pericope';
-    createdAt: string;
-  }[],
+  takes: [] as MockTake[],
 };
 let mockSession = { ...sessionDefaults };
+const take = (n: number): MockTake => ({
+  id: `t${n}`,
+  takeNumber: n,
+  granularity: 'pericope',
+  isSelected: false,
+  durationMs: 10000,
+});
 let mockPassage: Passage = { status: 'loading' };
 let mockDownloadState: PassageDownload = 'idle';
 
@@ -51,6 +61,8 @@ jest.mock('../../../hooks/useRecordSession', () => ({
     verseAudio: {
       state: mockSession.state,
       takes: mockSession.takes,
+      deleteTake: mockDeleteTake,
+      playingTakeId: null,
       selectedTake: mockSession.takes.find(t => t.isSelected) ?? null,
       start: mockStart,
       stop: mockStop,
@@ -88,12 +100,16 @@ jest.mock('react-native-safe-area-context', () => ({
 jest.mock('react-native-gesture-handler', () => {
   const pan = {
     enabled: () => pan,
+    activeOffsetX: () => pan,
     activeOffsetY: () => pan,
+    failOffsetY: () => pan,
+    activateAfterLongPress: () => pan,
+    onStart: () => pan,
     onUpdate: () => pan,
     onEnd: () => pan,
   };
   return {
-    Gesture: { Pan: () => pan },
+    Gesture: { Pan: () => pan, Tap: () => pan, Race: () => pan },
     GestureDetector: ({ children }: { children: React.ReactNode }) => children,
   };
 });
@@ -106,8 +122,19 @@ jest.mock('../../../services/storage', () => ({
 }));
 
 jest.mock('../../../hooks/useHaptics', () => ({
-  useHaptics: () => ({ press: jest.fn(), toggle: jest.fn() }),
+  useHaptics: () => ({
+    press: jest.fn(),
+    toggle: jest.fn(),
+    dragStart: jest.fn(),
+    dragEnd: jest.fn(),
+  }),
 }));
+
+jest.mock('../../../assets/icons/trash-open.svg', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  return () => MockReact.createElement(View);
+});
 
 jest.mock('../../../hooks/usePassage', () => ({
   usePassage: () => ({
@@ -327,30 +354,113 @@ describe('PassageScreen', () => {
     ).toMatchObject({ disabled: true });
   });
 
-  it('only plays other takes on a stage-locked chapter, without changing the pick', () => {
-    const takes = [
+  it('plays the take from where it was scrubbed to', async () => {
+    mockSession = { ...mockSession, takes: [take(1)] };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    fireEvent(screen.getByLabelText('Take 1 playback'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Play take'));
+    });
+
+    expect(mockPlayTake).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 't1' }),
+      500,
+    );
+  });
+
+  it('deletes a take only once the undo window closes', async () => {
+    jest.useFakeTimers();
+    try {
+      mockSession = { ...mockSession, takes: [take(1), take(2)] };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      const remove = () =>
+        fireEvent(
+          screen.getByLabelText('Take 2, selected'),
+          'accessibilityAction',
+          { nativeEvent: { actionName: 'delete' } },
+        );
+
+      remove();
+      expect(screen.getByLabelText('Take 2, deleted')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Undo deleting Take 2'));
+      await act(async () => {
+        jest.advanceTimersByTime(UNDO_MS);
+      });
+      expect(mockDeleteTake).not.toHaveBeenCalled();
+
+      remove();
+      await act(async () => {
+        jest.advanceTimersByTime(UNDO_MS);
+      });
+      expect(mockDeleteTake).toHaveBeenCalledWith('t2');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('deletes a pending take before recording another', async () => {
+    mockSession = { ...mockSession, takes: [take(1), take(2)] };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    fireEvent(
+      screen.getByLabelText('Take 2, selected'),
+      'accessibilityAction',
       {
-        id: 'a',
-        takeNumber: 1,
-        isSelected: false,
-        granularity: 'pericope' as const,
-        createdAt: '2026-10-19T10:00:00Z',
+        nativeEvent: { actionName: 'delete' },
       },
-      {
-        id: 'b',
-        takeNumber: 2,
-        isSelected: true,
-        granularity: 'pericope' as const,
-        createdAt: '2026-10-20T10:00:00Z',
-      },
-    ];
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+
+    expect(mockDeleteTake).toHaveBeenCalledWith('t2');
+    expect(mockDeleteTake.mock.invocationCallOrder[0]).toBeLessThan(
+      mockStart.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("doesn't start recording if the player closed while the delete ran", async () => {
+    let finish = () => {};
+    mockDeleteTake.mockImplementationOnce(
+      () => new Promise<void>(resolve => (finish = resolve)),
+    );
+    mockSession = { ...mockSession, takes: [take(1), take(2)] };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    fireEvent(
+      screen.getByLabelText('Take 2, selected'),
+      'accessibilityAction',
+      { nativeEvent: { actionName: 'delete' } },
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(mockDeleteTake).toHaveBeenCalledWith('t2');
+    fireEvent.press(screen.getByTestId('passage-close'));
+    await act(async () => finish());
+
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('only plays takes on a stage-locked chapter: no pick, official or delete', () => {
+    const takes = [take(1), { ...take(2), isSelected: true }];
     mockSession = { ...mockSession, takes };
     const { unmount } = render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
+    expect(screen.getByLabelText('Take 1').props.accessibilityActions).toEqual([
+      { name: 'delete', label: 'Delete' },
+    ]);
     fireEvent.press(screen.getByTestId('passage-take-official'));
-    expect(mockSetCanonical).toHaveBeenCalledWith('b');
+    expect(mockSetCanonical).toHaveBeenCalledWith('t2');
     fireEvent.press(screen.getByTestId('passage-fan-1'));
-    expect(mockSelectTake).toHaveBeenCalledWith('a');
+    expect(mockSelectTake).toHaveBeenCalledWith('t1');
     unmount();
     jest.clearAllMocks();
 
@@ -359,13 +469,17 @@ describe('PassageScreen', () => {
     fireEvent.press(screen.getByTestId('passage-record'));
 
     expect(screen.queryByTestId('passage-take-official')).toBeNull();
+    expect(
+      screen.getByLabelText('Take 1').props.accessibilityActions,
+    ).toBeUndefined();
     fireEvent.press(screen.getByTestId('passage-fan-1'));
     expect(mockSelectTake).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();
     expect(screen.getByLabelText('Take 1')).toBeTruthy();
     fireEvent.press(screen.getByTestId('passage-key-play'));
     expect(mockPlayTake).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'a' }),
+      expect.objectContaining({ id: 't1' }),
+      0,
     );
   });
 
