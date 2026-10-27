@@ -743,8 +743,9 @@ describe('RecordTab', () => {
     await waitFor(() => {
       expect(idleAudio.playTake).toHaveBeenCalledWith(take2);
     });
-    // Review scrub surface (#176) — only the loaded take's waveform is seekable.
-    expect(screen.getByLabelText('Draft waveform scrubber')).toBeTruthy();
+    // Review scrub surface (#176 / #833) — every waveform row is seekable,
+    // loaded or not.
+    expect(screen.getAllByLabelText('Draft waveform scrubber')).toHaveLength(2);
   });
 
   it('keeps waveform progress visible while a take is paused mid-playback', () => {
@@ -812,7 +813,7 @@ describe('RecordTab', () => {
     fireEvent(scrubber, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
-    expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
   });
 
   it('scrubs the selected take before it has ever been played', () => {
@@ -836,7 +837,37 @@ describe('RecordTab', () => {
     fireEvent(scrubber, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
-    expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
+  });
+
+  it('scrubs any unplayed, unselected take in My Takes (#833)', () => {
+    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
+    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: false });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [take1, take2],
+      selectedTake: null,
+      // Nothing played and nothing selected: the old loaded/selected paths
+      // would leave both rows without an onSeek handler.
+      playingTakeId: null,
+      loadedTakeId: null,
+    });
+
+    renderTab();
+
+    const scrubbers = screen.getAllByLabelText('Draft waveform scrubber');
+    expect(scrubbers).toHaveLength(2);
+    fireEvent(scrubbers[1]!, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+    });
+    fireEvent(scrubbers[1]!, 'responderGrant', {
+      nativeEvent: { locationX: 50 },
+    });
+
+    // Explicit target: the second row seeks itself, not a neighbour.
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500, take2);
+    expect(idleAudio.seek).not.toHaveBeenCalledWith(6500, take1);
   });
 
   it('notifies captureActive during recording and clears after stop', async () => {
@@ -1677,7 +1708,7 @@ describe('RecordTab', () => {
       expect(idleAudio.setCanonical).not.toHaveBeenCalled();
     });
 
-    it('scrubs the loaded take at Complete but no other waveform (#833)', () => {
+    it('scrubs an unplayed, unselected take at Complete (#833)', () => {
       const loadedTake = makeTake({
         id: 'rec_1',
         durationMs: 13000,
@@ -1693,8 +1724,8 @@ describe('RecordTab', () => {
         ...idleAudio,
         state: 'recorded',
         takes: [loadedTake, unplayedTake],
-        // Select is hidden at Complete, so only the take already in the
-        // player is scrubbable there.
+        // Select is hidden at Complete, so nothing can be selected there:
+        // every row must still scrub, each with itself as the target (AC 3).
         selectedTake: null,
         playingTakeId: null,
         loadedTakeId: 'rec_1',
@@ -1703,15 +1734,21 @@ describe('RecordTab', () => {
       renderTab(undefined, { chapterData: completeChapter });
 
       const scrubbers = screen.getAllByLabelText('Draft waveform scrubber');
-      expect(scrubbers).toHaveLength(1);
-      fireEvent(scrubbers[0]!, 'layout', {
+      expect(scrubbers).toHaveLength(2);
+      const [loadedScrubber, unplayedScrubber] = scrubbers;
+      fireEvent(loadedScrubber!, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
       });
-      fireEvent(scrubbers[0]!, 'responderGrant', {
+      fireEvent(unplayedScrubber!, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(unplayedScrubber!, 'responderGrant', {
         nativeEvent: { locationX: 50 },
       });
 
-      expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+      // Explicit target — resolving through selectedTake (null) would no-op.
+      expect(idleAudio.seek).toHaveBeenCalledWith(6500, unplayedTake);
+      expect(idleAudio.seek).not.toHaveBeenCalledWith(6500, loadedTake);
       // Complete-stage controls are unchanged (#684 lock still applies).
       expect(screen.queryByTestId('record-take-select-rec_1')).toBeNull();
       expect(screen.queryByTestId('record-delete-button-rec_1')).toBeNull();
@@ -2196,6 +2233,44 @@ describe('RecordTab', () => {
         13000,
       );
       expect(idleAudio.seek).not.toHaveBeenCalled();
+    });
+
+    it('scrubs the stitched row at Complete as well (#833)', async () => {
+      mockPericopeVerses3to5();
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [
+          makeTake({ id: 'v3', startVerse: 3, endVerse: 3, durationMs: 13000 }),
+          makeTake({ id: 'v4', startVerse: 4, endVerse: 4, durationMs: 13000 }),
+        ],
+      });
+
+      renderTab(undefined, {
+        chapterData: { ...chapterData, status: 'complete' },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId(/^record-take-badge-/)).toHaveTextContent(
+          'Take 1 - Stitched - vv. 3-4',
+        );
+      });
+
+      const scrubber = screen.getByLabelText('Draft waveform scrubber');
+      fireEvent(scrubber, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(scrubber, 'responderGrant', {
+        nativeEvent: { locationX: 50 },
+      });
+
+      expect(idleAudio.seekStitched).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'stitched' }),
+        13000,
+      );
+      // The Complete lock still hides select/delete (#684 out of scope).
+      expect(screen.queryAllByTestId(/^record-take-select-/)).toHaveLength(0);
+      expect(screen.queryAllByTestId(/^record-delete-button-/)).toHaveLength(0);
     });
 
     it('shows continuous stitched progress against the row total duration (#544)', async () => {

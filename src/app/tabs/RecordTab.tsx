@@ -1431,9 +1431,9 @@ export function RecordTab({
                         verseAudio.playingTakeId === take.id ||
                         (verseAudio.loadedTakeId === take.id &&
                           verseAudio.playbackStatus === 'paused');
-                      const isSeekable =
-                        verseAudio.loadedTakeId === take.id ||
-                        (verseAudio.loadedTakeId === null && isSelected);
+                      // Every My Takes row scrubs (#833): the explicit target
+                      // below loads a take that is not in the player yet, so
+                      // there is no play-first or selection precondition.
                       const leadingIndicator = verseAudio.hasMultipleRecorders
                         ? 'canonicalReadOnly'
                         : 'selection';
@@ -1474,13 +1474,12 @@ export function RecordTab({
                                 ? undefined
                                 : () => handleDeleteTake(take)
                             }
-                            onSeek={
-                              isSeekable
-                                ? ms => {
-                                    void verseAudio.seek(ms);
-                                  }
-                                : undefined
-                            }
+                            onSeek={ms => {
+                              // Explicit target: an unloaded row would
+                              // otherwise resolve to the selected take
+                              // (null at Complete) and no-op.
+                              void verseAudio.seek(ms, take);
+                            }}
                           />
                         </View>
                       );
