@@ -17,6 +17,137 @@ import { logger } from '../utils/logger';
 
 const log = logger.create('prepareOfflineResources');
 
+export interface FetchPrepareOfflineManifestParams {
+  languageCode: string;
+  bookCode: string;
+  bookId: number;
+  startChapter: number;
+  endChapter: number;
+  bibleId: number;
+}
+
+/**
+ * Max concurrent single-chapter network jobs for catalog/hydration fetches.
+ * Each catalog job may still fan to translation + source-audio HTTP calls.
+ */
+export const PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY = 2;
+
+/** One network fetch tied to the canonical parent context it was split from. */
+type PrepareOfflineChapterNetworkJob = {
+  parent: FetchPrepareOfflineManifestParams;
+  request: FetchPrepareOfflineManifestParams;
+};
+
+function expandContextsToChapterJobs(
+  contexts: FetchPrepareOfflineManifestParams[],
+): PrepareOfflineChapterNetworkJob[] {
+  const jobs: PrepareOfflineChapterNetworkJob[] = [];
+  for (const parent of contexts) {
+    for (
+      let chapter = parent.startChapter;
+      chapter <= parent.endChapter;
+      chapter++
+    ) {
+      jobs.push({
+        parent,
+        request: {
+          ...parent,
+          startChapter: chapter,
+          endChapter: chapter,
+        },
+      });
+    }
+  }
+  return jobs;
+}
+
+async function runChapterJobsBounded<T>(
+  jobs: PrepareOfflineChapterNetworkJob[],
+  signal: AbortSignal | undefined,
+  concurrency: number,
+  run: (
+    job: PrepareOfflineChapterNetworkJob,
+    jobSignal: AbortSignal,
+  ) => Promise<T>,
+): Promise<T[]> {
+  throwIfAborted(signal);
+  if (jobs.length === 0) {
+    return [];
+  }
+
+  const limit = Math.max(1, Math.min(concurrency, jobs.length));
+  const jobController = new AbortController();
+  const onCallerAbort = () => jobController.abort();
+  if (signal) {
+    if (signal.aborted) {
+      jobController.abort();
+    } else {
+      signal.addEventListener('abort', onCallerAbort, { once: true });
+    }
+  }
+
+  const results: T[] = new Array(jobs.length);
+  let cursor = 0;
+  let fatalError: unknown;
+
+  async function worker(): Promise<void> {
+    while (cursor < jobs.length) {
+      if (signal?.aborted || jobController.signal.aborted || fatalError) {
+        return;
+      }
+      const index = cursor++;
+      try {
+        results[index] = await run(jobs[index], jobController.signal);
+      } catch (error) {
+        if (signal?.aborted || fatalError) {
+          return;
+        }
+        fatalError = error;
+        jobController.abort();
+      }
+    }
+  }
+
+  try {
+    await Promise.all(Array.from({ length: limit }, () => worker()));
+  } finally {
+    if (signal) {
+      signal.removeEventListener('abort', onCallerAbort);
+    }
+  }
+
+  throwIfAborted(signal);
+  if (fatalError) {
+    throw fatalError;
+  }
+
+  for (let i = 0; i < results.length; i++) {
+    if (results[i] === undefined) {
+      throw new Error(
+        '[prepareOfflineResources] incomplete chapter-job aggregate',
+      );
+    }
+  }
+
+  return results;
+}
+
+function createAbortError(): Error {
+  const error = new Error('Aborted');
+  error.name = 'AbortError';
+  return error;
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw createAbortError();
+  }
+}
+
+function isAbortLikeError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 export type PrepareOfflineInventoryListener = () => void;
 
 const inventoryListeners = new Set<PrepareOfflineInventoryListener>();
@@ -143,21 +274,31 @@ export async function fetchSourceBibleAudioManifest(
   chapters: Array<{ bookCode: string; chapterNumber: number }>,
   languageCode: string,
   bibleId: number,
+  signal?: AbortSignal,
 ): Promise<PrepareOfflineResourceManifestItem[]> {
   const settled = await Promise.all(
     chapters.map(async ch => {
       try {
-        const response = await FluentAPI.getChapterSourceAudio({
-          projectId,
-          bookCode: ch.bookCode,
-          chapter: ch.chapterNumber,
-          languageCode,
-          bibleId,
-        });
+        throwIfAborted(signal);
+        const response = await FluentAPI.getChapterSourceAudio(
+          {
+            projectId,
+            bookCode: ch.bookCode,
+            chapter: ch.chapterNumber,
+            languageCode,
+            bibleId,
+          },
+          signal ? { signal } : undefined,
+        );
+        // Cancelled selection must not persist a late fallback response.
+        throwIfAborted(signal);
         // Persist verse timestamps during Prepare so offline seek works (#579).
         await persistSourceAudioChapterMeta(projectId, response);
         return toSourceBibleAudioManifestItem(response);
       } catch (error) {
+        if (signal?.aborted || isAbortLikeError(error)) {
+          throw createAbortError();
+        }
         // Fallback path: one missing chapter must not reject the whole
         // manifest — skip it and keep the rest of the package (#504).
         log.warn('source-audio fallback failed', {
@@ -175,17 +316,35 @@ export async function fetchSourceBibleAudioManifest(
   );
 }
 
+/**
+ * Map a translation-resources manifest item. When a single-chapter sub-job
+ * rewrites legacy book/start/end to the request chapter, restore the
+ * canonical parent range hints — but only when the API omitted `scope`.
+ * Never invent or overwrite explicit.scope; never use this for source-audio.
+ */
 function toMobileManifestItem(
   apiItem: ApiPrepareOfflineManifestItem,
+  canonicalParent?: FetchPrepareOfflineManifestParams,
 ): PrepareOfflineResourceManifestItem {
   const tierOverride = apiItem.collectionCode
     ? TIER_OVERRIDE_BY_COLLECTION_CODE[apiItem.collectionCode]
     : undefined;
 
-  return {
+  const mapped: PrepareOfflineResourceManifestItem = {
     ...apiItem,
     tier: tierOverride ?? apiItem.tier,
   };
+
+  if (canonicalParent && apiItem.scope === undefined) {
+    return {
+      ...mapped,
+      bookCode: canonicalParent.bookCode,
+      startChapter: canonicalParent.startChapter,
+      endChapter: canonicalParent.endChapter,
+    };
+  }
+
+  return mapped;
 }
 
 /** Source-audio manifest items are already Tier 1 — no tier override needed. */
@@ -211,39 +370,64 @@ function toMobileManifestItemFromSourceAudio(
   };
 }
 
-export interface FetchPrepareOfflineManifestParams {
-  languageCode: string;
-  bookCode: string;
-  bookId: number;
-  startChapter: number;
-  endChapter: number;
-  bibleId: number;
-}
-
 export async function fetchPrepareOfflineManifest(
   projectId: number,
   params: FetchPrepareOfflineManifestParams,
+  signal?: AbortSignal,
+  /**
+   * Canonical parent context when `params` is a single-chapter network split.
+   * Used only to restore translation legacy range hints (not source-audio,
+   * not explicit.scope).
+   */
+  canonicalParent?: FetchPrepareOfflineManifestParams,
 ): Promise<PrepareOfflineResourceManifestItem[]> {
+  throwIfAborted(signal);
   const { bibleId, bookId: _bookId, ...translationResourcesParams } = params;
 
-  const [translationResourcesResponse, sourceAudioResponse] = await Promise.all(
-    [
-      FluentAPI.getPrepareOfflineManifest(
-        projectId,
-        translationResourcesParams,
-      ),
+  let translationResourcesResponse: Awaited<
+    ReturnType<typeof FluentAPI.getPrepareOfflineManifest>
+  >;
+  let sourceAudioResponse:
+    | Awaited<ReturnType<typeof FluentAPI.getSourceAudioManifest>>
+    | undefined;
+  try {
+    [translationResourcesResponse, sourceAudioResponse] = await Promise.all([
+      signal
+        ? FluentAPI.getPrepareOfflineManifest(
+            projectId,
+            translationResourcesParams,
+            { signal },
+          )
+        : FluentAPI.getPrepareOfflineManifest(
+            projectId,
+            translationResourcesParams,
+          ),
       // A source-audio manifest failure (e.g. 5xx / 502 from the Aquifer
       // upstream) must not sink the rest of the package. Treat it as "no
       // manifest" so the per-chapter fallback below runs instead (#504).
-      FluentAPI.getSourceAudioManifest(projectId, params).catch(error => {
+      (signal
+        ? FluentAPI.getSourceAudioManifest(projectId, params, { signal })
+        : FluentAPI.getSourceAudioManifest(projectId, params)
+      ).catch(error => {
+        if (signal?.aborted || isAbortLikeError(error)) {
+          throw createAbortError();
+        }
         log.warn('source-audio manifest failed', {
           bookCode: params.bookCode,
           error,
         });
         return undefined;
       }),
-    ],
-  );
+    ]);
+  } catch (error) {
+    // httpClient wraps AbortError as ApiError status 0 — normalize via signal.
+    if (signal?.aborted || isAbortLikeError(error)) {
+      throw createAbortError();
+    }
+    throw error;
+  }
+
+  throwIfAborted(signal);
 
   // A truncated manifest can omit required items (e.g. Translation Notes)
   // that exceed the API's per-resource cap. Silently continuing would let
@@ -260,6 +444,7 @@ export async function fetchPrepareOfflineManifest(
   );
 
   if (sourceAudioItems.length === 0) {
+    throwIfAborted(signal);
     // Empty-manifest fallback still needs per-chapter getChapterSourceAudio
     // to build catalog rows (URLs/sizes). Verse-timestamp persistence for the
     // successful-manifest path happens at download time instead (#579 review).
@@ -271,13 +456,46 @@ export async function fetchPrepareOfflineManifest(
       })),
       params.languageCode,
       bibleId,
+      signal,
     );
   }
 
+  throwIfAborted(signal);
+
   return [
     ...sourceAudioItems,
-    ...translationResourcesResponse.items.map(toMobileManifestItem),
+    ...translationResourcesResponse.items.map(item =>
+      toMobileManifestItem(item, canonicalParent),
+    ),
   ];
+}
+
+/**
+ * Load manifests for every canonical context with a small concurrency cap.
+ * Contiguous max-20 contexts stay intact for callers; network work splits to
+ * single-chapter jobs that rematerialize translation legacy range hints from
+ * the parent. Stops queued jobs on `signal` abort; fail-closed on first fatal.
+ */
+export async function fetchPrepareOfflineManifestsBounded(
+  projectId: number,
+  contexts: FetchPrepareOfflineManifestParams[],
+  signal?: AbortSignal,
+  concurrency: number = PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY,
+): Promise<PrepareOfflineResourceManifestItem[]> {
+  const jobs = expandContextsToChapterJobs(contexts);
+  const batches = await runChapterJobsBounded(
+    jobs,
+    signal,
+    concurrency,
+    (job, jobSignal) =>
+      fetchPrepareOfflineManifest(
+        projectId,
+        job.request,
+        jobSignal,
+        job.parent,
+      ),
+  );
+  return batches.flat();
 }
 
 /**
@@ -364,13 +582,23 @@ export async function hydratePrepareOfflineTextContent(
     return items;
   }
 
-  const responses = await Promise.all(
-    contexts.map(({ bibleId: _bibleId, bookId: _bookId, ...params }) =>
-      FluentAPI.getPrepareOfflineManifest(projectId, {
-        ...params,
-        includeContent: true,
-      }),
-    ),
+  // Bound single-chapter includeContent fetches; canonical contexts unchanged.
+  const jobs = expandContextsToChapterJobs(contexts);
+  const responses = await runChapterJobsBounded(
+    jobs,
+    undefined,
+    PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY,
+    async (job, jobSignal) => {
+      const { bibleId: _bibleId, bookId: _bookId, ...params } = job.request;
+      return FluentAPI.getPrepareOfflineManifest(
+        projectId,
+        {
+          ...params,
+          includeContent: true,
+        },
+        { signal: jobSignal },
+      );
+    },
   );
 
   const contentById = new Map<string, string>();

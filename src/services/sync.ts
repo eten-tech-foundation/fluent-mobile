@@ -892,12 +892,16 @@ async function syncChapterAssignmentsForUser(
   userId: number,
   updatedAfter?: string,
   sessionToken?: string,
+  options?: { seedFkParents?: boolean },
 ): Promise<{
   didFullSync: boolean;
   syncedAt?: string;
   partialSkipWarning?: string;
 }> {
   const userIdStr = String(userId);
+  const workOptions = options?.seedFkParents
+    ? { seedFkParents: true as const }
+    : undefined;
 
   const runFullProjectAssignments = async () => {
     const projectResult = await syncChapterAssignments(
@@ -906,7 +910,11 @@ async function syncChapterAssignmentsForUser(
       undefined,
       sessionToken,
     );
-    const workResult = await syncUserChapterWork(userId, sessionToken);
+    const workResult = await syncUserChapterWork(
+      userId,
+      sessionToken,
+      workOptions,
+    );
     const partialSkipWarning = applyChapterAssignmentSkipWarning(
       workResult.partialSkipWarning,
       projectResult.partialSkipWarning,
@@ -949,7 +957,11 @@ async function syncChapterAssignmentsForUser(
       undefined,
       sessionToken,
     );
-    const workResult = await syncUserChapterWork(userId, sessionToken);
+    const workResult = await syncUserChapterWork(
+      userId,
+      sessionToken,
+      workOptions,
+    );
     const partialSkipWarning = applyChapterAssignmentSkipWarning(
       workResult.partialSkipWarning,
       projectResult.partialSkipWarning,
@@ -2037,6 +2049,160 @@ const inFlightMetadataRefresh = new Map<number, Promise<void>>();
 /** Skip repeated full master-data pulls after a successful backfill this session. */
 let masterDataBackfilledThisSession = false;
 
+export type RefreshPrepareOfflineReferencedParentsResult =
+  | 'ok'
+  | 'offline'
+  | 'skipped'
+  | 'failed';
+
+function classifyPrepareOfflineParentRefreshFailure(error: unknown): {
+  classification: 'auth' | 'api' | 'type' | 'error' | 'unknown';
+  apiStatus?: number;
+} {
+  if (isAuthError(error)) {
+    return { classification: 'auth' };
+  }
+  if (isApiError(error)) {
+    const status = error.status;
+    const apiStatus =
+      Number.isInteger(status) &&
+      (status === 0 || (status >= 100 && status <= 599))
+        ? status
+        : undefined;
+    return {
+      classification: 'api',
+      ...(apiStatus !== undefined ? { apiStatus } : {}),
+    };
+  }
+  if (error instanceof TypeError) {
+    return { classification: 'type' };
+  }
+  if (error instanceof Error) {
+    return { classification: 'error' };
+  }
+  return { classification: 'unknown' };
+}
+
+/**
+ * Narrow Prepare Offline repair: gather by-id GETs for the current project's
+ * language parents and selected bible/book(+bible-language) ids, then one
+ * insertMasterData after an active-user recheck. Does not use the login/warm
+ * seed helpers' write path (those callers stay unchanged).
+ *
+ * Never claims, never syncProjects/reconcile, never bible-text/upload/download,
+ * never advances master-data watermarks. Offline / auth / membership misses do
+ * not throw — caller must not latch success except on `'ok'`.
+ */
+export async function refreshPrepareOfflineReferencedParents(params: {
+  userId: number;
+  projectId: number;
+  chapters: Array<{ bibleId: number; bookId: number }>;
+}): Promise<RefreshPrepareOfflineReferencedParentsResult> {
+  const { userId, projectId, chapters } = params;
+
+  try {
+    const { isOnline } = await getConnectivitySnapshot();
+    if (!isOnline) {
+      return 'offline';
+    }
+
+    const userIdStr = String(userId);
+    if (userIdStr !== getActiveUserId()) {
+      log.warn(
+        'Skipping Prepare Offline referenced-parent refresh — user is no longer active',
+        { userId, projectId },
+      );
+      return 'skipped';
+    }
+
+    const creds = await getCredentials(userIdStr);
+    if (!creds?.token) {
+      return 'failed';
+    }
+
+    const sessionToken = creds.token;
+    const response = await FluentAPI.getUserProjects(userId, sessionToken);
+    const raw = unwrapApiListResponse(response);
+    if (!Array.isArray(raw)) {
+      return 'failed';
+    }
+
+    const project = raw.map(mapApiProject).find(row => row.id === projectId);
+    if (!project) {
+      return 'skipped';
+    }
+
+    const projectLanguageIds = uniquePositiveIds([
+      project.sourceLanguageId ?? project.source_language_id,
+      project.targetLanguageId ?? project.target_language_id,
+    ]);
+    const bibleIds = uniquePositiveIds(chapters.map(ch => ch.bibleId));
+    const bookIds = uniquePositiveIds(chapters.map(ch => ch.bookId));
+
+    // Gather all required GETs first — no SQLite writes until the active-user
+    // recheck below (avoids cross-account upsert after account switch).
+    const [projectLanguages, books, bibles] = await Promise.all([
+      Promise.all(
+        projectLanguageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+      ),
+      Promise.all(bookIds.map(id => FluentAPI.getBook(id, sessionToken))),
+      Promise.all(bibleIds.map(id => FluentAPI.getBible(id, sessionToken))),
+    ]);
+
+    const projectLanguageIdSet = new Set(projectLanguageIds);
+    const bibleLanguageIds = uniquePositiveIds(
+      bibles.map(bible => bible.languageId),
+    ).filter(id => !projectLanguageIdSet.has(id));
+    const bibleLanguages =
+      bibleLanguageIds.length === 0
+        ? []
+        : await Promise.all(
+            bibleLanguageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+          );
+
+    if (userIdStr !== getActiveUserId()) {
+      log.warn(
+        'Skipping Prepare Offline referenced-parent upsert — user changed during fetch',
+        { userId, projectId },
+      );
+      return 'skipped';
+    }
+
+    const languagesById = new Map(
+      [...projectLanguages, ...bibleLanguages]
+        .map(mapApiLanguage)
+        .map(language => [language.id, language] as const),
+    );
+
+    // Single transaction: languages before books before bibles.
+    await insertMasterData([...languagesById.values()], books, bibles);
+
+    if (userIdStr !== getActiveUserId()) {
+      log.warn(
+        'Skipping Prepare Offline referenced-parent ok — user changed during upsert',
+        { userId, projectId },
+      );
+      return 'skipped';
+    }
+
+    return 'ok';
+  } catch (error) {
+    if (isAuthError(error)) {
+      await handleSyncAuthFailure(String(userId));
+    }
+    const failure = classifyPrepareOfflineParentRefreshFailure(error);
+    log.warn('Prepare Offline referenced-parent refresh failed', {
+      userId,
+      projectId,
+      classification: failure.classification,
+      ...(failure.apiStatus !== undefined
+        ? { apiStatus: failure.apiStatus }
+        : {}),
+    });
+    return 'failed';
+  }
+}
+
 async function maybeBackfillMasterDataOnRefresh(
   sessionToken?: string,
 ): Promise<void> {
@@ -2096,9 +2262,13 @@ export async function refreshChapterMetadataIfOnline(
       await syncPendingChapterClaimsForUser(userId);
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
+      // NULL/blank ISO only — wrong non-empty codes need #679 by-id seed below.
       await maybeBackfillMasterDataOnRefresh(sessionToken);
       await refreshUserOrgGrants(userIdStr, sessionToken);
-      await syncProjects(userId, sessionToken);
+      // Re-upsert project/assignment language+bible parents from live API so
+      // stale catalogue rows (wrong ISO / bible.language_id) cannot poison
+      // Prepare Offline manifests. Does not advance master cursors (#679).
+      await syncProjects(userId, sessionToken, { seedFkParents: true });
       await syncMilestones(userId, sessionToken);
 
       const cursor = getUserLastSyncedAt(userIdStr) || undefined;
@@ -2106,6 +2276,7 @@ export async function refreshChapterMetadataIfOnline(
         userId,
         cursor,
         sessionToken,
+        { seedFkParents: true },
       );
       if (syncedAt) {
         setUserLastSyncedAt(userIdStr, syncedAt);

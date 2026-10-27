@@ -3,12 +3,13 @@ import { getPrepareOfflineProjectContext } from '../db/queries.prepareOffline';
 import { AuthError } from '../services/authError';
 import {
   clearPrepareOfflineSessionInventory,
-  fetchPrepareOfflineManifest,
+  fetchPrepareOfflineManifestsBounded,
   getDefaultPrepareOfflinePackageDeselects,
   getPrepareOfflineResourceStatus,
   refreshPrepareOfflineInventory,
   subscribePrepareOfflineInventory,
 } from '../services/prepareOfflineResources';
+import { refreshPrepareOfflineReferencedParents } from '../services/sync';
 import { ApiError } from '../types/api/errors';
 import {
   PrepareOfflineChapterRow,
@@ -21,6 +22,41 @@ import {
 import { logger } from '../utils/logger';
 
 const log = logger.create('usePrepareOfflineResourceData');
+
+/** One successful repair per user+project+referenced bible/book set. */
+const ensuredReferencedParentsKeys = new Set<string>();
+
+/** @internal test helper — clears the PFO referenced-parent ensure latch. */
+export function __resetPrepareOfflineReferencedParentsLatchForTests(): void {
+  ensuredReferencedParentsKeys.clear();
+}
+
+function referencedParentsLatchKey(
+  userId: number,
+  projectId: number,
+  refs: Array<{ bibleId: number; bookId: number }>,
+): string | null {
+  const bibleIds = [
+    ...new Set(
+      refs
+        .map(ref => ref.bibleId)
+        .filter(id => typeof id === 'number' && Number.isInteger(id) && id > 0),
+    ),
+  ].sort((a, b) => a - b);
+  const bookIds = [
+    ...new Set(
+      refs
+        .map(ref => ref.bookId)
+        .filter(id => typeof id === 'number' && Number.isInteger(id) && id > 0),
+    ),
+  ].sort((a, b) => a - b);
+  if (bibleIds.length === 0 && bookIds.length === 0) {
+    return null;
+  }
+  return `${userId}:${projectId}:b=${bibleIds.join(',')}:k=${bookIds.join(
+    ',',
+  )}`;
+}
 
 function manifestFailureExceptionName(err: unknown): string {
   if (err instanceof AuthError) return 'AuthError';
@@ -98,6 +134,7 @@ export function usePrepareOfflineResourceData(
     }
 
     let cancelled = false;
+    const selectionController = new AbortController();
 
     async function loadManifest() {
       setLoading(true);
@@ -105,6 +142,36 @@ export function usePrepareOfflineResourceData(
       let failureStage = 'local_context';
 
       try {
+        // Narrow referenced-parent repair only (no claims / full metadata
+        // refresh). Latch solely on successful upsert for this ref-id set.
+        const selectedRefs = chapters
+          .filter(ch => selectedIds.has(ch.id))
+          .map(ch => ({ bibleId: ch.bibleId, bookId: ch.bookId }));
+        if (userId !== null) {
+          const ensureKey = referencedParentsLatchKey(
+            userId,
+            projectId!,
+            selectedRefs,
+          );
+          if (ensureKey && !ensuredReferencedParentsKeys.has(ensureKey)) {
+            const repair = await refreshPrepareOfflineReferencedParents({
+              userId,
+              projectId: projectId!,
+              chapters: selectedRefs,
+            });
+            if (cancelled) {
+              return;
+            }
+            if (repair === 'ok') {
+              ensuredReferencedParentsKeys.add(ensureKey);
+            }
+          }
+        }
+
+        if (cancelled) {
+          return;
+        }
+
         const projectContext = await getPrepareOfflineProjectContext(
           projectId!,
         );
@@ -120,30 +187,36 @@ export function usePrepareOfflineResourceData(
         );
 
         failureStage = 'manifest';
-        const responses = await Promise.all(
-          contexts.map(ctx => fetchPrepareOfflineManifest(projectId!, ctx)),
+        // Bounded concurrency + selection abort (no Promise.all fan-out).
+        const items = await fetchPrepareOfflineManifestsBounded(
+          projectId!,
+          contexts,
+          selectionController.signal,
         );
 
         if (!cancelled) {
           setManifestContexts(contexts);
           const byId = new Map<string, PrepareOfflineResourceManifestItem>();
-          for (const items of responses) {
-            for (const item of items) byId.set(item.id, item);
-          }
+          for (const item of items) byId.set(item.id, item);
           setManifest([...byId.values()]);
         }
       } catch (err) {
-        if (!cancelled) {
-          logManifestFailureDiagnostic(
-            err,
-            failureStage,
-            projectId!,
-            selectedIds.size,
-          );
-          setError(err);
-          setManifest([]);
-          setManifestContexts([]);
+        if (
+          cancelled ||
+          selectionController.signal.aborted ||
+          (err instanceof Error && err.name === 'AbortError')
+        ) {
+          return;
         }
+        logManifestFailureDiagnostic(
+          err,
+          failureStage,
+          projectId!,
+          selectedIds.size,
+        );
+        setError(err);
+        setManifest([]);
+        setManifestContexts([]);
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -155,9 +228,11 @@ export function usePrepareOfflineResourceData(
 
     return () => {
       cancelled = true;
+      selectionController.abort();
     };
+    // userId included: account switch must re-run repair + catalog load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, selectedKey, chaptersKey]);
+  }, [projectId, userId, selectedKey, chaptersKey]);
 
   // Load real status from download_queue whenever the project or user
   // changes, and re-load whenever the subscription fires (queue mutated

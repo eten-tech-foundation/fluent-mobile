@@ -540,9 +540,11 @@ export const FluentAPI = {
       endChapter: number;
       includeContent?: boolean;
     },
+    request?: { signal?: AbortSignal },
   ): Promise<ApiPrepareOfflineManifestResponse> =>
     authedRequest<ApiPrepareOfflineManifestResponse>(
       prepareOfflineManifestPath(projectId, params),
+      request?.signal ? { signal: request.signal } : undefined,
     ),
 
   getPericopeSets: async (token?: string): Promise<ApiPericopeSet[]> => {
@@ -589,9 +591,11 @@ export const FluentAPI = {
   getSourceAudioManifest: (
     projectId: number,
     params: GetSourceAudioManifestParams,
+    request?: { signal?: AbortSignal },
   ): Promise<ApiSourceAudioManifestResponse> =>
     authedRequest<ApiSourceAudioManifestResponse>(
       sourceAudioManifestPath(projectId, params),
+      request?.signal ? { signal: request.signal } : undefined,
     ),
 
   /**
@@ -600,8 +604,12 @@ export const FluentAPI = {
    */
   getChapterSourceAudio: (
     params: GetChapterSourceAudioParams,
+    request?: { signal?: AbortSignal },
   ): Promise<ApiSourceAudioResponse> =>
-    authedRequest<ApiSourceAudioResponse>(chapterSourceAudioPath(params)),
+    authedRequest<ApiSourceAudioResponse>(
+      chapterSourceAudioPath(params),
+      request?.signal ? { signal: request.signal } : undefined,
+    ),
 };
 
 export { buildHeaders, buildMultipartAuthHeaders } from './httpClient';
