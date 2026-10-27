@@ -264,4 +264,35 @@ describe('getMyWorkChapters', () => {
     const sql = String(mockExecute.mock.calls[0]?.[0] ?? '');
     expect(sql).toContain('stage_advance_queue');
   });
+
+  it('keeps the yellow cloud while a stage advance is pending, then filters the drafter peer_check chapter out when none is pending (#257)', async () => {
+    const queuedRow = row({
+      id: 40,
+      status: 'peer_check',
+      assigned_user_id: 7,
+      peer_checker_id: null,
+      recording_count: 4,
+      pending_count: 0,
+      has_pending_stage_advance: 1,
+    });
+
+    // Before the drain: queue row pending -> chapter stays with a yellow cloud.
+    mockExecute.mockResolvedValueOnce({ rows: [queuedRow] });
+    const beforeDrain = await getMyWorkChapters(7);
+    expect(beforeDrain).toHaveLength(1);
+    expect(beforeDrain[0]).toMatchObject({
+      id: 40,
+      syncState: 'deviceOnly',
+      hasPendingStageAdvance: true,
+    });
+
+    // After the server confirms: queue row deleted, same peer_check row with
+    // no pending advance -> drafter is not the peer checker, so it leaves.
+    mockExecute.mockResolvedValueOnce({
+      rows: [{ ...queuedRow, has_pending_stage_advance: 0 }],
+    });
+    const afterDrain = await getMyWorkChapters(7);
+    expect(afterDrain).toEqual([]);
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+  });
 });
