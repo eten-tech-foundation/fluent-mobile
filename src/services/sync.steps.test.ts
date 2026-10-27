@@ -930,6 +930,136 @@ describe('sync step orchestration', () => {
       expect(insertMasterDataMock).not.toHaveBeenCalled();
     });
 
+    it('seedFkParentsBestEffort warm warn logs classification/status only — never raw error text', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([1, 2]));
+      const warnPayloads: Array<Record<string, unknown>> = [];
+      logger.setTransport((level, _tag, message, context) => {
+        if (
+          level === 'warn' &&
+          typeof message === 'string' &&
+          message.includes('FK parent by-id lookup failed') &&
+          context
+        ) {
+          warnPayloads.push(context);
+        }
+      });
+
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockImplementation((id: number) => {
+        if (id === 2) {
+          return Promise.reject(
+            new ApiError(502, 'super-secret-token-xyz body leak'),
+          );
+        }
+        return Promise.resolve({
+          id,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+        });
+      });
+
+      try {
+        const result = await syncProjects(2, 'seed-tok', {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        });
+
+        expect(result.parentSeedIncomplete).toEqual(
+          expect.stringContaining('Incomplete language parent refresh'),
+        );
+        expect(warnPayloads).toHaveLength(1);
+        expect(warnPayloads[0]).toMatchObject({
+          kind: 'language',
+          id: 2,
+          classification: 'api',
+          apiStatus: 502,
+        });
+        expect(JSON.stringify(warnPayloads[0])).not.toContain(
+          'super-secret-token-xyz',
+        );
+        expect(warnPayloads[0]).not.toHaveProperty('error');
+        expect(warnPayloads[0]).not.toHaveProperty('message');
+        expect(warnPayloads[0]).not.toHaveProperty('body');
+        expect(warnPayloads[0]).not.toHaveProperty('stack');
+        expect(insertProjectsMock).toHaveBeenCalled();
+      } finally {
+        logger.reset();
+      }
+    });
+
+    it('seedFkParentsBestEffort warm warn retains Error classification without apiStatus', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([1, 2]));
+      const warnPayloads: Array<Record<string, unknown>> = [];
+      logger.setTransport((level, _tag, message, context) => {
+        if (
+          level === 'warn' &&
+          typeof message === 'string' &&
+          message.includes('FK parent by-id lookup failed') &&
+          context
+        ) {
+          warnPayloads.push(context);
+        }
+      });
+
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockImplementation((id: number) => {
+        if (id === 2) {
+          return Promise.reject(
+            new Error('raw-arbitrary-detail-should-not-log'),
+          );
+        }
+        return Promise.resolve({
+          id,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+        });
+      });
+
+      try {
+        await syncProjects(2, 'seed-tok', {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        });
+
+        expect(warnPayloads).toHaveLength(1);
+        expect(warnPayloads[0]).toMatchObject({
+          kind: 'language',
+          id: 2,
+          classification: 'error',
+        });
+        expect(warnPayloads[0]).not.toHaveProperty('apiStatus');
+        expect(JSON.stringify(warnPayloads[0])).not.toContain(
+          'raw-arbitrary-detail-should-not-log',
+        );
+      } finally {
+        logger.reset();
+      }
+    });
+
     it('does not by-id seed when seedFkParents is omitted', async () => {
       mockDbCount(1);
       (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({

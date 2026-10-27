@@ -256,4 +256,140 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
     await waitFor(() => expect(second.result.current.loading).toBe(false));
     expect(repairParents).toHaveBeenCalledTimes(2);
   });
+
+  it('does not latch when account/project changes cancel an in-flight repair', async () => {
+    let resolveRepair!: (
+      value: 'ok' | 'offline' | 'skipped' | 'failed',
+    ) => void;
+    repairParents.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveRepair = resolve;
+        }),
+    );
+
+    const { rerender, result, unmount } = renderHook(
+      ({ projectId, userId }: { projectId: number; userId: number }) =>
+        usePrepareOfflineResourceData(
+          projectId,
+          userId,
+          [chapter(1)],
+          new Set([1]),
+        ),
+      { initialProps: { projectId: 1, userId: 10 } },
+    );
+    await waitFor(() => expect(repairParents).toHaveBeenCalledTimes(1));
+
+    // Account + project change cancels the first effect before latch write.
+    repairParents.mockResolvedValue('ok');
+    rerender({ projectId: 2, userId: 99 });
+    resolveRepair('ok');
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(repairParents).toHaveBeenCalledTimes(2);
+    expect(repairParents).toHaveBeenLastCalledWith({
+      userId: 99,
+      projectId: 2,
+      chapters: [{ bibleId: 167, bookId: 40 }],
+    });
+    unmount();
+
+    // Original account/project/ref key was never latched — repairs again.
+    repairParents.mockClear().mockResolvedValue('ok');
+    const again = renderHook(() =>
+      usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
+    );
+    await waitFor(() => expect(again.result.current.loading).toBe(false));
+    expect(repairParents).toHaveBeenCalledTimes(1);
+  });
+
+  it('caps successful-repair cache at 64 with FIFO eviction and safe retry', async () => {
+    repairParents.mockResolvedValue('ok');
+
+    for (let projectId = 1; projectId <= 64; projectId += 1) {
+      const hook = renderHook(() =>
+        usePrepareOfflineResourceData(
+          projectId,
+          10,
+          [chapter(1, { bibleId: 1000 + projectId, bookId: 40 })],
+          new Set([1]),
+        ),
+      );
+      await waitFor(() => expect(hook.result.current.loading).toBe(false));
+      hook.unmount();
+    }
+    expect(repairParents).toHaveBeenCalledTimes(64);
+
+    // 65th distinct key evicts the oldest successful entry.
+    const overflow = renderHook(() =>
+      usePrepareOfflineResourceData(
+        65,
+        10,
+        [chapter(1, { bibleId: 1065, bookId: 40 })],
+        new Set([1]),
+      ),
+    );
+    await waitFor(() => expect(overflow.result.current.loading).toBe(false));
+    overflow.unmount();
+    expect(repairParents).toHaveBeenCalledTimes(65);
+
+    // A still-retained key is reused without another repair (check before
+    // re-adding the evicted key, which would FIFO-evict the next oldest).
+    repairParents.mockClear().mockResolvedValue('ok');
+    const retained = renderHook(() =>
+      usePrepareOfflineResourceData(
+        2,
+        10,
+        [chapter(1, { bibleId: 1002, bookId: 40 })],
+        new Set([1]),
+      ),
+    );
+    await waitFor(() => expect(retained.result.current.loading).toBe(false));
+    expect(repairParents).not.toHaveBeenCalled();
+    retained.unmount();
+
+    // Evicted oldest key safely re-repairs.
+    repairParents.mockClear().mockResolvedValue('ok');
+    const evicted = renderHook(() =>
+      usePrepareOfflineResourceData(
+        1,
+        10,
+        [chapter(1, { bibleId: 1001, bookId: 40 })],
+        new Set([1]),
+      ),
+    );
+    await waitFor(() => expect(evicted.result.current.loading).toBe(false));
+    expect(repairParents).toHaveBeenCalledTimes(1);
+    evicted.unmount();
+  });
+
+  it('never caches failed repairs even under cache pressure', async () => {
+    repairParents.mockResolvedValue('failed');
+
+    for (let projectId = 1; projectId <= 70; projectId += 1) {
+      const hook = renderHook(() =>
+        usePrepareOfflineResourceData(
+          projectId,
+          10,
+          [chapter(1, { bibleId: 2000 + projectId, bookId: 40 })],
+          new Set([1]),
+        ),
+      );
+      await waitFor(() => expect(hook.result.current.loading).toBe(false));
+      hook.unmount();
+    }
+    expect(repairParents).toHaveBeenCalledTimes(70);
+
+    // Same failed key still retries (never entered the successful-repair cache).
+    repairParents.mockClear().mockResolvedValue('ok');
+    const retry = renderHook(() =>
+      usePrepareOfflineResourceData(
+        1,
+        10,
+        [chapter(1, { bibleId: 2001, bookId: 40 })],
+        new Set([1]),
+      ),
+    );
+    await waitFor(() => expect(retry.result.current.loading).toBe(false));
+    expect(repairParents).toHaveBeenCalledTimes(1);
+  });
 });

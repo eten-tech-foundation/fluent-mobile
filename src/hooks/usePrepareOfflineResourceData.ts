@@ -23,12 +23,33 @@ import { logger } from '../utils/logger';
 
 const log = logger.create('usePrepareOfflineResourceData');
 
-/** One successful repair per user+project+referenced bible/book set. */
-const ensuredReferencedParentsKeys = new Set<string>();
+/** Cap successful-repair cache so long sessions cannot grow unbounded. */
+const MAX_ENSURED_REFERENCED_PARENTS_KEYS = 64;
+
+/**
+ * One successful repair per user+project+referenced bible/book set.
+ * FIFO Map: insertion order; oldest key evicted when over capacity.
+ */
+const ensuredReferencedParentsKeys = new Map<string, true>();
 
 /** @internal test helper — clears the PFO referenced-parent ensure latch. */
 export function __resetPrepareOfflineReferencedParentsLatchForTests(): void {
   ensuredReferencedParentsKeys.clear();
+}
+
+function rememberSuccessfulReferencedParentsRepair(key: string): void {
+  if (ensuredReferencedParentsKeys.has(key)) {
+    return;
+  }
+  if (
+    ensuredReferencedParentsKeys.size >= MAX_ENSURED_REFERENCED_PARENTS_KEYS
+  ) {
+    const oldest = ensuredReferencedParentsKeys.keys().next().value;
+    if (oldest !== undefined) {
+      ensuredReferencedParentsKeys.delete(oldest);
+    }
+  }
+  ensuredReferencedParentsKeys.set(key, true);
 }
 
 function referencedParentsLatchKey(
@@ -163,7 +184,7 @@ export function usePrepareOfflineResourceData(
               return;
             }
             if (repair === 'ok') {
-              ensuredReferencedParentsKeys.add(ensureKey);
+              rememberSuccessfulReferencedParentsRepair(ensureKey);
             }
           }
         }

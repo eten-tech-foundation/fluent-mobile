@@ -398,10 +398,14 @@ async function fetchMasterParentsById<T>(
           throw error;
         }
         failedIds.push(id);
+        const failure = classifyPrepareOfflineParentRefreshFailure(error);
         log.warn('FK parent by-id lookup failed; continuing warm seed', {
           kind: options.kind,
           id,
-          error: getErrorMessage(error),
+          classification: failure.classification,
+          ...(failure.apiStatus !== undefined
+            ? { apiStatus: failure.apiStatus }
+            : {}),
         });
       }
     }),
