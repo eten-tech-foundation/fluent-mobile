@@ -898,8 +898,23 @@ describe('prepareOfflineResources', () => {
         [FULL_PARAMS],
       );
 
-      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(1);
+      // URL-only members must not skip hydration for siblings that still need
+      // inline content. FULL_PARAMS expands to one includeContent job per
+      // chapter (1..3), matching bounded catalog/hydration fetches.
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(3);
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(
+        99,
+        {
+          languageCode: 'eng',
+          bookCode: 'MRK',
+          startChapter: 1,
+          endChapter: 1,
+          includeContent: true,
+        },
+        { signal: expect.any(AbortSignal) },
+      );
       expect(result[0].manifestMembers[0]).toEqual(row.manifestMembers[0]);
+      expect(result[0].manifestMembers[0].serializedContent).toBeUndefined();
       expect(result[0].manifestMembers[1].serializedContent).toBe('{"note":1}');
     });
 
