@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
 import { StageAdvanceStatus } from '@/utils/stageAdvancement';
+import { uploadProjectUnitSql } from './recordingsRepository';
 
 const log = logger.create('DBRepository');
 
@@ -1027,10 +1028,9 @@ export async function userHasLocalChapterAssignments(
 }
 
 /**
- * Selected recordings not yet uploaded (`is_selected = 1` and not uploaded/conflicted).
- *
- * TODO(#71 follow-up): only the selected take per verse is upload-eligible.
- * All audio recoridngs takes needs to be uploaded.
+ * Every take not yet uploaded (not uploaded/conflicted), selected or not
+ * (#716). Canonical and selected takes upload with `activate=true`; other
+ * takes upload with `activate=false` so the server's active take is unchanged.
  *
  * Pericope takes (#584) upload via PUT /verse-audio/{projectUnitId}/range
  * (fluent-api#377); verse takes keep the single-bibleTextId path.
@@ -1071,39 +1071,21 @@ export async function getPendingRecordings(chapter?: {
        r.start_verse AS start_verse,
        r.end_chapter AS end_chapter,
        r.end_verse AS end_verse,
+       r.is_canonical AS is_canonical,
+       r.is_selected AS is_selected,
        bt.book_id AS book_id,
        bt.chapter_number AS chapter_number,
-       CASE
-         WHEN r.project_unit_id IS NOT NULL AND r.project_unit_id > 0
-           THEN r.project_unit_id
-         ELSE (
-           SELECT ca.project_unit_id
-           FROM chapter_assignments ca
-           WHERE ca.bible_id = bt.bible_id
-             AND ca.book_id = bt.book_id
-             AND ca.chapter_number = bt.chapter_number
-             AND (
-               SELECT COUNT(DISTINCT ca2.project_unit_id)
-               FROM chapter_assignments ca2
-               WHERE ca2.bible_id = bt.bible_id
-                 AND ca2.book_id = bt.book_id
-                 AND ca2.chapter_number = bt.chapter_number
-             ) = 1
-           LIMIT 1
-         )
-       END AS project_unit_id
+       ${uploadProjectUnitSql('r.project_unit_id')} AS project_unit_id
      FROM recordings r
      JOIN bible_texts bt ON bt.id = r.bible_text_id
-     WHERE (
-       r.is_canonical = 1
-       OR (
-         r.is_selected = 1
-         AND NOT EXISTS (
-           SELECT 1 FROM recordings c
-           WHERE c.bible_text_id = r.bible_text_id
-             AND c.is_canonical = 1
-             AND c.project_unit_id IS r.project_unit_id
-         )
+     WHERE NOT (
+       r.is_canonical = 0
+       AND r.is_selected = 1
+       AND EXISTS (
+         SELECT 1 FROM recordings c
+         WHERE c.bible_text_id = r.bible_text_id
+           AND c.is_canonical = 1
+           AND c.project_unit_id IS r.project_unit_id
        )
      )
        AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
@@ -1162,6 +1144,8 @@ export async function getPendingRecordings(chapter?: {
       startVerse: toNullableInt(row.start_verse),
       endChapter: toNullableInt(row.end_chapter),
       endVerse: toNullableInt(row.end_verse),
+      isCanonical: Number(row.is_canonical) === 1,
+      isSelected: Number(row.is_selected) === 1,
     };
   });
 }
@@ -1272,6 +1256,7 @@ export async function markRecordingUploaded(
   id: string,
   blobKey: string,
   versionToken: number,
+  serverTakeId: number | null = null,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
@@ -1280,10 +1265,11 @@ export async function markRecordingUploaded(
      SET sync_status = 'uploaded',
          blob_key = ?,
          version_token = ?,
+         server_take_id = COALESCE(?, server_take_id),
          upload_error = NULL,
          updated_at = ?
      WHERE id = ?`,
-    [blobKey, versionToken, updatedAt, id],
+    [blobKey, versionToken, serverTakeId, updatedAt, id],
   );
 }
 
@@ -1333,6 +1319,7 @@ export async function markRecordingAndChapterConflicted(
   recordingId: string,
   bibleTextId: number,
   versionToken: number,
+  serverTakeId: number | null = null,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
@@ -1343,10 +1330,11 @@ export async function markRecordingAndChapterConflicted(
       `UPDATE recordings
        SET sync_status = 'conflicted',
            version_token = ?,
+           server_take_id = COALESCE(?, server_take_id),
            upload_error = NULL,
            updated_at = ?
        WHERE id = ?`,
-      [versionToken, updatedAt, recordingId],
+      [versionToken, serverTakeId, updatedAt, recordingId],
     );
 
     // Mark chapter as having conflict (for #260 UI indicator)
@@ -1366,6 +1354,28 @@ export async function markRecordingAndChapterConflicted(
       [updatedAt, bibleTextId],
     );
   });
+}
+
+/**
+ * Raise the unit's local version token after a server write that did not go
+ * through an upload of this row, such as a take delete that promoted a new
+ * active take (#716). Never lowers a newer token already stored.
+ */
+export async function raiseVerseVersionToken(
+  bibleTextId: number,
+  projectUnitId: number,
+  versionToken: number,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.execute(
+    `UPDATE recordings
+     SET version_token = ?, updated_at = ?
+     WHERE bible_text_id = ?
+       AND project_unit_id IS ?
+       AND (version_token IS NULL OR version_token < ?)`,
+    [versionToken, updatedAt, bibleTextId, projectUnitId, versionToken],
+  );
 }
 
 export async function getLatestVersionToken(
@@ -1466,7 +1476,6 @@ const PROJECT_UNIT_PENDING_UPLOAD_GUARD = `
       AND bt.book_id = ca.book_id
       AND bt.chapter_number = ca.chapter_number
     INNER JOIN recordings r ON r.bible_text_id = bt.id
-      AND r.is_selected = 1
       AND r.sync_status NOT IN ('uploaded', 'conflicted')
       AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)
     WHERE ca.project_unit_id = pu.id
@@ -1658,6 +1667,8 @@ export {
   deleteRecordingTake,
   selectRecordingTake,
   setCanonicalTake,
+  getPendingRecordingDeletions,
+  clearRecordingDeletion,
 } from './recordingsRepository';
 export type {
   AddRecordingTakeInput,

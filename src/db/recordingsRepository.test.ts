@@ -6,6 +6,16 @@ type Row = RecordingRow;
 let rows: Row[] = [];
 let mockActiveUserId = '1';
 
+type DeletionRow = {
+  id: string;
+  project_unit_id: number;
+  bible_text_id: number;
+  server_take_id: number;
+  recorded_by_user_id: number | null;
+  created_at: string;
+};
+let deletions: DeletionRow[] = [];
+
 type BibleTextRef = {
   bible_id: number;
   book_id: number;
@@ -29,6 +39,7 @@ function clone(row: Row): Row {
 
 export function resetRecordingsDbMock(): void {
   rows = [];
+  deletions = [];
   mockActiveUserId = '1';
 }
 
@@ -400,10 +411,44 @@ async function mockExecute(
               end_chapter: match.end_chapter,
               end_verse: match.end_verse,
               project_unit_id: match.project_unit_id ?? null,
+              server_take_id: match.server_take_id ?? null,
             },
           ]
         : [],
     };
+  }
+
+  if (normalized.startsWith('INSERT OR REPLACE INTO recording_deletions')) {
+    // Mock has no chapter_assignments, so only a capture unit resolves.
+    const [id, bibleTextId, serverTakeId, recordedBy, createdAt, unit] =
+      params as [string, number, number, number | null, string, number | null];
+    if (unit !== null && unit > 0) {
+      deletions = deletions.filter(d => d.id !== id);
+      deletions.push({
+        id,
+        project_unit_id: unit,
+        bible_text_id: bibleTextId,
+        server_take_id: serverTakeId,
+        recorded_by_user_id: recordedBy,
+        created_at: createdAt,
+      });
+    }
+    return { rows: [] };
+  }
+
+  if (normalized.startsWith('SELECT id, project_unit_id, bible_text_id')) {
+    return {
+      rows: [...deletions].sort((a, b) =>
+        a.created_at === b.created_at
+          ? a.id.localeCompare(b.id)
+          : a.created_at.localeCompare(b.created_at),
+      ),
+    };
+  }
+
+  if (normalized.startsWith('DELETE FROM recording_deletions WHERE id = ?')) {
+    deletions = deletions.filter(d => d.id !== params[0]);
+    return { rows: [] };
   }
 
   if (
@@ -551,7 +596,9 @@ jest.mock('../services/storage', () => ({
 
 import {
   addRecordingTake,
+  clearRecordingDeletion,
   deleteRecordingTake,
+  getPendingRecordingDeletions,
   getLatestRecordingForVerse,
   getTakesForVerse,
   selectRecordingTake,
@@ -1697,5 +1744,78 @@ describe('recordingsRepository multi-take', () => {
 
     await selectRecordingTake('foreign-a');
     expect(getRecordingDataVersion()).toBe(versionBefore);
+  });
+});
+
+describe('server take delete queue (#716)', () => {
+  beforeEach(() => {
+    resetRecordingsDbMock();
+  });
+
+  const setServerTakeId = (id: string, serverTakeId: number) => {
+    rows = rows.map(r =>
+      r.id === id
+        ? {
+            ...r,
+            sync_status: 'uploaded' as const,
+            server_take_id: serverTakeId,
+          }
+        : r,
+    );
+  };
+
+  it('queues a server delete for an uploaded take and clears it on demand', async () => {
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///a.m4a',
+      id: 'q-a',
+      projectUnitId: 12,
+    });
+    setServerTakeId('q-a', 55);
+
+    await deleteRecordingTake('q-a');
+
+    await expect(getPendingRecordingDeletions()).resolves.toEqual([
+      {
+        id: 'q-a',
+        projectUnitId: 12,
+        bibleTextId: 10,
+        serverTakeId: 55,
+        recordedByUserId: 1,
+      },
+    ]);
+
+    await clearRecordingDeletion('q-a');
+    await expect(getPendingRecordingDeletions()).resolves.toEqual([]);
+  });
+
+  it('does not queue a delete for a take the server never stored', async () => {
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///a.m4a',
+      id: 'q-local',
+      projectUnitId: 12,
+    });
+
+    await deleteRecordingTake('q-local');
+
+    await expect(getPendingRecordingDeletions()).resolves.toEqual([]);
+  });
+
+  it('does not queue a delete for a take owned by another user', async () => {
+    __setMockActiveUserId('2');
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///a.m4a',
+      id: 'q-foreign',
+      projectUnitId: 12,
+    });
+    setServerTakeId('q-foreign', 56);
+    __setMockActiveUserId('1');
+
+    await deleteRecordingTake('q-foreign');
+
+    await expect(getPendingRecordingDeletions()).resolves.toEqual([]);
+    expect(__getRecordingRows().map(r => r.id)).toEqual(['q-foreign']);
   });
 });

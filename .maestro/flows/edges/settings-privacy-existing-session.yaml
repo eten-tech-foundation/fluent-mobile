@@ -1,0 +1,41 @@
+# Read-only: Home drawer -> Privacy Policy -> header back -> Home.
+# Requires an existing logged-in session on an unblocked Home. Uses the
+# privacy-policy-scroll-back header control; no login/clearState/account actions.
+appId: com.eten.fluent
+tags:
+  - edges
+  - existing-session
+  - read-only
+  - ordered-readonly
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-settings-button'
+# Wait for full drawer geometry; a mid-slide node was clipped to x0..62.
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      text: '^Privacy Policy$'
+    timeout: 5000
+- tapOn:
+    id: 'settings-menu-privacy-policy'
+- extendedWaitUntil:
+    visible:
+      id: 'privacy-policy-scroll'
+    timeout: 15000
+# Body rendering only.
+- assertVisible:
+    text: '(?s).*Fluent offers an AI-generated draft feature.*'
+- assertVisible:
+    text: '(?s).*By continuing, you agree.*'
+- tapOn:
+    id: 'privacy-policy-scroll-back'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

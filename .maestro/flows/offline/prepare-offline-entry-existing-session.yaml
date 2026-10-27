@@ -1,0 +1,48 @@
+# READ-ONLY: Home → Settings → Prepare for Offline entry → back.
+#
+# Preconditions: existing logged-in session; unblocked Home (or Home via
+# goto-home backs only). No login/clearState/cold launch. No project pick,
+# download, sync-start, or preference toggles.
+#
+# Distinct from `sync/prepare-offline-entry.yaml`, which continues into
+# project-row + resources/download chrome (deeper, not entry→back only).
+#
+# State-safety: `goto-home` / `ensure-no-modal` may back out of stack screens
+# to reach Home; session KV is not cleared. Does not use ensure-warm-session.
+appId: com.eten.fluent
+tags:
+  - offline
+  - existing-session
+  - read-only
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'home-settings-button'
+- tapOn:
+    id: 'settings-menu-more-settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings-prepare-offline'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'settings-prepare-offline'
+- extendedWaitUntil:
+    visible:
+      id: 'prepare-offline-screen'
+    timeout: 15000
+- assertVisible:
+    id: 'stack-header-back'
+- tapOn:
+    id: 'stack-header-back'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

@@ -83,4 +83,20 @@ describe('ForgotPasswordScreen', () => {
       expect(FluentAPI.forgotPassword).toHaveBeenCalledTimes(2);
     });
   });
+
+  it('keeps the form view and surfaces API failure on the dedicated screen', async () => {
+    jest
+      .mocked(FluentAPI.forgotPassword)
+      .mockRejectedValue(new Error('Network request failed'));
+
+    renderForgotPasswordScreen();
+    fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
+
+    expect(
+      await screen.findByTestId('forgot-password-global-error'),
+    ).toBeTruthy();
+    expect(screen.getByText('Network request failed')).toBeTruthy();
+    expect(screen.queryByTestId('forgot-password-sent-view')).toBeNull();
+    expect(FluentAPI.forgotPassword).toHaveBeenCalledWith('t@fluent.local');
+  });
 });

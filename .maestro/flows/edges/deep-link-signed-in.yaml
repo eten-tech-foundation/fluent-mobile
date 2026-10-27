@@ -1,0 +1,20 @@
+# Signed-in fluent://home stays in the app. Existing session only: no launch,
+# warm helper, or clearState.
+appId: com.eten.fluent
+tags:
+  - edges
+  - deeplink
+  - existing-session
+  - ordered-readonly
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- openLink: fluent://home
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'

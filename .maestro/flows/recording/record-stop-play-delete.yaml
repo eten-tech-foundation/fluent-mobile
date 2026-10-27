@@ -1,8 +1,11 @@
 # Record → stop → play → delete (mic pre-granted). Cleans up the take created.
+# Mutating: requires MAESTRO_FIXTURE_CHAPTER_ID on an allowlisted project.
+# fixture-blocked keeps default lanes from running this without that fixture.
 appId: com.eten.fluent
 tags:
-  - smoke
   - record
+  - mutating
+  - fixture-blocked
 ---
 - runFlow: ../../helpers/launch-android-mic-allow.yaml
 - runFlow: ../../helpers/boot-past-dev-launcher.yaml
@@ -12,7 +15,7 @@ tags:
       id: 'home-tab-my-work'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
 - assertVisible:
@@ -38,6 +41,10 @@ tags:
     visible:
       id: 'record-stop-button'
     timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: 'record-duration'
+    timeout: 10000
 - waitForAnimationToEnd
 - tapOn:
     id: 'record-stop-button'
@@ -47,6 +54,9 @@ tags:
     timeout: 30000
 - tapOn:
     id: 'record-play-button-.*'
+- extendedWaitUntil:
+    visible: 'Pause draft'
+    timeout: 10000
 - assertVisible:
     id: 'record-tab'
 - tapOn:
