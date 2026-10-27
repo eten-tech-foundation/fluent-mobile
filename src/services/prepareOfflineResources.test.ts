@@ -850,6 +850,97 @@ describe('prepareOfflineResources', () => {
       ).rejects.toThrow('No content returned for text item tw2');
     });
 
+    it('prepares URL-only text without depending on the content manifest', async () => {
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockRejectedValue(
+        new Error('unrelated manifest resource unavailable'),
+      );
+      const row = textRow('available', ['commentary']);
+      row.manifestMembers[0].sourceUrl = 'https://example.com/commentary.pdf';
+      row.manifestMembers[0].fileExt = 'pdf';
+
+      const result = await hydratePrepareOfflineTextContent(
+        99,
+        [row],
+        [FULL_PARAMS],
+      );
+
+      expect(FluentAPI.getPrepareOfflineManifest).not.toHaveBeenCalled();
+      expect(result).toEqual([row]);
+      expect(result[0].manifestMembers[0].serializedContent).toBeUndefined();
+    });
+
+    it('keeps already supplied inline content without fetching it again', async () => {
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockRejectedValue(
+        new Error('manifest unavailable'),
+      );
+      const row = textRow('available', ['tw1']);
+      row.manifestMembers[0].serializedContent = '{"a":1}';
+
+      await expect(
+        hydratePrepareOfflineTextContent(99, [row], [FULL_PARAMS]),
+      ).resolves.toEqual([row]);
+      expect(FluentAPI.getPrepareOfflineManifest).not.toHaveBeenCalled();
+    });
+
+    it('still fetches missing required content in a mixed URL and inline row', async () => {
+      const row = textRow('available', ['url-only', 'required-note']);
+      row.required = true;
+      row.removable = false;
+      row.manifestMembers[0].sourceUrl = 'https://example.com/commentary.json';
+      row.manifestMembers[1].required = true;
+      mockTranslationManifest([
+        { id: 'required-note', serializedContent: '{"note":1}' },
+      ]);
+
+      const result = await hydratePrepareOfflineTextContent(
+        99,
+        [row],
+        [FULL_PARAMS],
+      );
+
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(1);
+      expect(result[0].manifestMembers[0]).toEqual(row.manifestMembers[0]);
+      expect(result[0].manifestMembers[1].serializedContent).toBe('{"note":1}');
+    });
+
+    it('fails closed and can retry when required content is unavailable', async () => {
+      const row = textRow('available', ['required-note']);
+      row.required = true;
+      row.removable = false;
+      row.manifestMembers[0].required = true;
+      mockTranslationManifest([]);
+
+      await expect(
+        hydratePrepareOfflineTextContent(99, [row], [FULL_PARAMS]),
+      ).rejects.toThrow('No content returned for text item required-note');
+      expect(row.manifestMembers[0].serializedContent).toBeUndefined();
+
+      mockTranslationManifest([
+        { id: 'required-note', serializedContent: '{"note":1}' },
+      ]);
+      const result = await hydratePrepareOfflineTextContent(
+        99,
+        [row],
+        [FULL_PARAMS],
+      );
+      expect(result[0].manifestMembers[0].serializedContent).toBe('{"note":1}');
+    });
+
+    it('propagates a necessary manifest failure without returning ready siblings', async () => {
+      const row = textRow('available', ['url-only', 'required-note']);
+      row.manifestMembers[0].sourceUrl = 'https://example.com/commentary.json';
+      row.manifestMembers[1].required = true;
+      const failure = new Error('required resource lookup failed');
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockRejectedValue(
+        failure,
+      );
+
+      await expect(
+        hydratePrepareOfflineTextContent(99, [row], [FULL_PARAMS]),
+      ).rejects.toBe(failure);
+      expect(row.manifestMembers[1].serializedContent).toBeUndefined();
+    });
+
     it('skips completed rows and makes no API call when nothing needs content', async () => {
       const items = [textRow('completed', ['tw1'])];
 
