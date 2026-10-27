@@ -500,6 +500,7 @@ export async function verseHasMultipleRecorders(
   bibleTextId: number,
   recordedByUserId?: number | null,
   view?: VerseTakeView,
+  projectUnitId?: number | null,
 ): Promise<boolean> {
   const db = getDatabase();
   const ownerId = resolveRecordedByUserId(recordedByUserId);
@@ -508,11 +509,19 @@ export async function verseHasMultipleRecorders(
     ? `AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`
     : 'AND bible_text_id = ?';
   const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
+  // Match the take lists, including pre-#613 rows without a unit.
+  const hasUnit =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId);
+  const unitSql = hasUnit
+    ? 'AND (project_unit_id IS NULL OR project_unit_id = ?)'
+    : '';
   const result = await db.execute(
     `SELECT COUNT(*) AS cnt
      FROM recordings
-     WHERE NOT (${owner.sql}) ${viewSql}`,
-    [...owner.params, ...viewParams],
+     WHERE NOT (${owner.sql}) ${viewSql} ${unitSql}`,
+    [...owner.params, ...viewParams, ...(hasUnit ? [projectUnitId] : [])],
   );
   const cnt = Number(
     (result.rows?.[0] as { cnt?: number } | undefined)?.cnt ?? 0,
