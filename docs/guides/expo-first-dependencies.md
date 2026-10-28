@@ -51,6 +51,8 @@ If Expo has no module for the capability, community libraries are fine — still
 
 ## Related
 
-- Cursor pointer: [`.cursor/rules/expo-first-dependencies.mdc`](../../.cursor/rules/expo-first-dependencies.mdc)
+- Shared gates / ownership: [AGENTS.md](../../AGENTS.md)
+- Cursor adapter (glob-scoped): [`.cursor/rules/expo-first-dependencies.mdc`](../../.cursor/rules/expo-first-dependencies.mdc)
+- Claude path-scoped rule: [`.claude/rules/expo-first-dependencies.md`](../../.claude/rules/expo-first-dependencies.md)
 - Expo MCP: [`.cursor/rules/expo-mcp.mdc`](../../.cursor/rules/expo-mcp.mdc)
 - Onboarding: [docs/AGENT_ONBOARDING.md](../AGENT_ONBOARDING.md)

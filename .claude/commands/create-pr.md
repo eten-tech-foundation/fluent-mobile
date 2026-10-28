@@ -56,20 +56,24 @@ git diff --stat origin/main...HEAD
 
 ### 3. Run local checks (**hard-block** — do not push/open over red)
 
+Authoritative gate order ([`AGENTS.md`](../../AGENTS.md) /
+[commands.mdc](../../.cursor/rules/commands.mdc)):
+
 ```bash
 npm run format:check
 npm run lint
+npm run architecture-guard
 npm run typecheck
 npm test -- --ci
 ```
 
 If `$ARGUMENTS` is provided, treat it as a targeted test scope **in addition to**
-the four gates (never skip format/lint/typecheck). If the full test suite looks
-slow or times out, fall back to a targeted run over the changed areas (infer from
-the diffstat) and clearly note that you did so — still run the other three gates
-in full.
+the five gates (never skip format/lint/architecture-guard/typecheck). If the full
+test suite looks slow or times out, fall back to a targeted run over the changed
+areas (infer from the diffstat) and clearly note that you did so — still run
+format/lint/architecture-guard/typecheck in full.
 
-**Hard gate:** If any of the four commands fail, **STOP**. Fix locally and re-run
+**Hard gate:** If any of the five commands fail, **STOP**. Fix locally and re-run
 until green (max practical iterations in-session). Do **not** push or open the PR
 while those failures remain.
 
@@ -85,23 +89,34 @@ uncommitted repairs.
 
 ### 3b. Convention review (**hard-block** on any unfixed finding)
 
-Run this on the **working diff** (staged + unstaged) **before the final commit /
-push**. Launch the repo **`code-reviewer`** agent
-(`.claude/agents/code-reviewer.md`) on that working tree (fall back to
-`origin/main...HEAD` only if the working tree is clean).
+**One independent review of the final intended working diff is enough** before
+commit/push. Invoke the repo reviewer **by path**:
+[`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md)
+(works for Claude Code, Cursor, and Codex). Fall back to `origin/main...HEAD`
+only if the working tree is clean.
 
 - Fix **every** finding **before pushing** — **Blocking**, **Should-fix**,
   **Nit**. Severity only orders the work; it does **not** make a finding optional.
-- After each repair: **commit** it, then re-run local checks (step 3:
-  `format:check`, lint, typecheck, tests) **and** `code-reviewer`. Repeat until
-  both are clean. `git push` does not include uncommitted changes — never push
-  uncommitted repairs.
-- If any finding remains **unfixed and not explicitly waived**: **STOP**, fix,
-  commit, re-run local checks (step 3), and re-run `code-reviewer`.
+- After applying fixes: re-run local checks (step 3) and **verify each finding
+  against its fix** (diff / file read). Do **not** launch another full
+  `code-reviewer` pass solely because listed findings were applied or because
+  mechanical format/lint/type repairs were made.
+- **Re-run `code-reviewer` only when** any of:
+  - the to-be-committed tree was **never** reviewed this session, or
+  - fixes / CI repairs add **material** behavior, contract, scope, or risk
+    changes, or
+  - new hunks go **beyond** applying that pass’s finding-fixes, or
+  - correctness remains **uncertain** after verifying fixes.
+- If a second pass still has **Blocking** findings: **STOP** and report them to
+  the human — do not invent an endless full-review loop.
+- If any finding remains **unfixed and not explicitly waived**: **STOP** — do
+  not push or open the PR.
 - The only escape is an **explicit per-item human waiver** documented in the PR
   body (what was waived, why, who approved). Do not invent waivers; do not
   batch-waive an entire severity.
-- Do **not** skip this step to save time.
+- Do **not** skip the **required first** review on the final diff. Do **not**
+  re-run a full pass when the diff was already reviewed and only finding-fixes
+  (or mechanical format/lint/type repairs) landed.
 
 Board-move failures later in this command are **non-gating** and unrelated to
 this hard gate.
@@ -119,8 +134,16 @@ git push -u origin HEAD
 ### 5. Create the draft PR
 
 Detect a valid GitHub issue number from the branch (`…/173-…` or leading
-`173-…`). If none is found: **STOP** and request an issue number. Do not open a
-PR without `#NNN`. Fetch with:
+`173-…`).
+
+**No-ticket chores (in-session approval only):** if the user explicitly approved
+a no-ticket chore this session and the branch is `{author}/chore/{slug}` (no
+issue number), open the PR with title without `[#NNN]:`, put `Refs: none` under
+Details, and **skip** issue fetch + board move (step 6). Do not invent
+`Refs: none` without that explicit ask.
+
+Otherwise, if no issue number is found: **STOP** and request an issue number (or
+explicit `Refs: none` approval). Fetch with:
 
 ```bash
 gh issue view NNN --repo eten-tech-foundation/fluent-mobile --json number,title,body
@@ -139,7 +162,7 @@ and pre-fill:
 | **Reviewer checklist** | Leave items unchecked unless verified ([AGENTS.md](../../AGENTS.md)) |
 | **Details** | `Refs #NNN` **or** `Refs: none` on its own line; short summary; **Needs QA?** Yes/No; type-of-change checkboxes |
 | **Technical changes** | Key files as `` `path` `` bullets |
-| **Testing** | What gates ran (`format:check`, `lint`, `typecheck`, `npm test -- --ci`) |
+| **Testing** | What gates ran (`format:check`, `lint`, `architecture-guard`, `typecheck`, `npm test -- --ci`) |
 | **How to verify** | Numbered steps + **Expected** |
 | **Follow-ups** | Deferred AC → linked issues; otherwise say none |
 
@@ -216,15 +239,19 @@ Opening the PR is **not** the finish line.
 
 1. Watch required checks: `gh pr checks --watch`.
 2. If any required check **fails**, treat it as your job: read the failing log,
-   fix, **commit** the repair, re-run `format:check`, lint, typecheck, tests,
-   and `code-reviewer`, then push (never push uncommitted repairs) and re-watch.
-   Loop until green (or blocked on an out-of-scope base-branch issue — then say
-   so explicitly and do not claim success).
+   fix, **commit** the repair, re-run local gates (step 3). Re-run
+   `code-reviewer` **only** under the step 3b re-review criteria (material
+   behavior/contract/scope/risk, new hunks beyond finding-fixes, or uncertain
+   correctness) — not for mechanical CI repairs alone. Then push (never push
+   uncommitted repairs) and re-watch. Loop until green (or blocked on an
+   out-of-scope base-branch issue — then say so explicitly and do not claim
+   success).
 3. Only then proceed to the Report step.
 
 Do **not** tell the user the PR work is “done” while CI is red or still running,
 or while any code-review finding remains unfixed without an explicit per-item
-human waiver in the PR body. **Never merge.**
+human waiver in the PR body. Green CI is not fulfilled AC or device QA.
+**Never merge.**
 
 ### 8. Report
 

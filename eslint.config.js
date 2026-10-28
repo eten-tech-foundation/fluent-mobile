@@ -101,6 +101,8 @@ export default [
       'build',
       'android',
       'ios',
+      // Local nested checkouts (gitignored /worktrees/) — must not pollute lint
+      'worktrees/**',
       // Intentional violations — exercised by scripts/eslint-layer-boundaries.test.cjs
       'src/app/__fixtures__/eslint-layer-boundaries/**',
     ],
