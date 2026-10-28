@@ -54,4 +54,16 @@ describe('SyncStatusButton', () => {
     fireEvent.press(button);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it("speaks only the status when it doesn't open the Sync page", () => {
+    render(
+      <SyncStatusButton
+        status="online_failed"
+        failedErrorText="Server busy."
+      />,
+    );
+
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByLabelText('Upload failed. Server busy.')).toBeTruthy();
+  });
 });

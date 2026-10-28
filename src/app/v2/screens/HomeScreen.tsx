@@ -86,6 +86,7 @@ function HomeBody({
     refresh: refreshBooks,
   } = useHomeBooks(refreshKey);
   const nextUp = useNextUp(chapters);
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const pullToRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -185,8 +186,12 @@ function HomeBody({
   const chaptersLabel = `${chapters.length} ${
     chapters.length === 1 ? 'chapter' : 'chapters'
   }`;
+  // Both list hooks go back to loading on every refreshKey bump, so only the
+  // first load waits.
+  const listsLoading = loading || booksLoading;
+  if (!loadedOnce && !listsLoading) setLoadedOnce(true);
   const waitingForChapters =
-    loading || booksLoading || (isSyncingChapters && !chapters.length);
+    (listsLoading && !loadedOnce) || (isSyncingChapters && !chapters.length);
 
   let body: React.ReactNode;
   if (waitingForChapters) {

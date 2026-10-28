@@ -25,6 +25,10 @@ export type RoundButtonIconProps = { color: string; size: number };
 export interface RoundButtonProps {
   icon: React.ComponentType<RoundButtonIconProps>;
   accessibilityLabel: string;
+  /**
+   * Omit for a circle that only shows a status: TalkBack reads its label
+   * without calling it a button.
+   */
   onPress?: (event: GestureResponderEvent) => void;
   /**
    * Figma `Style`. Soft is tactile, for light screens; Flat is for dark and
@@ -128,29 +132,14 @@ function RoundButtonBody({
     transform: [{ translateY: nudge * progress.value }],
   }));
 
-  const interactive = !disabled && !!onPress;
-
-  return (
-    <Pressable
-      onPressIn={() => {
-        onPressIn();
-        haptics.press();
-      }}
-      onPressOut={onPressOut}
-      onPress={onPress}
-      disabled={!interactive}
-      android_disableSound
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled }}
-      style={[
-        styles.button,
-        label ? styles.pill : null,
-        style,
-        disabled && styles.disabled,
-      ]}
-      testID={testID}
-    >
+  const rootStyle = [
+    styles.button,
+    label ? styles.pill : null,
+    style,
+    disabled && styles.disabled,
+  ];
+  const body = (
+    <>
       {soft ? (
         <View
           style={styles.rim}
@@ -176,6 +165,40 @@ function RoundButtonBody({
           </Text>
         ) : null}
       </Animated.View>
+    </>
+  );
+
+  // Pressable reports itself disabled and tappable even with no onPress.
+  if (!onPress) {
+    return (
+      <View
+        accessible
+        accessibilityLabel={accessibilityLabel}
+        style={rootStyle}
+        testID={testID}
+      >
+        {body}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPressIn={() => {
+        onPressIn();
+        haptics.press();
+      }}
+      onPressOut={onPressOut}
+      onPress={onPress}
+      disabled={disabled}
+      android_disableSound
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      style={rootStyle}
+      testID={testID}
+    >
+      {body}
     </Pressable>
   );
 }

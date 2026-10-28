@@ -25,10 +25,23 @@ const STATUS_ICONS: Record<SyncStatus, NextIcon> = {
   offline_pending: CloudSlash,
 };
 
+/** The status alone, for a cloud that doesn't open the Sync page. */
+const STATUS_NAMES: Record<SyncStatus, string> = {
+  online_synced: 'Online · all synced',
+  online_syncing: 'Syncing…',
+  online_uploading: 'Syncing…',
+  online_pending: 'Online · upload pending',
+  online_needs_sync: 'Updates available',
+  online_failed: 'Upload failed',
+  offline_synced: 'Offline · nothing pending',
+  offline_pending: 'Offline · upload pending',
+};
+
 export interface SyncStatusButtonProps {
   status: SyncStatus;
   /** Sanitized upload error, spoken when the status is online_failed. */
   failedErrorText?: string | null;
+  /** Opens the Sync page; the spoken status says so only when it's given. */
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -48,10 +61,21 @@ export function SyncStatusButton({
   return (
     <RoundButton
       icon={STATUS_ICONS[status]}
-      accessibilityLabel={formatSyncStatusLabel(status, { failedErrorText })}
+      accessibilityLabel={
+        onPress
+          ? formatSyncStatusLabel(status, { failedErrorText })
+          : statusName(status, failedErrorText)
+      }
       onPress={onPress}
       style={style}
       testID={testID}
     />
   );
+}
+
+function statusName(status: SyncStatus, failedErrorText?: string | null) {
+  const name = STATUS_NAMES[status];
+  return status === 'online_failed' && failedErrorText
+    ? `${name}. ${failedErrorText}`
+    : name;
 }

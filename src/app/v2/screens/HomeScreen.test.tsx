@@ -161,11 +161,8 @@ describe('Next HomeScreen', () => {
     expect(screen.getByTestId('home-summary').props.children).toBe(
       '2 chapters · All synced',
     );
-    expect(
-      screen.getByRole('button', {
-        name: 'Online · all synced. Open Sync page.',
-      }),
-    ).toBeTruthy();
+    expect(screen.getByLabelText('Online · all synced')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Sync page/ })).toBeNull();
   });
 
   it('opens accounts from the avatar, while the cloud does nothing yet', () => {
@@ -224,6 +221,19 @@ describe('Next HomeScreen', () => {
 
     expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
     expect(screen.queryByText('Next up')).toBeNull();
+  });
+
+  it('keeps Next up and Books showing while they reload after a sync', () => {
+    render(<HomeScreen />);
+    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
+
+    mockChaptersLoading = true;
+    mockBooksLoading = true;
+    screen.rerender(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
+    expect(screen.getByRole('header', { name: 'Next up' })).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
   it('waits on chapters while a sync is still bringing them in', () => {
