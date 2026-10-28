@@ -1,4 +1,5 @@
 import { getDatabase } from './db';
+import { chapterCompletedAfterPull } from '../utils/chapterCompletionSyncGuard';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
@@ -325,8 +326,15 @@ function collectAssigneeIds(
 async function insertChapterAssignmentTx(
   tx: Transaction,
   assignment: DBTypes.ChapterAssignment,
+  pullRevision?: number,
 ) {
   if (!assignment?.chapterAssignmentId) return;
+  if (
+    pullRevision !== undefined &&
+    chapterCompletedAfterPull(assignment.chapterAssignmentId, pullRevision)
+  ) {
+    return;
+  }
 
   await tx.execute(
     `INSERT INTO chapter_assignments
@@ -574,6 +582,7 @@ export type InsertChapterAssignmentSyncResult = {
 
 export async function insertChapterAssignmentSyncData(
   assignments: DBTypes.ChapterAssignment[],
+  pullRevision?: number,
 ): Promise<InsertChapterAssignmentSyncResult> {
   const db = getDatabase();
   const userIds = collectAssigneeIds(assignments);
@@ -635,7 +644,7 @@ export async function insertChapterAssignmentSyncData(
       await insertProjectUnitTx(tx, unit);
     }
     for (const assignment of validAssignments) {
-      await insertChapterAssignmentTx(tx, assignment);
+      await insertChapterAssignmentTx(tx, assignment, pullRevision);
     }
   });
 

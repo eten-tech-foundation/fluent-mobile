@@ -4,6 +4,10 @@ import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import { logger } from '../utils/logger';
 import {
+  getChapterAssignmentPullRevision,
+  markChapterCompleteConfirmed,
+} from '../utils/chapterCompletionSyncGuard';
+import {
   clearCredentials,
   getCredentials,
   getTempCredentials,
@@ -463,6 +467,77 @@ describe('refreshChapterMetadataIfOnline', () => {
         skipped: [],
       });
     }
+  });
+
+  it('forwards the pre-await pullRevision from syncUserChapterWork when Complete lands mid-GET', async () => {
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+    const pullRevision = getChapterAssignmentPullRevision();
+    let resolveUserChapters!: (value: unknown) => void;
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveUserChapters = resolve;
+        }),
+    );
+
+    const pending = refreshChapterMetadataIfOnline(2);
+
+    await waitFor(() => {
+      expect(FluentAPI.getUserChapterAssignments).toHaveBeenCalledWith(
+        2,
+        'valid-token',
+      );
+    });
+
+    markChapterCompleteConfirmed(11);
+    expect(getChapterAssignmentPullRevision()).toBeGreaterThan(pullRevision);
+
+    resolveUserChapters({
+      assignedChapters: [
+        {
+          chapterAssignmentId: 11,
+          projectUnitId: 22,
+          projectId: 5,
+          bibleId: 10,
+          bookId: 1,
+          chapterNumber: 1,
+          chapterStatus: 'in_progress',
+          totalVerses: 10,
+          completedVerses: 2,
+        },
+      ],
+      peerCheckChapters: [
+        {
+          chapterAssignmentId: 12,
+          projectUnitId: 22,
+          projectId: 5,
+          bibleId: 10,
+          bookId: 1,
+          chapterNumber: 2,
+          chapterStatus: 'peer_check',
+          totalVerses: 8,
+          completedVerses: 8,
+        },
+      ],
+    });
+
+    await pending;
+
+    expect(insertChapterAssignmentSyncData).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          chapterAssignmentId: 11,
+          chapterStatus: 'in_progress',
+        }),
+        expect.objectContaining({
+          chapterAssignmentId: 12,
+          chapterStatus: 'peer_check',
+        }),
+      ],
+      pullRevision,
+    );
   });
 
   it('applies partial FK skip warnings after chapter metadata refresh', async () => {
