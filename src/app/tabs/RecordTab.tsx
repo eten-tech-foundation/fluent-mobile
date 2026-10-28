@@ -1431,9 +1431,13 @@ export function RecordTab({
                         verseAudio.playingTakeId === take.id ||
                         (verseAudio.loadedTakeId === take.id &&
                           verseAudio.playbackStatus === 'paused');
-                      // Every My Takes row scrubs (#833): the explicit target
-                      // below loads a take that is not in the player yet, so
-                      // there is no play-first or selection precondition.
+                      // Before Complete, preserve the existing loaded/selected
+                      // seek gate. At Complete, explicit-target seeking lets any
+                      // row scrub without changing the selected take (#833).
+                      const isSeekable =
+                        stageLocked ||
+                        verseAudio.loadedTakeId === take.id ||
+                        (verseAudio.loadedTakeId === null && isSelected);
                       const leadingIndicator = verseAudio.hasMultipleRecorders
                         ? 'canonicalReadOnly'
                         : 'selection';
@@ -1474,12 +1478,16 @@ export function RecordTab({
                                 ? undefined
                                 : () => handleDeleteTake(take)
                             }
-                            onSeek={ms => {
-                              // Explicit target: an unloaded row would
-                              // otherwise resolve to the selected take
-                              // (null at Complete) and no-op.
-                              void verseAudio.seek(ms, take);
-                            }}
+                            onSeek={
+                              isSeekable
+                                ? ms => {
+                                    // Explicit target: at Complete an unloaded
+                                    // row would otherwise resolve to the
+                                    // selected take (null) and no-op.
+                                    void verseAudio.seek(ms, take);
+                                  }
+                                : undefined
+                            }
                           />
                         </View>
                       );

@@ -743,9 +743,9 @@ describe('RecordTab', () => {
     await waitFor(() => {
       expect(idleAudio.playTake).toHaveBeenCalledWith(take2);
     });
-    // Review scrub surface (#176 / #833) — every waveform row is seekable,
-    // loaded or not.
-    expect(screen.getAllByLabelText('Draft waveform scrubber')).toHaveLength(2);
+    // Before Complete, only the take currently loaded in the player is
+    // seekable; the other row keeps the existing pre-Complete behavior.
+    expect(screen.getAllByLabelText('Draft waveform scrubber')).toHaveLength(1);
   });
 
   it('keeps waveform progress visible while a take is paused mid-playback', () => {
@@ -840,7 +840,7 @@ describe('RecordTab', () => {
     expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
   });
 
-  it('scrubs any unplayed, unselected take in My Takes (#833)', () => {
+  it('keeps unplayed, unselected My Takes rows non-scrubbable before Complete (#833 AC 5)', () => {
     const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
     const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: false });
     mockUseVerseAudio.mockReturnValue({
@@ -848,26 +848,18 @@ describe('RecordTab', () => {
       state: 'recorded',
       takes: [take1, take2],
       selectedTake: null,
-      // Nothing played and nothing selected: the old loaded/selected paths
-      // would leave both rows without an onSeek handler.
+      // Nothing played and nothing selected: pre-Complete scrubbing keeps
+      // its existing loaded/selected gate.
       playingTakeId: null,
       loadedTakeId: null,
     });
 
     renderTab();
 
-    const scrubbers = screen.getAllByLabelText('Draft waveform scrubber');
-    expect(scrubbers).toHaveLength(2);
-    fireEvent(scrubbers[1]!, 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
-    });
-    fireEvent(scrubbers[1]!, 'responderGrant', {
-      nativeEvent: { locationX: 50 },
-    });
-
-    // Explicit target: the second row seeks itself, not a neighbour.
-    expect(idleAudio.seek).toHaveBeenCalledWith(6500, take2);
-    expect(idleAudio.seek).not.toHaveBeenCalledWith(6500, take1);
+    expect(screen.queryAllByLabelText('Draft waveform scrubber')).toHaveLength(
+      0,
+    );
+    expect(idleAudio.seek).not.toHaveBeenCalled();
   });
 
   it('notifies captureActive during recording and clears after stop', async () => {
