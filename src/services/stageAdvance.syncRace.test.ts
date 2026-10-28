@@ -71,6 +71,7 @@ describe('confirmed Complete and assignment ingestion', () => {
 
     await confirmStageAdvancement({
       chapterAssignmentId: 7,
+      userId: 4,
       destination: {
         nextStatus: 'complete',
         buttonLabel: 'Send to Complete',

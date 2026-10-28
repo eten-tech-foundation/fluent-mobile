@@ -397,7 +397,11 @@ export const FluentAPI = {
       token,
     ),
 
-  /** Authenticated assignment read used to verify a stage transition. */
+  /**
+   * Translator READ of one assignment. Drain compares this status before PATCH
+   * (#257). Complete confirmation (#806) also uses this path and normalizes
+   * fluent-api's wire `id` to `chapterAssignmentId`.
+   */
   getChapterAssignment: (
     chapterAssignmentId: number,
     token?: string,
@@ -405,8 +409,8 @@ export const FluentAPI = {
     getChapterAssignmentRequest(chapterAssignmentId, token),
 
   /**
-   * Advance a chapter assignment to the next workflow stage (online path).
-   * Offline queue / reconnect handling is #257.
+   * Advance a chapter assignment one step. Body stays empty.
+   * Callers that already hold a per-user session pass `token` (#257).
    */
   submitChapterAssignment: (
     chapterAssignmentId: number,

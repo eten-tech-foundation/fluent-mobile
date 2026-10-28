@@ -1446,7 +1446,7 @@ describe('recording server take id + delete queue migration (#716)', () => {
     expect(await columnExists(db, 'recordings', 'server_take_id')).toBe(true);
     expect(db._tables.has('recording_deletions')).toBe(true);
     await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(22);
+    expect(CURRENT_SCHEMA_VERSION).toBe(23);
   });
 });
 
@@ -1493,5 +1493,63 @@ describe('download_queue Reference Images kind backfill (#417)', () => {
     await expect(
       backfillDownloadQueueReferenceImagesKind(db),
     ).resolves.not.toThrow();
+  });
+});
+
+describe('stage advance queue migration (#257)', () => {
+  it('includes stage_advance_queue in the baseline schema', () => {
+    const sql = createTableQueries.find(query =>
+      query.includes('CREATE TABLE IF NOT EXISTS stage_advance_queue'),
+    );
+    expect(sql).toBeDefined();
+    expect(sql).toContain('from_status');
+    expect(sql).toContain('to_status');
+    expect(sql).toContain('peer_checker_id');
+    expect(sql).toContain('REFERENCES chapter_assignments(id)');
+    expect(sql).toContain('REFERENCES users(id)');
+  });
+
+  it('creates stage_advance_queue when upgrading from v22', async () => {
+    const db = createFakeDb(22);
+
+    expect(db._tables.has('stage_advance_queue')).toBe(false);
+
+    await runMigrations(db);
+
+    expect(db._tables.has('stage_advance_queue')).toBe(true);
+    expect(db._indexes.has('idx_saq_chapter_assignment')).toBe(true);
+    expect(db._indexes.has('idx_saq_status')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('rejects INSERT that violates stage_advance_queue foreign keys', async () => {
+    const db = createFakeDb(22);
+    await runMigrations(db);
+    db._tables.set('users', {
+      columns: new Set(['id']),
+      rows: [{ id: 5 }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+    db._tables.set('chapter_assignments', {
+      columns: new Set(['id']),
+      rows: [{ id: 1 }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await expect(
+      db.execute(
+        `INSERT INTO stage_advance_queue (chapter_assignment_id, user_id, from_status, to_status, peer_checker_id, created_at, sync_status)
+         VALUES (999, 5, 'draft', 'peer_check', NULL, '2026-10-22T00:00:00.000Z', 'pending')`,
+      ),
+    ).rejects.toThrow(/FOREIGN KEY constraint failed/);
+
+    await expect(
+      db.execute(
+        `INSERT INTO stage_advance_queue (chapter_assignment_id, user_id, from_status, to_status, peer_checker_id, created_at, sync_status)
+         VALUES (1, 5, 'draft', 'peer_check', NULL, '2026-10-22T00:00:00.000Z', 'pending')`,
+      ),
+    ).resolves.toBeDefined();
   });
 });

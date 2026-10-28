@@ -3,6 +3,7 @@ import {
   getWorkflowStage,
   getWorkflowStageLabel,
   isCompleteStatus,
+  pickLowerStageStatus,
 } from './workflowStage';
 
 describe('workflowStage', () => {
@@ -72,6 +73,26 @@ describe('workflowStage', () => {
       expect(getWorkflowStageLabel('community_review')).toBe('Community Check');
       expect(getWorkflowStageLabel('advanced_check')).toBe('Advanced Check');
       expect(getWorkflowStageLabel('complete')).toBe('Complete');
+    });
+  });
+
+  describe('pickLowerStageStatus', () => {
+    it('keeps draft over peer_check', () => {
+      expect(pickLowerStageStatus('draft', 'peer_check')).toBe('draft');
+      expect(pickLowerStageStatus('peer_check', 'draft')).toBe('draft');
+    });
+
+    it('keeps peer_check over community_review', () => {
+      expect(pickLowerStageStatus('peer_check', 'community_review')).toBe(
+        'peer_check',
+      );
+    });
+
+    it('keeps the defined local status when the other value is missing', () => {
+      expect(pickLowerStageStatus(undefined, 'peer_check')).toBe('peer_check');
+      expect(pickLowerStageStatus('community_review', undefined)).toBe(
+        'community_review',
+      );
     });
   });
 });

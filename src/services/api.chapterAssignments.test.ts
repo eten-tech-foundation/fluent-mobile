@@ -97,6 +97,32 @@ describe('FluentAPI chapter assignment lists', () => {
     );
   });
 
+  it('GETs /chapter-assignments/{id} with the caller token', async () => {
+    mockOkJson({
+      chapterAssignmentId: 7,
+      status: 'draft',
+    });
+
+    await expect(
+      FluentAPI.getChapterAssignment(7, 'user-token'),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        chapterAssignmentId: 7,
+        status: 'draft',
+      }),
+    );
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const parsed = new URL(url);
+    expect(parsed.pathname).toBe('/chapter-assignments/7');
+    expect(init.method ?? 'GET').toBe('GET');
+    expect(init.headers).toEqual(
+      expect.objectContaining({
+        Authorization: 'Bearer user-token',
+      }),
+    );
+  });
+
   it('GETs /self/chapter-assignments for the session user', async () => {
     const payload = { assignedChapters: [], peerCheckChapters: [] };
     mockOkJson(payload);

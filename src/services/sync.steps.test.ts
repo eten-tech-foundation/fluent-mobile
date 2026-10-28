@@ -49,6 +49,7 @@ import {
 } from '../db/repository';
 import { getConnectivitySnapshot } from './connectivity';
 import { syncPendingChapterClaims } from './chapterClaimSync';
+import { syncPendingStageAdvances } from './stageAdvanceSync';
 import {
   BIBLE_TEXT_PHASE,
   SYNC_PHASE_FIELDS,
@@ -64,6 +65,14 @@ jest.mock('./chapterClaimSync', () => ({
   reconcilePendingClaimsAfterAssignmentPull: jest
     .fn()
     .mockResolvedValue({ conflicts: 0 }),
+}));
+
+jest.mock('./stageAdvanceSync', () => ({
+  syncPendingStageAdvances: jest.fn().mockResolvedValue({
+    synced: 0,
+    dropped: 0,
+    failed: 0,
+  }),
 }));
 
 jest.mock('./authToken', () => ({
@@ -214,6 +223,7 @@ const clearSyncErrorMock = jest.mocked(clearSyncError);
 const setSyncCountMock = jest.mocked(setSyncCount);
 const getConnectivitySnapshotMock = jest.mocked(getConnectivitySnapshot);
 const syncPendingChapterClaimsMock = jest.mocked(syncPendingChapterClaims);
+const syncPendingStageAdvancesMock = jest.mocked(syncPendingStageAdvances);
 const isBibleTextsServerIdRemapPendingMock = jest.mocked(
   isBibleTextsServerIdRemapPending,
 );
@@ -2274,6 +2284,11 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
       conflicts: 0,
       failed: 0,
     });
+    syncPendingStageAdvancesMock.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+    });
   });
 
   afterEach(() => {
@@ -2296,5 +2311,20 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
     expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
+    expect(syncPendingStageAdvancesMock).toHaveBeenCalledWith(
+      1,
+      'user-1-token',
+    );
+    expect(syncPendingStageAdvancesMock).toHaveBeenCalledWith(
+      2,
+      'user-2-token',
+    );
+    const claimsOrder =
+      syncPendingChapterClaimsMock.mock.invocationCallOrder[0];
+    const assignmentOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
+      .invocationCallOrder[0];
+    const stageOrder = syncPendingStageAdvancesMock.mock.invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(assignmentOrder);
+    expect(assignmentOrder).toBeLessThan(stageOrder);
   });
 });

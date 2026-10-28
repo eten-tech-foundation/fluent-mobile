@@ -1,6 +1,5 @@
 jest.mock('./api', () => ({
   FluentAPI: {
-    checkServerReachable: jest.fn(),
     getChapterAssignment: jest.fn(),
     submitChapterAssignment: jest.fn(),
   },
@@ -8,31 +7,36 @@ jest.mock('./api', () => ({
 
 jest.mock('../db/repository', () => ({
   updateChapterAssignmentStatusLocally: jest.fn(),
+  setChapterAssignmentStatus: jest.fn(),
 }));
 
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
-import { updateChapterAssignmentStatusLocally } from '../db/repository';
+import {
+  setChapterAssignmentStatus,
+  updateChapterAssignmentStatusLocally,
+} from '../db/repository';
 import { confirmStageAdvancement } from './stageAdvance';
 
-const mockReachable = jest.mocked(FluentAPI.checkServerReachable);
 const mockGet = jest.mocked(FluentAPI.getChapterAssignment);
 const mockSubmit = jest.mocked(FluentAPI.submitChapterAssignment);
 const mockLocalUpdate = jest.mocked(updateChapterAssignmentStatusLocally);
+const mockSetStatus = jest.mocked(setChapterAssignmentStatus);
 
 describe('confirmStageAdvancement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     authToken.set('initiating-account');
     mockLocalUpdate.mockResolvedValue(undefined);
-    mockReachable.mockResolvedValue(true);
+    mockSetStatus.mockResolvedValue(undefined);
     mockGet.mockReset();
     mockSubmit.mockResolvedValue({ chapterAssignmentId: 7 });
   });
 
-  it('writes local status then submits when online', async () => {
+  it('writes the local status and does not call the server', async () => {
     await confirmStageAdvancement({
       chapterAssignmentId: 7,
+      userId: 4,
       destination: {
         nextStatus: 'peer_check',
         buttonLabel: 'Send to Peer Check',
@@ -40,13 +44,13 @@ describe('confirmStageAdvancement', () => {
       },
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'peer_check', undefined);
-    expect(mockSubmit).toHaveBeenCalledWith(7);
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'peer_check', undefined, 4);
   });
 
-  it('writes local Peer Checker when assigning on Send to Community Review', async () => {
+  it('writes the local peer checker when sending to Community Review', async () => {
     await confirmStageAdvancement({
       chapterAssignmentId: 7,
+      userId: 4,
       destination: {
         nextStatus: 'community_review',
         buttonLabel: 'Send to Community Review',
@@ -55,49 +59,28 @@ describe('confirmStageAdvancement', () => {
       assignPeerCheckerId: 99,
     });
 
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'community_review', 99);
-    expect(mockSubmit).toHaveBeenCalledWith(7);
+    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'community_review', 99, 4);
   });
 
-  it('skips submit when offline after local write', async () => {
-    mockReachable.mockResolvedValue(false);
-
-    await confirmStageAdvancement({
-      chapterAssignmentId: 7,
-      destination: {
-        nextStatus: 'community_review',
-        buttonLabel: 'Send to Community Review',
-        destinationLabel: 'Community Review',
-      },
-    });
-
-    expect(mockLocalUpdate).toHaveBeenCalledWith(
-      7,
-      'community_review',
-      undefined,
-    );
-    expect(mockSubmit).not.toHaveBeenCalled();
-  });
-
-  it('does not throw when submit fails after local write', async () => {
-    mockSubmit.mockRejectedValue(new Error('network'));
+  it('propagates a local write failure', async () => {
+    mockLocalUpdate.mockRejectedValue(new Error('sqlite'));
 
     await expect(
       confirmStageAdvancement({
         chapterAssignmentId: 7,
+        userId: 4,
         destination: {
           nextStatus: 'peer_check',
           buttonLabel: 'Send to Peer Check',
           destinationLabel: 'Peer Check',
         },
       }),
-    ).resolves.toBeUndefined();
-
-    expect(mockLocalUpdate).toHaveBeenCalled();
+    ).rejects.toThrow('sqlite');
   });
 
   const complete = {
     chapterAssignmentId: 7,
+    userId: 4,
     destination: {
       nextStatus: 'complete' as const,
       buttonLabel: 'Send to Complete',
@@ -130,11 +113,13 @@ describe('confirmStageAdvancement', () => {
     const operation = confirmStageAdvancement(complete);
     await Promise.resolve();
     await Promise.resolve();
+    expect(mockSetStatus).not.toHaveBeenCalled();
     expect(mockLocalUpdate).not.toHaveBeenCalled();
     finish(serverAssignment('complete'));
     await operation;
     expect(mockSubmit).toHaveBeenCalledTimes(1);
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+    expect(mockSetStatus).toHaveBeenCalledWith(7, 'complete');
+    expect(mockLocalUpdate).not.toHaveBeenCalled();
   });
 
   it.each([401, 403, 500])(
@@ -145,6 +130,7 @@ describe('confirmStageAdvancement', () => {
       await expect(confirmStageAdvancement(complete)).rejects.toThrow(
         `HTTP ${status}`,
       );
+      expect(mockSetStatus).not.toHaveBeenCalled();
       expect(mockLocalUpdate).not.toHaveBeenCalled();
     },
   );
@@ -167,12 +153,14 @@ describe('confirmStageAdvancement', () => {
     await expect(confirmStageAdvancement(complete)).rejects.toThrow(
       'not confirmed',
     );
+    expect(mockSetStatus).not.toHaveBeenCalled();
     expect(mockLocalUpdate).not.toHaveBeenCalled();
   });
 
   it('fails offline without persisting a terminal stage', async () => {
     mockGet.mockRejectedValue(new Error('offline'));
     await expect(confirmStageAdvancement(complete)).rejects.toThrow('offline');
+    expect(mockSetStatus).not.toHaveBeenCalled();
     expect(mockLocalUpdate).not.toHaveBeenCalled();
     expect(mockSubmit).not.toHaveBeenCalled();
   });
@@ -184,12 +172,12 @@ describe('confirmStageAdvancement', () => {
     await expect(confirmStageAdvancement(complete)).rejects.toThrow(
       'connection lost',
     );
-    expect(mockLocalUpdate).not.toHaveBeenCalled();
+    expect(mockSetStatus).not.toHaveBeenCalled();
     mockGet.mockResolvedValue(serverAssignment('complete'));
     await confirmStageAdvancement(complete);
     await confirmStageAdvancement(complete);
     expect(mockSubmit).toHaveBeenCalledTimes(1);
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+    expect(mockSetStatus).toHaveBeenCalledWith(7, 'complete');
   });
 
   it('does not advance a stale earlier stage when the server has reverted', async () => {
@@ -198,7 +186,7 @@ describe('confirmStageAdvancement', () => {
       'stage changed',
     );
     expect(mockSubmit).not.toHaveBeenCalled();
-    expect(mockLocalUpdate).not.toHaveBeenCalled();
+    expect(mockSetStatus).not.toHaveBeenCalled();
   });
 
   it('rejects a response for a different assignment', async () => {
@@ -208,7 +196,7 @@ describe('confirmStageAdvancement', () => {
     await expect(confirmStageAdvancement(complete)).rejects.toThrow(
       'not confirmed',
     );
-    expect(mockLocalUpdate).not.toHaveBeenCalled();
+    expect(mockSetStatus).not.toHaveBeenCalled();
   });
 
   it('normalizes casing and whitespace on the pre-write status field', async () => {
@@ -221,7 +209,7 @@ describe('confirmStageAdvancement', () => {
       .mockResolvedValueOnce(serverAssignment('complete'));
     await confirmStageAdvancement(complete);
     expect(mockSubmit).toHaveBeenCalledTimes(1);
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+    expect(mockSetStatus).toHaveBeenCalledWith(7, 'complete');
   });
 
   it('accepts chapterStatus-only payloads for both reads', async () => {
@@ -236,7 +224,7 @@ describe('confirmStageAdvancement', () => {
       );
     await confirmStageAdvancement(complete);
     expect(mockSubmit).toHaveBeenCalledTimes(1);
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+    expect(mockSetStatus).toHaveBeenCalledWith(7, 'complete');
   });
 
   it('prefers chapterStatus over conflicting status on the pre-write read', async () => {
@@ -250,7 +238,7 @@ describe('confirmStageAdvancement', () => {
       .mockResolvedValueOnce(serverAssignment('complete'));
     await confirmStageAdvancement(complete);
     expect(mockSubmit).toHaveBeenCalledTimes(1);
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+    expect(mockSetStatus).toHaveBeenCalledWith(7, 'complete');
   });
 
   it('prefers chapterStatus over conflicting status on Complete readback', async () => {
@@ -264,7 +252,7 @@ describe('confirmStageAdvancement', () => {
       );
     await confirmStageAdvancement(complete);
     expect(mockSubmit).toHaveBeenCalledTimes(1);
-    expect(mockLocalUpdate).toHaveBeenCalledWith(7, 'complete', undefined);
+    expect(mockSetStatus).toHaveBeenCalledWith(7, 'complete');
   });
 
   it('does not treat a padded non-complete readback as Complete', async () => {
@@ -278,6 +266,6 @@ describe('confirmStageAdvancement', () => {
     await expect(confirmStageAdvancement(complete)).rejects.toThrow(
       'not confirmed',
     );
-    expect(mockLocalUpdate).not.toHaveBeenCalled();
+    expect(mockSetStatus).not.toHaveBeenCalled();
   });
 });

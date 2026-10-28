@@ -1,24 +1,26 @@
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import { markChapterCompleteConfirmed } from '../utils/chapterCompletionSyncGuard';
-import { updateChapterAssignmentStatusLocally } from '../db/repository';
-import { logger } from '../utils/logger';
+import {
+  setChapterAssignmentStatus,
+  updateChapterAssignmentStatusLocally,
+} from '../db/repository';
 import type { StageAdvanceDestination } from '../utils/stageAdvancement';
 import { normalizeChapterStatus } from './mapChapterAssignment';
 
-const log = logger.create('stageAdvance');
-
 /**
- * Apply stage advancement locally immediately, then best-effort PATCH submit
- * when the server is reachable. Complete requires server confirmation first.
- * Offline queue persistence for earlier stages is #257.
+ * Apply the stage change locally and enqueue it. Drain sends the PATCH.
+ * Complete is terminal: confirm on the server first, then write locally
+ * without enqueueing (submit already happened or was unnecessary).
  */
 export async function confirmStageAdvancement(params: {
   chapterAssignmentId: number;
   destination: StageAdvanceDestination;
   assignPeerCheckerId?: number;
+  userId: number;
 }): Promise<void> {
-  const { chapterAssignmentId, destination, assignPeerCheckerId } = params;
+  const { chapterAssignmentId, destination, assignPeerCheckerId, userId } =
+    params;
 
   if (destination.nextStatus === 'complete') {
     const token = authToken.get();
@@ -53,11 +55,8 @@ export async function confirmStageAdvancement(params: {
       }
     }
     markChapterCompleteConfirmed(chapterAssignmentId);
-    await updateChapterAssignmentStatusLocally(
-      chapterAssignmentId,
-      destination.nextStatus,
-      assignPeerCheckerId,
-    );
+    // Server already has Complete — write local status without a queue row.
+    await setChapterAssignmentStatus(chapterAssignmentId, 'complete');
     return;
   }
 
@@ -65,22 +64,6 @@ export async function confirmStageAdvancement(params: {
     chapterAssignmentId,
     destination.nextStatus,
     assignPeerCheckerId,
+    userId,
   );
-
-  try {
-    const reachable = await FluentAPI.checkServerReachable();
-    if (!reachable) {
-      log.info('Offline after local stage advance; sync deferred to #257', {
-        chapterAssignmentId,
-        nextStatus: destination.nextStatus,
-      });
-      return;
-    }
-    await FluentAPI.submitChapterAssignment(chapterAssignmentId);
-  } catch (error) {
-    log.warn('Stage submit failed after local update; queue deferred to #257', {
-      chapterAssignmentId,
-      error,
-    });
-  }
 }
