@@ -145,6 +145,10 @@ selection.
 
 ### Phase 5 — Execute and open a PR
 
+Phase 4’s per-change selection is the go-ahead for this phase (apply approved
+edits + chain `/create-pr`). If the user only wanted an audit report, **STOP**
+after Phase 4 — do not branch, push, or open a PR.
+
 1. Create a branch via `/create-pr-branch` or `/start-issue` when the user named
    an issue. If the user **explicitly** approved a **no-ticket chore** this
    session, use `{author}/chore/{slug}` and `Refs: none` — do not invent that

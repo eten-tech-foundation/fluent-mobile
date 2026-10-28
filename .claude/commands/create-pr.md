@@ -68,14 +68,14 @@ npm test -- --ci
 ```
 
 If `$ARGUMENTS` is provided, treat it as a targeted test scope **in addition to**
-the five gates (never skip format/lint/architecture-guard/typecheck). If the full
-test suite looks slow or times out, fall back to a targeted run over the changed
-areas (infer from the diffstat) and clearly note that you did so — still run
-format/lint/architecture-guard/typecheck in full.
+the five gates (never skip any of them, including `npm test -- --ci`).
 
-**Hard gate:** If any of the five commands fail, **STOP**. Fix locally and re-run
-until green (max practical iterations in-session). Do **not** push or open the PR
-while those failures remain.
+**Hard gate:** If any of the five commands fail (including a full-suite timeout),
+**STOP**. Fix locally and re-run until green (max practical iterations
+in-session). Do **not** push or open the PR while those failures remain. Do
+**not** substitute a targeted-only test run for `npm test -- --ci` unless the
+user **explicitly waives** the full suite in-session — document that waiver in
+the PR Testing section.
 
 Also check:
 
