@@ -32,6 +32,7 @@ jest.mock('../utils/logger', () => ({
 
 import {
   chapterHasUnuploadableSelectedTakes,
+  assignmentHasPendingUploads,
   getPendingUploadChapters,
   getPendingUploadCount,
   getUnsyncedRecordingCount,
@@ -150,6 +151,32 @@ describe('pending upload queries (#545)', () => {
     );
     expect(chaptersSql).toContain('d.recorded_by_user_id = ?');
     expect(mockExecute.mock.calls[0]?.[1]).toEqual([7, 7]);
+  });
+
+  it('assignmentHasPendingUploads joins the assignment chapter and treats a hit as pending (#257)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 2 }] });
+
+    await expect(assignmentHasPendingUploads(41863, 7)).resolves.toBe(true);
+
+    const sql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(sql).toContain('JOIN chapter_assignments ca');
+    expect(sql).toContain('ca.id = ?');
+    expect(sql).toContain('FROM recordings r');
+    expect(sql).toContain('FROM recording_deletions d');
+    expect(sql).toContain('r.project_unit_id = ca.project_unit_id');
+    expect(mockExecute.mock.calls[0]?.[1]).toEqual([41863, 7, 41863, 7]);
+  });
+
+  it('assignmentHasPendingUploads is false when the assignment has no upload work', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 0 }] });
+
+    await expect(assignmentHasPendingUploads(1, 7)).resolves.toBe(false);
+  });
+
+  it('assignmentHasPendingUploads fails closed when the query throws', async () => {
+    mockExecute.mockRejectedValue(new Error('db'));
+
+    await expect(assignmentHasPendingUploads(1, 7)).resolves.toBe(true);
   });
 
   it('getPendingUploadChapters only lists chapters with upload-eligible verse or pericope takes', async () => {

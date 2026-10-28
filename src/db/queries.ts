@@ -100,6 +100,21 @@ const RECORDING_AGGREGATES = `
   END) AS pending_count,
   MAX(CASE WHEN r.is_selected = 1 THEN r.updated_at END) AS last_recording_activity`;
 
+/** 1 when this user still has a stage change waiting to sync (#257). */
+const PENDING_STAGE_ADVANCE_SELECT = `
+  EXISTS (
+    SELECT 1 FROM stage_advance_queue saq
+    WHERE saq.chapter_assignment_id = ca.id
+      AND saq.user_id = ?
+      AND saq.sync_status = 'pending'
+  ) AS has_pending_stage_advance`;
+
+function isPendingStageAdvanceFlag(
+  value: number | boolean | null | undefined,
+): boolean {
+  return value === true || Number(value) === 1;
+}
+
 function isUserRow(row: unknown): row is DBTypes.UserRow {
   if (!row || typeof row !== 'object') return false;
 
@@ -635,7 +650,8 @@ function mapChapterRowCore(
     | 'assigned_user_id'
     | 'peer_checker_id'
     | 'has_conflict'
-  >,
+  > &
+    Pick<DBTypes.MyWorkChapterRow, 'has_pending_stage_advance'>,
   currentUserId: number,
 ) {
   const recordingCount = Number(row.recording_count) || 0;
@@ -647,7 +663,11 @@ function mapChapterRowCore(
     displayLabel: `${row.book_name} ${row.chapter_number}`,
     bookName: row.book_name,
     chapterNumber: row.chapter_number,
-    syncState: deriveChapterSyncState(recordingCount, pendingCount),
+    syncState: deriveChapterSyncState(
+      recordingCount,
+      pendingCount,
+      isPendingStageAdvanceFlag(row.has_pending_stage_advance),
+    ),
     ownershipState: deriveChapterOwnershipState(
       resolveStageAssigneeId(
         row.status,
@@ -691,6 +711,9 @@ function mapMyWorkChapterRow(
       ? peerCheckerId
       : null;
 
+  const pendingStageAdvance = isPendingStageAdvanceFlag(
+    row.has_pending_stage_advance,
+  );
   const listAccess = classifyMyWorkListAccess({
     userId: currentUserId,
     assignmentStatus: row.status,
@@ -699,6 +722,7 @@ function mapMyWorkChapterRow(
     projectId: safeProjectId,
     grantProjectIds,
     translatorProjectIds,
+    hasPendingStageAdvance: pendingStageAdvance,
   });
   if (listAccess === null) {
     return null;
@@ -718,6 +742,7 @@ function mapMyWorkChapterRow(
     assignedUserId: safeAssignedUserId,
     peerCheckerId: safePeerCheckerId,
     listAccess,
+    hasPendingStageAdvance: pendingStageAdvance,
   };
 }
 
@@ -824,6 +849,7 @@ export async function getMyWorkChapters(
         p.name AS project_name,
         tl.lang_name AS target_language_name,
         ${RECORDING_AGGREGATES},
+        ${PENDING_STAGE_ADVANCE_SELECT},
         (
           SELECT COUNT(*)
           FROM bible_texts bt
@@ -841,7 +867,7 @@ export async function getMyWorkChapters(
       WHERE ${filter.whereSql}
       GROUP BY ca.id
       ORDER BY b.id, ca.chapter_number`,
-      [userId, ...filter.params],
+      [userId, userId, ...filter.params],
     );
 
     const rows = (result?.rows as unknown as DBTypes.MyWorkChapterRow[]) || [];
@@ -1192,6 +1218,54 @@ export async function getPendingUploadChapters(): Promise<
   } catch (error) {
     log.error('Error fetching pending upload chapters', { error });
     return [];
+  }
+}
+
+/**
+ * True when this assignment still has takes or take-deletes the upload
+ * worker will send. Drain must not PATCH Peer Check until this is false —
+ * the verse-audio API 404s once the chapter has left draft (#257).
+ * Query errors fail closed so a PATCH cannot race a stuck read.
+ */
+export async function assignmentHasPendingUploads(
+  chapterAssignmentId: number,
+  userId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT (
+         SELECT COUNT(*)
+         FROM recordings r
+         JOIN bible_texts bt ON bt.id = r.bible_text_id
+         JOIN chapter_assignments ca
+           ON ca.bible_id = bt.bible_id
+          AND ca.book_id = bt.book_id
+          AND ca.chapter_number = bt.chapter_number
+          AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)
+         WHERE ca.id = ?
+           AND ${uploadablePendingWhere(userId)}
+       ) + (
+         SELECT COUNT(*)
+         FROM recording_deletions d
+         JOIN bible_texts bt ON bt.id = d.bible_text_id
+         JOIN chapter_assignments ca
+           ON ca.bible_id = bt.bible_id
+          AND ca.book_id = bt.book_id
+          AND ca.chapter_number = bt.chapter_number
+          AND d.project_unit_id = ca.project_unit_id
+         WHERE ca.id = ?
+           AND ${pendingDeletionWhere(userId)}
+       ) AS count`,
+      [chapterAssignmentId, userId, chapterAssignmentId, userId],
+    );
+    return Number(result.rows?.[0]?.count ?? 0) > 0;
+  } catch (error) {
+    log.error('Error checking assignment pending uploads', {
+      chapterAssignmentId,
+      error,
+    });
+    return true;
   }
 }
 

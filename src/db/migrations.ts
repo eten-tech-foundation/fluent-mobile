@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 22;
+export const CURRENT_SCHEMA_VERSION = 23;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -339,6 +339,27 @@ async function scopeDownloadQueueActiveResourceIndex(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_dq_active_resource
      ON download_queue(user_id, project_id, kind, resource_name)
      WHERE status != 'completed'`,
+  );
+}
+
+async function applyStageAdvanceQueueTable(db: SqlExecutor): Promise<void> {
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS stage_advance_queue (
+      id                    INTEGER PRIMARY KEY,
+      chapter_assignment_id INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,
+      user_id               INTEGER NOT NULL REFERENCES users(id),
+      from_status           TEXT NOT NULL,
+      to_status             TEXT NOT NULL,
+      peer_checker_id       INTEGER,
+      created_at            TEXT NOT NULL,
+      sync_status           TEXT NOT NULL DEFAULT 'pending'
+    )`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_saq_chapter_assignment ON stage_advance_queue(chapter_assignment_id)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_saq_status ON stage_advance_queue(sync_status)`,
   );
 }
 
@@ -704,6 +725,11 @@ export const migrations: Migration[] = [
     version: 22,
     name: 'download_queue_reference_images_kind',
     up: backfillDownloadQueueReferenceImagesKind,
+  },
+  {
+    version: 23,
+    name: 'stage_advance_queue_table',
+    up: applyStageAdvanceQueueTable,
   },
 ];
 

@@ -42,6 +42,7 @@ import {
   syncPendingChapterClaims,
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
+import { syncPendingStageAdvances } from './stageAdvanceSync';
 import {
   persistOrgGrantsFromUserResponse,
   refreshUserOrgGrants,
@@ -714,6 +715,30 @@ export async function syncPendingChapterClaimsForUser(userId: number) {
         failed: 1,
       }
     );
+  }
+}
+
+export async function syncPendingStageAdvancesForUser(
+  userId: number,
+  token?: string,
+) {
+  const { isOnline } = await getConnectivitySnapshot();
+  if (!isOnline) {
+    return { synced: 0, dropped: 0, failed: 0 };
+  }
+
+  try {
+    return await syncPendingStageAdvances(userId, token);
+  } catch (error) {
+    if (isAuthError(error)) {
+      await handleSyncAuthFailure(String(userId));
+      throw error;
+    }
+    log.warn('Stage-advance sync failed; leaving rows pending', {
+      userId,
+      error: getErrorMessage(error),
+    });
+    return { synced: 0, dropped: 0, failed: 1 };
   }
 }
 
@@ -1669,6 +1694,10 @@ export async function syncAllUsers(): Promise<void> {
                 assignmentCursor,
                 token,
               );
+            // Drain after the pull so keep-lower writes are not overwritten
+            // once the pending-row upsert freeze is gone. Rows with pending
+            // takes stay queued until those uploads finish (#257).
+            await syncPendingStageAdvancesForUser(userIdNum, token);
             if (didFullSync) {
               anyUserDidFullAssignmentSync = true;
             }
@@ -1974,6 +2003,8 @@ export async function syncAllData(
           });
         }
 
+        await syncPendingStageAdvancesForUser(userId, sessionToken);
+
         const now = new Date().toISOString();
         setLastSyncedAt(now);
         setLastAssignmentSyncAt(now);
@@ -2107,6 +2138,7 @@ export async function refreshChapterMetadataIfOnline(
         cursor,
         sessionToken,
       );
+      await syncPendingStageAdvancesForUser(userId, sessionToken);
       if (syncedAt) {
         setUserLastSyncedAt(userIdStr, syncedAt);
       }
