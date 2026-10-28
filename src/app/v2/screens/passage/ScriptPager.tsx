@@ -157,7 +157,7 @@ export function ScriptPager({
             <Text style={styles.note}>
               {downloadState === 'failed'
                 ? "The text didn't download. Check your connection and try again."
-                : 'The text for this passage isn’t on this phone yet.'}
+                : 'The text isn’t on this phone yet.'}
             </Text>
           )}
         </ScrollView>

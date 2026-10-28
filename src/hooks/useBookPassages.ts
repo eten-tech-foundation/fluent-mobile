@@ -46,7 +46,12 @@ export interface BookPassage {
 
 export type BookPassages =
   | { status: 'loading' }
-  | { status: 'ready'; byChapter: Map<number, BookPassage[]> };
+  | {
+      status: 'ready';
+      byChapter: Map<number, BookPassage[]>;
+      /** Some of it is pericopes; otherwise each chapter is recorded whole. */
+      pericopes: boolean;
+    };
 
 export function coverVerses(
   verses: BibleUnitVerse[],
@@ -74,13 +79,19 @@ function recordedStatusOf(
   return recordedVerses >= totalVerses ? 'recorded' : 'partial';
 }
 
+const WHOLE_CHAPTER_KEY = 'chapter:';
+
+function isWholeChapter(passage: BookPassage): boolean {
+  return passage.key.startsWith(WHOLE_CHAPTER_KEY);
+}
+
 /** A chapter with no pericopes is one passage, tracked by verse counts. */
 function wholeChapter(chapter: ProjectChapter): BookPassage {
   const recordedVerses = isPastDraft(chapter.workflowStage)
     ? chapter.totalVerses
     : chapter.completedVerses;
   return {
-    key: `chapter:${chapter.id}`,
+    key: `${WHOLE_CHAPTER_KEY}${chapter.id}`,
     title: null,
     reference: chapter.displayLabel,
     verses:
@@ -208,10 +219,13 @@ export function useBookPassages(
           ),
         ),
       );
-      return new Map(chapters.map((c, i) => [c.id, lists[i] ?? []]));
+      return {
+        byChapter: new Map(chapters.map((c, i) => [c.id, lists[i] ?? []])),
+        pericopes: lists.some(list => list.some(p => !isWholeChapter(p))),
+      };
     })()
-      .then(byChapter => {
-        if (!cancelled) setPassages({ status: 'ready', byChapter });
+      .then(loaded => {
+        if (!cancelled) setPassages({ status: 'ready', ...loaded });
       })
       .catch(error => {
         log.error('Failed to load book passages', { error });
@@ -219,6 +233,7 @@ export function useBookPassages(
           setPassages({
             status: 'ready',
             byChapter: new Map(chapters.map(c => [c.id, [wholeChapter(c)]])),
+            pericopes: false,
           });
         }
       });

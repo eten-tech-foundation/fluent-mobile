@@ -112,6 +112,7 @@ describe('useBookPassages', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
+    expect(result.current.pericopes).toBe(true);
     expect(result.current.byChapter.get(1)).toEqual([
       expect.objectContaining({
         title: 'The Plot to Kill Jesus',
@@ -282,6 +283,7 @@ describe('useBookPassages', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
+    expect(result.current.pericopes).toBe(false);
     expect(result.current.byChapter.get(1)).toEqual([
       expect.objectContaining({
         title: null,
@@ -299,6 +301,17 @@ describe('useBookPassages', () => {
     expect(mockPericopes).not.toHaveBeenCalled();
   });
 
+  it('says it has no pericopes when the set has none for the book', async () => {
+    mockPericopes.mockResolvedValue([]);
+    const chapters = [chapter(1, 14), chapter(2, 15)];
+
+    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    if (result.current.status !== 'ready') return;
+    expect(result.current.pericopes).toBe(false);
+  });
+
   it('falls back to whole chapters when loading fails', async () => {
     mockSetId.mockRejectedValue(new Error('db'));
     const chapters = [chapter(1, 14)];
@@ -307,6 +320,7 @@ describe('useBookPassages', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
+    expect(result.current.pericopes).toBe(false);
     expect(result.current.byChapter.get(1)).toEqual([
       expect.objectContaining({ key: 'chapter:1', reference: 'Mark 14' }),
     ]);

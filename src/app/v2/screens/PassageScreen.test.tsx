@@ -257,10 +257,19 @@ describe('PassageScreen', () => {
     mockPassage = { ...ready, downloaded: false, verses: [] };
 
     render(<PassageScreen />);
+    expect(screen.getByText('The text isn’t on this phone yet.')).toBeTruthy();
     fireEvent.press(screen.getByTestId('passage-download'));
 
     expect(mockDownload).toHaveBeenCalled();
     expect(screen.queryByTestId('passage-script', hidden)).toBeNull();
+  });
+
+  it("says when it can't be found", () => {
+    mockPassage = { status: 'missing' };
+
+    render(<PassageScreen />);
+
+    expect(screen.getByText("This couldn't be found.")).toBeTruthy();
   });
 
   it('records a take after the mic check, from the Record key', async () => {

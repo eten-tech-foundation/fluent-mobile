@@ -70,7 +70,7 @@ export default function PassageScreen() {
   if (passage.status === 'missing') {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <Text style={styles.message}>This passage couldn't be found.</Text>
+        <Text style={styles.message}>This couldn't be found.</Text>
       </View>
     );
   }

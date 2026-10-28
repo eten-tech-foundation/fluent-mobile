@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   FlatList,
   Pressable,
@@ -21,15 +21,22 @@ import { useGlobalSyncStatus } from '../../../hooks/useGlobalSyncStatus';
 import { useMilestoneChapters } from '../../../hooks/useMilestoneChapters';
 import { hrefs } from '../../../navigation/hrefs';
 import {
+  parseOptionalNumber,
   parseRequiredNumber,
   parseRequiredString,
 } from '../../../navigation/routeParams';
 import { useTheme, useThemedStyles } from '../../../theme/useTheme';
 import type { ProjectChapter } from '../../../types/db/types';
 
+/** Lets a chapter past the first render window lay out before the retry. */
+const SCROLL_RETRY_MS = 100;
+/** Each miss measures more rows, so a far chapter can take a few tries. */
+const SCROLL_RETRIES = 3;
+
 /**
  * Next book page, in place of Legacy's chapter list: the milestone's
  * passages as a gallery grouped by chapter. A passage opens its passage page.
+ * Opens scrolled to `focusChapterId` when given.
  */
 export default function BookScreen() {
   const router = useRouter();
@@ -41,6 +48,7 @@ export default function BookScreen() {
     projectName?: string;
     milestoneName?: string;
     language?: string;
+    focusChapterId?: string;
   }>();
   const projectId = parseRequiredNumber(rawParams.projectId, 'projectId');
   const projectUnitId = parseRequiredNumber(
@@ -53,6 +61,7 @@ export default function BookScreen() {
     'milestoneName',
   );
   const language = parseRequiredString(rawParams.language, 'language');
+  const focusChapterId = parseOptionalNumber(rawParams.focusChapterId);
   const {
     chapters,
     loading,
@@ -65,6 +74,58 @@ export default function BookScreen() {
   } = useMilestoneChapters(projectUnitId, projectId);
   useGlobalSyncStatus(reload);
   const passages = useBookPassages(chapters, projectId, projectUnitId);
+  const listRef = useRef<FlatList<ProjectChapter>>(null);
+  const focusedRef = useRef(false);
+  const retriesRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusIndex =
+    focusChapterId === undefined
+      ? -1
+      : chapters.findIndex(c => c.id === focusChapterId);
+  // Passages settle 'ready' and empty before the chapters arrive, so wait for
+  // this chapter's own covers; scrolling earlier uses rows without them.
+  const focusReady =
+    passages.status === 'ready' &&
+    focusChapterId !== undefined &&
+    passages.byChapter.has(focusChapterId);
+
+  // Once; a later reload or focus refresh must not scroll the list back. The
+  // first chapter stays put so the milestone header above it shows.
+  useEffect(() => {
+    if (focusedRef.current || focusIndex < 1 || !focusReady) return;
+    focusedRef.current = true;
+    listRef.current?.scrollToIndex({
+      index: focusIndex,
+      viewPosition: 0,
+      animated: false,
+    });
+  }, [focusIndex, focusReady]);
+
+  useEffect(
+    () => () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    },
+    [],
+  );
+
+  const scrollToIndexFailed = useCallback(
+    (info: { index: number; averageItemLength: number }) => {
+      listRef.current?.scrollToOffset({
+        offset: info.averageItemLength * info.index,
+        animated: false,
+      });
+      if (retriesRef.current >= SCROLL_RETRIES) return;
+      retriesRef.current += 1;
+      retryTimerRef.current = setTimeout(() => {
+        listRef.current?.scrollToIndex({
+          index: info.index,
+          viewPosition: 0,
+          animated: false,
+        });
+      }, SCROLL_RETRY_MS);
+    },
+    [],
+  );
 
   const styles = useThemedStyles(t => ({
     screen: { flex: 1, backgroundColor: t.roles.bgDefault },
@@ -107,13 +168,18 @@ export default function BookScreen() {
   const singleBook = books.size === 1 ? chapters[0]?.bookName : undefined;
   const title = singleBook ?? milestoneName;
   const byChapter =
-    passages.status === 'ready' ? passages.byChapter : new Map();
-  // A passage that crosses chapters shows under both; count it once.
-  const all: BookPassage[] = Array.from(
+    passages.status === 'ready'
+      ? passages.byChapter
+      : new Map<number, BookPassage[]>();
+  // A passage that crosses chapters shows under both; count it once. Pericope
+  // numbers restart in each book, so the key alone isn't unique.
+  const all = Array.from(
     new Map(
-      Array.from(byChapter.values())
-        .flat()
-        .map((p: BookPassage) => [p.key, p]),
+      chapters.flatMap(c =>
+        (byChapter.get(c.id) ?? []).map(
+          p => [`${c.bookName}:${p.key}`, p] as const,
+        ),
+      ),
     ).values(),
   );
   const recordedCount = all.filter(p => p.recordedStatus === 'recorded').length;
@@ -184,7 +250,9 @@ export default function BookScreen() {
   );
 
   let body: React.ReactNode;
-  if (loading) {
+  // The hook reloads on every focus; keep the list mounted so coming back
+  // from a passage keeps the scroll position.
+  if (loading && chapters.length === 0) {
     body = <LoadingSpinner />;
   } else if (error || removedFromProject) {
     body = (
@@ -214,7 +282,9 @@ export default function BookScreen() {
   } else {
     body = (
       <FlatList
+        ref={listRef}
         data={chapters}
+        onScrollToIndexFailed={scrollToIndexFailed}
         keyExtractor={item => String(item.id)}
         renderItem={renderChapter}
         refreshing={refreshing}
@@ -232,7 +302,8 @@ export default function BookScreen() {
             </Text>
             {passages.status === 'ready' ? (
               <Text style={styles.meta} testID="book-progress">
-                {recordedCount} of {all.length} passages recorded
+                {recordedCount} of {all.length}{' '}
+                {passages.pericopes ? 'pericopes' : 'chapters'} recorded
               </Text>
             ) : null}
           </View>

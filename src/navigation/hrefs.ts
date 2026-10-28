@@ -50,6 +50,8 @@ export const hrefs = {
     projectName: string;
     milestoneName: string;
     language: string;
+    /** Next's book page opens scrolled to this chapter; Legacy ignores it. */
+    focusChapterId?: number;
   }) =>
     ({
       pathname: '/(app)/(stack)/chapters' as const,
@@ -59,6 +61,9 @@ export const hrefs = {
         projectName: params.projectName,
         milestoneName: params.milestoneName,
         language: params.language,
+        ...(params.focusChapterId !== undefined
+          ? { focusChapterId: String(params.focusChapterId) }
+          : {}),
       },
     } as const),
   verseDetail: (params: {
