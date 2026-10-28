@@ -684,7 +684,7 @@ describe('uploadOrchestrator', () => {
     );
   });
 
-  it('still uploads when stage-advance drain rejects (#257)', async () => {
+  it('uploads takes, then skips complete and schedules a retry when the stage drain rejects (#257)', async () => {
     const pushPendingStageAdvancesAfterUpload = jest
       .fn()
       .mockRejectedValue(new Error('stage network'));
@@ -696,6 +696,12 @@ describe('uploadOrchestrator', () => {
     await h.waitFor(() => h.uploaded.length === 1);
     expect(pushPendingStageAdvancesAfterUpload).toHaveBeenCalledTimes(1);
     expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 2 }]);
+    // Takes uploaded, but the failed stage drain skips `complete` and retries.
+    await h.flush();
+    expect(h.events.some(event => event.type === 'complete')).toBe(false);
+    expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
   });
 
   it('drains stage advances on reconnect when no takes are pending (#257)', async () => {

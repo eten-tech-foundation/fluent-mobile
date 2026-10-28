@@ -77,8 +77,8 @@ export type UploadOrchestratorDeps = {
   /**
    * Push queued stage advances after takes finish (#257). Peer Check PATCH
    * before verse-audio upload 404s ("Verse audio recording not found").
-   * Soft-fail when takes ran: a failed drain must not fail the upload session.
-   * Stage-only sessions (no takes) let drain failure retry the session.
+   * A rejection (including a drain that left rows pending) fails the session:
+   * no `complete`, and the bounded retry re-drains the stage-only remainder.
    */
   pushPendingStageAdvancesAfterUpload?: () => Promise<void>;
   /**
@@ -505,16 +505,12 @@ export function createUploadOrchestrator(
               if (abort.signal.aborted) {
                 return;
               }
-              if (stageOnly) {
-                throw error;
-              }
-              log.warn(
-                'Pending stage-advance push after upload failed; continuing',
-                {
-                  reason,
-                  error,
-                },
-              );
+              // Takes are already uploaded; surface the failure so the session
+              // does not emit `complete` and the bounded retry re-drains the
+              // stage (#257). Retry sessions run stage-only. My Work stays
+              // yellow meanwhile (the row is held by the pending stage), so
+              // skipping the refresh here is intentional.
+              throw error;
             }
           }
           if (!abort.signal.aborted) {
