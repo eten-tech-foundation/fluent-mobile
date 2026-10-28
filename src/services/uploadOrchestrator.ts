@@ -1,4 +1,5 @@
 import { getPendingUploadChapters } from '../db/queries';
+import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   getConnectivitySnapshot,
   subscribeToConnectivity,
@@ -53,6 +54,24 @@ async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
   }
   const creds = await getCredentials(String(userId));
   await syncPendingStageAdvancesForUser(userId, creds?.token);
+}
+
+async function hasPendingStageAdvances(): Promise<boolean> {
+  const activeUserId = getActiveUserId();
+  const userId = Number(activeUserId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return false;
+  }
+  try {
+    const pending = await getPendingStageAdvances();
+    return pending.some(row => row.userId === userId);
+  } catch (error) {
+    log.warn(
+      'Could not check pending stage advances; attempting drain on reconnect',
+      { error },
+    );
+    return true;
+  }
 }
 
 export {
@@ -126,6 +145,7 @@ export function startUploadOrchestrator(
         : chapterUploadWorker,
     pushPendingClaimsBeforeUpload,
     pushPendingStageAdvancesAfterUpload,
+    hasPendingStageAdvances,
     ...restOverrides,
   };
 

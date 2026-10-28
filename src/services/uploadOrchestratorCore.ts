@@ -77,9 +77,15 @@ export type UploadOrchestratorDeps = {
   /**
    * Push queued stage advances after takes finish (#257). Peer Check PATCH
    * before verse-audio upload 404s ("Verse audio recording not found").
-   * Soft-fail: a failed drain must not fail the upload session.
+   * Soft-fail when takes ran: a failed drain must not fail the upload session.
+   * Stage-only sessions (no takes) let drain failure retry the session.
    */
   pushPendingStageAdvancesAfterUpload?: () => Promise<void>;
+  /**
+   * True when the active user has a pending stage-advance row. Reconnect with
+   * no takes still drains those rows (#257 Sync on Reconnect).
+   */
+  hasPendingStageAdvances?: () => Promise<boolean>;
 };
 
 export type UploadOrchestratorSnapshot = {
@@ -342,7 +348,12 @@ export function createUploadOrchestrator(
         return;
       }
 
-      const chapters = await deps.getPendingUploadChapters();
+      const [chapters, hasStageWork] = await Promise.all([
+        deps.getPendingUploadChapters(),
+        deps.hasPendingStageAdvances
+          ? deps.hasPendingStageAdvances()
+          : Promise.resolve(false),
+      ]);
       if (!started || version !== lifecycleVersion) return;
       // Controls and connectivity may change while the queue read is pending,
       // before there is an AbortController for pause/cancel/offline to abort.
@@ -372,7 +383,8 @@ export function createUploadOrchestrator(
         }
         return;
       }
-      if (chapters.length === 0) {
+      const stageOnly = chapters.length === 0;
+      if (stageOnly && !hasStageWork) {
         phase = 'idle';
         clearSessionCounts();
         deps.emit({ type: 'idle' });
@@ -387,31 +399,38 @@ export function createUploadOrchestrator(
       // `offline` while keeping sessionKeys — resume that too so progress is
       // not reset to zero (#600). Lock syncing before the claim push so Cancel
       // cannot start a second session (#611).
-      const resumePausedSession =
-        (phase === 'paused' || phase === 'offline') && sessionKeys.size > 0;
-      if (resumePausedSession) {
-        applyPendingChapters(chapters);
+      if (stageOnly) {
+        // No take progress to show; HomeScreen refreshes on `complete` after
+        // the drain so a mounted My Work list can drop the yellow row (#257).
         phase = 'syncing';
-        deps.emit({
-          type: 'progress',
-          completedChapters,
-          totalChapters,
-        });
-        log.info('Upload session resumed', {
-          reason,
-          completedChapters,
-          totalChapters,
-        });
+        log.info('Upload session draining stage advances', { reason });
       } else {
-        sessionKeys = new Set();
-        completedChapters = 0;
-        applyPendingChapters(chapters);
-        phase = 'syncing';
-        deps.emit({ type: 'start', totalChapters });
-        log.info('Upload session started', {
-          reason,
-          totalChapters,
-        });
+        const resumePausedSession =
+          (phase === 'paused' || phase === 'offline') && sessionKeys.size > 0;
+        if (resumePausedSession) {
+          applyPendingChapters(chapters);
+          phase = 'syncing';
+          deps.emit({
+            type: 'progress',
+            completedChapters,
+            totalChapters,
+          });
+          log.info('Upload session resumed', {
+            reason,
+            completedChapters,
+            totalChapters,
+          });
+        } else {
+          sessionKeys = new Set();
+          completedChapters = 0;
+          applyPendingChapters(chapters);
+          phase = 'syncing';
+          deps.emit({ type: 'start', totalChapters });
+          log.info('Upload session started', {
+            reason,
+            totalChapters,
+          });
+        }
       }
 
       const work = (async () => {
@@ -485,6 +504,9 @@ export function createUploadOrchestrator(
             } catch (error) {
               if (abort.signal.aborted) {
                 return;
+              }
+              if (stageOnly) {
+                throw error;
               }
               log.warn(
                 'Pending stage-advance push after upload failed; continuing',
