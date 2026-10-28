@@ -123,12 +123,15 @@ export function PassageCover({
 type PassageFaceProps = CoverArtProps & {
   eyebrow: string;
   verses: string;
+  style?: StyleProp<ViewStyle>;
   testID?: string;
 };
 
-function PassageCoverFace({
+/** Just the cover, for layouts that set the title and status beside it. */
+export function PassageCoverFace({
   eyebrow,
   verses,
+  style,
   testID,
   ...art
 }: PassageFaceProps) {
@@ -144,6 +147,7 @@ function PassageCoverFace({
       progress={art.peerChecked ? 1 : recorded}
       coverStyle={art.coverStyle}
       badge={BADGES[passageStatus(art)]}
+      style={style}
       testID={testID}
     />
   );

@@ -14,7 +14,10 @@ const baseChapter: MyWorkChapter = {
   downloadedVerses: 5,
   hasConflict: false,
   lastActivityLabel: 'Jun 1, 2024',
+  projectId: 1,
+  projectUnitId: 1,
   projectName: 'Gospel of Luke',
+  milestoneName: 'Phase 1',
   targetLanguageName: 'Baka',
 };
 

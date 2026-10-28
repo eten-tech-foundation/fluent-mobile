@@ -1,5 +1,9 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import { coverVerses, useBookPassages } from './useBookPassages';
+import {
+  coverVerses,
+  loadChapterPassages,
+  useBookPassages,
+} from './useBookPassages';
 import { getProjectPericopeSetId } from '../db/repository';
 import {
   getChapterAssignmentById,
@@ -61,6 +65,45 @@ describe('coverVerses', () => {
       '1:30–2:3',
     );
     expect(coverVerses(verses(1, 30, 31), 2)).toBe('1:30–31');
+  });
+});
+
+describe('loadChapterPassages', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAssignment.mockResolvedValue({
+      id: 1,
+      bibleId: 1,
+      bookId: 41,
+      chapterNumber: 14,
+    });
+    mockPericopes.mockResolvedValue([
+      {
+        pericopeNumber: '9',
+        pericopeTitle: null,
+        section: null,
+        verses: [...verses(14, 72, 72), ...verses(15, 1, 5)],
+      },
+    ]);
+  });
+
+  it("gives the chapters a passage crosses into this one's stage without stageOf", async () => {
+    const coveragesFor = jest.fn().mockResolvedValue([]);
+
+    const passages = await loadChapterPassages(
+      chapter(1, 14, { workflowStage: 'peer_check' }),
+      7,
+      coveragesFor,
+    );
+
+    expect(passages).toEqual([
+      expect.objectContaining({
+        recordedStatus: 'recorded',
+        recordedVerses: 6,
+        submitted: true,
+        peerChecked: false,
+      }),
+    ]);
   });
 });
 

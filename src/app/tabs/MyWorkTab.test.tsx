@@ -68,7 +68,10 @@ const sampleChapter: MyWorkChapter = {
   downloadedVerses: 5,
   hasConflict: false,
   lastActivityLabel: 'Jun 1, 2024',
+  projectId: 1,
+  projectUnitId: 1,
   projectName: 'Gospel of Luke',
+  milestoneName: 'Phase 1',
   targetLanguageName: 'Baka',
 };
 
@@ -84,7 +87,10 @@ const notStartedChapter: MyWorkChapter = {
   totalVerses: 5,
   downloadedVerses: 0,
   hasConflict: false,
+  projectId: 1,
+  projectUnitId: 1,
   projectName: 'Gospel of Luke',
+  milestoneName: 'Phase 1',
   targetLanguageName: 'Baka',
 };
 

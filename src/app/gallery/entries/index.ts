@@ -1,4 +1,5 @@
 import type React from 'react';
+import { AttentionCardEntry } from './AttentionCardEntry';
 import { BannerEntry } from './BannerEntry';
 import { BottomSheetEntry } from './BottomSheetEntry';
 import { HardwarePanelEntry } from './HardwarePanelEntry';
@@ -107,5 +108,12 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Bottom sheet · List row',
     modes: 'Hardware (Home)',
     Component: BottomSheetEntry,
+  },
+  {
+    // No Figma component yet: modeled on desktop's Community notes card.
+    id: 'attention-card',
+    name: 'Attention card',
+    modes: 'Hardware (Home)',
+    Component: AttentionCardEntry,
   },
 ];

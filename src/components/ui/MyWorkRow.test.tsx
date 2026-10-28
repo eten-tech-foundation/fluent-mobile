@@ -47,7 +47,10 @@ const baseChapter: MyWorkChapter = {
   downloadedVerses: 10,
   hasConflict: false,
   lastActivityLabel: 'Yesterday',
+  projectId: 1,
+  projectUnitId: 1,
   projectName: 'Demo',
+  milestoneName: 'Phase 1',
   targetLanguageName: 'English',
 };
 

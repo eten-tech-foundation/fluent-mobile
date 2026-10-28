@@ -13,7 +13,12 @@ import {
   getMyWorkChapterQueryParams,
   MY_WORK_CHAPTER_WHERE,
 } from '../utils/myWorkChapterFilter';
-import { getBadgeStage, getWorkflowStage } from '../utils/workflowStage';
+import {
+  getBadgeStage,
+  getWorkflowStage,
+  isPastDraft,
+  isPastPeerCheck,
+} from '../utils/workflowStage';
 import {
   deriveChapterOwnershipState,
   resolveStageAssigneeId,
@@ -671,7 +676,10 @@ function mapMyWorkChapterRow(
   return {
     ...mapChapterRowCore(row, currentUserId),
     workflowStage: getBadgeStage(row.status),
+    projectId: row.project_id,
+    projectUnitId: row.project_unit_id,
     projectName: row.project_name,
+    milestoneName: row.milestone_name,
     targetLanguageName: row.target_language_name,
   };
 }
@@ -753,7 +761,10 @@ export async function getMyWorkChapters(
         ca.assigned_user_id,
         ca.peer_checker_id,
         b.eng_display_name AS book_name,
+        pu.project_id,
+        ca.project_unit_id,
         p.name AS project_name,
+        COALESCE(NULLIF(pu.name, ''), p.name, 'Milestone ' || pu.id) AS milestone_name,
         tl.lang_name AS target_language_name,
         ${RECORDING_AGGREGATES},
         (
@@ -783,6 +794,123 @@ export async function getMyWorkChapters(
     return chapters;
   } catch (error) {
     log.error('Error fetching my work chapters', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
+}
+
+type HomeBookChapterRow = {
+  id: number;
+  status: string;
+  assigned_user_id: number | null;
+  peer_checker_id: number | null;
+  book_id: number;
+  book_name: string;
+  project_unit_id: number;
+  project_id: number;
+  project_name: string;
+  milestone_name: string;
+  target_language_name: string;
+};
+
+type ChapterTurn = 'mine' | 'withOthers' | 'open' | 'complete';
+
+function chapterTurn(row: HomeBookChapterRow, userId: number): ChapterTurn {
+  const stage = getWorkflowStage(row.status);
+  if (stage === 'complete') return 'complete';
+  if (stage !== 'not_started' && stage !== 'draft' && stage !== 'peer_check') {
+    return 'withOthers';
+  }
+  const assignee = resolveStageAssigneeId(
+    row.status,
+    row.assigned_user_id,
+    row.peer_checker_id,
+  );
+  if (assignee === userId) return 'mine';
+  if (assignee === null || assignee === undefined) {
+    // An unassigned peer check waits on the project manager, not a claim.
+    return stage === 'peer_check' ? 'withOthers' : 'open';
+  }
+  return 'withOthers';
+}
+
+/**
+ * Next Home's books: every chapter in the milestones I belong to, as one row
+ * per book and milestone, counted by whose turn it is. Books with my
+ * chapters come first, then canonical book order.
+ */
+export async function getHomeBookSummaries(
+  userId: number,
+): Promise<DBTypes.HomeBookSummary[]> {
+  try {
+    await ensureUserProjectMembership(userId);
+    const db = getDatabase();
+    const result = await db.execute(
+      `SELECT
+        ca.id,
+        ca.status,
+        ca.assigned_user_id,
+        ca.peer_checker_id,
+        ca.book_id,
+        b.eng_display_name AS book_name,
+        pu.id AS project_unit_id,
+        pu.project_id,
+        p.name AS project_name,
+        COALESCE(NULLIF(pu.name, ''), p.name, 'Milestone ' || pu.id) AS milestone_name,
+        tl.lang_name AS target_language_name
+      FROM chapter_assignments ca
+      JOIN books b ON ca.book_id = b.id
+      JOIN project_units pu ON ca.project_unit_id = pu.id
+      JOIN projects p ON pu.project_id = p.id
+      JOIN user_projects up ON up.project_id = pu.project_id
+      LEFT JOIN languages tl ON p.target_language_id = tl.id
+      WHERE up.user_id = ?
+      ORDER BY b.id, pu.id, ca.chapter_number`,
+      [userId],
+    );
+
+    const rows = (result?.rows as unknown as HomeBookChapterRow[]) || [];
+    const books = new Map<string, DBTypes.HomeBookSummary>();
+    for (const row of rows) {
+      const projectUnitId = Number(row.project_unit_id);
+      const bookId = Number(row.book_id);
+      const key = `${projectUnitId}:${bookId}`;
+      const book = books.get(key) ?? {
+        key,
+        bookId,
+        bookName: row.book_name,
+        projectId: Number(row.project_id),
+        projectUnitId,
+        projectName: row.project_name,
+        milestoneName: row.milestone_name,
+        targetLanguageName: row.target_language_name,
+        firstChapterId: Number(row.id),
+        mine: 0,
+        withOthers: 0,
+        open: 0,
+        complete: 0,
+        totalChapters: 0,
+        recordedChapters: 0,
+        checkedChapters: 0,
+      };
+      book[chapterTurn(row, userId)] += 1;
+      const stage = getWorkflowStage(row.status);
+      book.totalChapters += 1;
+      if (isPastDraft(stage)) book.recordedChapters += 1;
+      if (isPastPeerCheck(stage)) book.checkedChapters += 1;
+      books.set(key, book);
+    }
+
+    const all = Array.from(books.values());
+    const summaries = [
+      ...all.filter(b => b.mine > 0),
+      ...all.filter(b => b.mine === 0),
+    ];
+    log.info('Home book summaries fetched', { count: summaries.length });
+    return summaries;
+  } catch (error) {
+    log.error('Error fetching home book summaries', {
       error: error instanceof Error ? error.message : String(error),
     });
     return [];

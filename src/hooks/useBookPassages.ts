@@ -86,7 +86,7 @@ function isWholeChapter(passage: BookPassage): boolean {
 }
 
 /** A chapter with no pericopes is one passage, tracked by verse counts. */
-function wholeChapter(chapter: ProjectChapter): BookPassage {
+export function wholeChapter(chapter: ProjectChapter): BookPassage {
   const recordedVerses = isPastDraft(chapter.workflowStage)
     ? chapter.totalVerses
     : chapter.completedVerses;
@@ -110,6 +110,21 @@ function wholeChapter(chapter: ProjectChapter): BookPassage {
 }
 
 type Coverages = ReturnType<typeof getSelectedTakeCoverages>;
+export type CoveragesFor = (bibleId: number, bookId: number) => Coverages;
+
+/** Selected-take coverage per book, read once for a project unit's chapters. */
+export function coverageLookup(projectUnitId: number): CoveragesFor {
+  const coverages = new Map<string, Coverages>();
+  return (bibleId, bookId) => {
+    const key = `${bibleId}:${bookId}`;
+    let found = coverages.get(key);
+    if (!found) {
+      found = getSelectedTakeCoverages(bibleId, bookId, projectUnitId);
+      coverages.set(key, found);
+    }
+    return found;
+  };
+}
 
 /** Stage of another chapter in the same book, by chapter number. */
 type StageOf = (chapterNumber: number) => WorkflowBadgeStage | null | undefined;
@@ -117,13 +132,14 @@ type StageOf = (chapterNumber: number) => WorkflowBadgeStage | null | undefined;
 /**
  * One chapter's passages from the pericope set, with how much is recorded.
  * `stageOf` finds the other chapters a passage crosses into, and one it
- * can't find (in another milestone) counts as not started.
+ * can't find (in another milestone) counts as not started; without it they
+ * take this chapter's stage.
  */
-async function loadPassages(
+export async function loadChapterPassages(
   chapter: ProjectChapter,
   pericopeSetId: number | null,
-  coveragesFor: (bibleId: number, bookId: number) => Coverages,
-  stageOf: StageOf,
+  coveragesFor: CoveragesFor,
+  stageOf?: StageOf,
 ): Promise<BookPassage[]> {
   const assignment = await getChapterAssignmentById(chapter.id);
   if (!assignment || pericopeSetId === null) return [wholeChapter(chapter)];
@@ -142,8 +158,10 @@ async function loadPassages(
     chapterName: chapter.displayLabel,
     bookName: chapter.bookName,
   });
-  const stageIn = (n: number) =>
-    n === chapterNumber ? chapter.workflowStage : stageOf(n) ?? null;
+  const stageIn = (n: number) => {
+    if (n === chapterNumber) return chapter.workflowStage;
+    return stageOf ? stageOf(n) ?? null : chapter.workflowStage;
+  };
   return units.map((unit, i) => {
     const stages = new Map(
       unit.verses.map(v => [v.chapterNumber, stageIn(v.chapterNumber)]),
@@ -193,17 +211,7 @@ export function useBookPassages(
 
   useEffect(() => {
     let cancelled = false;
-    // Coverage is per book, and a milestone's chapters usually share one.
-    const coverages = new Map<string, Coverages>();
-    const coveragesFor = (bibleId: number, bookId: number) => {
-      const key = `${bibleId}:${bookId}`;
-      let found = coverages.get(key);
-      if (!found) {
-        found = getSelectedTakeCoverages(bibleId, bookId, projectUnitId);
-        coverages.set(key, found);
-      }
-      return found;
-    };
+    const coveragesFor = coverageLookup(projectUnitId);
     (async () => {
       const pericopeSetId = await getProjectPericopeSetId(projectId);
       const stages = new Map(
@@ -214,7 +222,7 @@ export function useBookPassages(
       );
       const lists = await Promise.all(
         chapters.map(c =>
-          loadPassages(c, pericopeSetId, coveragesFor, n =>
+          loadChapterPassages(c, pericopeSetId, coveragesFor, n =>
             stages.get(`${c.bookName}:${n}`),
           ),
         ),
