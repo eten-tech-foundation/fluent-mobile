@@ -54,9 +54,10 @@ Hardware by default, nearest Legacy colors in Legacy), `elevation` (effect
 styles as `boxShadow` strings built from roles), `fade` (gradients as
 `experimental_backgroundImage` strings, also built from roles), `motion`, `opacity`,
 `controlSizes`, `stroke`, the named type styles (`type`, `typeTelugu`,
-`fontScale`), plus `radius.xs` and `spacing.xxs`. They're added in
-`legacy.ts` and overridden in `next.ts` (`typeTelugu` and `fontScale` are the
-same in both); `tokens.ts` is untouched.
+`fontScale`), `cover` (passage cover status blues), plus `radius.xs` and
+`spacing.xxs`. They're added in `legacy.ts` and overridden in `next.ts`
+(`typeTelugu`, `fontScale` and `cover` are the same in both); `tokens.ts` is
+untouched.
 
 ### Unmapped Foundations steps
 

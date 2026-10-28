@@ -30,7 +30,6 @@ import type { ProjectChapter } from '../../../types/db/types';
 /**
  * Next book page, in place of Legacy's chapter list: the milestone's
  * passages as a gallery grouped by chapter. A passage opens its passage page.
- * The covers are a placeholder until the Claude Design version.
  */
 export default function BookScreen() {
   const router = useRouter();
@@ -157,7 +156,12 @@ export default function BookScreen() {
               verses={passage.verses}
               title={passage.title ?? passage.reference}
               reference={passage.reference}
-              status={passage.recordedStatus}
+              seed={passage.seed}
+              groupSeed={passage.groupSeed}
+              recordedVerses={passage.recordedVerses}
+              totalVerses={passage.totalVerses}
+              submitted={passage.submitted}
+              peerChecked={passage.peerChecked}
               onPress={() => openPassage(item, passage)}
               style={styles.cover}
               testID={`book-passage-${item.id}-${passage.key}`}

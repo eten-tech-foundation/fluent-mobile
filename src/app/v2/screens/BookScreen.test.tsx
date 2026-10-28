@@ -63,6 +63,17 @@ function chapter(id: number, chapterNumber: number, bookName = 'Mark') {
   } as ProjectChapter;
 }
 
+function art(key: string, recordedVerses: number, totalVerses: number) {
+  return {
+    recordedVerses,
+    totalVerses,
+    submitted: false,
+    peerChecked: false,
+    seed: `Mark:${key}`,
+    groupSeed: 'Mark',
+  };
+}
+
 describe('BookScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -81,6 +92,7 @@ describe('BookScreen', () => {
               verses: '22–25',
               anchorVerse: 22,
               recordedStatus: 'recorded',
+              ...art('pericope::1', 4, 4),
             },
             {
               key: 'pericope::2',
@@ -89,6 +101,7 @@ describe('BookScreen', () => {
               verses: '26–31',
               anchorVerse: 26,
               recordedStatus: 'none',
+              ...art('pericope::2', 0, 6),
             },
           ],
         ],
@@ -102,6 +115,7 @@ describe('BookScreen', () => {
               verses: '1–5',
               anchorVerse: 1,
               recordedStatus: 'partial',
+              ...art('pericope::3', 2, 5),
             },
           ],
         ],
@@ -122,6 +136,36 @@ describe('BookScreen', () => {
     ).toBeTruthy();
     expect(
       screen.getByLabelText('Mark 14:26–31, Not recorded yet'),
+    ).toBeTruthy();
+  });
+
+  it('says when a passage is in peer check', () => {
+    mockChapters = [chapter(1, 14)];
+    mockPassages = {
+      status: 'ready',
+      byChapter: new Map([
+        [
+          1,
+          [
+            {
+              key: 'pericope::1',
+              title: 'The Last Supper',
+              reference: 'Mark 14:22–25',
+              verses: '22–25',
+              anchorVerse: 22,
+              recordedStatus: 'recorded',
+              ...art('pericope::1', 4, 4),
+              submitted: true,
+            },
+          ],
+        ],
+      ]),
+    };
+
+    render(<BookScreen />);
+
+    expect(
+      screen.getByLabelText('The Last Supper, Mark 14:22–25, In peer check'),
     ).toBeTruthy();
   });
 

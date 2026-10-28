@@ -3,6 +3,8 @@ import {
   getWorkflowStage,
   getWorkflowStageLabel,
   isCompleteStatus,
+  isPastDraft,
+  isPastPeerCheck,
 } from './workflowStage';
 
 describe('workflowStage', () => {
@@ -61,6 +63,38 @@ describe('workflowStage', () => {
       expect(getBadgeStage('community_review')).toBeNull();
       expect(getBadgeStage('complete')).toBeNull();
       expect(getBadgeStage(undefined)).toBeNull();
+    });
+  });
+
+  describe('isPastDraft and isPastPeerCheck', () => {
+    it('treats a submitted chapter as recorded, and later stages as peer checked', () => {
+      const stages = [
+        null,
+        'not_started',
+        'draft',
+        'peer_check',
+        'community_review',
+        'advanced_check',
+        'complete',
+      ] as const;
+      expect(stages.map(isPastDraft)).toEqual([
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+      ]);
+      expect(stages.map(isPastPeerCheck)).toEqual([
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+      ]);
     });
   });
 

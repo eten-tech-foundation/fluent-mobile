@@ -14,6 +14,7 @@ import { headerLayout } from './iconSpecs';
 import { legacyRoles } from './legacyRoles';
 import { buildElevation } from './elevation';
 import { buildFades } from './gradients';
+import { nextPrimitives } from './nextPrimitives';
 import {
   buildTypeStyles,
   systemFontFamilies,
@@ -31,6 +32,19 @@ export const legacyTheme = {
   elevation: buildElevation(legacyRoles),
   /** Figma `fade/*` gradients, built from roles. */
   fade: buildFades(legacyRoles),
+  /**
+   * Passage cover art. `status` is Foundations blue 900 to 500, how blue a
+   * cover gets as it's recorded; no Legacy screen draws covers.
+   */
+  cover: {
+    status: [
+      nextPrimitives.blue[900],
+      nextPrimitives.blue[800],
+      nextPrimitives.blue[700],
+      nextPrimitives.blue[600],
+      nextPrimitives.blue[500],
+    ],
+  },
   motion: {
     pressMs: 80,
     releaseMs: 180,
