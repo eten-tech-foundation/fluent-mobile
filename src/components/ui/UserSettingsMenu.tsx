@@ -1,15 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  Alert,
   StyleSheet,
   ActivityIndicator,
   StatusBar,
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import {
   DrawerContentScrollView,
   DrawerItem,
@@ -21,24 +19,9 @@ import { UserPlus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme';
 import { appStyles } from '../../app/appStyles';
-import { hrefs } from '../../navigation/hrefs';
-import {
-  RECORDING_IN_PROGRESS_MESSAGE,
-  RECORDING_IN_PROGRESS_TITLE,
-} from '../../navigation/recordCaptureGate';
-import { resetNavigationAfterAccountSwitch } from '../../navigation/resetNavigationAfterAccountSwitch';
-import { useRecordCaptureGate } from '../../navigation/useRecordCaptureGate';
 import { ACCOUNT_SIGN_OUT_LABEL } from '../../constants/messages';
-import { getActiveUserId } from '../../services/storage';
-import { confirmUnsyncedSignOut } from '../../services/confirmUnsyncedSignOut';
-import {
-  signOutCurrentDeviceAccount,
-  switchToDeviceAccount,
-} from '../../services/accountSession';
+import { useAccountActions } from '../../hooks/useAccountActions';
 import { useDeviceAccounts } from '../../hooks/useDeviceAccounts';
-import { logger } from '../../utils/logger';
-
-const log = logger.create('UserSettingsMenu');
 
 /** Match legacy `appStyles.menuItem` icon size (not DrawerItem’s default 24). */
 export const DRAWER_MENU_ICON_SIZE = 18;
@@ -94,35 +77,19 @@ export function UserSettingsMenu({
   onUserSwitched,
   ...drawerProps
 }: UserSettingsMenuProps) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const drawerStatus = useDrawerStatus();
-  const recordCaptureActive = useRecordCaptureGate();
   const { accounts, hasAccountLimit, loading, reload } =
     useDeviceAccounts(true);
-  const [switchingUserId, setSwitchingUserId] = useState<string | null>(null);
   const focusedRouteName =
     drawerProps.state.routes[drawerProps.state.index]?.name;
 
-  const closeDrawer = () => {
+  const closeDrawer = useCallback(() => {
     drawerProps.navigation.closeDrawer();
-  };
-
-  const alertRecordingInProgress = () => {
-    Alert.alert(RECORDING_IN_PROGRESS_TITLE, RECORDING_IN_PROGRESS_MESSAGE, [
-      { text: 'OK' },
-    ]);
-  };
-
-  /** Block drawer exits that would unmount drafting mid-take (#568). */
-  const blockIfRecording = (): boolean => {
-    if (!recordCaptureActive) {
-      return false;
-    }
-    closeDrawer();
-    alertRecordingInProgress();
-    return true;
-  };
+  }, [drawerProps.navigation]);
+  const { switchTo, addAccount, signOut, blockIfRecording } = useAccountActions(
+    { close: closeDrawer, onUserSwitched, onSignOut },
+  );
 
   useEffect(() => {
     if (drawerStatus === 'open') {
@@ -139,66 +106,7 @@ export function UserSettingsMenu({
 
   const handleAddUser = () => {
     if (hasAccountLimit) return;
-    if (blockIfRecording()) {
-      return;
-    }
-    closeDrawer();
-    router.push(hrefs.addUser);
-  };
-
-  const handleSwitchUser = async (userId: string) => {
-    if (blockIfRecording()) {
-      return;
-    }
-    if (userId === getActiveUserId() || switchingUserId) {
-      closeDrawer();
-      return;
-    }
-
-    setSwitchingUserId(userId);
-    try {
-      await switchToDeviceAccount(userId);
-      onUserSwitched?.();
-      closeDrawer();
-      // Drop nested drafting/settings routes so the next account cannot land on
-      // a blank white screen (#348).
-      resetNavigationAfterAccountSwitch(router);
-    } catch (error) {
-      log.error('Account switch failed', { userId, error });
-      closeDrawer();
-      Alert.alert(
-        'Switch Failed',
-        "Couldn't switch to that account. Its saved session may be corrupted — try adding it again.",
-      );
-    } finally {
-      setSwitchingUserId(null);
-    }
-  };
-
-  const handleSignOut = async () => {
-    if (blockIfRecording()) {
-      return;
-    }
-    const confirmed = await confirmUnsyncedSignOut();
-    if (!confirmed) {
-      return;
-    }
-    closeDrawer();
-    try {
-      const result = await signOutCurrentDeviceAccount();
-      if (result.kind === 'switched') {
-        onUserSwitched?.();
-        resetNavigationAfterAccountSwitch(router);
-        return;
-      }
-      onSignOut?.();
-    } catch (error) {
-      log.error('Sign out failed', { error });
-      Alert.alert(
-        'Sign Out Failed',
-        "Couldn't sign out of this account. Please try again.",
-      );
-    }
+    addAccount();
   };
 
   return (
@@ -331,7 +239,7 @@ export function UserSettingsMenu({
                     account.isActive && drawerMenuActiveLabelStyle,
                   ]}
                   onPress={() => {
-                    void handleSwitchUser(account.userId);
+                    void switchTo(account.userId);
                   }}
                   icon={({ color }) => (
                     <Ionicons
@@ -391,7 +299,7 @@ export function UserSettingsMenu({
             style={drawerMenuItemStyle}
             labelStyle={[drawerMenuLabelStyle, appStyles.menuItemDanger]}
             onPress={() => {
-              void handleSignOut();
+              void signOut();
             }}
             icon={({ color }) => (
               <Ionicons
