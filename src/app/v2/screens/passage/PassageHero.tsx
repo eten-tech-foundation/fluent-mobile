@@ -37,6 +37,7 @@ export interface HeroLayout {
 export function PassageHero({
   passage,
   takes,
+  title,
   downloadState,
   progress,
   expanded,
@@ -53,9 +54,11 @@ export function PassageHero({
   onBack,
   onClose,
   onDownload,
+  onTitlePress,
 }: {
   passage: Ready;
   takes: PassageTake[];
+  title: string;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
   progress: SharedValue<number>;
   expanded: boolean;
@@ -73,6 +76,7 @@ export function PassageHero({
   onBack: () => void;
   onClose: () => void;
   onDownload: () => void;
+  onTitlePress?: () => void;
 }) {
   const styles = useThemedStyles(t => ({
     frame: { overflow: 'hidden', backgroundColor: t.roles.bgDefault },
@@ -113,7 +117,7 @@ export function PassageHero({
           onDownload={onDownload}
         />
         <HeroHeader
-          title={passage.title ?? passage.reference}
+          title={title}
           top={layout.statusBar}
           progress={progress}
           expanded={expanded}
@@ -121,6 +125,7 @@ export function PassageHero({
           onLayout={onHeaderLayout}
           onBack={onBack}
           onClose={onClose}
+          onTitlePress={onTitlePress}
         />
       </Animated.View>
     </GestureDetector>

@@ -190,13 +190,16 @@ export default function BookScreen() {
         hrefs.passage({
           chapterId: chapter.id,
           anchorVerse: passage.anchorVerse,
+          projectId,
           projectUnitId,
           chapterName: chapter.displayLabel,
           projectName,
+          milestoneName,
           language,
+          from: 'book',
         }),
       ),
-    [router, projectUnitId, projectName, language],
+    [router, projectId, projectUnitId, projectName, milestoneName, language],
   );
 
   const renderChapter: ListRenderItem<ProjectChapter> = ({ item }) => {

@@ -3,6 +3,7 @@ import { FlatList } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import BookScreen from './BookScreen';
 import type { BookPassage, BookPassages } from '../../../hooks/useBookPassages';
+import { hrefs } from '../../../navigation/hrefs';
 import type { ProjectChapter } from '../../../types/db/types';
 
 const mockPush = jest.fn();
@@ -240,20 +241,22 @@ describe('BookScreen', () => {
     expect(screen.getByText('1 of 2 chapters recorded')).toBeTruthy();
   });
 
-  it('opens the passage page for the passage', () => {
+  it('opens the passage page for the passage, marked as from the book', () => {
     render(<BookScreen />);
 
     fireEvent.press(screen.getByTestId('book-passage-1-pericope::1'));
 
     expect(mockPush).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pathname: '/(app)/(stack)/passage',
-        params: expect.objectContaining({
-          chapterId: '1',
-          anchorVerse: '22',
-          projectUnitId: '3',
-          chapterName: 'Mark 14',
-        }),
+      hrefs.passage({
+        chapterId: 1,
+        anchorVerse: 22,
+        projectId: 9,
+        projectUnitId: 3,
+        chapterName: 'Mark 14',
+        projectName: 'Mark Telugu',
+        milestoneName: 'Gospels Phase 1',
+        language: 'Telugu',
+        from: 'book',
       }),
     );
   });

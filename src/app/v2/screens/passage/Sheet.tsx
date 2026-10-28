@@ -7,6 +7,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
+import { useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture } from 'react-native-gesture-handler';
 import {
@@ -37,6 +38,7 @@ import { PlayerKeys } from './PlayerKeys';
 import { useScriptMetrics } from './scriptMetrics';
 import { type Ready } from './steps';
 import { TakeFan } from './TakeFan';
+import { TitleSheet } from './TitleSheet';
 import { useRecorder } from './useRecorder';
 
 /** How far the hero drags before a release opens or closes it. */
@@ -50,13 +52,17 @@ const FLING = 500;
  *
  * This file owns the open: the gesture, `progress` and the layout it drives.
  * It also picks each surface's mode, once: the hero is Canvas, the listening
- * materials Hardware, and the player chrome sets its own two.
+ * materials and the title's sheet Hardware, and the player chrome sets its
+ * own two.
  */
 export function Sheet({
   passage,
   userId,
   onReload,
+  chapterName,
+  milestoneName,
   onBack,
+  onOpenBook,
   onOpenDrafting,
   onDownload,
   downloadState,
@@ -65,7 +71,11 @@ export function Sheet({
   userId: number | null;
   /** Re-reads the passage, e.g. after recording claims its chapter. */
   onReload: () => void;
+  /** e.g. "Mark 14"; the title's sheet links it up to the book page. */
+  chapterName: string;
+  milestoneName: string;
   onBack: () => void;
+  onOpenBook: () => void;
   onOpenDrafting: () => void;
   onDownload: () => void;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
@@ -74,9 +84,11 @@ export function Sheet({
   const haptics = useHaptics();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
+  const focused = useIsFocused();
   const { preview } = useScriptMetrics();
   const [expanded, setExpanded] = useState(false);
   const [recordMode, setRecordMode] = useState(false);
+  const [titleSheetOpen, setTitleSheetOpen] = useState(false);
   const [container, setContainer] = useState(0);
   const [header, setHeader] = useState(0);
   const [headerWidth, setHeaderWidth] = useState(0);
@@ -171,14 +183,15 @@ export function Sheet({
     ]);
   }, [capturing, animateTo, discardCapture]);
 
+  // A screen pushed over the open player gets back presses first.
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || !focused) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       close();
       return true;
     });
     return () => sub.remove();
-  }, [expanded, close]);
+  }, [expanded, focused, close]);
 
   // The collapsed hero drags open; once open, only the header drags it
   // closed, so the script keeps its own scrolling.
@@ -218,6 +231,7 @@ export function Sheet({
 
   const measure = (set: (h: number) => void) => (e: LayoutChangeEvent) =>
     set(Math.round(e.nativeEvent.layout.height));
+  const title = passage.title ?? passage.reference;
 
   return (
     <View style={styles.sheet} onLayout={measure(setContainer)}>
@@ -225,6 +239,7 @@ export function Sheet({
         <PassageHero
           passage={passage}
           takes={recorder.takes}
+          title={title}
           downloadState={downloadState}
           progress={progress}
           expanded={expanded}
@@ -253,6 +268,8 @@ export function Sheet({
           onBack={onBack}
           onClose={close}
           onDownload={onDownload}
+          // Its book link would leave without asking, unlike Close.
+          onTitlePress={capturing ? undefined : () => setTitleSheetOpen(true)}
         />
       </ColorModeScope>
       <ColorModeScope value="hardware">
@@ -261,6 +278,14 @@ export function Sheet({
           progress={progress}
           hidden={expanded}
           onOpen={step => open(false, step + 1)}
+        />
+        <TitleSheet
+          visible={titleSheetOpen}
+          title={title}
+          chapterName={chapterName}
+          milestoneName={milestoneName}
+          onClose={() => setTitleSheetOpen(false)}
+          onOpenBook={onOpenBook}
         />
       </ColorModeScope>
       <PlayerChrome

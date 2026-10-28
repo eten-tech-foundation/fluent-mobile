@@ -93,20 +93,27 @@ export const hrefs = {
   passage: (params: {
     chapterId: number;
     anchorVerse: number;
+    projectId: number;
     projectUnitId: number;
     chapterName: string;
     projectName: string;
+    milestoneName: string;
     language: string;
+    /** Opened from the book page, so going up to the book is going back. */
+    from?: 'book';
   }) =>
     ({
       pathname: '/(app)/(stack)/passage' as const,
       params: {
         chapterId: String(params.chapterId),
         anchorVerse: String(params.anchorVerse),
+        projectId: String(params.projectId),
         projectUnitId: String(params.projectUnitId),
         chapterName: params.chapterName,
         projectName: params.projectName,
+        milestoneName: params.milestoneName,
         language: params.language,
+        ...(params.from ? { from: params.from } : {}),
       },
     } as const),
   addUser: '/(app)/(stack)/add-user' as const,
