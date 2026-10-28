@@ -10,6 +10,8 @@ module.exports = {
     // Local nested checkouts (gitignored /worktrees/)
     '<rootDir>/worktrees/',
   ],
+  // Keep nested checkouts out of the haste map (packages/mocks), not just test discovery.
+  modulePathIgnorePatterns: ['<rootDir>/worktrees/'],
   // `.cjs` is not in Jest's default testMatch; CI/workflow scripts under
   // .github must stay CommonJS because the root package.json is "type": "module".
   testMatch: [
