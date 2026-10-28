@@ -53,6 +53,8 @@ export {
 /** Production singleton — worker registered by #100 via setChapterUploadWorker. */
 let chapterUploadWorker: ChapterUploadWorker | null = null;
 let singleton: UploadOrchestrator | null = null;
+/** Survives stop/start (account switch) while Drafting stays focused. */
+let desiredDraftingHold = false;
 
 export function setChapterUploadWorker(
   worker: ChapterUploadWorker | null,
@@ -109,7 +111,9 @@ export function startUploadOrchestrator(
     ...restOverrides,
   };
 
-  singleton = createUploadOrchestrator(deps);
+  singleton = createUploadOrchestrator(deps, {
+    initialDraftingHold: desiredDraftingHold,
+  });
   singleton.start();
   return singleton;
 }
@@ -145,4 +149,16 @@ export function notifyPendingUploads(): void {
     return;
   }
   singleton.notifyPendingWork();
+}
+
+/**
+ * Hold automatic uploads while the drafting screen is open and the app is
+ * in the foreground. No-op before the orchestrator starts. syncNow still runs.
+ */
+export async function setDraftingUploadHold(held: boolean): Promise<void> {
+  desiredDraftingHold = held;
+  if (!singleton) {
+    return;
+  }
+  await singleton.setDraftingHold(held);
 }

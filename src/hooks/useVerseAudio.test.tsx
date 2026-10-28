@@ -4,6 +4,7 @@ import { emitUploadSessionEvent } from '../services/syncEvents';
 import { emitRecordingDataChanged } from '../services/recordingDataEvents';
 import { useVerseAudio } from './useVerseAudio';
 import type { Recording } from '../types/db/types';
+import { verseHasMultipleRecorders } from '../db/repository';
 
 const mockRecordingStart = jest.fn();
 const mockRecordingStop = jest.fn();
@@ -239,6 +240,46 @@ describe('useVerseAudio', () => {
     mockFileSize.mockResolvedValue(128);
     mockDeleteFile.mockResolvedValue(undefined);
     mockPausedMarkers.splice(0, mockPausedMarkers.length);
+  });
+
+  it('checks other recorders in the current milestone, including after switching units', async () => {
+    const check = jest.mocked(verseHasMultipleRecorders);
+    check.mockImplementation(
+      async (_id, _user, _view, unitId) => unitId === 580,
+    );
+    const { result, rerender } = renderHook(
+      ({ projectUnitId }: { projectUnitId: number }) =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          chapterNumber: 1,
+          verseNumber: 1,
+          projectUnitId,
+        }),
+      { initialProps: { projectUnitId: 579 } },
+    );
+
+    await waitFor(() => {
+      expect(check).toHaveBeenCalledWith(
+        42,
+        undefined,
+        { chapterNumber: 1, verseNumber: 1 },
+        579,
+      );
+      expect(result.current.hasMultipleRecorders).toBe(false);
+    });
+    rerender({ projectUnitId: 580 });
+    await waitFor(() => expect(result.current.hasMultipleRecorders).toBe(true));
+    expect(check).toHaveBeenLastCalledWith(
+      42,
+      undefined,
+      { chapterNumber: 1, verseNumber: 1 },
+      580,
+    );
+    rerender({ projectUnitId: 579 });
+    await waitFor(() =>
+      expect(result.current.hasMultipleRecorders).toBe(false),
+    );
+    check.mockResolvedValue(false);
   });
 
   it('rehydrates to idle when there are no takes', async () => {
