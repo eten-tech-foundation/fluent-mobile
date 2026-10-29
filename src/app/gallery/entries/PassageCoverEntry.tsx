@@ -53,12 +53,14 @@ const STYLES: CoverStyle[] = ['mist', 'current', 'dawn'];
 const STATES: {
   label: string;
   recordedVerses: number;
+  waitingToSend?: boolean;
   submitted?: boolean;
   peerChecked?: boolean;
 }[] = [
   { label: 'None', recordedVerses: 0 },
   { label: '3 of 7', recordedVerses: 3 },
   { label: 'Recorded', recordedVerses: 7 },
+  { label: 'Waiting to send', recordedVerses: 7, waitingToSend: true },
   { label: 'In peer check', recordedVerses: 7, submitted: true },
   {
     label: 'Peer checked',
@@ -79,8 +81,8 @@ const BOOKS: { bookName: string; recorded: number; peerChecked: boolean }[] = [
 /**
  * A chapter of the book page: tap a cover to open it. Covers show art drawn
  * from the passage, its verse range, a title (or the reference when there
- * isn't one) and status. Below, each art style through recording and peer
- * check, then book covers.
+ * isn't one) and status. Below, each art style through recording, the send
+ * waiting to go up, and peer check, then book covers.
  */
 export function PassageCoverEntry() {
   const [opened, setOpened] = useState<string | null>(null);
@@ -147,6 +149,7 @@ export function PassageCoverEntry() {
                 groupSeed="Mark:14"
                 recordedVerses={s.recordedVerses}
                 totalVerses={7}
+                waitingToSend={s.waitingToSend}
                 submitted={s.submitted}
                 peerChecked={s.peerChecked}
                 coverStyle={coverStyle}

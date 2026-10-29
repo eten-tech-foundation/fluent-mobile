@@ -7,21 +7,32 @@ import type { CoverStyle } from './coverArt/generator';
 
 const PRESSED_OPACITY = 0.7;
 
-type PassageStatus = 'none' | 'partial' | 'recorded' | 'peerCheck' | 'checked';
+type PassageStatus =
+  | 'none'
+  | 'partial'
+  | 'recorded'
+  | 'waiting'
+  | 'peerCheck'
+  | 'checked';
 
 const STATUS_LABELS: Record<PassageStatus, string> = {
   none: 'Not recorded yet',
   partial: 'Partly recorded',
   recorded: 'Recorded',
+  waiting: 'Waiting to send',
   peerCheck: 'In peer check',
   checked: 'Peer checked',
 };
 
-/** A pericope is recorded in one take, so the badge only follows peer check. */
+/**
+ * A pericope is recorded in one take, so the badge only follows the send and
+ * peer check.
+ */
 const BADGES: Record<PassageStatus, CoverBadgeState> = {
   none: { kind: 'none' },
   partial: { kind: 'none' },
   recorded: { kind: 'none' },
+  waiting: { kind: 'waiting' },
   peerCheck: { kind: 'ring', fraction: 0.5 },
   checked: { kind: 'checked' },
 };
@@ -29,10 +40,12 @@ const BADGES: Record<PassageStatus, CoverBadgeState> = {
 function passageStatus({
   recordedVerses,
   totalVerses,
+  waitingToSend,
   submitted,
   peerChecked,
 }: CoverArtProps): PassageStatus {
   if (peerChecked) return 'checked';
+  if (waitingToSend) return 'waiting';
   if (submitted) return 'peerCheck';
   if (recordedVerses <= 0) return 'none';
   return recordedVerses >= totalVerses ? 'recorded' : 'partial';
@@ -46,6 +59,8 @@ export interface CoverArtProps {
   groupSeed: string;
   recordedVerses: number;
   totalVerses: number;
+  /** Its chapter was sent on here; the send hasn't reached the server. */
+  waitingToSend?: boolean;
   /** Every chapter it's in was submitted for peer check. */
   submitted?: boolean;
   /** Every chapter it's in passed peer check. */
@@ -71,8 +86,9 @@ export interface PassageCoverProps extends CoverArtProps {
 /**
  * A passage in the book page's gallery: a cover with art drawn from the
  * passage and its verse range, then its title and status. The art grows bluer
- * as verses are recorded; the badge is a half ring in peer check, then a check
- * once it passes. Flat, since tactile controls stay in the player.
+ * as verses are recorded; the badge is a cloud while the send waits to go up,
+ * a half ring in peer check, then a check once it passes. Flat, since tactile
+ * controls stay in the player.
  */
 export function PassageCover({
   eyebrow,

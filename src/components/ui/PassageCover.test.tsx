@@ -108,6 +108,26 @@ describe('PassageCover', () => {
     ).toBeTruthy();
   });
 
+  it('shows a cloud while its send waits to go up', () => {
+    render(cover({ recordedVerses: 4, waitingToSend: true }));
+    measure();
+    expect(screen.getByTestId('cover-badge-waiting', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('cover-badge-ring', hidden)).toBeNull();
+    expect(screen.getByTestId('cover-status')).toHaveTextContent(
+      'Waiting to send',
+    );
+  });
+
+  it('waits to send before it reads as in peer check', () => {
+    render(cover({ recordedVerses: 4, waitingToSend: true, submitted: true }));
+    measure();
+    expect(
+      screen.getByRole('button', {
+        name: 'The Last Supper, Mark 14:22–25, Waiting to send',
+      }),
+    ).toBeTruthy();
+  });
+
   it('shows a check once it passes peer check', () => {
     render(cover({ recordedVerses: 4, submitted: true, peerChecked: true }));
     measure();

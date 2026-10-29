@@ -20,6 +20,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { Dialog } from '../../../../components/ui/Dialog';
 import { NEXT_SPRING } from '../../../../components/ui/motion';
 import {
   CAPTURE_LEAVE_DISCARD,
@@ -30,13 +31,19 @@ import {
 import { useHaptics } from '../../../../hooks/useHaptics';
 import type { usePassage } from '../../../../hooks/usePassage';
 import { ColorModeScope, useTheme } from '../../../../theme/useTheme';
+import {
+  getStageAdvanceDestination,
+  getStageAdvanceVisibility,
+  isDrafterBlockedFromOpenPeerCheckCapture,
+  stageAdvanceConfirmBody,
+} from '../../../../utils/stageAdvancement';
 import { Footer } from './Footer';
 import { ListeningMaterials } from './ListeningMaterials';
 import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
-import { PlayerKeys } from './PlayerKeys';
+import { PlayerKeys, type KeyAction } from './PlayerKeys';
 import { useScriptMetrics } from './scriptMetrics';
-import { type Ready } from './steps';
+import { PAGE_COUNT, pageName, type Ready } from './steps';
 import { TakeFan } from './TakeFan';
 import { TitleSheet } from './TitleSheet';
 import { useRecorder } from './useRecorder';
@@ -76,7 +83,8 @@ export function Sheet({
   milestoneName: string;
   onBack: () => void;
   onOpenBook: () => void;
-  onOpenDrafting: () => void;
+  /** At a verse of the chapter, or wherever drafting would open. */
+  onOpenDrafting: (verse?: number) => void;
   onDownload: () => void;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
 }) {
@@ -117,12 +125,47 @@ export function Sheet({
   const [lifted, setLifted] = useState(false);
   const { capturing } = recorder;
   const goToPage = useCallback(
-    (index: number) => {
+    (index: number, animated = false) => {
       setPage(index);
-      pagerRef.current?.scrollTo({ x: index * pageWidth, animated: false });
+      pagerRef.current?.scrollTo({ x: index * pageWidth, animated });
     },
     [pageWidth],
   );
+  const turnKey = (to: number, direction: 'Previous' | 'Next'): KeyAction => {
+    const off = to < 0 || to >= PAGE_COUNT;
+    return {
+      label: off
+        ? direction
+        : `${direction}: ${pageName(passage.reference, to)}`,
+      disabled: off,
+      onPress: () => goToPage(to, !reduceMotion),
+    };
+  };
+
+  const [sendOpen, setSendOpen] = useState(false);
+  const destination = getStageAdvanceDestination(passage.assignment.status);
+  const send = getStageAdvanceVisibility({
+    chapterData: passage.assignment,
+    currentUserId: userId,
+    hasChapterRecording: recorder.takes.length > 0,
+    // Legacy drafting checks conflicts and uploads again before its Send.
+    hasConflict: false,
+    // Eject sends the chapter from any of its passages.
+    isOnLastUnit: true,
+  });
+  const eject: KeyAction = {
+    label: destination
+      ? `Send ${chapterName} to ${destination.destinationLabel}`
+      : 'Send',
+    disabled: capturing || recorder.takes.length === 0 || !send.visible,
+    onPress: () => setSendOpen(true),
+  };
+  const sendEndsRecording =
+    destination?.nextStatus === 'peer_check' &&
+    isDrafterBlockedFromOpenPeerCheckCapture(
+      { ...passage.assignment, status: destination.nextStatus },
+      userId,
+    );
 
   const settled = useCallback(() => haptics.press(), [haptics]);
   const animateTo = useCallback(
@@ -287,6 +330,29 @@ export function Sheet({
           onClose={() => setTitleSheetOpen(false)}
           onOpenBook={onOpenBook}
         />
+        {destination ? (
+          <Dialog
+            visible={sendOpen}
+            title={`Send ${chapterName} to ${destination.destinationLabel}?`}
+            message={
+              stageAdvanceConfirmBody(
+                chapterName,
+                destination.destinationLabel,
+              ) +
+              (sendEndsRecording
+                ? ' You won’t be able to record on it after you send it.'
+                : '')
+            }
+            confirmLabel="Send"
+            onConfirm={() => {
+              setSendOpen(false);
+              onOpenDrafting(passage.chapterLastVerse);
+            }}
+            cancelLabel="Not yet"
+            onCancel={() => setSendOpen(false)}
+            testID="passage-send-confirm"
+          />
+        ) : null}
       </ColorModeScope>
       <PlayerChrome
         shown={expanded}
@@ -317,7 +383,10 @@ export function Sheet({
             onRecordModeChange={changeMode}
             modeLocked={capturing}
             record={recorder.keys}
-            onOpenDrafting={onOpenDrafting}
+            eject={eject}
+            previous={turnKey(page - 1, 'Previous')}
+            next={turnKey(page + 1, 'Next')}
+            onOpenDrafting={() => onOpenDrafting()}
           />
         }
       />

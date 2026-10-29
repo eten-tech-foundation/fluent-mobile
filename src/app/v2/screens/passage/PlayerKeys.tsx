@@ -74,16 +74,27 @@ export interface RecordKeys {
   onPlay: () => void;
 }
 
+/** A key the sheet labels and turns on or off. */
+export interface KeyAction {
+  label: string;
+  disabled: boolean;
+  onPress: () => void;
+}
+
 /**
- * The player's Hardware panel; the player chrome puts it in Hardware. Record mode captures real takes through the
- * shared record session; Listen mode's keys open Legacy drafting until
- * playback is wired.
+ * The player's Hardware panel; the player chrome puts it in Hardware. Record
+ * mode captures real takes through the shared record session, and Eject
+ * sends the chapter on. Listen mode's Play opens Legacy drafting until
+ * playback is wired; Previous and Next turn the pages, like swiping.
  */
 export function PlayerKeys({
   recordMode,
   onRecordModeChange,
   modeLocked,
   record,
+  eject,
+  previous,
+  next,
   onOpenDrafting,
 }: {
   recordMode: boolean;
@@ -91,6 +102,9 @@ export function PlayerKeys({
   /** Locked for the whole take. */
   modeLocked: boolean;
   record: RecordKeys;
+  eject: KeyAction;
+  previous: KeyAction;
+  next: KeyAction;
   onOpenDrafting: () => void;
 }) {
   return (
@@ -137,12 +151,13 @@ export function PlayerKeys({
               testID="passage-key-play"
             />
           )}
-          {/* What Eject does is open (Q3 in open-questions.md). */}
           <Key
             icon={EjectFill}
-            accessibilityLabel="Eject"
-            disabled
+            accessibilityLabel={eject.label}
+            disabled={eject.disabled}
+            onPress={eject.onPress}
             style={styles.key}
+            testID="passage-key-eject"
           />
         </>
       ) : (
@@ -155,15 +170,19 @@ export function PlayerKeys({
           />
           <Key
             icon={SkipBackFill}
-            accessibilityLabel="Previous verse"
-            disabled
+            accessibilityLabel={previous.label}
+            disabled={previous.disabled}
+            onPress={previous.onPress}
             style={styles.key}
+            testID="passage-key-previous"
           />
           <Key
             icon={SkipForwardFill}
-            accessibilityLabel="Next verse"
-            disabled
+            accessibilityLabel={next.label}
+            disabled={next.disabled}
+            onPress={next.onPress}
             style={styles.key}
+            testID="passage-key-next"
           />
         </>
       )}

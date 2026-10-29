@@ -67,7 +67,7 @@ function Dot({ active, testID }: { active: boolean; testID?: string }) {
 
 /**
  * Reading page position in the player (Figma Page dot, node 2409:508): the
- * current page grows and darkens to fg/primary.
+ * current page grows and darkens to fg/primary. A single page draws nothing.
  */
 export function PageDots({
   count,
@@ -84,6 +84,8 @@ export function PageDots({
       gap: t.spacing.sm,
     },
   }));
+
+  if (count <= 1) return null;
 
   return (
     <View

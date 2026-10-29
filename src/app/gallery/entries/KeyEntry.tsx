@@ -10,16 +10,17 @@ import { Key } from '../../../components/ui/Key';
 import { KeyDeck } from '../../../components/ui/KeyDeck';
 import { useThemedStyles } from '../../../theme/useTheme';
 
-const VERSE_COUNT = 5;
+/** The script, then six listening materials. */
+const PAGE_COUNT = 7;
 
 /**
  * Transport demo in the Hardware panel's key deck (Play · Previous · Next):
- * Play latches while playing, and the skip keys disable at the first / last
- * verse, so every Key state shows up through real use.
+ * Play latches while playing, and the page keys disable on the first / last
+ * page, so every Key state shows up through real use.
  */
 export function KeyEntry() {
   const [playing, setPlaying] = useState(false);
-  const [verse, setVerse] = useState(1);
+  const [page, setPage] = useState(1);
   const styles = useThemedStyles(t => ({
     demos: { gap: t.spacing.lg },
     demo: { gap: t.spacing.sm },
@@ -56,23 +57,23 @@ export function KeyEntry() {
           />
           <Key
             icon={SkipBackFill}
-            accessibilityLabel="Previous verse"
-            onPress={() => setVerse(v => v - 1)}
-            disabled={verse === 1}
+            accessibilityLabel="Previous page"
+            onPress={() => setPage(p => p - 1)}
+            disabled={page === 1}
             style={styles.transportKey}
             testID="gallery-key-back"
           />
           <Key
             icon={SkipForwardFill}
-            accessibilityLabel="Next verse"
-            onPress={() => setVerse(v => v + 1)}
-            disabled={verse === VERSE_COUNT}
+            accessibilityLabel="Next page"
+            onPress={() => setPage(p => p + 1)}
+            disabled={page === PAGE_COUNT}
             style={styles.transportKey}
             testID="gallery-key-forward"
           />
         </KeyDeck>
         <Text style={styles.status}>
-          Verse {verse} of {VERSE_COUNT} · {playing ? 'Playing' : 'Paused'}
+          Page {page} of {PAGE_COUNT} · {playing ? 'Playing' : 'Paused'}
         </Text>
       </View>
 

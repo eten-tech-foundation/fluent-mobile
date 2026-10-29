@@ -39,36 +39,28 @@ const VERSES: WaveformVerse[] = [
   },
 ];
 
-const TOTAL_BARS = VERSES.reduce((n, v) => n + v.bars.length, 0);
-/** Where each verse starts, 0–1, for the skip keys. */
-const VERSE_STARTS = VERSES.reduce<number[]>((starts, v, i) => {
-  starts.push(
-    i === 0 ? 0 : starts[i - 1] + VERSES[i - 1].bars.length / TOTAL_BARS,
-  );
-  return starts;
-}, []);
-const PAGES = 7;
+/** The script, then each listening material. */
+const PAGES = [
+  'Mark 14:22–25',
+  'Hear & Heart',
+  'Setting the Stage',
+  'Defining the Scenes',
+  'Embodying the Text',
+  'Filling the Gaps',
+  'Speaking the Word',
+];
 /** 100ms matches the player's position updates (usePlaybackEngine). */
 const TICK_MS = 100;
 const DURATION_MS = 20000;
 
-function verseAt(progress: number) {
-  let v = 0;
-  VERSE_STARTS.forEach((start, i) => {
-    if (progress >= start) {
-      v = i;
-    }
-  });
-  return v;
-}
-
 /**
- * The Listen player: the waveform plays through Mark 14:22–25 under the page
- * dots, driven by the Hardware panel's Play · Previous · Next keys.
+ * The Listen player: Play runs the waveform through Mark 14:22–25, and
+ * Previous and Next turn the pages under it, as swiping does.
  */
 export function WaveformEntry() {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [page, setPage] = useState(0);
   const styles = useThemedStyles(t => ({
     demo: { gap: t.spacing.lg },
     keys: { flex: 1 },
@@ -89,25 +81,19 @@ export function WaveformEntry() {
     return () => clearTimeout(timer);
   }, [playing, progress]);
 
-  const verse = verseAt(progress);
   const togglePlay = () => {
     if (!playing && progress >= 1) {
       setProgress(0);
     }
     setPlaying(p => !p);
   };
-  // Previous restarts the verse, or goes back one if you're at its start.
-  const previous = () => {
-    const atStart = progress - VERSE_STARTS[verse] < 0.01;
-    setProgress(VERSE_STARTS[atStart ? Math.max(0, verse - 1) : verse]);
-  };
-  const next = () =>
-    setProgress(VERSE_STARTS[Math.min(verse + 1, VERSE_STARTS.length - 1)]);
+  const first = page === 0;
+  const last = page === PAGES.length - 1;
 
   return (
     <View style={styles.demo}>
       {/* Follows the gallery's Mode switcher; the real player is Canvas. */}
-      <Player progress={progress} />
+      <Player progress={progress} page={page} />
       <ColorModeScope value="hardware">
         <KeyDeck>
           <Key
@@ -121,17 +107,19 @@ export function WaveformEntry() {
           />
           <Key
             icon={SkipBackFill}
-            accessibilityLabel="Previous verse"
-            disabled={progress === 0}
-            onPress={previous}
+            accessibilityLabel={
+              first ? 'Previous' : `Previous: ${PAGES[page - 1]}`
+            }
+            disabled={first}
+            onPress={() => setPage(p => p - 1)}
             style={styles.keys}
             testID="gallery-waveform-previous"
           />
           <Key
             icon={SkipForwardFill}
-            accessibilityLabel="Next verse"
-            disabled={verse >= VERSES.length - 1}
-            onPress={next}
+            accessibilityLabel={last ? 'Next' : `Next: ${PAGES[page + 1]}`}
+            disabled={last}
+            onPress={() => setPage(p => p + 1)}
             style={styles.keys}
             testID="gallery-waveform-next"
           />
@@ -175,7 +163,7 @@ function TakeWave() {
   );
 }
 
-function Player({ progress }: { progress: number }) {
+function Player({ progress, page }: { progress: number; page: number }) {
   const styles = useThemedStyles(t => ({
     player: {
       backgroundColor: t.roles.bgDefault,
@@ -196,7 +184,7 @@ function Player({ progress }: { progress: number }) {
       includeFontPadding: false,
     },
   }));
-  const page = Math.min(PAGES - 1, Math.floor(progress * PAGES));
+  const name = PAGES[page];
 
   return (
     <View style={styles.player}>
@@ -207,11 +195,11 @@ function Player({ progress }: { progress: number }) {
         testID="gallery-waveform"
       />
       <View style={styles.reference}>
-        <Text style={styles.referenceText}>Mark 14:22–25</Text>
+        <Text style={styles.referenceText}>{name}</Text>
         <PageDots
-          count={PAGES}
+          count={PAGES.length}
           index={page}
-          accessibilityLabel={`Page ${page + 1} of ${PAGES}`}
+          accessibilityLabel={`${name}, ${page + 1} of ${PAGES.length}`}
           testID="gallery-page-dots"
         />
       </View>

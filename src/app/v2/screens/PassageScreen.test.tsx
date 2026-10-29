@@ -183,6 +183,8 @@ const ready: Extract<Passage, { status: 'ready' }> = {
     chapterNumber: 14,
   } as Extract<Passage, { status: 'ready' }>['assignment'],
   chapterVerseCount: 72,
+  chapterLastVerse: 72,
+  waitingToSend: false,
   takes: [
     {
       id: 'a',
@@ -397,6 +399,42 @@ describe('PassageScreen', () => {
 
     expect(screen.getByLabelText('Listen in drafting')).toBeTruthy();
     expect(screen.getByLabelText('Close the player')).toBeTruthy();
+  });
+
+  it('turns the pages from Previous and Next, like swiping', () => {
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-listen'));
+
+    expect(
+      screen.getByTestId('passage-key-previous').props.accessibilityState,
+    ).toMatchObject({ disabled: true });
+    expect(screen.getByLabelText('Previous')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Next: Hear & Heart'));
+
+    expect(screen.getByLabelText('Hear & Heart, 2 of 7')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Previous: Mark 14:22–25'));
+    expect(screen.getByLabelText('Mark 14:22–25, 1 of 7')).toBeTruthy();
+  });
+
+  it('stops Next on the last listening material', () => {
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByLabelText('Speaking the Word, not heard yet'));
+
+    expect(screen.getByLabelText('Speaking the Word, 7 of 7')).toBeTruthy();
+    expect(
+      screen.getByTestId('passage-key-next').props.accessibilityState,
+    ).toMatchObject({ disabled: true });
+    expect(screen.getByLabelText('Next')).toBeTruthy();
+    expect(screen.getByLabelText('Previous: Filling the Gaps')).toBeTruthy();
+  });
+
+  it('says when the send is waiting to go up', () => {
+    mockPassage = { ...ready, waitingToSend: true };
+    render(<PassageScreen />);
+
+    expect(screen.getByTestId('passage-takes-meta').props.children).toMatch(
+      /^2 takes · .* · Waiting to send$/,
+    );
   });
 
   it('closes the player before leaving the page', () => {
@@ -648,6 +686,115 @@ describe('PassageScreen', () => {
       expect.objectContaining({ id: 't1' }),
       0,
     );
+  });
+
+  describe('Eject', () => {
+    const drafting = (status: string, overrides = {}) => ({
+      ...ready,
+      assignment: {
+        ...ready.assignment,
+        status,
+        assignedUserId: 7,
+      },
+      ...overrides,
+    });
+    const ejectState = () =>
+      screen.getByTestId('passage-key-eject').props.accessibilityState;
+
+    it('asks before sending the chapter on, then opens drafting at its last verse', () => {
+      mockPassage = drafting('draft');
+      renderSettled();
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      fireEvent.press(screen.getByLabelText('Send Mark 14 to Peer Check'));
+      expect(
+        screen.getByRole('header', { name: 'Send Mark 14 to Peer Check?' }),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          'This marks Mark 14 as ready for Peer Check. You won’t be able to record on it after you send it.',
+        ),
+      ).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: 'Not yet' }));
+      settle();
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('passage-send-confirm')).toBeNull();
+
+      fireEvent.press(screen.getByLabelText('Send Mark 14 to Peer Check'));
+      fireEvent.press(screen.getByRole('button', { name: 'Send' }));
+      settle();
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: '/(app)/(stack)/verse-detail',
+          params: expect.objectContaining({
+            chapterId: '5',
+            recoverVerse: '72',
+          }),
+        }),
+      );
+    });
+
+    it('names the next stage, without the recording warning past drafting', () => {
+      mockPassage = drafting('community_review');
+      renderSettled();
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      fireEvent.press(screen.getByLabelText('Send Mark 14 to Linguist Check'));
+      settle();
+      expect(
+        screen.getByText('This marks Mark 14 as ready for Linguist Check.'),
+      ).toBeTruthy();
+    });
+
+    it('leaves out the recording warning when a peer checker is already assigned', () => {
+      const passage = drafting('draft');
+      mockPassage = {
+        ...passage,
+        assignment: { ...passage.assignment, peerCheckerId: 8 },
+      };
+      renderSettled();
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      fireEvent.press(screen.getByLabelText('Send Mark 14 to Peer Check'));
+      settle();
+      expect(
+        screen.getByText('This marks Mark 14 as ready for Peer Check.'),
+      ).toBeTruthy();
+    });
+
+    it('stays off until the passage has a take', () => {
+      mockPassage = drafting('draft', { takes: [] });
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(ejectState()).toMatchObject({ disabled: true });
+    });
+
+    it('stays off while a take records', () => {
+      mockPassage = drafting('draft');
+      mockSession = { ...mockSession, state: 'recording', captureActive: true };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(ejectState()).toMatchObject({ disabled: true });
+    });
+
+    it("stays off once the drafter's chapter is in peer check", () => {
+      mockPassage = drafting('peer_check');
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(ejectState()).toMatchObject({ disabled: true });
+    });
+
+    it('stays off on a complete chapter, with nowhere to send it', () => {
+      mockPassage = drafting('complete');
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(ejectState()).toMatchObject({ disabled: true });
+      expect(screen.getByLabelText('Send')).toBeTruthy();
+    });
   });
 
   it('asks before closing the player on a take in progress', () => {

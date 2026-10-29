@@ -42,9 +42,6 @@ The token-level detail is in the
 
 ### Components
 
-- **Q3 · What Eject does** *(design)*. The Record mode Hardware panel has
-  Record · Play · Eject. Eject has no defined action, so the gallery only
-  acknowledges the press.
 - **Q4 · Take card and Take chip tokens** *(design)*. The Record page's take
   card and take stacking frames are exploration frames with plain hex and no
   bound variables. They need roles bound before they're built. The Level wave
@@ -58,12 +55,6 @@ The token-level detail is in the
   and the Next player's take card draws live levels (`useLiveLevels` maps dB
   to 0–1). Saved takes keep their wave only for the session, since levels
   aren't stored. Touches recording, so it needs device QA.
-- **Q20 · Contrast of unplayed and resting marks** *(design)*. Figma binds
-  unplayed Wave bars to `fg/inactive`, and the Level wave's resting ticks use
-  it too. That's about 1.5:1 on `bg/default` in Canvas and Hardware (WCAG
-  asks 3:1 for graphics you need to read), and identical to `surface/default`
-  in Canvas, so on a Canvas card they vanish. Keep it as a deliberate quiet
-  state, or move them to `fg/secondary` like the short Level wave's dots?
 - **Q7 · Listen / Record segmented control** *(design)*. The Pericope screen
   has a Listen | Record segmented button that isn't a Foundations component
   yet.
@@ -135,16 +126,6 @@ translator hears them all last.
 
 ### Screens
 
-- **Q15 · Pericope title fallback** *(design)*. The bundled FCBH set has no
-  titles at all. In FIA about half the rows have none, and split pericopes
-  mostly title only the first part (17 of 119 later parts have one). What
-  does a header show without a title? The reference range is the obvious
-  choice.
-- **Q16 · Page dots paging rule** *(design)*. The player's page dots need a
-  paging rule for verse text: by verse, or by measured height?
-- **Q17 · What Previous / Next skip in the player** *(design)*. Verse,
-  pericope or track? Record already moves between pericopes; track skip
-  depends on Q11.
 - **Q25 · Values with no Foundations token** *(design)*. The book and passage
   pages use a few values Figma doesn't define: one spring for the sheet, take
   fan and Track row (`NEXT_SPRING`), 0.7 opacity on a pressed book cover, the
@@ -160,6 +141,20 @@ translator hears them all last.
   colors in Figma (2557-1257, 2557-1092); code maps them to
   `surface/sunken`, `border/highlight`, `surface/inverse` and `accent/record`,
   and the bin's lighter dashed ring to `fg/on-accent` at 40%.
+- **Q28 · Which chapter you're in** *(design + product)*. Split from Q27.
+  When Eject sends both chapters of a passage that crosses them, what does
+  the confirm do if they're at different stages or have different assignees?
+  Each chapter has its own assignment. In verse mode, do Previous / Next stop
+  at a chapter's last verse or cross into the next chapter (another
+  assignment)? And where should the open player show the chapter, in
+  Listen and Record, in pericope and verse mode? In pericope mode today the
+  header shows the title when there is one (otherwise the reference, Q15),
+  so for a titled passage only the reference under the waveform names the
+  chapter, and only on the script page in Listen. In Record the take card
+  covers it, and the title's sheet (which names the chapter) is off during
+  a take. The script's verse numbers don't mark where a second chapter
+  starts (Mark 14:72–15:5 reads 72, then 1–5). The verse-mode parts wait
+  until verse mode is designed.
 
 ## Decided
 
@@ -167,8 +162,14 @@ Rows marked — were decided before this doc had IDs.
 
 | ID | Question | Answer | Date | Where |
 | --- | --- | --- | --- | --- |
+| Q3 | What Eject does | On any passage with a take, Eject opens a confirm ("Send Mark 14 to Peer Check?", from the gap draft) and sends the whole chapter on to its next stage. Submitting is per chapter (`PATCH /chapter-assignments/{id}/submit`), and one recorded verse is enough, as in Legacy. Until the send is wired, the confirm's Send opens Legacy drafting at the chapter's last verse, where Legacy's Send is. Still to come: picking the peer checker in the confirm, sending both chapters of a passage that crosses chapters (Q27), and, offline, the send waiting in #770's stage-advance queue (on `main`, not yet on `jskager/feature/next-ui-theme`), shown as "Waiting to send" on the passage's cover and page. Marking each passage as queued was considered and dropped | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q8 | Where Next screens branch on UI version | One signed-in shell: route files under `(app)` pick the Legacy or Next screen; v2 screens live in `src/app/v2/screens/`. Both share hooks and services, and the rules inside `RecordTab` / `DraftingScreen` move into shared hooks. A separate `/v2` route tree was dropped in the #727 review | 2026-10-21 | [v2-feature-manifest.md](v2-feature-manifest.md#v2-routes) |
+| Q15 | Pericope title fallback | The reference range, as built: without a title, the passage header, its cover and Home's Next up show "Mark 14:22–25" | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q16 | Page dots paging rule | One dot for the script and one per listening material, swiped sideways; the script scrolls inside its page instead of paging by verse or height. With only one page there are no dots | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q17 | What Previous / Next skip in the player | They work like swiping. In pericope mode they step through the pages the dots count (the script, then each listening material) and stop at either end. In verse mode, which has no listening materials, they jump to the previous or next verse (not built; see Q28). v2 doesn't group a pericope by verse, so there's no verse skip inside a pericope | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q20 | Contrast of unplayed and resting marks | Keep `fg/inactive` (about 1.5:1 on `bg/default`) as a deliberate quiet state, decided after seeing it rendered in all three modes. The Canvas take card sits on `surface/sunken` (1.33:1) on purpose | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q26 | What Next takes from `main` | Builds on Q8. Next uses `main`'s shared logic but keeps its own screen layout, grouping and UX. That logic includes Home sync behavior (#804), drawer theming (#749, `UserSettingsMenu`) and the My Work query and hook changes (`assignmentStatus` from #772; `useMyWorkChapters` and `myWorkChapterFilter` from #780). Legacy-only, so Next doesn't adopt them: My Work's stage accordion (`MyWorkTab`, `myWorkStageGroups`, #772) and its download chip (`DraftDownloadChip`, #780; the `useDraftDownload` hook behind it is shared). When `main` merges into `jskager/feature/next-ui-theme`, combine both sides of a conflict instead of taking either one whole. For example, Legacy `HomeScreen.tsx` keeps #824's guard against a double sync tap and its header staying mounted while loading, and also #853's move of its sync state into `useHomeSyncState` (on `jskager/feature/837-next-home` until #853 merges) | 2026-10-29 | [#853](https://github.com/eten-tech-foundation/fluent-mobile/pull/853) |
+| Q27 | Which chapter a passage that crosses chapters sends | Both. Eject sends each chapter, and the confirm names both (Mark 14:72–15:5 sends Mark 14 and Mark 15). That comes with the real send; until then a passage sends with the chapter it was opened from, which on the book page (on `jskager/feature/next-ui-theme`) is the row you tapped. The rest moved to Q28 | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | — | Header progress dots on the Pericope screen | They're a resting waveform: Level wave, short variant | 2026-10-13 | Figma Level wave `2595:772` |
 | — | Speaker grill hole color | `surface/inverse` (was the `bone/800` primitive) | 2026-10-14 | Figma Speaker grill `2409:533` |
 | — | Icon/md size | `theme.controlSizes.icon20` | 2026-10-14 | `jskager/feature/695-hardware-panel` |
@@ -204,8 +205,8 @@ The source player is docked under the Bible and Record tabs there.
 | Played bars, playhead, seek | Wired | `useSourceAudio` `positionMs` / `durationMs` / `seek` on `usePlaybackEngine` | Yes (`SourceAudioPlayerBar.tsx:165-178`) | Yes when downloaded | Chapter-relative; rebase to the pericope |
 | Verse segments and chips | Wired, partial | `subdivisionTickMarks` (`bibleTabUnits.ts:183`) from `verseTimestamps` | Yes (ticks on the source dock, #408) | Yes when downloaded | Start times only (Q12) |
 | Reference "Mark 14:22–25" | Wired | `pericopeTitle()` range builder (`bibleTabUnits.ts:69`, a different thing from the DB title above) | Yes | Yes | n/a |
-| Page dots | Static (derived) | Would be computed from `bodyVerses` | No | Yes | Q16 |
+| Page dots | Static (derived) | Would be computed from `bodyVerses` | No | Yes | Decided (Q16): one dot per page, none with one page |
 | Play / Pause | Wired | `SourceAudioShell` `handlePlayPause` (`SourceAudioShell.tsx:125`) | Yes | Yes when downloaded | Keep the draft/source exclusivity bridge (`SourceAudioShell.tsx:263`) |
-| Previous / Next | Wired (as unit nav) | `RecordTab.tsx:427-450` pericope prev/next; selecting a verse seeks to its start | Yes (Record tab) | Yes | Q17 |
+| Previous / Next | Wired (as unit nav) | `RecordTab.tsx:427-450` pericope prev/next; selecting a verse seeks to its start | Yes (Record tab) | Yes | Decided (Q17): pages, like swiping |
 | Mode toggle (Listen / Record) | Wired (equivalent) | Hardware panel `recordMode` / `modeLocked` (on `jskager/feature/695-hardware-panel`); Legacy is the Bible → Record tab switch (`DraftingScreen.tsx:471`) with the capture-leave guard (`:110`) | Yes (as tabs) | Yes | Lock while capturing, same as today |
 | Understanding variant notes | Wired | `useTranslationNotesForUnit` → `GET /projects/{projectId}/translation-resources/notes/{bookCode}/{chapter}/{verse}` | Yes (Resources tab) | Partial (#578 still open) | Q19 |

@@ -6,12 +6,22 @@ import { useThemedStyles } from '../../../../theme/useTheme';
 import { formatLastActivity } from '../../../../utils/formatLastActivity';
 import type { Ready } from './steps';
 
-/** Like a music app's "Updated 3d ago": how many takes, and when. */
+/**
+ * Like a music app's "Updated 3d ago": how many takes, and when, then
+ * whether the chapter's send is waiting to go up.
+ */
 export function takesLine(
   passage: Ready,
   takes: PassageTake[] = passage.takes,
 ) {
-  const { recordedStatus } = passage;
+  const line = takesSummary(passage.recordedStatus, takes);
+  return passage.waitingToSend ? `${line} · Waiting to send` : line;
+}
+
+function takesSummary(
+  recordedStatus: Ready['recordedStatus'],
+  takes: PassageTake[],
+) {
   if (takes.length === 0) {
     if (recordedStatus === 'recorded') return 'Recorded verse by verse';
     if (recordedStatus === 'partial') return 'Partly recorded';
