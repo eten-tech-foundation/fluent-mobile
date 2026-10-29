@@ -155,6 +155,15 @@ translator hears them all last.
   a take. The script's verse numbers don't mark where a second chapter
   starts (Mark 14:72–15:5 reads 72, then 1–5). The verse-mode parts wait
   until verse mode is designed.
+- **Q29 · Showing what a send includes** *(design + product)*. Eject sends
+  the whole chapter from any passage (Q3), which can read as sending just
+  the passage you're on. Legacy avoids that by offering Send only on the
+  chapter's last unit. Should the confirm say how much of the chapter is
+  recorded (e.g. "3 of 6 passages recorded"), and warn when some isn't? Q3
+  keeps one recorded verse as enough, as in Legacy. A send doesn't record
+  what was in it: it moves the chapter's stage, and its recordings stay as
+  uploaded, per verse or per passage range. Meanwhile the confirm names the
+  chapter.
 
 ## Decided
 
