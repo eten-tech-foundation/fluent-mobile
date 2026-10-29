@@ -186,6 +186,9 @@ jest.mock('../db/repository', () => ({
   getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
   hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
+  selectExistingIds: jest.fn(
+    async (_table: string, ids: number[]) => new Set(ids),
+  ),
   userHasLocalProjects: jest.fn().mockResolvedValue(true),
   userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
@@ -868,6 +871,209 @@ describe('sync step orchestration', () => {
       }
     });
 
+    it('seedFkParentsBestEffort upserts successes and reports incomplete on 404', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([1, 2]));
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockImplementation((id: number) => {
+        if (id === 2) {
+          return Promise.reject(new ApiError(404, 'Language not found'));
+        }
+        return Promise.resolve({
+          id,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+        });
+      });
+
+      const result = await syncProjects(2, 'seed-tok', {
+        seedFkParents: true,
+        seedFkParentsBestEffort: true,
+      });
+
+      expect(result.parentSeedIncomplete).toEqual(
+        expect.stringContaining('Incomplete language parent refresh'),
+      );
+      expect(insertMasterDataMock).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: 1, langCode: 'eng' })],
+        [],
+        [],
+      );
+      expect(insertProjectsMock).toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_projects',
+        expect.stringContaining('Incomplete language parent refresh'),
+      );
+      expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+    });
+
+    it('seedFkParentsBestEffort AuthError still aborts without project insert', async () => {
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockRejectedValue(
+        new AuthError('Invalid or revoked session token'),
+      );
+
+      await expect(
+        syncProjects(2, 'seed-tok', {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        }),
+      ).rejects.toBeInstanceOf(AuthError);
+
+      expect(insertProjectsMock).not.toHaveBeenCalled();
+      expect(insertMasterDataMock).not.toHaveBeenCalled();
+    });
+
+    it('seedFkParentsBestEffort warm warn logs classification/status only — never raw error text', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([1, 2]));
+      const warnPayloads: Array<Record<string, unknown>> = [];
+      logger.setTransport((level, _tag, message, context) => {
+        if (
+          level === 'warn' &&
+          typeof message === 'string' &&
+          message.includes('FK parent by-id lookup failed') &&
+          context
+        ) {
+          warnPayloads.push(context);
+        }
+      });
+
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockImplementation((id: number) => {
+        if (id === 2) {
+          return Promise.reject(
+            new ApiError(502, 'super-secret-token-xyz body leak'),
+          );
+        }
+        return Promise.resolve({
+          id,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+        });
+      });
+
+      try {
+        const result = await syncProjects(2, 'seed-tok', {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        });
+
+        expect(result.parentSeedIncomplete).toEqual(
+          expect.stringContaining('Incomplete language parent refresh'),
+        );
+        expect(warnPayloads).toHaveLength(1);
+        expect(warnPayloads[0]).toMatchObject({
+          kind: 'language',
+          id: 2,
+          classification: 'api',
+          apiStatus: 502,
+        });
+        expect(JSON.stringify(warnPayloads[0])).not.toContain(
+          'super-secret-token-xyz',
+        );
+        expect(warnPayloads[0]).not.toHaveProperty('error');
+        expect(warnPayloads[0]).not.toHaveProperty('message');
+        expect(warnPayloads[0]).not.toHaveProperty('body');
+        expect(warnPayloads[0]).not.toHaveProperty('stack');
+        expect(insertProjectsMock).toHaveBeenCalled();
+      } finally {
+        logger.reset();
+      }
+    });
+
+    it('seedFkParentsBestEffort warm warn retains Error classification without apiStatus', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([1, 2]));
+      const warnPayloads: Array<Record<string, unknown>> = [];
+      logger.setTransport((level, _tag, message, context) => {
+        if (
+          level === 'warn' &&
+          typeof message === 'string' &&
+          message.includes('FK parent by-id lookup failed') &&
+          context
+        ) {
+          warnPayloads.push(context);
+        }
+      });
+
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockImplementation((id: number) => {
+        if (id === 2) {
+          return Promise.reject(
+            new Error('raw-arbitrary-detail-should-not-log'),
+          );
+        }
+        return Promise.resolve({
+          id,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+        });
+      });
+
+      try {
+        await syncProjects(2, 'seed-tok', {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        });
+
+        expect(warnPayloads).toHaveLength(1);
+        expect(warnPayloads[0]).toMatchObject({
+          kind: 'language',
+          id: 2,
+          classification: 'error',
+        });
+        expect(warnPayloads[0]).not.toHaveProperty('apiStatus');
+        expect(JSON.stringify(warnPayloads[0])).not.toContain(
+          'raw-arbitrary-detail-should-not-log',
+        );
+      } finally {
+        logger.reset();
+      }
+    });
+
     it('does not by-id seed when seedFkParents is omitted', async () => {
       mockDbCount(1);
       (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
@@ -978,6 +1184,123 @@ describe('sync step orchestration', () => {
         );
       } finally {
         jest.useRealTimers();
+        insertChapterAssignmentSyncDataMock.mockResolvedValue({
+          insertedCount: 1,
+          skipped: [],
+        });
+      }
+    });
+
+    it('seedFkParentsBestEffort soft-skips all-invalid catalogue and membership', async () => {
+      mockDbCount(0);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set());
+      insertChapterAssignmentSyncDataMock.mockResolvedValue({
+        insertedCount: 0,
+        skipped: [
+          { chapterAssignmentId: 11, reason: 'missing_project_unit' as const },
+        ],
+      });
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        syncedAt: '2026-08-18T07:10:52.908Z',
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 404,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 1,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+          },
+        ],
+      });
+
+      try {
+        const result = await syncChapterAssignments(
+          2,
+          undefined,
+          undefined,
+          'tok',
+          { seedFkParentsBestEffort: true },
+        );
+
+        expect(result.partialSkipWarning).toBe(
+          'Skipped all 1 chapter assignment(s) — missing FK parents',
+        );
+        expect(result.syncedAt).toBe('2026-08-18T07:10:52.908Z');
+        expect(insertUserProjectsMock).not.toHaveBeenCalled();
+      } finally {
+        insertChapterAssignmentSyncDataMock.mockResolvedValue({
+          insertedCount: 1,
+          skipped: [],
+        });
+      }
+    });
+
+    it('seedFkParentsBestEffort mixed catalogue membership uses existing projects only', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([5]));
+      insertChapterAssignmentSyncDataMock.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [
+          {
+            chapterAssignmentId: 12,
+            reason: 'missing_project_unit' as const,
+          },
+        ],
+      });
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        syncedAt: '2026-08-18T07:10:52.908Z',
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 5,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 1,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+          },
+          {
+            chapterAssignmentId: 12,
+            projectUnitId: 23,
+            projectId: 404,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 2,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 0,
+          },
+        ],
+      });
+
+      try {
+        const result = await syncChapterAssignments(
+          2,
+          undefined,
+          undefined,
+          'tok',
+          { seedFkParentsBestEffort: true },
+        );
+
+        expect(result.partialSkipWarning).toBe(
+          'Skipped 1 of 2 chapter assignment(s) — missing FK parents',
+        );
+        expect(insertUserProjectsMock).toHaveBeenCalledWith(2, [5]);
+        expect(insertUserProjectsMock).not.toHaveBeenCalledWith(
+          2,
+          expect.arrayContaining([404]),
+        );
+      } finally {
         insertChapterAssignmentSyncDataMock.mockResolvedValue({
           insertedCount: 1,
           skipped: [],
