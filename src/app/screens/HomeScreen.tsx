@@ -27,7 +27,11 @@ import { useSync } from '../../hooks/useSync';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { launchRecoveryGate } from '../../services/launchRecoveryGate';
-import { onSyncComplete, onSyncStart } from '../../services/syncEvents';
+import {
+  onSyncComplete,
+  onSyncStart,
+  onUploadSessionEvent,
+} from '../../services/syncEvents';
 import { getPrepareOfflineDownloadStarted } from '../../services/storage';
 import { isEffectivelyOnlineForTransfer } from '../../utils/transportPolicy';
 import { createPrepareOfflineAutoPromptController } from '../../utils/prepareOfflineAutoPrompt';
@@ -189,9 +193,21 @@ export function HomeScreenBody({
       setIsSyncingLocal(true);
     });
 
+    // Upload session `complete` fires after the stage-advance drain, so My Work
+    // can drop the yellow cloud / chapter without navigating away and back.
+    // The shared refreshKey intentionally also reloads Projects and sync
+    // status (cheap local reads). Uploads only run after login with local data,
+    // so this does not dismiss the first-sync loader (`refreshKey === 0` gate).
+    const unsubscribeUpload = onUploadSessionEvent(event => {
+      if (event.type === 'complete') {
+        setRefreshKey(key => key + 1);
+      }
+    });
+
     return () => {
       unsubscribeComplete();
       unsubscribeStart();
+      unsubscribeUpload();
     };
   }, [autoPrompt]);
 

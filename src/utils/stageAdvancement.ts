@@ -36,6 +36,22 @@ const STAGE_CHAIN: Record<string, StageAdvanceStatus> = {
 };
 
 /**
+ * Earlier index is the lower workflow stage (#257 keep-lower).
+ * `''` and `not_started` sit before `draft`; `complete` is last.
+ */
+export const STAGE_STATUS_ORDER = [
+  '',
+  'not_started',
+  'draft',
+  'peer_check',
+  'community_review',
+  'linguist_check',
+  'theological_check',
+  'consultant_check',
+  'complete',
+] as const;
+
+/**
  * Maps the chapter's current status to the next stage-advance destination.
  * Covers the full linear chain from Drafting through Complete (#258, #443).
  * Terminal (`complete`) or unrecognized statuses return null.

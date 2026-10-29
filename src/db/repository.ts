@@ -1,8 +1,10 @@
 import { getDatabase } from './db';
+import { chapterCompletedAfterPull } from '../utils/chapterCompletionSyncGuard';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
 import { StageAdvanceStatus } from '@/utils/stageAdvancement';
+import { insertStageAdvanceQueueEntry } from './stageAdvanceQueueRepository';
 import { uploadProjectUnitSql } from './recordingsRepository';
 
 const log = logger.create('DBRepository');
@@ -324,8 +326,15 @@ function collectAssigneeIds(
 async function insertChapterAssignmentTx(
   tx: Transaction,
   assignment: DBTypes.ChapterAssignment,
+  pullRevision?: number,
 ) {
   if (!assignment?.chapterAssignmentId) return;
+  if (
+    pullRevision !== undefined &&
+    chapterCompletedAfterPull(assignment.chapterAssignmentId, pullRevision)
+  ) {
+    return;
+  }
 
   await tx.execute(
     `INSERT INTO chapter_assignments
@@ -339,8 +348,22 @@ async function insertChapterAssignmentTx(
       book_id = excluded.book_id,
       chapter_number = excluded.chapter_number,
       assigned_user_id = excluded.assigned_user_id,
-      peer_checker_id = excluded.peer_checker_id,
-      status = excluded.status,
+      peer_checker_id = CASE
+        WHEN EXISTS (
+          SELECT 1 FROM stage_advance_queue saq
+          WHERE saq.chapter_assignment_id = chapter_assignments.id
+            AND saq.sync_status = 'pending'
+        ) THEN chapter_assignments.peer_checker_id
+        ELSE excluded.peer_checker_id
+      END,
+      status = CASE
+        WHEN EXISTS (
+          SELECT 1 FROM stage_advance_queue saq
+          WHERE saq.chapter_assignment_id = chapter_assignments.id
+            AND saq.sync_status = 'pending'
+        ) THEN chapter_assignments.status
+        ELSE excluded.status
+      END,
       submitted_time = excluded.submitted_time,
       updated_at = excluded.updated_at,
       total_verses = MAX(chapter_assignments.total_verses, excluded.total_verses),
@@ -559,6 +582,7 @@ export type InsertChapterAssignmentSyncResult = {
 
 export async function insertChapterAssignmentSyncData(
   assignments: DBTypes.ChapterAssignment[],
+  pullRevision?: number,
 ): Promise<InsertChapterAssignmentSyncResult> {
   const db = getDatabase();
   const userIds = collectAssigneeIds(assignments);
@@ -620,7 +644,7 @@ export async function insertChapterAssignmentSyncData(
       await insertProjectUnitTx(tx, unit);
     }
     for (const assignment of validAssignments) {
-      await insertChapterAssignmentTx(tx, assignment);
+      await insertChapterAssignmentTx(tx, assignment, pullRevision);
     }
   });
 
@@ -936,6 +960,40 @@ export async function hasLanguagesMissingIsoCode(): Promise<boolean> {
   }
 }
 
+const MASTER_PARENT_ID_TABLES = {
+  languages: 'languages',
+  books: 'books',
+  bibles: 'bibles',
+  projects: 'projects',
+} as const;
+
+export type MasterParentIdTable = keyof typeof MASTER_PARENT_ID_TABLES;
+
+/** Which of the requested master-parent ids already exist locally. */
+export async function selectExistingIds(
+  table: MasterParentIdTable,
+  ids: number[],
+): Promise<Set<number>> {
+  const unique = [
+    ...new Set(
+      ids.filter(id => typeof id === 'number' && Number.isFinite(id) && id > 0),
+    ),
+  ];
+  if (unique.length === 0) {
+    return new Set();
+  }
+
+  const db = getDatabase();
+  const placeholders = unique.map(() => '?').join(',');
+  const result = await db.execute(
+    `SELECT id FROM ${MASTER_PARENT_ID_TABLES[table]} WHERE id IN (${placeholders})`,
+    unique,
+  );
+  return new Set(
+    ((result.rows ?? []) as Array<{ id: number }>).map(row => Number(row.id)),
+  );
+}
+
 export async function insertUserProjects(userId: number, projectIds: number[]) {
   if (projectIds.length === 0) return;
 
@@ -1216,19 +1274,34 @@ export async function resolveChapterClaimQueueEntry(id: number): Promise<void> {
 }
 
 /**
- * Immediately apply a local stage advance (#258, #443, #442). Optional
- * peerCheckerId is set when an unassigned Peer Check is sent to Community
- * Review. Server confirmation and pending-sync queue behavior are owned by #257.
+ * Immediately apply a local stage advance and enqueue it in the same
+ * transaction (#257). Optional peerCheckerId is set when an unassigned Peer
+ * Check is sent to Community Review. Drain owns the server PATCH.
  */
 export async function updateChapterAssignmentStatusLocally(
   chapterAssignmentId: number,
   status: StageAdvanceStatus,
-  peerCheckerId?: number,
+  peerCheckerId: number | undefined,
+  userId: number,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
   const submittedTime = new Date().toISOString();
   await db.transaction(async (tx: Transaction) => {
+    const current = await tx.execute(
+      `SELECT status FROM chapter_assignments WHERE id = ?`,
+      [chapterAssignmentId],
+    );
+    const currentRow = current.rows?.[0] as { status?: string } | undefined;
+    // Never apply a local advance that cannot be queued: it would look sent
+    // but never reach the server, and the next pull would revert it.
+    if (!currentRow) {
+      throw new Error(
+        `Chapter assignment ${chapterAssignmentId} not found locally`,
+      );
+    }
+    // An empty status is the start of the chain (`'' → peer_check` is allowed).
+    const fromStatus = String(currentRow.status ?? '').trim() || 'not_started';
     if (peerCheckerId !== undefined) {
       await tx.execute(
         `UPDATE chapter_assignments
@@ -1239,15 +1312,38 @@ export async function updateChapterAssignmentStatusLocally(
          WHERE id = ?`,
         [status, submittedTime, updatedAt, peerCheckerId, chapterAssignmentId],
       );
-      return;
+    } else {
+      await tx.execute(
+        `UPDATE chapter_assignments
+         SET status = ?,
+             submitted_time = ?,
+             updated_at = ?
+         WHERE id = ?`,
+        [status, submittedTime, updatedAt, chapterAssignmentId],
+      );
     }
+    await insertStageAdvanceQueueEntry(tx, {
+      chapterAssignmentId,
+      userId,
+      fromStatus,
+      toStatus: status,
+      peerCheckerId: peerCheckerId ?? null,
+      createdAt: updatedAt,
+    });
+  });
+}
+
+/** Write a resolved status without enqueueing. Used when a queued advance loses to a lower server stage (#257). */
+export async function setChapterAssignmentStatus(
+  chapterAssignmentId: number,
+  status: string,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.transaction(async (tx: Transaction) => {
     await tx.execute(
-      `UPDATE chapter_assignments
-       SET status = ?,
-           submitted_time = ?,
-           updated_at = ?
-       WHERE id = ?`,
-      [status, submittedTime, updatedAt, chapterAssignmentId],
+      `UPDATE chapter_assignments SET status = ?, updated_at = ? WHERE id = ?`,
+      [status, updatedAt, chapterAssignmentId],
     );
   });
 }

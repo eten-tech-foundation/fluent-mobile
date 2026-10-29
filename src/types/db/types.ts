@@ -57,6 +57,8 @@ export interface MyWorkChapter {
   workflowStage: WorkflowBadgeStage | null;
   syncState: ChapterSyncState;
   ownershipState: ChapterOwnershipState;
+  /** This user's stage change is still queued locally (#257). */
+  hasPendingStageAdvance?: boolean;
   completedVerses: number;
   totalVerses: number;
   downloadedVerses: number;
@@ -135,6 +137,7 @@ export interface MyWorkChapterRow {
   submitted_time?: string | null;
   recording_count: number;
   pending_count: number;
+  has_pending_stage_advance?: number;
   last_recording_activity?: string | null;
   total_verses: number;
   completed_verses: number;

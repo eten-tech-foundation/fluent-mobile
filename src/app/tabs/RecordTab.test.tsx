@@ -1536,6 +1536,7 @@ describe('RecordTab', () => {
           nextStatus: 'community_review',
         }),
         assignPeerCheckerId: 42,
+        userId: 42,
       });
     });
   });

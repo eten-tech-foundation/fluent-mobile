@@ -389,6 +389,59 @@ describe('MyWorkTab', () => {
     expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
   });
 
+  it('opens the drafter row at peer_check while their stage advance is still queued (#257)', async () => {
+    useMyWorkChapters.mockReturnValue({
+      chapters: [
+        {
+          ...sampleChapter,
+          assignmentStatus: 'peer_check',
+          workflowStage: 'peer_check',
+          syncState: 'deviceOnly',
+          hasPendingStageAdvance: true,
+        },
+      ],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-10'));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/(app)/(stack)/verse-detail',
+      params: {
+        chapterId: '10',
+        chapterName: 'Luke 4',
+        projectName: 'Gospel of Luke',
+        language: 'Baka',
+      },
+    });
+  });
+
+  it('does not open a peer_check row without a queued stage advance when the user is the drafter', async () => {
+    useMyWorkChapters.mockReturnValue({
+      chapters: [
+        {
+          ...sampleChapter,
+          assignmentStatus: 'peer_check',
+          workflowStage: 'peer_check',
+          hasPendingStageAdvance: false,
+        },
+      ],
+      loading: false,
+      refreshing: false,
+      refresh: jest.fn(),
+    });
+
+    render(<MyWorkTab />);
+
+    fireEvent.press(await screen.findByTestId('my-work-row-10'));
+
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
   it('routes Observer rows through the guarded helper with typed IDs', async () => {
     mockGetObserverProjectIds.mockReturnValue([3]);
     useMyWorkChapters.mockReturnValue({

@@ -30,6 +30,46 @@ describe('FluentAPI chapter assignment lists', () => {
     });
   }
 
+  it('reads an assignment using the session bearer', async () => {
+    mockOkJson({ id: 7, status: 'complete' });
+    await expect(FluentAPI.getChapterAssignment(7)).resolves.toEqual({
+      chapterAssignmentId: 7,
+      status: 'complete',
+    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(new URL(url).pathname).toBe('/chapter-assignments/7');
+    expect(init.headers).toEqual(
+      expect.objectContaining({ Authorization: 'Bearer session-abc' }),
+    );
+  });
+
+  it('maps fluent-api wire id to chapterAssignmentId for Complete checks', async () => {
+    mockOkJson({
+      id: 7,
+      status: 'consultant_check',
+      projectUnitId: 580,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 1,
+    });
+    await expect(FluentAPI.getChapterAssignment(7)).resolves.toEqual({
+      chapterAssignmentId: 7,
+      status: 'consultant_check',
+      projectUnitId: 580,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 1,
+    });
+  });
+
+  it('prefers chapterAssignmentId when the wire payload already has it', async () => {
+    mockOkJson({ id: 99, chapterAssignmentId: 7, status: 'complete' });
+    await expect(FluentAPI.getChapterAssignment(7)).resolves.toEqual({
+      chapterAssignmentId: 7,
+      status: 'complete',
+    });
+  });
+
   it('GETs /self/chapter-assignments/all and forwards the list queries', async () => {
     const payload = { syncedAt: '2026-10-12T00:00:00.000Z', data: [] };
     mockOkJson(payload);
@@ -50,6 +90,32 @@ describe('FluentAPI chapter assignment lists', () => {
       '2026-01-01T00:00:00.000Z',
     );
     expect(parsed.searchParams.get('excludeProjectIds')).toBe('97,98');
+    expect(init.headers).toEqual(
+      expect.objectContaining({
+        Authorization: 'Bearer user-token',
+      }),
+    );
+  });
+
+  it('GETs /chapter-assignments/{id} with the caller token', async () => {
+    mockOkJson({
+      chapterAssignmentId: 7,
+      status: 'draft',
+    });
+
+    await expect(
+      FluentAPI.getChapterAssignment(7, 'user-token'),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        chapterAssignmentId: 7,
+        status: 'draft',
+      }),
+    );
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const parsed = new URL(url);
+    expect(parsed.pathname).toBe('/chapter-assignments/7');
+    expect(init.method ?? 'GET').toBe('GET');
     expect(init.headers).toEqual(
       expect.objectContaining({
         Authorization: 'Bearer user-token',

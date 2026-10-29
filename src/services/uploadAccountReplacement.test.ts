@@ -82,6 +82,11 @@ jest.mock('./storage', () => ({
 }));
 jest.mock('./sync', () => ({
   syncPendingChapterClaimsForUser: async () => undefined,
+  syncPendingStageAdvancesForUser: async () => ({
+    synced: 0,
+    dropped: 0,
+    failed: 0,
+  }),
 }));
 jest.mock('./keychain', () => ({
   getCredentials: async (id: string) => ({ token: `owner-${id}-token` }),

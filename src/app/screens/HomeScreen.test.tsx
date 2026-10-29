@@ -1,6 +1,10 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
+import {
+  emitSyncComplete,
+  emitSyncStart,
+  emitUploadSessionEvent,
+} from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
 
 jest.mock('react-native-bootsplash', () => ({
@@ -90,8 +94,17 @@ jest.mock('../tabs/MyWorkTab', () => {
   const MockReact = require('react');
   const { Text } = require('react-native');
   return {
-    MyWorkTab: () =>
-      MockReact.createElement(Text, { testID: 'my-work-tab' }, 'My Work'),
+    MyWorkTab: ({ refreshKey }: { refreshKey?: number }) =>
+      MockReact.createElement(
+        MockReact.Fragment,
+        null,
+        MockReact.createElement(Text, { testID: 'my-work-tab' }, 'My Work'),
+        MockReact.createElement(
+          Text,
+          { testID: 'my-work-refresh-key' },
+          String(refreshKey),
+        ),
+      ),
   };
 });
 
@@ -220,6 +233,46 @@ describe('HomeScreenBody progressive login (#670)', () => {
     expect(screen.getByTestId('my-work-tab')).toBeTruthy();
 
     unmount();
+  });
+
+  it('bumps My Work refreshKey when the upload session completes (#257)', async () => {
+    render(<HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />);
+    const readKey = () =>
+      Number(screen.getByTestId('my-work-refresh-key').props.children);
+    const before = readKey();
+
+    // Progress / pause events must not reload My Work.
+    await act(async () => {
+      emitUploadSessionEvent({ type: 'start', totalChapters: 1 });
+      emitUploadSessionEvent({
+        type: 'progress',
+        completedChapters: 0,
+        totalChapters: 1,
+      });
+    });
+    expect(readKey()).toBe(before);
+
+    await act(async () => {
+      emitUploadSessionEvent({ type: 'complete' });
+    });
+    expect(readKey()).toBe(before + 1);
+  });
+
+  it('unsubscribes from upload session events on unmount (#257)', () => {
+    const syncEvents = require('../../services/syncEvents');
+    const unsubscribe = jest.fn();
+    const spy = jest
+      .spyOn(syncEvents, 'onUploadSessionEvent')
+      .mockReturnValue(unsubscribe);
+
+    const { unmount } = render(
+      <HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />,
+    );
+    expect(spy).toHaveBeenCalled();
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+
+    spy.mockRestore();
   });
 });
 

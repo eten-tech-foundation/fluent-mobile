@@ -2,14 +2,18 @@ import { FluentAPI } from './api';
 import {
   clearPrepareOfflineSessionInventory,
   fetchPrepareOfflineManifest,
+  fetchPrepareOfflineManifestsBounded,
   fetchSourceBibleAudioManifest,
   getDefaultPrepareOfflinePackageDeselects,
   getPrepareOfflineResourceStatus,
   hydratePrepareOfflineTextContent,
   persistSourceAudioMetaForManifestContexts,
+  PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY,
   refreshPrepareOfflineInventory,
   subscribePrepareOfflineInventory,
 } from './prepareOfflineResources';
+import { ApiError } from '../types/api/errors';
+import { waitFor } from '@testing-library/react-native';
 import { getDownloadQueueStatusMap } from '../db/downloadQueueRepository';
 import { persistSourceAudioChapterMeta } from './offlineSourceAudio';
 import type { DownloadQueueStatus } from '../types/download/types';
@@ -311,6 +315,374 @@ describe('prepareOfflineResources', () => {
       // truncated check must reject before any fallback or merge happens.
       expect(FluentAPI.getChapterSourceAudio).not.toHaveBeenCalled();
     });
+
+    it('does not run per-chapter audio fallback after the caller aborts', async () => {
+      const controller = new AbortController();
+      controller.abort();
+      await expect(
+        fetchPrepareOfflineManifest(99, FULL_PARAMS, controller.signal),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(FluentAPI.getPrepareOfflineManifest).not.toHaveBeenCalled();
+      expect(FluentAPI.getChapterSourceAudio).not.toHaveBeenCalled();
+    });
+
+    it('normalizes mid-flight translation abort to AbortError (not status-0 ApiError)', async () => {
+      const controller = new AbortController();
+      mockSourceAudioManifest([]);
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockImplementation(
+        (
+          _projectId: number,
+          _params: unknown,
+          request?: { signal?: AbortSignal },
+        ) =>
+          new Promise((_resolve, reject) => {
+            const onAbort = () => {
+              // Mimic httpClient wrapping AbortError as network ApiError.
+              reject(new ApiError(0, 'Request timed out'));
+            };
+            if (request?.signal?.aborted) {
+              onAbort();
+              return;
+            }
+            request?.signal?.addEventListener('abort', onAbort, { once: true });
+            Promise.resolve().then(() => controller.abort());
+          }),
+      );
+
+      await expect(
+        fetchPrepareOfflineManifest(99, FULL_PARAMS, controller.signal),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(FluentAPI.getChapterSourceAudio).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('fetchPrepareOfflineManifestsBounded', () => {
+    const contexts = [1, 2, 3, 4].map(chapter => ({
+      languageCode: 'eng',
+      bookCode: 'MAT',
+      bookId: 40,
+      startChapter: chapter,
+      endChapter: chapter,
+      bibleId: 10,
+    }));
+
+    const sourceAudioItem = {
+      id: 'sa',
+      tier: 1 as const,
+      kind: 'audio' as const,
+      resourceName: 'Source Bible Audio',
+      label: 'Audio',
+      required: true,
+      removable: false,
+      bytesTotal: 1,
+      sourceUrl: 'https://example.com/a.mp3',
+      fileExt: 'mp3',
+      languageCode: 'eng',
+      bookCode: 'MAT',
+      startChapter: 1,
+      endChapter: 1,
+      scope: { bookCode: 'MAT', startChapter: 1, endChapter: 1 },
+    };
+
+    it('keeps at most PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY context jobs in flight', async () => {
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const resolvers: Array<() => void> = [];
+
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockImplementation(
+        (_projectId: number, params: { startChapter: number }) =>
+          new Promise(resolve => {
+            inFlight += 1;
+            maxInFlight = Math.max(maxInFlight, inFlight);
+            const chapter = params.startChapter;
+            resolvers.push(() => {
+              inFlight -= 1;
+              resolve({
+                projectId: 99,
+                sourceLanguageCode: 'eng',
+                items: [
+                  {
+                    id: `t-${chapter}`,
+                    tier: 2,
+                    kind: 'text',
+                    resourceName: 'Notes',
+                    label: 'Notes',
+                    required: false,
+                    removable: true,
+                    bytesTotal: 1,
+                    fileExt: 'json',
+                    languageCode: 'eng',
+                  },
+                ],
+                totalBytes: 1,
+                truncated: false,
+              });
+            });
+          }),
+      );
+      mockSourceAudioManifest([sourceAudioItem]);
+
+      const pending = fetchPrepareOfflineManifestsBounded(99, contexts);
+
+      await waitFor(() =>
+        expect(resolvers.length).toBe(
+          PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY,
+        ),
+      );
+      expect(maxInFlight).toBe(PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY);
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(
+        PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY,
+      );
+
+      resolvers.splice(0, resolvers.length).forEach(fn => fn());
+      await waitFor(() =>
+        expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(4),
+      );
+      expect(maxInFlight).toBe(PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY);
+      expect(resolvers.length).toBe(
+        PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY,
+      );
+      resolvers.splice(0, resolvers.length).forEach(fn => fn());
+
+      const items = await pending;
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(4);
+      expect(
+        items.map(item => item.id).filter(id => id.startsWith('t-')),
+      ).toEqual(['t-1', 't-2', 't-3', 't-4']);
+    });
+
+    it('does not launch queued context jobs after selection abort', async () => {
+      const controller = new AbortController();
+      let started = 0;
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockImplementation(
+        (
+          _projectId: number,
+          _params: unknown,
+          request?: { signal?: AbortSignal },
+        ) =>
+          new Promise((_resolve, reject) => {
+            started += 1;
+            const onAbort = () => {
+              const err = new Error('Aborted');
+              err.name = 'AbortError';
+              reject(err);
+            };
+            if (request?.signal?.aborted) {
+              onAbort();
+              return;
+            }
+            request?.signal?.addEventListener('abort', onAbort, { once: true });
+            if (started === PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY) {
+              Promise.resolve().then(() => controller.abort());
+            }
+          }),
+      );
+      mockSourceAudioManifest([sourceAudioItem]);
+
+      await expect(
+        fetchPrepareOfflineManifestsBounded(99, contexts, controller.signal),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(started).toBe(PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY);
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(
+        PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY,
+      );
+    });
+
+    it('aggregates every context and still fails closed on 401/truncated/502', async () => {
+      mockSourceAudioManifest([sourceAudioItem]);
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockImplementation(
+        (_projectId: number, params: { startChapter: number }) =>
+          Promise.resolve({
+            projectId: 99,
+            sourceLanguageCode: 'eng',
+            items: [
+              {
+                id: `t-${params.startChapter}`,
+                tier: 2,
+                kind: 'text',
+                resourceName: 'Notes',
+                label: 'Notes',
+                required: false,
+                removable: true,
+                bytesTotal: 1,
+                fileExt: 'json',
+                languageCode: 'eng',
+              },
+            ],
+            totalBytes: 1,
+            truncated: false,
+          }),
+      );
+
+      const ok = await fetchPrepareOfflineManifestsBounded(99, contexts);
+      expect(ok.map(item => item.id).filter(id => id.startsWith('t-'))).toEqual(
+        ['t-1', 't-2', 't-3', 't-4'],
+      );
+
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockRejectedValueOnce(
+        new ApiError(401, 'auth', 'AUTH'),
+      );
+      await expect(
+        fetchPrepareOfflineManifestsBounded(99, contexts.slice(0, 1)),
+      ).rejects.toBeInstanceOf(ApiError);
+
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockResolvedValueOnce({
+        projectId: 99,
+        sourceLanguageCode: 'eng',
+        items: [],
+        totalBytes: 0,
+        truncated: true,
+      });
+      await expect(
+        fetchPrepareOfflineManifestsBounded(99, contexts.slice(0, 1)),
+      ).rejects.toThrow('manifest truncated');
+
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockRejectedValueOnce(
+        new ApiError(502, 'bad gateway'),
+      );
+      await expect(
+        fetchPrepareOfflineManifestsBounded(99, contexts.slice(0, 1)),
+      ).rejects.toMatchObject({ status: 502 });
+    });
+
+    it('restores parent legacy range hints for shared translation IDs without explicit.scope only', async () => {
+      const parent = {
+        languageCode: 'eng',
+        bookCode: 'MAT',
+        bookId: 40,
+        startChapter: 1,
+        endChapter: 3,
+        bibleId: 10,
+      };
+      mockSourceAudioManifest([]);
+      (FluentAPI.getChapterSourceAudio as jest.Mock).mockResolvedValue({
+        provider: 'dbl',
+        bible: { name: 'B', abbreviation: 'ENG' },
+        bookCode: 'MAT',
+        chapter: 1,
+        items: [],
+      });
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockImplementation(
+        (_projectId: number, params: { startChapter: number }) =>
+          Promise.resolve({
+            projectId: 99,
+            sourceLanguageCode: 'eng',
+            items: [
+              {
+                id: 'tw-shared',
+                tier: 2,
+                kind: 'text',
+                resourceName: 'Translation Words',
+                label: 'TW',
+                required: false,
+                removable: true,
+                bytesTotal: 10,
+                fileExt: 'json',
+                languageCode: 'eng',
+                // Sub-job request-range echoes — not true coverage.
+                bookCode: 'MAT',
+                startChapter: params.startChapter,
+                endChapter: params.startChapter,
+              },
+              {
+                id: 'img-scoped',
+                tier: 3,
+                kind: 'image',
+                resourceName: 'Image',
+                label: 'Img',
+                required: false,
+                removable: true,
+                bytesTotal: 10,
+                fileExt: 'jpg',
+                languageCode: 'eng',
+                bookCode: 'MAT',
+                startChapter: params.startChapter,
+                endChapter: params.startChapter,
+                scope: {
+                  bookCode: 'MAT',
+                  startChapter: params.startChapter,
+                  endChapter: params.startChapter,
+                },
+              },
+            ],
+            totalBytes: 20,
+            truncated: false,
+          }),
+      );
+
+      const items = await fetchPrepareOfflineManifestsBounded(99, [parent]);
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(3);
+      expect(
+        jest
+          .mocked(FluentAPI.getPrepareOfflineManifest)
+          .mock.calls.map(call => call[1].startChapter),
+      ).toEqual([1, 2, 3]);
+
+      const shared = items.filter(item => item.id === 'tw-shared');
+      expect(shared).toHaveLength(3);
+      for (const item of shared) {
+        expect(item.scope).toBeUndefined();
+        expect(item.bookCode).toBe('MAT');
+        expect(item.startChapter).toBe(1);
+        expect(item.endChapter).toBe(3);
+      }
+
+      const scoped = items.filter(item => item.id === 'img-scoped');
+      expect(scoped).toHaveLength(3);
+      expect(scoped.map(item => item.startChapter)).toEqual([1, 2, 3]);
+      expect(scoped.map(item => item.scope?.startChapter)).toEqual([1, 2, 3]);
+    });
+
+    it('leaves source-audio legacy chapter fields unchanged across sub-jobs', async () => {
+      const parent = {
+        languageCode: 'eng',
+        bookCode: 'MAT',
+        bookId: 40,
+        startChapter: 1,
+        endChapter: 2,
+        bibleId: 10,
+      };
+      mockTranslationManifest([]);
+      (FluentAPI.getSourceAudioManifest as jest.Mock).mockImplementation(
+        (_projectId: number, params: { startChapter: number }) =>
+          Promise.resolve({
+            projectId: 99,
+            sourceLanguageCode: 'eng',
+            provider: 'aquifer',
+            items: [
+              {
+                id: `sa-${params.startChapter}`,
+                tier: 1,
+                kind: 'audio',
+                resourceName: 'Source Bible Audio',
+                label: 'Audio',
+                required: true,
+                removable: false,
+                bytesTotal: 1,
+                sourceUrl: `https://example.com/${params.startChapter}.mp3`,
+                fileExt: 'mp3',
+                languageCode: 'eng',
+                bookCode: 'MAT',
+                startChapter: params.startChapter,
+                endChapter: params.startChapter,
+                scope: {
+                  bookCode: 'MAT',
+                  startChapter: params.startChapter,
+                  endChapter: params.startChapter,
+                },
+              },
+            ],
+            totalBytes: 1,
+          }),
+      );
+
+      const items = await fetchPrepareOfflineManifestsBounded(99, [parent]);
+      const audio = items.filter(item => item.kind === 'audio');
+      expect(audio.map(item => item.id)).toEqual(['sa-1', 'sa-2']);
+      expect(audio.map(item => item.startChapter)).toEqual([1, 2]);
+      expect(audio.map(item => item.endChapter)).toEqual([1, 2]);
+    });
   });
 
   describe('hydratePrepareOfflineTextContent', () => {
@@ -343,11 +715,23 @@ describe('prepareOfflineResources', () => {
       };
     }
 
-    it('copies serializedContent onto matching members', async () => {
-      mockTranslationManifest([
-        { id: 'tw1', serializedContent: '{"a":1}' },
-        { id: 'tw2', serializedContent: '{"b":2}' },
-      ]);
+    it('copies serializedContent onto matching members via bounded chapter jobs', async () => {
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockImplementation(
+        (_projectId: number, params: { startChapter: number }) =>
+          Promise.resolve({
+            projectId: 99,
+            sourceLanguageCode: 'eng',
+            items:
+              params.startChapter === 1
+                ? [
+                    { id: 'tw1', serializedContent: '{"a":1}' },
+                    { id: 'tw2', serializedContent: '{"b":2}' },
+                  ]
+                : [],
+            totalBytes: 0,
+            truncated: false,
+          }),
+      );
 
       const result = await hydratePrepareOfflineTextContent(
         99,
@@ -355,16 +739,103 @@ describe('prepareOfflineResources', () => {
         [FULL_PARAMS],
       );
 
-      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(99, {
-        languageCode: 'eng',
-        bookCode: 'MRK',
-        startChapter: 1,
-        endChapter: 3,
-        includeContent: true,
-      });
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(3);
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(
+        99,
+        {
+          languageCode: 'eng',
+          bookCode: 'MRK',
+          startChapter: 1,
+          endChapter: 1,
+          includeContent: true,
+        },
+        { signal: expect.any(AbortSignal) },
+      );
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(
+        99,
+        {
+          languageCode: 'eng',
+          bookCode: 'MRK',
+          startChapter: 3,
+          endChapter: 3,
+          includeContent: true,
+        },
+        { signal: expect.any(AbortSignal) },
+      );
       expect(
         result[0].manifestMembers.map(member => member.serializedContent),
       ).toEqual(['{"a":1}', '{"b":2}']);
+    });
+
+    it('passes job AbortSignal into includeContent hydration requests', async () => {
+      const signals: Array<AbortSignal | undefined> = [];
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockImplementation(
+        (
+          _projectId: number,
+          _params: unknown,
+          request?: { signal?: AbortSignal },
+        ) => {
+          signals.push(request?.signal);
+          return Promise.resolve({
+            projectId: 99,
+            sourceLanguageCode: 'eng',
+            items: [{ id: 'tw1', serializedContent: '{}' }],
+            totalBytes: 0,
+            truncated: false,
+          });
+        },
+      );
+
+      await hydratePrepareOfflineTextContent(
+        99,
+        [textRow('available', ['tw1'])],
+        [FULL_PARAMS],
+      );
+
+      expect(signals).toHaveLength(3);
+      expect(signals.every(signal => signal instanceof AbortSignal)).toBe(true);
+    });
+
+    it('bounds includeContent hydration concurrency', async () => {
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const resolvers: Array<() => void> = [];
+      (FluentAPI.getPrepareOfflineManifest as jest.Mock).mockImplementation(
+        () =>
+          new Promise(resolve => {
+            inFlight += 1;
+            maxInFlight = Math.max(maxInFlight, inFlight);
+            resolvers.push(() => {
+              inFlight -= 1;
+              resolve({
+                projectId: 99,
+                sourceLanguageCode: 'eng',
+                items: [{ id: 'tw1', serializedContent: '{}' }],
+                totalBytes: 0,
+                truncated: false,
+              });
+            });
+          }),
+      );
+
+      const pending = hydratePrepareOfflineTextContent(
+        99,
+        [textRow('available', ['tw1'])],
+        [FULL_PARAMS],
+      );
+      await waitFor(() =>
+        expect(resolvers.length).toBe(
+          PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY,
+        ),
+      );
+      expect(maxInFlight).toBe(PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY);
+      resolvers.splice(0, resolvers.length).forEach(fn => fn());
+      await waitFor(() =>
+        expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(3),
+      );
+      resolvers.splice(0, resolvers.length).forEach(fn => fn());
+      await pending;
+      expect(maxInFlight).toBe(PREPARE_OFFLINE_MANIFEST_CONTEXT_CONCURRENCY);
     });
 
     it('throws when the server returns no content for a member', async () => {
@@ -427,8 +898,23 @@ describe('prepareOfflineResources', () => {
         [FULL_PARAMS],
       );
 
-      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(1);
+      // URL-only members must not skip hydration for siblings that still need
+      // inline content. FULL_PARAMS expands to one includeContent job per
+      // chapter (1..3), matching bounded catalog/hydration fetches.
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledTimes(3);
+      expect(FluentAPI.getPrepareOfflineManifest).toHaveBeenCalledWith(
+        99,
+        {
+          languageCode: 'eng',
+          bookCode: 'MRK',
+          startChapter: 1,
+          endChapter: 1,
+          includeContent: true,
+        },
+        { signal: expect.any(AbortSignal) },
+      );
       expect(result[0].manifestMembers[0]).toEqual(row.manifestMembers[0]);
+      expect(result[0].manifestMembers[0].serializedContent).toBeUndefined();
       expect(result[0].manifestMembers[1].serializedContent).toBe('{"note":1}');
     });
 
@@ -507,6 +993,47 @@ describe('prepareOfflineResources', () => {
 
       expect(FluentAPI.getChapterSourceAudio).toHaveBeenCalledTimes(2);
       expect(result).toEqual([]);
+    });
+
+    it('does not persist meta when aborted after a deferred fallback response', async () => {
+      const controller = new AbortController();
+      let resolveAudio: ((value: unknown) => void) | undefined;
+      (FluentAPI.getChapterSourceAudio as jest.Mock).mockImplementation(
+        () =>
+          new Promise(resolve => {
+            resolveAudio = resolve;
+          }),
+      );
+
+      const pending = fetchSourceBibleAudioManifest(
+        99,
+        [{ bookCode: 'MRK', chapterNumber: 1 }],
+        'eng',
+        10,
+        controller.signal,
+      );
+
+      await waitFor(() =>
+        expect(FluentAPI.getChapterSourceAudio).toHaveBeenCalled(),
+      );
+      controller.abort();
+      resolveAudio?.({
+        provider: 'dbl',
+        bible: { name: 'B', abbreviation: 'ENG' },
+        bookCode: 'MRK',
+        chapter: 1,
+        items: [
+          {
+            format: 'mp3',
+            url: 'https://example.com/late.mp3',
+            sizeBytes: 9,
+            scope: 'chapter',
+          },
+        ],
+      });
+
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+      expect(persistMeta).not.toHaveBeenCalled();
     });
   });
 
