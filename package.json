@@ -51,7 +51,7 @@
   "dependencies": {
     "@op-engineering/op-sqlite": "^15.2.11",
     "@react-native-community/netinfo": "^12.0.1",
-    "@react-native-vector-icons/ionicons": "^13.1.5",
+    "@react-native-vector-icons/ionicons": "^14.0.0",
     "@tanstack/react-query": "^5.104.5",
     "babel-preset-expo": "~57.0.6",
     "expo": "~57.0.21",
