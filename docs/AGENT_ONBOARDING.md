@@ -4,7 +4,7 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 **Delivery judgment** (acceptance criteria, scope, abstraction budget, human device QA): root [`AGENTS.md`](../AGENTS.md).
 
-**Any AI tool (not only Cursor):** start at [`CLAUDE.md`](../CLAUDE.md). Board mutations: [`guides/project-board.md`](guides/project-board.md). Foreign tickets (other repos / Linear): [`.cursor/rules/foreign-tickets.mdc`](../.cursor/rules/foreign-tickets.mdc). New deps: [`guides/expo-first-dependencies.md`](guides/expo-first-dependencies.md).
+**Any AI tool (not only Cursor):** start at [`AGENTS.md`](../AGENTS.md). Claude Code also loads [`CLAUDE.md`](../CLAUDE.md) (`@AGENTS.md`). Board mutations: [`guides/project-board.md`](guides/project-board.md). Foreign tickets (other repos / Linear): [`.cursor/rules/foreign-tickets.mdc`](../.cursor/rules/foreign-tickets.mdc) (also summarized in `AGENTS.md`). New deps: [`guides/expo-first-dependencies.md`](guides/expo-first-dependencies.md).
 
 ## What this project is
 
@@ -103,7 +103,7 @@ Run from repo root after `npm install`:
 
 **Prebuild failures:** if `MainApplication does not exist` → `rm -rf android` then `npm run prebuild`.
 
-**Before claiming PR-ready** (authoritative order in [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc)): `npm run format:check` → `npm run lint` → `npm run architecture-guard` → `npm run typecheck` → `npm test -- --ci`.
+**Before claiming PR-ready** (authoritative order in [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/commands.mdc`](../.cursor/rules/commands.mdc)): `npm run format:check` → `npm run lint` → `npm run architecture-guard` → `npm run typecheck` → `npm test -- --ci`. Green CI is not fulfilled AC or device QA.
 
 ## Production release (Android)
 
@@ -221,7 +221,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | New API endpoint | `FluentAPI` in `api.ts`, then `sync.ts` step + `repository.ts` |
 | New table / column | `schema.ts` → prefer versioned migrations (`#110`) → repository inserts → queries → types |
 | Manual re-sync | Sync page / header sync → `useSync` / `syncAllUsers` |
-| PR workflow | `/start-issue` (full loop), `/create-pr-branch`, `/generate-pr-description`, `/create-pr` (alias `/open-pr`) — canonical: `.claude/commands/` |
+| PR workflow | `/start-issue` (full loop), `/create-pr-branch`, `/generate-pr-description`, `/create-pr` (alias `/open-pr`) — canonical: `.claude/commands/` (read those files; Cursor `/` shims are palette-only). No-ticket chores: in-session `Refs: none` + `{author}/chore/{slug}` |
 | Assert remuxed take is non-silent | `npm run verify:remux-audio -- /path/to/take.m4a`. See `scripts/verify-remux-audio.mjs` (adb pull `files/recordings/` via `run-as com.eten.fluent`) |
 
 ## Risk areas (change carefully)
@@ -255,5 +255,5 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 - Cursor rules: [`.cursor/rules/`](../.cursor/rules/) — **Android-only:** [android-only.mdc](../.cursor/rules/android-only.mdc)
 - Dependabot: [guides/dependabot-process.md](guides/dependabot-process.md) — use with `.cursor/rules/dependabot-workflow.mdc`
 - PR template: [`.cursor/templates/pr-template.md`](../.cursor/templates/pr-template.md)
-- Slash commands: `/start-issue`, `/onboard`, `/dep-bump`, `/create-pr-branch`, `/create-pr` (`/open-pr` alias), `/generate-pr-description`, `/handle-dependabot` (canonical: [`.claude/commands/`](../.claude/commands/); Cursor shims: [`.cursor/commands/`](../.cursor/commands/))
+- Slash commands: `/start-issue`, `/onboard`, `/dep-bump`, `/create-pr-branch`, `/create-pr` (`/open-pr` alias), `/generate-pr-description`, `/handle-dependabot` — canonical files in [`.claude/commands/`](../.claude/commands/). Cursor [`.cursor/commands/`](../.cursor/commands/) shims only register `/` palette names; always execute by reading the `.claude` file. Shared agent contract: [`AGENTS.md`](../AGENTS.md); Claude adapter: [`CLAUDE.md`](../CLAUDE.md) (`@AGENTS.md`).
 - Hot-path notes: [src/services/AGENTS.md](../src/services/AGENTS.md), [src/db/AGENTS.md](../src/db/AGENTS.md)

@@ -36,10 +36,18 @@ the explicit ask — still print the branch name).
 ### 1. Resolve issue number
 
 - If the user message or recent conversation already includes a GitHub issue (e.g. `#173` or `173`), use it.
-- Otherwise, **ask once**: "What's the GitHub issue number? (e.g. 173)"
-- Normalize to digits only for the branch segment.
+- **No-ticket chores:** if the user explicitly approved a no-ticket chore
+  in-session (`Refs: none`), set `NO_TICKET=1`, skip issue fetch (step 2), force
+  type `chore`, and take a short slug from the user (or a concise slug from their
+  description). Still run **author resolution (step 3)** before building
+  `{author}/chore/{slug}`, then continue from pre-flight (step 6).
+- Otherwise, **ask once**: "What's the GitHub issue number? (e.g. 173) — or say
+  this is an approved no-ticket chore."
+- Normalize ticketed issues to digits only for the branch segment.
 
 ### 2. Fetch GitHub issue
+
+Skip entirely when `NO_TICKET=1`.
 
 ```bash
 gh issue view NNN --repo eten-tech-foundation/fluent-mobile --json number,title,labels,body
@@ -48,6 +56,8 @@ gh issue view NNN --repo eten-tech-foundation/fluent-mobile --json number,title,
 If the issue is not found, report the error and stop.
 
 ### 3. Resolve branch author prefix
+
+**Always run** (ticketed and no-ticket).
 
 Use the **local part** of `git config user.email` (everything before `@`):
 
@@ -62,7 +72,8 @@ If `user.email` is unset, ask the user to configure git (`git config user.email 
 
 ### 4. Determine branch type (`feature` | `fix` | `chore`)
 
-Use **only** these three types.
+Use **only** these three types. When `NO_TICKET=1`, type is always `chore` —
+skip the table below.
 
 **Infer from the GitHub issue (in order):**
 
@@ -79,7 +90,9 @@ If still ambiguous, use **AskQuestion** with: feature / fix / chore (default fro
 
 ### 5. Build title slug
 
-From the GitHub issue **title** (not description):
+When `NO_TICKET=1`, slug from the user-named chore description (same hyphen
+rules as below; 3–6 words). Otherwise from the GitHub issue **title** (not
+description):
 
 1. Remove prefixes like `[Mobile App]`, `(Mobile)`, etc.
 2. Lowercase the title.
@@ -118,13 +131,24 @@ Issue:  #173 — Adopt Phase 1 agent/process docs
 Base:   main @ abc1234
 ```
 
+No-ticket example:
+
+```text
+Branch: mrace/chore/ai-rules-cleanup
+Issue:  none (Refs: none — in-session chore)
+Base:   main @ abc1234
+```
+
 Ask: **"Create this branch?"** (or create immediately if the user was explicit,
 including `/start-issue`).
 
 ### 8. Create branch
 
 ```bash
+# Ticketed:
 git checkout -b "{author}/{type}/{issue-number}-{slug}"
+# No-ticket chore:
+git checkout -b "{author}/chore/{slug}"
 ```
 
 If branching from `main` explicitly and behind:
@@ -140,6 +164,7 @@ checkout of `main` is blocked:
 ```bash
 git fetch origin main
 git checkout -b "{author}/{type}/{issue-number}-{slug}" origin/main
+# or: git checkout -b "{author}/chore/{slug}" origin/main
 ```
 
 Report success and remind them to use `/create-pr` (or `/start-issue` will chain
@@ -163,8 +188,9 @@ git config --global user.email "you@gloo.us"
 
 | User says | Action |
 | --------- | ------ |
-| `/create-pr-branch` | Ask for issue number, then run workflow |
+| `/create-pr-branch` | Ask for issue number (or approved no-ticket chore), then run workflow |
 | `/create-pr-branch 173` | Fetch issue, propose branch, create after confirm |
+| Explicit no-ticket chore | `{author}/chore/{slug}` + later `Refs: none` |
 
 ## Rules
 
