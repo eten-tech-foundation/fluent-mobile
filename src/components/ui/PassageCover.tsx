@@ -1,31 +1,66 @@
 import React from 'react';
-import {
-  Pressable,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
-import { ColorModeScope, useThemedStyles } from '../../theme/useTheme';
+import { Pressable, Text, type StyleProp, type ViewStyle } from 'react-native';
+import { useThemedStyles } from '../../theme/useTheme';
+import { CoverFace } from './CoverFace';
+import type { CoverBadgeState } from './CoverStatusBadge';
+import type { CoverStyle } from './coverArt/generator';
 
 const PRESSED_OPACITY = 0.7;
 
-export type PassageRecordedStatus = 'none' | 'partial' | 'recorded';
+type PassageStatus = 'none' | 'partial' | 'recorded' | 'peerCheck' | 'checked';
 
-const STATUS_LABELS: Record<PassageRecordedStatus, string> = {
+const STATUS_LABELS: Record<PassageStatus, string> = {
   none: 'Not recorded yet',
   partial: 'Partly recorded',
   recorded: 'Recorded',
+  peerCheck: 'In peer check',
+  checked: 'Peer checked',
 };
 
-export interface PassageCoverProps {
+/** A pericope is recorded in one take, so the badge only follows peer check. */
+const BADGES: Record<PassageStatus, CoverBadgeState> = {
+  none: { kind: 'none' },
+  partial: { kind: 'none' },
+  recorded: { kind: 'none' },
+  peerCheck: { kind: 'ring', fraction: 0.5 },
+  checked: { kind: 'checked' },
+};
+
+function passageStatus({
+  recordedVerses,
+  totalVerses,
+  submitted,
+  peerChecked,
+}: CoverArtProps): PassageStatus {
+  if (peerChecked) return 'checked';
+  if (submitted) return 'peerCheck';
+  if (recordedVerses <= 0) return 'none';
+  return recordedVerses >= totalVerses ? 'recorded' : 'partial';
+}
+
+/** What the cover's art and status are drawn from. */
+export interface CoverArtProps {
+  /** Stable passage id, e.g. "Mark:pericope::2". */
+  seed: string;
+  /** The passage's chapter, e.g. "Mark:14"; picks the style. */
+  groupSeed: string;
+  recordedVerses: number;
+  totalVerses: number;
+  /** Every chapter it's in was submitted for peer check. */
+  submitted?: boolean;
+  /** Every chapter it's in passed peer check. */
+  peerChecked?: boolean;
+  /** Overrides the chapter's style. */
+  coverStyle?: CoverStyle;
+}
+
+export interface PassageCoverProps extends CoverArtProps {
   /** Small line on the cover, e.g. "Mark 14". */
   eyebrow: string;
   /** Verse range set large on the cover, e.g. "22–25". */
   verses: string;
   /** Under the cover: the pericope title, or the reference without one. */
   title: string;
-  status: PassageRecordedStatus;
   onPress?: () => void;
   /** Spoken reference, e.g. "Mark 14:22–25". */
   reference: string;
@@ -34,22 +69,20 @@ export interface PassageCoverProps {
 }
 
 /**
- * A passage in the book page's gallery: a typographic cover with the verse
- * range, then its title and how much is recorded. Flat, since tactile
- * controls stay in the player.
- *
- * Placeholder: the cover face is replaced by the Claude Design covers
- * (a follow-up on #790), so don't build on its look.
+ * A passage in the book page's gallery: a cover with art drawn from the
+ * passage and its verse range, then its title and status. The art grows bluer
+ * as verses are recorded; the badge is a half ring in peer check, then a check
+ * once it passes. Flat, since tactile controls stay in the player.
  */
 export function PassageCover({
   eyebrow,
   verses,
   title,
-  status,
   onPress,
   reference,
   style,
   testID,
+  ...art
 }: PassageCoverProps) {
   const styles = useThemedStyles(t => ({
     item: { gap: t.spacing.xs },
@@ -57,7 +90,7 @@ export function PassageCover({
     title: { ...t.type.label, color: t.roles.fgPrimary },
     status: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
-  const statusLabel = STATUS_LABELS[status];
+  const statusLabel = STATUS_LABELS[passageStatus(art)];
 
   return (
     <Pressable
@@ -71,10 +104,12 @@ export function PassageCover({
       style={({ pressed }) => [styles.item, pressed && styles.pressed, style]}
       testID={testID}
     >
-      {/* The face is a Canvas surface, like the player's dark reading area. */}
-      <ColorModeScope value="canvas">
-        <CoverFace eyebrow={eyebrow} verses={verses} />
-      </ColorModeScope>
+      <PassageCoverFace
+        eyebrow={eyebrow}
+        verses={verses}
+        testID={testID && `${testID}-face`}
+        {...art}
+      />
       <Text style={styles.title} numberOfLines={2}>
         {title}
       </Text>
@@ -85,26 +120,35 @@ export function PassageCover({
   );
 }
 
-function CoverFace({ eyebrow, verses }: { eyebrow: string; verses: string }) {
-  const styles = useThemedStyles(t => ({
-    face: {
-      aspectRatio: 1,
-      borderRadius: t.radius.sm,
-      backgroundColor: t.roles.surfaceDefault,
-      padding: t.spacing.md,
-      justifyContent: 'space-between',
-    },
-    eyebrow: { ...t.type.meta, color: t.roles.fgPrimary },
-    verses: { ...t.type.heading, color: t.roles.fgPrimary },
-  }));
+type PassageFaceProps = CoverArtProps & {
+  eyebrow: string;
+  verses: string;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+};
+
+/** Just the cover, for layouts that set the title and status beside it. */
+export function PassageCoverFace({
+  eyebrow,
+  verses,
+  style,
+  testID,
+  ...art
+}: PassageFaceProps) {
+  const { recordedVerses, totalVerses } = art;
+  const recorded = totalVerses > 0 ? recordedVerses / totalVerses : 0;
   return (
-    <View style={styles.face}>
-      <Text style={styles.eyebrow} numberOfLines={1}>
-        {eyebrow}
-      </Text>
-      <Text style={styles.verses} numberOfLines={1} adjustsFontSizeToFit>
-        {verses}
-      </Text>
-    </View>
+    <CoverFace
+      eyebrow={eyebrow}
+      heading={verses}
+      seed={art.seed}
+      groupSeed={art.groupSeed}
+      palette="surface"
+      progress={art.peerChecked ? 1 : recorded}
+      coverStyle={art.coverStyle}
+      badge={BADGES[passageStatus(art)]}
+      style={style}
+      testID={testID}
+    />
   );
 }

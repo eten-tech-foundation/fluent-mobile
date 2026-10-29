@@ -72,6 +72,13 @@ describe('RoundButton', () => {
     ).toMatchObject({ opacity: legacyTheme.opacity.disabled });
   });
 
+  it("isn't a button without onPress", () => {
+    render(<RoundButton icon={ColorIcon} accessibilityLabel="All synced" />);
+
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByLabelText('All synced')).not.toBeDisabled();
+  });
+
   it('stretches into a pill with its label beside the icon', () => {
     const onPress = jest.fn();
     render(

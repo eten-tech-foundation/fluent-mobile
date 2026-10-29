@@ -55,6 +55,29 @@ export function getBadgeStage(
   return stage;
 }
 
+const STAGE_ORDER: WorkflowBadgeStage[] = [
+  'not_started',
+  'draft',
+  'peer_check',
+  'community_review',
+  'advanced_check',
+  'complete',
+];
+
+function stageRank(stage: WorkflowBadgeStage | null | undefined): number {
+  return stage ? STAGE_ORDER.indexOf(stage) : 0;
+}
+
+/** Recording is done: the drafter submitted it for peer check, or it's further along. */
+export function isPastDraft(stage: WorkflowBadgeStage | null | undefined) {
+  return stageRank(stage) >= stageRank('peer_check');
+}
+
+/** It passed peer check: community check or further along. */
+export function isPastPeerCheck(stage: WorkflowBadgeStage | null | undefined) {
+  return stageRank(stage) > stageRank('peer_check');
+}
+
 export function getWorkflowStageLabel(stage: WorkflowBadgeStage): string {
   return workflowStages[stage].label;
 }

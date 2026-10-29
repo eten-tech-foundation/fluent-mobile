@@ -1,5 +1,9 @@
 import type React from 'react';
+import { AttentionCardEntry } from './AttentionCardEntry';
+import { BannerEntry } from './BannerEntry';
+import { BottomSheetEntry } from './BottomSheetEntry';
 import { HardwarePanelEntry } from './HardwarePanelEntry';
+import { HomeHeaderEntry } from './HomeHeaderEntry';
 import { KeyEntry } from './KeyEntry';
 import { LevelWaveEntry } from './LevelWaveEntry';
 import { PassageCoverEntry } from './PassageCoverEntry';
@@ -80,5 +84,36 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Hardware panel',
     modes: 'Hardware',
     Component: HardwarePanelEntry,
+  },
+  {
+    // Figma: Gap / Avatar https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-70
+    // In the Home header with the sync Round button: 2646-52
+    id: 'home-header',
+    name: 'Avatar · Sync status button',
+    modes: 'Hardware (Home)',
+    Component: HomeHeaderEntry,
+  },
+  {
+    // Figma: Gap / Banner https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-62
+    // On Home · Session expired: 2646-143
+    id: 'banner',
+    name: 'Banner',
+    modes: 'Hardware (Home)',
+    Component: BannerEntry,
+  },
+  {
+    // Figma: Home · Accounts sheet https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2646-166
+    // Gap / List row 2644-51
+    id: 'bottom-sheet',
+    name: 'Bottom sheet · List row',
+    modes: 'Hardware (Home)',
+    Component: BottomSheetEntry,
+  },
+  {
+    // No Figma component yet: modeled on desktop's Community notes card.
+    id: 'attention-card',
+    name: 'Attention card',
+    modes: 'Hardware (Home)',
+    Component: AttentionCardEntry,
   },
 ];

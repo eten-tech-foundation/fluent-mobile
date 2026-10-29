@@ -1,9 +1,17 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Alert, BackHandler } from 'react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
+import { getAnimatedStyle } from 'react-native-reanimated';
 import PassageScreen from './PassageScreen';
 import type { Passage, PassageDownload } from '../../../hooks/usePassage';
 import { UNDO_MS } from '../../../hooks/usePendingDelete';
+import { hrefs } from '../../../navigation/hrefs';
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -43,17 +51,24 @@ const take = (n: number): MockTake => ({
 });
 let mockPassage: Passage = { status: 'loading' };
 let mockDownloadState: PassageDownload = 'idle';
+let mockReduceMotion = false;
+let mockFocused = true;
+const baseParams = {
+  chapterId: '5',
+  anchorVerse: '22',
+  projectId: '9',
+  projectUnitId: '3',
+  chapterName: 'Mark 14',
+  projectName: 'Mark Telugu',
+  milestoneName: 'Gospels Phase 1',
+  language: 'Telugu',
+};
+let mockParams: Record<string, string> = { ...baseParams };
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: mockBack }),
-  useLocalSearchParams: () => ({
-    chapterId: '5',
-    anchorVerse: '22',
-    projectUnitId: '3',
-    chapterName: 'Mark 14',
-    projectName: 'Mark Telugu',
-    language: 'Telugu',
-  }),
+  useLocalSearchParams: () => mockParams,
+  useIsFocused: () => mockFocused,
 }));
 
 jest.mock('../../../hooks/useRecordSession', () => ({
@@ -97,6 +112,12 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+jest.mock('react-native-reanimated', () => ({
+  __esModule: true,
+  ...jest.requireActual('react-native-reanimated'),
+  useReducedMotion: () => mockReduceMotion,
+}));
+
 jest.mock('react-native-gesture-handler', () => {
   const pan = {
     enabled: () => pan,
@@ -108,9 +129,11 @@ jest.mock('react-native-gesture-handler', () => {
     onUpdate: () => pan,
     onEnd: () => pan,
   };
+  const Pass = ({ children }: { children: React.ReactNode }) => children;
   return {
     Gesture: { Pan: () => pan, Tap: () => pan, Race: () => pan },
-    GestureDetector: ({ children }: { children: React.ReactNode }) => children,
+    GestureDetector: Pass,
+    GestureHandlerRootView: Pass,
   };
 });
 
@@ -178,19 +201,154 @@ const ready: Extract<Passage, { status: 'ready' }> = {
 
 const hidden = { includeHiddenElements: true };
 
+const settle = () => act(() => jest.advanceTimersByTime(1000));
+
+/**
+ * Renders under fake timers and lets the mount animations finish, as they
+ * would before a tap; a pending one would otherwise close the title's sheet.
+ */
+function renderSettled() {
+  jest.useFakeTimers();
+  render(<PassageScreen />);
+  settle();
+}
+
+const titleCopies = () =>
+  within(screen.getByTestId('passage-title')).getAllByText(
+    'The Last Supper',
+    hidden,
+  );
+
+/** A 360-wide header, with the title at the given width. */
+function layOutTitle(titleWidth: number) {
+  fireEvent(screen.getByTestId('passage-header'), 'layout', {
+    nativeEvent: { layout: { width: 360, height: 72 } },
+  });
+  fireEvent(titleCopies()[0], 'layout', {
+    nativeEvent: { layout: { width: titleWidth, height: 16 } },
+  });
+}
+
+function tickerOffset(): number {
+  const { transform } = getAnimatedStyle(
+    screen.getByTestId('passage-title-ticker', hidden),
+  ) as { transform: { translateX: number }[] };
+  return transform[0].translateX;
+}
+
 describe('PassageScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSession = { ...sessionDefaults };
+    mockParams = { ...baseParams };
     mockPassage = ready;
     mockDownloadState = 'idle';
+    mockReduceMotion = false;
+    mockFocused = true;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("opens the book page at this chapter from the title's sheet", () => {
+    renderSettled();
+    expect(screen.queryByTestId('passage-book')).toBeNull();
+
+    fireEvent.press(
+      screen.getByRole('header', { name: 'The Last Supper. Show details.' }),
+    );
+    expect(
+      within(screen.getByTestId('passage-title-sheet')).getByRole('header', {
+        name: 'The Last Supper',
+      }),
+    ).toBeTruthy();
+    fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Mark 14 · Gospels Phase 1. Open book page.',
+      }),
+    );
+    settle();
+
+    expect(screen.queryByTestId('passage-title-sheet')).toBeNull();
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith(
+      hrefs.chapters({
+        projectId: 9,
+        projectUnitId: 3,
+        projectName: 'Mark Telugu',
+        milestoneName: 'Gospels Phase 1',
+        language: 'Telugu',
+        focusChapterId: 5,
+      }),
+    );
+  });
+
+  it('goes back to the book page it came from instead of stacking another', () => {
+    mockParams = { ...baseParams, from: 'book' };
+    renderSettled();
+
+    fireEvent.press(screen.getByTestId('passage-title'));
+    fireEvent.press(screen.getByTestId('passage-book'));
+    settle();
+
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('runs a title too long for the header as a ticker, after a pause', () => {
+    renderSettled();
+    layOutTitle(400);
+
+    expect(titleCopies()).toHaveLength(2);
+    expect(
+      within(screen.getByTestId('passage-title')).queryAllByText(
+        'The Last Supper',
+      ),
+    ).toHaveLength(0);
+    act(() => jest.advanceTimersByTime(1500));
+    expect(tickerOffset()).toBe(0);
+    act(() => jest.advanceTimersByTime(1500));
+    expect(tickerOffset()).toBeLessThan(0);
+  });
+
+  it('stops the ticker while another screen covers the player', () => {
+    renderSettled();
+    layOutTitle(400);
+    act(() => jest.advanceTimersByTime(3000));
+    expect(tickerOffset()).toBeLessThan(0);
+
+    mockFocused = false;
+    screen.rerender(<PassageScreen />);
+    act(() => jest.advanceTimersByTime(3000));
+
+    expect(tickerOffset()).toBe(0);
+  });
+
+  it('leaves a title that fits where it is', () => {
+    renderSettled();
+    layOutTitle(200);
+    act(() => jest.advanceTimersByTime(3000));
+
+    expect(titleCopies()).toHaveLength(1);
+    expect(tickerOffset()).toBe(0);
+  });
+
+  it('keeps a long title still when motion is reduced', () => {
+    mockReduceMotion = true;
+    renderSettled();
+    layOutTitle(400);
+    act(() => jest.advanceTimersByTime(3000));
+
+    expect(titleCopies()).toHaveLength(1);
+    expect(screen.queryByTestId('passage-title-ticker', hidden)).toBeNull();
   });
 
   it('puts the script, its actions and takes in the hero, then the steps', () => {
     render(<PassageScreen />);
 
     expect(
-      screen.getByRole('header', { name: 'The Last Supper' }),
+      screen.getByRole('header', { name: 'The Last Supper. Show details.' }),
     ).toBeTruthy();
     expect(screen.getAllByText('Mark 14:22–25').length).toBeGreaterThan(1);
     expect(screen.getByLabelText('Listen')).toBeTruthy();
@@ -257,10 +415,19 @@ describe('PassageScreen', () => {
     mockPassage = { ...ready, downloaded: false, verses: [] };
 
     render(<PassageScreen />);
+    expect(screen.getByText('The text isn’t on this phone yet.')).toBeTruthy();
     fireEvent.press(screen.getByTestId('passage-download'));
 
     expect(mockDownload).toHaveBeenCalled();
     expect(screen.queryByTestId('passage-script', hidden)).toBeNull();
+  });
+
+  it("says when it can't be found", () => {
+    mockPassage = { status: 'missing' };
+
+    render(<PassageScreen />);
+
+    expect(screen.getByText("This couldn't be found.")).toBeTruthy();
   });
 
   it('records a take after the mic check, from the Record key', async () => {
@@ -493,5 +660,43 @@ describe('PassageScreen', () => {
 
     expect(alert).toHaveBeenCalled();
     expect(screen.getByLabelText('Close the player')).toBeTruthy();
+  });
+
+  it('leaves back presses to a screen pushed over the open player', () => {
+    const remove = jest.fn();
+    const listen = jest
+      .spyOn(BackHandler, 'addEventListener')
+      .mockReturnValue({ remove });
+    try {
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-listen'));
+      expect(listen).toHaveBeenCalledWith(
+        'hardwareBackPress',
+        expect.any(Function),
+      );
+
+      const listening = listen.mock.calls.length;
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+
+      expect(remove).toHaveBeenCalled();
+      expect(listen).toHaveBeenCalledTimes(listening);
+    } finally {
+      listen.mockRestore();
+    }
+  });
+
+  it("won't open the title's sheet on a take in progress", () => {
+    mockSession = { ...mockSession, state: 'recording', captureActive: true };
+    renderSettled();
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    expect(
+      screen.getByRole('header', { name: 'The Last Supper' }),
+    ).toBeDisabled();
+    fireEvent.press(screen.getByTestId('passage-title'));
+    settle();
+
+    expect(screen.queryByTestId('passage-title-sheet')).toBeNull();
   });
 });

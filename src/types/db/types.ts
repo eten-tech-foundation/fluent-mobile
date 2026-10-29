@@ -55,8 +55,42 @@ export interface MyWorkChapter {
   hasConflict: boolean;
   lastActivityAt?: string;
   lastActivityLabel?: string;
+  projectId: number;
+  projectUnitId: number;
   projectName: string;
+  /** The project unit's name, or the project's when it has none, as on Milestones. */
+  milestoneName: string;
   targetLanguageName: string;
+}
+
+/**
+ * One book in one milestone on Next Home, its chapters counted by whose turn
+ * the current stage is.
+ */
+export interface HomeBookSummary {
+  /** `${projectUnitId}:${bookId}`; a book in two milestones is two cards. */
+  key: string;
+  bookId: number;
+  bookName: string;
+  projectId: number;
+  projectUnitId: number;
+  projectName: string;
+  milestoneName: string;
+  targetLanguageName: string;
+  /** The book's lowest chapter in this milestone; where its book page opens. */
+  firstChapterId: number;
+  /** Not started, draft or peer check, and the stage is mine. */
+  mine: number;
+  /** Someone else's stage, an unassigned peer check, or any stage past it. */
+  withOthers: number;
+  /** Not started or draft with nobody assigned. */
+  open: number;
+  complete: number;
+  totalChapters: number;
+  /** Submitted for peer check or further along; one sent back drops out. */
+  recordedChapters: number;
+  /** Past peer check. */
+  checkedChapters: number;
 }
 
 export interface ProjectChapter {
@@ -100,7 +134,10 @@ export interface MyWorkChapterRow {
   chapter_number: number;
   status: string;
   book_name: string;
+  project_id: number;
+  project_unit_id: number;
   project_name: string;
+  milestone_name: string;
   target_language_name: string;
   updated_at?: string | null;
   submitted_time?: string | null;

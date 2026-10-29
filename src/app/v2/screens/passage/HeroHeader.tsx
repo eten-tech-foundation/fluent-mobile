@@ -1,25 +1,40 @@
-import React, { useState } from 'react';
-import { Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useIsFocused } from 'expo-router';
 import {
   GestureDetector,
   type GestureType,
 } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
+  Easing,
   interpolate,
   useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import { ArrowDown, ArrowLeft } from '../../../../components/ui/icons';
 import { RoundButton } from '../../../../components/ui/RoundButton';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 
-/** Round button width; the centered title stays clear of the corners. */
+/** Round button size; the centered title stays clear of the corners. */
 const ROUND_BUTTON = 48;
+const PRESSED_OPACITY = 0.7;
+/** The ticker rests this long at the start of each pass. */
+const TICKER_PAUSE_MS = 2000;
+/** Points per second: slow enough to read as it goes. */
+const TICKER_SPEED = 30;
 
 /**
  * Back, the passage's title and Close. The title sits centered in the hero
  * and slides to the left edge as the player arrives; Back fades out and
- * Close fades in. Dragging the header closes the player.
+ * Close fades in. A title too long for its room runs as a ticker, and
+ * pressing it opens its sheet. Dragging the header closes the player.
  */
 export function HeroHeader({
   title,
@@ -30,6 +45,7 @@ export function HeroHeader({
   onLayout,
   onBack,
   onClose,
+  onTitlePress,
 }: {
   title: string;
   /** The status bar's height. */
@@ -41,8 +57,12 @@ export function HeroHeader({
   onLayout: (height: number, width: number) => void;
   onBack: () => void;
   onClose: () => void;
+  /** Omit to turn pressing off, e.g. during a take. */
+  onTitlePress?: () => void;
 }) {
   const { spacing } = useTheme();
+  const reduceMotion = useReducedMotion();
+  const focused = useIsFocused();
   const [width, setWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
   const styles = useThemedStyles(t => ({
@@ -63,6 +83,10 @@ export function HeroHeader({
       left: 0,
       justifyContent: 'center',
     },
+    titlePress: { minHeight: ROUND_BUTTON, justifyContent: 'center' },
+    pressed: { opacity: PRESSED_OPACITY },
+    clip: { flexGrow: 0 },
+    ticker: { flexDirection: 'row' },
     title: { ...t.type.overline, color: t.roles.fgPrimary },
   }));
 
@@ -90,6 +114,42 @@ export function HeroHeader({
     ],
   }));
 
+  // One pass moves a copy into the title's place, so the loop doesn't jump.
+  const ticks = !reduceMotion && titleMax > 0 && titleWidth > titleMax;
+  const gap = 2 * spacing.xxl;
+  const pass = titleWidth + gap;
+  const offset = useSharedValue(0);
+  useEffect(() => {
+    offset.value = 0;
+    if (!ticks || !focused) return;
+    offset.value = withRepeat(
+      withSequence(
+        withDelay(
+          TICKER_PAUSE_MS,
+          withTiming(-pass, {
+            duration: (pass / TICKER_SPEED) * 1000,
+            easing: Easing.linear,
+          }),
+        ),
+        withTiming(0, { duration: 0 }),
+      ),
+      -1,
+    );
+    return () => cancelAnimation(offset);
+  }, [ticks, focused, pass, offset]);
+  const tickerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: offset.value }],
+  }));
+  const titleText = (
+    <Text
+      style={styles.title}
+      numberOfLines={1}
+      onLayout={e => setTitleWidth(Math.round(e.nativeEvent.layout.width))}
+    >
+      {title}
+    </Text>
+  );
+
   return (
     <GestureDetector gesture={closeGesture}>
       <View
@@ -99,6 +159,7 @@ export function HeroHeader({
           setWidth(Math.round(w));
           onLayout(Math.round(height), Math.round(w));
         }}
+        testID="passage-header"
       >
         <Animated.View
           style={backStyle}
@@ -115,18 +176,47 @@ export function HeroHeader({
         </Animated.View>
         <Animated.View
           style={[styles.titleSlot, { maxWidth: titleMax }, titleStyle]}
-          pointerEvents="none"
         >
-          <Text
-            style={styles.title}
-            numberOfLines={1}
+          <Pressable
+            onPress={onTitlePress}
+            disabled={!onTitlePress}
+            android_disableSound
             accessibilityRole="header"
-            onLayout={e =>
-              setTitleWidth(Math.round(e.nativeEvent.layout.width))
+            accessibilityLabel={
+              onTitlePress ? `${title}. Show details.` : title
             }
+            style={({ pressed }) => [
+              styles.titlePress,
+              pressed && styles.pressed,
+            ]}
+            testID="passage-title"
           >
-            {title}
-          </Text>
+            {reduceMotion ? (
+              titleText
+            ) : (
+              // Lays the title out at its full width; the ticker moves it.
+              // The press carries the title's label, so TalkBack skips this.
+              <ScrollView
+                horizontal
+                scrollEnabled={false}
+                showsHorizontalScrollIndicator={false}
+                importantForAccessibility="no-hide-descendants"
+                style={styles.clip}
+              >
+                <Animated.View
+                  style={[styles.ticker, tickerStyle]}
+                  testID="passage-title-ticker"
+                >
+                  {titleText}
+                  {ticks ? (
+                    <Text style={[styles.title, { marginLeft: gap }]}>
+                      {title}
+                    </Text>
+                  ) : null}
+                </Animated.View>
+              </ScrollView>
+            )}
+          </Pressable>
         </Animated.View>
         <Animated.View
           style={[styles.corner, closeStyle]}

@@ -29,6 +29,10 @@ export const MILESTONES_EMPTY_MESSAGE =
 export const MY_WORK_EMPTY_MESSAGE =
   "You don't have any chapters to work on right now. Check the Milestones tab to find available work.";
 
+/** Next Home has no Milestones tab to point to. */
+export const HOME_EMPTY_MESSAGE =
+  "You don't have any chapters to work on right now. Chapters assigned to you show up here.";
+
 export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
   'No chapters are available in this project yet.';
 

@@ -38,6 +38,15 @@ exports[`legacyTheme matches the frozen Legacy snapshot 1`] = `
     "icon24": 24,
     "icon32": 32,
   },
+  "cover": {
+    "status": [
+      "#022468",
+      "#043692",
+      "#0B50D0",
+      "#2A70F4",
+      "#538EFB",
+    ],
+  },
   "elevation": {
     "floating": "0px 4px 20px rgba(0, 0, 0, 0.24)",
     "inset": "inset 0px 3px 6px rgba(0, 0, 0, 0.32), inset 0px 0px 6px rgba(0, 0, 0, 0.12), inset 0px -1px 1px #FFFFFF",
