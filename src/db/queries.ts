@@ -926,7 +926,7 @@ function uploadablePendingWhere(userId: number | null): string {
       )
     )
     AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
-    AND r.sync_status NOT IN ('uploaded', 'conflicted')
+    AND r.sync_status NOT IN ('uploaded', 'conflicted', 'held')
     AND r.bible_text_id > 0
   `;
 }

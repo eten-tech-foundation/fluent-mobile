@@ -60,6 +60,7 @@ jest.mock('./keychain', () => ({
 }));
 jest.mock('./syncEvents', () => ({
   emitUploadSessionEvent: (event: UploadSessionEvent) => mockEmit(event),
+  onSyncComplete: () => () => undefined,
 }));
 jest.mock('../utils/logger', () => ({
   logger: {

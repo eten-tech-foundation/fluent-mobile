@@ -38,6 +38,9 @@ let mockPausedUntil: number | null = null;
 jest.mock('../db/queries', () => ({
   getPendingUploadChapters: () => mockGetPendingChapters(),
 }));
+jest.mock('../db/repositories/heldRecordingsRepository', () => ({
+  reconcileHeldRecordings: async () => ({ held: 0, released: 0 }),
+}));
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
     mockGetPendingRecordings(...args),
@@ -94,6 +97,7 @@ jest.mock('./keychain', () => ({
 jest.mock('./syncEvents', () => ({
   emitUploadSessionEvent: (event: UploadSessionEvent) => mockEmit(event),
   emitAuthReauthRequired: jest.fn(),
+  onSyncComplete: () => () => undefined,
 }));
 jest.mock('../utils/logger', () => ({
   logger: {

@@ -47,6 +47,7 @@ function createHarness(options?: {
   pushPendingClaimsBeforeUpload?: UploadOrchestratorDeps['pushPendingClaimsBeforeUpload'];
   pushPendingStageAdvancesAfterUpload?: UploadOrchestratorDeps['pushPendingStageAdvancesAfterUpload'];
   hasPendingStageAdvances?: UploadOrchestratorDeps['hasPendingStageAdvances'];
+  reconcileHeldBeforeUpload?: UploadOrchestratorDeps['reconcileHeldBeforeUpload'];
   initialDraftingHold?: boolean;
 }) {
   let connListener: ConnListener | null = null;
@@ -180,6 +181,7 @@ function createHarness(options?: {
     pushPendingStageAdvancesAfterUpload:
       options?.pushPendingStageAdvancesAfterUpload,
     hasPendingStageAdvances: options?.hasPendingStageAdvances,
+    reconcileHeldBeforeUpload: options?.reconcileHeldBeforeUpload,
   };
 
   const orchestrator = createUploadOrchestrator(deps, {
@@ -259,6 +261,26 @@ describe('uploadOrchestrator', () => {
     expect(h.events.some(e => e.type === 'start')).toBe(true);
     expect(h.events.some(e => e.type === 'complete')).toBe(true);
     expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+  });
+
+  it('releases held takes before reading pending chapters (#855)', async () => {
+    const reconcile = jest.fn();
+    const h = createHarness({
+      chapters: [],
+      reconcileHeldBeforeUpload: async () => {
+        reconcile();
+        // Membership came back for a take that is still `held`: the release
+        // must happen before the read, or this chapter is never queued.
+        h.setChapters([{ bookId: 3, chapterNumber: 4 }]);
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(reconcile).toHaveBeenCalledTimes(1);
+    expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 4 }]);
   });
 
   it('emits a fixed, monotonic chapter total for a multi-chapter session (#600)', async () => {
