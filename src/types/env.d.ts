@@ -8,6 +8,11 @@ declare namespace NodeJS {
     EXPO_PUBLIC_E2E_HOLD_UPLOADS?: string;
     /** Debug + E2E mode + QA API only — skip download-queue auto-resume. Never set on EAS profiles. */
     EXPO_PUBLIC_E2E_HOLD_DOWNLOAD_AUTO_RESUME?: string;
+    /**
+     * Demo: Home Prepare-for-Offline auto-prompt. Default off when unset.
+     * Never set true on production EAS profiles.
+     */
+    EXPO_PUBLIC_DEMO_PREPARE_OFFLINE_AUTO_PROMPT?: string;
     AQUIFER_API_KEY?: string;
   }
 }

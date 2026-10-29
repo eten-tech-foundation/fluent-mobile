@@ -1,3 +1,4 @@
+import { isDemoFeatureEnabled } from '../config/demoFeatures';
 import type { ConnectivityProfile } from '../types/db/types';
 import { logger } from './logger';
 import { shouldPresentPrepareOffline } from './prepareOfflineTrigger';
@@ -43,7 +44,13 @@ export type PrepareOfflineAutoPromptController = {
 };
 
 /**
- * Home Prepare-for-Offline auto-prompt evaluator (#39 / #581).
+ * Home Prepare-for-Offline auto-prompt evaluator (#39 / #581 / #860).
+ *
+ * Gated by demo flag `prepareOfflineAutoPrompt`
+ * (`EXPO_PUBLIC_DEMO_PREPARE_OFFLINE_AUTO_PROMPT`, default off — see
+ * `src/config/demoFeatures.ts`). When off, `run()` returns before
+ * settling/network work and does not set `shownThisAppOpen`. Manual Settings /
+ * Sync entry points are unaffected.
  *
  * Reads settling via `isSettling()` at call time (not a later effect). When
  * skipped for settling, sets `pendingAfterSettle` and retries on
@@ -59,6 +66,12 @@ export function createPrepareOfflineAutoPromptController(
   let pendingAfterInFlight = false;
 
   const run = async (): Promise<void> => {
+    // Demo flag default-off (#860): skip before settling/network work; do not
+    // set shownThisAppOpen when gated off.
+    if (!isDemoFeatureEnabled('prepareOfflineAutoPrompt')) {
+      return;
+    }
+
     if (!deps.isFocused() || !deps.hasTransferResolved()) {
       return;
     }
