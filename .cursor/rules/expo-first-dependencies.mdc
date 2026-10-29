@@ -16,5 +16,5 @@ Canonical policy: [docs/guides/expo-first-dependencies.md](../../docs/guides/exp
 
 - Prefer **Expo-maintained** modules (`expo-*`) when Expo covers the need; install with **`npx expo install`**.
 - **Navigation:** Expo Router (`src/routes/`). Do **not** add a second navigation library or direct `@react-navigation/*` app imports. Use `hrefs`, `useRouter`, and `useLocalSearchParams`; import navigation helpers only from `expo-router`, `expo-router/drawer`, or `expo-router/react-navigation`.
-- After native/Expo bumps: `npm run doctor` (and `npx expo install --fix` only on a dedicated deps ticket / #422).
+- After lockfile / native bumps: `npm run doctor`. Do not run `npx expo install --fix` on a feature ticket; use the scheduled Expo SDK alignment PR (`#422`) for online fixes.
 - Query **Expo MCP** before inventing APIs ([expo-mcp.mdc](./expo-mcp.mdc)). Android-only forever ([android-only.mdc](./android-only.mdc)).
