@@ -26,7 +26,8 @@ describe('myWorkChapterFilter', () => {
     expect(filter.whereSql).not.toContain('user_projects');
     expect(filter.whereSql).not.toContain('community_review');
     expect(filter.whereSql).not.toContain('peer_checker_id IS NULL');
-    expect(filter.params).toEqual(getMyWorkChapterQueryParams(7));
+    expect(filter.whereSql).toContain('stage_advance_queue');
+    expect(filter.params).toEqual([...getMyWorkChapterQueryParams(7), 7]);
   });
 
   it('adds Observer review statuses with pu.project_id IN and user_projects membership', () => {
@@ -51,6 +52,7 @@ describe('myWorkChapterFilter', () => {
       100,
       200,
       7,
+      7,
     ]);
   });
 
@@ -72,6 +74,7 @@ describe('myWorkChapterFilter', () => {
       7,
       3,
       9,
+      7,
       7,
     ]);
   });
@@ -164,6 +167,33 @@ describe('myWorkChapterFilter', () => {
         projectId: 3,
         grantProjectIds: [],
         translatorProjectIds: [3],
+      }),
+    ).toBeNull();
+
+    expect(
+      classifyMyWorkListAccess({
+        userId: 7,
+        assignmentStatus: 'peer_check',
+        assignedUserId: 7,
+        peerCheckerId: null,
+        projectId: 3,
+        grantProjectIds: [],
+        translatorProjectIds: [3],
+        hasPendingStageAdvance: true,
+      }),
+    ).toBe('assigned');
+
+    // Flag alone never grants access to someone who is not the drafter.
+    expect(
+      classifyMyWorkListAccess({
+        userId: 7,
+        assignmentStatus: 'peer_check',
+        assignedUserId: 9,
+        peerCheckerId: 20,
+        projectId: 3,
+        grantProjectIds: [],
+        translatorProjectIds: [],
+        hasPendingStageAdvance: true,
       }),
     ).toBeNull();
 

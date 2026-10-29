@@ -1,15 +1,20 @@
 import { getPendingUploadChapters } from '../db/queries';
+import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   getConnectivitySnapshot,
   subscribeToConnectivity,
 } from './connectivity';
 import { emitUploadSessionEvent } from './syncEvents';
+import { getCredentials } from './keychain';
 import {
   getActiveUserId,
   getSyncPausedUntilMs,
   setSyncPausedUntilMs,
 } from './storage';
-import { syncPendingChapterClaimsForUser } from './sync';
+import {
+  syncPendingChapterClaimsForUser,
+  syncPendingStageAdvancesForUser,
+} from './sync';
 import {
   getUploadOverCellular,
   subscribeToPreference,
@@ -36,6 +41,42 @@ async function pushPendingClaimsBeforeUpload(): Promise<void> {
     return;
   }
   await syncPendingChapterClaimsForUser(userId);
+}
+
+async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
+  const activeUserId = getActiveUserId();
+  const userId = Number(activeUserId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    log.warn('Skipping stage-advance push after upload — no active user', {
+      activeUserId,
+    });
+    return;
+  }
+  const creds = await getCredentials(String(userId));
+  const result = await syncPendingStageAdvancesForUser(userId, creds?.token);
+  // Rows left pending resolve as `failed` rather than throwing. Throw so the
+  // session skips `complete` and schedules its bounded retry (#257).
+  if (result.failed > 0) {
+    throw new Error(`Stage-advance drain left ${result.failed} row(s) pending`);
+  }
+}
+
+async function hasPendingStageAdvances(): Promise<boolean> {
+  const activeUserId = getActiveUserId();
+  const userId = Number(activeUserId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return false;
+  }
+  try {
+    const pending = await getPendingStageAdvances();
+    return pending.some(row => row.userId === userId);
+  } catch (error) {
+    log.warn(
+      'Could not check pending stage advances; attempting drain on reconnect',
+      { error },
+    );
+    return true;
+  }
 }
 
 export {
@@ -108,6 +149,8 @@ export function startUploadOrchestrator(
         ? workerOverride ?? null
         : chapterUploadWorker,
     pushPendingClaimsBeforeUpload,
+    pushPendingStageAdvancesAfterUpload,
+    hasPendingStageAdvances,
     ...restOverrides,
   };
 

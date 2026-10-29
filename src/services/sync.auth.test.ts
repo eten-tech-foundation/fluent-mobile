@@ -5,6 +5,10 @@ import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import { logger } from '../utils/logger';
 import {
+  getChapterAssignmentPullRevision,
+  markChapterCompleteConfirmed,
+} from '../utils/chapterCompletionSyncGuard';
+import {
   clearCredentials,
   getCredentials,
   getTempCredentials,
@@ -15,6 +19,7 @@ import {
   refreshPrepareOfflineReferencedParents,
   syncAllData,
   syncAllUsers,
+  syncPendingStageAdvancesForUser,
 } from './sync';
 import * as sync from './sync';
 import * as syncEvents from './syncEvents';
@@ -162,6 +167,14 @@ jest.mock('./chapterClaimSync', () => ({
     .mockResolvedValue({ conflicts: 0 }),
 }));
 
+jest.mock('./stageAdvanceSync', () => ({
+  syncPendingStageAdvances: jest.fn().mockResolvedValue({
+    synced: 0,
+    dropped: 0,
+    failed: 0,
+  }),
+}));
+
 jest.mock('../db/repository', () => ({
   insertMasterData: jest.fn().mockResolvedValue(undefined),
   insertProjects: jest.fn().mockResolvedValue(undefined),
@@ -236,6 +249,10 @@ const { syncPendingChapterClaims } = jest.requireMock('./chapterClaimSync') as {
   syncPendingChapterClaims: jest.Mock;
 };
 
+const { syncPendingStageAdvances } = jest.requireMock('./stageAdvanceSync') as {
+  syncPendingStageAdvances: jest.Mock;
+};
+
 const { reconcileUserProjects, reconcileUserChapterWork } = jest.requireMock(
   '../db/repository',
 ) as {
@@ -292,10 +309,30 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
     await refreshChapterMetadataIfOnline(2);
 
     expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(
+      2,
+      expect.any(String),
+    );
     const claimsOrder = syncPendingChapterClaims.mock.invocationCallOrder[0];
-    const projectsOrder = (FluentAPI.getUserProjects as jest.Mock).mock
+    const assignmentOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
       .invocationCallOrder[0];
-    expect(claimsOrder).toBeLessThan(projectsOrder);
+    const stageOrder = syncPendingStageAdvances.mock.invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(assignmentOrder);
+    expect(assignmentOrder).toBeLessThan(stageOrder);
+  });
+
+  it('signals re-auth when stage-advance drain returns AuthError', async () => {
+    jest.spyOn(syncEvents, 'emitAuthReauthRequired');
+    syncPendingStageAdvances.mockRejectedValueOnce(
+      new AuthError('Invalid or revoked session token'),
+    );
+
+    await expect(
+      syncPendingStageAdvancesForUser(2, 'revoked-token'),
+    ).rejects.toThrow(AuthError);
+
+    expect(setReauthRequired).toHaveBeenCalledWith('2');
+    expect(syncEvents.emitAuthReauthRequired).toHaveBeenCalledWith('2');
   });
 
   it('runs chapter-work reconciliation with empty lists when the response is validly empty', async () => {
@@ -863,8 +900,8 @@ describe('refreshChapterMetadataIfOnline', () => {
     await refreshChapterMetadataIfOnline(2);
     await refreshChapterMetadataIfOnline(2);
 
-    // Each refresh snapshots once for the gate + once inside claim push (#611).
-    expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(4);
+    // Each refresh snapshots once for the gate, once for claims, once for stage advances.
+    expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(6);
     expect(FluentAPI.getLanguages).not.toHaveBeenCalled();
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getChapterAssignments).toHaveBeenNthCalledWith(
@@ -931,6 +968,77 @@ describe('refreshChapterMetadataIfOnline', () => {
         skipped: [],
       });
     }
+  });
+
+  it('forwards the pre-await pullRevision from syncUserChapterWork when Complete lands mid-GET', async () => {
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+    const pullRevision = getChapterAssignmentPullRevision();
+    let resolveUserChapters!: (value: unknown) => void;
+    (FluentAPI.getUserChapterAssignments as jest.Mock).mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveUserChapters = resolve;
+        }),
+    );
+
+    const pending = refreshChapterMetadataIfOnline(2);
+
+    await waitFor(() => {
+      expect(FluentAPI.getUserChapterAssignments).toHaveBeenCalledWith(
+        2,
+        'valid-token',
+      );
+    });
+
+    markChapterCompleteConfirmed(11);
+    expect(getChapterAssignmentPullRevision()).toBeGreaterThan(pullRevision);
+
+    resolveUserChapters({
+      assignedChapters: [
+        {
+          chapterAssignmentId: 11,
+          projectUnitId: 22,
+          projectId: 5,
+          bibleId: 10,
+          bookId: 1,
+          chapterNumber: 1,
+          chapterStatus: 'in_progress',
+          totalVerses: 10,
+          completedVerses: 2,
+        },
+      ],
+      peerCheckChapters: [
+        {
+          chapterAssignmentId: 12,
+          projectUnitId: 22,
+          projectId: 5,
+          bibleId: 10,
+          bookId: 1,
+          chapterNumber: 2,
+          chapterStatus: 'peer_check',
+          totalVerses: 8,
+          completedVerses: 8,
+        },
+      ],
+    });
+
+    await pending;
+
+    expect(insertChapterAssignmentSyncData).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          chapterAssignmentId: 11,
+          chapterStatus: 'in_progress',
+        }),
+        expect.objectContaining({
+          chapterAssignmentId: 12,
+          chapterStatus: 'peer_check',
+        }),
+      ],
+      pullRevision,
+    );
   });
 
   it('applies partial FK skip warnings after chapter metadata refresh', async () => {
@@ -1495,6 +1603,7 @@ describe('syncAllData auth handling', () => {
 
     await syncAllData(true);
 
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(2, 'valid-token');
     expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
       2,
       undefined,
@@ -2060,12 +2169,14 @@ describe('syncAllUsers auth handling', () => {
     await waitFor(() => {
       expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
     });
+    expect(syncPendingStageAdvances).not.toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
 
     resolveLanguages([]);
     await pending;
 
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(2, 'user-2-token');
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
 

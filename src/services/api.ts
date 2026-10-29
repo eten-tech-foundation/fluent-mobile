@@ -41,6 +41,7 @@ import {
   type ClaimChapterAssignmentResponse,
   type NormalizedClaimChapterAssignmentResponse,
 } from '../types/api/chapterClaim';
+import type { ApiChapterAssignment } from '../types/api/types';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
 import type {
   PutUserSettingsBody,
@@ -216,6 +217,35 @@ async function claimChapterAssignmentRequest(
   return normalizeClaimResponse(api);
 }
 
+/** Wire shape for GET /chapter-assignments/:id (fluent-api returns `id`). */
+type ChapterAssignmentByIdWire = Omit<
+  ApiChapterAssignment,
+  'chapterAssignmentId'
+> & {
+  id?: number;
+  chapterAssignmentId?: number;
+};
+
+async function getChapterAssignmentRequest(
+  chapterAssignmentId: number,
+  token?: string,
+): Promise<ApiChapterAssignment> {
+  const api = await authedRequest<ChapterAssignmentByIdWire>(
+    `/chapter-assignments/${chapterAssignmentId}`,
+    undefined,
+    token,
+  );
+  const { id: wireId, ...rest } = api;
+  const resolvedId = api.chapterAssignmentId ?? wireId;
+  if (resolvedId === undefined) {
+    throw new Error('Chapter assignment response missing id');
+  }
+  return {
+    ...rest,
+    chapterAssignmentId: resolvedId,
+  };
+}
+
 function sourceAudioManifestPath(
   projectId: number,
   params: {
@@ -368,15 +398,28 @@ export const FluentAPI = {
     ),
 
   /**
-   * Advance a chapter assignment to the next workflow stage (online path).
-   * Offline queue / reconnect handling is #257.
+   * Translator READ of one assignment. Drain compares this status before PATCH
+   * (#257). Complete confirmation (#806) also uses this path and normalizes
+   * fluent-api's wire `id` to `chapterAssignmentId`.
+   */
+  getChapterAssignment: (
+    chapterAssignmentId: number,
+    token?: string,
+  ): Promise<ApiChapterAssignment> =>
+    getChapterAssignmentRequest(chapterAssignmentId, token),
+
+  /**
+   * Advance a chapter assignment one step. Body stays empty.
+   * Callers that already hold a per-user session pass `token` (#257).
    */
   submitChapterAssignment: (
     chapterAssignmentId: number,
+    token?: string,
   ): Promise<SubmitChapterAssignmentResponse> =>
     authedRequest<SubmitChapterAssignmentResponse>(
       `/chapter-assignments/${chapterAssignmentId}/submit`,
       { method: 'PATCH' },
+      token,
     ),
 
   getBibleTexts: (

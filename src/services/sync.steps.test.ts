@@ -1,6 +1,10 @@
 import { ApiError } from '../types/api/errors';
 import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
+import {
+  getChapterAssignmentPullRevision,
+  markChapterCompleteConfirmed,
+} from '../utils/chapterCompletionSyncGuard';
 import { AuthError } from './authError';
 import {
   __resetFullSyncSingleFlightForTests,
@@ -45,6 +49,7 @@ import {
 } from '../db/repository';
 import { getConnectivitySnapshot } from './connectivity';
 import { syncPendingChapterClaims } from './chapterClaimSync';
+import { syncPendingStageAdvances } from './stageAdvanceSync';
 import {
   BIBLE_TEXT_PHASE,
   SYNC_PHASE_FIELDS,
@@ -60,6 +65,14 @@ jest.mock('./chapterClaimSync', () => ({
   reconcilePendingClaimsAfterAssignmentPull: jest
     .fn()
     .mockResolvedValue({ conflicts: 0 }),
+}));
+
+jest.mock('./stageAdvanceSync', () => ({
+  syncPendingStageAdvances: jest.fn().mockResolvedValue({
+    synced: 0,
+    dropped: 0,
+    failed: 0,
+  }),
 }));
 
 jest.mock('./authToken', () => ({
@@ -213,6 +226,7 @@ const clearSyncErrorMock = jest.mocked(clearSyncError);
 const setSyncCountMock = jest.mocked(setSyncCount);
 const getConnectivitySnapshotMock = jest.mocked(getConnectivitySnapshot);
 const syncPendingChapterClaimsMock = jest.mocked(syncPendingChapterClaims);
+const syncPendingStageAdvancesMock = jest.mocked(syncPendingStageAdvances);
 const isBibleTextsServerIdRemapPendingMock = jest.mocked(
   isBibleTextsServerIdRemapPending,
 );
@@ -1083,21 +1097,27 @@ describe('sync step orchestration', () => {
   describe('syncChapterAssignments', () => {
     it('inserts assignments and user projects for fetched rows', async () => {
       mockDbCount(3);
-      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
-        data: [
-          {
-            chapterAssignmentId: 11,
-            projectUnitId: 22,
-            projectId: 5,
-            bibleId: 10,
-            bookId: 1,
-            chapterNumber: 1,
-            chapterStatus: 'in_progress',
-            totalVerses: 10,
-            completedVerses: 2,
-          },
-        ],
-      });
+      const pullRevision = getChapterAssignmentPullRevision();
+      (FluentAPI.getChapterAssignments as jest.Mock).mockImplementation(
+        async () => {
+          markChapterCompleteConfirmed(11);
+          return {
+            data: [
+              {
+                chapterAssignmentId: 11,
+                projectUnitId: 22,
+                projectId: 5,
+                bibleId: 10,
+                bookId: 1,
+                chapterNumber: 1,
+                chapterStatus: 'in_progress',
+                totalVerses: 10,
+                completedVerses: 2,
+              },
+            ],
+          };
+        },
+      );
 
       await syncChapterAssignments(2, '2026-06-01T00:00:00.000Z');
 
@@ -1107,13 +1127,16 @@ describe('sync step orchestration', () => {
         undefined,
         undefined,
       );
-      expect(insertChapterAssignmentSyncDataMock).toHaveBeenCalledWith([
-        expect.objectContaining({
-          chapterAssignmentId: 11,
-          projectId: 5,
-          chapterStatus: 'in_progress',
-        }),
-      ]);
+      expect(insertChapterAssignmentSyncDataMock).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            chapterAssignmentId: 11,
+            projectId: 5,
+            chapterStatus: 'in_progress',
+          }),
+        ],
+        pullRevision,
+      );
       expect(insertUserProjectsMock).toHaveBeenCalledWith(2, [5]);
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_chapters', 3);
       expect(clearSyncErrorMock).toHaveBeenCalledWith(
@@ -2584,6 +2607,11 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
       conflicts: 0,
       failed: 0,
     });
+    syncPendingStageAdvancesMock.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+    });
   });
 
   afterEach(() => {
@@ -2606,5 +2634,20 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
     expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
     expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
     expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
+    expect(syncPendingStageAdvancesMock).toHaveBeenCalledWith(
+      1,
+      'user-1-token',
+    );
+    expect(syncPendingStageAdvancesMock).toHaveBeenCalledWith(
+      2,
+      'user-2-token',
+    );
+    const claimsOrder =
+      syncPendingChapterClaimsMock.mock.invocationCallOrder[0];
+    const assignmentOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
+      .invocationCallOrder[0];
+    const stageOrder = syncPendingStageAdvancesMock.mock.invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(assignmentOrder);
+    expect(assignmentOrder).toBeLessThan(stageOrder);
   });
 });
