@@ -30,6 +30,46 @@ describe('FluentAPI chapter assignment lists', () => {
     });
   }
 
+  it('reads an assignment using the session bearer', async () => {
+    mockOkJson({ id: 7, status: 'complete' });
+    await expect(FluentAPI.getChapterAssignment(7)).resolves.toEqual({
+      chapterAssignmentId: 7,
+      status: 'complete',
+    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(new URL(url).pathname).toBe('/chapter-assignments/7');
+    expect(init.headers).toEqual(
+      expect.objectContaining({ Authorization: 'Bearer session-abc' }),
+    );
+  });
+
+  it('maps fluent-api wire id to chapterAssignmentId for Complete checks', async () => {
+    mockOkJson({
+      id: 7,
+      status: 'consultant_check',
+      projectUnitId: 580,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 1,
+    });
+    await expect(FluentAPI.getChapterAssignment(7)).resolves.toEqual({
+      chapterAssignmentId: 7,
+      status: 'consultant_check',
+      projectUnitId: 580,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 1,
+    });
+  });
+
+  it('prefers chapterAssignmentId when the wire payload already has it', async () => {
+    mockOkJson({ id: 99, chapterAssignmentId: 7, status: 'complete' });
+    await expect(FluentAPI.getChapterAssignment(7)).resolves.toEqual({
+      chapterAssignmentId: 7,
+      status: 'complete',
+    });
+  });
+
   it('GETs /self/chapter-assignments/all and forwards the list queries', async () => {
     const payload = { syncedAt: '2026-10-12T00:00:00.000Z', data: [] };
     mockOkJson(payload);

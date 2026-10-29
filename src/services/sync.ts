@@ -1,4 +1,5 @@
 import { FluentAPI } from './api';
+import { getChapterAssignmentPullRevision } from '../utils/chapterCompletionSyncGuard';
 import { isTransientTransportFailure } from '../types/api/errors';
 import { isAuthError, AuthError } from './authError';
 import { mapApiChapterAssignment } from './mapChapterAssignment';
@@ -28,6 +29,7 @@ import {
   upsertPericopeSet,
   getLocalProjectIds,
   hasLanguagesMissingIsoCode,
+  selectExistingIds,
   upsertProjectUnits,
 } from '../db/repository';
 import { logger } from '../utils/logger';
@@ -342,6 +344,23 @@ export type SyncProjectsOptions = {
    * the global master-data cursor.
    */
   seedFkParents?: boolean;
+  /**
+   * Warm metadata refresh only. Per-id parent GET failures (404/5xx/network)
+   * upsert successes, skip FK-unsafe rows, and report incomplete without
+   * aborting later warm steps. Auth errors still throw. Login Tier 1 must
+   * omit this so seeding stays strict.
+   */
+  seedFkParentsBestEffort?: boolean;
+};
+
+type SeedFkParentsWorkOptions = {
+  seedFkParents?: boolean;
+  seedFkParentsBestEffort?: boolean;
+};
+
+type FkParentSeedResult = {
+  failedIds: number[];
+  incompleteReason?: string;
 };
 
 function uniquePositiveIds(ids: Array<number | undefined | null>): number[] {
@@ -357,58 +376,208 @@ function uniquePositiveIds(ids: Array<number | undefined | null>): number[] {
 }
 
 /**
+ * Strict: Promise.all — any failure aborts (login Tier 1).
+ * Best-effort: per-id settle; auth still aborts the batch.
+ */
+async function fetchMasterParentsById<T>(
+  ids: number[],
+  fetchOne: (id: number) => Promise<T>,
+  options: { bestEffort: boolean; kind: string },
+): Promise<{ values: T[]; failedIds: number[] }> {
+  if (!options.bestEffort) {
+    const values = await Promise.all(ids.map(id => fetchOne(id)));
+    return { values, failedIds: [] };
+  }
+
+  const values: T[] = [];
+  const failedIds: number[] = [];
+  await Promise.all(
+    ids.map(async id => {
+      try {
+        values.push(await fetchOne(id));
+      } catch (error) {
+        if (isAuthError(error)) {
+          throw error;
+        }
+        failedIds.push(id);
+        const failure = classifyPrepareOfflineParentRefreshFailure(error);
+        log.warn('FK parent by-id lookup failed; continuing warm seed', {
+          kind: options.kind,
+          id,
+          classification: failure.classification,
+          ...(failure.apiStatus !== undefined
+            ? { apiStatus: failure.apiStatus }
+            : {}),
+        });
+      }
+    }),
+  );
+  return { values, failedIds };
+}
+
+function incompleteParentSeedReason(
+  kind: string,
+  failedIds: number[],
+): string | undefined {
+  if (failedIds.length === 0) return undefined;
+  return `Incomplete ${kind} parent refresh (${failedIds.length} failed)`;
+}
+
+/**
  * Persist real master rows needed as FK parents. Must never call
  * setMasterDataLastSyncedAt — scoped seed is not a catalogue watermark (#679).
  */
 async function seedLanguageParentsForProjects(
   projects: Project[],
   sessionToken?: string,
-): Promise<void> {
+  options?: { bestEffort?: boolean },
+): Promise<FkParentSeedResult> {
   const languageIds = uniquePositiveIds(
     projects.flatMap(project => [
       project.sourceLanguageId ?? project.source_language_id,
       project.targetLanguageId ?? project.target_language_id,
     ]),
   );
-  if (languageIds.length === 0) return;
+  if (languageIds.length === 0) {
+    return { failedIds: [] };
+  }
 
   log.info('Seeding project language parents', {
     count: languageIds.length,
+    bestEffort: options?.bestEffort === true,
   });
 
-  const languages = await Promise.all(
-    languageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+  const { values, failedIds } = await fetchMasterParentsById(
+    languageIds,
+    id => FluentAPI.getLanguage(id, sessionToken),
+    { bestEffort: options?.bestEffort === true, kind: 'language' },
   );
-  await insertMasterData(languages.map(mapApiLanguage), [], []);
+  if (values.length > 0) {
+    await insertMasterData(values.map(mapApiLanguage), [], []);
+  }
+  return {
+    failedIds,
+    incompleteReason: incompleteParentSeedReason('language', failedIds),
+  };
 }
 
 async function seedAssignmentMasterParents(
   assignments: ChapterAssignment[],
   sessionToken?: string,
-): Promise<void> {
+  options?: { bestEffort?: boolean },
+): Promise<FkParentSeedResult> {
   const bibleIds = uniquePositiveIds(assignments.map(a => a.bibleId));
   const bookIds = uniquePositiveIds(assignments.map(a => a.bookId));
-  if (bibleIds.length === 0 && bookIds.length === 0) return;
+  if (bibleIds.length === 0 && bookIds.length === 0) {
+    return { failedIds: [] };
+  }
 
+  const bestEffort = options?.bestEffort === true;
   log.info('Seeding assignment master parents', {
     bibleCount: bibleIds.length,
     bookCount: bookIds.length,
+    bestEffort,
   });
 
-  const [books, bibles] = await Promise.all([
-    Promise.all(bookIds.map(id => FluentAPI.getBook(id, sessionToken))),
-    Promise.all(bibleIds.map(id => FluentAPI.getBible(id, sessionToken))),
+  const [booksResult, biblesResult] = await Promise.all([
+    fetchMasterParentsById(bookIds, id => FluentAPI.getBook(id, sessionToken), {
+      bestEffort,
+      kind: 'book',
+    }),
+    fetchMasterParentsById(
+      bibleIds,
+      id => FluentAPI.getBible(id, sessionToken),
+      { bestEffort, kind: 'bible' },
+    ),
   ]);
 
-  const languageIds = uniquePositiveIds(bibles.map(bible => bible.languageId));
-  const languages =
+  const languageIds = uniquePositiveIds(
+    biblesResult.values.map(bible => bible.languageId),
+  );
+  const languagesResult =
     languageIds.length === 0
-      ? []
-      : await Promise.all(
-          languageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+      ? { values: [], failedIds: [] as number[] }
+      : await fetchMasterParentsById(
+          languageIds,
+          id => FluentAPI.getLanguage(id, sessionToken),
+          { bestEffort, kind: 'bible-language' },
         );
 
-  await insertMasterData(languages.map(mapApiLanguage), books, bibles);
+  const fetchedLanguageIds = new Set(
+    languagesResult.values.map(language => language.id),
+  );
+  // Bibles need a language FK. Keep ones whose language was fetched or already local.
+  const localLanguageIds =
+    bestEffort && biblesResult.values.length > 0
+      ? await selectExistingIds(
+          'languages',
+          uniquePositiveIds(biblesResult.values.map(b => b.languageId)),
+        )
+      : new Set<number>();
+  const availableLanguageIds = new Set([
+    ...fetchedLanguageIds,
+    ...localLanguageIds,
+  ]);
+  const biblesToInsert = bestEffort
+    ? biblesResult.values.filter(bible =>
+        availableLanguageIds.has(bible.languageId),
+      )
+    : biblesResult.values;
+  const skippedBibleIds = biblesResult.values
+    .filter(bible => !availableLanguageIds.has(bible.languageId))
+    .map(bible => bible.id);
+
+  if (
+    languagesResult.values.length > 0 ||
+    booksResult.values.length > 0 ||
+    biblesToInsert.length > 0
+  ) {
+    await insertMasterData(
+      languagesResult.values.map(mapApiLanguage),
+      booksResult.values,
+      biblesToInsert,
+    );
+  }
+
+  const failedIds = [
+    ...booksResult.failedIds,
+    ...biblesResult.failedIds,
+    ...languagesResult.failedIds,
+    ...skippedBibleIds,
+  ];
+  return {
+    failedIds,
+    incompleteReason: incompleteParentSeedReason('assignment', failedIds),
+  };
+}
+
+async function filterProjectsWithLocalLanguageParents(
+  projects: Project[],
+): Promise<{ ready: Project[]; skippedCount: number }> {
+  const requiredIds = uniquePositiveIds(
+    projects.flatMap(project => [
+      project.sourceLanguageId ?? project.source_language_id,
+      project.targetLanguageId ?? project.target_language_id,
+    ]),
+  );
+  const present = await selectExistingIds('languages', requiredIds);
+  const ready: Project[] = [];
+  let skippedCount = 0;
+  for (const project of projects) {
+    const sourceLangId = project.sourceLanguageId ?? project.source_language_id;
+    const targetLangId = project.targetLanguageId ?? project.target_language_id;
+    if (
+      typeof sourceLangId === 'number' &&
+      typeof targetLangId === 'number' &&
+      present.has(sourceLangId) &&
+      present.has(targetLangId)
+    ) {
+      ready.push(project);
+    } else {
+      skippedCount += 1;
+    }
+  }
+  return { ready, skippedCount };
 }
 
 type MasterDataUpdatedAtRow = {
@@ -537,11 +706,15 @@ export async function syncProjects(
   userId: number,
   sessionToken?: string,
   options?: SyncProjectsOptions,
-) {
-  return retrySyncStep(
+): Promise<{ parentSeedIncomplete?: string }> {
+  const bestEffort = options?.seedFkParentsBestEffort === true;
+  let parentSeedIncomplete: string | undefined;
+
+  await retrySyncStep(
     'Project sync',
     KV_KEYS.SYNC_ERROR_PROJECTS,
     async () => {
+      parentSeedIncomplete = undefined;
       log.info('Syncing projects...', { userId });
 
       const response = await FluentAPI.getUserProjects(userId, sessionToken);
@@ -555,14 +728,36 @@ export async function syncProjects(
       });
 
       if (options?.seedFkParents && projects.length > 0) {
-        await seedLanguageParentsForProjects(projects, sessionToken);
+        const seed = await seedLanguageParentsForProjects(
+          projects,
+          sessionToken,
+          { bestEffort },
+        );
+        parentSeedIncomplete = seed.incompleteReason;
       }
 
-      if (projects.length > 0) {
-        await insertProjects(projects);
+      let projectsToWrite = projects;
+      if (bestEffort && projects.length > 0) {
+        const { ready, skippedCount } =
+          await filterProjectsWithLocalLanguageParents(projects);
+        projectsToWrite = ready;
+        if (skippedCount > 0) {
+          const skipReason = `Skipped ${skippedCount} project(s) — missing language parents`;
+          parentSeedIncomplete = parentSeedIncomplete
+            ? `${parentSeedIncomplete}; ${skipReason}`
+            : skipReason;
+          log.warn('Warm project sync withheld FK-unsafe rows', {
+            skippedCount,
+            readyCount: ready.length,
+          });
+        }
+      }
+
+      if (projectsToWrite.length > 0) {
+        await insertProjects(projectsToWrite);
         await insertUserProjects(
           userId,
-          projects.map(project => project.id),
+          projectsToWrite.map(project => project.id),
         );
       }
 
@@ -595,15 +790,29 @@ export async function syncProjects(
 
       log.info('Projects synced', {
         fetched: projects.length,
+        written: projectsToWrite.length,
         userProjectsInDb: totalProjectsCount,
+        parentSeedIncomplete: parentSeedIncomplete ?? null,
       });
     },
     String(userId),
   );
+
+  // retrySyncStep clears SYNC_ERROR_PROJECTS on success — re-assert incomplete
+  // after so warm UI does not latch a false healthy projects step.
+  if (parentSeedIncomplete) {
+    setSyncError(KV_KEYS.SYNC_ERROR_PROJECTS, parentSeedIncomplete);
+  }
+  return { parentSeedIncomplete };
 }
 
-export async function syncMilestones(userId: number, sessionToken?: string) {
+export async function syncMilestones(
+  userId: number,
+  sessionToken?: string,
+  options?: { bestEffort?: boolean },
+): Promise<{ milestoneIncomplete?: string }> {
   log.info('Syncing milestones...', { userId });
+  const bestEffort = options?.bestEffort === true;
 
   for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt += 1) {
     try {
@@ -615,6 +824,7 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
       log.info('Milestones fetched', {
         count: units.length,
         isArray: isConfirmedShape,
+        bestEffort,
       });
 
       if (!isConfirmedShape) {
@@ -623,17 +833,42 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
           userId,
         });
         setSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS, errorMessage);
-        return;
+        return {};
       }
 
-      await upsertProjectUnits(units);
+      let unitsToUpsert = units;
+      let milestoneIncomplete: string | undefined;
+      if (bestEffort && units.length > 0) {
+        const projectIds = uniquePositiveIds(units.map(unit => unit.projectId));
+        const presentProjects = await selectExistingIds('projects', projectIds);
+        unitsToUpsert = units.filter(unit =>
+          presentProjects.has(unit.projectId),
+        );
+        const skippedCount = units.length - unitsToUpsert.length;
+        if (skippedCount > 0) {
+          milestoneIncomplete = `Skipped ${skippedCount} milestone(s) — missing project parents`;
+          log.warn('Warm milestone sync withheld FK-unsafe units', {
+            skippedCount,
+            readyCount: unitsToUpsert.length,
+          });
+        }
+      }
+
+      await upsertProjectUnits(unitsToUpsert);
+      // Reconcile against the full confirmed server id list so withheld units
+      // that already exist locally are not deleted as "stale".
       await reconcileUserMilestones(
         userId,
         units.map(unit => unit.id),
       );
 
+      if (milestoneIncomplete) {
+        setSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS, milestoneIncomplete);
+        return { milestoneIncomplete };
+      }
+
       clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
-      return;
+      return {};
     } catch (error) {
       const errorMessage = getErrorMessage(error);
 
@@ -653,7 +888,7 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
           'Milestone endpoint unavailable; continuing without milestone ingest',
           { userId },
         );
-        return;
+        return {};
       }
 
       if (attempt < MAX_SYNC_ATTEMPTS && isRetryableApiError(error)) {
@@ -671,9 +906,10 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
         error: errorMessage,
         userId,
       });
-      return;
+      return {};
     }
   }
+  return {};
 }
 
 export async function syncPendingChapterClaimsForUser(userId: number) {
@@ -747,8 +983,10 @@ export async function syncChapterAssignments(
   updatedAfter?: string,
   excludeProjectIds?: number[],
   sessionToken?: string,
+  options?: { seedFkParentsBestEffort?: boolean },
 ): Promise<{ syncedAt?: string; partialSkipWarning?: string }> {
   let partialSkipWarning: string | undefined;
+  const bestEffort = options?.seedFkParentsBestEffort === true;
   const result = await retrySyncStep(
     'Chapter assignment sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
@@ -758,8 +996,10 @@ export async function syncChapterAssignments(
         userId,
         updatedAfter,
         excludeProjectIds,
+        bestEffort,
       });
 
+      const pullRevision = getChapterAssignmentPullRevision();
       const response = await FluentAPI.getChapterAssignments(
         userId,
         updatedAfter,
@@ -780,22 +1020,34 @@ export async function syncChapterAssignments(
 
       if (allAssignments.length > 0) {
         const { insertedCount, skipped } =
-          await insertChapterAssignmentSyncData(allAssignments);
+          await insertChapterAssignmentSyncData(allAssignments, pullRevision);
         if (insertedCount === 0) {
-          throw new Error(
-            `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
-          );
-        }
-        if (skipped.length > 0) {
+          const allSkipped = `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`;
+          if (bestEffort) {
+            // Warm path: continue to My Work / pericopes with truthful warning.
+            partialSkipWarning = allSkipped;
+          } else {
+            throw new Error(allSkipped);
+          }
+        } else if (skipped.length > 0) {
           partialSkipWarning = `Skipped ${skipped.length} of ${allAssignments.length} chapter assignment(s) — missing FK parents`;
         }
-        await insertUserProjects(userId, [
+
+        const candidateProjectIds = [
           ...new Set(
             allAssignments
               .map((assignment: { projectId: number }) => assignment.projectId)
               .filter(id => Number.isFinite(id) && id > 0),
           ),
-        ]);
+        ];
+        // Warm: never INSERT user_projects for projects withheld by parent seed
+        // (FK). Strict login keeps prior all-candidate behavior.
+        const membershipProjectIds = bestEffort
+          ? [...(await selectExistingIds('projects', candidateProjectIds))]
+          : candidateProjectIds;
+        if (membershipProjectIds.length > 0) {
+          await insertUserProjects(userId, membershipProjectIds);
+        }
         const db = getDatabase();
         const countResult = await db.execute(
           'SELECT COUNT(*) as count FROM chapter_assignments',
@@ -808,6 +1060,7 @@ export async function syncChapterAssignments(
           fetched: allAssignments.length,
           inserted: insertedCount,
           skipped: skipped.length,
+          membershipProjects: membershipProjectIds.length,
         });
       } else {
         log.info('No chapter assignment changes');
@@ -823,14 +1076,18 @@ export async function syncChapterAssignments(
 async function syncUserChapterWork(
   userId: number,
   sessionToken?: string,
-  options?: { seedFkParents?: boolean },
-): Promise<{ partialSkipWarning?: string }> {
+  options?: SeedFkParentsWorkOptions,
+): Promise<{ partialSkipWarning?: string; parentSeedIncomplete?: string }> {
   let partialSkipWarning: string | undefined;
+  let parentSeedIncomplete: string | undefined;
+  const bestEffort = options?.seedFkParentsBestEffort === true;
   await retrySyncStep(
     'User chapter work sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
     async () => {
       partialSkipWarning = undefined;
+      parentSeedIncomplete = undefined;
+      const pullRevision = getChapterAssignmentPullRevision();
       const response = await FluentAPI.getUserChapterAssignments(
         userId,
         sessionToken,
@@ -850,18 +1107,24 @@ async function syncUserChapterWork(
       const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
 
       if (options?.seedFkParents && mapped.length > 0) {
-        await seedAssignmentMasterParents(mapped, sessionToken);
+        const seed = await seedAssignmentMasterParents(mapped, sessionToken, {
+          bestEffort,
+        });
+        parentSeedIncomplete = seed.incompleteReason;
       }
 
       if (mapped.length > 0) {
         const { insertedCount, skipped } =
-          await insertChapterAssignmentSyncData(mapped);
+          await insertChapterAssignmentSyncData(mapped, pullRevision);
         if (insertedCount === 0) {
-          throw new Error(
-            `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
-          );
-        }
-        if (skipped.length > 0) {
+          const allSkipped = `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`;
+          if (bestEffort) {
+            // Warm path: keep milestones/pericopes progress; report incomplete.
+            partialSkipWarning = allSkipped;
+          } else {
+            throw new Error(allSkipped);
+          }
+        } else if (skipped.length > 0) {
           partialSkipWarning = `Skipped ${skipped.length} of ${mapped.length} chapter assignment(s) — missing FK parents`;
         }
       }
@@ -880,7 +1143,7 @@ async function syncUserChapterWork(
     },
     String(userId),
   );
-  return { partialSkipWarning };
+  return { partialSkipWarning, parentSeedIncomplete };
 }
 
 function applyChapterAssignmentSkipWarning(
@@ -917,12 +1180,26 @@ async function syncChapterAssignmentsForUser(
   userId: number,
   updatedAfter?: string,
   sessionToken?: string,
+  options?: SeedFkParentsWorkOptions,
 ): Promise<{
   didFullSync: boolean;
   syncedAt?: string;
   partialSkipWarning?: string;
+  parentSeedIncomplete?: string;
 }> {
   const userIdStr = String(userId);
+  const workOptions: SeedFkParentsWorkOptions | undefined =
+    options?.seedFkParents
+      ? {
+          seedFkParents: true,
+          ...(options.seedFkParentsBestEffort
+            ? { seedFkParentsBestEffort: true }
+            : {}),
+        }
+      : undefined;
+  const catalogueOptions = options?.seedFkParentsBestEffort
+    ? { seedFkParentsBestEffort: true as const }
+    : undefined;
 
   const runFullProjectAssignments = async () => {
     const projectResult = await syncChapterAssignments(
@@ -930,17 +1207,36 @@ async function syncChapterAssignmentsForUser(
       undefined,
       undefined,
       sessionToken,
+      catalogueOptions,
     );
-    const workResult = await syncUserChapterWork(userId, sessionToken);
+    const workResult = await syncUserChapterWork(
+      userId,
+      sessionToken,
+      workOptions,
+    );
     const partialSkipWarning = applyChapterAssignmentSkipWarning(
       workResult.partialSkipWarning,
       projectResult.partialSkipWarning,
     );
+    const parentSeedIncomplete = workResult.parentSeedIncomplete;
+    if (parentSeedIncomplete) {
+      // Prefer assignment-skip text when both exist; otherwise surface seed gap.
+      if (!partialSkipWarning) {
+        setSyncError(
+          KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
+          parentSeedIncomplete,
+        );
+      }
+    }
     return {
-      // Withhold cursor advancement when skips remain so the next sync
-      // re-fetches instead of clearing the warning as a false recovery (#470).
-      syncedAt: partialSkipWarning ? undefined : projectResult.syncedAt,
+      // Withhold cursor advancement when skips/incomplete parent refresh remain
+      // so the next sync re-fetches instead of false recovery (#470).
+      syncedAt:
+        partialSkipWarning || parentSeedIncomplete
+          ? undefined
+          : projectResult.syncedAt,
       partialSkipWarning,
+      parentSeedIncomplete,
     };
   };
 
@@ -948,6 +1244,7 @@ async function syncChapterAssignmentsForUser(
     didFullSync: boolean;
     syncedAt?: string;
     partialSkipWarning?: string;
+    parentSeedIncomplete?: string;
   };
 
   if (!getUserLastSyncedAt(userIdStr)) {
@@ -955,8 +1252,8 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — user has no per-user sync cursor',
       { userId },
     );
-    const { syncedAt, partialSkipWarning } = await runFullProjectAssignments();
-    result = { didFullSync: true, syncedAt, partialSkipWarning };
+    const full = await runFullProjectAssignments();
+    result = { didFullSync: true, ...full };
   } else if (
     (updatedAfter && !(await userHasLocalChapterAssignments(userId))) ||
     (await userNeedsAssigneeRepair(userId))
@@ -965,24 +1262,40 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — local assignments incomplete',
       { userId },
     );
-    const { syncedAt, partialSkipWarning } = await runFullProjectAssignments();
-    result = { didFullSync: true, syncedAt, partialSkipWarning };
+    const full = await runFullProjectAssignments();
+    result = { didFullSync: true, ...full };
   } else {
     const projectResult = await syncChapterAssignments(
       userId,
       updatedAfter,
       undefined,
       sessionToken,
+      catalogueOptions,
     );
-    const workResult = await syncUserChapterWork(userId, sessionToken);
+    const workResult = await syncUserChapterWork(
+      userId,
+      sessionToken,
+      workOptions,
+    );
     const partialSkipWarning = applyChapterAssignmentSkipWarning(
       workResult.partialSkipWarning,
       projectResult.partialSkipWarning,
     );
+    const parentSeedIncomplete = workResult.parentSeedIncomplete;
+    if (parentSeedIncomplete && !partialSkipWarning) {
+      setSyncError(
+        KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
+        parentSeedIncomplete,
+      );
+    }
     result = {
       didFullSync: !updatedAfter,
-      syncedAt: partialSkipWarning ? undefined : projectResult.syncedAt,
+      syncedAt:
+        partialSkipWarning || parentSeedIncomplete
+          ? undefined
+          : projectResult.syncedAt,
       partialSkipWarning,
+      parentSeedIncomplete,
     };
   }
 
@@ -2068,6 +2381,160 @@ const inFlightMetadataRefresh = new Map<number, Promise<void>>();
 /** Skip repeated full master-data pulls after a successful backfill this session. */
 let masterDataBackfilledThisSession = false;
 
+export type RefreshPrepareOfflineReferencedParentsResult =
+  | 'ok'
+  | 'offline'
+  | 'skipped'
+  | 'failed';
+
+function classifyPrepareOfflineParentRefreshFailure(error: unknown): {
+  classification: 'auth' | 'api' | 'type' | 'error' | 'unknown';
+  apiStatus?: number;
+} {
+  if (isAuthError(error)) {
+    return { classification: 'auth' };
+  }
+  if (isApiError(error)) {
+    const status = error.status;
+    const apiStatus =
+      Number.isInteger(status) &&
+      (status === 0 || (status >= 100 && status <= 599))
+        ? status
+        : undefined;
+    return {
+      classification: 'api',
+      ...(apiStatus !== undefined ? { apiStatus } : {}),
+    };
+  }
+  if (error instanceof TypeError) {
+    return { classification: 'type' };
+  }
+  if (error instanceof Error) {
+    return { classification: 'error' };
+  }
+  return { classification: 'unknown' };
+}
+
+/**
+ * Narrow Prepare Offline repair: gather by-id GETs for the current project's
+ * language parents and selected bible/book(+bible-language) ids, then one
+ * insertMasterData after an active-user recheck. Does not use the login/warm
+ * seed helpers' write path (those callers stay unchanged).
+ *
+ * Never claims, never syncProjects/reconcile, never bible-text/upload/download,
+ * never advances master-data watermarks. Offline / auth / membership misses do
+ * not throw — caller must not latch success except on `'ok'`.
+ */
+export async function refreshPrepareOfflineReferencedParents(params: {
+  userId: number;
+  projectId: number;
+  chapters: Array<{ bibleId: number; bookId: number }>;
+}): Promise<RefreshPrepareOfflineReferencedParentsResult> {
+  const { userId, projectId, chapters } = params;
+
+  try {
+    const { isOnline } = await getConnectivitySnapshot();
+    if (!isOnline) {
+      return 'offline';
+    }
+
+    const userIdStr = String(userId);
+    if (userIdStr !== getActiveUserId()) {
+      log.warn(
+        'Skipping Prepare Offline referenced-parent refresh — user is no longer active',
+        { userId, projectId },
+      );
+      return 'skipped';
+    }
+
+    const creds = await getCredentials(userIdStr);
+    if (!creds?.token) {
+      return 'failed';
+    }
+
+    const sessionToken = creds.token;
+    const response = await FluentAPI.getUserProjects(userId, sessionToken);
+    const raw = unwrapApiListResponse(response);
+    if (!Array.isArray(raw)) {
+      return 'failed';
+    }
+
+    const project = raw.map(mapApiProject).find(row => row.id === projectId);
+    if (!project) {
+      return 'skipped';
+    }
+
+    const projectLanguageIds = uniquePositiveIds([
+      project.sourceLanguageId ?? project.source_language_id,
+      project.targetLanguageId ?? project.target_language_id,
+    ]);
+    const bibleIds = uniquePositiveIds(chapters.map(ch => ch.bibleId));
+    const bookIds = uniquePositiveIds(chapters.map(ch => ch.bookId));
+
+    // Gather all required GETs first — no SQLite writes until the active-user
+    // recheck below (avoids cross-account upsert after account switch).
+    const [projectLanguages, books, bibles] = await Promise.all([
+      Promise.all(
+        projectLanguageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+      ),
+      Promise.all(bookIds.map(id => FluentAPI.getBook(id, sessionToken))),
+      Promise.all(bibleIds.map(id => FluentAPI.getBible(id, sessionToken))),
+    ]);
+
+    const projectLanguageIdSet = new Set(projectLanguageIds);
+    const bibleLanguageIds = uniquePositiveIds(
+      bibles.map(bible => bible.languageId),
+    ).filter(id => !projectLanguageIdSet.has(id));
+    const bibleLanguages =
+      bibleLanguageIds.length === 0
+        ? []
+        : await Promise.all(
+            bibleLanguageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+          );
+
+    if (userIdStr !== getActiveUserId()) {
+      log.warn(
+        'Skipping Prepare Offline referenced-parent upsert — user changed during fetch',
+        { userId, projectId },
+      );
+      return 'skipped';
+    }
+
+    const languagesById = new Map(
+      [...projectLanguages, ...bibleLanguages]
+        .map(mapApiLanguage)
+        .map(language => [language.id, language] as const),
+    );
+
+    // Single transaction: languages before books before bibles.
+    await insertMasterData([...languagesById.values()], books, bibles);
+
+    if (userIdStr !== getActiveUserId()) {
+      log.warn(
+        'Skipping Prepare Offline referenced-parent ok — user changed during upsert',
+        { userId, projectId },
+      );
+      return 'skipped';
+    }
+
+    return 'ok';
+  } catch (error) {
+    if (isAuthError(error)) {
+      await handleSyncAuthFailure(String(userId));
+    }
+    const failure = classifyPrepareOfflineParentRefreshFailure(error);
+    log.warn('Prepare Offline referenced-parent refresh failed', {
+      userId,
+      projectId,
+      classification: failure.classification,
+      ...(failure.apiStatus !== undefined
+        ? { apiStatus: failure.apiStatus }
+        : {}),
+    });
+    return 'failed';
+  }
+}
+
 async function maybeBackfillMasterDataOnRefresh(
   sessionToken?: string,
 ): Promise<void> {
@@ -2127,19 +2594,43 @@ export async function refreshChapterMetadataIfOnline(
       await syncPendingChapterClaimsForUser(userId);
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
+      // NULL/blank ISO only — wrong non-empty codes need #679 by-id seed below.
       await maybeBackfillMasterDataOnRefresh(sessionToken);
       await refreshUserOrgGrants(userIdStr, sessionToken);
-      await syncProjects(userId, sessionToken);
-      await syncMilestones(userId, sessionToken);
+      // Re-upsert project/assignment language+bible parents from live API so
+      // stale catalogue rows (wrong ISO / bible.language_id) cannot poison
+      // Prepare Offline manifests. Does not advance master cursors (#679).
+      // Warm-only best-effort: one 404/502 parent lookup must not abort
+      // milestones / assignments / pericopes (login Tier 1 stays strict).
+      const { parentSeedIncomplete: projectParentIncomplete } =
+        await syncProjects(userId, sessionToken, {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        });
+      const { milestoneIncomplete } = await syncMilestones(
+        userId,
+        sessionToken,
+        { bestEffort: true },
+      );
 
       const cursor = getUserLastSyncedAt(userIdStr) || undefined;
-      const { syncedAt } = await syncChapterAssignmentsForUser(
-        userId,
-        cursor,
-        sessionToken,
-      );
+      const {
+        syncedAt,
+        parentSeedIncomplete: assignmentParentIncomplete,
+        partialSkipWarning: assignmentSkipWarning,
+      } = await syncChapterAssignmentsForUser(userId, cursor, sessionToken, {
+        seedFkParents: true,
+        seedFkParentsBestEffort: true,
+      });
       await syncPendingStageAdvancesForUser(userId, sessionToken);
-      if (syncedAt) {
+      // Incomplete parent/milestone/assignment refresh must not latch cursor.
+      if (
+        syncedAt &&
+        !projectParentIncomplete &&
+        !milestoneIncomplete &&
+        !assignmentParentIncomplete &&
+        !assignmentSkipWarning
+      ) {
         setUserLastSyncedAt(userIdStr, syncedAt);
       }
       // New chapters from this light refresh need set-level pericope hydrate

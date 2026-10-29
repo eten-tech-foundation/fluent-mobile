@@ -1,4 +1,5 @@
 import { getDatabase } from './db';
+import { chapterCompletedAfterPull } from '../utils/chapterCompletionSyncGuard';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
@@ -325,8 +326,15 @@ function collectAssigneeIds(
 async function insertChapterAssignmentTx(
   tx: Transaction,
   assignment: DBTypes.ChapterAssignment,
+  pullRevision?: number,
 ) {
   if (!assignment?.chapterAssignmentId) return;
+  if (
+    pullRevision !== undefined &&
+    chapterCompletedAfterPull(assignment.chapterAssignmentId, pullRevision)
+  ) {
+    return;
+  }
 
   await tx.execute(
     `INSERT INTO chapter_assignments
@@ -574,6 +582,7 @@ export type InsertChapterAssignmentSyncResult = {
 
 export async function insertChapterAssignmentSyncData(
   assignments: DBTypes.ChapterAssignment[],
+  pullRevision?: number,
 ): Promise<InsertChapterAssignmentSyncResult> {
   const db = getDatabase();
   const userIds = collectAssigneeIds(assignments);
@@ -635,7 +644,7 @@ export async function insertChapterAssignmentSyncData(
       await insertProjectUnitTx(tx, unit);
     }
     for (const assignment of validAssignments) {
-      await insertChapterAssignmentTx(tx, assignment);
+      await insertChapterAssignmentTx(tx, assignment, pullRevision);
     }
   });
 
@@ -949,6 +958,40 @@ export async function hasLanguagesMissingIsoCode(): Promise<boolean> {
     log.error('Error checking language ISO codes:', { error });
     return true;
   }
+}
+
+const MASTER_PARENT_ID_TABLES = {
+  languages: 'languages',
+  books: 'books',
+  bibles: 'bibles',
+  projects: 'projects',
+} as const;
+
+export type MasterParentIdTable = keyof typeof MASTER_PARENT_ID_TABLES;
+
+/** Which of the requested master-parent ids already exist locally. */
+export async function selectExistingIds(
+  table: MasterParentIdTable,
+  ids: number[],
+): Promise<Set<number>> {
+  const unique = [
+    ...new Set(
+      ids.filter(id => typeof id === 'number' && Number.isFinite(id) && id > 0),
+    ),
+  ];
+  if (unique.length === 0) {
+    return new Set();
+  }
+
+  const db = getDatabase();
+  const placeholders = unique.map(() => '?').join(',');
+  const result = await db.execute(
+    `SELECT id FROM ${MASTER_PARENT_ID_TABLES[table]} WHERE id IN (${placeholders})`,
+    unique,
+  );
+  return new Set(
+    ((result.rows ?? []) as Array<{ id: number }>).map(row => Number(row.id)),
+  );
 }
 
 export async function insertUserProjects(userId: number, projectIds: number[]) {

@@ -16,10 +16,30 @@ jest.mock('../db/queries.prepareOffline', () => ({
   getPrepareOfflineProjectContext: async () => ({ sourceLanguageCode: 'eng' }),
 }));
 jest.mock('../services/prepareOfflineResources', () => ({
-  fetchPrepareOfflineManifest: (...args: unknown[]) =>
-    mockDiagnosticManifest(...args),
+  fetchPrepareOfflineManifestsBounded: async (
+    projectId: number,
+    contexts: unknown[],
+    signal?: AbortSignal,
+  ) => {
+    const items: unknown[] = [];
+    for (const ctx of contexts) {
+      if (signal?.aborted) {
+        const err = new Error('Aborted');
+        err.name = 'AbortError';
+        throw err;
+      }
+      const batch = await mockDiagnosticManifest(projectId, ctx);
+      items.push(...(batch as unknown[]));
+    }
+    return items;
+  },
   refreshPrepareOfflineInventory: async () => undefined,
   subscribePrepareOfflineInventory: () => () => undefined,
+}));
+jest.mock('../services/sync', () => ({
+  refreshPrepareOfflineReferencedParents: jest.fn(async () => 'ok'),
+  refreshChapterMetadataIfOnline: jest.fn(async () => undefined),
+  syncPendingChapterClaimsForUser: jest.fn(),
 }));
 
 const TEXT_BYTES = 1_000;
@@ -372,8 +392,13 @@ describe('Prepare Offline development failure diagnostic', () => {
         await waitFor(() => expect(result.current.error).toBe(error));
         expect(result.current.manifest).toEqual([]);
         if (development) {
-          expect(transport).toHaveBeenCalledTimes(1);
-          const context = transport.mock.calls[0][3];
+          const failureCall = transport.mock.calls.find(
+            ([, , , context]) =>
+              (context as { event?: string }).event ===
+              'prepare_offline_manifest_failure',
+          );
+          expect(failureCall).toBeDefined();
+          const context = failureCall![3] as Record<string, unknown>;
           expect(context).toEqual({
             timestamp: expect.any(String),
             event: 'prepare_offline_manifest_failure',
