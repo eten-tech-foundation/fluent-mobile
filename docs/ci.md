@@ -2,6 +2,17 @@
 
 This repo runs GitHub Actions on pushes and pull requests. This doc maps what runs today and records a **future** guardrail so we do not brick merges if we later make checks required.
 
+## Validation tiers (do not conflate)
+
+| Tier | What | Merge / “done”? |
+| ---- | ---- | --------------- |
+| **1. Local gates** | `format:check` → `lint` → `architecture-guard` → `typecheck` → `npm test -- --ci` ([`AGENTS.md`](../AGENTS.md), [commands.mdc](../.cursor/rules/commands.mdc)) | Required before claiming PR-ready; team policy |
+| **2. CI jobs** | Workflows below run on every PR (lint, tests, typecheck, Expo health, Action pins, PR Description, …) | Must be green before handoff; most are **not** GitHub-required yet |
+| **3. Required merge checks** | Only what branch protection / rulesets enforce (snapshot below) | Blocks the merge button when red |
+| **4. Post-merge device QA** | Nightly APK + Needs QA? handoff ([guides/qa-process.md](guides/qa-process.md)) | **Not** a merge blocker; not fulfilled by green CI or unit tests |
+
+Green CI ≠ fulfilled acceptance criteria ≠ successful device QA.
+
 ## Workflows
 
 | Workflow | Jobs (check name) | Purpose |
@@ -75,20 +86,23 @@ Scheduled Expo CI (`expo-sdk-align.yml`) = online --fix + full doctor → one PR
 
 ### Branch protection snapshot (live settings)
 
-**Snapshot date:** 2026-08-25 · **Source:** `gh api repos/eten-tech-foundation/fluent-mobile/branches/main/protection` and ruleset `main-protection` (id `20519483`).
+**Snapshot date:** 2026-10-28 · **Source:** `gh api` legacy required_status_checks + rulesets / branch rules for `main` (ruleset `main-protection` id `20519483`). **Do not treat this table as permission to change GitHub settings** — documentation only.
 
 | Layer | Setting | Value |
 | ----- | ------- | ----- |
-| **Required status checks** (legacy branch protection) | Contexts | **`PR Description`** (`strict: true` — branch must be up to date). **`Action pins` is added as required after the workflow exists on `main`** (#405) — do not require it before that check can report |
-| **Ruleset `main-protection`** (default branch) | PR reviews | ≥1 approval; **code owner review required**; extra approval for unattributed changes |
+| **Required status checks** (legacy branch protection) | Contexts | **`PR Description` only** (`strict: true` — branch must be up to date) |
+| **Ruleset `main-protection`** | PR reviews | ≥1 approving review; **`require_code_owner_review`: false** (CODEOWNERS still lists reviewers); extra approval for unattributed changes; squash-only merges |
 | | History | Linear history required; force-push and branch deletion blocked |
-| **Not required in GitHub** (run locally / team policy) | Status checks | `Lint & Format`, `Unit Tests`, `TypeScript`, `expo-doctor`, `expo install --check` |
+| **Not required in GitHub** (still run on every PR / team policy) | Status checks | `Lint & Format`, `Unit Tests`, `TypeScript`, `expo-doctor`, `expo install --check`, **`Action pins`** (workflow is on `main` but is **not** a required status check as of this snapshot) |
 
-**Discrepancy:** Workflows in the table above still run on every PR, and local gates expect lint/test/typecheck/Expo health to be green before merge — but only **`PR Description`** is a *required* status check in GitHub branch protection today. **`Action pins` becomes required after that workflow is on `main`** (#405). Adding lint/test/typecheck as required checks is a separate maintainer follow-up (see guardrail below).
+**Stale / follow-up flags (maintainers — no settings changed by this doc):**
 
-**PR review policy:** `.github/CODEOWNERS` — `@mattrace-gloo`, `@B3RN153`, `@JonathanSeehagen`.
+- Prior docs claimed code-owner review was required and that Action pins would become required after landing on `main` (#405). Live read 2026-10-28: code-owner review is **off**; Action pins runs but is **not** required.
+- Adding lint/test/typecheck/Action pins as required checks remains an aspirational maintainer decision (see guardrail below).
 
-Before marking a PR ready, still run the full local gate order and confirm all workflow jobs are green — do not rely on GitHub merge button alone while only `PR Description` is required.
+**PR review policy (CODEOWNERS file):** `.github/CODEOWNERS` — `@mattrace-gloo`, `@B3RN153`, `@JonathanSeehagen` (requests reviews; ruleset does not currently *require* code-owner approval).
+
+Before marking a PR ready, still run the full local gate order and confirm workflow jobs are green — do not rely on the merge button alone while only `PR Description` is a required status check.
 
 ### Branch protection (maintainers — aspirational)
 

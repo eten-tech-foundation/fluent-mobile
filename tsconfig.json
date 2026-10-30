@@ -17,6 +17,7 @@
     "**/node_modules",
     "**/Pods",
     "tmp",
+    "worktrees",
     "src/app/__fixtures__/eslint-layer-boundaries"
   ]
 }

@@ -3,7 +3,15 @@ module.exports = {
   setupFiles: ['<rootDir>/jest.env.cjs', '<rootDir>/jest.setup.expo-fs.cjs'],
   // Reanimated setUpTests() needs the Jest env (Jest ≥28 → setupFilesAfterEnv).
   setupFilesAfterEnv: ['<rootDir>/jest.setup.reanimated.cjs'],
-  testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/android/',
+    '/ios/',
+    // Local nested checkouts (gitignored /worktrees/)
+    '<rootDir>/worktrees/',
+  ],
+  // Keep nested checkouts out of the haste map (packages/mocks), not just test discovery.
+  modulePathIgnorePatterns: ['<rootDir>/worktrees/'],
   // `.cjs` is not in Jest's default testMatch; CI/workflow scripts under
   // .github must stay CommonJS because the root package.json is "type": "module".
   testMatch: [

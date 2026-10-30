@@ -9,7 +9,7 @@ Use this for **every** Dependabot merge (copy into PR comment or issue when tria
 - [ ] Author is `dependabot[bot]` / `app/dependabot`
 - [ ] Required GitHub checks green: Lint & Format, Unit Tests, Quality Gates (TypeScript, expo-doctor, expo install --check)
 - [ ] **Safe** (lockfile-only / non-native patch, or Actions SHA bump with Action pins green): CI-first is enough — local checkout optional
-- [ ] **Risky** / native / Expo ecosystem: checkout → `npm ci` → **`npm run doctor`** → `format:check` → `lint` → `typecheck` → `npm test -- --ci` (+ Android smoke)
+- [ ] **Risky** / native / Expo ecosystem: checkout → `npm ci` → **`npm run doctor`** → `format:check` → `lint` → `architecture-guard` → `typecheck` → `npm test -- --ci` (+ Android smoke)
 - [ ] If `--check` is red **with no package change on this PR**: wait for the Expo compatibility sync ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), rebase — do not `--fix` on an unrelated feature ticket. If this **is** a deps PR and drift is SDK 57 patch-only: `npx expo install --fix` on that branch
 - [ ] Approve + **squash merge exactly one** lockfile PR (Actions PRs: merge when pins + required checks green — do **not** skip by default)
 - [ ] Wait for **`main` CI green** before the next merge
@@ -29,7 +29,7 @@ Risky bumps (`react`, `react-native`, navigation, native modules): add Android s
 6. **Runtime testing**: Static checks miss renderer mismatches — smoke test on Android for risky bumps.
 7. **One lockfile merge at a time**: Merge **one** lockfile PR, let **`main` CI go green**, then **`@dependabot rebase` all other open bots in parallel** before the next merge.
 8. **Expo health after rebases**: Every `@dependabot rebase` triggers Quality Gates (`npm run doctor` + `expo install --check`). `--check` can go red overnight when Expo publishes new SDK 57 patches ([two-clock model](../ci.md#two-clocks--pr-ci-vs-scheduled-expo-health)). Recover via the weekday sync PR ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), not a drive-by `--fix` on every open bot. Until #422 lands, `--fix` only on a dedicated deps ticket.
-9. **Automate the queue**: Cursor agents should run the full safe queue without per-PR confirmation (see `.cursor/rules/dependabot-workflow.mdc` → Autonomous mode).
+9. **Automate the queue**: Agents should run the full safe queue without per-PR confirmation (thin Cursor adapter: [`.cursor/rules/dependabot-workflow.mdc`](../../.cursor/rules/dependabot-workflow.mdc) — autonomous trigger + hard constraints; procedure lives in this guide).
 10. **Deferred upgrades**: When closing a bot as “needs dedicated ticket”, open/link that ticket **or** rely on ignore rules in `.github/dependabot.yml` — no orphan “needs ticket” comments.
 
 ## Expo + Dependabot (best practices)
@@ -93,9 +93,12 @@ Then the validation suite (CI order):
 npm run doctor
 npm run format:check
 npm run lint
+npm run architecture-guard
 npm run typecheck
 npm test -- --ci
 ```
+
+(Authoritative gate order: [`AGENTS.md`](../../AGENTS.md) / [commands.mdc](../../.cursor/rules/commands.mdc).)
 
 **Quality Gates** on every PR: lockfile `npm run doctor` and required **`expo install --check`**. Local `npm run doctor` matches the CI CLI version. If `--check` is red with no code change, see [two clocks](../ci.md#two-clocks--pr-ci-vs-scheduled-expo-health).
 
@@ -154,6 +157,7 @@ npm ci
 npm run doctor
 npm run format:check
 npm run lint
+npm run architecture-guard
 npm run typecheck
 npm test -- --ci
 cd android && ./gradlew assembleDebug --no-daemon && cd ..
@@ -202,11 +206,13 @@ These are exact pins in `package.json` — Dependabot is configured to avoid mos
 
 Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.86.3&to=0.86.3) when aligning versions during an RN upgrade ticket.
 
-## Automating with Cursor
+## Automating (any agent)
 
-Ask: **"Handle dependabot PRs"** or **"Process the dependabot queue"**.
+Ask: **"Handle dependabot PRs"** or **"Process the dependabot queue"** (or run `/handle-dependabot`).
 
-The agent runs in **autonomous mode** by default:
+This guide is the **authoritative** procedure. The Cursor glob rule [`.cursor/rules/dependabot-workflow.mdc`](../../.cursor/rules/dependabot-workflow.mdc) is a thin adapter (autonomous trigger + hard constraints). The Claude/Codex command is [`.claude/commands/handle-dependabot.md`](../../.claude/commands/handle-dependabot.md).
+
+Autonomous mode by default:
 
 - Triages all open bots
 - Rebases stale/conflicting PRs in parallel
@@ -214,8 +220,6 @@ The agent runs in **autonomous mode** by default:
 - Merges GitHub Actions SHA bumps when Action pins + required checks are green (do not skip by default)
 - Skips risky/failed PRs and reports blockers; deferred closes need a ticket or an ignore rule
 - Does not merge non-Dependabot workflow/config PRs unless explicitly requested
-
-Rule: [`.cursor/rules/dependabot-workflow.mdc`](../../.cursor/rules/dependabot-workflow.mdc)
 
 ## SHA pinning for GitHub Actions
 

@@ -90,9 +90,11 @@ expo-env.d.ts
 # Maestro CLI local --test-output-dir (may contain env in logs)
 test_output/
 
-# Local agent config
+# Local agent config (machine-specific — do not commit)
 .codex/
-.agents/
+# Generated Codex/Cursor wrappers that only point at .claude/commands —
+# do NOT blanket-ignore all of .agents/ (shared team skills may live there).
+/.agents/skills/source-command-*/
 
 # Nested local git worktrees
 /worktrees/

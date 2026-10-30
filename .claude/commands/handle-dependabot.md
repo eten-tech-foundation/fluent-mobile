@@ -4,8 +4,8 @@
 
 Process the open Dependabot queue for **fluent-mobile** end-to-end: triage, rebase, validate (including **Expo Doctor** when risky), merge safe PRs one at a time, rebase the rest.
 
-Rule: [`.cursor/rules/dependabot-workflow.mdc`](../../.cursor/rules/dependabot-workflow.mdc)
-Guide: [`docs/guides/dependabot-process.md`](../../docs/guides/dependabot-process.md)
+**Canonical guide:** [`docs/guides/dependabot-process.md`](../../docs/guides/dependabot-process.md)
+Cursor adapter (thin): [`.cursor/rules/dependabot-workflow.mdc`](../../.cursor/rules/dependabot-workflow.mdc)
 
 ## Autonomous mode (default)
 
@@ -44,6 +44,7 @@ npm ci
 npm run doctor          # lockfile expo-doctor — Quality Gates, never @latest
 npm run format:check
 npm run lint
+npm run architecture-guard
 npm run typecheck
 npm test -- --ci
 ```
