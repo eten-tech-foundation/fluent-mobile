@@ -14,11 +14,14 @@ import { useLiveLevels } from '../../../../hooks/useLiveLevels';
 import { usePendingDelete } from '../../../../hooks/usePendingDelete';
 import type { PassageTake } from '../../../../hooks/usePassage';
 import { useRecordSession } from '../../../../hooks/useRecordSession';
+import { logger } from '../../../../utils/logger';
 import type { RecordStatus } from './Footer';
 import type { FrontTake } from './TakeCard';
 import type { RecordKeys } from './PlayerKeys';
 import type { FanTake } from './TakeFan';
 import type { Ready } from './steps';
+
+const log = logger.create('useRecorder');
 
 /**
  * Record mode's state for the passage player. Recording works as in Legacy's
@@ -295,6 +298,10 @@ export function useRecorder({
     busy.current = true;
     try {
       await action();
+    } catch (error) {
+      // Recorder calls report their own errors; the mic request and start()'s
+      // take count can still reject.
+      log.error('Player key failed', { error });
     } finally {
       busy.current = false;
     }

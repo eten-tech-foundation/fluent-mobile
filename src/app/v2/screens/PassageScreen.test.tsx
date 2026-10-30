@@ -12,6 +12,7 @@ import PassageScreen from './PassageScreen';
 import type { Passage, PassageDownload } from '../../../hooks/usePassage';
 import { UNDO_MS } from '../../../hooks/usePendingDelete';
 import { hrefs } from '../../../navigation/hrefs';
+import { logger } from '../../../utils/logger';
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -253,6 +254,7 @@ describe('PassageScreen', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    logger.reset();
   });
 
   it("opens the book page at this chapter from the title's sheet", () => {
@@ -480,6 +482,30 @@ describe('PassageScreen', () => {
 
     expect(mockEnsureMic).toHaveBeenCalled();
     expect(mockStart).toHaveBeenCalled();
+  });
+
+  it('takes Record again after the mic request fails', async () => {
+    const mockTransport = jest.fn();
+    logger.setTransport(mockTransport);
+    mockEnsureMic.mockRejectedValueOnce(new Error('no mic'));
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(mockStart).not.toHaveBeenCalled();
+    expect(mockTransport).toHaveBeenCalledWith(
+      'error',
+      'useRecorder',
+      'Player key failed',
+      { error: expect.any(Error) },
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(mockStart).toHaveBeenCalledTimes(1);
   });
 
   it('shows the take in progress and pauses it from the same key', async () => {
