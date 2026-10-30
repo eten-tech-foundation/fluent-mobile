@@ -47,6 +47,40 @@ describe('SharedTakeRow long take labels (#589)', () => {
   });
 });
 
+describe('SharedTakeRow scrubbing (#833)', () => {
+  it('seeks this take when onSeek is provided', () => {
+    const onSeek = jest.fn();
+    const { getByTestId, getByLabelText } = render(
+      <SharedTakeRow {...baseProps} durationMs={3000} onSeek={onSeek} />,
+    );
+
+    const scrubber = getByTestId('playback-progress');
+    expect(scrubber.props.onStartShouldSetResponder()).toBe(true);
+    expect(getByLabelText('Draft waveform scrubber')).toBeTruthy();
+
+    fireEvent(scrubber, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+    });
+    fireEvent(scrubber, 'responderGrant', {
+      nativeEvent: { locationX: 50 },
+    });
+
+    expect(onSeek).toHaveBeenCalledWith(1500);
+  });
+
+  it('ignores drags when onSeek is absent', () => {
+    const { getByTestId, queryByLabelText } = render(
+      <SharedTakeRow {...baseProps} durationMs={3000} onSeek={undefined} />,
+    );
+
+    const scrubber = getByTestId('playback-progress');
+    // Not seekable: the responder is never claimed, so grants are dropped.
+    expect(scrubber.props.onStartShouldSetResponder()).toBe(false);
+    expect(scrubber.props.accessibilityRole).toBe('progressbar');
+    expect(queryByLabelText('Draft waveform scrubber')).toBeNull();
+  });
+});
+
 describe('SharedTakeRow canonical designation', () => {
   it('renders a pressable canonical control when onDesignateCanonical is provided', () => {
     const onDesignateCanonical = jest.fn();
