@@ -158,7 +158,7 @@ Resources, Images) → the player and recorder.
 
 | Feature | What we need to support | v2 design | Backend |
 | --- | --- | --- | --- |
-| Send to the next stage | Appears once every unit is recorded; confirm sheet; blocked by conflicts or takes that can't upload | ◐ The confirm's Dialog (built, in the gallery); where Send lives is open (Q29) | Wired: `PATCH /chapter-assignments/{id}/submit`. Offline advances aren't queued (#257) |
+| Send to the next stage | Appears once every unit is recorded; confirm sheet; blocked by conflicts or takes that can't upload | ◐ The confirm's Dialog (built, in the gallery); a Home alert card and a Send button on the book page's chapter header (Q29, not built) | Wired: `PATCH /chapter-assignments/{id}/submit`. Offline advances aren't queued (#257) |
 | Stage badges | Not Started → Draft → Peer Check → Community Review → Linguist / Theological / Consultant Check → Complete | — | Labels are hard-coded. Available: `GET /projects/{id}/workflow-stages` |
 
 ### Sync, offline and downloads
