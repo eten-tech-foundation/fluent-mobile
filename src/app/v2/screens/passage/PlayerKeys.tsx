@@ -35,6 +35,7 @@ const BREATH_LOW = 0.45;
 
 /**
  * Red Stop that breathes while a take records, a calm "live" signal.
+ * Pressing it stops the take for now; pressing it again picks the same take up.
  * Visual only: haptics stay silent for the whole take.
  */
 function StopRed({ size }: NextIconProps) {
@@ -62,16 +63,18 @@ function StopRed({ size }: NextIconProps) {
 
 export interface RecordKeys {
   recording: boolean;
-  /** A take recovered after a crash: Record resumes it, the next key saves it. */
-  recovered: boolean;
+  /** A take paused, or recovered after a crash: Record resumes it. */
+  paused: boolean;
   /** Can't record here right now; the footer says why. */
   recordDisabled: boolean;
   onRecord: () => void;
-  onSave: () => void;
   playing: boolean;
   /** Nothing to play yet, or a take is being captured. */
   playDisabled: boolean;
   onPlay: () => void;
+  /** No take is recording or paused. */
+  finishDisabled: boolean;
+  onFinish: () => void;
 }
 
 /** A key the sheet labels and turns on or off. */
@@ -83,16 +86,16 @@ export interface KeyAction {
 
 /**
  * The player's Hardware panel; the player chrome puts it in Hardware. Record
- * mode captures real takes through the shared record session, and Eject
- * sends the chapter on. Listen mode's Play opens Legacy drafting until
- * playback is wired; Previous and Next turn the pages, like swiping.
+ * mode captures real takes through the shared record session: Record starts,
+ * pauses and resumes a take, and Eject finishes it. Listen mode's Play opens
+ * Legacy drafting until playback is wired; Previous and Next turn the pages,
+ * like swiping.
  */
 export function PlayerKeys({
   recordMode,
   onRecordModeChange,
   modeLocked,
   record,
-  eject,
   previous,
   next,
   onOpenDrafting,
@@ -102,7 +105,6 @@ export function PlayerKeys({
   /** Locked for the whole take. */
   modeLocked: boolean;
   record: RecordKeys;
-  eject: KeyAction;
   previous: KeyAction;
   next: KeyAction;
   onOpenDrafting: () => void;
@@ -119,9 +121,9 @@ export function PlayerKeys({
             icon={record.recording ? StopRed : RecordDot}
             accessibilityLabel={
               record.recording
-                ? 'Stop recording'
-                : record.recovered
-                ? 'Resume take'
+                ? 'Pause recording'
+                : record.paused
+                ? 'Resume recording'
                 : 'Record'
             }
             announceLatched={false}
@@ -131,31 +133,21 @@ export function PlayerKeys({
             style={styles.key}
             testID="passage-key-record"
           />
-          {record.recovered ? (
-            <Key
-              icon={StopFill}
-              accessibilityLabel="Stop and save take"
-              onPress={record.onSave}
-              style={styles.key}
-              testID="passage-key-save"
-            />
-          ) : (
-            <Key
-              icon={record.playing ? PauseFill : PlayFill}
-              accessibilityLabel={record.playing ? 'Pause take' : 'Play take'}
-              announceLatched={false}
-              active={record.playing}
-              disabled={record.playDisabled}
-              onPress={record.onPlay}
-              style={styles.key}
-              testID="passage-key-play"
-            />
-          )}
+          <Key
+            icon={record.playing ? PauseFill : PlayFill}
+            accessibilityLabel={record.playing ? 'Pause take' : 'Play take'}
+            announceLatched={false}
+            active={record.playing}
+            disabled={record.playDisabled}
+            onPress={record.onPlay}
+            style={styles.key}
+            testID="passage-key-play"
+          />
           <Key
             icon={EjectFill}
-            accessibilityLabel={eject.label}
-            disabled={eject.disabled}
-            onPress={eject.onPress}
+            accessibilityLabel="Finish take"
+            disabled={record.finishDisabled}
+            onPress={record.onFinish}
             style={styles.key}
             testID="passage-key-eject"
           />

@@ -25,7 +25,7 @@ import { BAR_MAX, BAR_MIN, TakeCard, WAVE_H, type FrontTake } from './TakeCard';
 const SCRIM = 0.82;
 
 export interface RecordStatus {
-  /** Why recording is off here, or null. */
+  /** Why recording is off here, or what the take in progress waits on. */
   blockedReason: string | null;
   take: FrontTake;
 }

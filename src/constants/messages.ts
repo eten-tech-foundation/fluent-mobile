@@ -131,7 +131,10 @@ export const CAPTURE_LEAVE_MESSAGE =
 export const CAPTURE_LEAVE_RESUME = 'Resume';
 export const CAPTURE_LEAVE_DISCARD = 'Discard';
 
-/** Next passage player: why the Record key is off. */
+/**
+ * Next passage player: why the Record key is off, or what the take in
+ * progress waits on.
+ */
 export const RECORD_NOT_OPEN =
   "Recording isn't open on this chapter right now.";
 export const RECORD_MAX_TAKES =
@@ -141,5 +144,6 @@ export const RECORD_MAX_VERSE_TAKES =
   'A verse here has 5 takes. Delete one in drafting to record.';
 export const RECORD_NO_PERICOPE =
   "This passage isn't split into pericopes yet, so it can't be recorded here.";
-export const RECORD_RECOVERED_TAKE =
-  'An unfinished take was recovered. Resume it, or stop to save it.';
+/** One line on the take card, so these stay short. */
+export const RECORD_RECOVERED_TAKE = 'Take recovered. Eject finishes it.';
+export const RECORD_PAUSED_TAKE = 'Paused. Eject finishes the take.';

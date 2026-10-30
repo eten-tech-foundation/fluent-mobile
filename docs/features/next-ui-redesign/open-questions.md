@@ -142,11 +142,9 @@ translator hears them all last.
   `surface/sunken`, `border/highlight`, `surface/inverse` and `accent/record`,
   and the bin's lighter dashed ring to `fg/on-accent` at 40%.
 - **Q28 · Which chapter you're in** *(design + product)*. Split from Q27.
-  When Eject sends both chapters of a passage that crosses them, what does
-  the confirm do if they're at different stages or have different assignees?
-  Each chapter has its own assignment. In verse mode, do Previous / Next stop
-  at a chapter's last verse or cross into the next chapter (another
-  assignment)? And where should the open player show the chapter, in
+  In verse mode, do Previous / Next stop at a chapter's last verse or cross
+  into the next chapter (another assignment)? And where should the open
+  player show the chapter, in
   Listen and Record, in pericope and verse mode? In pericope mode today the
   header shows the title when there is one (otherwise the reference, Q15),
   so for a titled passage only the reference under the waveform names the
@@ -155,15 +153,21 @@ translator hears them all last.
   a take. The script's verse numbers don't mark where a second chapter
   starts (Mark 14:72–15:5 reads 72, then 1–5). The verse-mode parts wait
   until verse mode is designed.
-- **Q29 · Showing what a send includes** *(design + product)*. Eject sends
-  the whole chapter from any passage (Q3), which can read as sending just
-  the passage you're on. Legacy avoids that by offering Send only on the
-  chapter's last unit. Should the confirm say how much of the chapter is
-  recorded (e.g. "3 of 6 passages recorded"), and warn when some isn't? Q3
-  keeps one recorded verse as enough, as in Legacy. A send doesn't record
-  what was in it: it moves the chapter's stage, and its recordings stay as
-  uploaded, per verse or per passage range. Meanwhile the confirm names the
-  chapter.
+- **Q29 · Where sending a chapter lives** *(design + product)*. Eject
+  finishes takes (Q3), so sending a chapter on to its next stage needs its
+  own place: the book page's chapter header, or a card on Home like Changes
+  requested ("Mark 14 is recorded. Send it to Peer Check"). As in Legacy
+  (#542) and web, Send shows only once every verse or pericope in the
+  chapter is recorded. The server doesn't check that, but the drafter can't
+  change the chapter once it's in Peer Check and the app has no way to send
+  it back, so the rule stays. Should it show what's left until then (e.g.
+  "4 of 6 passages recorded")? Still to come with it: the confirm (Dialog,
+  in the gallery), picking the peer checker, sending both chapters of a
+  passage that crosses them (Q27), and, offline, the send waiting in #770's
+  stage-advance queue (on `main`, not yet on `jskager/feature/next-ui-theme`),
+  shown as "Waiting to send" on the passage's cover and page. A send moves
+  the chapter's stage and saves a copy of its typed text, not its
+  recordings.
 
 ## Decided
 
@@ -171,14 +175,14 @@ Rows marked — were decided before this doc had IDs.
 
 | ID | Question | Answer | Date | Where |
 | --- | --- | --- | --- | --- |
-| Q3 | What Eject does | On any passage with a take, Eject opens a confirm ("Send Mark 14 to Peer Check?", from the gap draft) and sends the whole chapter on to its next stage. Submitting is per chapter (`PATCH /chapter-assignments/{id}/submit`), and one recorded verse is enough, as in Legacy. Until the send is wired, the confirm's Send opens Legacy drafting at the chapter's last verse, where Legacy's Send is. Still to come: picking the peer checker in the confirm, sending both chapters of a passage that crosses chapters (Q27), and, offline, the send waiting in #770's stage-advance queue (on `main`, not yet on `jskager/feature/next-ui-theme`), shown as "Waiting to send" on the passage's cover and page. Marking each passage as queued was considered and dropped | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q3 | What Eject does | Finishes ("stamps") the take. Record starts a take, pauses it and resumes it, and Eject saves it, so the next Record starts a new take. A take recovered after a crash works the same way. Sending a chapter on isn't in the player (Q29). Having Eject send the chapter from any passage was considered and dropped | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q8 | Where Next screens branch on UI version | One signed-in shell: route files under `(app)` pick the Legacy or Next screen; v2 screens live in `src/app/v2/screens/`. Both share hooks and services, and the rules inside `RecordTab` / `DraftingScreen` move into shared hooks. A separate `/v2` route tree was dropped in the #727 review | 2026-10-21 | [v2-feature-manifest.md](v2-feature-manifest.md#v2-routes) |
 | Q15 | Pericope title fallback | The reference range, as built: without a title, the passage header, its cover and Home's Next up show "Mark 14:22–25" | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q16 | Page dots paging rule | One dot for the script and one per listening material, swiped sideways; the script scrolls inside its page instead of paging by verse or height. With only one page there are no dots | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q17 | What Previous / Next skip in the player | They work like swiping. In pericope mode they step through the pages the dots count (the script, then each listening material) and stop at either end. In verse mode, which has no listening materials, they jump to the previous or next verse (not built; see Q28). v2 doesn't group a pericope by verse, so there's no verse skip inside a pericope | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q20 | Contrast of unplayed and resting marks | Keep `fg/inactive` (about 1.5:1 on `bg/default`) as a deliberate quiet state, decided after seeing it rendered in all three modes. The Canvas take card sits on `surface/sunken` (1.33:1) on purpose | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q26 | What Next takes from `main` | Builds on Q8. Next uses `main`'s shared logic but keeps its own screen layout, grouping and UX. That logic includes Home sync behavior (#804), drawer theming (#749, `UserSettingsMenu`) and the My Work query and hook changes (`assignmentStatus` from #772; `useMyWorkChapters` and `myWorkChapterFilter` from #780). Legacy-only, so Next doesn't adopt them: My Work's stage accordion (`MyWorkTab`, `myWorkStageGroups`, #772) and its download chip (`DraftDownloadChip`, #780; the `useDraftDownload` hook behind it is shared). When `main` merges into `jskager/feature/next-ui-theme`, combine both sides of a conflict instead of taking either one whole. For example, Legacy `HomeScreen.tsx` keeps #824's guard against a double sync tap and its header staying mounted while loading, and also #853's move of its sync state into `useHomeSyncState` (on `jskager/feature/837-next-home` until #853 merges) | 2026-10-29 | [#853](https://github.com/eten-tech-foundation/fluent-mobile/pull/853) |
-| Q27 | Which chapter a passage that crosses chapters sends | Both. Eject sends each chapter, and the confirm names both (Mark 14:72–15:5 sends Mark 14 and Mark 15). That comes with the real send; until then a passage sends with the chapter it was opened from, which on the book page (on `jskager/feature/next-ui-theme`) is the row you tapped. The rest moved to Q28 | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q27 | Which chapter a passage that crosses chapters sends | Both. Each chapter is sent on its own, outside the player (Q29), so Mark 14:72–15:5 is part of both Mark 14's and Mark 15's sends. The rest moved to Q28 | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | — | Header progress dots on the Pericope screen | They're a resting waveform: Level wave, short variant | 2026-10-13 | Figma Level wave `2595:772` |
 | — | Speaker grill hole color | `surface/inverse` (was the `bone/800` primitive) | 2026-10-14 | Figma Speaker grill `2409:533` |
 | — | Icon/md size | `theme.controlSizes.icon20` | 2026-10-14 | `jskager/feature/695-hardware-panel` |

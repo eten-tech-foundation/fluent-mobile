@@ -55,8 +55,6 @@ export type Passage =
       assignment: Assignment;
       /** Verses in that chapter, so recording knows when the text is in. */
       chapterVerseCount: number;
-      /** The chapter's last verse, where Legacy drafting offers Send. */
-      chapterLastVerse: number;
       /** The chapter was sent on here and the send hasn't reached the server. */
       waitingToSend: boolean;
     };
@@ -92,7 +90,6 @@ async function loadPassage(
   const textOf = new Map(
     texts.map(t => [`${t.chapterNumber}:${t.verseNumber}`, t.text]),
   );
-  const chapterVerses = texts.filter(t => t.chapterNumber === chapterNumber);
   const unitVerses: BibleUnitVerse[] =
     group?.verses ??
     texts.map(t => ({
@@ -169,8 +166,8 @@ async function loadPassage(
     recordedStatus: unitRecordedStatus(unitVerses, coverages),
     takes,
     assignment,
-    chapterVerseCount: chapterVerses.length,
-    chapterLastVerse: Math.max(0, ...chapterVerses.map(t => t.verseNumber)),
+    chapterVerseCount: texts.filter(t => t.chapterNumber === chapterNumber)
+      .length,
     // Nothing queues a send on the device yet; #770's stage-advance queue will.
     waitingToSend: false,
   };

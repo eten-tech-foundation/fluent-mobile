@@ -29,16 +29,17 @@ const PAGE_COUNT = 7;
 
 /**
  * The panel on the Listen and Record screens: the Mode toggle swaps the keys
- * between Listen (Play · Previous · Next) and Record (Record · Play · Eject),
- * and a take in progress locks the mode until it stops.
+ * between Listen (Play · Previous · Next) and Record (Record · Play · Eject).
+ * Record pauses and resumes one take, Eject finishes it, and a take in
+ * progress locks the mode until then.
  */
 export function HardwarePanelEntry() {
   const [recordMode, setRecordMode] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [page, setPage] = useState(1);
-  const [recording, setRecording] = useState(false);
+  const [take, setTake] = useState<'none' | 'recording' | 'paused'>('none');
   const [takes, setTakes] = useState(0);
-  const [ejected, setEjected] = useState(false);
+  const recording = take === 'recording';
   const styles = useThemedStyles(t => ({
     demo: { gap: t.spacing.md },
     status: {
@@ -49,37 +50,34 @@ export function HardwarePanelEntry() {
     key: { flex: 1 },
   }));
 
-  // Like a real take: haptics stay silent until it stops.
+  // Like a real take: haptics stay silent until Eject finishes it.
+  const inTake = take !== 'none';
   useEffect(() => {
-    if (!recording) {
+    if (!inTake) {
       return;
     }
     setMicActive('gallery-hardware-panel', true);
     return () => setMicActive('gallery-hardware-panel', false);
-  }, [recording]);
+  }, [inTake]);
 
   const changeMode = (on: boolean) => {
     setPlaying(false);
-    setEjected(false);
     setRecordMode(on);
   };
   const toggleRecording = () => {
-    if (recording) {
-      setTakes(n => n + 1);
-    }
     setPlaying(false);
-    setEjected(false);
-    setRecording(r => !r);
+    setTake(t => (t === 'recording' ? 'paused' : 'recording'));
+  };
+  const finishTake = () => {
+    setTakes(n => n + 1);
+    setTake('none');
   };
 
-  // The Dialog entry shows the confirm Eject opens.
-  const status = ejected
-    ? `Eject pressed · asks to send Mark 14 to Peer Check${
-        playing ? ' · playing back' : ''
-      }`
-    : recordMode
+  const status = recordMode
     ? recording
-      ? `Recording take ${takes + 1} · stop to switch to Listen`
+      ? `Recording take ${takes + 1} · finish it to switch to Listen`
+      : take === 'paused'
+      ? `Take ${takes + 1} paused · Record keeps going, Eject finishes it`
       : `Record · ${takes} ${takes === 1 ? 'take' : 'takes'}${
           playing ? ' · playing back' : ''
         }`
@@ -91,7 +89,7 @@ export function HardwarePanelEntry() {
       <HardwarePanel
         recordMode={recordMode}
         onRecordModeChange={changeMode}
-        modeLocked={recording}
+        modeLocked={take !== 'none'}
         safeAreaBottom={false}
         testID="gallery-panel"
       >
@@ -99,7 +97,13 @@ export function HardwarePanelEntry() {
           <>
             <Key
               icon={RecordIcon}
-              accessibilityLabel={recording ? 'Stop recording' : 'Record'}
+              accessibilityLabel={
+                recording
+                  ? 'Pause recording'
+                  : take === 'paused'
+                  ? 'Resume recording'
+                  : 'Record'
+              }
               announceLatched={false}
               active={recording}
               onPress={toggleRecording}
@@ -111,19 +115,16 @@ export function HardwarePanelEntry() {
               accessibilityLabel={playing ? 'Pause' : 'Play take'}
               announceLatched={false}
               active={playing}
-              disabled={recording || takes === 0}
-              onPress={() => {
-                setEjected(false);
-                setPlaying(p => !p);
-              }}
+              disabled={take !== 'none' || takes === 0}
+              onPress={() => setPlaying(p => !p)}
               style={styles.key}
               testID="gallery-panel-play-take"
             />
             <Key
               icon={EjectIcon}
-              accessibilityLabel="Send Mark 14 to Peer Check"
-              disabled={recording || takes === 0}
-              onPress={() => setEjected(true)}
+              accessibilityLabel="Finish take"
+              disabled={take === 'none'}
+              onPress={finishTake}
               style={styles.key}
               testID="gallery-panel-eject"
             />

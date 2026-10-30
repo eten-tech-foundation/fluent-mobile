@@ -39,6 +39,8 @@ export interface FrontTake {
   /** 0–1 through the take while it plays. */
   progress: number;
   recording: boolean;
+  /** The take being recorded, paused: its wave holds still until Eject. */
+  paused?: boolean;
   official: boolean;
   /** Absent while recording or before the first take. */
   onToggleOfficial?: () => void;
@@ -67,7 +69,10 @@ export function TakeCard({
   shown,
 }: {
   take: FrontTake;
-  /** Why recording is off here; shown in place of the take's name. */
+  /**
+   * Why recording is off here, or what the take in progress waits on; shown
+   * in place of the take's name.
+   */
   blockedReason: string | null;
   /** The verse its chip shows. */
   firstVerse: number;
@@ -102,18 +107,19 @@ export function TakeCard({
     });
   }, [undoing, reduceMotion, gone]);
   // A take coming to the front sweeps its wave in, left to right. One that
-  // just stopped keeps the wave it drew.
-  const wasRecording = useRef(take.recording);
+  // just finished keeps the wave it drew.
+  const inProgress = take.recording || take.paused === true;
+  const wasInProgress = useRef(inProgress);
   useEffect(() => {
-    const justStopped = wasRecording.current && !take.recording;
-    wasRecording.current = take.recording;
-    if (take.recording || justStopped || reduceMotion) {
+    const justFinished = wasInProgress.current && !inProgress;
+    wasInProgress.current = inProgress;
+    if (inProgress || justFinished || reduceMotion) {
       sweep.value = 1;
       return;
     }
     sweep.value = 0;
     sweep.value = withTiming(1, { duration: SWEEP_MS });
-  }, [take.takeNumber, take.recording, shown, reduceMotion, sweep]);
+  }, [take.takeNumber, inProgress, shown, reduceMotion, sweep]);
 
   // The same insets as the footer it lays over (Figma 2555-910: the card 16
   // in from the screen, its wave 24 inside).
@@ -192,8 +198,8 @@ export function TakeCard({
   );
 
   const takeLabel = `Take ${take.takeNumber}`;
-  // Only as many bars as fit: the newest while recording, the whole take
-  // squeezed to fit once it's saved. A bar per sample would grow without end.
+  // Only as many bars as fit: the newest until Eject, the whole take
+  // squeezed to fit after. A bar per sample would grow without end.
   const maxBars =
     waveWidth > 0
       ? Math.max(1, Math.floor((waveWidth - WAVE_LEAD) / BAR_SLOT))
@@ -206,9 +212,9 @@ export function TakeCard({
       fitBars(
         flat ? new Array<number>(maxBars).fill(0) : take.levels,
         maxBars,
-        take.recording,
+        inProgress,
       ).map(levelBar),
-    [flat, take.levels, maxBars, take.recording],
+    [flat, take.levels, maxBars, inProgress],
   );
 
   return (
@@ -233,15 +239,15 @@ export function TakeCard({
             verses={
               takeBars.length > 0 ? [{ verse: firstVerse, bars: takeBars }] : []
             }
-            progress={take.recording ? 1 : take.progress}
+            progress={inProgress ? 1 : take.progress}
             accessibilityLabel={
-              take.recording
-                ? `${takeLabel}, recording, ${formatElapsed(
-                    take.durationMs ?? 0,
-                  )}`
+              inProgress
+                ? `${takeLabel}, ${
+                    take.recording ? 'recording' : 'paused'
+                  }, ${formatElapsed(take.durationMs ?? 0)}`
                 : `${takeLabel} playback`
             }
-            onSeek={take.recording ? undefined : take.onSeek}
+            onSeek={inProgress ? undefined : take.onSeek}
             style={waveWidth > 0 ? { width: waveWidth } : undefined}
             testID="passage-take-wave"
           />

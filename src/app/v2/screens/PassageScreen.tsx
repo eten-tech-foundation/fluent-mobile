@@ -54,14 +54,14 @@ export default function PassageScreen() {
   }));
 
   const openDrafting = useCallback(
-    (verse = anchorVerse) =>
+    () =>
       router.push(
         hrefs.verseDetail({
           chapterId,
           chapterName,
           projectName,
           language,
-          recoverVerse: verse,
+          recoverVerse: anchorVerse,
         }),
       ),
     [router, chapterId, chapterName, projectName, language, anchorVerse],

@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Dialog } from '../../../components/ui/Dialog';
-import { EjectFill } from '../../../components/ui/icons';
-import { Key } from '../../../components/ui/Key';
-import { KeyDeck } from '../../../components/ui/KeyDeck';
 import { useThemedStyles } from '../../../theme/useTheme';
 
 const COPY = {
@@ -24,8 +21,8 @@ const COPY = {
 };
 
 /**
- * Record mode's Eject asks before sending the chapter on: Send or Not yet,
- * or tap outside or press Back to back out. Also in Telugu, for longer lines.
+ * Asks before sending a chapter on: Send or Not yet, or tap outside or press
+ * Back to back out. Also in Telugu, for longer lines.
  */
 export function DialogEntry() {
   const [open, setOpen] = useState(false);
@@ -33,7 +30,6 @@ export function DialogEntry() {
   const [telugu, setTelugu] = useState(false);
   const styles = useThemedStyles(t => ({
     demo: { gap: t.spacing.md },
-    key: { flex: 1 },
     toggle: { alignSelf: 'flex-start' },
     link: { ...t.type.label, color: t.roles.accentPrimary },
     status: { ...t.type.meta, color: t.roles.fgSecondary },
@@ -42,16 +38,15 @@ export function DialogEntry() {
 
   return (
     <View style={styles.demo}>
-      <KeyDeck>
-        <Key
-          icon={EjectFill}
-          accessibilityLabel="Send Mark 14 to Peer Check"
-          onPress={() => setOpen(true)}
-          style={styles.key}
-          testID="gallery-dialog-eject"
-        />
-      </KeyDeck>
-      <Text style={styles.status}>{answer ?? 'Press Eject to send'}</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setOpen(true)}
+        style={styles.toggle}
+        testID="gallery-dialog-open"
+      >
+        <Text style={styles.link}>Send Mark 14</Text>
+      </Pressable>
+      {answer ? <Text style={styles.status}>{answer}</Text> : null}
       <Pressable
         accessibilityRole="button"
         onPress={() => setTelugu(v => !v)}

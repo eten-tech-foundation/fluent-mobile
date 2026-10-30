@@ -18,6 +18,8 @@ const mockBack = jest.fn();
 const mockDownload = jest.fn();
 const mockStart = jest.fn(async () => {});
 const mockStop = jest.fn(async () => {});
+const mockPause = jest.fn(async () => {});
+const mockResume = jest.fn(async () => {});
 const mockDiscard = jest.fn(async () => {});
 const mockEnsureMic = jest.fn(async () => true);
 const mockPlayTake = jest.fn(async () => {});
@@ -81,7 +83,8 @@ jest.mock('../../../hooks/useRecordSession', () => ({
       selectedTake: mockSession.takes.find(t => t.isSelected) ?? null,
       start: mockStart,
       stop: mockStop,
-      resume: jest.fn(),
+      pause: mockPause,
+      resume: mockResume,
       discardCapture: mockDiscard,
       pausePlayback: jest.fn(),
       playTake: mockPlayTake,
@@ -183,7 +186,6 @@ const ready: Extract<Passage, { status: 'ready' }> = {
     chapterNumber: 14,
   } as Extract<Passage, { status: 'ready' }>['assignment'],
   chapterVerseCount: 72,
-  chapterLastVerse: 72,
   waitingToSend: false,
   takes: [
     {
@@ -480,7 +482,7 @@ describe('PassageScreen', () => {
     expect(mockStart).toHaveBeenCalled();
   });
 
-  it('shows the take in progress and stops it from the same key', async () => {
+  it('shows the take in progress and pauses it from the same key', async () => {
     mockSession = { ...mockSession, state: 'recording', captureActive: true };
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
@@ -488,10 +490,43 @@ describe('PassageScreen', () => {
     expect(screen.getByLabelText('Take 1, recording, 0:13')).toBeTruthy();
     expect(screen.getByLabelText('Take 1, recording')).toBeTruthy();
     await act(async () => {
-      fireEvent.press(screen.getByLabelText('Stop recording'));
+      fireEvent.press(screen.getByLabelText('Pause recording'));
     });
-    expect(mockStop).toHaveBeenCalled();
+    expect(mockPause).toHaveBeenCalled();
+    expect(mockStop).not.toHaveBeenCalled();
     expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('keeps going on the paused take from Record', async () => {
+    mockSession = { ...mockSession, state: 'recording', captureActive: true };
+    const { rerender } = render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    mockSession = { ...mockSession, state: 'paused' };
+    rerender(<PassageScreen />);
+
+    expect(screen.getByText('Paused. Eject finishes the take.')).toBeTruthy();
+    // Still the take in progress, not a saved one to pick.
+    expect(
+      screen.getByLabelText('Take 1, paused').props.accessibilityState,
+    ).toMatchObject({ disabled: true });
+    expect(screen.getByLabelText('Take 1, paused, 0:13')).toBeTruthy();
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Resume recording'));
+    });
+    expect(mockResume).toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it("doesn't call a paused take recovered when its save fails", () => {
+    mockSession = { ...mockSession, state: 'recording', captureActive: true };
+    const { rerender } = render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    mockSession = { ...mockSession, state: 'saving', captureActive: false };
+    rerender(<PassageScreen />);
+    mockSession = { ...mockSession, state: 'paused', captureActive: true };
+    rerender(<PassageScreen />);
+
+    expect(screen.getByText('Paused. Eject finishes the take.')).toBeTruthy();
   });
 
   it('ignores the Record key while a take is saving', async () => {
@@ -505,19 +540,15 @@ describe('PassageScreen', () => {
     expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('offers Resume and Save for a take recovered after a crash', () => {
+  it('offers Resume and Finish for a take recovered after a crash', () => {
     mockSession = { ...mockSession, state: 'paused', captureActive: true };
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-listen'));
 
-    expect(screen.getByLabelText('Resume take')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('Stop and save take'));
+    expect(screen.getByLabelText('Resume recording')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Finish take'));
     expect(mockStop).toHaveBeenCalled();
-    expect(
-      screen.getByText(
-        'An unfinished take was recovered. Resume it, or stop to save it.',
-      ),
-    ).toBeTruthy();
+    expect(screen.getByText('Take recovered. Eject finishes it.')).toBeTruthy();
   });
 
   it('says why Record is off when a verse is at the take limit', () => {
@@ -689,111 +720,56 @@ describe('PassageScreen', () => {
   });
 
   describe('Eject', () => {
-    const drafting = (status: string, overrides = {}) => ({
-      ...ready,
-      assignment: {
-        ...ready.assignment,
-        status,
-        assignedUserId: 7,
-      },
-      ...overrides,
-    });
     const ejectState = () =>
       screen.getByTestId('passage-key-eject').props.accessibilityState;
 
-    it('asks before sending the chapter on, then opens drafting at its last verse', () => {
-      mockPassage = drafting('draft');
-      renderSettled();
-      fireEvent.press(screen.getByTestId('passage-record'));
-
-      fireEvent.press(screen.getByLabelText('Send Mark 14 to Peer Check'));
-      expect(
-        screen.getByRole('header', { name: 'Send Mark 14 to Peer Check?' }),
-      ).toBeTruthy();
-      expect(
-        screen.getByText(
-          'This marks Mark 14 as ready for Peer Check. You won’t be able to record on it after you send it.',
-        ),
-      ).toBeTruthy();
-      fireEvent.press(screen.getByRole('button', { name: 'Not yet' }));
-      settle();
-      expect(mockPush).not.toHaveBeenCalled();
-      expect(screen.queryByTestId('passage-send-confirm')).toBeNull();
-
-      fireEvent.press(screen.getByLabelText('Send Mark 14 to Peer Check'));
-      fireEvent.press(screen.getByRole('button', { name: 'Send' }));
-      settle();
-      expect(mockPush).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pathname: '/(app)/(stack)/verse-detail',
-          params: expect.objectContaining({
-            chapterId: '5',
-            recoverVerse: '72',
-          }),
-        }),
-      );
-    });
-
-    it('names the next stage, without the recording warning past drafting', () => {
-      mockPassage = drafting('community_review');
-      renderSettled();
-      fireEvent.press(screen.getByTestId('passage-record'));
-
-      fireEvent.press(screen.getByLabelText('Send Mark 14 to Linguist Check'));
-      settle();
-      expect(
-        screen.getByText('This marks Mark 14 as ready for Linguist Check.'),
-      ).toBeTruthy();
-    });
-
-    it('leaves out the recording warning when a peer checker is already assigned', () => {
-      const passage = drafting('draft');
-      mockPassage = {
-        ...passage,
-        assignment: { ...passage.assignment, peerCheckerId: 8 },
-      };
-      renderSettled();
-      fireEvent.press(screen.getByTestId('passage-record'));
-
-      fireEvent.press(screen.getByLabelText('Send Mark 14 to Peer Check'));
-      settle();
-      expect(
-        screen.getByText('This marks Mark 14 as ready for Peer Check.'),
-      ).toBeTruthy();
-    });
-
-    it('stays off until the passage has a take', () => {
-      mockPassage = drafting('draft', { takes: [] });
-      render(<PassageScreen />);
-      fireEvent.press(screen.getByTestId('passage-record'));
-
-      expect(ejectState()).toMatchObject({ disabled: true });
-    });
-
-    it('stays off while a take records', () => {
-      mockPassage = drafting('draft');
+    it('finishes the take in progress', async () => {
       mockSession = { ...mockSession, state: 'recording', captureActive: true };
       render(<PassageScreen />);
       fireEvent.press(screen.getByTestId('passage-record'));
 
-      expect(ejectState()).toMatchObject({ disabled: true });
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Finish take'));
+      });
+      expect(mockStop).toHaveBeenCalled();
+      expect(mockPause).not.toHaveBeenCalled();
     });
 
-    it("stays off once the drafter's chapter is in peer check", () => {
-      mockPassage = drafting('peer_check');
+    it('ignores Record until the take is saved', async () => {
+      let saved = () => {};
+      mockStop.mockImplementationOnce(
+        () => new Promise<void>(resolve => (saved = resolve)),
+      );
+      mockSession = { ...mockSession, state: 'recording', captureActive: true };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      fireEvent.press(screen.getByLabelText('Finish take'));
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Pause recording'));
+      });
+      expect(mockPause).not.toHaveBeenCalled();
+      await act(async () => saved());
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Pause recording'));
+      });
+      expect(mockPause).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays off with no take in progress', () => {
       render(<PassageScreen />);
       fireEvent.press(screen.getByTestId('passage-record'));
 
       expect(ejectState()).toMatchObject({ disabled: true });
     });
 
-    it('stays off on a complete chapter, with nowhere to send it', () => {
-      mockPassage = drafting('complete');
+    it('stays off while the take saves', () => {
+      mockSession = { ...mockSession, state: 'saving' };
       render(<PassageScreen />);
       fireEvent.press(screen.getByTestId('passage-record'));
 
       expect(ejectState()).toMatchObject({ disabled: true });
-      expect(screen.getByLabelText('Send')).toBeTruthy();
     });
   });
 

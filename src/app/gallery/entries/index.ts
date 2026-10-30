@@ -122,7 +122,7 @@ export const galleryEntries: GalleryEntry[] = [
     // As the send confirm: Send to Peer Check · Confirm 2648-616
     id: 'dialog',
     name: 'Dialog',
-    modes: 'Hardware (over the player)',
+    modes: 'Hardware',
     Component: DialogEntry,
   },
 ];
