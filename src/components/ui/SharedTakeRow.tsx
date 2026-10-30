@@ -14,6 +14,7 @@ type SharedTakeRowProps = {
   isCanonical: boolean;
   onPlayPause: () => void;
   onDesignateCanonical?: () => void;
+  onSeek?: (positionMs: number) => void;
 };
 
 function formatDuration(ms: number): string {
@@ -32,6 +33,7 @@ export function SharedTakeRow({
   isCanonical,
   onPlayPause,
   onDesignateCanonical,
+  onSeek,
 }: SharedTakeRowProps) {
   const timeLabel =
     durationMs > 0
@@ -81,6 +83,7 @@ export function SharedTakeRow({
             durationMs={durationMs}
             barCount={24}
             accentColor={theme.colors.waveformActive}
+            onSeek={onSeek}
           />
         </View>
       </View>

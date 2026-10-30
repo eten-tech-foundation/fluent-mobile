@@ -1435,7 +1435,11 @@ export function RecordTab({
                         verseAudio.playingTakeId === take.id ||
                         (verseAudio.loadedTakeId === take.id &&
                           verseAudio.playbackStatus === 'paused');
+                      // Before Complete, preserve the existing loaded/selected
+                      // seek gate. At Complete, explicit-target seeking lets any
+                      // row scrub without changing the selected take (#833).
                       const isSeekable =
+                        stageLocked ||
                         verseAudio.loadedTakeId === take.id ||
                         (verseAudio.loadedTakeId === null && isSelected);
                       const leadingIndicator = verseAudio.hasMultipleRecorders
@@ -1481,7 +1485,10 @@ export function RecordTab({
                             onSeek={
                               isSeekable
                                 ? ms => {
-                                    void verseAudio.seek(ms);
+                                    // Explicit target: at Complete an unloaded
+                                    // row would otherwise resolve to the
+                                    // selected take (null) and no-op.
+                                    void verseAudio.seek(ms, take);
                                   }
                                 : undefined
                             }
@@ -1507,6 +1514,13 @@ export function RecordTab({
                           verseAudio.playingTakeId === take.id ||
                           (verseAudio.loadedTakeId === take.id &&
                             verseAudio.playbackStatus === 'paused');
+                        // Scrubbable when it is the take in the player, or
+                        // when nothing is loaded yet — the first scrub then
+                        // loads this row (explicit target below), which is
+                        // what makes an unplayed All Takes row respond (#833).
+                        const isSeekable =
+                          verseAudio.loadedTakeId === take.id ||
+                          verseAudio.loadedTakeId === null;
                         return (
                           <View key={take.id} style={styles.takeItemSpacing}>
                             <SharedTakeRow
@@ -1533,6 +1547,13 @@ export function RecordTab({
                                   : () => {
                                       void verseAudio.setCanonical(take.id);
                                     }
+                              }
+                              onSeek={
+                                isSeekable
+                                  ? ms => {
+                                      void verseAudio.seek(ms, take);
+                                    }
+                                  : undefined
                               }
                             />
                           </View>
