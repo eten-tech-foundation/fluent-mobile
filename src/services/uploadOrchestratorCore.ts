@@ -86,6 +86,12 @@ export type UploadOrchestratorDeps = {
    * no takes still drains those rows (#257 Sync on Reconnect).
    */
   hasPendingStageAdvances?: () => Promise<boolean>;
+  /**
+   * Return held takes to the queue when project membership is back (#855).
+   * Runs before the pending-chapter read: held rows are excluded from that
+   * read, so releasing them afterwards would leave them stuck on the device.
+   */
+  reconcileHeldBeforeUpload?: () => Promise<void>;
 };
 
 export type UploadOrchestratorSnapshot = {
@@ -346,6 +352,15 @@ export function createUploadOrchestrator(
       }
       if (reason === 'auto' && draftingHold) {
         return;
+      }
+
+      if (deps.reconcileHeldBeforeUpload) {
+        try {
+          await deps.reconcileHeldBeforeUpload();
+        } catch (error) {
+          log.warn('Held-recording reconcile before upload failed', { error });
+        }
+        if (!started || version !== lifecycleVersion) return;
       }
 
       const [chapters, hasStageWork] = await Promise.all([

@@ -1147,7 +1147,7 @@ export async function getPendingRecordings(chapter?: {
        )
      )
        AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
-       AND r.sync_status NOT IN ('uploaded', 'conflicted')
+       AND r.sync_status NOT IN ('uploaded', 'conflicted', 'held')
        AND r.bible_text_id > 0
        ${chapterFilter}
      ORDER BY bt.book_id, bt.chapter_number, r.bible_text_id`,
