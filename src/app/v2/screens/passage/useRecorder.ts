@@ -5,6 +5,7 @@ import {
   RECORD_MAX_VERSE_TAKES,
   RECORD_NO_PERICOPE,
   RECORD_NOT_OPEN,
+  RECORD_PAUSED_TAKE,
   RECORD_RECOVERED_TAKE,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../../../constants/messages';
@@ -13,11 +14,14 @@ import { useLiveLevels } from '../../../../hooks/useLiveLevels';
 import { usePendingDelete } from '../../../../hooks/usePendingDelete';
 import type { PassageTake } from '../../../../hooks/usePassage';
 import { useRecordSession } from '../../../../hooks/useRecordSession';
+import { logger } from '../../../../utils/logger';
 import type { RecordStatus } from './Footer';
 import type { FrontTake } from './TakeCard';
 import type { RecordKeys } from './PlayerKeys';
 import type { FanTake } from './TakeFan';
 import type { Ready } from './steps';
+
+const log = logger.create('useRecorder');
 
 /**
  * Record mode's state for the passage player. Recording works as in Legacy's
@@ -54,9 +58,16 @@ export function useRecorder({
   });
   const { verseAudio } = session;
   const capturing = session.captureActive;
-  /** Paused only happens after a crash: a recovered take waiting on Resume or Stop. */
   const live = verseAudio.state === 'recording';
-  const recovered = verseAudio.state === 'paused';
+  const paused = verseAudio.state === 'paused';
+  // A take found paused without recording here was recovered after a crash.
+  // A failed save also lands on paused, so saving keeps what came before.
+  const [wentLive, setWentLive] = useState(false);
+  useEffect(() => {
+    if (live) setWentLive(true);
+    else if (!paused && verseAudio.state !== 'saving') setWentLive(false);
+  }, [live, paused, verseAudio.state]);
+  const recovered = paused && !wentLive;
   // A deleted take waits out the undo window first; Legacy's deleteTake does
   // the rest, including handing off the selection.
   const deletion = usePendingDelete(async id => {
@@ -124,7 +135,7 @@ export function useRecorder({
     .sort((a, b) => a.takeNumber - b.takeNumber);
   const nextTakeNumber =
     passageTakes.reduce((n, t) => Math.max(n, t.takeNumber), 0) + 1;
-  // The new take keeps its tile and wave from Stop until it's saved.
+  // The new take keeps its tile and wave from Eject until it's saved.
   const held = capturing || verseAudio.state === 'saving';
   const pendingId = deletion.pending?.id ?? null;
   // Only while that take's undo is open; after that the selected take leads.
@@ -147,6 +158,7 @@ export function useRecorder({
       takeNumber: nextTakeNumber,
       official: false,
       recording: live,
+      paused,
     });
   } else if (fan.length < MAX_RECORDING_TAKES) {
     // Figma's dashed slot: where the next take lands, in front until the first.
@@ -177,6 +189,7 @@ export function useRecorder({
         levels: liveLevels,
         progress: live ? 1 : 0,
         recording: live,
+        paused,
         official: false,
       }
     : frontTake
@@ -219,6 +232,8 @@ export function useRecorder({
     !held && !noPericope && !deletion.pending && !verseAudio.canRecordNewTake;
   const blockedReason = recovered
     ? RECORD_RECOVERED_TAKE
+    : paused
+    ? RECORD_PAUSED_TAKE
     : session.syncingMessage ??
       (session.isTaken
         ? RECORD_TAKEN_CHAPTER_WARNING
@@ -275,11 +290,28 @@ export function useRecorder({
     if (!showing) void commitDelete();
   }, [showing, commitDelete]);
 
+  // The recorder's state only changes once the native call returns, so a
+  // second key pressed meanwhile would act on a recorder mid-change.
+  const busy = useRef(false);
+  async function oneAtATime(action: () => Promise<void>) {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      await action();
+    } catch (error) {
+      // Recorder calls report their own errors; the mic request and start()'s
+      // take count can still reject.
+      log.error('Player key failed', { error });
+    } finally {
+      busy.current = false;
+    }
+  }
+
+  // Record pauses and resumes one take; Eject finishes it.
   async function record() {
-    // A double tap on Stop lands here while the take saves.
     if (verseAudio.state === 'saving') return;
     if (verseAudio.state === 'recording') {
-      await verseAudio.stop();
+      await verseAudio.pause();
       return;
     }
     if (verseAudio.state === 'paused') {
@@ -330,7 +362,7 @@ export function useRecorder({
   };
   const keys: RecordKeys = {
     recording: live,
-    recovered,
+    paused,
     recordDisabled:
       !capturing &&
       (held ||
@@ -338,11 +370,12 @@ export function useRecorder({
         atCap ||
         session.captureDisabled ||
         session.isTaken),
-    onRecord: () => void record(),
-    onSave: () => void verseAudio.stop(),
+    onRecord: () => void oneAtATime(record),
     playing: verseAudio.state === 'playing',
     playDisabled: held || frontTake === null || frontDeleted,
     onPlay: () => void playTake(),
+    finishDisabled: !capturing,
+    onFinish: () => void oneAtATime(() => verseAudio.stop()),
   };
 
   return {

@@ -146,8 +146,8 @@ Resources, Images) → the player and recorder.
 | Source audio | Play, pause, scrub, verse position, source label; loading, "no audio" and retry states; offline playback when prepared; stops when recording | ✅ Listen player (prototype built) | Wired: `GET /projects/{id}/source-audio/…`. Available: `GET …/playback-audio/…` (verse end times, licence, TTS permission), TTS when no recording exists |
 | Reading along | Highlight what's being read and keep it in view | ✅ word highlight + scrolling text | Verse-level only. Missing: word timing (Q10) |
 | Resources | Translation notes, questions, images and maps for the selected verse or pericope, offline when downloaded | ◐ Understanding notes view, Resources and Images entries | Wired: `…/translation-resources/notes`, `questions`, `images`. Available: verse-range resources (fluent-api #389), Aquifer search and Guides |
-| Unit navigation | Previous / next unit with reference and pericope title | ✅ Hardware panel keys (built) | Local |
-| Recording | Record, pause, resume, stop; mic permission with a Settings link; live waveform and timer; error alerts | ✅ recorder, Level wave (built) | Local. Live mic levels need metering turned on (Q6) |
+| Unit navigation | Previous / next unit with reference and pericope title | ◐ The book page's passages. In pericope mode the Hardware panel's Previous / Next turn the player's pages instead; in verse mode they'll jump verses (Q17, Q28) | Local |
+| Recording | Record, pause, resume, stop; mic permission with a Settings link; live waveform and timer; error alerts | ✅ recorder, Level wave (built). Record pauses and resumes a take; Eject finishes it (Q3) | Local. Live mic levels need metering turned on (Q6) |
 | Crash recovery | Pause when the app is backgrounded; offer to resume or discard a paused take after a crash | — (needs a v2 dialog) | Local |
 | Recording gates | Wait for source text, block on Complete, block the drafter during open Peer Check | — (states need design) | Local |
 | Takes | Up to 5 per unit: play one at a time, seek, pick the one to submit, delete, record another | ✅ take cards, stacking, delete, mark official | Local (only the picked take uploads). Available: `GET /verse-audio` to list and download server takes |
@@ -158,7 +158,7 @@ Resources, Images) → the player and recorder.
 
 | Feature | What we need to support | v2 design | Backend |
 | --- | --- | --- | --- |
-| Send to the next stage | Appears once every unit is recorded; confirm sheet; blocked by conflicts or takes that can't upload | — | Wired: `PATCH /chapter-assignments/{id}/submit`. Offline advances aren't queued (#257) |
+| Send to the next stage | Appears once every unit is recorded; confirm sheet; blocked by conflicts or takes that can't upload | ◐ The confirm's Dialog (built, in the gallery); a Home alert card and a Send button on the book page's chapter header (Q29, not built) | Wired: `PATCH /chapter-assignments/{id}/submit`. Offline advances aren't queued (#257) |
 | Stage badges | Not Started → Draft → Peer Check → Community Review → Linguist / Theological / Consultant Check → Complete | — | Labels are hard-coded. Available: `GET /projects/{id}/workflow-stages` |
 
 ### Sync, offline and downloads

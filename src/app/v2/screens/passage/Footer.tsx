@@ -18,14 +18,14 @@ import {
 import type { PassageVerse } from '../../../../hooks/usePassage';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import { OFFICIAL_TOGGLE } from './OfficialToggle';
-import { STEPS, type Ready } from './steps';
+import { PAGE_COUNT, pageName, type Ready } from './steps';
 import { BAR_MAX, BAR_MIN, TakeCard, WAVE_H, type FrontTake } from './TakeCard';
 
 /** Figma's scrim while a take is lifted: bg/default at 82% (Q25). */
 const SCRIM = 0.82;
 
 export interface RecordStatus {
-  /** Why recording is off here, or null. */
+  /** Why recording is off here, or what the take in progress waits on. */
   blockedReason: string | null;
   take: FrontTake;
 }
@@ -97,8 +97,7 @@ export function Footer({
     transform: [{ translateY: interpolate(mode.value, [0, 1], [0, -6]) }],
   }));
 
-  const pages = 1 + STEPS.length;
-  const name = page === 0 ? passage.reference : STEPS[page - 1];
+  const name = pageName(passage.reference, page);
   const listenProps = {
     pointerEvents: recordMode ? ('none' as const) : ('auto' as const),
     importantForAccessibility: recordMode
@@ -123,9 +122,9 @@ export function Footer({
             {name}
           </Text>
           <PageDots
-            count={pages}
+            count={PAGE_COUNT}
             index={page}
-            accessibilityLabel={`${name}, ${page + 1} of ${pages}`}
+            accessibilityLabel={`${name}, ${page + 1} of ${PAGE_COUNT}`}
             testID="passage-pages"
           />
         </Animated.View>

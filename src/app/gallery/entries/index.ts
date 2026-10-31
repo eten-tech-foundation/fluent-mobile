@@ -2,6 +2,7 @@ import type React from 'react';
 import { AttentionCardEntry } from './AttentionCardEntry';
 import { BannerEntry } from './BannerEntry';
 import { BottomSheetEntry } from './BottomSheetEntry';
+import { DialogEntry } from './DialogEntry';
 import { HardwarePanelEntry } from './HardwarePanelEntry';
 import { HomeHeaderEntry } from './HomeHeaderEntry';
 import { KeyEntry } from './KeyEntry';
@@ -115,5 +116,13 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Attention card',
     modes: 'Hardware (Home)',
     Component: AttentionCardEntry,
+  },
+  {
+    // Figma: Gap / Dialog https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-72
+    // As the send confirm: Send to Peer Check · Confirm 2648-616
+    id: 'dialog',
+    name: 'Dialog',
+    modes: 'Hardware',
+    Component: DialogEntry,
   },
 ];

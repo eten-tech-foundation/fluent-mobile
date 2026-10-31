@@ -41,6 +41,8 @@ export interface FanTake {
   selected?: boolean;
   /** The take being recorded now; drawn in front with a red edge. */
   recording?: boolean;
+  /** The take being recorded, paused; still in front and not yet saved. */
+  paused?: boolean;
   /** Dashed slot where the next take lands; in front before the first. */
   placeholder?: boolean;
   /** Dropped in the bin, with the undo window still open. */
@@ -228,6 +230,7 @@ export function TakeFan({
             onDelete &&
             visible &&
             !take.recording &&
+            !take.paused &&
             !take.placeholder &&
             !take.deleted
               ? () => onDelete(take.id)
@@ -275,7 +278,8 @@ function Tile({
   const rise = useSharedValue(shown ? 1 : 0);
   const red = useSharedValue(take.recording ? 1 : 0);
   const blue = useSharedValue(take.official ? 1 : 0);
-  const wasRecording = useRef(take.recording);
+  const inProgress = take.recording === true || take.paused === true;
+  const wasInProgress = useRef(inProgress);
   // Dragging: the finger's offset, the lift, and the fall into the bin.
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
@@ -308,7 +312,7 @@ function Tile({
       duration: reduceMotion ? 0 : theme.motion.releaseMs,
     });
     // Saved: a small settle, then on to its size.
-    if (wasRecording.current && !take.recording && !reduceMotion) {
+    if (wasInProgress.current && !inProgress && !reduceMotion) {
       sc.value = withSequence(
         withTiming(scale * CLICK_SCALE, { duration: CLICK_MS }),
         withSpring(scale, NEXT_SPRING),
@@ -316,12 +320,12 @@ function Tile({
     } else {
       sc.value = to(scale);
     }
-    wasRecording.current = take.recording;
+    wasInProgress.current = inProgress;
   }, [
     x,
     scale,
     visible,
-    take.recording,
+    inProgress,
     reduceMotion,
     tx,
     sc,
@@ -541,6 +545,8 @@ function Tile({
   }));
   const status = take.recording
     ? 'recording'
+    : take.paused
+    ? 'paused'
     : take.deleted
     ? 'deleted'
     : take.placeholder
@@ -571,7 +577,7 @@ function Tile({
       >
         <Pressable
           onPress={onPress}
-          disabled={take.recording || take.placeholder}
+          disabled={inProgress || take.placeholder}
           // The empty slot is decoration, not a button that does nothing.
           importantForAccessibility={take.placeholder ? 'no' : 'auto'}
           accessibilityRole="button"

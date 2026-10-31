@@ -55,6 +55,8 @@ export type Passage =
       assignment: Assignment;
       /** Verses in that chapter, so recording knows when the text is in. */
       chapterVerseCount: number;
+      /** The chapter was sent on here and the send hasn't reached the server. */
+      waitingToSend: boolean;
     };
 
 export type PassageDownload = 'idle' | 'downloading' | 'failed';
@@ -166,6 +168,8 @@ async function loadPassage(
     assignment,
     chapterVerseCount: texts.filter(t => t.chapterNumber === chapterNumber)
       .length,
+    // Nothing queues a send on the device yet; #770's stage-advance queue will.
+    waitingToSend: false,
   };
 }
 

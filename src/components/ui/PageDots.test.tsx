@@ -66,6 +66,20 @@ describe('PageDots', () => {
     );
   });
 
+  it('draws nothing with only one page', () => {
+    render(
+      <PageDots
+        count={1}
+        index={0}
+        accessibilityLabel="Page 1 of 1"
+        testID="p"
+      />,
+    );
+
+    expect(screen.queryByTestId('p')).toBeNull();
+    expect(screen.queryByLabelText('Page 1 of 1')).toBeNull();
+  });
+
   it('clamps an out-of-range index to the last page', () => {
     render(
       <PageDots

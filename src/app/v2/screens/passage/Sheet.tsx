@@ -34,9 +34,9 @@ import { Footer } from './Footer';
 import { ListeningMaterials } from './ListeningMaterials';
 import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
-import { PlayerKeys } from './PlayerKeys';
+import { PlayerKeys, type KeyAction } from './PlayerKeys';
 import { useScriptMetrics } from './scriptMetrics';
-import { type Ready } from './steps';
+import { PAGE_COUNT, pageName, type Ready } from './steps';
 import { TakeFan } from './TakeFan';
 import { TitleSheet } from './TitleSheet';
 import { useRecorder } from './useRecorder';
@@ -117,12 +117,22 @@ export function Sheet({
   const [lifted, setLifted] = useState(false);
   const { capturing } = recorder;
   const goToPage = useCallback(
-    (index: number) => {
+    (index: number, animated = false) => {
       setPage(index);
-      pagerRef.current?.scrollTo({ x: index * pageWidth, animated: false });
+      pagerRef.current?.scrollTo({ x: index * pageWidth, animated });
     },
     [pageWidth],
   );
+  const turnKey = (to: number, direction: 'Previous' | 'Next'): KeyAction => {
+    const off = to < 0 || to >= PAGE_COUNT;
+    return {
+      label: off
+        ? direction
+        : `${direction}: ${pageName(passage.reference, to)}`,
+      disabled: off,
+      onPress: () => goToPage(to, !reduceMotion),
+    };
+  };
 
   const settled = useCallback(() => haptics.press(), [haptics]);
   const animateTo = useCallback(
@@ -317,6 +327,8 @@ export function Sheet({
             onRecordModeChange={changeMode}
             modeLocked={capturing}
             record={recorder.keys}
+            previous={turnKey(page - 1, 'Previous')}
+            next={turnKey(page + 1, 'Next')}
             onOpenDrafting={onOpenDrafting}
           />
         }
