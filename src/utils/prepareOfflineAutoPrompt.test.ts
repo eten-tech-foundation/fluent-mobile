@@ -1,9 +1,16 @@
+import { isDemoFeatureEnabled } from '../config/demoFeatures';
 import { logger } from './logger';
 import {
   createPrepareOfflineAutoPromptController,
   type PrepareOfflineAutoPromptDeps,
   type PrepareOfflineProjectCandidate,
 } from './prepareOfflineAutoPrompt';
+
+jest.mock('../config/demoFeatures', () => ({
+  isDemoFeatureEnabled: jest.fn(() => true),
+}));
+
+const isDemoFeatureEnabledMock = jest.mocked(isDemoFeatureEnabled);
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -67,9 +74,31 @@ function createDeps(
 }
 
 describe('createPrepareOfflineAutoPromptController', () => {
+  beforeEach(() => {
+    // Existing eligibility tests assume the demo flag is on (#860 default-off).
+    isDemoFeatureEnabledMock.mockReturnValue(true);
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
     logger.reset();
+  });
+
+  it('never presents when the demo auto-prompt flag is off', async () => {
+    isDemoFeatureEnabledMock.mockReturnValue(false);
+    const deps = createDeps();
+    const controller = createPrepareOfflineAutoPromptController(deps);
+
+    controller.request();
+    await flushMicrotasks();
+
+    expect(deps.present).not.toHaveBeenCalled();
+    expect(deps.getProjects).not.toHaveBeenCalled();
+    expect(controller.getState()).toMatchObject({
+      shownThisAppOpen: false,
+      pendingAfterSettle: false,
+      inFlight: false,
+    });
   });
 
   it('presents the triggering project when eligible', async () => {
