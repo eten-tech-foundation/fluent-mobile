@@ -1024,22 +1024,34 @@ export function useVerseAudio({
   const playTake = useCallback(
     async (take: Recording) => {
       playbackLoadInFlightRef.current = true;
+      clearStitchQueue();
+      // Same generation `stopPlayback` bumps via `clearStitchQueue`, so a
+      // leave/Sync during file checks cannot restore playing/loaded ids (#866).
+      const generation = stitchPlaybackGenerationRef.current;
+      const isStale = () => generation !== stitchPlaybackGenerationRef.current;
       try {
-        clearStitchQueue();
         setErrorMessage(null);
-        await playUri(take.localFilePath);
+        await playUri(take.localFilePath, isStale);
+        if (isStale()) {
+          return;
+        }
         setPlayingTakeId(take.id);
         setLoadedTakeId(take.id);
         dispatch({ type: 'PLAY' });
       } catch (error) {
+        if (isStale()) {
+          return;
+        }
         setPlayingTakeId(null);
         setLoadedTakeId(null);
         const message = error instanceof Error ? error.message : 'play failed';
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
       } finally {
-        playbackLoadInFlightRef.current = false;
-        setPlaybackLoadGate(n => n + 1);
+        if (!isStale()) {
+          playbackLoadInFlightRef.current = false;
+          setPlaybackLoadGate(n => n + 1);
+        }
       }
     },
     [clearStitchQueue, playUri],
@@ -1280,7 +1292,9 @@ export function useVerseAudio({
     return () => {
       // Engine-only: do not setState after unmount. Drafting also calls
       // stopPlayback while still mounted (Back / Sync).
-      void playbackStopRef.current();
+      void playbackStopRef.current().catch(() => {
+        // Native stop can reject if the player was already released.
+      });
     };
   }, []);
 

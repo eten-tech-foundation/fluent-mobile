@@ -1013,6 +1013,39 @@ describe('useVerseAudio', () => {
     expect(result.current.loadedTakeId).toBeNull();
   });
 
+  it('ignores a late playTake after stopPlayback (#866)', async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+    let releaseFileCheck: (exists: boolean) => void = () => {};
+    mockFileExists.mockImplementationOnce(
+      () =>
+        new Promise<boolean>(resolve => {
+          releaseFileCheck = resolve;
+        }),
+    );
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    let playTakeDone: Promise<void> = Promise.resolve();
+    await act(async () => {
+      playTakeDone = result.current.playTake(take);
+    });
+    await waitFor(() => expect(mockFileExists).toHaveBeenCalled());
+
+    await act(async () => {
+      await result.current.stopPlayback();
+    });
+    await act(async () => {
+      releaseFileCheck(true);
+      await playTakeDone;
+    });
+
+    expect(result.current.state).toBe('recorded');
+    expect(result.current.playingTakeId).toBeNull();
+    expect(result.current.loadedTakeId).toBeNull();
+  });
+
   it('stops the playback engine when the hook unmounts (#866)', async () => {
     const take = makeTake();
     loadTakes.mockResolvedValue([take]);
