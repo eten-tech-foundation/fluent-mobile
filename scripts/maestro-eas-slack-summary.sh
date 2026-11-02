@@ -7,15 +7,14 @@ set -euo pipefail
 TESTS_DIR="${1:-}"
 WEBHOOK="${SLACK_WEBHOOK_URL:-}"
 
-if [[ -z "${WEBHOOK}" ]]; then
-  echo "SLACK_WEBHOOK_URL unset — skipping Slack summary."
-  exit 0
-fi
-
 junit_count=0
 fail_hint="unknown"
 if [[ -n "${TESTS_DIR}" && -d "${TESTS_DIR}" ]]; then
   junit_count="$(find "${TESTS_DIR}" -name '*.xml' 2>/dev/null | wc -l | tr -d ' ')"
+  if [[ "${junit_count}" == "0" ]]; then
+    echo "BLOCKED: no JUnit reports under ${TESTS_DIR}" >&2
+    exit 1
+  fi
   if grep -R -l 'failures="[1-9]' "${TESTS_DIR}" --include='*.xml' >/dev/null 2>&1; then
     fail_hint="failures present in junit"
   elif grep -R -l 'errors="[1-9]' "${TESTS_DIR}" --include='*.xml' >/dev/null 2>&1; then
@@ -23,6 +22,14 @@ if [[ -n "${TESTS_DIR}" && -d "${TESTS_DIR}" ]]; then
   else
     fail_hint="no failure attributes found"
   fi
+else
+  echo "BLOCKED: Maestro tests dir missing" >&2
+  exit 1
+fi
+
+if [[ -z "${WEBHOOK}" ]]; then
+  echo "SLACK_WEBHOOK_URL unset — JUnit count ${junit_count}; skipping Slack summary."
+  exit 0
 fi
 
 text="Fluent Mobile Maestro (EAS): artifacts_dir=${TESTS_DIR:-none} junit_files=${junit_count} status_hint=${fail_hint}. See EAS Insights Maestro tab for pass/flake rates."

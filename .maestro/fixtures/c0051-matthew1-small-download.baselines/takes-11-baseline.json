@@ -1,0 +1,39 @@
+{
+  "source": "/Users/matt/Documents/Codex/2026-10-19/task-10/artifacts/d0702-pr755-final-dismiss-runtime-20261021/host-runner-result.json",
+  "counts": {
+    "owner10": 10,
+    "owner9": 1,
+    "total": 11
+  },
+  "ids": [
+    "rec_mvhrtjam_t19xic7o",
+    "rec_mvgyi6ut_qg018vsu",
+    "rec_mvh032ch_05antbde",
+    "rec_mvh0ef5x_qaz9pxhq",
+    "rec_mvh0ps18_z1xxf0n7",
+    "rec_mvh163w0_gs1x0vp9",
+    "rec_mvh2cd4t_cur1vxdc",
+    "rec_mvh9zald_ts5k8ma8",
+    "rec_mvhan6h4_os7gqr7f",
+    "rec_mvhazn50_kqkdr2tm",
+    "rec_mvhkn3uc_n1tzsv67"
+  ],
+  "hashes": {
+    "rec_mvhrtjam_t19xic7o": "9b5fc7e0bf5b91af7e3deb459ac940f0c9b4d492887085c93aaca247fb17b821",
+    "rec_mvgyi6ut_qg018vsu": "ec8ff815e8242521a9c6ad0886310f966e62dc7fe2999e8f97357032b0318df0",
+    "rec_mvh032ch_05antbde": "66a49ccda656e7d28324ee1b6cf3e1fb05de3a847290af1e41ea2cc0afe8a248",
+    "rec_mvh0ef5x_qaz9pxhq": "14533f4f74d22d2301d0eca70838bf055419f245cefd2a43c6562e8b5e78c6fd",
+    "rec_mvh0ps18_z1xxf0n7": "74aba912a643e735d7b6bc4b31744b167d7121047d69d821216166ea78999cf2",
+    "rec_mvh163w0_gs1x0vp9": "8f383230f5c012360b190750079f1f56a0a5765c36318edab691f0ee7f055cef",
+    "rec_mvh2cd4t_cur1vxdc": "137ea03e9a954307eaa7225d2090ece80785119ffd67b67bb16b0dc306556d13",
+    "rec_mvh9zald_ts5k8ma8": "46fc0ff1cde164dc4cec9247d20767c74338a2f86458b85d1fb154c4e66052ef",
+    "rec_mvhan6h4_os7gqr7f": "694292ccc024c05cb87f274f89b196f1c659efd4a3cecfc74d6e74252130c990",
+    "rec_mvhazn50_kqkdr2tm": "64193430d915c3905be72d3f5470435849bd0900c3d8a1f62d13d2dd39a82f8e",
+    "rec_mvhkn3uc_n1tzsv67": "62a79ed75657e8f36f0c80f5bde9cc6b2c8d429b996d7b114ef7157b135a8461"
+  },
+  "prefs": {
+    "10:drafting_unit": "verse",
+    "active_user_id": "12",
+    "known_user_ids": "10,9,12"
+  }
+}

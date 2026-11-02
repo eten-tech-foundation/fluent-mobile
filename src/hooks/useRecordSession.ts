@@ -17,7 +17,7 @@ import {
   type RecordingUnitCapture,
 } from '../utils/recordingRange';
 import {
-  isDrafterBlockedFromOpenPeerCheckCapture,
+  isBlockedFromPeerCheckCapture,
   isRecordingLockedByStage,
 } from '../utils/stageAdvancement';
 import { resolveRecordingUnit } from './resolveRecordingUnit';
@@ -406,19 +406,19 @@ export function useRecordSession({
   }
 
   const drafterCaptureBlocked = useMemo(
-    () => isDrafterBlockedFromOpenPeerCheckCapture(chapterData, userId),
+    () => isBlockedFromPeerCheckCapture(chapterData, userId),
     [chapterData, userId],
   );
   const stageLocked = useMemo(
     () => isRecordingLockedByStage(chapterData),
     [chapterData],
   );
-  const captureDisabled =
-    recordDisabled || drafterCaptureBlocked || stageLocked;
   const isTaken = useMemo(
     () => isChapterTakenByOther(chapterData, userId),
     [chapterData, userId],
   );
+  const captureDisabled =
+    recordDisabled || drafterCaptureBlocked || stageLocked || isTaken;
 
   /** Before moving to another verse: drop the stale text id and unit. */
   const resetCapture = useCallback(() => {

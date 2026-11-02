@@ -1,9 +1,15 @@
 import { ApiError } from '../types/api/errors';
+import { logger } from '../utils/logger';
 import {
   parseJsonResponse,
   publicRequest,
   summarizeApiErrorResponse,
 } from './httpClient';
+import {
+  HTTP_PHASE,
+  SYNC_PHASE_FIELDS,
+  SYNC_PHASE_LOG_MESSAGE,
+} from './syncPhaseTiming';
 
 describe('summarizeApiErrorResponse', () => {
   it('includes status and content length metadata', () => {
@@ -77,6 +83,7 @@ describe('publicRequest', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     jest.useRealTimers();
+    logger.reset();
   });
 
   it('aborts when the request exceeds the timeout', async () => {
@@ -131,5 +138,53 @@ describe('publicRequest', () => {
       name: 'ApiError',
       status: 0,
     });
+  });
+
+  it('times network and parse separately without logging URLs or bodies', async () => {
+    const transport = jest.fn();
+    logger.setTransport(transport);
+    const now = jest.spyOn(Date, 'now');
+    now
+      .mockReturnValueOnce(1_000)
+      .mockReturnValueOnce(1_040)
+      .mockReturnValueOnce(1_040)
+      .mockReturnValueOnce(1_090);
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: async () => '{"ok":true,"email":"user@example.com"}',
+    });
+
+    try {
+      await expect(publicRequest('/bibles/1/bulk-texts')).resolves.toEqual({
+        ok: true,
+        email: 'user@example.com',
+      });
+    } finally {
+      logger.reset();
+    }
+
+    const phases = transport.mock.calls
+      .filter(
+        ([, tag, message]) =>
+          tag === 'SyncPhase' && message === SYNC_PHASE_LOG_MESSAGE,
+      )
+      .map(([, , , context]) => context as Record<string, unknown>);
+
+    expect(phases).toEqual([
+      { phase: HTTP_PHASE.network, elapsedMs: 40 },
+      { phase: HTTP_PHASE.parse, elapsedMs: 50 },
+    ]);
+    const serialized = JSON.stringify(phases);
+    expect(serialized).not.toMatch(
+      /bulk-texts|user@example\.com|Authorization|Bearer/i,
+    );
+    for (const context of phases) {
+      expect(
+        Object.keys(context).every(key =>
+          (SYNC_PHASE_FIELDS as readonly string[]).includes(key),
+        ),
+      ).toBe(true);
+    }
   });
 });

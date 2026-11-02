@@ -4,12 +4,25 @@ import {
   ApiUserChapterAssignmentsByUser,
 } from './types';
 
+/** Org/project role grant from `GET /users/email/:email` (`orgGrants`). */
+export interface ApiOrgGrant {
+  roleId: number;
+  roleName: string;
+  /** Null for SuperAdmin / global grants (fluent-api `orgId` nullable). */
+  orgId: number | null;
+  /** Null when the grant is org-scoped only (not a project membership). */
+  projectId: number | null;
+  orgName?: string | null;
+}
+
 export interface ApiUser {
   id: number;
   username?: string;
   email: string;
   firstName?: string;
   lastName?: string;
+  /** Present on live user payloads; missing/malformed must not be treated as []. */
+  orgGrants?: ApiOrgGrant[];
 }
 
 export interface ApiLanguage {
@@ -20,12 +33,16 @@ export interface ApiLanguage {
   langCode?: string;
   langCodeIso6393?: string | null;
   scriptDirection?: string;
+  /** Server catalogue watermark; used as the languages `updatedAfter` cursor. */
+  updatedAt?: string | null;
 }
 
 export interface ApiBookMeta {
   id: number;
   code: string;
   eng_display_name: string;
+  /** Server catalogue watermark; used as the books `updatedAfter` cursor. */
+  updatedAt?: string | null;
 }
 
 export interface ApiBible {
@@ -33,6 +50,8 @@ export interface ApiBible {
   languageId: number;
   name: string;
   abbreviation: string;
+  /** Server catalogue watermark; used as the bibles `updatedAfter` cursor. */
+  updatedAt?: string | null;
 }
 
 export interface ApiProject {

@@ -9,6 +9,7 @@ import {
   KV_KEYS,
   switchActiveUser,
 } from './storage';
+import { clearUserOrgGrantSnapshot } from './userOrgGrants';
 import { logger } from '../utils/logger';
 
 const log = logger.create('accountSession');
@@ -50,6 +51,7 @@ export async function signOutCurrentDeviceAccount(): Promise<SignOutDeviceAccoun
 
   await clearCredentials(currentUserId);
   resolveReauthForUser(currentUserId);
+  clearUserOrgGrantSnapshot(currentUserId);
 
   const remaining = getKnownUserIds().filter(id => id !== currentUserId);
   kvStorage.setItemSync(KV_KEYS.KNOWN_USER_IDS, remaining.join(','));

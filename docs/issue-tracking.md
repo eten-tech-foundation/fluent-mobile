@@ -12,7 +12,13 @@
 
 The [repo Issues list](https://github.com/eten-tech-foundation/fluent-mobile/issues) is **not** the triage board. Cards are still GitHub Issues (`#NNN`) linked into Project 4; agents must treat **Project 4 → Fluent Mobile Board** as canonical for backlog, in-progress, review, and done.
 
-### Project 4 Status options (as of 2026-07)
+### Project 4 Status options (documented snapshot 2026-07 — **not re-verified live**)
+
+The following list is a **dated documentation snapshot**. It has **not** been
+re-checked against the live GitHub Project 4 UI in the docs hygiene pass (see
+[documentation-hygiene.md](documentation-hygiene.md)). Treat
+column names as **unverified until confirmed** in the board UI or by tech lead;
+do **not** invent Status values or mutate the board from this list alone.
 
 `Backlog` · `In Progress (Product)` · `Product Ready` · `Sprint Shaping` · `Dev Ready` · `In Progress (Dev)` · `In PR Review` · `In QA` · `Passed QA` · `To Deploy` · `Done`
 

@@ -3,8 +3,9 @@ import { StyleSheet, Text } from 'react-native';
 import { act, render, screen } from '@testing-library/react-native';
 import { KeyDeck } from './KeyDeck';
 import { setUiVersion } from '../../services/userPreferences';
-import { legacyTheme } from '../../theme';
+import { legacyTheme, resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
+import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -13,13 +14,16 @@ jest.mock('../../services/storage', () => ({
   },
 }));
 
+const renderWithPreferences = (ui: React.ReactElement) =>
+  render(ui, { wrapper: UiVersionPreferenceProvider });
+
 describe('KeyDeck', () => {
   beforeEach(() => {
     mockPreferenceStore();
   });
 
   it('frames its keys in surface/inverse with 2pt seams', () => {
-    render(
+    renderWithPreferences(
       <KeyDeck testID="deck">
         <Text>Play</Text>
       </KeyDeck>,
@@ -35,20 +39,26 @@ describe('KeyDeck', () => {
     expect(screen.getByText('Play')).toBeTruthy();
   });
 
-  it('uses the Next Hardware deck color in Next', () => {
-    render(
-      <KeyDeck testID="deck">
-        <Text>Play</Text>
-      </KeyDeck>,
-    );
-
-    act(() => {
-      setUiVersion('next');
-    });
-
-    expect(
-      StyleSheet.flatten(screen.getByTestId('deck').props.style)
-        .backgroundColor,
-    ).toBe('#2C2B29');
+  it('follows independently scoped Next deck color and returns to Legacy', () => {
+    const roles = resolveTheme('next').roles as { surfaceInverse: string };
+    const original = roles.surfaceInverse;
+    try {
+      roles.surfaceInverse = '#123456';
+      renderWithPreferences(
+        <KeyDeck testID="deck">
+          <Text>Play</Text>
+        </KeyDeck>,
+      );
+      const background = () =>
+        StyleSheet.flatten(screen.getByTestId('deck').props.style)
+          .backgroundColor;
+      expect(background()).toBe(legacyTheme.roles.surfaceInverse);
+      act(() => setUiVersion('next'));
+      expect(background()).toBe('#123456');
+      act(() => setUiVersion('legacy'));
+      expect(background()).toBe(legacyTheme.roles.surfaceInverse);
+    } finally {
+      roles.surfaceInverse = original;
+    }
   });
 });

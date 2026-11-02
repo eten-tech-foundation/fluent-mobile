@@ -39,9 +39,12 @@ export default function SyncScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { snapshot, hasDownloads } = useDownloadQueue();
-
   const [refreshKey, setRefreshKey] = useState(0);
   const [hasPendingClaims, setHasPendingClaims] = useState(false);
+
+  useEffect(() => {
+    log.info('sync screen mounted');
+  }, []);
 
   const {
     isOnline,

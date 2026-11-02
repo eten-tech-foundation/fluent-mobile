@@ -1,4 +1,5 @@
 import { FluentAPI } from './api';
+import { getChapterAssignmentPullRevision } from '../utils/chapterCompletionSyncGuard';
 import { isTransientTransportFailure } from '../types/api/errors';
 import { isAuthError, AuthError } from './authError';
 import { mapApiChapterAssignment } from './mapChapterAssignment';
@@ -28,20 +29,26 @@ import {
   upsertPericopeSet,
   getLocalProjectIds,
   hasLanguagesMissingIsoCode,
+  selectExistingIds,
   upsertProjectUnits,
 } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
-import { isApiError, isRetryableApiError } from '../types/api/errors';
+import { ApiError, isApiError, isRetryableApiError } from '../types/api/errors';
 import { ApiUser, unwrapApiListResponse } from '../types/api/responses';
+import type { ChapterAssignment, Project } from '../types/db/types';
 import { getConnectivitySnapshot } from './connectivity';
 import {
   reconcilePendingClaimsAfterAssignmentPull,
   syncPendingChapterClaims,
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
-import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
+import { syncPendingStageAdvances } from './stageAdvanceSync';
+import {
+  persistOrgGrantsFromUserResponse,
+  refreshUserOrgGrants,
+} from './userOrgGrants';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import {
   flattenApiPericopeSetGroups,
@@ -68,8 +75,9 @@ import {
   setReauthRequired,
   isBibleTextsServerIdRemapPending,
   clearBibleTextsServerIdRemapPending,
-  getMasterDataLastSyncedAt,
-  setMasterDataLastSyncedAt,
+  getMasterDataUpdatedAt,
+  setMasterDataUpdatedAt,
+  type MasterDataCollection,
 } from '../services/storage';
 import {
   clearTempCredentials,
@@ -82,6 +90,11 @@ import {
   emitSyncStart,
   emitAuthReauthRequired,
 } from './syncEvents';
+import {
+  BIBLE_TEXT_PHASE,
+  resolveBibleTextFullFetchReason,
+  startPhase,
+} from './syncPhaseTiming';
 
 const log = logger.create('SyncService');
 
@@ -157,6 +170,33 @@ function mapBibleTextRow(
   };
 }
 
+function bibleChapterKey(bookId: number, chapterNumber: number): string {
+  return `${bookId}:${chapterNumber}`;
+}
+
+function formatMissingBibleTextChapter(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  reason: string,
+): string {
+  return `bible ${bibleId} book ${bookId} ch ${chapterNumber} (${reason})`;
+}
+
+/** Full-fetch missing-resource 404 — isolate and continue; do not retry. */
+function isMissingBibleTextResource404(error: unknown): boolean {
+  return isApiError(error) && error.status === 404;
+}
+
+/** Errors that must still abort the chunk so retrySyncStep / auth handling apply. */
+function shouldRethrowBibleTextFetchError(error: unknown): boolean {
+  return (
+    isAuthError(error) ||
+    isRetryableApiError(error) ||
+    isTransientTransportFailure(error)
+  );
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -179,48 +219,69 @@ async function retrySyncStep<T>(
   failingUserId?: string,
 ): Promise<T> {
   let lastError: unknown;
+  let finishedAttempt = 0;
+  const totalPhase = startPhase(`${stepName}.total`);
 
-  for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt += 1) {
-    try {
-      const result = await operation();
-      clearSyncError(errorKey);
-      return result;
-    } catch (error) {
-      lastError = error;
-      const errorMessage = getErrorMessage(error);
+  try {
+    for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt += 1) {
+      finishedAttempt = attempt;
+      const attemptPhase = startPhase(`${stepName}.attempt`);
+      try {
+        const result = await operation();
+        attemptPhase.end({ attempt });
+        clearSyncError(errorKey);
+        return result;
+      } catch (error) {
+        attemptPhase.end({ attempt });
+        lastError = error;
+        const errorMessage = getErrorMessage(error);
 
-      if (isAuthError(error)) {
-        log.error(`${stepName} failed: session invalid`, {
-          error: errorMessage,
-        });
-        setSyncError(errorKey, errorMessage);
-        const userId = failingUserId ?? getActiveUserId();
-        if (userId) {
-          await handleSyncAuthFailure(userId);
-        }
-        throw error;
-      }
-
-      if (attempt === MAX_SYNC_ATTEMPTS) {
-        log.error(`${stepName} failed after ${MAX_SYNC_ATTEMPTS} attempts`, {
-          error: errorMessage,
-        });
-        if (!isTransientTransportFailure(error)) {
+        if (isAuthError(error)) {
+          log.error(`${stepName} failed: session invalid`, {
+            error: errorMessage,
+          });
           setSyncError(errorKey, errorMessage);
+          const userId = failingUserId ?? getActiveUserId();
+          if (userId) {
+            await handleSyncAuthFailure(userId);
+          }
+          throw error;
         }
-        break;
+
+        // Client 4xx (e.g. accumulated missing bible-text chapters as 404): do not
+        // burn retries re-fetching chunks that already succeeded.
+        if (isApiError(error) && error.isTerminal) {
+          log.error(`${stepName} failed: terminal error`, {
+            error: errorMessage,
+            status: error.status,
+          });
+          setSyncError(errorKey, errorMessage);
+          throw error;
+        }
+
+        if (attempt === MAX_SYNC_ATTEMPTS) {
+          log.error(`${stepName} failed after ${MAX_SYNC_ATTEMPTS} attempts`, {
+            error: errorMessage,
+          });
+          if (!isTransientTransportFailure(error)) {
+            setSyncError(errorKey, errorMessage);
+          }
+          break;
+        }
+
+        log.warn(`${stepName} failed, retrying`, {
+          attempt,
+          maxAttempts: MAX_SYNC_ATTEMPTS,
+          error: errorMessage,
+        });
+        await delay(attempt * 500);
       }
-
-      log.warn(`${stepName} failed, retrying`, {
-        attempt,
-        maxAttempts: MAX_SYNC_ATTEMPTS,
-        error: errorMessage,
-      });
-      await delay(attempt * 500);
     }
-  }
 
-  throw lastError;
+    throw lastError;
+  } finally {
+    totalPhase.end({ attempt: finishedAttempt });
+  }
 }
 
 export async function syncUser(email?: string, preloadedUser?: ApiUser) {
@@ -250,6 +311,7 @@ export async function syncUser(email?: string, preloadedUser?: ApiUser) {
       } else {
         registerKnownUser(userIdStr, userEmail);
       }
+      persistOrgGrantsFromUserResponse(userIdStr, user);
 
       const existingCreds = await getCredentials(userIdStr);
       if (existingCreds?.token) {
@@ -275,6 +337,305 @@ export type SyncMasterDataOptions = {
   forceFull?: boolean;
 };
 
+export type SyncProjectsOptions = {
+  /**
+   * Fetch real language parents via GET /languages/{id} before project insert
+   * so login Tier 1 can skip the full world catalogue (#679). Never advances
+   * the global master-data cursor.
+   */
+  seedFkParents?: boolean;
+  /**
+   * Warm metadata refresh only. Per-id parent GET failures (404/5xx/network)
+   * upsert successes, skip FK-unsafe rows, and report incomplete without
+   * aborting later warm steps. Auth errors still throw. Login Tier 1 must
+   * omit this so seeding stays strict.
+   */
+  seedFkParentsBestEffort?: boolean;
+};
+
+type SeedFkParentsWorkOptions = {
+  seedFkParents?: boolean;
+  seedFkParentsBestEffort?: boolean;
+};
+
+type FkParentSeedResult = {
+  failedIds: number[];
+  incompleteReason?: string;
+};
+
+function uniquePositiveIds(ids: Array<number | undefined | null>): number[] {
+  const seen = new Set<number>();
+  const unique: number[] = [];
+  for (const id of ids) {
+    if (typeof id !== 'number' || !Number.isFinite(id) || id <= 0) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    unique.push(id);
+  }
+  return unique;
+}
+
+/**
+ * Strict: Promise.all — any failure aborts (login Tier 1).
+ * Best-effort: per-id settle; auth still aborts the batch.
+ */
+async function fetchMasterParentsById<T>(
+  ids: number[],
+  fetchOne: (id: number) => Promise<T>,
+  options: { bestEffort: boolean; kind: string },
+): Promise<{ values: T[]; failedIds: number[] }> {
+  if (!options.bestEffort) {
+    const values = await Promise.all(ids.map(id => fetchOne(id)));
+    return { values, failedIds: [] };
+  }
+
+  const values: T[] = [];
+  const failedIds: number[] = [];
+  await Promise.all(
+    ids.map(async id => {
+      try {
+        values.push(await fetchOne(id));
+      } catch (error) {
+        if (isAuthError(error)) {
+          throw error;
+        }
+        failedIds.push(id);
+        const failure = classifyPrepareOfflineParentRefreshFailure(error);
+        log.warn('FK parent by-id lookup failed; continuing warm seed', {
+          kind: options.kind,
+          id,
+          classification: failure.classification,
+          ...(failure.apiStatus !== undefined
+            ? { apiStatus: failure.apiStatus }
+            : {}),
+        });
+      }
+    }),
+  );
+  return { values, failedIds };
+}
+
+function incompleteParentSeedReason(
+  kind: string,
+  failedIds: number[],
+): string | undefined {
+  if (failedIds.length === 0) return undefined;
+  return `Incomplete ${kind} parent refresh (${failedIds.length} failed)`;
+}
+
+/**
+ * Persist real master rows needed as FK parents. Must never call
+ * setMasterDataLastSyncedAt — scoped seed is not a catalogue watermark (#679).
+ */
+async function seedLanguageParentsForProjects(
+  projects: Project[],
+  sessionToken?: string,
+  options?: { bestEffort?: boolean },
+): Promise<FkParentSeedResult> {
+  const languageIds = uniquePositiveIds(
+    projects.flatMap(project => [
+      project.sourceLanguageId ?? project.source_language_id,
+      project.targetLanguageId ?? project.target_language_id,
+    ]),
+  );
+  if (languageIds.length === 0) {
+    return { failedIds: [] };
+  }
+
+  log.info('Seeding project language parents', {
+    count: languageIds.length,
+    bestEffort: options?.bestEffort === true,
+  });
+
+  const { values, failedIds } = await fetchMasterParentsById(
+    languageIds,
+    id => FluentAPI.getLanguage(id, sessionToken),
+    { bestEffort: options?.bestEffort === true, kind: 'language' },
+  );
+  if (values.length > 0) {
+    await insertMasterData(values.map(mapApiLanguage), [], []);
+  }
+  return {
+    failedIds,
+    incompleteReason: incompleteParentSeedReason('language', failedIds),
+  };
+}
+
+async function seedAssignmentMasterParents(
+  assignments: ChapterAssignment[],
+  sessionToken?: string,
+  options?: { bestEffort?: boolean },
+): Promise<FkParentSeedResult> {
+  const bibleIds = uniquePositiveIds(assignments.map(a => a.bibleId));
+  const bookIds = uniquePositiveIds(assignments.map(a => a.bookId));
+  if (bibleIds.length === 0 && bookIds.length === 0) {
+    return { failedIds: [] };
+  }
+
+  const bestEffort = options?.bestEffort === true;
+  log.info('Seeding assignment master parents', {
+    bibleCount: bibleIds.length,
+    bookCount: bookIds.length,
+    bestEffort,
+  });
+
+  const [booksResult, biblesResult] = await Promise.all([
+    fetchMasterParentsById(bookIds, id => FluentAPI.getBook(id, sessionToken), {
+      bestEffort,
+      kind: 'book',
+    }),
+    fetchMasterParentsById(
+      bibleIds,
+      id => FluentAPI.getBible(id, sessionToken),
+      { bestEffort, kind: 'bible' },
+    ),
+  ]);
+
+  const languageIds = uniquePositiveIds(
+    biblesResult.values.map(bible => bible.languageId),
+  );
+  const languagesResult =
+    languageIds.length === 0
+      ? { values: [], failedIds: [] as number[] }
+      : await fetchMasterParentsById(
+          languageIds,
+          id => FluentAPI.getLanguage(id, sessionToken),
+          { bestEffort, kind: 'bible-language' },
+        );
+
+  const fetchedLanguageIds = new Set(
+    languagesResult.values.map(language => language.id),
+  );
+  // Bibles need a language FK. Keep ones whose language was fetched or already local.
+  const localLanguageIds =
+    bestEffort && biblesResult.values.length > 0
+      ? await selectExistingIds(
+          'languages',
+          uniquePositiveIds(biblesResult.values.map(b => b.languageId)),
+        )
+      : new Set<number>();
+  const availableLanguageIds = new Set([
+    ...fetchedLanguageIds,
+    ...localLanguageIds,
+  ]);
+  const biblesToInsert = bestEffort
+    ? biblesResult.values.filter(bible =>
+        availableLanguageIds.has(bible.languageId),
+      )
+    : biblesResult.values;
+  const skippedBibleIds = biblesResult.values
+    .filter(bible => !availableLanguageIds.has(bible.languageId))
+    .map(bible => bible.id);
+
+  if (
+    languagesResult.values.length > 0 ||
+    booksResult.values.length > 0 ||
+    biblesToInsert.length > 0
+  ) {
+    await insertMasterData(
+      languagesResult.values.map(mapApiLanguage),
+      booksResult.values,
+      biblesToInsert,
+    );
+  }
+
+  const failedIds = [
+    ...booksResult.failedIds,
+    ...biblesResult.failedIds,
+    ...languagesResult.failedIds,
+    ...skippedBibleIds,
+  ];
+  return {
+    failedIds,
+    incompleteReason: incompleteParentSeedReason('assignment', failedIds),
+  };
+}
+
+async function filterProjectsWithLocalLanguageParents(
+  projects: Project[],
+): Promise<{ ready: Project[]; skippedCount: number }> {
+  const requiredIds = uniquePositiveIds(
+    projects.flatMap(project => [
+      project.sourceLanguageId ?? project.source_language_id,
+      project.targetLanguageId ?? project.target_language_id,
+    ]),
+  );
+  const present = await selectExistingIds('languages', requiredIds);
+  const ready: Project[] = [];
+  let skippedCount = 0;
+  for (const project of projects) {
+    const sourceLangId = project.sourceLanguageId ?? project.source_language_id;
+    const targetLangId = project.targetLanguageId ?? project.target_language_id;
+    if (
+      typeof sourceLangId === 'number' &&
+      typeof targetLangId === 'number' &&
+      present.has(sourceLangId) &&
+      present.has(targetLangId)
+    ) {
+      ready.push(project);
+    } else {
+      skippedCount += 1;
+    }
+  }
+  return { ready, skippedCount };
+}
+
+type MasterDataUpdatedAtRow = {
+  updatedAt?: string | null;
+  id?: number;
+};
+
+function parseUpdatedAtMs(value: string): number | null {
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Inclusive server filter is `updatedAt >= updatedAfter`. Keep the original
+ * server string of the latest parseable `updatedAt` so the next query repeats
+ * ties instead of inventing a device watermark. Empty rows or
+ * missing/unparseable timestamps keep `prior` and warn (#763).
+ */
+function maxUpdatedAt(
+  rows: ReadonlyArray<MasterDataUpdatedAtRow>,
+  prior: string,
+  collection: MasterDataCollection,
+): string {
+  if (rows.length === 0) {
+    return prior;
+  }
+
+  let best = prior;
+  let bestMs = prior ? parseUpdatedAtMs(prior) : null;
+
+  for (const row of rows) {
+    const raw = row.updatedAt;
+    if (typeof raw !== 'string' || raw.length === 0) {
+      log.warn('Master data item missing updatedAt; keeping prior cursor', {
+        collection,
+        id: row.id,
+      });
+      return prior;
+    }
+
+    const ms = parseUpdatedAtMs(raw);
+    if (ms === null) {
+      log.warn(
+        'Master data item has unparseable updatedAt; keeping prior cursor',
+        { collection, id: row.id, updatedAt: raw },
+      );
+      return prior;
+    }
+
+    if (bestMs === null || ms > bestMs) {
+      best = raw;
+      bestMs = ms;
+    }
+  }
+
+  return best;
+}
+
 export async function syncMasterData(
   sessionToken?: string,
   options?: SyncMasterDataOptions,
@@ -283,27 +644,39 @@ export async function syncMasterData(
     'Master data sync',
     KV_KEYS.SYNC_ERROR_MASTER_DATA,
     async () => {
-      const updatedAfter = options?.forceFull
+      const storedLanguages = getMasterDataUpdatedAt('languages');
+      const storedBooks = getMasterDataUpdatedAt('books');
+      const storedBibles = getMasterDataUpdatedAt('bibles');
+      const languagesCursor = options?.forceFull
         ? undefined
-        : getMasterDataLastSyncedAt() || undefined;
+        : storedLanguages || undefined;
+      const booksCursor = options?.forceFull
+        ? undefined
+        : storedBooks || undefined;
+      const biblesCursor = options?.forceFull
+        ? undefined
+        : storedBibles || undefined;
 
       log.info('Syncing master data...', {
-        incremental: Boolean(updatedAfter),
-        updatedAfter,
+        languagesCursor: Boolean(languagesCursor),
+        booksCursor: Boolean(booksCursor),
+        biblesCursor: Boolean(biblesCursor),
       });
 
       const languages = await FluentAPI.getLanguages(
-        updatedAfter,
+        languagesCursor,
         sessionToken,
       );
-      const books = await FluentAPI.getBooks(updatedAfter, sessionToken);
-      const bibles = await FluentAPI.getBibles(updatedAfter, sessionToken);
+      const books = await FluentAPI.getBooks(booksCursor, sessionToken);
+      const bibles = await FluentAPI.getBibles(biblesCursor, sessionToken);
 
       log.info('Master data fetched', {
         languagesCount: languages?.length,
         booksCount: books?.length,
         biblesCount: bibles?.length,
-        incremental: Boolean(updatedAfter),
+        languagesCursor: Boolean(languagesCursor),
+        booksCursor: Boolean(booksCursor),
+        biblesCursor: Boolean(biblesCursor),
       });
 
       await insertMasterData(
@@ -311,17 +684,37 @@ export async function syncMasterData(
         books,
         bibles,
       );
-      setMasterDataLastSyncedAt(new Date().toISOString());
+
+      setMasterDataUpdatedAt(
+        'languages',
+        maxUpdatedAt(languages ?? [], storedLanguages, 'languages'),
+      );
+      setMasterDataUpdatedAt(
+        'books',
+        maxUpdatedAt(books ?? [], storedBooks, 'books'),
+      );
+      setMasterDataUpdatedAt(
+        'bibles',
+        maxUpdatedAt(bibles ?? [], storedBibles, 'bibles'),
+      );
       log.info('Master data sync completed');
     },
   );
 }
 
-export async function syncProjects(userId: number, sessionToken?: string) {
-  return retrySyncStep(
+export async function syncProjects(
+  userId: number,
+  sessionToken?: string,
+  options?: SyncProjectsOptions,
+): Promise<{ parentSeedIncomplete?: string }> {
+  const bestEffort = options?.seedFkParentsBestEffort === true;
+  let parentSeedIncomplete: string | undefined;
+
+  await retrySyncStep(
     'Project sync',
     KV_KEYS.SYNC_ERROR_PROJECTS,
     async () => {
+      parentSeedIncomplete = undefined;
       log.info('Syncing projects...', { userId });
 
       const response = await FluentAPI.getUserProjects(userId, sessionToken);
@@ -334,11 +727,37 @@ export async function syncProjects(userId: number, sessionToken?: string) {
         isArray: isConfirmedShape,
       });
 
-      if (projects.length > 0) {
-        await insertProjects(projects);
+      if (options?.seedFkParents && projects.length > 0) {
+        const seed = await seedLanguageParentsForProjects(
+          projects,
+          sessionToken,
+          { bestEffort },
+        );
+        parentSeedIncomplete = seed.incompleteReason;
+      }
+
+      let projectsToWrite = projects;
+      if (bestEffort && projects.length > 0) {
+        const { ready, skippedCount } =
+          await filterProjectsWithLocalLanguageParents(projects);
+        projectsToWrite = ready;
+        if (skippedCount > 0) {
+          const skipReason = `Skipped ${skippedCount} project(s) — missing language parents`;
+          parentSeedIncomplete = parentSeedIncomplete
+            ? `${parentSeedIncomplete}; ${skipReason}`
+            : skipReason;
+          log.warn('Warm project sync withheld FK-unsafe rows', {
+            skippedCount,
+            readyCount: ready.length,
+          });
+        }
+      }
+
+      if (projectsToWrite.length > 0) {
+        await insertProjects(projectsToWrite);
         await insertUserProjects(
           userId,
-          projects.map(project => project.id),
+          projectsToWrite.map(project => project.id),
         );
       }
 
@@ -371,15 +790,29 @@ export async function syncProjects(userId: number, sessionToken?: string) {
 
       log.info('Projects synced', {
         fetched: projects.length,
+        written: projectsToWrite.length,
         userProjectsInDb: totalProjectsCount,
+        parentSeedIncomplete: parentSeedIncomplete ?? null,
       });
     },
     String(userId),
   );
+
+  // retrySyncStep clears SYNC_ERROR_PROJECTS on success — re-assert incomplete
+  // after so warm UI does not latch a false healthy projects step.
+  if (parentSeedIncomplete) {
+    setSyncError(KV_KEYS.SYNC_ERROR_PROJECTS, parentSeedIncomplete);
+  }
+  return { parentSeedIncomplete };
 }
 
-export async function syncMilestones(userId: number, sessionToken?: string) {
+export async function syncMilestones(
+  userId: number,
+  sessionToken?: string,
+  options?: { bestEffort?: boolean },
+): Promise<{ milestoneIncomplete?: string }> {
   log.info('Syncing milestones...', { userId });
+  const bestEffort = options?.bestEffort === true;
 
   for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt += 1) {
     try {
@@ -391,6 +824,7 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
       log.info('Milestones fetched', {
         count: units.length,
         isArray: isConfirmedShape,
+        bestEffort,
       });
 
       if (!isConfirmedShape) {
@@ -399,17 +833,42 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
           userId,
         });
         setSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS, errorMessage);
-        return;
+        return {};
       }
 
-      await upsertProjectUnits(units);
+      let unitsToUpsert = units;
+      let milestoneIncomplete: string | undefined;
+      if (bestEffort && units.length > 0) {
+        const projectIds = uniquePositiveIds(units.map(unit => unit.projectId));
+        const presentProjects = await selectExistingIds('projects', projectIds);
+        unitsToUpsert = units.filter(unit =>
+          presentProjects.has(unit.projectId),
+        );
+        const skippedCount = units.length - unitsToUpsert.length;
+        if (skippedCount > 0) {
+          milestoneIncomplete = `Skipped ${skippedCount} milestone(s) — missing project parents`;
+          log.warn('Warm milestone sync withheld FK-unsafe units', {
+            skippedCount,
+            readyCount: unitsToUpsert.length,
+          });
+        }
+      }
+
+      await upsertProjectUnits(unitsToUpsert);
+      // Reconcile against the full confirmed server id list so withheld units
+      // that already exist locally are not deleted as "stale".
       await reconcileUserMilestones(
         userId,
         units.map(unit => unit.id),
       );
 
+      if (milestoneIncomplete) {
+        setSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS, milestoneIncomplete);
+        return { milestoneIncomplete };
+      }
+
       clearSyncError(KV_KEYS.SYNC_ERROR_PROJECT_UNITS);
-      return;
+      return {};
     } catch (error) {
       const errorMessage = getErrorMessage(error);
 
@@ -429,7 +888,7 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
           'Milestone endpoint unavailable; continuing without milestone ingest',
           { userId },
         );
-        return;
+        return {};
       }
 
       if (attempt < MAX_SYNC_ATTEMPTS && isRetryableApiError(error)) {
@@ -447,9 +906,10 @@ export async function syncMilestones(userId: number, sessionToken?: string) {
         error: errorMessage,
         userId,
       });
-      return;
+      return {};
     }
   }
+  return {};
 }
 
 export async function syncPendingChapterClaimsForUser(userId: number) {
@@ -494,13 +954,39 @@ export async function syncPendingChapterClaimsForUser(userId: number) {
   }
 }
 
+export async function syncPendingStageAdvancesForUser(
+  userId: number,
+  token?: string,
+) {
+  const { isOnline } = await getConnectivitySnapshot();
+  if (!isOnline) {
+    return { synced: 0, dropped: 0, failed: 0 };
+  }
+
+  try {
+    return await syncPendingStageAdvances(userId, token);
+  } catch (error) {
+    if (isAuthError(error)) {
+      await handleSyncAuthFailure(String(userId));
+      throw error;
+    }
+    log.warn('Stage-advance sync failed; leaving rows pending', {
+      userId,
+      error: getErrorMessage(error),
+    });
+    return { synced: 0, dropped: 0, failed: 1 };
+  }
+}
+
 export async function syncChapterAssignments(
   userId: number,
   updatedAfter?: string,
   excludeProjectIds?: number[],
   sessionToken?: string,
+  options?: { seedFkParentsBestEffort?: boolean },
 ): Promise<{ syncedAt?: string; partialSkipWarning?: string }> {
   let partialSkipWarning: string | undefined;
+  const bestEffort = options?.seedFkParentsBestEffort === true;
   const result = await retrySyncStep(
     'Chapter assignment sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
@@ -510,8 +996,10 @@ export async function syncChapterAssignments(
         userId,
         updatedAfter,
         excludeProjectIds,
+        bestEffort,
       });
 
+      const pullRevision = getChapterAssignmentPullRevision();
       const response = await FluentAPI.getChapterAssignments(
         userId,
         updatedAfter,
@@ -532,22 +1020,34 @@ export async function syncChapterAssignments(
 
       if (allAssignments.length > 0) {
         const { insertedCount, skipped } =
-          await insertChapterAssignmentSyncData(allAssignments);
+          await insertChapterAssignmentSyncData(allAssignments, pullRevision);
         if (insertedCount === 0) {
-          throw new Error(
-            `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
-          );
-        }
-        if (skipped.length > 0) {
+          const allSkipped = `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`;
+          if (bestEffort) {
+            // Warm path: continue to My Work / pericopes with truthful warning.
+            partialSkipWarning = allSkipped;
+          } else {
+            throw new Error(allSkipped);
+          }
+        } else if (skipped.length > 0) {
           partialSkipWarning = `Skipped ${skipped.length} of ${allAssignments.length} chapter assignment(s) — missing FK parents`;
         }
-        await insertUserProjects(userId, [
+
+        const candidateProjectIds = [
           ...new Set(
             allAssignments
               .map((assignment: { projectId: number }) => assignment.projectId)
               .filter(id => Number.isFinite(id) && id > 0),
           ),
-        ]);
+        ];
+        // Warm: never INSERT user_projects for projects withheld by parent seed
+        // (FK). Strict login keeps prior all-candidate behavior.
+        const membershipProjectIds = bestEffort
+          ? [...(await selectExistingIds('projects', candidateProjectIds))]
+          : candidateProjectIds;
+        if (membershipProjectIds.length > 0) {
+          await insertUserProjects(userId, membershipProjectIds);
+        }
         const db = getDatabase();
         const countResult = await db.execute(
           'SELECT COUNT(*) as count FROM chapter_assignments',
@@ -560,6 +1060,7 @@ export async function syncChapterAssignments(
           fetched: allAssignments.length,
           inserted: insertedCount,
           skipped: skipped.length,
+          membershipProjects: membershipProjectIds.length,
         });
       } else {
         log.info('No chapter assignment changes');
@@ -575,13 +1076,18 @@ export async function syncChapterAssignments(
 async function syncUserChapterWork(
   userId: number,
   sessionToken?: string,
-): Promise<{ partialSkipWarning?: string }> {
+  options?: SeedFkParentsWorkOptions,
+): Promise<{ partialSkipWarning?: string; parentSeedIncomplete?: string }> {
   let partialSkipWarning: string | undefined;
+  let parentSeedIncomplete: string | undefined;
+  const bestEffort = options?.seedFkParentsBestEffort === true;
   await retrySyncStep(
     'User chapter work sync',
     KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
     async () => {
       partialSkipWarning = undefined;
+      parentSeedIncomplete = undefined;
+      const pullRevision = getChapterAssignmentPullRevision();
       const response = await FluentAPI.getUserChapterAssignments(
         userId,
         sessionToken,
@@ -600,15 +1106,25 @@ async function syncUserChapterWork(
         : [];
       const mapped = [...assigned, ...peerCheck].map(mapApiChapterAssignment);
 
+      if (options?.seedFkParents && mapped.length > 0) {
+        const seed = await seedAssignmentMasterParents(mapped, sessionToken, {
+          bestEffort,
+        });
+        parentSeedIncomplete = seed.incompleteReason;
+      }
+
       if (mapped.length > 0) {
         const { insertedCount, skipped } =
-          await insertChapterAssignmentSyncData(mapped);
+          await insertChapterAssignmentSyncData(mapped, pullRevision);
         if (insertedCount === 0) {
-          throw new Error(
-            `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`,
-          );
-        }
-        if (skipped.length > 0) {
+          const allSkipped = `Skipped all ${skipped.length} chapter assignment(s) — missing FK parents`;
+          if (bestEffort) {
+            // Warm path: keep milestones/pericopes progress; report incomplete.
+            partialSkipWarning = allSkipped;
+          } else {
+            throw new Error(allSkipped);
+          }
+        } else if (skipped.length > 0) {
           partialSkipWarning = `Skipped ${skipped.length} of ${mapped.length} chapter assignment(s) — missing FK parents`;
         }
       }
@@ -627,7 +1143,7 @@ async function syncUserChapterWork(
     },
     String(userId),
   );
-  return { partialSkipWarning };
+  return { partialSkipWarning, parentSeedIncomplete };
 }
 
 function applyChapterAssignmentSkipWarning(
@@ -664,12 +1180,26 @@ async function syncChapterAssignmentsForUser(
   userId: number,
   updatedAfter?: string,
   sessionToken?: string,
+  options?: SeedFkParentsWorkOptions,
 ): Promise<{
   didFullSync: boolean;
   syncedAt?: string;
   partialSkipWarning?: string;
+  parentSeedIncomplete?: string;
 }> {
   const userIdStr = String(userId);
+  const workOptions: SeedFkParentsWorkOptions | undefined =
+    options?.seedFkParents
+      ? {
+          seedFkParents: true,
+          ...(options.seedFkParentsBestEffort
+            ? { seedFkParentsBestEffort: true }
+            : {}),
+        }
+      : undefined;
+  const catalogueOptions = options?.seedFkParentsBestEffort
+    ? { seedFkParentsBestEffort: true as const }
+    : undefined;
 
   const runFullProjectAssignments = async () => {
     const projectResult = await syncChapterAssignments(
@@ -677,17 +1207,36 @@ async function syncChapterAssignmentsForUser(
       undefined,
       undefined,
       sessionToken,
+      catalogueOptions,
     );
-    const workResult = await syncUserChapterWork(userId, sessionToken);
+    const workResult = await syncUserChapterWork(
+      userId,
+      sessionToken,
+      workOptions,
+    );
     const partialSkipWarning = applyChapterAssignmentSkipWarning(
       workResult.partialSkipWarning,
       projectResult.partialSkipWarning,
     );
+    const parentSeedIncomplete = workResult.parentSeedIncomplete;
+    if (parentSeedIncomplete) {
+      // Prefer assignment-skip text when both exist; otherwise surface seed gap.
+      if (!partialSkipWarning) {
+        setSyncError(
+          KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
+          parentSeedIncomplete,
+        );
+      }
+    }
     return {
-      // Withhold cursor advancement when skips remain so the next sync
-      // re-fetches instead of clearing the warning as a false recovery (#470).
-      syncedAt: partialSkipWarning ? undefined : projectResult.syncedAt,
+      // Withhold cursor advancement when skips/incomplete parent refresh remain
+      // so the next sync re-fetches instead of false recovery (#470).
+      syncedAt:
+        partialSkipWarning || parentSeedIncomplete
+          ? undefined
+          : projectResult.syncedAt,
       partialSkipWarning,
+      parentSeedIncomplete,
     };
   };
 
@@ -695,6 +1244,7 @@ async function syncChapterAssignmentsForUser(
     didFullSync: boolean;
     syncedAt?: string;
     partialSkipWarning?: string;
+    parentSeedIncomplete?: string;
   };
 
   if (!getUserLastSyncedAt(userIdStr)) {
@@ -702,8 +1252,8 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — user has no per-user sync cursor',
       { userId },
     );
-    const { syncedAt, partialSkipWarning } = await runFullProjectAssignments();
-    result = { didFullSync: true, syncedAt, partialSkipWarning };
+    const full = await runFullProjectAssignments();
+    result = { didFullSync: true, ...full };
   } else if (
     (updatedAfter && !(await userHasLocalChapterAssignments(userId))) ||
     (await userNeedsAssigneeRepair(userId))
@@ -712,24 +1262,40 @@ async function syncChapterAssignmentsForUser(
       'Forcing full chapter assignment sync — local assignments incomplete',
       { userId },
     );
-    const { syncedAt, partialSkipWarning } = await runFullProjectAssignments();
-    result = { didFullSync: true, syncedAt, partialSkipWarning };
+    const full = await runFullProjectAssignments();
+    result = { didFullSync: true, ...full };
   } else {
     const projectResult = await syncChapterAssignments(
       userId,
       updatedAfter,
       undefined,
       sessionToken,
+      catalogueOptions,
     );
-    const workResult = await syncUserChapterWork(userId, sessionToken);
+    const workResult = await syncUserChapterWork(
+      userId,
+      sessionToken,
+      workOptions,
+    );
     const partialSkipWarning = applyChapterAssignmentSkipWarning(
       workResult.partialSkipWarning,
       projectResult.partialSkipWarning,
     );
+    const parentSeedIncomplete = workResult.parentSeedIncomplete;
+    if (parentSeedIncomplete && !partialSkipWarning) {
+      setSyncError(
+        KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS,
+        parentSeedIncomplete,
+      );
+    }
     result = {
       didFullSync: !updatedAfter,
-      syncedAt: partialSkipWarning ? undefined : projectResult.syncedAt,
+      syncedAt:
+        partialSkipWarning || parentSeedIncomplete
+          ? undefined
+          : projectResult.syncedAt,
       partialSkipWarning,
+      parentSeedIncomplete,
     };
   }
 
@@ -747,17 +1313,26 @@ export type SyncBibleTextsOptions = {
    * texts already ran). Still counts as unscoped for server-id remap clear.
    */
   excludeChapterGroups?: BibleChapterGroup;
+  /**
+   * Known/eligible account ids whose `user_projects` membership scopes the
+   * full-catalogue chapter selection when `chapterGroups` is omitted.
+   */
+  eligibleUserIds?: number[];
 };
 
 export async function syncBibleTexts(
   updatedAfter?: string,
   options?: SyncBibleTextsOptions,
 ) {
+  let maxCommittedChunks = 0;
   return retrySyncStep(
     'Bible text sync',
     KV_KEYS.SYNC_ERROR_BIBLE_TEXTS,
     async () => {
       log.info('Syncing bible texts...');
+      // `chunks` here is already-committed chunk count from prior attempts.
+      startPhase(BIBLE_TEXT_PHASE.reentry).end({ chunks: maxCommittedChunks });
+      let committedThisAttempt = 0;
 
       // #469: one-shot full fetch after upgrade so local autoincrement ids remap.
       // Keep the KV flag until this step succeeds so a failed sync can retry.
@@ -770,7 +1345,35 @@ export async function syncBibleTexts(
         cursorForSync = undefined;
       }
 
-      const bibleGroups = options?.chapterGroups ?? (await getChaptersToSync());
+      // Bare UI callers (e.g. DraftingScreen ensure) omit eligibleUserIds — scope
+      // to the active account only. Multi-account syncAllUsers must pass the
+      // known-user union explicitly; do not fall back to snapshotKnownUserIds().
+      // getActiveUserId() returns '' when unset — reject before Number('') → 0.
+      const activeRaw = getActiveUserId();
+      const activeUserId = Number(activeRaw);
+      const defaultEligibleUserIds =
+        activeRaw !== '' && Number.isFinite(activeUserId) ? [activeUserId] : [];
+      // Remap clear is global after a successful getChaptersToSync pass — cover
+      // every known account's chapters (same union idea as syncAllUsers), not
+      // just eligibleUserIds / active-only. Scoped chapterGroups passes keep
+      // remap pending and do not use this path.
+      let catalogueEligibleUserIds =
+        options?.eligibleUserIds ?? defaultEligibleUserIds;
+      if (remapPending && !options?.chapterGroups) {
+        const knownUserIds = getKnownUserIds() ?? [];
+        const idsForRemap =
+          knownUserIds.length > 0
+            ? knownUserIds
+            : activeRaw !== ''
+            ? [activeRaw]
+            : [];
+        catalogueEligibleUserIds = idsForRemap
+          .map(id => Number(id))
+          .filter(id => Number.isFinite(id));
+      }
+      const bibleGroups =
+        options?.chapterGroups ??
+        (await getChaptersToSync(catalogueEligibleUserIds));
       // Tier 2 (#670): skip My Work chapters already fetched in Tier 1 without
       // switching to a scoped pass (scoped passes must not clear remap).
       if (!options?.chapterGroups && options?.excludeChapterGroups) {
@@ -815,6 +1418,7 @@ export async function syncBibleTexts(
       });
 
       let totalTextsInserted = 0;
+      const missingChapterFailures: string[] = [];
       const db = getDatabase();
 
       for (const [bibleId, chapters] of bibleGroups) {
@@ -831,31 +1435,53 @@ export async function syncBibleTexts(
           // for newly assigned chapters whose verses were never inserted locally.
           // Force a full chapter fetch when any chapter in the chunk has 0 verses.
           let cursor = cursorForSync;
+          let missingChapter = false;
           if (cursorForSync) {
-            for (const chapter of chunk) {
-              const countResult = await db.execute(
-                `SELECT COUNT(*) AS count FROM bible_texts
+            const countCheck = startPhase(BIBLE_TEXT_PHASE.countCheck);
+            try {
+              for (const chapter of chunk) {
+                const countResult = await db.execute(
+                  `SELECT COUNT(*) AS count FROM bible_texts
                  WHERE bible_id = ? AND book_id = ? AND chapter_number = ?`,
-                [bibleId, chapter.bookId, chapter.chapterNumber],
-              );
-              const count = Number(
-                (countResult.rows?.[0] as { count?: number } | undefined)
-                  ?.count ?? 0,
-              );
-              if (count === 0) {
-                log.warn(
-                  'Chapter missing local bible_texts; full-fetching without cursor',
-                  {
-                    bibleId,
-                    bookId: chapter.bookId,
-                    chapterNumber: chapter.chapterNumber,
-                  },
+                  [bibleId, chapter.bookId, chapter.chapterNumber],
                 );
-                cursor = undefined;
-                break;
+                const count = Number(
+                  (countResult.rows?.[0] as { count?: number } | undefined)
+                    ?.count ?? 0,
+                );
+                if (count === 0) {
+                  log.warn(
+                    'Chapter missing local bible_texts; full-fetching without cursor',
+                    {
+                      bibleId,
+                      bookId: chapter.bookId,
+                      chapterNumber: chapter.chapterNumber,
+                    },
+                  );
+                  missingChapter = true;
+                  cursor = undefined;
+                  break;
+                }
               }
+            } finally {
+              countCheck.end({
+                rows: chunk.length,
+                chunks: chunkIndex,
+                fullFetchReason: resolveBibleTextFullFetchReason(
+                  updatedAfter,
+                  remapPending,
+                  missingChapter,
+                ),
+              });
             }
           }
+
+          const isFullFetch = !cursor;
+          const fullFetchReason = resolveBibleTextFullFetchReason(
+            updatedAfter,
+            remapPending,
+            missingChapter,
+          );
 
           log.info('Fetching chunk', {
             bibleId,
@@ -864,40 +1490,141 @@ export async function syncBibleTexts(
             incremental: Boolean(cursor),
           });
 
-          const response = await FluentAPI.getBibleTexts(
-            bibleId,
-            chunk,
-            cursor,
-          );
+          const fetchParse = startPhase(BIBLE_TEXT_PHASE.fetchParse);
+          let books: ApiBook[];
+          let textsWithBibleId: Array<{
+            bibleId: number;
+            bookId: number;
+            chapterNumber: number;
+            verses: ReturnType<typeof mapBibleTextRow>[];
+          }> = [];
+          let chunkVerseCount = 0;
+          try {
+            try {
+              const response = await FluentAPI.getBibleTexts(
+                bibleId,
+                chunk,
+                cursor,
+              );
+              books = response.data;
+            } catch (error) {
+              if (shouldRethrowBibleTextFetchError(error)) {
+                throw error;
+              }
+              if (isFullFetch && isMissingBibleTextResource404(error)) {
+                for (const chapter of chunk) {
+                  missingChapterFailures.push(
+                    formatMissingBibleTextChapter(
+                      bibleId,
+                      chapter.bookId,
+                      chapter.chapterNumber,
+                      '404',
+                    ),
+                  );
+                }
+                log.warn(
+                  'Full bible text fetch returned 404; recording missing chapters',
+                  {
+                    bibleId,
+                    chunkIndex,
+                    chapterCount: chunk.length,
+                  },
+                );
+                continue;
+              }
+              throw error;
+            }
 
-          const books: ApiBook[] = response.data;
+            if (!Array.isArray(books)) {
+              throw new Error(
+                `Invalid bible text response for bible ${bibleId}`,
+              );
+            }
 
-          if (!Array.isArray(books)) {
-            throw new Error(`Invalid bible text response for bible ${bibleId}`);
+            if (isFullFetch) {
+              const returnedByKey = new Map<string, ApiBook>();
+              for (const book of books) {
+                returnedByKey.set(
+                  bibleChapterKey(book.bookId, book.chapterNumber),
+                  book,
+                );
+              }
+              for (const chapter of chunk) {
+                const returned = returnedByKey.get(
+                  bibleChapterKey(chapter.bookId, chapter.chapterNumber),
+                );
+                const hasVerses =
+                  returned !== undefined &&
+                  Array.isArray(returned.verses) &&
+                  returned.verses.length > 0;
+                if (!hasVerses) {
+                  missingChapterFailures.push(
+                    formatMissingBibleTextChapter(
+                      bibleId,
+                      chapter.bookId,
+                      chapter.chapterNumber,
+                      returned === undefined
+                        ? 'absent from full-fetch response'
+                        : 'empty verses',
+                    ),
+                  );
+                }
+              }
+            }
+
+            // Skip chapters with no verses before insert (full-fetch also records
+            // them as missing above).
+            const booksToInsert = books.filter(
+              (book: ApiBook) =>
+                Array.isArray(book.verses) && book.verses.length > 0,
+            );
+
+            textsWithBibleId = booksToInsert.map((book: ApiBook) => ({
+              bibleId,
+              bookId: book.bookId,
+              chapterNumber: book.chapterNumber,
+              verses: book.verses.map((verse: ApiVerse) =>
+                mapBibleTextRow(
+                  bibleId,
+                  book.bookId,
+                  book.chapterNumber,
+                  verse,
+                ),
+              ),
+            }));
+
+            chunkVerseCount = textsWithBibleId.reduce(
+              (count, book) => count + book.verses.length,
+              0,
+            );
+          } finally {
+            fetchParse.end({
+              rows: chunkVerseCount,
+              chunks: chunkIndex,
+              fullFetchReason,
+            });
           }
 
-          const textsWithBibleId = books.map((book: ApiBook) => ({
-            bibleId,
-            bookId: book.bookId,
-            chapterNumber: book.chapterNumber,
-            verses: book.verses.map((verse: ApiVerse) =>
-              mapBibleTextRow(bibleId, book.bookId, book.chapterNumber, verse),
-            ),
-          }));
-
-          await insertBibleTexts(textsWithBibleId);
-
-          const chunkVerseCount = textsWithBibleId.reduce(
-            (count, book) => count + book.verses.length,
-            0,
-          );
-          totalTextsInserted += chunkVerseCount;
-
-          log.info('Chunk synced', {
-            bibleId,
-            chunkIndex,
-            versesInserted: chunkVerseCount,
-          });
+          const write = startPhase(BIBLE_TEXT_PHASE.write);
+          try {
+            await insertBibleTexts(textsWithBibleId);
+            committedThisAttempt += 1;
+            if (committedThisAttempt > maxCommittedChunks) {
+              maxCommittedChunks = committedThisAttempt;
+            }
+            totalTextsInserted += chunkVerseCount;
+            log.info('Chunk synced', {
+              bibleId,
+              chunkIndex,
+              versesInserted: chunkVerseCount,
+            });
+          } finally {
+            write.end({
+              rows: chunkVerseCount,
+              chunks: chunkIndex,
+              fullFetchReason,
+            });
+          }
         }
       }
 
@@ -906,6 +1633,18 @@ export async function syncBibleTexts(
       );
       const uniqueBiblesCount = result.rows?.[0]?.count || 0;
       setSyncCount(KV_KEYS.SYNC_COUNT_BIBLES, Number(uniqueBiblesCount));
+
+      if (missingChapterFailures.length > 0) {
+        log.warn('Bible texts sync finished with missing chapters', {
+          textsInserted: totalTextsInserted,
+          uniqueBiblesInDb: uniqueBiblesCount,
+          missingChapterCount: missingChapterFailures.length,
+        });
+        throw new ApiError(
+          404,
+          `Missing bible text chapter(s): ${missingChapterFailures.join('; ')}`,
+        );
+      }
 
       log.info('Bible texts sync completed', {
         textsInserted: totalTextsInserted,
@@ -941,7 +1680,10 @@ export async function syncPericopeSets(sessionToken?: string) {
  * book missing from the bundle), call `GET /pericope-sets/{id}?bookCode=` with
  * `If-None-Match` against the KV book version (stored ETag).
  */
-export async function syncPericopes() {
+export async function syncPericopes(
+  sessionToken?: string,
+  failingUserId?: string,
+) {
   return retrySyncStep(
     'Pericope sync',
     KV_KEYS.SYNC_ERROR_PERICOPES,
@@ -1010,10 +1752,14 @@ export async function syncPericopes() {
             );
           }
 
-          const result = await FluentAPI.getPericopeSet(pericopeSetId, {
-            bookCode,
-            etag: storedBookVersion || null,
-          });
+          const result = await FluentAPI.getPericopeSet(
+            pericopeSetId,
+            {
+              bookCode,
+              etag: storedBookVersion || null,
+            },
+            sessionToken,
+          );
 
           if (result.status === 304) {
             log.info('Pericope book not modified (304)', {
@@ -1042,6 +1788,7 @@ export async function syncPericopes() {
         }
       }
     },
+    failingUserId,
   );
 }
 
@@ -1062,7 +1809,7 @@ type FullSyncEntry = {
 let latestFullSync: FullSyncEntry | null = null;
 
 function snapshotKnownUserIds(): Set<string> {
-  const known = getKnownUserIds();
+  const known = getKnownUserIds() ?? [];
   if (known.length > 0) return new Set(known);
   const activeUserId = getActiveUserId();
   return new Set(activeUserId ? [activeUserId] : []);
@@ -1251,7 +1998,7 @@ export async function syncAllUsers(): Promise<void> {
             : undefined;
 
           try {
-            await syncDisplayModeSettingsForUser(userId, token);
+            await refreshUserOrgGrants(userId, token);
             await syncProjects(userIdNum, token);
             await syncMilestones(userIdNum, token);
             const { didFullSync, partialSkipWarning } =
@@ -1260,6 +2007,10 @@ export async function syncAllUsers(): Promise<void> {
                 assignmentCursor,
                 token,
               );
+            // Drain after the pull so keep-lower writes are not overwritten
+            // once the pending-row upsert freeze is gone. Rows with pending
+            // takes stay queued until those uploads finish (#257).
+            await syncPendingStageAdvancesForUser(userIdNum, token);
             if (didFullSync) {
               anyUserDidFullAssignmentSync = true;
             }
@@ -1300,7 +2051,10 @@ export async function syncAllUsers(): Promise<void> {
             (deviceHasLocalProjects ? deviceLastSyncedAt : undefined);
 
         await syncPericopes();
-        await syncBibleTexts(bibleTextUpdatedAfter);
+        const eligibleUserIds = userIdsToSync
+          .map(id => Number(id))
+          .filter(id => Number.isFinite(id));
+        await syncBibleTexts(bibleTextUpdatedAfter, { eligibleUserIds });
 
         const userSyncCompletedAt = new Date().toISOString();
         for (const userId of usersPendingCursorUpdate) {
@@ -1369,6 +2123,7 @@ export async function syncAllData(
       try {
         let userId: number;
         let sessionToken: string | undefined;
+        let grantsRefreshPromise: Promise<void> | undefined;
         if (isIncremental) {
           const existingUserIdStr = getUserIdSync();
           if (!existingUserIdStr) throw new Error('No user ID found');
@@ -1380,6 +2135,12 @@ export async function syncAllData(
             throw new AuthError('No session token. Please sign in again.');
           }
           sessionToken = creds.token;
+          // Warm Sync Now: do not await grants before claims∥master (#771).
+          // Kick off refresh here; awaited alongside claims below.
+          grantsRefreshPromise = refreshUserOrgGrants(
+            existingUserIdStr,
+            sessionToken,
+          );
         } else {
           const user = await syncUser(email, preloadedUser);
           userId = user.id;
@@ -1401,21 +2162,24 @@ export async function syncAllData(
         const userAssignmentCursor =
           getUserLastSyncedAt(userIdStr) || undefined;
 
-        // Claims overlap master fetch; projects/assignments wait for FK parents.
-        // Full catalogue still runs in Tier 1 until fluent-api offers scoped
-        // master data (fluent-api#373 / #670 follow-up).
-        masterPromise = syncMasterData(sessionToken);
-        await syncPendingChapterClaimsForUser(userId);
-        await masterPromise;
-        await syncPericopeSets(sessionToken);
-        await syncDisplayModeSettingsForUser(userIdStr, sessionToken);
-        await syncProjects(userId, sessionToken);
-        await syncMilestones(userId, sessionToken);
-
         let assignmentPartialSkipWarning: string | undefined;
         let bibleTextUpdatedAfter: string | undefined;
 
         if (isIncremental) {
+          // Warm Sync Now: claims overlap master fetch; projects wait for both.
+          // Org-grant refresh runs with claims so getUserByEmail does not
+          // serialize ahead of the #771 overlap.
+          masterPromise = syncMasterData(sessionToken);
+          // grantsRefreshPromise is always assigned in the isIncremental branch above.
+          await Promise.all([
+            syncPendingChapterClaimsForUser(userId),
+            grantsRefreshPromise!,
+          ]);
+          await masterPromise;
+          await syncPericopeSets(sessionToken);
+          await syncProjects(userId, sessionToken);
+          await syncMilestones(userId, sessionToken);
+
           const assignmentCursor = userAssignmentCursor ?? lastSyncedAt;
           const { didFullSync, partialSkipWarning } =
             await syncChapterAssignmentsForUser(
@@ -1426,11 +2190,21 @@ export async function syncAllData(
           assignmentPartialSkipWarning = partialSkipWarning;
           bibleTextUpdatedAfter = didFullSync ? undefined : assignmentCursor;
           await syncPericopes();
-          await syncBibleTexts(bibleTextUpdatedAfter);
+          await syncBibleTexts(bibleTextUpdatedAfter, {
+            eligibleUserIds: [userId],
+          });
           notifyTier1Complete();
         } else if (localProjectIdsBefore.length === 0) {
-          // Tier 1 (#670): My Work assignments + texts only — unblock Home.
-          const workResult = await syncUserChapterWork(userId, sessionToken);
+          // Login Tier 1 (#679): seed only FK parents My Work needs — do not
+          // await the full world catalogue before Home unblocks.
+          await syncPendingChapterClaimsForUser(userId);
+          await syncPericopeSets(sessionToken);
+          await syncProjects(userId, sessionToken, { seedFkParents: true });
+          await syncMilestones(userId, sessionToken);
+
+          const workResult = await syncUserChapterWork(userId, sessionToken, {
+            seedFkParents: true,
+          });
           assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
             workResult.partialSkipWarning,
           );
@@ -1442,6 +2216,10 @@ export async function syncAllData(
             chapterGroups: myWorkChapterGroups,
           });
           notifyTier1Complete();
+
+          // Full master after Tier 1; await before Tier 2 assignment catalogue.
+          masterPromise = syncMasterData(sessionToken);
+          await masterPromise;
 
           // Tier 2: full project assignment catalogue + remaining bible texts.
           log.info('Login Tier 2: project assignments + remaining bible texts');
@@ -1463,13 +2241,19 @@ export async function syncAllData(
           // server-id remap can still clear after remaining + recording-linked.
           await syncBibleTexts(undefined, {
             excludeChapterGroups: myWorkChapterGroups,
+            eligibleUserIds: [userId],
           });
         } else {
-          // Re-login (#670): My Work assignments + texts first so Home is not
-          // blocked on a full assignment catalogue when there is no cursor.
-          // Omit excludeProjectIds: the API can return [] when every local
-          // project is excluded before checking newly assigned work.
-          const workResult = await syncUserChapterWork(userId, sessionToken);
+          // Re-login (#670/#679): My Work + scoped seeds first; full catalogue
+          // after Tier 1 so Home is not blocked on world languages/books/bibles.
+          await syncPendingChapterClaimsForUser(userId);
+          await syncPericopeSets(sessionToken);
+          await syncProjects(userId, sessionToken, { seedFkParents: true });
+          await syncMilestones(userId, sessionToken);
+
+          const workResult = await syncUserChapterWork(userId, sessionToken, {
+            seedFkParents: true,
+          });
           assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
             workResult.partialSkipWarning,
           );
@@ -1483,6 +2267,9 @@ export async function syncAllData(
             chapterGroups: myWorkChapterGroups,
           });
           notifyTier1Complete();
+
+          masterPromise = syncMasterData(sessionToken);
+          await masterPromise;
 
           // Tier 2: remaining assignment catalogue + texts (and pericopes for
           // chapters added by that catalogue pull).
@@ -1525,8 +2312,11 @@ export async function syncAllData(
             : userAssignmentCursor;
           await syncBibleTexts(bibleTextUpdatedAfter, {
             excludeChapterGroups: myWorkChapterGroups,
+            eligibleUserIds: [userId],
           });
         }
+
+        await syncPendingStageAdvancesForUser(userId, sessionToken);
 
         const now = new Date().toISOString();
         setLastSyncedAt(now);
@@ -1591,6 +2381,160 @@ const inFlightMetadataRefresh = new Map<number, Promise<void>>();
 /** Skip repeated full master-data pulls after a successful backfill this session. */
 let masterDataBackfilledThisSession = false;
 
+export type RefreshPrepareOfflineReferencedParentsResult =
+  | 'ok'
+  | 'offline'
+  | 'skipped'
+  | 'failed';
+
+function classifyPrepareOfflineParentRefreshFailure(error: unknown): {
+  classification: 'auth' | 'api' | 'type' | 'error' | 'unknown';
+  apiStatus?: number;
+} {
+  if (isAuthError(error)) {
+    return { classification: 'auth' };
+  }
+  if (isApiError(error)) {
+    const status = error.status;
+    const apiStatus =
+      Number.isInteger(status) &&
+      (status === 0 || (status >= 100 && status <= 599))
+        ? status
+        : undefined;
+    return {
+      classification: 'api',
+      ...(apiStatus !== undefined ? { apiStatus } : {}),
+    };
+  }
+  if (error instanceof TypeError) {
+    return { classification: 'type' };
+  }
+  if (error instanceof Error) {
+    return { classification: 'error' };
+  }
+  return { classification: 'unknown' };
+}
+
+/**
+ * Narrow Prepare Offline repair: gather by-id GETs for the current project's
+ * language parents and selected bible/book(+bible-language) ids, then one
+ * insertMasterData after an active-user recheck. Does not use the login/warm
+ * seed helpers' write path (those callers stay unchanged).
+ *
+ * Never claims, never syncProjects/reconcile, never bible-text/upload/download,
+ * never advances master-data watermarks. Offline / auth / membership misses do
+ * not throw — caller must not latch success except on `'ok'`.
+ */
+export async function refreshPrepareOfflineReferencedParents(params: {
+  userId: number;
+  projectId: number;
+  chapters: Array<{ bibleId: number; bookId: number }>;
+}): Promise<RefreshPrepareOfflineReferencedParentsResult> {
+  const { userId, projectId, chapters } = params;
+
+  try {
+    const { isOnline } = await getConnectivitySnapshot();
+    if (!isOnline) {
+      return 'offline';
+    }
+
+    const userIdStr = String(userId);
+    if (userIdStr !== getActiveUserId()) {
+      log.warn(
+        'Skipping Prepare Offline referenced-parent refresh — user is no longer active',
+        { userId, projectId },
+      );
+      return 'skipped';
+    }
+
+    const creds = await getCredentials(userIdStr);
+    if (!creds?.token) {
+      return 'failed';
+    }
+
+    const sessionToken = creds.token;
+    const response = await FluentAPI.getUserProjects(userId, sessionToken);
+    const raw = unwrapApiListResponse(response);
+    if (!Array.isArray(raw)) {
+      return 'failed';
+    }
+
+    const project = raw.map(mapApiProject).find(row => row.id === projectId);
+    if (!project) {
+      return 'skipped';
+    }
+
+    const projectLanguageIds = uniquePositiveIds([
+      project.sourceLanguageId ?? project.source_language_id,
+      project.targetLanguageId ?? project.target_language_id,
+    ]);
+    const bibleIds = uniquePositiveIds(chapters.map(ch => ch.bibleId));
+    const bookIds = uniquePositiveIds(chapters.map(ch => ch.bookId));
+
+    // Gather all required GETs first — no SQLite writes until the active-user
+    // recheck below (avoids cross-account upsert after account switch).
+    const [projectLanguages, books, bibles] = await Promise.all([
+      Promise.all(
+        projectLanguageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+      ),
+      Promise.all(bookIds.map(id => FluentAPI.getBook(id, sessionToken))),
+      Promise.all(bibleIds.map(id => FluentAPI.getBible(id, sessionToken))),
+    ]);
+
+    const projectLanguageIdSet = new Set(projectLanguageIds);
+    const bibleLanguageIds = uniquePositiveIds(
+      bibles.map(bible => bible.languageId),
+    ).filter(id => !projectLanguageIdSet.has(id));
+    const bibleLanguages =
+      bibleLanguageIds.length === 0
+        ? []
+        : await Promise.all(
+            bibleLanguageIds.map(id => FluentAPI.getLanguage(id, sessionToken)),
+          );
+
+    if (userIdStr !== getActiveUserId()) {
+      log.warn(
+        'Skipping Prepare Offline referenced-parent upsert — user changed during fetch',
+        { userId, projectId },
+      );
+      return 'skipped';
+    }
+
+    const languagesById = new Map(
+      [...projectLanguages, ...bibleLanguages]
+        .map(mapApiLanguage)
+        .map(language => [language.id, language] as const),
+    );
+
+    // Single transaction: languages before books before bibles.
+    await insertMasterData([...languagesById.values()], books, bibles);
+
+    if (userIdStr !== getActiveUserId()) {
+      log.warn(
+        'Skipping Prepare Offline referenced-parent ok — user changed during upsert',
+        { userId, projectId },
+      );
+      return 'skipped';
+    }
+
+    return 'ok';
+  } catch (error) {
+    if (isAuthError(error)) {
+      await handleSyncAuthFailure(String(userId));
+    }
+    const failure = classifyPrepareOfflineParentRefreshFailure(error);
+    log.warn('Prepare Offline referenced-parent refresh failed', {
+      userId,
+      projectId,
+      classification: failure.classification,
+      ...(failure.apiStatus !== undefined
+        ? { apiStatus: failure.apiStatus }
+        : {}),
+    });
+    return 'failed';
+  }
+}
+
 async function maybeBackfillMasterDataOnRefresh(
   sessionToken?: string,
 ): Promise<void> {
@@ -1650,19 +2594,50 @@ export async function refreshChapterMetadataIfOnline(
       await syncPendingChapterClaimsForUser(userId);
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
+      // NULL/blank ISO only — wrong non-empty codes need #679 by-id seed below.
       await maybeBackfillMasterDataOnRefresh(sessionToken);
-      await syncProjects(userId, sessionToken);
-      await syncMilestones(userId, sessionToken);
+      await refreshUserOrgGrants(userIdStr, sessionToken);
+      // Re-upsert project/assignment language+bible parents from live API so
+      // stale catalogue rows (wrong ISO / bible.language_id) cannot poison
+      // Prepare Offline manifests. Does not advance master cursors (#679).
+      // Warm-only best-effort: one 404/502 parent lookup must not abort
+      // milestones / assignments / pericopes (login Tier 1 stays strict).
+      const { parentSeedIncomplete: projectParentIncomplete } =
+        await syncProjects(userId, sessionToken, {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        });
+      const { milestoneIncomplete } = await syncMilestones(
+        userId,
+        sessionToken,
+        { bestEffort: true },
+      );
 
       const cursor = getUserLastSyncedAt(userIdStr) || undefined;
-      const { syncedAt } = await syncChapterAssignmentsForUser(
-        userId,
-        cursor,
-        sessionToken,
-      );
-      if (syncedAt) {
+      const {
+        syncedAt,
+        parentSeedIncomplete: assignmentParentIncomplete,
+        partialSkipWarning: assignmentSkipWarning,
+      } = await syncChapterAssignmentsForUser(userId, cursor, sessionToken, {
+        seedFkParents: true,
+        seedFkParentsBestEffort: true,
+      });
+      await syncPendingStageAdvancesForUser(userId, sessionToken);
+      // Incomplete parent/milestone/assignment refresh must not latch cursor.
+      if (
+        syncedAt &&
+        !projectParentIncomplete &&
+        !milestoneIncomplete &&
+        !assignmentParentIncomplete &&
+        !assignmentSkipWarning
+      ) {
         setUserLastSyncedAt(userIdStr, syncedAt);
       }
+      // New chapters from this light refresh need set-level pericope hydrate
+      // (#438 / #766). Warm All-synced sessions have no Sync Now; bible text
+      // already has a DraftingScreen ensure — pericopes must not wait for login.
+      // Pass the captured session token so unbundled set GETs keep #294 isolation.
+      await syncPericopes(sessionToken, userIdStr);
     } catch (error) {
       if (isAuthError(error)) {
         await handleSyncAuthFailure(String(userId));
@@ -1673,6 +2648,9 @@ export async function refreshChapterMetadataIfOnline(
       });
     } finally {
       inFlightMetadataRefresh.delete(userId);
+      // Home useSyncStatus resamples metadata sync_error_* on this event;
+      // refresh clears (or sets) those keys without bumping refreshKey.
+      emitSyncComplete();
     }
   })();
 

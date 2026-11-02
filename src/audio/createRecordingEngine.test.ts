@@ -225,4 +225,99 @@ describe('createRecordingEngine', () => {
     expect(releaseAudioMode).toHaveBeenCalledTimes(1);
     expect(engine.getStatus()).toBe('idle');
   });
+
+  it('returns idle and releases audio after native stop failure, then freshly prepares a retry', async () => {
+    const recorder = makeFakeRecorder();
+    const stopFailure = new Error('native stop failed');
+    const nativeStop = recorder.stop.bind(recorder);
+    recorder.stop = jest
+      .fn()
+      .mockRejectedValueOnce(stopFailure)
+      .mockImplementation(nativeStop);
+    const releaseAudioMode = jest.fn(async () => undefined);
+    const engine = createRecordingEngine({ recorder, releaseAudioMode });
+
+    await engine.start();
+    await expect(engine.stop()).rejects.toBe(stopFailure);
+    expect(engine.getStatus()).toBe('idle');
+    expect(releaseAudioMode).toHaveBeenCalledTimes(1);
+
+    await engine.start();
+    expect(recorder.calls).toEqual(['prepare', 'record', 'prepare', 'record']);
+    await expect(engine.stop()).resolves.toEqual({
+      uri: 'file:///mock-recording.m4a',
+      durationMs: 1250,
+    });
+    expect(releaseAudioMode).toHaveBeenCalledTimes(2);
+  });
+
+  it('retains the valid take result when best-effort audio release rejects', async () => {
+    const recorder = makeFakeRecorder();
+    const releaseAudioMode = jest
+      .fn()
+      .mockRejectedValue(new Error('mode reset failed'));
+    const engine = createRecordingEngine({ recorder, releaseAudioMode });
+
+    await engine.start();
+    await expect(engine.stop()).resolves.toEqual({
+      uri: 'file:///mock-recording.m4a',
+      durationMs: 1250,
+    });
+    expect(engine.getStatus()).toBe('idle');
+    expect(releaseAudioMode).toHaveBeenCalledTimes(1);
+  });
+
+  it('can resume and save after pausing without a recovery URI', async () => {
+    const recorder = makeFakeRecorder();
+    const engine = createRecordingEngine({ recorder });
+
+    await engine.start();
+    expect(recorder.uri).toBeNull();
+    await expect(engine.pause()).resolves.toBeNull();
+    expect(engine.getStatus()).toBe('paused');
+    expect(recorder.isRecording).toBe(false);
+
+    await engine.resume();
+    await expect(engine.stop()).resolves.toEqual({
+      uri: 'file:///mock-recording.m4a',
+      durationMs: 1250,
+    });
+    expect(recorder.calls).toEqual([
+      'prepare',
+      'record',
+      'pause',
+      'record',
+      'stop',
+    ]);
+  });
+
+  it('retries failed native preparation without publishing a phantom recording', async () => {
+    const recorder = makeFakeRecorder();
+    const prepareFailure = new Error('native prepare failed');
+    const nativePrepare = recorder.prepareToRecordAsync.bind(recorder);
+    recorder.prepareToRecordAsync = jest
+      .fn()
+      .mockRejectedValueOnce(prepareFailure)
+      .mockImplementation(nativePrepare);
+    const onStatusChange = jest.fn();
+    const prepareAudioMode = jest.fn(async () => undefined);
+    const engine = createRecordingEngine({
+      recorder,
+      prepareAudioMode,
+      onStatusChange,
+    });
+
+    await expect(engine.start()).rejects.toBe(prepareFailure);
+    expect(engine.getStatus()).toBe('idle');
+    expect(recorder.isRecording).toBe(false);
+    expect(onStatusChange).not.toHaveBeenCalled();
+    expect(recorder.calls).toEqual([]);
+
+    await engine.start();
+    expect(prepareAudioMode).toHaveBeenCalledTimes(2);
+    expect(recorder.prepareToRecordAsync).toHaveBeenCalledTimes(2);
+    expect(onStatusChange).toHaveBeenCalledTimes(1);
+    expect(onStatusChange).toHaveBeenCalledWith('recording');
+    await engine.stop();
+  });
 });

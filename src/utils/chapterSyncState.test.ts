@@ -14,4 +14,9 @@ describe('deriveChapterSyncState', () => {
     expect(deriveChapterSyncState(5, 0)).toBe('synced');
     expect(deriveChapterSyncState(1, 0)).toBe('synced');
   });
+
+  it('returns deviceOnly when a stage advance is still queued', () => {
+    expect(deriveChapterSyncState(4, 0, true)).toBe('deviceOnly');
+    expect(deriveChapterSyncState(0, 0, true)).toBe('deviceOnly');
+  });
 });

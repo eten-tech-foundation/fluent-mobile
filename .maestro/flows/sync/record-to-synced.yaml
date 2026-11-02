@@ -1,9 +1,12 @@
 # Record a take, Sync Now, assert Sync screen settles (upload path).
+# Mutating: requires MAESTRO_FIXTURE_CHAPTER_ID on an allowlisted project.
+# fixture-blocked keeps default lanes from running this without that fixture.
 appId: com.eten.fluent
 tags:
-  - smoke
   - sync
   - record
+  - mutating
+  - fixture-blocked
 ---
 - runFlow: ../../helpers/launch-android-mic-allow.yaml
 - runFlow: ../../helpers/boot-past-dev-launcher.yaml
@@ -13,7 +16,7 @@ tags:
     timeout: 180000
 - runFlow: ../../shared/auth/login-translator.yaml
 - runFlow: ../../shared/ensure/ensure-home-settled.yaml
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
 - runFlow: ../../shared/ensure/ensure-take-capacity.yaml
@@ -56,8 +59,13 @@ tags:
 - runFlow: ../../shared/nav/sync-now-and-return.yaml
 - assertVisible:
     id: 'home-tab-my-work'
+- runFlow: ../../shared/nav/goto-sync.yaml
+- assertNotVisible:
+    id: 'sync-action-sync-now'
+- assertNotVisible:
+    id: 'sync-metadata-error'
 # Cleanup: reopen chapter and delete the take we created when still present
-- runFlow: ../../shared/nav/open-any-chapter.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - tapOn:
     id: 'drafting-tab-record'
 - runFlow:

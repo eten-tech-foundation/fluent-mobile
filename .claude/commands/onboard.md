@@ -64,7 +64,9 @@ Confirm Expo MCP auth (same `mcp_auth` gate) before `npm run doctor` or other
 Expo commands.
 
 ```bash
+npm run format:check
 npm run lint
+npm run architecture-guard
 npm run typecheck
 npm test -- --ci
 npm run doctor          # after native-impacting / dependency changes

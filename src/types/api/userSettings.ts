@@ -1,6 +1,7 @@
 /**
  * Account settings for GET/PUT `/self/settings` (#754 / fluent-api#434).
- * Mobile owns `displayMode`; other keys (e.g. web suppressions) are opaque.
+ * Mobile keeps Verse/Pericope `displayMode` device-local per account (#777);
+ * it does not push/pull that key. Other keys (e.g. web suppressions) are opaque.
  */
 export type ApiDisplayMode = 'verse' | 'pericope';
 
@@ -11,7 +12,8 @@ export type ApiUserSettings = {
 
 /**
  * Response metadata from fluent-api#434 — not stored inside the settings blob.
- * Both flags must be strictly `true` before mobile issues a displayMode-only PUT.
+ * Capability flags may still appear on responses; mobile no longer gates or
+ * issues displayMode PUTs (#777).
  */
 export type SettingsCapabilities = {
   partialMerge?: boolean;

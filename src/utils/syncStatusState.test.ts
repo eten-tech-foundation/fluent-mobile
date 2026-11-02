@@ -95,6 +95,41 @@ describe('deriveSyncStatus', () => {
     ).toBe('online_needs_sync');
   });
 
+  it('returns online_needs_sync when online with metadata sync retry work and empty queues', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: true,
+        isSyncing: false,
+        hasPendingUploads: false,
+        hasSyncRetryWork: true,
+      }),
+    ).toBe('online_needs_sync');
+  });
+
+  it('returns online_needs_sync for reauth / expired-session retry work with empty queues', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: true,
+        isSyncing: false,
+        hasPendingUploads: false,
+        hasFailedUploads: false,
+        hasSyncRetryWork: true,
+      }),
+    ).toBe('online_needs_sync');
+  });
+
+  it('returns online_synced when queues empty and no retry work', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: true,
+        isSyncing: false,
+        hasPendingUploads: false,
+        needsDownloadSync: false,
+        hasSyncRetryWork: false,
+      }),
+    ).toBe('online_synced');
+  });
+
   it('prefers online_syncing over online_needs_sync when actively syncing', () => {
     expect(
       deriveSyncStatus({
@@ -129,6 +164,18 @@ describe('deriveSyncStatus', () => {
     ).toBe('online_failed');
   });
 
+  it('prefers online_failed over hasSyncRetryWork', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: true,
+        isSyncing: false,
+        hasPendingUploads: false,
+        hasFailedUploads: true,
+        hasSyncRetryWork: true,
+      }),
+    ).toBe('online_failed');
+  });
+
   it('returns offline_synced when offline even if download sync is needed', () => {
     expect(
       deriveSyncStatus({
@@ -136,6 +183,17 @@ describe('deriveSyncStatus', () => {
         isSyncing: false,
         hasPendingUploads: false,
         needsDownloadSync: true,
+      }),
+    ).toBe('offline_synced');
+  });
+
+  it('returns offline_synced when offline even with metadata sync retry work', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: false,
+        isSyncing: false,
+        hasPendingUploads: false,
+        hasSyncRetryWork: true,
       }),
     ).toBe('offline_synced');
   });

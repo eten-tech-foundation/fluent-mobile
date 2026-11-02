@@ -1,9 +1,16 @@
 # Home → Sync screen via header sync button.
 # Local Debug+Metro: Expo Dev Menu can steal the sync tap — dismiss and retry.
+# Maestro 2.10 can report the tap COMPLETED mid-activeOpacity while sync-screen
+# never mounts (#721): settle first and press the element centre via `point`
+# (element-relative, not device pixels). The retry loop stays as the fallback.
 appId: com.eten.fluent
+tags:
+  - ordered-readonly
 ---
 - runFlow: goto-home.yaml
 - runFlow: ../../helpers/dismiss-expo-dev-menu.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
 - repeat:
     times: 4
     while:
@@ -18,6 +25,7 @@ appId: com.eten.fluent
           commands:
             - tapOn:
                 id: 'home-sync-button'
+                point: '50%,50%'
       - waitForAnimationToEnd:
           timeout: 2000
 - extendedWaitUntil:

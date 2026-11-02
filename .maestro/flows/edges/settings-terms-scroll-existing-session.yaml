@@ -1,0 +1,78 @@
+# Terms of Use scrolling on an existing session, no auth changes.
+# The document title (inside the ScrollView) and final paragraph are anchored;
+# the final paragraph must start offscreen. If the content fits the viewport the
+# precondition fails (blocked fixture, not a product failure). Viewport is not
+# altered to force overflow. No acceptance/agree action.
+appId: com.eten.fluent
+tags:
+  - edges
+  - existing-session
+  - read-only
+  - ordered-readonly
+  - fixture-blocked
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- tapOn:
+    id: 'settings-menu-terms-of-use'
+- extendedWaitUntil:
+    visible:
+      id: 'terms-of-use-scroll'
+    timeout: 15000
+# The document title is separate from the fixed StackScreenHeader title.
+- assertVisible:
+    text: '^Terms of Use$'
+    childOf:
+      id: 'terms-of-use-scroll'
+# Hard overflow precondition; never skip or turn already-visible into a PASS.
+- assertNotVisible:
+    text: '^If AI services are provided by third parties, the processing of text data will comply with Fluent’s Privacy Policy, which describes what data may be transmitted and how it is protected\.$'
+    childOf:
+      id: 'terms-of-use-scroll'
+- scrollUntilVisible:
+    element:
+      text: '^If AI services are provided by third parties, the processing of text data will comply with Fluent’s Privacy Policy, which describes what data may be transmitted and how it is protected\.$'
+      childOf:
+        id: 'terms-of-use-scroll'
+    direction: DOWN
+    timeout: 20000
+- assertVisible:
+    text: '^If AI services are provided by third parties, the processing of text data will comply with Fluent’s Privacy Policy, which describes what data may be transmitted and how it is protected\.$'
+    childOf:
+      id: 'terms-of-use-scroll'
+- assertNotVisible:
+    text: '^Terms of Use$'
+    childOf:
+      id: 'terms-of-use-scroll'
+- assertVisible:
+    id: 'terms-of-use-scroll-back'
+- assertNotVisible:
+    id: 'login-email-input'
+- tapOn:
+    id: 'terms-of-use-scroll-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+# Verify retained active/cached identities without switching or authenticating.
+- tapOn:
+    id: 'home-settings-button'
+- extendedWaitUntil:
+    visible:
+      id: 'settings-drawer-content'
+    timeout: 15000
+- back
+- assertNotVisible:
+    id: 'settings-drawer-content'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

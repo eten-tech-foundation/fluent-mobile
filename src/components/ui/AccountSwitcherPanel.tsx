@@ -4,12 +4,12 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { theme, touchHitSlop } from '../../theme';
+import { touchHitSlop } from '../../theme';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import { authToken } from '../../services/authToken';
 import { Check, UserPlus, X } from 'lucide-react-native';
 import { getCredentials } from '../../services/keychain';
@@ -33,6 +33,8 @@ export function AccountSwitcherPanel({
   onClose,
 }: AccountSwitcherPanelProps) {
   const router = useRouter();
+  const theme = useTheme();
+  const styles = useStyles();
   const { notifyUserSwitched } = useAuthSession();
   const insets = useSafeAreaInsets();
   const { accounts, hasAccountLimit, loading } = useDeviceAccounts(visible);
@@ -43,7 +45,7 @@ export function AccountSwitcherPanel({
     () => ({
       paddingBottom: insets.bottom + theme.spacing.lg,
     }),
-    [insets.bottom],
+    [insets.bottom, theme.spacing.lg],
   );
 
   const handleOpenAddAccount = useCallback(() => {
@@ -214,145 +216,146 @@ export function AccountSwitcherPanel({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(10, 18, 40, 0.44)',
-  },
-  sheet: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: theme.radius.lg,
-    borderTopRightRadius: theme.radius.lg,
-    borderColor: theme.colors.border,
-    borderTopWidth: 1,
-  },
-  header: {
-    minHeight: 72,
-    paddingHorizontal: theme.spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  title: {
-    flex: 1,
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.foreground,
-    paddingRight: theme.spacing.md,
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: theme.radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  list: {
-    paddingTop: theme.spacing.xs,
-  },
-  loadingRow: {
-    minHeight: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  accountRow: {
-    minHeight: 100,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  accountRowActive: {
-    backgroundColor: '#F3F7FF',
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.primary,
-    paddingLeft: theme.spacing.md,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarActive: {
-    backgroundColor: '#2E5BD8',
-  },
-  avatarText: {
-    color: theme.colors.primaryForeground,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.bold,
-    letterSpacing: 0,
-  },
-  accountTextBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  accountName: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.foreground,
-  },
-  accountEmail: {
-    marginTop: 4,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.mutedForeground,
-  },
-  trailingPlaceholder: {
-    width: 24,
-    height: 24,
-  },
-  footer: {
-    paddingTop: theme.spacing.xs,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: theme.colors.border,
-  },
-  addRow: {
-    minHeight: 86,
-    paddingHorizontal: theme.spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  addIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.radius.full,
-    backgroundColor: '#F1F4FA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addRowText: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.foreground,
-  },
-  limitText: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.mutedForeground,
-    textAlign: 'center',
-  },
-  accountRowDisabled: {
-    opacity: 0.5,
-  },
-  errorBanner: {
-    marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-    padding: theme.spacing.sm,
-    borderRadius: theme.radius.md,
-    backgroundColor: '#FDECEC',
-  },
-  errorText: {
-    color: theme.colors.destructive,
-    fontSize: theme.typography.sizes.sm,
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    backdrop: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: theme.colors.drawerOverlay,
+    },
+    sheet: {
+      backgroundColor: theme.colors.background,
+      borderTopLeftRadius: theme.radius.lg,
+      borderTopRightRadius: theme.radius.lg,
+      borderColor: theme.colors.border,
+      borderTopWidth: 1,
+    },
+    header: {
+      minHeight: 72,
+      paddingHorizontal: theme.spacing.lg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    title: {
+      flex: 1,
+      fontSize: theme.typography.sizes.xl,
+      fontWeight: theme.typography.weights.bold,
+      color: theme.colors.foreground,
+      paddingRight: theme.spacing.md,
+    },
+    closeButton: {
+      width: 32,
+      height: 32,
+      borderRadius: theme.radius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    list: {
+      paddingTop: theme.spacing.xs,
+    },
+    loadingRow: {
+      minHeight: 120,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    accountRow: {
+      minHeight: 100,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.lg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    accountRowActive: {
+      backgroundColor: '#F3F7FF',
+      borderLeftWidth: 4,
+      borderLeftColor: theme.colors.primary,
+      paddingLeft: theme.spacing.md,
+    },
+    avatar: {
+      width: 56,
+      height: 56,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarActive: {
+      backgroundColor: '#2E5BD8',
+    },
+    avatarText: {
+      color: theme.colors.primaryForeground,
+      fontSize: theme.typography.sizes.lg,
+      fontWeight: theme.typography.weights.bold,
+      letterSpacing: 0,
+    },
+    accountTextBlock: {
+      flex: 1,
+      minWidth: 0,
+    },
+    accountName: {
+      fontSize: theme.typography.sizes.lg,
+      fontWeight: theme.typography.weights.semibold,
+      color: theme.colors.foreground,
+    },
+    accountEmail: {
+      marginTop: 4,
+      fontSize: theme.typography.sizes.md,
+      color: theme.colors.mutedForeground,
+    },
+    trailingPlaceholder: {
+      width: 24,
+      height: 24,
+    },
+    footer: {
+      paddingTop: theme.spacing.xs,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+    },
+    addRow: {
+      minHeight: 86,
+      paddingHorizontal: theme.spacing.lg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+    },
+    addIconCircle: {
+      width: 56,
+      height: 56,
+      borderRadius: theme.radius.full,
+      backgroundColor: '#F1F4FA',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addRowText: {
+      fontSize: theme.typography.sizes.lg,
+      fontWeight: theme.typography.weights.medium,
+      color: theme.colors.foreground,
+    },
+    limitText: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.lg,
+      fontSize: theme.typography.sizes.md,
+      color: theme.colors.mutedForeground,
+      textAlign: 'center',
+    },
+    accountRowDisabled: {
+      opacity: 0.5,
+    },
+    errorBanner: {
+      marginHorizontal: theme.spacing.lg,
+      marginBottom: theme.spacing.sm,
+      padding: theme.spacing.sm,
+      borderRadius: theme.radius.md,
+      backgroundColor: '#FDECEC',
+    },
+    errorText: {
+      color: theme.colors.destructive,
+      fontSize: theme.typography.sizes.sm,
+    },
+  }));

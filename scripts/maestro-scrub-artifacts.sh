@@ -43,5 +43,6 @@ done < <(find "${OUTPUT_DIR}" \( \
   -name '*.log' -o \
   -name 'manifest.json' -o \
   -name '*.txt' -o \
-  -name '*.json' \
+  -name '*.json' -o \
+  -name '*.xml' \
 \) -type f -print0 2>/dev/null)

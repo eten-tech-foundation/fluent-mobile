@@ -7,6 +7,7 @@ import { setUiVersion } from '../../services/userPreferences';
 import { legacyTheme, resolveTheme } from '../../theme';
 import { ColorModeScope } from '../../theme/useTheme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
+import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -37,6 +38,9 @@ function LatchingKey() {
   );
 }
 
+const renderWithPreferences = (ui: React.ReactElement) =>
+  render(ui, { wrapper: UiVersionPreferenceProvider });
+
 describe('Key', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -49,7 +53,7 @@ describe('Key', () => {
 
   it('stays sunk after a quick tap latches it (onPressOut after onPress)', () => {
     jest.useFakeTimers();
-    render(<LatchingKey />);
+    renderWithPreferences(<LatchingKey />);
     const button = screen.getByRole('button', { name: 'Play' });
 
     // Pressability keeps the onPressOut from press-in time and can call it
@@ -75,7 +79,7 @@ describe('Key', () => {
   });
 
   it('renders an accessible button that reports latched state', () => {
-    render(
+    renderWithPreferences(
       <Key
         icon={ColorIcon}
         accessibilityLabel="Play"
@@ -92,7 +96,7 @@ describe('Key', () => {
   });
 
   it('can skip announcing the latch when the label names the action', () => {
-    render(
+    renderWithPreferences(
       <Key
         icon={ColorIcon}
         accessibilityLabel="Pause"
@@ -108,7 +112,7 @@ describe('Key', () => {
 
   it('calls onPress and fires the press haptic on press-in', () => {
     const onPress = jest.fn();
-    render(
+    renderWithPreferences(
       <Key icon={ColorIcon} accessibilityLabel="Play" onPress={onPress} />,
     );
 
@@ -122,7 +126,7 @@ describe('Key', () => {
 
   it('ignores presses and reports disabled when disabled', () => {
     const onPress = jest.fn();
-    render(
+    renderWithPreferences(
       <Key
         icon={ColorIcon}
         accessibilityLabel="Play"
@@ -142,7 +146,7 @@ describe('Key', () => {
   });
 
   it('fades only the icon when disabled, keeping the key solid', () => {
-    render(
+    renderWithPreferences(
       <Key icon={ColorIcon} accessibilityLabel="Play" disabled testID="k" />,
     );
 
@@ -163,7 +167,7 @@ describe('Key', () => {
       setUiVersion('next');
     });
     for (const mode of ['canvas', 'hardware', 'accent'] as const) {
-      const { unmount } = render(
+      const { unmount } = renderWithPreferences(
         <ColorModeScope value={mode}>
           <Key icon={ColorIcon} accessibilityLabel="Play" disabled />
         </ColorModeScope>,
@@ -178,7 +182,7 @@ describe('Key', () => {
 
   it('fades fg/primary over fg/secondary as the key goes down', () => {
     jest.useFakeTimers();
-    const { rerender } = render(
+    const { rerender } = renderWithPreferences(
       <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" />,
     );
     const [restIcon, downIcon] = screen.getAllByTestId('key-icon');
@@ -199,13 +203,23 @@ describe('Key', () => {
     });
   });
 
-  it('follows the Next Hardware roles when the UI version is Next', () => {
-    render(<Key icon={ColorIcon} accessibilityLabel="Play" />);
-
-    act(() => {
-      setUiVersion('next');
-    });
-
-    expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent('#5E5E5A');
+  it('follows independently scoped Next roles and returns to Legacy at runtime', () => {
+    const roles = resolveTheme('next').roles as { fgSecondary: string };
+    const original = roles.fgSecondary;
+    try {
+      roles.fgSecondary = '#123456';
+      renderWithPreferences(<Key icon={ColorIcon} accessibilityLabel="Play" />);
+      expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(
+        legacyTheme.roles.fgSecondary,
+      );
+      act(() => setUiVersion('next'));
+      expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent('#123456');
+      act(() => setUiVersion('legacy'));
+      expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(
+        legacyTheme.roles.fgSecondary,
+      );
+    } finally {
+      roles.fgSecondary = original;
+    }
   });
 });

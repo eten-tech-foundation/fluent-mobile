@@ -9,7 +9,11 @@ import { useSyncStatus } from './useSyncStatus';
 import { useGlobalSyncStatus } from './useGlobalSyncStatus';
 import { useReauthRequired } from './useReauthRequired';
 import { launchRecoveryGate } from '../services/launchRecoveryGate';
-import { onSyncComplete, onSyncStart } from '../services/syncEvents';
+import {
+  onSyncComplete,
+  onSyncStart,
+  onUploadSessionEvent,
+} from '../services/syncEvents';
 import { getPrepareOfflineDownloadStarted } from '../services/storage';
 import { isEffectivelyOnlineForTransfer } from '../utils/transportPolicy';
 import { createPrepareOfflineAutoPromptController } from '../utils/prepareOfflineAutoPrompt';
@@ -170,9 +174,18 @@ export function useHomeSyncState({
       setIsSyncingLocal(true);
     });
 
+    // Upload session `complete` fires after the stage-advance drain, so Home
+    // can refresh chapter lists without navigating away and back (#257).
+    const unsubscribeUpload = onUploadSessionEvent(event => {
+      if (event.type === 'complete') {
+        setRefreshKey(key => key + 1);
+      }
+    });
+
     return () => {
       unsubscribeComplete();
       unsubscribeStart();
+      unsubscribeUpload();
     };
   }, [autoPrompt]);
 

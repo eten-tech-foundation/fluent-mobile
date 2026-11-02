@@ -1,0 +1,9 @@
+# Regrant mic and notifications without wiping the signed-in session.
+appId: com.eten.fluent
+---
+- launchApp:
+    clearState: false
+    permissions:
+      microphone: allow
+      notifications: allow
+- runFlow: open-metro-deeplink.yaml

@@ -10,9 +10,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
-import { theme } from '../../theme';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import {
-  headerLayout,
   iconSizes,
   listIconStrokeWidth,
   touchHitSlop,
@@ -20,24 +19,6 @@ import {
 import { useHeaderSafeAreaPadding } from './useHeaderSafeAreaPadding';
 
 export type AppHeaderTone = 'primary' | 'surface' | 'plain';
-
-const TONE = {
-  primary: {
-    backgroundColor: theme.colors.primary,
-    titleColor: theme.colors.primaryForeground,
-    statusBar: 'light-content' as const,
-  },
-  surface: {
-    backgroundColor: theme.colors.cardBackground,
-    titleColor: theme.colors.foreground,
-    statusBar: 'dark-content' as const,
-  },
-  plain: {
-    backgroundColor: theme.colors.background,
-    titleColor: theme.colors.foreground,
-    statusBar: 'dark-content' as const,
-  },
-} as const;
 
 interface HeaderBackButtonProps {
   onPress: () => void;
@@ -49,10 +30,12 @@ interface HeaderBackButtonProps {
 /** Shared chevron back control for all app headers. */
 export function HeaderBackButton({
   onPress,
-  color = theme.colors.foreground,
+  color,
   testID,
   activeOpacity = 0.7,
 }: HeaderBackButtonProps) {
+  const theme = useTheme();
+  const styles = useStyles();
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -65,7 +48,7 @@ export function HeaderBackButton({
     >
       <ChevronLeft
         size={iconSizes.header}
-        color={color}
+        color={color ?? theme.colors.foreground}
         strokeWidth={listIconStrokeWidth}
       />
     </TouchableOpacity>
@@ -104,7 +87,26 @@ export function AppHeader({
   style,
 }: AppHeaderProps) {
   const headerPadding = useHeaderSafeAreaPadding();
-  const palette = TONE[tone];
+  const theme = useTheme();
+  const styles = useStyles();
+  const palettes = {
+    primary: {
+      backgroundColor: theme.colors.primary,
+      titleColor: theme.colors.primaryForeground,
+      statusBar: 'light-content' as const,
+    },
+    surface: {
+      backgroundColor: theme.colors.cardBackground,
+      titleColor: theme.colors.foreground,
+      statusBar: 'dark-content' as const,
+    },
+    plain: {
+      backgroundColor: theme.colors.background,
+      titleColor: theme.colors.foreground,
+      statusBar: 'dark-content' as const,
+    },
+  } as const;
+  const palette = palettes[tone];
   const centered = titleAlign === 'center';
 
   const titleNode =
@@ -167,76 +169,77 @@ export function AppHeader({
   );
 }
 
-const styles = StyleSheet.create({
-  outer: {
-    paddingHorizontal: headerLayout.paddingHorizontal,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: headerLayout.minHeight,
-    gap: theme.spacing.md,
-  },
-  rowCentered: {
-    position: 'relative',
-    justifyContent: 'space-between',
-    gap: 0,
-  },
-  leading: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sideSlot: {
-    width: headerLayout.sideSlot,
-    height: headerLayout.sideSlot,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  trailingSlot: {
-    minWidth: headerLayout.sideSlot,
-    height: headerLayout.sideSlot,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: theme.spacing.md,
-    zIndex: 1,
-  },
-  trailing: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  /** Absolute only within the content row — below status-bar padding. */
-  centerOverlay: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  startTitle: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  titles: {
-    gap: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  titlesStart: {
-    alignItems: 'flex-start',
-    alignSelf: 'stretch',
-  },
-  title: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.bold,
-    includeFontPadding: false,
-  },
-  subtitle: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.mutedForeground,
-    includeFontPadding: false,
-  },
-  backButton: {
-    borderRadius: theme.radius.full,
-    padding: theme.spacing.xs,
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    outer: {
+      paddingHorizontal: theme.headerLayout.paddingHorizontal,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: theme.headerLayout.minHeight,
+      gap: theme.spacing.md,
+    },
+    rowCentered: {
+      position: 'relative',
+      justifyContent: 'space-between',
+      gap: 0,
+    },
+    leading: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sideSlot: {
+      width: theme.headerLayout.sideSlot,
+      height: theme.headerLayout.sideSlot,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1,
+    },
+    trailingSlot: {
+      minWidth: theme.headerLayout.sideSlot,
+      height: theme.headerLayout.sideSlot,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: theme.spacing.md,
+      zIndex: 1,
+    },
+    trailing: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    /** Absolute only within the content row — below status-bar padding. */
+    centerOverlay: {
+      ...StyleSheet.absoluteFill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    startTitle: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    titles: {
+      gap: 2,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    titlesStart: {
+      alignItems: 'flex-start',
+      alignSelf: 'stretch',
+    },
+    title: {
+      fontSize: theme.typography.sizes.lg,
+      fontWeight: theme.typography.weights.bold,
+      includeFontPadding: false,
+    },
+    subtitle: {
+      fontSize: theme.typography.sizes.xs,
+      color: theme.colors.mutedForeground,
+      includeFontPadding: false,
+    },
+    backButton: {
+      borderRadius: theme.radius.full,
+      padding: theme.spacing.xs,
+    },
+  }));

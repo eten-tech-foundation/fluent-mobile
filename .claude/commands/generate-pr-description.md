@@ -42,9 +42,11 @@ Every run **must** output a suggested title before the description block. Do not
    - Strip prefixes like `[Mobile App]`
    - Sentence case (first word capitalized; proper nouns unchanged)
    - Keep concise (~60 chars after colon); trim filler ("Implement", "Add support for") only if redundant with issue scope
-4. **Every change needs a GitHub issue number.** If none can be identified from
-   the branch or user message: **STOP** and request an issue number. Do not
-   generate a PR title (no “No ticket” / descriptive-prefix fallback).
+4. **Issue number or explicit no-ticket chore.** If none can be identified from
+   the branch or user message: **STOP** and request an issue number, **or**
+   confirm an in-session **no-ticket chore** (`Refs: none`, branch
+   `{author}/chore/{slug}`, plain title without `[#NNN]:`). Do not invent
+   `Refs: none` without that explicit ask.
 5. **Never** output a generic title like "Update files" or only the issue number with no description
 
 ### Title examples (this repo)
@@ -112,10 +114,12 @@ gh issue view <N> --repo eten-tech-foundation/fluent-mobile --json title,body   
 
 ## Quality checklist (pre-fill reminders)
 
-Tell reviewer these were run or should be run:
+Tell reviewer these were run or should be run (authoritative order in
+[`AGENTS.md`](../../AGENTS.md) / [commands.mdc](../../.cursor/rules/commands.mdc)):
 
 - `npm run format:check`
 - `npm run lint`
+- `npm run architecture-guard`
 - `npm run typecheck`
 - `npm test -- --ci`
 

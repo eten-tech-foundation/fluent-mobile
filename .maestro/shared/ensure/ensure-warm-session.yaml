@@ -1,0 +1,24 @@
+# App is already launched. Discard an unexpected Recovered recording alert,
+# log in only if the login screen is showing, then settle on Home.
+# The kill-recovery case must not use this helper: it asserts the alert.
+# Entry-only; never nest in ordered journeys. Discard and login mutate state,
+# and a `mutating` tag would make the non-recursive fixture guard block every
+# unpinned lane that scans .maestro/shared.
+appId: com.eten.fluent
+---
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- repeat:
+    times: 3
+    while:
+      visible: 'Recovered recording'
+    commands:
+      - tapOn: 'Discard'
+      - waitForAnimationToEnd:
+          timeout: 1000
+- runFlow:
+    when:
+      visible:
+        id: 'login-email-input'
+    commands:
+      - runFlow: ../auth/login-translator.yaml
+- runFlow: ensure-home-settled.yaml

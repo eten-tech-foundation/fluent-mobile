@@ -1,0 +1,38 @@
+# Home → Sync → Home for an already authenticated session.
+#
+# Preconditions (caller / operator):
+# - App process already running with a logged-in user.
+# - Home is reachable without login (unblocked Home, or only stack screens
+#   that `goto-home` can leave via Back / stack-header-back).
+# - Do NOT run clearState, cold launch helpers, or login flows for this case.
+#
+# Uses corrected `shared/nav/goto-sync.yaml` (waitForAnimationToEnd +
+# tapOn id + point: '50%,50%'). See
+# https://docs.maestro.dev/reference/commands-available/tapon
+#
+# State-safety note: `goto-sync` → `goto-home` → `ensure-no-modal` may dismiss
+# Prepare-for-Offline / Sync / drawer via back navigation. That recovers Home
+# without clearState or login, but it is NOT a claim of full UI-stack
+# immutability. It does not use `ensure-warm-session` (which can Discard
+# recovered-recording alerts and run login-translator).
+appId: com.eten.fluent
+tags:
+  - sync
+  - existing-session
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-sync.yaml
+- assertVisible:
+    id: 'sync-screen'
+# Row + Switch testIDs from SettingsToggleRow (do not toggle).
+- assertVisible:
+    id: 'sync-upload-cellular'
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- assertNotVisible:
+    id: 'login-email-input'

@@ -217,4 +217,85 @@ describe('useRecordingEngine', () => {
       allowsRecording: false,
     });
   });
+
+  it('uses the latest host background-pause callback without resubscribing or duplicating native pause', async () => {
+    let listener: ((state: string) => void) | undefined;
+    const remove = jest.fn();
+    const subscribe = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_event, callback) => {
+        listener = callback as (state: string) => void;
+        return { remove };
+      });
+    subscribe.mockClear();
+    const nativePause = jest.spyOn(recorder, 'pause');
+    const firstPause = jest.fn();
+    const latestPause = jest.fn();
+    const { result, rerender, unmount } = renderHook<
+      ReturnType<typeof useRecordingEngine>,
+      { onAutoPause: () => void }
+    >(({ onAutoPause }) => useRecordingEngine({ onAutoPause }), {
+      initialProps: { onAutoPause: firstPause },
+    });
+    await act(async () => {
+      await result.current.start();
+    });
+    rerender({ onAutoPause: latestPause });
+    act(() => {
+      listener?.('background');
+    });
+
+    expect(latestPause).toHaveBeenCalledTimes(1);
+    expect(firstPause).not.toHaveBeenCalled();
+    expect(nativePause).not.toHaveBeenCalled();
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      unmount();
+    });
+    expect(remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops a paused take on unmount and clears mic ownership and recording mode', async () => {
+    const { result, unmount } = renderHook(() => useRecordingEngine());
+    await act(async () => {
+      await result.current.start();
+      await result.current.pause();
+    });
+    expect(isMicActive()).toBe(true);
+    stopSpy.mockClear();
+    setAudioModeSpy.mockClear();
+
+    await act(async () => {
+      unmount();
+    });
+
+    expect(stopSpy).toHaveBeenCalledTimes(1);
+    expect(isMicActive()).toBe(false);
+    expect(setAudioModeSpy).toHaveBeenCalledTimes(1);
+    expect(setAudioModeSpy).toHaveBeenCalledWith({
+      playsInSilentMode: true,
+      allowsRecording: false,
+    });
+  });
+
+  it('clears mic ownership and retries audio-mode release if unmount native stop rejects', async () => {
+    const { result, unmount } = renderHook(() => useRecordingEngine());
+    await act(async () => {
+      await result.current.start();
+    });
+    stopSpy.mockRejectedValueOnce(new Error('native stop failed'));
+    setAudioModeSpy.mockClear();
+
+    await act(async () => {
+      unmount();
+    });
+
+    expect(stopSpy).toHaveBeenCalledTimes(1);
+    expect(isMicActive()).toBe(false);
+    expect(setAudioModeSpy).toHaveBeenCalledTimes(2);
+    expect(setAudioModeSpy.mock.calls).toEqual([
+      [{ playsInSilentMode: true, allowsRecording: false }],
+      [{ playsInSilentMode: true, allowsRecording: false }],
+    ]);
+  });
 });

@@ -1,27 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { syncAllUsers } from '../services/sync';
-import { getSyncState, getSyncError, KV_KEYS } from '../services/storage';
+import { getSyncState } from '../services/storage';
 import {
   onSyncComplete as subscribeSyncComplete,
   onUploadSessionEvent,
 } from '../services/syncEvents';
+import { getFailedMetadataSyncStepLabels } from '../utils/metadataSyncErrors';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useSync');
 
 export type SyncStateType = 'normal' | 'syncing' | 'never' | 'error';
-
-const SYNC_ERROR_STEPS = [
-  { key: KV_KEYS.SYNC_ERROR_USER, label: 'user' },
-  { key: KV_KEYS.SYNC_ERROR_MASTER_DATA, label: 'master data' },
-  { key: KV_KEYS.SYNC_ERROR_PROJECTS, label: 'projects' },
-  { key: KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS, label: 'chapter claims' },
-  { key: KV_KEYS.SYNC_ERROR_CHAPTER_ASSIGNMENTS, label: 'chapter assignments' },
-  { key: KV_KEYS.SYNC_ERROR_PROJECT_UNITS, label: 'project units' },
-  { key: KV_KEYS.SYNC_ERROR_BIBLE_TEXTS, label: 'bible texts' },
-  { key: KV_KEYS.SYNC_ERROR_PERICOPE_SETS, label: 'pericope sets' },
-  { key: KV_KEYS.SYNC_ERROR_PERICOPES, label: 'pericopes' },
-] as const;
 
 function getRelativeTime(isoTimestamp: string | undefined): string {
   if (!isoTimestamp) return 'Never synced';
@@ -37,14 +26,6 @@ function getRelativeTime(isoTimestamp: string | undefined): string {
   return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 }
 
-function getFailedSteps(): string[] {
-  const failed: string[] = [];
-  for (const { key, label } of SYNC_ERROR_STEPS) {
-    if (getSyncError(key)) failed.push(label);
-  }
-  return failed;
-}
-
 function buildDisplayText(isSyncing: boolean): {
   stateType: SyncStateType;
   displayText: string;
@@ -53,7 +34,7 @@ function buildDisplayText(isSyncing: boolean): {
     return { stateType: 'syncing', displayText: 'Syncing...' };
   }
 
-  const failedSteps = getFailedSteps();
+  const failedSteps = getFailedMetadataSyncStepLabels();
   if (failedSteps.length > 0) {
     return {
       stateType: 'error',

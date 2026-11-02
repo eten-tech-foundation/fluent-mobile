@@ -119,4 +119,26 @@ describe('isChapterTakenByOther', () => {
       ),
     ).toBe(false);
   });
+
+  it.each([
+    'community_review',
+    'linguist_check',
+    'theological_check',
+    'consultant_check',
+  ] as const)(
+    'returns false in %s even when another drafter/checker id is still set',
+    status => {
+      expect(
+        isChapterTakenByOther(
+          {
+            ...baseChapter,
+            status,
+            assignedUserId: 99,
+            peerCheckerId: 7,
+          },
+          currentUserId,
+        ),
+      ).toBe(false);
+    },
+  );
 });

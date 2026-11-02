@@ -1,0 +1,50 @@
+# Home My Work <-> Projects tab roundtrip on an already signed-in session.
+# Requires: logged-in app on Home with at least one Projects milestone row and
+# one My Work row. No login, clearState, or warm-session helpers.
+appId: com.eten.fluent
+tags:
+  - nav
+  - existing-session
+  - ordered-readonly
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertVisible:
+    id: 'home-tab-projects'
+
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'milestone-row-.*'
+    timeout: 60000
+- assertVisible:
+    id: 'milestone-row-.*'
+- assertNotVisible:
+    id: 'login-email-input'
+
+- tapOn:
+    id: 'home-tab-my-work'
+- extendedWaitUntil:
+    visible:
+      id: 'my-work-row-\d+$'
+    timeout: 60000
+- assertVisible:
+    id: 'my-work-row-\d+$'
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'
+
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'milestone-row-.*'
+    timeout: 60000
+- assertVisible:
+    id: 'milestone-row-.*'
+- assertNotVisible:
+    id: 'login-email-input'

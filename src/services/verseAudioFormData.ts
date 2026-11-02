@@ -87,6 +87,7 @@ export async function buildVerseAudioFormData(
         | 'startVerse'
         | 'endChapter'
         | 'endVerse'
+        | 'activate'
       >
     >,
 ): Promise<FormData> {
@@ -111,6 +112,10 @@ export async function buildVerseAudioFormData(
     Number.isFinite(params.baseVersionToken)
   ) {
     formData.append('baseVersionToken', String(params.baseVersionToken));
+  }
+
+  if (params.activate !== undefined) {
+    formData.append('activate', params.activate ? 'true' : 'false');
   }
 
   if (params.granularity === 'pericope') {
@@ -149,4 +154,13 @@ export function verseAudioUploadPath(
 /** Pericope / range upload path (fluent-api#377). */
 export function verseAudioRangeUploadPath(projectUnitId: number): string {
   return `/verse-audio/${projectUnitId}/range`;
+}
+
+/** Per-take delete (fluent-api#465 / #716). */
+export function verseAudioTakeDeletePath(
+  projectUnitId: number,
+  bibleTextId: number,
+  takeId: number,
+): string {
+  return `/verse-audio/${projectUnitId}/${bibleTextId}/takes/${takeId}`;
 }

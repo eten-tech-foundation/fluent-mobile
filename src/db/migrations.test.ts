@@ -8,6 +8,7 @@ import {
   rebuildTable,
   renameRecordingsIsLatestToIsSelected,
   scopeDownloadQueueIdentity,
+  backfillDownloadQueueReferenceImagesKind,
   restoreChapterAssignmentAssignedUserIntegrity,
   restoreUserProjectsUserIntegrity,
   runMigrations,
@@ -455,9 +456,20 @@ function createFakeDb(initialVersion = 0) {
       }
 
       if (/^UPDATE\s+download_queue\b/i.test(sql)) {
+        const dqTable = tables.get('download_queue');
+        if (dqTable && /SET kind = 'image'/i.test(sql)) {
+          for (const row of dqTable.rows) {
+            if (
+              row.resource_name === 'Reference Images' &&
+              row.kind === 'text'
+            ) {
+              row.kind = 'image';
+            }
+          }
+          return emptyResult();
+        }
         // v20 id rewrite: resource_id = id, then id = scoped id. Both
         // assignments read the OLD row values; guard makes it run once.
-        const dqTable = tables.get('download_queue');
         if (dqTable) {
           for (const row of dqTable.rows) {
             if (row.resource_id === null || row.resource_id === undefined) {
@@ -1404,5 +1416,140 @@ describe('download_queue scoped identity migration (#504)', () => {
   it('is a no-op when there is no download_queue table', async () => {
     const db = createFakeDb(19);
     await expect(scopeDownloadQueueIdentity(db)).resolves.not.toThrow();
+  });
+});
+
+describe('recording server take id + delete queue migration (#716)', () => {
+  it('baseline schema includes server_take_id and recording_deletions', () => {
+    const recordingsSql = createTableQueries.find(q =>
+      q.includes('CREATE TABLE IF NOT EXISTS recordings'),
+    );
+    expect(recordingsSql).toContain('server_take_id');
+    expect(
+      createTableQueries.some(q =>
+        q.includes('CREATE TABLE IF NOT EXISTS recording_deletions'),
+      ),
+    ).toBe(true);
+  });
+
+  it('adds server_take_id and creates recording_deletions when upgrading from v20', async () => {
+    const db = createFakeDb(20);
+    db._tables.set('recordings', {
+      columns: new Set(['id', 'bible_text_id', 'sync_status', 'updated_at']),
+      rows: [{ id: 'rec_1', bible_text_id: 10, sync_status: 'uploaded' }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await runMigrations(db);
+
+    expect(await columnExists(db, 'recordings', 'server_take_id')).toBe(true);
+    expect(db._tables.has('recording_deletions')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+    expect(CURRENT_SCHEMA_VERSION).toBe(23);
+  });
+});
+
+describe('download_queue Reference Images kind backfill (#417)', () => {
+  it('rewrites legacy text rows to image and leaves other kinds', async () => {
+    const db = createFakeDb(21);
+    db._tables.set('download_queue', {
+      columns: new Set(['id', 'kind', 'resource_name', 'resource_id']),
+      rows: [
+        {
+          id: '1-7-ref',
+          resource_id: 'ref',
+          kind: 'text',
+          resource_name: 'Reference Images',
+        },
+        {
+          id: '1-7-tn',
+          resource_id: 'tn',
+          kind: 'text',
+          resource_name: 'Translation Notes',
+        },
+        {
+          id: '1-7-img',
+          resource_id: 'img',
+          kind: 'image',
+          resource_name: 'Reference Images',
+        },
+      ],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await runMigrations(db);
+
+    const rows = db._tables.get('download_queue')!.rows;
+    expect(rows.find(row => row.resource_id === 'ref')?.kind).toBe('image');
+    expect(rows.find(row => row.resource_id === 'tn')?.kind).toBe('text');
+    expect(rows.find(row => row.resource_id === 'img')?.kind).toBe('image');
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('is a no-op when there is no download_queue table', async () => {
+    const db = createFakeDb(21);
+    await expect(
+      backfillDownloadQueueReferenceImagesKind(db),
+    ).resolves.not.toThrow();
+  });
+});
+
+describe('stage advance queue migration (#257)', () => {
+  it('includes stage_advance_queue in the baseline schema', () => {
+    const sql = createTableQueries.find(query =>
+      query.includes('CREATE TABLE IF NOT EXISTS stage_advance_queue'),
+    );
+    expect(sql).toBeDefined();
+    expect(sql).toContain('from_status');
+    expect(sql).toContain('to_status');
+    expect(sql).toContain('peer_checker_id');
+    expect(sql).toContain('REFERENCES chapter_assignments(id)');
+    expect(sql).toContain('REFERENCES users(id)');
+  });
+
+  it('creates stage_advance_queue when upgrading from v22', async () => {
+    const db = createFakeDb(22);
+
+    expect(db._tables.has('stage_advance_queue')).toBe(false);
+
+    await runMigrations(db);
+
+    expect(db._tables.has('stage_advance_queue')).toBe(true);
+    expect(db._indexes.has('idx_saq_chapter_assignment')).toBe(true);
+    expect(db._indexes.has('idx_saq_status')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('rejects INSERT that violates stage_advance_queue foreign keys', async () => {
+    const db = createFakeDb(22);
+    await runMigrations(db);
+    db._tables.set('users', {
+      columns: new Set(['id']),
+      rows: [{ id: 5 }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+    db._tables.set('chapter_assignments', {
+      columns: new Set(['id']),
+      rows: [{ id: 1 }],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+
+    await expect(
+      db.execute(
+        `INSERT INTO stage_advance_queue (chapter_assignment_id, user_id, from_status, to_status, peer_checker_id, created_at, sync_status)
+         VALUES (999, 5, 'draft', 'peer_check', NULL, '2026-10-22T00:00:00.000Z', 'pending')`,
+      ),
+    ).rejects.toThrow(/FOREIGN KEY constraint failed/);
+
+    await expect(
+      db.execute(
+        `INSERT INTO stage_advance_queue (chapter_assignment_id, user_id, from_status, to_status, peer_checker_id, created_at, sync_status)
+         VALUES (1, 5, 'draft', 'peer_check', NULL, '2026-10-22T00:00:00.000Z', 'pending')`,
+      ),
+    ).resolves.toBeDefined();
   });
 });

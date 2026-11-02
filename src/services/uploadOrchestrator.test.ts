@@ -45,6 +45,9 @@ function createHarness(options?: {
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
   getPendingUploadChapters?: UploadOrchestratorDeps['getPendingUploadChapters'];
   pushPendingClaimsBeforeUpload?: UploadOrchestratorDeps['pushPendingClaimsBeforeUpload'];
+  pushPendingStageAdvancesAfterUpload?: UploadOrchestratorDeps['pushPendingStageAdvancesAfterUpload'];
+  hasPendingStageAdvances?: UploadOrchestratorDeps['hasPendingStageAdvances'];
+  initialDraftingHold?: boolean;
 }) {
   let connListener: ConnListener | null = null;
   let prefListener: ((value: boolean) => void) | null = null;
@@ -174,9 +177,14 @@ function createHarness(options?: {
       };
     },
     pushPendingClaimsBeforeUpload: options?.pushPendingClaimsBeforeUpload,
+    pushPendingStageAdvancesAfterUpload:
+      options?.pushPendingStageAdvancesAfterUpload,
+    hasPendingStageAdvances: options?.hasPendingStageAdvances,
   };
 
-  const orchestrator = createUploadOrchestrator(deps);
+  const orchestrator = createUploadOrchestrator(deps, {
+    initialDraftingHold: options?.initialDraftingHold,
+  });
   orchestrator.start();
 
   return {
@@ -629,6 +637,162 @@ describe('uploadOrchestrator', () => {
     releaseClaims();
     await h.waitFor(() => h.uploaded.length === 1);
     expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 1 }]);
+  });
+
+  it('drains stage advances after claims and takes (#257)', async () => {
+    let releaseClaims!: () => void;
+    let releaseStage!: () => void;
+    const pushPendingClaimsBeforeUpload = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          releaseClaims = resolve;
+        }),
+    );
+    const pushPendingStageAdvancesAfterUpload = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          releaseStage = resolve;
+        }),
+    );
+    const h = createHarness({
+      pushPendingClaimsBeforeUpload,
+      pushPendingStageAdvancesAfterUpload,
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(
+      () => pushPendingClaimsBeforeUpload.mock.calls.length === 1,
+    );
+    await h.flush();
+    expect(pushPendingStageAdvancesAfterUpload).not.toHaveBeenCalled();
+    expect(h.uploaded).toEqual([]);
+
+    releaseClaims();
+    await h.waitFor(() => h.uploaded.length === 1);
+    await h.flush();
+    expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 1 }]);
+    await h.waitFor(
+      () => pushPendingStageAdvancesAfterUpload.mock.calls.length === 1,
+    );
+
+    releaseStage();
+    await h.flush();
+    expect(
+      pushPendingClaimsBeforeUpload.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      pushPendingStageAdvancesAfterUpload.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('uploads takes, then skips complete and schedules a retry when the stage drain rejects (#257)', async () => {
+    const pushPendingStageAdvancesAfterUpload = jest
+      .fn()
+      .mockRejectedValue(new Error('stage network'));
+    const h = createHarness({
+      pushPendingStageAdvancesAfterUpload,
+      chapters: [{ bookId: 3, chapterNumber: 2 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.uploaded.length === 1);
+    expect(pushPendingStageAdvancesAfterUpload).toHaveBeenCalledTimes(1);
+    expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 2 }]);
+    // Takes uploaded, but the failed stage drain skips `complete` and retries.
+    await h.flush();
+    expect(h.events.some(event => event.type === 'complete')).toBe(false);
+    expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+  });
+
+  it('drains stage advances on reconnect when no takes are pending (#257)', async () => {
+    const pushPendingClaimsBeforeUpload = jest
+      .fn()
+      .mockResolvedValue(undefined);
+    const pushPendingStageAdvancesAfterUpload = jest
+      .fn()
+      .mockResolvedValue(undefined);
+    const h = createHarness({
+      chapters: [],
+      hasPendingStageAdvances: async () => true,
+      pushPendingClaimsBeforeUpload,
+      pushPendingStageAdvancesAfterUpload,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+
+    expect(h.uploaded).toEqual([]);
+    expect(h.events.some(event => event.type === 'start')).toBe(false);
+    expect(pushPendingClaimsBeforeUpload).toHaveBeenCalledTimes(1);
+    expect(pushPendingStageAdvancesAfterUpload).toHaveBeenCalledTimes(1);
+    expect(
+      pushPendingClaimsBeforeUpload.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      pushPendingStageAdvancesAfterUpload.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('does not drain stages when the take queue and stage queue are both empty', async () => {
+    const pushPendingStageAdvancesAfterUpload = jest.fn();
+    const h = createHarness({
+      chapters: [],
+      hasPendingStageAdvances: async () => false,
+      pushPendingStageAdvancesAfterUpload,
+    });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(pushPendingStageAdvancesAfterUpload).not.toHaveBeenCalled();
+    expect(h.events.some(event => event.type === 'complete')).toBe(false);
+    expect(h.events.some(event => event.type === 'idle')).toBe(true);
+  });
+
+  it('does not emit complete until the stage-only drain finishes (#257)', async () => {
+    let releaseStage!: () => void;
+    const pushPendingStageAdvancesAfterUpload = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          releaseStage = resolve;
+        }),
+    );
+    const h = createHarness({
+      chapters: [],
+      hasPendingStageAdvances: async () => true,
+      pushPendingStageAdvancesAfterUpload,
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(
+      () => pushPendingStageAdvancesAfterUpload.mock.calls.length === 1,
+    );
+    expect(h.events.some(event => event.type === 'complete')).toBe(false);
+
+    releaseStage();
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+  });
+
+  it('retries a failed stage-only drain on reconnect (#257)', async () => {
+    const pushPendingStageAdvancesAfterUpload = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('stage network'))
+      .mockResolvedValueOnce(undefined);
+    const h = createHarness({
+      chapters: [],
+      hasPendingStageAdvances: async () => true,
+      pushPendingStageAdvancesAfterUpload,
+    });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(pushPendingStageAdvancesAfterUpload).toHaveBeenCalledTimes(1);
+    expect(h.events.some(event => event.type === 'complete')).toBe(false);
+    expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+
+    h.fireTimer(sessionRetryDelayMs(1));
+    await h.waitFor(() => h.events.some(event => event.type === 'complete'));
+    expect(pushPendingStageAdvancesAfterUpload).toHaveBeenCalledTimes(2);
   });
 
   it('still uploads when claim push rejects (#611 soft-continue)', async () => {
@@ -1545,4 +1709,97 @@ describe('uploadOrchestrator', () => {
       }
     },
   );
+
+  it('does not auto-upload while the drafting screen holds uploads', async () => {
+    const h = createHarness({ chapters: [] });
+    await h.orchestrator.setDraftingHold(true);
+    h.emitConnectivity(true, true);
+    await h.flush();
+
+    h.setChapters([{ bookId: 8, chapterNumber: 4 }]);
+    h.orchestrator.notifyPendingWork();
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([]);
+    expect(h.events.some(event => event.type === 'start')).toBe(false);
+  });
+
+  it('lets an in-flight upload finish when the drafting hold turns on', async () => {
+    const h = createHarness({
+      workerDelayMs: 40,
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+    });
+    h.emitConnectivity(true, true);
+    await h.waitFor(() => h.orchestrator.getSnapshot().phase === 'syncing');
+
+    await h.orchestrator.setDraftingHold(true);
+    await h.flush();
+    await h.flush();
+
+    expect(h.orchestrator.getSnapshot().phase).toBe('syncing');
+    await h.waitFor(() => h.uploaded.length === 1);
+    expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 1 }]);
+  });
+
+  it('starts the pending upload when the drafting hold lifts', async () => {
+    const h = createHarness({
+      chapters: [{ bookId: 3, chapterNumber: 2 }],
+    });
+    await h.orchestrator.setDraftingHold(true);
+    h.emitConnectivity(true, true);
+    await h.flush();
+    expect(h.uploaded).toEqual([]);
+
+    await h.orchestrator.setDraftingHold(false);
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 2 }]);
+  });
+
+  it('still uploads when syncNow runs during the drafting hold', async () => {
+    const h = createHarness({
+      chapters: [{ bookId: 4, chapterNumber: 1 }],
+    });
+    await h.orchestrator.setDraftingHold(true);
+    h.emitConnectivity(true, true);
+    await h.flush();
+
+    await h.orchestrator.syncNow();
+
+    expect(h.uploaded).toEqual([{ bookId: 4, chapterNumber: 1 }]);
+  });
+
+  it('keeps the hold when created with initialDraftingHold', async () => {
+    const h = createHarness({
+      chapters: [{ bookId: 8, chapterNumber: 1 }],
+      initialDraftingHold: true,
+    });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    h.orchestrator.notifyPendingWork();
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([]);
+    expect(h.events.some(event => event.type === 'start')).toBe(false);
+  });
+
+  it('keeps a 24h pause after the drafting hold lifts', async () => {
+    const h = createHarness({ chapters: [] });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.orchestrator.pause();
+    h.setChapters([{ bookId: 5, chapterNumber: 1 }]);
+
+    await h.orchestrator.setDraftingHold(true);
+    await h.orchestrator.setDraftingHold(false);
+    await h.flush();
+    await h.flush();
+
+    expect(h.getPausedUntilMs()).not.toBeNull();
+    expect(h.orchestrator.getSnapshot().phase).toBe('paused');
+    expect(h.uploaded).toEqual([]);
+  });
 });

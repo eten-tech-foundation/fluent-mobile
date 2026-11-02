@@ -1,7 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
-import { useNavigation, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused, useNavigation, useRouter } from 'expo-router';
 import { theme } from '../../theme';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { SettingsButton } from '../../components/ui/SettingsButton';
@@ -14,6 +13,9 @@ import { ReauthBanner } from '../../components/ui/ReauthBanner';
 import { useHomeSyncState } from '../../hooks/useHomeSyncState';
 import { hrefs } from '../../navigation/hrefs';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
+import { logger } from '../../utils/logger';
+
+const log = logger.create('HomeScreen');
 
 /** Drawer helpers on the `(app)` layout — not available on the nested stack nav. */
 type AppDrawerNavigation = {
@@ -28,10 +30,11 @@ export function HomeScreenBody({
   postLoginSyncActive: boolean;
   userSwitchEpoch: number;
 }) {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigation = useNavigation<AppDrawerNavigation>('/(app)');
+  const isFocused = useIsFocused();
   const [activeTab, setActiveTab] = useState<HomeTab>('myWork');
+  const syncPushLockRef = useRef(false);
   const {
     refreshKey,
     showLoading,
@@ -49,25 +52,42 @@ export function HomeScreenBody({
     navigation.openDrawer();
   };
 
+  useEffect(() => {
+    log.info('home showLoading flip', { showLoading });
+  }, [showLoading]);
+
+  useEffect(() => {
+    if (isFocused) {
+      syncPushLockRef.current = false;
+    }
+  }, [isFocused]);
+
   // CHANGED: was `triggerSync()`. Tapping the icon now navigates to the
   // Sync page instead of kicking off a sync directly (per #38 / #149).
-  const handleSyncPress = useCallback(() => {
-    router.push(hrefs.sync);
-  }, [router]);
+  // Keep the header mounted during settling (#721) so a mid-tap unmount
+  // cannot drop the press. Guard duplicate pushes while unfocused.
+  const handleSyncPressIn = useCallback(() => {
+    log.info('home sync onPressIn', { showLoading });
+  }, [showLoading]);
 
-  if (showLoading) {
-    return (
-      <ScreenContainer>
-        <View
-          style={[styles.loadingContainer, { paddingTop: insets.top }]}
-          testID="home-loading"
-        >
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Syncing data...</Text>
-        </View>
-      </ScreenContainer>
-    );
-  }
+  const handleSyncPress = useCallback(() => {
+    log.info('home sync onPress', { showLoading });
+    if (syncPushLockRef.current) {
+      log.info('home sync push skipped', { reason: 'duplicate' });
+      return;
+    }
+    syncPushLockRef.current = true;
+    log.info('home sync push before');
+    try {
+      router.push(hrefs.sync);
+      log.info('home sync push after');
+    } catch (error) {
+      syncPushLockRef.current = false;
+      log.warn('home sync push failed', {
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    }
+  }, [router, showLoading]);
 
   return (
     <ScreenContainer>
@@ -77,21 +97,34 @@ export function HomeScreenBody({
           <PageHeaderSyncButton
             syncStatus={syncStatus}
             failedErrorText={failedErrorText}
+            onPressIn={handleSyncPressIn}
             onPress={handleSyncPress}
           />
         }
       />
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
-      <View style={styles.content}>
-        {activeTab === 'myWork' ? (
-          <MyWorkTab refreshKey={refreshKey} isSyncing={isSyncingChapters} />
-        ) : (
-          <ProjectsTab refreshKey={refreshKey} />
-        )}
-      </View>
-      {reauthRequired ? (
-        <ReauthBanner onSignInAgain={handleReauthPress} />
-      ) : null}
+      {showLoading ? (
+        <View style={styles.loadingContainer} testID="home-loading">
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Syncing data...</Text>
+        </View>
+      ) : (
+        <>
+          <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+          <View style={styles.content}>
+            {activeTab === 'myWork' ? (
+              <MyWorkTab
+                refreshKey={refreshKey}
+                isSyncing={isSyncingChapters}
+              />
+            ) : (
+              <ProjectsTab refreshKey={refreshKey} />
+            )}
+          </View>
+          {reauthRequired ? (
+            <ReauthBanner onSignInAgain={handleReauthPress} />
+          ) : null}
+        </>
+      )}
     </ScreenContainer>
   );
 }

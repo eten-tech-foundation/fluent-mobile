@@ -42,6 +42,7 @@ pnpm-lock.yaml
 .env.*
 !.env.example
 !.env.maestro.example
+!.env.maestro.qa.example
 .envrc
 
 # Maestro E2E (local artifacts; flows under .maestro/ are committed)
@@ -50,6 +51,19 @@ pnpm-lock.yaml
 .maestro/**/screenshots/
 .maestro/**/*.png
 .maestro/**/*.mp4
+
+# qa717 live-log reader local artifacts (raw dumps, sanitized receipts, cursor)
+# Do not commit restricted raw logs or local checkpoint state/receipts.
+scripts/qa717-easy-ui-batch/**/raw-logcat.txt
+scripts/qa717-easy-ui-batch/**/raw-*.txt
+scripts/qa717-easy-ui-batch/**/receipts.jsonl
+scripts/qa717-easy-ui-batch/**/sanitized-receipts.jsonl
+scripts/qa717-easy-ui-batch/**/*.receipt.jsonl
+scripts/qa717-easy-ui-batch/**/cursor.json
+scripts/qa717-easy-ui-batch/**/cursor-state.json
+scripts/qa717-easy-ui-batch/**/*.cursor.json
+scripts/qa717-easy-ui-batch/**/__pycache__/
+scripts/qa717-easy-ui-batch/**/*.py[cod]
 
 # Expo CNG — native projects are generated locally and in CI
 .expo/
@@ -75,3 +89,23 @@ expo-env.d.ts
 .superpowers
 # Maestro CLI local --test-output-dir (may contain env in logs)
 test_output/
+
+# Local agent config (machine-specific — do not commit)
+.codex/
+# Generated Codex/Cursor wrappers that only point at .claude/commands —
+# do NOT blanket-ignore all of .agents/ (shared team skills may live there).
+/.agents/skills/source-command-*/
+
+# Nested local git worktrees
+/worktrees/
+
+# Local QA runtime evidence (device DB copies, Maestro logs, screenshots).
+# The 20261021 easy-ui-batch receipts are already tracked and stay committed.
+docs/assessments/**/run-evidence/*
+!docs/assessments/maestro-acceptance-coverage/run-evidence/20261021-easy-ui-batch/
+docs/assessments/**/*.db
+docs/assessments/**/*.db-shm
+docs/assessments/**/*.db-wal
+docs/assessments/**/*.sqlite
+docs/assessments/**/*.sqlite-shm
+docs/assessments/**/*.sqlite-wal

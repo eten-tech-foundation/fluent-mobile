@@ -8,6 +8,39 @@ import {
   PrepareOfflineResourceManifestItem,
   PrepareOfflineResourceStatus,
 } from '../types/prepareOffline/types';
+import { ApiError } from '../types/api/errors';
+import { logger } from '../utils/logger';
+
+const mockDiagnosticManifest = jest.fn();
+jest.mock('../db/queries.prepareOffline', () => ({
+  getPrepareOfflineProjectContext: async () => ({ sourceLanguageCode: 'eng' }),
+}));
+jest.mock('../services/prepareOfflineResources', () => ({
+  fetchPrepareOfflineManifestsBounded: async (
+    projectId: number,
+    contexts: unknown[],
+    signal?: AbortSignal,
+  ) => {
+    const items: unknown[] = [];
+    for (const ctx of contexts) {
+      if (signal?.aborted) {
+        const err = new Error('Aborted');
+        err.name = 'AbortError';
+        throw err;
+      }
+      const batch = await mockDiagnosticManifest(projectId, ctx);
+      items.push(...(batch as unknown[]));
+    }
+    return items;
+  },
+  refreshPrepareOfflineInventory: async () => undefined,
+  subscribePrepareOfflineInventory: () => () => undefined,
+}));
+jest.mock('../services/sync', () => ({
+  refreshPrepareOfflineReferencedParents: jest.fn(async () => 'ok'),
+  refreshChapterMetadataIfOnline: jest.fn(async () => undefined),
+  syncPendingChapterClaimsForUser: jest.fn(),
+}));
 
 const TEXT_BYTES = 1_000;
 const AUDIO_BYTES = 2_000;
@@ -333,5 +366,62 @@ describe('usePrepareOfflineResources', () => {
     });
 
     expect(result.current.isItemSelected('Translation Words:text')).toBe(true);
+  });
+});
+
+describe('Prepare Offline development failure diagnostic', () => {
+  it('logs only primitive allowlisted fields, preserves the error, and stays silent outside development', async () => {
+    const { usePrepareOfflineResourceData } = jest.requireActual(
+      './usePrepareOfflineResourceData',
+    );
+    const secret = 'PRIVATE_TOKEN_EMAIL_URL_BODY_STACK';
+    const error = new ApiError(502, secret, secret, { token: secret });
+    error.name = secret;
+    error.stack = secret;
+    const transport = jest.fn();
+    const previousDev = (globalThis as { __DEV__?: boolean }).__DEV__;
+    logger.setTransport(transport);
+    try {
+      for (const development of [true, false]) {
+        (globalThis as { __DEV__?: boolean }).__DEV__ = development;
+        transport.mockClear();
+        mockDiagnosticManifest.mockRejectedValue(error);
+        const { result, unmount } = renderHook(() =>
+          usePrepareOfflineResourceData(12, 10, [chapter(1)], new Set([1])),
+        );
+        await waitFor(() => expect(result.current.error).toBe(error));
+        expect(result.current.manifest).toEqual([]);
+        if (development) {
+          const failureCall = transport.mock.calls.find(
+            ([, , , context]) =>
+              (context as { event?: string }).event ===
+              'prepare_offline_manifest_failure',
+          );
+          expect(failureCall).toBeDefined();
+          const context = failureCall![3] as Record<string, unknown>;
+          expect(context).toEqual({
+            timestamp: expect.any(String),
+            event: 'prepare_offline_manifest_failure',
+            projectId: 12,
+            selectedChapterCount: 1,
+            exceptionName: 'ApiError',
+            classification: 'manifest',
+            apiStatus: 502,
+          });
+          expect(JSON.stringify(transport.mock.calls)).not.toContain(secret);
+          expect(
+            Object.values(context).every(value =>
+              ['string', 'number', 'boolean'].includes(typeof value),
+            ),
+          ).toBe(true);
+        } else {
+          expect(transport).not.toHaveBeenCalled();
+        }
+        unmount();
+      }
+    } finally {
+      (globalThis as { __DEV__?: boolean }).__DEV__ = previousDev;
+      logger.reset();
+    }
   });
 });

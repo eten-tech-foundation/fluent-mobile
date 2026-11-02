@@ -2,6 +2,7 @@ import { getDatabase } from './db';
 import { emitRecordingDataChanged } from '../services/recordingDataEvents';
 import { logger } from '../utils/logger';
 import type {
+  PendingRecordingDeletion,
   Recording,
   RecordingGranularity,
   RecordingRow,
@@ -132,6 +133,36 @@ function normalizeProjectUnitId(raw: unknown): number | null {
   if (raw === null || raw === undefined) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * SQL resolving the project unit a take uploads to: the capture unit when
+ * set, else the chapter's assignment unit only when exactly one unit is
+ * assigned (never guess across units). `bt` must alias the take's
+ * bible_texts row; `unitExpr` is the capture unit expression.
+ * `unitExpr` is substituted three times, so each `?` inside it must be
+ * bound three times, in order.
+ */
+export function uploadProjectUnitSql(unitExpr: string): string {
+  return `CASE
+         WHEN ${unitExpr} IS NOT NULL AND ${unitExpr} > 0
+           THEN ${unitExpr}
+         ELSE (
+           SELECT ca.project_unit_id
+           FROM chapter_assignments ca
+           WHERE ca.bible_id = bt.bible_id
+             AND ca.book_id = bt.book_id
+             AND ca.chapter_number = bt.chapter_number
+             AND (
+               SELECT COUNT(DISTINCT ca2.project_unit_id)
+               FROM chapter_assignments ca2
+               WHERE ca2.bible_id = bt.bible_id
+                 AND ca2.book_id = bt.book_id
+                 AND ca2.chapter_number = bt.chapter_number
+             ) = 1
+           LIMIT 1
+         )
+       END`;
 }
 
 export type VerseTakeView = {
@@ -273,8 +304,20 @@ async function clearOverlappingSelectedTakes(
     ) {
       continue;
     }
+    // #701: a take deselected after a selection-only sync marker (pending
+    // with bytes already on the server) goes back to 'uploaded' — only the
+    // latest selection is sent. Pending takes without blob_key stay pending
+    // (never uploaded); canonical keeps its own marker.
     await tx.execute(
-      `UPDATE recordings SET is_selected = 0, updated_at = ? WHERE id = ?`,
+      `UPDATE recordings
+       SET is_selected = 0,
+           sync_status = CASE
+             WHEN sync_status = 'pending' AND blob_key IS NOT NULL AND is_canonical = 0
+               THEN 'uploaded'
+             ELSE sync_status
+           END,
+           updated_at = ?
+       WHERE id = ?`,
       [now, row.id],
     );
   }
@@ -457,6 +500,7 @@ export async function verseHasMultipleRecorders(
   bibleTextId: number,
   recordedByUserId?: number | null,
   view?: VerseTakeView,
+  projectUnitId?: number | null,
 ): Promise<boolean> {
   const db = getDatabase();
   const ownerId = resolveRecordedByUserId(recordedByUserId);
@@ -465,11 +509,19 @@ export async function verseHasMultipleRecorders(
     ? `AND (bible_text_id = ? OR ${pericopeCoversViewSql()})`
     : 'AND bible_text_id = ?';
   const viewParams = view ? [bibleTextId, bibleTextId] : [bibleTextId];
+  // Match the take lists, including pre-#613 rows without a unit.
+  const hasUnit =
+    projectUnitId !== null &&
+    projectUnitId !== undefined &&
+    Number.isFinite(projectUnitId);
+  const unitSql = hasUnit
+    ? 'AND (project_unit_id IS NULL OR project_unit_id = ?)'
+    : '';
   const result = await db.execute(
     `SELECT COUNT(*) AS cnt
      FROM recordings
-     WHERE NOT (${owner.sql}) ${viewSql}`,
-    [...owner.params, ...viewParams],
+     WHERE NOT (${owner.sql}) ${viewSql} ${unitSql}`,
+    [...owner.params, ...viewParams, ...(hasUnit ? [projectUnitId] : [])],
   );
   const cnt = Number(
     (result.rows?.[0] as { cnt?: number } | undefined)?.cnt ?? 0,
@@ -501,20 +553,57 @@ export async function setCanonicalTake(id: string): Promise<void> {
     // Canonical is per unit: another unit's canonical take on the same bible
     // text must stay canonical (#613).
     const unit = projectUnitClause(normalizeProjectUnitId(row.project_unit_id));
+    // #701: the prior canonical take loses its selection-sync marker — with
+    // the PM rule (canonical is what syncs as the selected take), its bytes
+    // are on the server and a pending status would only re-send stale audio.
     await tx.execute(
-      `UPDATE recordings SET is_canonical = 0, updated_at = ?
+      `UPDATE recordings
+       SET is_canonical = 0,
+           sync_status = CASE
+             WHEN sync_status = 'pending' AND blob_key IS NOT NULL
+               THEN 'uploaded'
+             ELSE sync_status
+           END,
+           updated_at = ?
        WHERE bible_text_id = ? AND is_canonical = 1 AND ${unit.sql}`,
       [now, row.bible_text_id, ...unit.params],
     );
+    // #701: designation alone is a change that must sync (replaces #279,
+    // where canonical was sent only with the owning account's upload).
+    // 'conflicted' / 'failed' are left for their own retry flows.
     await tx.execute(
-      `UPDATE recordings SET is_canonical = 1, updated_at = ? WHERE id = ?`,
+      `UPDATE recordings
+       SET is_canonical = 1,
+           sync_status = CASE
+             WHEN sync_status = 'uploaded' THEN 'pending'
+             ELSE sync_status
+           END,
+           updated_at = ?
+       WHERE id = ?`,
       [now, id],
+    );
+    // #701 PM rule: canonical wins the server's selected-take slot. Other
+    // accounts' pending selection changes on this verse (+unit) are
+    // superseded — with bytes already on the server they clear to 'uploaded'
+    // instead of pending forever. Never-uploaded takes keep their marker
+    // (their audio is still local) but are deferred by the upload queries.
+    await tx.execute(
+      `UPDATE recordings
+       SET sync_status = 'uploaded',
+           updated_at = ?
+       WHERE bible_text_id = ? AND ${unit.sql}
+         AND is_canonical = 0 AND is_selected = 1
+         AND sync_status = 'pending' AND blob_key IS NOT NULL`,
+      [now, row.bible_text_id, ...unit.params],
     );
     applied = true;
   });
 
   if (applied) {
     log.info('Canonical take designated', { id });
+    // A designation can create a pending upload on its own (#701) — refresh
+    // pending/failed counts everywhere immediately.
+    emitRecordingDataChanged();
   }
 }
 /**
@@ -535,7 +624,7 @@ export async function selectRecordingTake(id: string): Promise<void> {
 
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
-      `SELECT id, bible_text_id, recorded_by_user_id, is_selected,
+      `SELECT id, bible_text_id, recorded_by_user_id, is_selected, blob_key,
               start_chapter, start_verse, end_chapter, end_verse, project_unit_id
        FROM recordings WHERE id = ?`,
       [id],
@@ -546,6 +635,7 @@ export async function selectRecordingTake(id: string): Promise<void> {
           bible_text_id: number;
           recorded_by_user_id: number | null;
           is_selected: number;
+          blob_key: string | null;
           start_chapter: number | null;
           start_verse: number | null;
           end_chapter: number | null;
@@ -572,6 +662,22 @@ export async function selectRecordingTake(id: string): Promise<void> {
 
     const owner = recordedByClause(row.recorded_by_user_id);
 
+    // #701 PM rule: the canonical take is what syncs as the server's
+    // selected take. While this verse (+unit) has a canonical take, a
+    // selection onto a take whose bytes are already on the server is
+    // superseded — no sync marker. Never-uploaded takes keep their pending
+    // marker (their audio still has to reach the server) but the upload
+    // queries defer them until the canonical designation moves.
+    const unit = projectUnitClause(normalizeProjectUnitId(row.project_unit_id));
+    const canonicalRows = await tx.execute(
+      `SELECT id FROM recordings
+       WHERE bible_text_id = ? AND is_canonical = 1 AND ${unit.sql}
+       LIMIT 1`,
+      [row.bible_text_id, ...unit.params],
+    );
+    const selectionSupersededByCanonical =
+      (canonicalRows.rows?.length ?? 0) > 0 && row.blob_key !== null;
+
     await clearOverlappingSelectedTakes(
       tx,
       owner,
@@ -583,8 +689,20 @@ export async function selectRecordingTake(id: string): Promise<void> {
       },
       now,
     );
+    // #701: moving the selection onto an already-uploaded take marks it
+    // pending so the next sync re-sends it and the server's active take
+    // follows. 'conflicted' / 'failed' are left for their own retry flows.
     await tx.execute(
-      `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,
+      selectionSupersededByCanonical
+        ? `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`
+        : `UPDATE recordings
+       SET is_selected = 1,
+           sync_status = CASE
+             WHEN sync_status = 'uploaded' THEN 'pending'
+             ELSE sync_status
+           END,
+           updated_at = ?
+       WHERE id = ?`,
       [now, id],
     );
     applied = true;
@@ -598,9 +716,50 @@ export async function selectRecordingTake(id: string): Promise<void> {
   }
 }
 
+/** Server take deletes queued by `deleteRecordingTake` (#716), oldest first. */
+export async function getPendingRecordingDeletions(): Promise<
+  PendingRecordingDeletion[]
+> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT id, project_unit_id, bible_text_id, server_take_id,
+            recorded_by_user_id
+     FROM recording_deletions
+     ORDER BY created_at ASC, id ASC`,
+  );
+  return (
+    (result.rows ?? []) as {
+      id: string;
+      project_unit_id: number;
+      bible_text_id: number;
+      server_take_id: number;
+      recorded_by_user_id: number | null;
+    }[]
+  ).map(row => ({
+    id: row.id,
+    projectUnitId: Number(row.project_unit_id),
+    bibleTextId: Number(row.bible_text_id),
+    serverTakeId: Number(row.server_take_id),
+    recordedByUserId:
+      row.recorded_by_user_id === null ? null : Number(row.recorded_by_user_id),
+  }));
+}
+
+/** Drop a queued server take delete once the server confirmed it (#716). */
+export async function clearRecordingDeletion(id: string): Promise<void> {
+  const db = getDatabase();
+  await db.execute(`DELETE FROM recording_deletions WHERE id = ?`, [id]);
+}
+
 /**
  * Delete a take by id. If it was selected, promote the highest remaining
- * `take_number` for that verse + owner (or leave none latest if empty).
+ * `take_number` for that verse + owner (or leave none latest if empty) and
+ * mark that promotion pending so the server's active take follows — unless a
+ * canonical take supersedes it on that verse (#701, same rule as
+ * `selectRecordingTake`).
+ *
+ * A take the server already holds (`server_take_id` set) is queued in
+ * `recording_deletions` so the next sync deletes the server copy (#716).
  *
  * No-ops (without error) if `id` doesn't exist or is owned by a different
  * user than the active account (#259). Unattributed rows
@@ -615,7 +774,8 @@ export async function deleteRecordingTake(id: string): Promise<void> {
   await db.transaction(async (tx: Transaction) => {
     const existing = await tx.execute(
       `SELECT bible_text_id, recorded_by_user_id, is_selected,
-              start_chapter, start_verse, end_chapter, end_verse, project_unit_id
+              start_chapter, start_verse, end_chapter, end_verse, project_unit_id,
+              server_take_id
        FROM recordings WHERE id = ?`,
       [id],
     );
@@ -629,6 +789,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
           end_chapter: number | null;
           end_verse: number | null;
           project_unit_id?: number | null;
+          server_take_id?: number | null;
         }
       | undefined;
     if (!row) {
@@ -657,6 +818,37 @@ export async function deleteRecordingTake(id: string): Promise<void> {
       'r.project_unit_id',
     );
 
+    const serverTakeId = Number(row.server_take_id);
+    if (Number.isInteger(serverTakeId) && serverTakeId > 0) {
+      // #716: the server copy is removed on the next sync. The recording id
+      // doubles as the queue id since the row is deleted below. No unit
+      // resolves (ambiguous chapter assignment) means nothing to target.
+      // Three copies: uploadProjectUnitSql substitutes the CAST(?) three times.
+      const projectUnitId = normalizeProjectUnitId(row.project_unit_id);
+      await tx.execute(
+        `INSERT OR REPLACE INTO recording_deletions
+           (id, project_unit_id, bible_text_id, server_take_id,
+            recorded_by_user_id, created_at)
+         SELECT ?, unit_id, ?, ?, ?, ?
+         FROM (
+           SELECT ${uploadProjectUnitSql('CAST(? AS INTEGER)')} AS unit_id
+           FROM bible_texts bt WHERE bt.id = ?
+         )
+         WHERE unit_id IS NOT NULL`,
+        [
+          id,
+          bibleTextId,
+          serverTakeId,
+          row.recorded_by_user_id,
+          now,
+          projectUnitId,
+          projectUnitId,
+          projectUnitId,
+          bibleTextId,
+        ],
+      );
+    }
+
     await tx.execute(`DELETE FROM recordings WHERE id = ?`, [id]);
     applied = true;
 
@@ -666,7 +858,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
 
     const candidates = await tx.execute(
       `SELECT r.id, r.bible_text_id, r.start_chapter, r.start_verse,
-              r.end_chapter, r.end_verse, r.take_number
+              r.end_chapter, r.end_verse, r.take_number, r.blob_key
        FROM recordings r
        INNER JOIN bible_texts anchor_bt ON anchor_bt.id = r.bible_text_id
        INNER JOIN bible_texts deleted_bt ON deleted_bt.id = ?
@@ -679,7 +871,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
          AND ${unit.sql}`,
       [bibleTextId, ...owner.params, ...unit.params],
     );
-    const priorId = (
+    const promoted = (
       (candidates.rows ?? []) as {
         id: string;
         bible_text_id: number;
@@ -688,6 +880,7 @@ export async function deleteRecordingTake(id: string): Promise<void> {
         end_chapter: number | null;
         end_verse: number | null;
         take_number: number;
+        blob_key: string | null;
       }[]
     )
       .filter(candidate =>
@@ -701,11 +894,37 @@ export async function deleteRecordingTake(id: string): Promise<void> {
           }),
         ),
       )
-      .sort((a, b) => b.take_number - a.take_number)[0]?.id;
-    if (priorId) {
+      .sort((a, b) => b.take_number - a.take_number)[0];
+    if (promoted) {
+      // #701 PM rule (mirrors selectRecordingTake): while the promoted
+      // take's verse (+unit) has a canonical take, canonical is what syncs
+      // as the server's selected take — promoting an already-uploaded take
+      // adds no sync marker of its own. Otherwise flip 'uploaded' →
+      // 'pending' so the next sync re-sends it as the active take.
+      const canonUnit = projectUnitClause(
+        normalizeProjectUnitId(row.project_unit_id),
+      );
+      const canonicalRows = await tx.execute(
+        `SELECT id FROM recordings
+         WHERE bible_text_id = ? AND is_canonical = 1 AND ${canonUnit.sql}
+         LIMIT 1`,
+        [promoted.bible_text_id, ...canonUnit.params],
+      );
+      const selectionSupersededByCanonical =
+        (canonicalRows.rows?.length ?? 0) > 0 && promoted.blob_key !== null;
+
       await tx.execute(
-        `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`,
-        [now, priorId],
+        selectionSupersededByCanonical
+          ? `UPDATE recordings SET is_selected = 1, updated_at = ? WHERE id = ?`
+          : `UPDATE recordings
+       SET is_selected = 1,
+           sync_status = CASE
+             WHEN sync_status = 'uploaded' THEN 'pending'
+             ELSE sync_status
+           END,
+           updated_at = ?
+       WHERE id = ?`,
+        [now, promoted.id],
       );
     }
   });

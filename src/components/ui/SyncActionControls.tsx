@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -9,7 +8,8 @@ import {
 } from 'react-native';
 import { Pause, Play, X, type LucideIcon } from 'lucide-react-native';
 import { SyncPageStatus } from '../../types/sync/types';
-import { theme, listIconStrokeWidth } from '../../theme';
+import { listIconStrokeWidth } from '../../theme';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import {
   SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
   TRANSFER_OFFLINE_MESSAGE,
@@ -46,6 +46,7 @@ export function SyncActionControls({
   busy = false,
   controlPending = false,
 }: SyncActionControlsProps) {
+  const styles = useStyles();
   /** Applies `busy` to Sync Now in the pending state only. */
   const startDisabled = busy;
   /** While pause/cancel/resume/syncNow handler awaits orchestrator — avoid double-tap races. */
@@ -171,6 +172,8 @@ function SyncActionButton({
   onPress,
   testID,
 }: SyncActionButtonProps) {
+  const theme = useTheme();
+  const styles = useStyles();
   const isPrimary = variant === 'primary';
   const iconColor = disabled
     ? theme.colors.mutedForeground
@@ -206,53 +209,54 @@ function SyncActionButton({
   );
 }
 
-const styles = StyleSheet.create({
-  controlsRow: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: theme.spacing.sm,
-  },
-  controlsColumn: {
-    width: '100%',
-    gap: theme.spacing.sm,
-  },
-  controlButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.cardBackground,
-  },
-  controlButtonPrimary: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  controlButtonFullWidth: {
-    width: '100%',
-    flex: 0,
-  },
-  controlButtonDisabled: {
-    opacity: 0.5,
-  },
-  controlButtonLabel: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.foreground,
-  },
-  controlButtonLabelPrimary: {
-    color: theme.colors.primaryForeground,
-  },
-  controlButtonLabelDisabled: {
-    color: theme.colors.mutedForeground,
-  },
-  disabledHint: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.mutedForeground,
-    textAlign: 'center',
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    controlsRow: {
+      flexDirection: 'row',
+      width: '100%',
+      gap: theme.spacing.sm,
+    },
+    controlsColumn: {
+      width: '100%',
+      gap: theme.spacing.sm,
+    },
+    controlButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.xs,
+      paddingVertical: theme.spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.cardBackground,
+    },
+    controlButtonPrimary: {
+      backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
+    },
+    controlButtonFullWidth: {
+      width: '100%',
+      flex: 0,
+    },
+    controlButtonDisabled: {
+      opacity: 0.5,
+    },
+    controlButtonLabel: {
+      fontSize: theme.typography.sizes.md,
+      fontWeight: theme.typography.weights.medium,
+      color: theme.colors.foreground,
+    },
+    controlButtonLabelPrimary: {
+      color: theme.colors.primaryForeground,
+    },
+    controlButtonLabelDisabled: {
+      color: theme.colors.mutedForeground,
+    },
+    disabledHint: {
+      fontSize: theme.typography.sizes.sm,
+      color: theme.colors.mutedForeground,
+      textAlign: 'center',
+    },
+  }));

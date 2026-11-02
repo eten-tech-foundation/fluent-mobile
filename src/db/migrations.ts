@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 20;
+export const CURRENT_SCHEMA_VERSION = 23;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -342,6 +342,27 @@ async function scopeDownloadQueueActiveResourceIndex(
   );
 }
 
+async function applyStageAdvanceQueueTable(db: SqlExecutor): Promise<void> {
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS stage_advance_queue (
+      id                    INTEGER PRIMARY KEY,
+      chapter_assignment_id INTEGER NOT NULL REFERENCES chapter_assignments(id) ON DELETE CASCADE,
+      user_id               INTEGER NOT NULL REFERENCES users(id),
+      from_status           TEXT NOT NULL,
+      to_status             TEXT NOT NULL,
+      peer_checker_id       INTEGER,
+      created_at            TEXT NOT NULL,
+      sync_status           TEXT NOT NULL DEFAULT 'pending'
+    )`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_saq_chapter_assignment ON stage_advance_queue(chapter_assignment_id)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_saq_status ON stage_advance_queue(sync_status)`,
+  );
+}
+
 async function applyChapterClaimQueueTable(db: SqlExecutor): Promise<void> {
   await db.execute(
     `CREATE TABLE IF NOT EXISTS chapter_claim_queue (
@@ -412,6 +433,31 @@ async function applyPericopeTables(db: SqlExecutor): Promise<void> {
     await addColumnIfMissing(db, 'projects', 'pericope_set_id', 'INTEGER');
   }
 }
+
+/**
+ * Server take ids on recordings plus a queue of on-device deletes still to be
+ * sent to `DELETE /verse-audio/.../takes/{takeId}` (#716 / fluent-api#465).
+ * Takes uploaded before this version have no server take id and are not queued.
+ */
+async function addRecordingServerTakeIdAndDeletions(
+  db: SqlExecutor,
+): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(recordings)');
+  if (info.rows.length) {
+    await addColumnIfMissing(db, 'recordings', 'server_take_id', 'INTEGER');
+  }
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS recording_deletions (
+      id                    TEXT PRIMARY KEY,
+      project_unit_id       INTEGER NOT NULL,
+      bible_text_id         INTEGER NOT NULL,
+      server_take_id        INTEGER NOT NULL,
+      recorded_by_user_id   INTEGER,
+      created_at            TEXT NOT NULL
+    )`,
+  );
+}
+
 /** Per-unit version token for conflict detection (#256 / fluent-api#271). */
 async function addRecordingsVersionToken(db: SqlExecutor): Promise<void> {
   const info = await db.execute('PRAGMA table_info(recordings)');
@@ -670,6 +716,21 @@ export const migrations: Migration[] = [
     name: 'download_queue_scoped_identity',
     up: scopeDownloadQueueIdentity,
   },
+  {
+    version: 21,
+    name: 'recording_server_take_id_and_deletions',
+    up: addRecordingServerTakeIdAndDeletions,
+  },
+  {
+    version: 22,
+    name: 'download_queue_reference_images_kind',
+    up: backfillDownloadQueueReferenceImagesKind,
+  },
+  {
+    version: 23,
+    name: 'stage_advance_queue_table',
+    up: applyStageAdvanceQueueTable,
+  },
 ];
 
 /**
@@ -710,6 +771,26 @@ async function addRecordingsProjectUnitId(db: SqlExecutor): Promise<void> {
        LIMIT 1
      )
      WHERE project_unit_id IS NULL`,
+  );
+}
+
+/**
+ * Legacy Prepare Offline persisted Reference Images as `kind = 'text'`.
+ * Resources offline gating requires `kind = 'image'` for the `imagesMaps`
+ * slot (#417). New enqueue already writes `image` (PR #676).
+ */
+export async function backfillDownloadQueueReferenceImagesKind(
+  db: SqlExecutor,
+): Promise<void> {
+  const info = await db.execute('PRAGMA table_info(download_queue)');
+  if (!info.rows.length) {
+    return;
+  }
+  await db.execute(
+    `UPDATE download_queue
+        SET kind = 'image'
+      WHERE resource_name = 'Reference Images'
+        AND kind = 'text'`,
   );
 }
 

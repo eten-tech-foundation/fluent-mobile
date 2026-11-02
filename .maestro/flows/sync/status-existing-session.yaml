@@ -1,0 +1,176 @@
+# READ-ONLY: Sync screen status / queue chrome / controls vs explicit expected fixture.
+#
+# Adds status-chrome asserts beyond sync-entry-existing-session.yaml
+# (entry + cellular only):
+# env-declared status title, control chrome, optional chapter-count copy,
+# optional error / downloads visibility — without Sync Now / pause / resume /
+# cancel / upload / download taps.
+#
+# Required env (fail if absent/invalid — no skip/auth fallback):
+# - MAESTRO_EXPECT_SYNC_STATUS_TITLE
+#     Exact status title copy from SyncScreen renderStatusLine (matched as
+#     regex-escaped ^…$ so dots/ellipsis cannot widen the match).
+# - MAESTRO_EXPECT_SYNC_CONTROLS = pending | syncing | paused | hidden
+#
+# Optional env (omit/empty → documented default; typo FAILS — never silent skip):
+# - MAESTRO_EXPECT_UPLOAD_CHAPTER_COUNT_TEXT (omit/empty → skip count assert)
+# - MAESTRO_EXPECT_SYNC_ERROR = none | unuploadable | failed | metadata | retry
+#   (omit/empty → none)
+# - MAESTRO_EXPECT_DOWNLOADS = absent | present (omit/empty → absent)
+#
+# Preconditions: existing logged-in session; Home reachable without login.
+# Forbidden: clearState, ensure-on-login, login-*, ensure-warm-home,
+# ensure-warm-session, Sync Now / pause / resume / cancel taps, download
+# manage, cellular toggle, Discard recovery.
+appId: com.eten.fluent
+tags:
+  - sync
+  - existing-session
+  - read-only
+  - fixture-blocked
+---
+# Normalize + validate ALL enums (including optionals) before any UI work.
+# Never dereference optional env names directly in when: — use output.*.
+# Complex selector values use external runScript (do NOT store functions on
+# output — Maestro contexts drop them).
+- runScript: ../../shared/scripts/sync-status-values.js
+- assertTrue: ${output.expectStatusTitle.length > 0}
+- assertTrue: ${['pending','syncing','paused','hidden'].indexOf(output.expectControls) >= 0}
+- assertTrue: ${['none','unuploadable','failed','metadata','retry'].indexOf(output.expectSyncError) >= 0}
+- assertTrue: ${['absent','present'].indexOf(output.expectDownloads) >= 0}
+- assertTrue: ${typeof output.statusTitleRe === 'string' && output.statusTitleRe.length > 0}
+- assertTrue: ${typeof output.countTextRe === 'string' && (output.expectCountText.length === 0 || output.countTextRe.length > 0)}
+
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-sync.yaml
+- assertVisible:
+    id: 'sync-screen'
+- assertVisible:
+    id: 'sync-upload-cellular'
+
+# Status title — exact escaped match (SyncScreen.tsx renderStatusLine plain Text)
+- assertVisible:
+    text: ${output.statusTitleRe}
+
+# Control chrome by expected fixture state (assert only — never tap)
+- runFlow:
+    when:
+      true: ${output.expectControls == 'pending'}
+    commands:
+      - assertVisible:
+          id: 'sync-action-controls-pending'
+      - assertVisible:
+          id: 'sync-action-sync-now'
+      - assertNotVisible:
+          id: 'sync-action-controls-syncing'
+      - assertNotVisible:
+          id: 'sync-action-controls-paused'
+
+- runFlow:
+    when:
+      true: ${output.expectControls == 'syncing'}
+    commands:
+      - assertVisible:
+          id: 'sync-action-controls-syncing'
+      - assertVisible:
+          id: 'sync-action-pause'
+      - assertVisible:
+          id: 'sync-action-cancel'
+      - assertNotVisible:
+          id: 'sync-action-controls-pending'
+
+- runFlow:
+    when:
+      true: ${output.expectControls == 'paused'}
+    commands:
+      - assertVisible:
+          id: 'sync-action-controls-paused'
+      - assertVisible:
+          id: 'sync-action-resume'
+      - assertVisible:
+          id: 'sync-action-sync-now'
+      - assertNotVisible:
+          id: 'sync-action-controls-syncing'
+
+- runFlow:
+    when:
+      true: ${output.expectControls == 'hidden'}
+    commands:
+      - assertNotVisible:
+          id: 'sync-action-controls-pending'
+      - assertNotVisible:
+          id: 'sync-action-controls-syncing'
+      - assertNotVisible:
+          id: 'sync-action-controls-paused'
+      - assertNotVisible:
+          id: 'sync-action-sync-now'
+
+# Optional chapter-count copy (UploadProgressBar — text only, no testID)
+- runFlow:
+    when:
+      true: ${output.expectCountText.length > 0}
+    commands:
+      - assertVisible:
+          text: ${output.countTextRe}
+
+# Error chrome — always assert one branch (normalized enum; no undefined deref)
+- runFlow:
+    when:
+      true: ${output.expectSyncError == 'none'}
+    commands:
+      - assertNotVisible:
+          id: 'sync-unuploadable-error'
+      - assertNotVisible:
+          id: 'sync-failed-error'
+      - assertNotVisible:
+          id: 'sync-metadata-error'
+      - assertNotVisible:
+          id: 'sync-retry-error'
+- runFlow:
+    when:
+      true: ${output.expectSyncError == 'unuploadable'}
+    commands:
+      - assertVisible:
+          id: 'sync-unuploadable-error'
+- runFlow:
+    when:
+      true: ${output.expectSyncError == 'failed'}
+    commands:
+      - assertVisible:
+          id: 'sync-failed-error'
+- runFlow:
+    when:
+      true: ${output.expectSyncError == 'metadata'}
+    commands:
+      - assertVisible:
+          id: 'sync-metadata-error'
+- runFlow:
+    when:
+      true: ${output.expectSyncError == 'retry'}
+    commands:
+      - assertVisible:
+          id: 'sync-retry-error'
+
+# Downloads section — always assert one branch
+- runFlow:
+    when:
+      true: ${output.expectDownloads == 'present'}
+    commands:
+      - assertVisible:
+          id: 'download-progress-section'
+- runFlow:
+    when:
+      true: ${output.expectDownloads == 'absent'}
+    commands:
+      - assertNotVisible:
+          id: 'download-progress-section'
+
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 15000
+- assertNotVisible:
+    id: 'login-email-input'

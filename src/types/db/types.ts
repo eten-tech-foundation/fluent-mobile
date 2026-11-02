@@ -41,26 +41,51 @@ export type WorkflowBadgeStage =
   | 'advanced_check'
   | 'complete';
 
+/**
+ * Verified My Work row access after query eligibility (#505).
+ * `open_peer` = unassigned Peer Check for a non-drafter Project Translator.
+ */
+export type MyWorkListAccess = 'assigned' | 'open_peer' | 'observer';
+
 export interface MyWorkChapter {
   id: number;
   displayLabel: string;
   bookName: string;
   chapterNumber: number;
+  /** Raw `chapter_assignments.status` for My Work stage accordions (#505). */
+  assignmentStatus: string;
   workflowStage: WorkflowBadgeStage | null;
   syncState: ChapterSyncState;
   ownershipState: ChapterOwnershipState;
+  /** This user's stage change is still queued locally (#257). */
+  hasPendingStageAdvance?: boolean;
   completedVerses: number;
   totalVerses: number;
   downloadedVerses: number;
   hasConflict: boolean;
   lastActivityAt?: string;
   lastActivityLabel?: string;
-  projectId: number;
-  projectUnitId: number;
   projectName: string;
   /** The project unit's name, or the project's when it has none, as on Milestones. */
   milestoneName: string;
   targetLanguageName: string;
+  /** `chapter_assignments.project_unit_id` for draft-download requests. */
+  projectUnitId: number;
+  /** `project_units.project_id` for grant + download scoping. */
+  projectId: number;
+  /** `chapter_assignments.bible_id` for draft-download requests. */
+  bibleId: number;
+  /** `chapter_assignments.book_id` for draft-download requests. */
+  bookId: number;
+  /** `books.code` for draft-download requests. */
+  bookCode: string;
+  assignedUserId: number | null;
+  peerCheckerId: number | null;
+  /**
+   * Assigned → mutable verse-detail; observer → guarded read-only destination.
+   * Set only after verified eligibility (not status alone).
+   */
+  listAccess: MyWorkListAccess;
 }
 
 /**
@@ -134,15 +159,18 @@ export interface MyWorkChapterRow {
   chapter_number: number;
   status: string;
   book_name: string;
-  project_id: number;
-  project_unit_id: number;
+  book_code: string;
   project_name: string;
   milestone_name: string;
   target_language_name: string;
+  project_unit_id: number;
+  project_id: number;
+  bible_id: number;
   updated_at?: string | null;
   submitted_time?: string | null;
   recording_count: number;
   pending_count: number;
+  has_pending_stage_advance?: number;
   last_recording_activity?: string | null;
   total_verses: number;
   completed_verses: number;
@@ -374,6 +402,8 @@ export interface RecordingRow {
   is_canonical: number;
   sync_status: RecordingSyncStatus;
   version_token: number | null;
+  /** Server take id from the PUT response (fluent-api#465 / #716). */
+  server_take_id?: number | null;
   upload_error: string | null;
   created_at: string;
   updated_at: string;
@@ -410,6 +440,19 @@ export interface PendingRecording {
   startVerse: number | null;
   endChapter: number | null;
   endVerse: number | null;
+  /** Canonical or selected takes activate on the server; other takes do not (#716). */
+  isCanonical: boolean;
+  isSelected: boolean;
+}
+
+/** A take deleted on device whose server copy is still to be removed (#716). */
+export interface PendingRecordingDeletion {
+  /** Local recording id of the deleted take. */
+  id: string;
+  projectUnitId: number;
+  bibleTextId: number;
+  serverTakeId: number;
+  recordedByUserId: number | null;
 }
 
 export const CHAPTER_ASSIGNMENT_STATUS = {

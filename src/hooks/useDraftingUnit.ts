@@ -8,7 +8,6 @@ import {
   subscribeToDraftingUnit,
   type DraftingUnit,
 } from '../services/draftingUnitPreference';
-import { scheduleDisplayModePush } from '../services/displayModeSettingsSync';
 
 export function useDraftingUnit() {
   const draftingUnit = useSyncExternalStore(
@@ -25,8 +24,8 @@ export function useDraftingUnit() {
 
   const setUnit = useCallback((unit: DraftingUnit) => {
     const userId = getActiveUserId();
+    // Device-local per-account preference (#777) — no /self/settings push.
     setDraftingUnit(unit, userId);
-    void scheduleDisplayModePush(userId);
   }, []);
 
   return { draftingUnit, setDraftingUnit: setUnit };

@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { authToken } from './authToken';
 import { createApiError, createNetworkApiError } from './apiError';
 import { AuthError } from './authError';
+import { HTTP_PHASE, startPhase } from './syncPhaseTiming';
 
 const log = logger.create('HTTP');
 
@@ -123,10 +124,16 @@ async function executeRequest<T>(
   try {
     const requestOptions = { ...options };
     delete requestOptions.signal;
-    const res = await fetch(`${apiBaseUrl}${endpoint}`, {
-      ...requestOptions,
-      signal: controller.signal,
-    });
+    const network = startPhase(HTTP_PHASE.network);
+    let res: Response;
+    try {
+      res = await fetch(`${apiBaseUrl}${endpoint}`, {
+        ...requestOptions,
+        signal: controller.signal,
+      });
+    } finally {
+      network.end();
+    }
 
     if (allowNotModified && res.status === 304) {
       if (returnResponse) {
@@ -139,12 +146,18 @@ async function executeRequest<T>(
       await handleErrorResponse(res, logLabel, auth);
     }
 
-    const data = await parseJsonResponse<T>(res);
-    if (returnResponse) {
-      return { data, response: res };
-    }
+    // Body download + JSON.parse: not pure network time.
+    const parse = startPhase(HTTP_PHASE.parse);
+    try {
+      const data = await parseJsonResponse<T>(res);
+      if (returnResponse) {
+        return { data, response: res };
+      }
 
-    return data;
+      return data;
+    } finally {
+      parse.end();
+    }
   } catch (error) {
     if (error instanceof AuthError || error instanceof ApiError) {
       throw error;

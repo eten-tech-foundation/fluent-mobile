@@ -1,0 +1,116 @@
+# READ-ONLY idle lock on a Complete-stage chapter with no takes (existing session).
+# Required env pins the fixture selectors; missing values fail before any UI:
+# - MAESTRO_FIXTURE_PROJECT_NAME: exact project name shown in Projects.
+# - MAESTRO_FIXTURE_CHAPTER_LABEL: exact chapter label shown on its row.
+# - MAESTRO_FIXTURE_CHAPTER_ID: positive digits (chapter-row-<id>).
+# The chapter must be in the Complete stage and have no cached takes.
+# Never taps capture/play/claim/stage or changes auth, data or preferences.
+# Proves idle controls only, not populated Review or native playback.
+appId: com.eten.fluent
+tags:
+  - record
+  - existing-session
+  - read-only
+  - guard
+  - fixture-blocked
+---
+- runScript: ../../shared/scripts/ownership-status-values.js
+- assertTrue: ${output.fixtureProjectName.length > 0}
+- assertTrue: ${output.fixtureChapterLabel.length > 0}
+- assertTrue: ${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID).trim())}
+- assertTrue: ${typeof output.projectNameRe === 'string' && output.projectNameRe.length > 0}
+- assertTrue: ${typeof output.chapterLabelRe === 'string' && output.chapterLabelRe.length > 0}
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-tab-projects'
+- extendedWaitUntil:
+    visible:
+      id: 'milestone-row-.*'
+    timeout: 30000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- scrollUntilVisible:
+    element:
+      text: ${output.projectNameRe}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: ${output.projectNameRe}
+- extendedWaitUntil:
+    visible:
+      id: 'chapter-row-.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+    direction: DOWN
+    timeout: 30000
+# Guard actual selected chapter and stage, not only an env declaration.
+- assertVisible:
+    id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+    containsDescendants:
+      - text: ${output.chapterLabelRe}
+      - text: '^Complete$'
+- tapOn:
+    id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+- extendedWaitUntil:
+    visible:
+      id: 'drafting-tab-bar'
+    timeout: 30000
+# Stop before Record if the previously observed HTTP error UI recurs.
+- assertNotVisible:
+    text: '^Console Error$'
+- assertNotVisible:
+    text: '^.*\[HTTP\].*API error.*$'
+- tapOn:
+    id: 'drafting-tab-record'
+- extendedWaitUntil:
+    visible:
+      id: 'record-tab'
+    timeout: 30000
+- assertVisible:
+    id: 'record-tab'
+- assertVisible:
+    id: 'record-verse-reference'
+# A missing source text can also disable recording; reject that false positive.
+- assertNotVisible:
+    id: 'record-syncing-hint'
+- assertVisible:
+    id: 'record-start-button'
+    enabled: false
+- assertVisible:
+    id: 'record-play-idle-placeholder'
+    enabled: false
+- assertNotVisible:
+    id: 'record-new-take-button'
+- assertNotVisible:
+    id: 'record-take-list'
+- assertNotVisible:
+    id: 'record-all-take-list'
+- assertNotVisible:
+    id: 'record-stop-button'
+- assertNotVisible:
+    id: 'record-pause-button'
+- assertNotVisible:
+    id: 'record-resume-button'
+- assertNotVisible:
+    id: 'record-duration'
+- tapOn:
+    id: 'drafting-header-back'
+- extendedWaitUntil:
+    visible:
+      id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+    timeout: 30000
+- assertVisible:
+    id: 'stack-header-back'
+- tapOn:
+    id: 'stack-header-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-tab-my-work'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'

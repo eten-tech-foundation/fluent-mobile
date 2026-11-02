@@ -13,7 +13,9 @@ jest.mock('@op-engineering/op-sqlite', () => ({
 }));
 
 jest.mock('../utils/logger', () => ({
-  logger: { create: () => ({ info: jest.fn(), error: jest.fn() }) },
+  logger: {
+    create: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }),
+  },
 }));
 
 import {
@@ -22,6 +24,7 @@ import {
   getActiveUserId,
   getKnownUserIds,
   getMasterDataLastSyncedAt,
+  getMasterDataUpdatedAt,
   getUserEmail,
   getUserEmailSync,
   KV_KEYS,
@@ -29,6 +32,7 @@ import {
   registerKnownUser,
   setActiveUserId,
   setMasterDataLastSyncedAt,
+  setMasterDataUpdatedAt,
   setUserEmail,
   setUserSync,
   switchActiveUser,
@@ -187,6 +191,17 @@ describe('storage (KV wrapper)', () => {
       setReauthRequired('3');
       expect(isReauthRequiredForActiveUser()).toBe(true);
     });
+
+    it('ignores inactive users when checking active-user reauth', () => {
+      setUserSync('1', 'one@example.com');
+      addKnownUserId('2');
+      setUserEmail('2', 'two@example.com');
+      setReauthRequired('2');
+
+      expect(isReauthRequired('2')).toBe(true);
+      expect(getActiveUserId()).toBe('1');
+      expect(isReauthRequiredForActiveUser()).toBe(false);
+    });
   });
 
   describe('clearUserSession', () => {
@@ -221,6 +236,66 @@ describe('storage (KV wrapper)', () => {
       expect(getMasterDataLastSyncedAt()).toBe('2026-06-01T00:00:00.000Z');
       expect(mockKv.get(KV_KEYS.LAST_MASTER_DATA_SYNCED_AT)).toBe(
         '2026-06-01T00:00:00.000Z',
+      );
+    });
+
+    it('seeds each collection once from the legacy last-synced key', () => {
+      const legacy = '2026-03-01T00:00:00.000Z';
+      mockKv.set(KV_KEYS.LAST_MASTER_DATA_SYNCED_AT, legacy);
+
+      expect(getMasterDataUpdatedAt('languages')).toBe(legacy);
+      expect(getMasterDataUpdatedAt('books')).toBe(legacy);
+      expect(getMasterDataUpdatedAt('bibles')).toBe(legacy);
+      expect(mockKv.get(KV_KEYS.LAST_MASTER_DATA_LANGUAGES_UPDATED_AT)).toBe(
+        legacy,
+      );
+      expect(mockKv.get(KV_KEYS.LAST_MASTER_DATA_BOOKS_UPDATED_AT)).toBe(
+        legacy,
+      );
+      expect(mockKv.get(KV_KEYS.LAST_MASTER_DATA_BIBLES_UPDATED_AT)).toBe(
+        legacy,
+      );
+    });
+
+    it('does not re-seed a collection after its cursor is stored', () => {
+      mockKv.set(
+        KV_KEYS.LAST_MASTER_DATA_SYNCED_AT,
+        '2026-01-01T00:00:00.000Z',
+      );
+      expect(getMasterDataUpdatedAt('languages')).toBe(
+        '2026-01-01T00:00:00.000Z',
+      );
+
+      mockKv.set(
+        KV_KEYS.LAST_MASTER_DATA_SYNCED_AT,
+        '2026-12-01T00:00:00.000Z',
+      );
+      expect(getMasterDataUpdatedAt('languages')).toBe(
+        '2026-01-01T00:00:00.000Z',
+      );
+      expect(getMasterDataUpdatedAt('books')).toBe('2026-12-01T00:00:00.000Z');
+    });
+
+    it('does not write the legacy key when storing a collection cursor', () => {
+      mockKv.set(
+        KV_KEYS.LAST_MASTER_DATA_SYNCED_AT,
+        '2026-01-01T00:00:00.000Z',
+      );
+      setMasterDataUpdatedAt('languages', '2026-06-01T00:00:00.123Z');
+
+      expect(getMasterDataUpdatedAt('languages')).toBe(
+        '2026-06-01T00:00:00.123Z',
+      );
+      expect(mockKv.get(KV_KEYS.LAST_MASTER_DATA_SYNCED_AT)).toBe(
+        '2026-01-01T00:00:00.000Z',
+      );
+    });
+
+    it('ignores empty collection writes and returns empty without a legacy seed', () => {
+      setMasterDataUpdatedAt('bibles', '');
+      expect(getMasterDataUpdatedAt('bibles')).toBe('');
+      expect(mockKv.has(KV_KEYS.LAST_MASTER_DATA_BIBLES_UPDATED_AT)).toBe(
+        false,
       );
     });
   });

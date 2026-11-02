@@ -1,4 +1,4 @@
-# Conflict list indicator + Record conflict banner (#260 / #269 / #574). Optional.
+# Conflict list indicator + Record conflict banner (#607 / #574).
 appId: com.eten.fluent
 tags:
   - ownership

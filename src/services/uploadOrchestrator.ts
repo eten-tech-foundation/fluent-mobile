@@ -1,15 +1,20 @@
 import { getPendingUploadChapters } from '../db/queries';
+import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   getConnectivitySnapshot,
   subscribeToConnectivity,
 } from './connectivity';
 import { emitUploadSessionEvent } from './syncEvents';
+import { getCredentials } from './keychain';
 import {
   getActiveUserId,
   getSyncPausedUntilMs,
   setSyncPausedUntilMs,
 } from './storage';
-import { syncPendingChapterClaimsForUser } from './sync';
+import {
+  syncPendingChapterClaimsForUser,
+  syncPendingStageAdvancesForUser,
+} from './sync';
 import {
   getUploadOverCellular,
   subscribeToPreference,
@@ -38,6 +43,42 @@ async function pushPendingClaimsBeforeUpload(): Promise<void> {
   await syncPendingChapterClaimsForUser(userId);
 }
 
+async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
+  const activeUserId = getActiveUserId();
+  const userId = Number(activeUserId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    log.warn('Skipping stage-advance push after upload — no active user', {
+      activeUserId,
+    });
+    return;
+  }
+  const creds = await getCredentials(String(userId));
+  const result = await syncPendingStageAdvancesForUser(userId, creds?.token);
+  // Rows left pending resolve as `failed` rather than throwing. Throw so the
+  // session skips `complete` and schedules its bounded retry (#257).
+  if (result.failed > 0) {
+    throw new Error(`Stage-advance drain left ${result.failed} row(s) pending`);
+  }
+}
+
+async function hasPendingStageAdvances(): Promise<boolean> {
+  const activeUserId = getActiveUserId();
+  const userId = Number(activeUserId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return false;
+  }
+  try {
+    const pending = await getPendingStageAdvances();
+    return pending.some(row => row.userId === userId);
+  } catch (error) {
+    log.warn(
+      'Could not check pending stage advances; attempting drain on reconnect',
+      { error },
+    );
+    return true;
+  }
+}
+
 export {
   createUploadOrchestrator,
   PAUSE_WINDOW_MS,
@@ -53,6 +94,8 @@ export {
 /** Production singleton — worker registered by #100 via setChapterUploadWorker. */
 let chapterUploadWorker: ChapterUploadWorker | null = null;
 let singleton: UploadOrchestrator | null = null;
+/** Survives stop/start (account switch) while Drafting stays focused. */
+let desiredDraftingHold = false;
 
 export function setChapterUploadWorker(
   worker: ChapterUploadWorker | null,
@@ -106,10 +149,14 @@ export function startUploadOrchestrator(
         ? workerOverride ?? null
         : chapterUploadWorker,
     pushPendingClaimsBeforeUpload,
+    pushPendingStageAdvancesAfterUpload,
+    hasPendingStageAdvances,
     ...restOverrides,
   };
 
-  singleton = createUploadOrchestrator(deps);
+  singleton = createUploadOrchestrator(deps, {
+    initialDraftingHold: desiredDraftingHold,
+  });
   singleton.start();
   return singleton;
 }
@@ -145,4 +192,16 @@ export function notifyPendingUploads(): void {
     return;
   }
   singleton.notifyPendingWork();
+}
+
+/**
+ * Hold automatic uploads while the drafting screen is open and the app is
+ * in the foreground. No-op before the orchestrator starts. syncNow still runs.
+ */
+export async function setDraftingUploadHold(held: boolean): Promise<void> {
+  desiredDraftingHold = held;
+  if (!singleton) {
+    return;
+  }
+  await singleton.setDraftingHold(held);
 }

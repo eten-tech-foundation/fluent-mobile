@@ -4,6 +4,7 @@ import { emitUploadSessionEvent } from '../services/syncEvents';
 import { emitRecordingDataChanged } from '../services/recordingDataEvents';
 import { useVerseAudio } from './useVerseAudio';
 import type { Recording } from '../types/db/types';
+import { verseHasMultipleRecorders } from '../db/repository';
 
 const mockRecordingStart = jest.fn();
 const mockRecordingStop = jest.fn();
@@ -241,6 +242,46 @@ describe('useVerseAudio', () => {
     mockPausedMarkers.splice(0, mockPausedMarkers.length);
   });
 
+  it('checks other recorders in the current milestone, including after switching units', async () => {
+    const check = jest.mocked(verseHasMultipleRecorders);
+    check.mockImplementation(
+      async (_id, _user, _view, unitId) => unitId === 580,
+    );
+    const { result, rerender } = renderHook(
+      ({ projectUnitId }: { projectUnitId: number }) =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          chapterNumber: 1,
+          verseNumber: 1,
+          projectUnitId,
+        }),
+      { initialProps: { projectUnitId: 579 } },
+    );
+
+    await waitFor(() => {
+      expect(check).toHaveBeenCalledWith(
+        42,
+        undefined,
+        { chapterNumber: 1, verseNumber: 1 },
+        579,
+      );
+      expect(result.current.hasMultipleRecorders).toBe(false);
+    });
+    rerender({ projectUnitId: 580 });
+    await waitFor(() => expect(result.current.hasMultipleRecorders).toBe(true));
+    expect(check).toHaveBeenLastCalledWith(
+      42,
+      undefined,
+      { chapterNumber: 1, verseNumber: 1 },
+      580,
+    );
+    rerender({ projectUnitId: 579 });
+    await waitFor(() =>
+      expect(result.current.hasMultipleRecorders).toBe(false),
+    );
+    check.mockResolvedValue(false);
+  });
+
   it('rehydrates to idle when there are no takes', async () => {
     const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
@@ -336,6 +377,45 @@ describe('useVerseAudio', () => {
     expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
     expect(result.current.state).toBe('recorded');
     expect(result.current.takes).toEqual([saved]);
+  });
+
+  it('queues an upload pass after a selection change (#701)', async () => {
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.selectTake('rec_1');
+    });
+
+    expect(selectTake).toHaveBeenCalledWith('rec_1');
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues an upload pass after a canonical designation (#701)', async () => {
+    const designateCanonical = jest.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useVerseAudio({ ...verseAudioArgs(), designateCanonical }),
+    );
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.setCanonical('rec_1');
+    });
+
+    expect(designateCanonical).toHaveBeenCalledWith('rec_1');
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues an upload pass after a take is deleted (#701)', async () => {
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+    await waitFor(() => expect(result.current.state).toBe('idle'));
+
+    await act(async () => {
+      await result.current.deleteTake('rec_1');
+    });
+
+    expect(deleteTake).toHaveBeenCalledWith('rec_1');
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
   });
 
   it('writes a paused-take marker when recording is paused', async () => {
@@ -821,6 +901,154 @@ describe('useVerseAudio', () => {
     );
     expect(mockClearPausedTake).toHaveBeenCalledWith('7:3');
     expect(result.current.state).toBe('recorded');
+  });
+
+  it('resumes after a multi-segment save failure without duplicating audio or elapsed time', async () => {
+    mockPausedMarkers.push(recoveredMarker());
+    persistTake.mockRejectedValueOnce(new Error('disk full'));
+    mockRecordingStop
+      .mockImplementationOnce(async () => {
+        mockRecordingState.status = 'idle';
+        return { uri: 'file:///segment-two.aac', durationMs: 500 };
+      })
+      .mockImplementationOnce(async () => {
+        mockRecordingState.status = 'idle';
+        return { uri: 'file:///segment-three.aac', durationMs: 700 };
+      });
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+    await act(async () => {
+      await result.current.resume();
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(result.current.state).toBe('paused');
+    expect(result.current.recoveredElapsedMs).toBe(1500);
+    expect(mockPausedMarkers).toEqual([
+      expect.objectContaining({
+        segments: ['file:///old.aac', 'file:///segment-two.aac'],
+        elapsedMs: 1500,
+      }),
+    ]);
+    expect(mockClearPausedTake).not.toHaveBeenCalled();
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+    expect(mockNotifyPendingUploads).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.resume();
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(mockRecordingStart).toHaveBeenCalledTimes(2);
+    expect(mockRecordingResume).not.toHaveBeenCalled();
+    expect(persistTake).toHaveBeenCalledTimes(2);
+    expect(persistTake).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        tempUri: 'file:///segment-three.aac',
+        tempUris: [
+          'file:///old.aac',
+          'file:///segment-two.aac',
+          'file:///segment-three.aac',
+        ],
+        durationMs: 2200,
+      }),
+    );
+    expect(mockClearPausedTake).toHaveBeenCalledTimes(1);
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('recorded');
+  });
+
+  it('rehydrates the full failed-save marker and frozen capture after hook remount', async () => {
+    const capture = {
+      bibleTextId: 40,
+      granularity: 'pericope' as const,
+      startChapter: 1,
+      startVerse: 2,
+      endChapter: 1,
+      endVerse: 4,
+    };
+    mockPausedMarkers.push({ ...recoveredMarker(), capture });
+    persistTake.mockRejectedValueOnce(new Error('disk full'));
+    const first = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(first.result.current.state).toBe('paused'));
+    await act(async () => {
+      await first.result.current.resume();
+    });
+    await act(async () => {
+      await first.result.current.stop();
+    });
+    expect(mockPausedMarkers).toEqual([
+      expect.objectContaining({
+        capture,
+        segments: ['file:///old.aac', 'file:///tmp/take.m4a'],
+        elapsedMs: 1500,
+      }),
+    ]);
+    first.unmount();
+    mockRecordingStop.mockClear();
+    mockRecordingStart.mockClear();
+
+    const second = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(second.result.current.state).toBe('paused'));
+    expect(second.result.current.recoveredElapsedMs).toBe(1500);
+    await act(async () => {
+      await second.result.current.stop();
+    });
+
+    expect(persistTake).toHaveBeenCalledTimes(2);
+    expect(persistTake).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        ...capture,
+        viewBibleTextId: 42,
+        tempUris: ['file:///old.aac', 'file:///tmp/take.m4a'],
+        durationMs: 1500,
+      }),
+    );
+    expect(mockRecordingStop).not.toHaveBeenCalled();
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+    expect(mockPausedMarkers).toHaveLength(0);
+    expect(second.result.current.state).toBe('recorded');
+  });
+
+  it('clears committed recovery before reload failure so remount does not offer the saved audio again', async () => {
+    mockPausedMarkers.push(recoveredMarker());
+    loadTakes
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error('reload failed'));
+    const first = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(first.result.current.state).toBe('paused'));
+    await act(async () => {
+      await first.result.current.stop();
+    });
+
+    expect(persistTake).toHaveBeenCalledTimes(1);
+    expect(mockClearPausedTake).toHaveBeenCalledWith('7:3');
+    expect(mockPausedMarkers).toHaveLength(0);
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+    expect(first.result.current.state).toBe('error');
+    expect(first.result.current.errorMessage).toBe('reload failed');
+    expect(first.result.current.recoveredElapsedMs).toBe(0);
+    // A repeated Stop must not insert another copy of the already committed take.
+    await act(async () => {
+      await first.result.current.stop();
+    });
+    expect(persistTake).toHaveBeenCalledTimes(1);
+    first.unmount();
+
+    const saved = makeTake({ id: 'rec_committed' });
+    loadTakes.mockResolvedValue([saved]);
+    const second = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(second.result.current.state).toBe('recorded'));
+    expect(second.result.current.takes).toEqual([saved]);
+    expect(second.result.current.recoveredElapsedMs).toBe(0);
+    expect(persistTake).toHaveBeenCalledTimes(1);
+    expect(mockRecordingStop).not.toHaveBeenCalled();
   });
 
   it('refuses start() while recovered audio is pending and deletes nothing', async () => {
@@ -1627,6 +1855,66 @@ describe('useVerseAudio', () => {
 
     expect(getTakesForVerse.mock.calls).toHaveLength(loadsBefore);
     expect(mockPlaybackStop.mock.calls).toHaveLength(stopsBefore);
+  });
+
+  describe('seek (#833)', () => {
+    it('seeks the explicit target take instead of the selected one', async () => {
+      const ownTake = makeTake();
+      const sharedTake = makeTake({
+        id: 'rec_9',
+        localFilePath: '/recordings/rec_9.m4a',
+        isSelected: false,
+      });
+      loadTakes.mockResolvedValue([ownTake]);
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.takes).toHaveLength(1));
+
+      await act(async () => {
+        await result.current.seek(500, sharedTake);
+      });
+
+      expect(mockPlaybackLoad).toHaveBeenCalledWith('/recordings/rec_9.m4a');
+      expect(mockPlaybackSeek).toHaveBeenCalledWith(500);
+      expect(result.current.loadedTakeId).toBe('rec_9');
+    });
+
+    it('resolves the loaded take from allTakes when it is not one of mine', async () => {
+      const ownTake = makeTake();
+      const sharedTake = makeTake({
+        id: 'rec_9',
+        localFilePath: '/recordings/rec_9.m4a',
+        isSelected: false,
+      });
+      loadTakes.mockResolvedValue([ownTake]);
+      const loadAllTakes = jest.fn().mockResolvedValue([
+        { ...ownTake, ownerDisplayName: 'Me' },
+        { ...sharedTake, ownerDisplayName: 'John Doe' },
+      ]);
+
+      const { result } = renderHook(() =>
+        useVerseAudio({ ...verseAudioArgs(), loadAllTakes }),
+      );
+      await waitFor(() => expect(result.current.allTakes).toHaveLength(2));
+
+      // Another recorder's take is what is in the player, but it is absent
+      // from my own `takes` list.
+      await act(async () => {
+        await result.current.playTake(sharedTake);
+      });
+      expect(result.current.loadedTakeId).toBe('rec_9');
+      mockPlaybackLoad.mockClear();
+      mockPlaybackSeek.mockClear();
+
+      await act(async () => {
+        await result.current.seek(500);
+      });
+
+      // Without the allTakes lookup this would fall back to the selected
+      // own take (rec_1).
+      expect(mockPlaybackLoad).toHaveBeenCalledWith('/recordings/rec_9.m4a');
+      expect(mockPlaybackSeek).toHaveBeenCalledWith(500);
+    });
   });
 
   describe('seekStitched', () => {

@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Switch, Text, TouchableOpacity, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { iconSizes, listIconStrokeWidth } from '../../theme';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 
 interface SettingsNavigationRowProps {
   icon: React.ReactNode;
@@ -22,6 +23,8 @@ export function SettingsNavigationRow({
   disabledSubtitle,
   testID,
 }: SettingsNavigationRowProps) {
+  const theme = useTheme();
+  const styles = useStyles();
   return (
     <TouchableOpacity
       style={[styles.row, disabled && styles.rowDisabled]}
@@ -69,6 +72,8 @@ export function SettingsToggleRow({
   onValueChange,
   testID,
 }: SettingsToggleRowProps) {
+  const theme = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.row} testID={testID}>
       {icon ? <View style={styles.iconSlot}>{icon}</View> : null}
@@ -104,6 +109,7 @@ export function SettingsDestructiveRow({
   onPress,
   testID,
 }: SettingsDestructiveRowProps) {
+  const styles = useStyles();
   return (
     <TouchableOpacity
       style={styles.row}
@@ -134,6 +140,7 @@ export function SettingsSegmentedRow<T extends string>({
   onValueChange,
   testID,
 }: SettingsSegmentedRowProps<T>) {
+  const styles = useStyles();
   return (
     <View style={styles.segmentedContainer} testID={testID}>
       <Text style={styles.title}>{title}</Text>
@@ -170,70 +177,71 @@ export function SettingsSegmentedRow<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-  },
-  iconSlot: {
-    width: iconSizes.headerTab,
-    alignItems: 'center',
-  },
-  textBlock: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.foreground,
-  },
-  subtitle: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.mutedForeground,
-  },
-  destructiveTitle: {
-    flex: 1,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.destructive,
-  },
-  rowDisabled: {
-    opacity: 0.5,
-  },
-  titleDisabled: {
-    color: theme.colors.mutedForeground,
-  },
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+    },
+    iconSlot: {
+      width: iconSizes.headerTab,
+      alignItems: 'center',
+    },
+    textBlock: {
+      flex: 1,
+      gap: 2,
+    },
+    title: {
+      fontSize: theme.typography.sizes.md,
+      color: theme.colors.foreground,
+    },
+    subtitle: {
+      fontSize: theme.typography.sizes.sm,
+      color: theme.colors.mutedForeground,
+    },
+    destructiveTitle: {
+      flex: 1,
+      fontSize: theme.typography.sizes.md,
+      color: theme.colors.destructive,
+    },
+    rowDisabled: {
+      opacity: 0.5,
+    },
+    titleDisabled: {
+      color: theme.colors.mutedForeground,
+    },
 
-  segmentedContainer: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
-  },
-  segmentedGroup: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: 4,
-    marginTop: theme.spacing.xs,
-  },
-  segmentedButton: {
-    flex: 1,
-    paddingVertical: theme.spacing.sm,
-    alignItems: 'center',
-    borderRadius: theme.radius.sm,
-  },
-  segmentedButtonSelected: {
-    backgroundColor: theme.colors.background,
-  },
-  segmentedButtonText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.mutedForeground,
-    fontWeight: theme.typography.weights.medium,
-  },
-  segmentedButtonTextSelected: {
-    color: theme.colors.foreground,
-  },
-});
+    segmentedContainer: {
+      padding: theme.spacing.lg,
+      gap: theme.spacing.sm,
+    },
+    segmentedGroup: {
+      flexDirection: 'row',
+      backgroundColor: theme.colors.cardBackground,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: 4,
+      marginTop: theme.spacing.xs,
+    },
+    segmentedButton: {
+      flex: 1,
+      paddingVertical: theme.spacing.sm,
+      alignItems: 'center',
+      borderRadius: theme.radius.sm,
+    },
+    segmentedButtonSelected: {
+      backgroundColor: theme.colors.background,
+    },
+    segmentedButtonText: {
+      fontSize: theme.typography.sizes.md,
+      color: theme.colors.mutedForeground,
+      fontWeight: theme.typography.weights.medium,
+    },
+    segmentedButtonTextSelected: {
+      color: theme.colors.foreground,
+    },
+  }));

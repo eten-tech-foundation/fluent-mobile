@@ -37,18 +37,22 @@ const DEPENDABOT_LOGINS = new Set([
 ]);
 
 /**
- * Scope text to the **Needs QA?** block when present.
- * Returns an empty string when the header is absent so stray checklist
+ * Scope text to the standalone **Needs QA?** heading when present.
+ * Requires the marker on its own line so the reviewer-checklist item
+ * (`**Needs QA?** decided`) cannot steal the section and stop at ### Details.
+ * Returns an empty string when that header is absent so stray checklist
  * lines elsewhere in the PR body cannot drive handoff.
  * @param {string | null | undefined} body
  * @returns {string}
  */
 function needsQaSection(body) {
   const text = String(body || '');
+  // No /m: keep `$` as end-of-string in the existing bound lookahead.
+  // Standalone line via (^|\n); ignore inline checklist `**Needs QA?** decided`.
   const sectionMatch = text.match(
-    /\*\*Needs QA\?\*\*[\s\S]*?(?=\n\*\*[^*]|\n### |\n## |$)/i,
+    /(?:^|\n)([ \t]*\*\*Needs QA\?\*\*[ \t]*(?:\r?\n|$)[\s\S]*?)(?=\n\*\*[^*]|\n### |\n## |$)/i,
   );
-  return sectionMatch ? sectionMatch[0] : '';
+  return sectionMatch ? sectionMatch[1] : '';
 }
 
 /**
@@ -158,8 +162,7 @@ async function upsertMarkedComment({
     per_page: 100,
   });
   const prior = comments.filter(
-    c =>
-      c.user?.login === 'github-actions[bot]' && c.body?.includes(marker),
+    c => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker),
   );
   for (const comment of prior) {
     try {
@@ -211,9 +214,7 @@ async function qaHandoffOnMerge({ github, context, core, getOctokit }) {
   const engOnly = needsQaNo(pr.body);
 
   if (!wantsQa && !engOnly) {
-    core.info(
-      'Needs QA? neither Yes nor No checked — skipping ticket handoff',
-    );
+    core.info('Needs QA? neither Yes nor No checked — skipping ticket handoff');
     return { skipped: true, reason: 'needs_qa_unset' };
   }
 
@@ -245,9 +246,7 @@ async function qaHandoffOnMerge({ github, context, core, getOctokit }) {
     return { skipped: true, reason: 'resolve_failed' };
   }
   if (issueNumbers.length === 0) {
-    core.info(
-      'No linked Refs #NNN issues — skipping comments / board',
-    );
+    core.info('No linked Refs #NNN issues — skipping comments / board');
     return { skipped: true, reason: 'no_linked_issues' };
   }
 
@@ -316,9 +315,7 @@ async function runQaHandoff({
       });
       core.info(`Posted QA handoff comment on #${issueNumber}`);
     } catch (error) {
-      core.warning(
-        `Could not comment on #${issueNumber}: ${error.message}`,
-      );
+      core.warning(`Could not comment on #${issueNumber}: ${error.message}`);
     }
 
     try {
@@ -415,9 +412,7 @@ async function runEngDoneHandoff({
       });
       core.info(`Posted eng-done comment on #${issueNumber}`);
     } catch (error) {
-      core.warning(
-        `Could not comment on #${issueNumber}: ${error.message}`,
-      );
+      core.warning(`Could not comment on #${issueNumber}: ${error.message}`);
     }
 
     try {

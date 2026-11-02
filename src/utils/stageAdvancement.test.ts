@@ -2,7 +2,7 @@ import type { ChapterAssignmentData } from '../types/db/types';
 import {
   getStageAdvanceDestination,
   getStageAdvanceVisibility,
-  isDrafterBlockedFromOpenPeerCheckCapture,
+  isBlockedFromPeerCheckCapture,
   isRecordingLockedByStage,
   resolvePeerCheckerAssignmentOnAdvance,
   stageAdvanceConfirmBody,
@@ -377,10 +377,10 @@ describe('getStageAdvanceVisibility', () => {
   });
 });
 
-describe('isDrafterBlockedFromOpenPeerCheckCapture', () => {
+describe('isBlockedFromPeerCheckCapture', () => {
   it('blocks the drafter on unassigned Peer Check', () => {
     expect(
-      isDrafterBlockedFromOpenPeerCheckCapture(
+      isBlockedFromPeerCheckCapture(
         {
           status: 'peer_check',
           assignedUserId: 10,
@@ -393,7 +393,7 @@ describe('isDrafterBlockedFromOpenPeerCheckCapture', () => {
 
   it('allows a non-drafter peer on unassigned Peer Check', () => {
     expect(
-      isDrafterBlockedFromOpenPeerCheckCapture(
+      isBlockedFromPeerCheckCapture(
         {
           status: 'peer_check',
           assignedUserId: 10,
@@ -406,7 +406,7 @@ describe('isDrafterBlockedFromOpenPeerCheckCapture', () => {
 
   it('allows the PM-assigned Peer Checker', () => {
     expect(
-      isDrafterBlockedFromOpenPeerCheckCapture(
+      isBlockedFromPeerCheckCapture(
         {
           status: 'peer_check',
           assignedUserId: 10,
@@ -417,9 +417,35 @@ describe('isDrafterBlockedFromOpenPeerCheckCapture', () => {
     ).toBe(false);
   });
 
+  it('blocks the drafter when a Peer Checker is already assigned', () => {
+    expect(
+      isBlockedFromPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: 20,
+        },
+        10,
+      ),
+    ).toBe(true);
+  });
+
+  it('blocks another peer when a Peer Checker is already assigned', () => {
+    expect(
+      isBlockedFromPeerCheckCapture(
+        {
+          status: 'peer_check',
+          assignedUserId: 10,
+          peerCheckerId: 20,
+        },
+        99,
+      ),
+    ).toBe(true);
+  });
+
   it('allows the drafter during Drafting', () => {
     expect(
-      isDrafterBlockedFromOpenPeerCheckCapture(
+      isBlockedFromPeerCheckCapture(
         {
           status: 'draft',
           assignedUserId: 10,

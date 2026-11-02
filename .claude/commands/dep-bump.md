@@ -61,11 +61,13 @@ Do not commit generated `android/`.
 ```bash
 npm run format:check
 npm run lint
+npm run architecture-guard
 npm run typecheck
 npm test -- --ci
 ```
 
 Report pass/fail. If gates fail, fix or surface clearly — do not claim success.
+(Authoritative list: [`AGENTS.md`](../../AGENTS.md) / [commands.mdc](../../.cursor/rules/commands.mdc).)
 
 ### 6. Report
 

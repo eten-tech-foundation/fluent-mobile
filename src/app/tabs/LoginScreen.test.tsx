@@ -17,9 +17,10 @@ const renderLoginScreen = () =>
 
 let onLoginSuccess: jest.Mock;
 
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: mockPush,
   }),
 }));
 
@@ -125,5 +126,31 @@ describe('LoginScreen', () => {
     expect(screen.queryByTestId('login-privacy-link')).toBeNull();
     expect(screen.queryByTestId('login-terms-link')).toBeNull();
     expect(screen.getByText('Sign in again')).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['auth', 'default', '/(auth)/privacy-policy', '/(auth)/terms-of-use'],
+    ['app', 'addAccount', '/(app)/privacy-policy', '/(app)/terms-of-use'],
+  ] as const)(
+    'routes legal footer links to the %s group for %s login',
+    (legalLinksGroup, variant, privacy, terms) => {
+      render(
+        <LoginScreen
+          onLoginSuccess={onLoginSuccess}
+          legalLinksGroup={legalLinksGroup}
+          variant={variant}
+        />,
+        { wrapper: QueryClientTestWrapper },
+      );
+      fireEvent.press(screen.getByTestId('login-privacy-link'));
+      fireEvent.press(screen.getByTestId('login-terms-link'));
+      expect(mockPush).toHaveBeenCalledTimes(2);
+      expect(mockPush).toHaveBeenNthCalledWith(1, privacy);
+      expect(mockPush).toHaveBeenNthCalledWith(2, terms);
+      expect(FluentAPI.signIn).not.toHaveBeenCalled();
+      expect(beginLoginSession).not.toHaveBeenCalled();
+      expect(onLoginSuccess).not.toHaveBeenCalled();
+    },
+  );
 });

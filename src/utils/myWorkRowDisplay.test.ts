@@ -6,6 +6,7 @@ const baseChapter: MyWorkChapter = {
   displayLabel: 'Luke 4',
   bookName: 'Luke',
   chapterNumber: 4,
+  assignmentStatus: 'draft',
   workflowStage: 'draft',
   syncState: 'synced',
   ownershipState: 'unassigned',
@@ -14,11 +15,17 @@ const baseChapter: MyWorkChapter = {
   downloadedVerses: 5,
   hasConflict: false,
   lastActivityLabel: 'Jun 1, 2024',
-  projectId: 1,
-  projectUnitId: 1,
   projectName: 'Gospel of Luke',
   milestoneName: 'Phase 1',
   targetLanguageName: 'Baka',
+  projectUnitId: 11,
+  projectId: 3,
+  bibleId: 5,
+  bookId: 42,
+  bookCode: 'LUK',
+  assignedUserId: null,
+  peerCheckerId: null,
+  listAccess: 'assigned',
 };
 
 describe('getMyWorkRowDisplay', () => {

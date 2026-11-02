@@ -7,7 +7,7 @@ if [[ ! -d docs ]]; then
   exit 1
 fi
 
-allowed=(agents features runbooks guides tasks assessments)
+allowed=(agents features runbooks guides tasks assessments product-behavior)
 status=0
 shopt -s nullglob dotglob
 

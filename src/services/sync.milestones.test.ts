@@ -33,6 +33,9 @@ jest.mock('./storage', () => ({
 jest.mock('../db/repository', () => ({
   upsertProjectUnits: jest.fn().mockResolvedValue(undefined),
   reconcileUserMilestones: jest.fn().mockResolvedValue(undefined),
+  selectExistingIds: jest.fn(
+    async (_table: string, ids: number[]) => new Set(ids),
+  ),
 }));
 
 const getUserMilestonesMock = FluentAPI.getUserMilestones as jest.Mock;
@@ -40,10 +43,16 @@ const upsertProjectUnitsMock = upsertProjectUnits as jest.Mock;
 const reconcileUserMilestonesMock = reconcileUserMilestones as jest.Mock;
 const setSyncErrorMock = setSyncError as jest.Mock;
 const clearSyncErrorMock = clearSyncError as jest.Mock;
+const { selectExistingIds } = jest.requireMock('../db/repository') as {
+  selectExistingIds: jest.Mock;
+};
 
 describe('syncMilestones', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    selectExistingIds.mockImplementation(
+      async (_table: string, ids: number[]) => new Set(ids),
+    );
   });
 
   it('upserts milestones and clears the project-units sync error', async () => {
@@ -60,6 +69,31 @@ describe('syncMilestones', () => {
     expect(reconcileUserMilestonesMock).toHaveBeenCalledWith(247, [12]);
     expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_project_units');
     expect(setSyncErrorMock).not.toHaveBeenCalled();
+  });
+
+  it('bestEffort upserts only local-project units and keeps full reconcile ids', async () => {
+    getUserMilestonesMock.mockResolvedValue([
+      { id: 12, name: 'Mark', projectId: 3, projectName: 'Baka NT' },
+      { id: 99, name: 'Orphan', projectId: 404, projectName: 'Missing' },
+    ]);
+    selectExistingIds.mockResolvedValue(new Set([3]));
+
+    const result = await syncMilestones(247, 'session-token', {
+      bestEffort: true,
+    });
+
+    expect(upsertProjectUnitsMock).toHaveBeenCalledWith([
+      { id: 12, projectId: 3, name: 'Mark' },
+    ]);
+    expect(reconcileUserMilestonesMock).toHaveBeenCalledWith(247, [12, 99]);
+    expect(result.milestoneIncomplete).toEqual(
+      expect.stringContaining('missing project parents'),
+    );
+    expect(setSyncErrorMock).toHaveBeenCalledWith(
+      'sync_error_project_units',
+      expect.stringContaining('missing project parents'),
+    );
+    expect(clearSyncErrorMock).not.toHaveBeenCalled();
   });
 
   it('records a sync error when the response is not an array', async () => {
@@ -79,7 +113,7 @@ describe('syncMilestones', () => {
   it('soft-fails on 404 without storing a sync error', async () => {
     getUserMilestonesMock.mockRejectedValue(new ApiError(404, 'Not Found'));
 
-    await expect(syncMilestones(247, 'session-token')).resolves.toBeUndefined();
+    await expect(syncMilestones(247, 'session-token')).resolves.toEqual({});
 
     expect(upsertProjectUnitsMock).not.toHaveBeenCalled();
     expect(reconcileUserMilestonesMock).not.toHaveBeenCalled();

@@ -123,6 +123,34 @@ describe('prepareOfflineStorageManagement', () => {
       ]);
     });
 
+    it('does not coerce Reference Images with omitted kind back to text', async () => {
+      mockGetVerifiedInventory.mockResolvedValue([
+        {
+          projectId: 2,
+          totalBytes: 40,
+          resources: [
+            {
+              id: 'img',
+              projectId: 2,
+              label: 'Genesis 1',
+              resourceName: 'Reference Images',
+              bytesTotal: 40,
+              localFilePath: 'file:///other.png',
+              tier: 3,
+              progress: 1,
+              status: 'completed',
+            },
+          ],
+        },
+      ]);
+      mockGetProjectNamesByIds.mockResolvedValue(new Map([[2, 'Genesis']]));
+
+      const groups = await getOtherProjectsStorageInventory(1);
+
+      expect(groups[0]?.resources[0]?.kind).toBe('image');
+      expect(groups[0]?.resources[0]?.resourceName).toBe('Reference Images');
+    });
+
     it('falls back to Project {id} when name is missing', async () => {
       mockGetVerifiedInventory.mockResolvedValue([
         {

@@ -3,7 +3,15 @@ module.exports = {
   setupFiles: ['<rootDir>/jest.env.cjs', '<rootDir>/jest.setup.expo-fs.cjs'],
   // Reanimated setUpTests() needs the Jest env (Jest ≥28 → setupFilesAfterEnv).
   setupFilesAfterEnv: ['<rootDir>/jest.setup.reanimated.cjs'],
-  testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/android/',
+    '/ios/',
+    // Local nested checkouts (gitignored /worktrees/)
+    '<rootDir>/worktrees/',
+  ],
+  // Keep nested checkouts out of the haste map (packages/mocks), not just test discovery.
+  modulePathIgnorePatterns: ['<rootDir>/worktrees/'],
   // jest-expo's list plus phosphor-react-native, whose per-icon modules
   // (src/components/ui/icons) ship as TypeScript source.
   transformIgnorePatterns: [

@@ -193,6 +193,20 @@ function createSyncTestDb() {
         if (existing && !updateHasConflict) {
           row.has_conflict = existing.has_conflict ?? 0;
         }
+        const preservesQueuedStage =
+          /stage_advance_queue/i.test(sql) &&
+          /chapter_assignments\.status/i.test(sql);
+        if (existing && preservesQueuedStage) {
+          const queued = (tables.get('stage_advance_queue')?.rows ?? []).some(
+            queuedRow =>
+              queuedRow.chapter_assignment_id === row.id &&
+              queuedRow.sync_status === 'pending',
+          );
+          if (queued) {
+            row.status = existing.status;
+            row.peer_checker_id = existing.peer_checker_id;
+          }
+        }
         upsertById('chapter_assignments', row);
         return { rows: [], rowsAffected: 1 };
       }
@@ -212,6 +226,7 @@ function createSyncTestDb() {
       books?: Row[];
       project_units?: Row[];
       users?: Row[];
+      stage_advance_queue?: Row[];
     }) {
       for (const [table, rows] of Object.entries(row)) {
         const t = tables.get(table);
@@ -532,5 +547,64 @@ describe('insertChapterAssignmentSyncData', () => {
       validAssignment({ chapterAssignmentId: 1, hasConflict: false }),
     ]);
     expect(db.table('chapter_assignments')[0].has_conflict).toBe(0);
+  });
+
+  it('keeps local status and peer checker while a stage advance is queued', async () => {
+    const db = createSyncTestDb();
+    setDatabase(db as never);
+    db.seed({
+      projects: [{ id: 100, name: 'P' }],
+      bibles: [{ id: 4, language_id: 1, name: 'B', abbreviation: 'B' }],
+      books: [{ id: 12, code: 'GEN', eng_display_name: 'Genesis' }],
+      project_units: [{ id: 10, project_id: 100, status: 'not_started' }],
+      users: [{ id: 5, email: 'seehagen@example.com' }],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({
+        chapterAssignmentId: 1,
+        chapterStatus: 'peer_check',
+        peerCheckerId: 20,
+        assignedUserId: 5,
+      }),
+    ]);
+    db.seed({
+      stage_advance_queue: [
+        {
+          id: 1,
+          chapter_assignment_id: 1,
+          user_id: 5,
+          from_status: 'draft',
+          to_status: 'peer_check',
+          peer_checker_id: null,
+          created_at: '2026-10-22T00:00:00.000Z',
+          sync_status: 'pending',
+        },
+      ],
+    });
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({
+        chapterAssignmentId: 1,
+        chapterStatus: 'draft',
+        assignedUserId: 5,
+      }),
+    ]);
+
+    expect(db.table('chapter_assignments')[0].status).toBe('peer_check');
+    expect(db.table('chapter_assignments')[0].peer_checker_id).toBe(20);
+
+    db.table('stage_advance_queue').splice(0, 1);
+
+    await insertChapterAssignmentSyncData([
+      validAssignment({
+        chapterAssignmentId: 1,
+        chapterStatus: 'draft',
+        assignedUserId: 5,
+      }),
+    ]);
+
+    expect(db.table('chapter_assignments')[0].status).toBe('draft');
+    expect(db.table('chapter_assignments')[0].peer_checker_id).toBeNull();
   });
 });

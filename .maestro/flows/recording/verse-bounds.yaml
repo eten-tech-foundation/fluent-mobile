@@ -20,3 +20,11 @@ tags:
     id: 'record-prev-verse'
 - assertVisible:
     id: 'record-next-verse'
+- tapOn:
+    id: 'record-next-verse'
+- assertVisible:
+    id: 'record-verse-reference'
+- tapOn:
+    id: 'record-prev-verse'
+- assertVisible:
+    id: 'record-verse-reference'

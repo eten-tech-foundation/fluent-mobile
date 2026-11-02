@@ -2,6 +2,7 @@ import { isApiError } from '../types/api/errors';
 import {
   verseAudioBlobKey,
   type VerseAudioConflictStatus,
+  type VerseAudioListResponse,
   type VerseAudioResponse,
   type VerseAudioTakeResponse,
 } from '../types/api/verseAudio';
@@ -34,6 +35,39 @@ export function blobKeyFromVerseAudioResponse(
   response: VerseAudioResponse,
 ): string {
   return verseAudioBlobKey(response.projectUnitId, response.bibleTextId);
+}
+
+/**
+ * Server take id from a PUT response (fluent-api#465 / #716). Prefers
+ * `takeId`. Without it (API not yet deployed), `activeTakeId` is this take
+ * only when the upload activated it; otherwise the id is unknown.
+ */
+export function takeIdFromVerseAudioResponse(
+  response: VerseAudioResponse,
+  activated: boolean,
+): number | null {
+  if (isFiniteNumber(response.takeId)) {
+    return response.takeId;
+  }
+  if (activated && isFiniteNumber(response.activeTakeId)) {
+    return response.activeTakeId;
+  }
+  return null;
+}
+
+/**
+ * Unit version token from a take delete response (#716). Read loosely: after
+ * the last take is deleted the unit has no download URL or active take, which
+ * the strict upload parser rejects.
+ */
+export function versionTokenFromVerseAudioBody(data: unknown): {
+  versionToken: number | null;
+} {
+  const token =
+    data && typeof data === 'object'
+      ? (data as { versionToken?: unknown }).versionToken
+      : undefined;
+  return { versionToken: isFiniteNumber(token) ? token : null };
 }
 
 export function outcomeFromVerseAudioSuccess(
@@ -84,7 +118,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function isConflictStatus(value: unknown): value is VerseAudioConflictStatus {
-  return value === 'clean' || value === 'conflict';
+  return value === 'clean' || value === 'conflict' || value === 'resolved';
 }
 
 function parseVerseAudioTake(data: unknown): VerseAudioTakeResponse {
@@ -199,6 +233,14 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
     );
   }
 
+  if (
+    body.takeId !== null &&
+    body.takeId !== undefined &&
+    !isFiniteNumber(body.takeId)
+  ) {
+    throw createApiError(500, 'Malformed verse audio response: invalid takeId');
+  }
+
   if (typeof body.contentType !== 'string' || body.contentType.length === 0) {
     throw createApiError(
       500,
@@ -246,10 +288,39 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
       body.activeTakeId === null || body.activeTakeId === undefined
         ? null
         : (body.activeTakeId as number),
+    ...(isFiniteNumber(body.takeId) ? { takeId: body.takeId } : {}),
     verseNumber: body.verseNumber as number,
     downloadUrl: body.downloadUrl,
     takes: body.takes.map(parseVerseAudioTake),
     createdAt: body.createdAt,
     updatedAt: body.updatedAt,
+  };
+}
+
+/**
+ * Narrows JSON from `GET /verse-audio?projectUnitId&bibleId&bookId&chapterNumber`.
+ */
+export function parseVerseAudioListResponse(
+  data: unknown,
+): VerseAudioListResponse {
+  if (data === null || typeof data !== 'object') {
+    throw createApiError(500, 'Malformed verse audio list response');
+  }
+  const body = data as Record<string, unknown>;
+  if (!Array.isArray(body.items)) {
+    throw createApiError(
+      500,
+      'Malformed verse audio list response: missing items',
+    );
+  }
+  if (typeof body.hasConflict !== 'boolean') {
+    throw createApiError(
+      500,
+      'Malformed verse audio list response: missing hasConflict',
+    );
+  }
+  return {
+    items: body.items.map(parseVerseAudioResponse),
+    hasConflict: body.hasConflict,
   };
 }

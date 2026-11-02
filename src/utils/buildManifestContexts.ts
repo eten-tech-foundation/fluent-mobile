@@ -8,7 +8,13 @@ export interface PrepareOfflineManifestContext {
   endChapter: number;
   bibleId: number;
 }
-const MAX_CHAPTERS_PER_MANIFEST_CALL = 20;
+
+/**
+ * Contiguous chapter span per canonical Prepare Offline manifest context.
+ * API max is 20. Catalog network fan-out may split these into smaller jobs
+ * internally; saved contexts / download hydration keep this chunking.
+ */
+export const MAX_CHAPTERS_PER_MANIFEST_CALL = 20;
 
 export function buildManifestContexts(
   chapters: PrepareOfflineChapterRow[],

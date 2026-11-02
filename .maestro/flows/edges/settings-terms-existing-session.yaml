@@ -1,0 +1,41 @@
+# Read-only: Home drawer -> Terms of Use -> header back -> Home.
+# Requires an existing logged-in session on an unblocked Home. Uses the
+# terms-of-use-scroll-back header control; never accepts agreements or changes accounts.
+appId: com.eten.fluent
+tags:
+  - edges
+  - existing-session
+  - read-only
+  - ordered-readonly
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- assertVisible:
+    id: 'home-tab-my-work'
+- tapOn:
+    id: 'home-settings-button'
+# Wait for full drawer geometry; a mid-slide node was clipped to x0..62.
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      text: '^Terms of Use$'
+    timeout: 5000
+- tapOn:
+    id: 'settings-menu-terms-of-use'
+- extendedWaitUntil:
+    visible:
+      id: 'terms-of-use-scroll'
+    timeout: 15000
+# Body rendering only.
+- assertVisible:
+    text: '(?s).*Fluent provides optional tools that use artificial intelligence.*'
+- assertVisible:
+    text: '(?s).*If AI services are provided by third parties.*'
+- tapOn:
+    id: 'terms-of-use-scroll-back'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-tab-my-work'
+- assertNotVisible:
+    id: 'login-email-input'

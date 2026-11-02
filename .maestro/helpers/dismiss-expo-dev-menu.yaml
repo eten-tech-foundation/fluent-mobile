@@ -2,7 +2,17 @@
 # Only dismiss when Dev Menu chrome is visible. Never pressKey Back — that
 # leaves the app and lands on the Android launcher (breaks ensure-on-login).
 appId: com.eten.fluent
+tags:
+  - ordered-readonly
 ---
+# Opt-in strict mode (MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT=1): fail instead of
+# dismissing when Dev Menu chrome is showing. The probes below always run.
+- runFlow:
+    when:
+      true: "${(typeof MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT === 'undefined' ? '' : String(MAESTRO_EXPECT_EXPO_DEV_MENU_ABSENT)) === '1'}"
+    commands:
+      - assertNotVisible: 'Toggle performance monitor'
+      - assertNotVisible: 'Reload'
 - runFlow:
     when:
       visible: 'Toggle performance monitor'

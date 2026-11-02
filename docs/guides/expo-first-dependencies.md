@@ -47,10 +47,12 @@ If Expo has no module for the capability, community libraries are fine — still
 2. `npx expo install <package>` (not unpinned `npm install` for Expo modules).
 3. Config plugins only via `app.config.ts` — never hand-edit generated `android/`.
 4. Android-only: no iOS-only packages or plugins ([android-only.mdc](../../.cursor/rules/android-only.mdc)).
-5. After lockfile / native bumps: `npm run doctor`; fix with `npx expo install --fix` when doctor reports SDK drift.
+5. After lockfile / native bumps: `npm run doctor`. Do not run `npx expo install --fix` on a feature ticket; use the scheduled Expo SDK alignment PR (`#422`) for online fixes.
 
 ## Related
 
-- Cursor pointer: [`.cursor/rules/expo-first-dependencies.mdc`](../../.cursor/rules/expo-first-dependencies.mdc)
+- Shared gates / ownership: [AGENTS.md](../../AGENTS.md)
+- Cursor adapter (glob-scoped): [`.cursor/rules/expo-first-dependencies.mdc`](../../.cursor/rules/expo-first-dependencies.mdc)
+- Claude path-scoped rule: [`.claude/rules/expo-first-dependencies.md`](../../.claude/rules/expo-first-dependencies.md)
 - Expo MCP: [`.cursor/rules/expo-mcp.mdc`](../../.cursor/rules/expo-mcp.mdc)
 - Onboarding: [docs/AGENT_ONBOARDING.md](../AGENT_ONBOARDING.md)

@@ -330,9 +330,9 @@ export function useVerseAudio({
           : undefined;
       return checkMultipleRecorders
         ? checkMultipleRecorders(id)
-        : verseHasMultipleRecorders(id, undefined, view);
+        : verseHasMultipleRecorders(id, undefined, view, projectUnitId);
     },
-    [checkMultipleRecorders, chapterNumber, verseNumber],
+    [checkMultipleRecorders, chapterNumber, verseNumber, projectUnitId],
   );
 
   /**
@@ -1221,12 +1221,17 @@ export function useVerseAudio({
    * takes are remuxed via {@link getRemuxNativeModule} on commit (#233).
    */
   const seek = useCallback(
-    /** `takeId` picks the take; otherwise the loaded take, then the selected. */
-    async (ms: number, takeId?: string) => {
+    /** A take id or recording picks the row; otherwise the loaded take, then the selected. */
+    async (ms: number, target?: string | Recording) => {
+      const explicit =
+        typeof target === 'string'
+          ? takes.find(take => take.id === target)
+          : target;
       const take =
-        (takeId !== undefined ? takes.find(t => t.id === takeId) : null) ??
+        explicit ??
         (loadedTakeId !== null
-          ? takes.find(t => t.id === loadedTakeId)
+          ? takes.find(take => take.id === loadedTakeId) ??
+            allTakes.find(take => take.id === loadedTakeId)
           : null) ??
         selectedTake;
       if (!take?.localFilePath) return;
@@ -1259,7 +1264,7 @@ export function useVerseAudio({
         setPlaybackLoadGate(n => n + 1);
       }
     },
-    [clearStitchQueue, loadedTakeId, playback, selectedTake, takes],
+    [allTakes, clearStitchQueue, loadedTakeId, playback, selectedTake, takes],
   );
 
   /** Pause draft review playback (design review control shows Pause while playing). */
@@ -1351,6 +1356,7 @@ export function useVerseAudio({
           setLoadedTakeId(null);
         }
         await deleteTakeFn(id);
+        notifyPendingUploads();
         if (target?.localFilePath) {
           await deleteFile(target.localFilePath).catch(() => {
             // best-effort — DB row is already gone, don't block the UI on a stray file
@@ -1396,6 +1402,9 @@ export function useVerseAudio({
         clearStitchQueue();
         setPlayingTakeId(null);
         await selectTakeFn(id);
+        // Selection changes are syncable work now (#701) — queue an upload
+        // pass when transport allows instead of waiting for the next sync.
+        notifyPendingUploads();
         if (bibleTextId !== null) {
           setTakes(await loadTakesFn(bibleTextId));
         }
@@ -1414,6 +1423,8 @@ export function useVerseAudio({
     async (id: string) => {
       try {
         await designateCanonicalFn(id);
+        // A designation can create a pending upload on its own (#701).
+        notifyPendingUploads();
         if (
           bibleTextId !== null &&
           activeBibleTextIdRef.current === bibleTextId

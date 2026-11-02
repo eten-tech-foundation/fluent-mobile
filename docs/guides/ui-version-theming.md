@@ -31,9 +31,14 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 | `src/theme/uiVersionTypes.ts` | `UiVersion`, `DEFAULT_UI_VERSION`, `isUiVersion`, `ColorMode`, `DEFAULT_COLOR_MODE` (no theme object imports) |
 | `src/theme/uiVersion.ts` | `resolveTheme()` |
 | `src/theme/useTheme.ts` | `useUiVersion()`, `useTheme()`, `useThemedStyles()` — import from this module (not the `theme` barrel) so static consumers stay free of preference/storage |
+| `src/theme/UiVersionPreferenceProvider.tsx` | Root bridge from the stored preference into `useTheme()` |
 | `src/services/userPreferences.ts` | Device-level `pref_ui_version` (default `legacy`) |
 
 Settings → **Interface → UI version** toggles the preference. No app restart.
+`UiVersionPreferenceProvider` at the application root bridges persistent
+preferences into the presentation context. Shared components import only the
+storage-free `useTheme` hooks; standalone components without a provider default
+to Legacy. Subtree `UiVersionOverride` values take precedence within that root.
 
 ## Figma source (Next)
 
@@ -123,4 +128,5 @@ in [theme-figma-audit.md](../features/next-ui-redesign/theme-figma-audit.md).
 
 - `src/theme/legacyTheme.test.ts` — Legacy snapshot + Next mapping per mode + roles/elevation.
 - `src/theme/useTheme.test.tsx` — runtime switch + `useThemedStyles` + `ColorModeScope`.
+- `src/components/layout/SharedChromeTheme.test.tsx` — runtime chrome divergence without Legacy bleed.
 - `src/services/userPreferences.test.ts` — default / persist / invalid fallback.

@@ -29,13 +29,19 @@ import type {
 } from '../types/api/translationResources';
 import type {
   UploadVerseAudioParams,
+  VerseAudioListResponse,
   VerseAudioResponse,
 } from '../types/api/verseAudio';
+import type {
+  GetTranslatedVersesParams,
+  TranslatedVerseResponse,
+} from '../types/api/translatedVerse';
 import {
   normalizeClaimResponse,
   type ClaimChapterAssignmentResponse,
   type NormalizedClaimChapterAssignmentResponse,
 } from '../types/api/chapterClaim';
+import type { ApiChapterAssignment } from '../types/api/types';
 import type { SubmitChapterAssignmentResponse } from '../types/api/submitChapterAssignment';
 import type {
   PutUserSettingsBody,
@@ -56,12 +62,44 @@ import {
 } from './httpClient';
 import { resolveSessionToken } from './sessionToken';
 import { createApiError } from './apiError';
-import { parseVerseAudioResponse } from './verseAudioContract';
+import {
+  parseVerseAudioListResponse,
+  parseVerseAudioResponse,
+  versionTokenFromVerseAudioBody,
+} from './verseAudioContract';
+import { parseTranslatedVersesResponse } from './translatedVerseContract';
 import {
   buildVerseAudioFormData,
   verseAudioRangeUploadPath,
+  verseAudioTakeDeletePath,
   verseAudioUploadPath,
 } from './verseAudioFormData';
+
+export type GetChapterVerseAudioParams = {
+  projectUnitId: number;
+  bibleId: number;
+  bookId: number;
+  chapterNumber: number;
+};
+
+function chapterVerseAudioPath(params: GetChapterVerseAudioParams): string {
+  const query = new URLSearchParams({
+    projectUnitId: String(params.projectUnitId),
+    bibleId: String(params.bibleId),
+    bookId: String(params.bookId),
+    chapterNumber: String(params.chapterNumber),
+  });
+  return `/verse-audio?${query.toString()}`;
+}
+
+function translatedVersesPath(params: GetTranslatedVersesParams): string {
+  const query = new URLSearchParams({
+    projectUnitId: String(params.projectUnitId),
+    bookId: String(params.bookId),
+    chapterNumber: String(params.chapterNumber),
+  });
+  return `/translated-verses?${query.toString()}`;
+}
 
 function translationResourcesVersePath(
   projectId: number,
@@ -179,6 +217,35 @@ async function claimChapterAssignmentRequest(
   return normalizeClaimResponse(api);
 }
 
+/** Wire shape for GET /chapter-assignments/:id (fluent-api returns `id`). */
+type ChapterAssignmentByIdWire = Omit<
+  ApiChapterAssignment,
+  'chapterAssignmentId'
+> & {
+  id?: number;
+  chapterAssignmentId?: number;
+};
+
+async function getChapterAssignmentRequest(
+  chapterAssignmentId: number,
+  token?: string,
+): Promise<ApiChapterAssignment> {
+  const api = await authedRequest<ChapterAssignmentByIdWire>(
+    `/chapter-assignments/${chapterAssignmentId}`,
+    undefined,
+    token,
+  );
+  const { id: wireId, ...rest } = api;
+  const resolvedId = api.chapterAssignmentId ?? wireId;
+  if (resolvedId === undefined) {
+    throw new Error('Chapter assignment response missing id');
+  }
+  return {
+    ...rest,
+    chapterAssignmentId: resolvedId,
+  };
+}
+
 function sourceAudioManifestPath(
   projectId: number,
   params: {
@@ -228,6 +295,10 @@ export const FluentAPI = {
       token,
     ),
 
+  /** Authenticated raw-row GET /languages/{id} — scoped FK seed (#679). */
+  getLanguage: (id: number, token?: string): Promise<ApiLanguage> =>
+    authedRequest<ApiLanguage>(`/languages/${id}`, undefined, token),
+
   getBooks: (updatedAfter?: string, token?: string): Promise<ApiBookMeta[]> =>
     authedRequest<ApiBookMeta[]>(
       withUpdatedAfter('/books', updatedAfter),
@@ -235,12 +306,20 @@ export const FluentAPI = {
       token,
     ),
 
+  /** Authenticated raw-row GET /books/{id} — scoped FK seed (#679). */
+  getBook: (id: number, token?: string): Promise<ApiBookMeta> =>
+    authedRequest<ApiBookMeta>(`/books/${id}`, undefined, token),
+
   getBibles: (updatedAfter?: string, token?: string): Promise<ApiBible[]> =>
     authedRequest<ApiBible[]>(
       withUpdatedAfter('/bibles', updatedAfter),
       undefined,
       token,
     ),
+
+  /** Authenticated raw-row GET /bibles/{id} — scoped FK seed (#679). */
+  getBible: (id: number, token?: string): Promise<ApiBible> =>
+    authedRequest<ApiBible>(`/bibles/${id}`, undefined, token),
 
   getUserByEmail: (email: string, token?: string): Promise<ApiUser> =>
     authedRequest<ApiUser>(
@@ -319,15 +398,28 @@ export const FluentAPI = {
     ),
 
   /**
-   * Advance a chapter assignment to the next workflow stage (online path).
-   * Offline queue / reconnect handling is #257.
+   * Translator READ of one assignment. Drain compares this status before PATCH
+   * (#257). Complete confirmation (#806) also uses this path and normalizes
+   * fluent-api's wire `id` to `chapterAssignmentId`.
+   */
+  getChapterAssignment: (
+    chapterAssignmentId: number,
+    token?: string,
+  ): Promise<ApiChapterAssignment> =>
+    getChapterAssignmentRequest(chapterAssignmentId, token),
+
+  /**
+   * Advance a chapter assignment one step. Body stays empty.
+   * Callers that already hold a per-user session pass `token` (#257).
    */
   submitChapterAssignment: (
     chapterAssignmentId: number,
+    token?: string,
   ): Promise<SubmitChapterAssignmentResponse> =>
     authedRequest<SubmitChapterAssignmentResponse>(
       `/chapter-assignments/${chapterAssignmentId}/submit`,
       { method: 'PATCH' },
+      token,
     ),
 
   getBibleTexts: (
@@ -349,6 +441,62 @@ export const FluentAPI = {
     params: UploadVerseAudioParams,
     token?: string,
   ): Promise<VerseAudioResponse> => uploadVerseAudioRequest(params, token),
+
+  /**
+   * Delete one take by id (fluent-api#465 / #716).
+   * `DELETE /verse-audio/{projectUnitId}/{bibleTextId}/takes/{takeId}`.
+   */
+  deleteVerseAudioTake: (
+    params: {
+      projectUnitId: number;
+      bibleTextId: number;
+      takeId: number;
+    },
+    token?: string,
+  ): Promise<{ versionToken: number | null }> =>
+    authedRequest<unknown>(
+      verseAudioTakeDeletePath(
+        params.projectUnitId,
+        params.bibleTextId,
+        params.takeId,
+      ),
+      { method: 'DELETE' },
+      token,
+    ).then(versionTokenFromVerseAudioBody),
+
+  /**
+   * Chapter draft audio listing (#508 / #704).
+   * `GET /verse-audio?projectUnitId&bibleId&bookId&chapterNumber`.
+   * Callers must resolve playback via exact `take.id === activeTakeId`
+   * (see `resolveActiveTakeDownload`) — never the top-level downloadUrl.
+   */
+  getChapterVerseAudio: async (
+    params: GetChapterVerseAudioParams,
+    token?: string,
+  ): Promise<VerseAudioListResponse> => {
+    const raw = await authedRequest<unknown>(
+      chapterVerseAudioPath(params),
+      undefined,
+      token,
+    );
+    return parseVerseAudioListResponse(raw);
+  },
+
+  /**
+   * Chapter draft text with verse anchors/markers (#508 / #704).
+   * `GET /translated-verses?projectUnitId&bookId&chapterNumber`.
+   */
+  getTranslatedVerses: async (
+    params: GetTranslatedVersesParams,
+    token?: string,
+  ): Promise<TranslatedVerseResponse[]> => {
+    const raw = await authedRequest<unknown>(
+      translatedVersesPath(params),
+      undefined,
+      token,
+    );
+    return parseTranslatedVersesResponse(raw);
+  },
 
   claimChapterAssignment: (
     chapterAssignmentId: number,
@@ -435,9 +583,11 @@ export const FluentAPI = {
       endChapter: number;
       includeContent?: boolean;
     },
+    request?: { signal?: AbortSignal },
   ): Promise<ApiPrepareOfflineManifestResponse> =>
     authedRequest<ApiPrepareOfflineManifestResponse>(
       prepareOfflineManifestPath(projectId, params),
+      request?.signal ? { signal: request.signal } : undefined,
     ),
 
   getPericopeSets: async (token?: string): Promise<ApiPericopeSet[]> => {
@@ -484,9 +634,11 @@ export const FluentAPI = {
   getSourceAudioManifest: (
     projectId: number,
     params: GetSourceAudioManifestParams,
+    request?: { signal?: AbortSignal },
   ): Promise<ApiSourceAudioManifestResponse> =>
     authedRequest<ApiSourceAudioManifestResponse>(
       sourceAudioManifestPath(projectId, params),
+      request?.signal ? { signal: request.signal } : undefined,
     ),
 
   /**
@@ -495,8 +647,12 @@ export const FluentAPI = {
    */
   getChapterSourceAudio: (
     params: GetChapterSourceAudioParams,
+    request?: { signal?: AbortSignal },
   ): Promise<ApiSourceAudioResponse> =>
-    authedRequest<ApiSourceAudioResponse>(chapterSourceAudioPath(params)),
+    authedRequest<ApiSourceAudioResponse>(
+      chapterSourceAudioPath(params),
+      request?.signal ? { signal: request.signal } : undefined,
+    ),
 };
 
 export { buildHeaders, buildMultipartAuthHeaders } from './httpClient';

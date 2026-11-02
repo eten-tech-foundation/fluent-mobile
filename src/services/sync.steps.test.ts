@@ -1,5 +1,10 @@
 import { ApiError } from '../types/api/errors';
+import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
+import {
+  getChapterAssignmentPullRevision,
+  markChapterCompleteConfirmed,
+} from '../utils/chapterCompletionSyncGuard';
 import { AuthError } from './authError';
 import {
   __resetFullSyncSingleFlightForTests,
@@ -11,7 +16,6 @@ import {
   syncPendingChapterClaimsForUser,
   syncProjects,
 } from './sync';
-import { syncDisplayModeSettingsForUser } from './displayModeSettingsSync';
 import { getCredentials } from './keychain';
 import {
   clearSyncError,
@@ -26,6 +30,8 @@ import {
   clearBibleTextsServerIdRemapPending,
   getMasterDataLastSyncedAt,
   setMasterDataLastSyncedAt,
+  getMasterDataUpdatedAt,
+  setMasterDataUpdatedAt,
 } from './storage';
 import * as syncEvents from './syncEvents';
 import { getDatabase } from '../db/db';
@@ -43,6 +49,12 @@ import {
 } from '../db/repository';
 import { getConnectivitySnapshot } from './connectivity';
 import { syncPendingChapterClaims } from './chapterClaimSync';
+import { syncPendingStageAdvances } from './stageAdvanceSync';
+import {
+  BIBLE_TEXT_PHASE,
+  SYNC_PHASE_FIELDS,
+  SYNC_PHASE_LOG_MESSAGE,
+} from './syncPhaseTiming';
 
 jest.mock('./connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
@@ -55,6 +67,14 @@ jest.mock('./chapterClaimSync', () => ({
     .mockResolvedValue({ conflicts: 0 }),
 }));
 
+jest.mock('./stageAdvanceSync', () => ({
+  syncPendingStageAdvances: jest.fn().mockResolvedValue({
+    synced: 0,
+    dropped: 0,
+    failed: 0,
+  }),
+}));
+
 jest.mock('./authToken', () => ({
   authToken: {
     get: jest.fn(),
@@ -65,8 +85,11 @@ jest.mock('./authToken', () => ({
 jest.mock('./api', () => ({
   FluentAPI: {
     getLanguages: jest.fn().mockResolvedValue([]),
+    getLanguage: jest.fn(),
     getBooks: jest.fn().mockResolvedValue([]),
+    getBook: jest.fn(),
     getBibles: jest.fn().mockResolvedValue([]),
+    getBible: jest.fn(),
     getUserByEmail: jest.fn(),
     getUserProjects: jest.fn(),
     getUserMilestones: jest.fn().mockResolvedValue([]),
@@ -89,8 +112,9 @@ jest.mock('./api', () => ({
   },
 }));
 
-jest.mock('./displayModeSettingsSync', () => ({
-  syncDisplayModeSettingsForUser: jest.fn().mockResolvedValue(undefined),
+jest.mock('./userOrgGrants', () => ({
+  persistOrgGrantsFromUserResponse: jest.fn(),
+  refreshUserOrgGrants: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('./keychain', () => ({
@@ -123,6 +147,8 @@ jest.mock('./storage', () => ({
   getLastAssignmentSyncAt: jest.fn(),
   getMasterDataLastSyncedAt: jest.fn().mockReturnValue(''),
   setMasterDataLastSyncedAt: jest.fn(),
+  getMasterDataUpdatedAt: jest.fn().mockReturnValue(''),
+  setMasterDataUpdatedAt: jest.fn(),
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
@@ -160,6 +186,9 @@ jest.mock('../db/repository', () => ({
   getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getLocalProjectIds: jest.fn().mockResolvedValue([1]),
   hasLanguagesMissingIsoCode: jest.fn().mockResolvedValue(false),
+  selectExistingIds: jest.fn(
+    async (_table: string, ids: number[]) => new Set(ids),
+  ),
   userHasLocalProjects: jest.fn().mockResolvedValue(true),
   userHasLocalChapterAssignments: jest.fn().mockResolvedValue(true),
   userNeedsAssigneeRepair: jest.fn().mockResolvedValue(false),
@@ -197,6 +226,7 @@ const clearSyncErrorMock = jest.mocked(clearSyncError);
 const setSyncCountMock = jest.mocked(setSyncCount);
 const getConnectivitySnapshotMock = jest.mocked(getConnectivitySnapshot);
 const syncPendingChapterClaimsMock = jest.mocked(syncPendingChapterClaims);
+const syncPendingStageAdvancesMock = jest.mocked(syncPendingStageAdvances);
 const isBibleTextsServerIdRemapPendingMock = jest.mocked(
   isBibleTextsServerIdRemapPending,
 );
@@ -205,6 +235,8 @@ const clearBibleTextsServerIdRemapPendingMock = jest.mocked(
 );
 const getMasterDataLastSyncedAtMock = jest.mocked(getMasterDataLastSyncedAt);
 const setMasterDataLastSyncedAtMock = jest.mocked(setMasterDataLastSyncedAt);
+const getMasterDataUpdatedAtMock = jest.mocked(getMasterDataUpdatedAt);
+const setMasterDataUpdatedAtMock = jest.mocked(setMasterDataUpdatedAt);
 
 function mockDbCount(count: number) {
   (getDatabase as jest.Mock).mockReturnValue({
@@ -244,9 +276,24 @@ describe('sync step orchestration', () => {
     getRecordingLinkedChaptersToSyncMock.mockResolvedValue(new Map());
     isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
     getMasterDataLastSyncedAtMock.mockReturnValue('');
+    getMasterDataUpdatedAtMock.mockReturnValue('');
+    // Prefer known-user catalogue scoping; leave active unset so AuthError
+    // paths that only call handleSyncAuthFailure when active is set stay clean.
+    (getKnownUserIds as jest.Mock).mockReturnValue(['1']);
+    (getActiveUserId as jest.Mock).mockReturnValue(undefined);
   });
 
   describe('syncMasterData', () => {
+    const prior = '2026-01-01T00:00:00.000Z';
+
+    function stubCollectionCursors(
+      values: Partial<Record<'languages' | 'books' | 'bibles', string>> = {},
+    ) {
+      getMasterDataUpdatedAtMock.mockImplementation(collection => {
+        return values[collection] ?? prior;
+      });
+    }
+
     it('inserts languages, books, and bibles then clears the error key', async () => {
       await syncMasterData('session-tok');
 
@@ -270,32 +317,53 @@ describe('sync step orchestration', () => {
         [{ id: 1, name: 'Genesis' }],
         [{ id: 10, name: 'Source' }],
       );
-      expect(setMasterDataLastSyncedAtMock).toHaveBeenCalledWith(
-        expect.any(String),
-      );
+      expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_master_data');
     });
 
-    it('passes the stored cursor as updatedAfter for incremental sync', async () => {
-      const cursor = '2026-06-01T00:00:00.000Z';
-      getMasterDataLastSyncedAtMock.mockReturnValue(cursor);
+    it('passes each collection cursor as updatedAfter for incremental sync', async () => {
+      stubCollectionCursors({
+        languages: '2026-06-01T00:00:00.000Z',
+        books: '2026-06-02T00:00:00.000Z',
+        bibles: '2026-06-03T00:00:00.000Z',
+      });
       (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
       (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
       (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
 
       await syncMasterData();
 
-      expect(FluentAPI.getLanguages).toHaveBeenCalledWith(cursor, undefined);
-      expect(FluentAPI.getBooks).toHaveBeenCalledWith(cursor, undefined);
-      expect(FluentAPI.getBibles).toHaveBeenCalledWith(cursor, undefined);
-      expect(insertMasterDataMock).toHaveBeenCalledWith([], [], []);
-      expect(setMasterDataLastSyncedAtMock).toHaveBeenCalledWith(
-        expect.any(String),
+      expect(FluentAPI.getLanguages).toHaveBeenCalledWith(
+        '2026-06-01T00:00:00.000Z',
+        undefined,
       );
+      expect(FluentAPI.getBooks).toHaveBeenCalledWith(
+        '2026-06-02T00:00:00.000Z',
+        undefined,
+      );
+      expect(FluentAPI.getBibles).toHaveBeenCalledWith(
+        '2026-06-03T00:00:00.000Z',
+        undefined,
+      );
+      expect(insertMasterDataMock).toHaveBeenCalledWith([], [], []);
     });
 
-    it('omits updatedAfter when forceFull is set', async () => {
-      getMasterDataLastSyncedAtMock.mockReturnValue('2026-06-01T00:00:00.000Z');
+    it('omits updatedAfter when forceFull is set and still stores server updatedAt', async () => {
+      stubCollectionCursors();
+      (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([
+        {
+          id: 1,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+          updatedAt: '2026-07-01T00:00:00.000Z',
+        },
+      ]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([
+        { id: 1, name: 'Genesis', updatedAt: '2026-07-02T00:00:00.000Z' },
+      ]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([
+        { id: 10, name: 'Source', updatedAt: '2026-07-03T00:00:00.000Z' },
+      ]);
 
       await syncMasterData('session-tok', { forceFull: true });
 
@@ -308,6 +376,304 @@ describe('sync step orchestration', () => {
         undefined,
         'session-tok',
       );
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+        'languages',
+        '2026-07-01T00:00:00.000Z',
+      );
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+        'books',
+        '2026-07-02T00:00:00.000Z',
+      );
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+        'bibles',
+        '2026-07-03T00:00:00.000Z',
+      );
+      expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+    });
+
+    it('stores the original server updatedAt even when the device clock is ahead', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-12-31T23:59:59.000Z'));
+      stubCollectionCursors();
+      (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([
+        {
+          id: 1,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+          updatedAt: '2026-03-15T08:01:02.345Z',
+        },
+      ]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+
+      try {
+        await syncMasterData();
+
+        expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+          'languages',
+          '2026-03-15T08:01:02.345Z',
+        );
+        expect(setMasterDataUpdatedAtMock).not.toHaveBeenCalledWith(
+          'languages',
+          '2026-12-31T23:59:59.000Z',
+        );
+        expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith('books', prior);
+        expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+          'bibles',
+          prior,
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('logs cursor presence and returned counts without labeling delta vs full', async () => {
+      const transport = jest.fn();
+      logger.setTransport(transport);
+      stubCollectionCursors();
+      (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([
+        { id: 1, name: 'Genesis', updatedAt: '2026-02-01T00:00:00.000Z' },
+      ]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+
+      try {
+        await syncMasterData();
+
+        expect(transport).toHaveBeenCalledWith(
+          'info',
+          'SyncService',
+          'Syncing master data...',
+          expect.objectContaining({
+            languagesCursor: true,
+            booksCursor: true,
+            biblesCursor: true,
+          }),
+        );
+        expect(transport).toHaveBeenCalledWith(
+          'info',
+          'SyncService',
+          'Master data fetched',
+          expect.objectContaining({
+            languagesCount: 0,
+            booksCount: 1,
+            biblesCount: 0,
+            languagesCursor: true,
+            booksCursor: true,
+            biblesCursor: true,
+          }),
+        );
+        expect(transport).not.toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+          expect.objectContaining({ incremental: expect.anything() }),
+        );
+      } finally {
+        logger.reset();
+      }
+    });
+
+    it('keeps each prior cursor when a collection returns an empty delta', async () => {
+      stubCollectionCursors();
+      (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+
+      await syncMasterData();
+
+      expect(insertMasterDataMock).toHaveBeenCalledWith([], [], []);
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+        'languages',
+        prior,
+      );
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith('books', prior);
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith('bibles', prior);
+    });
+
+    it('advances only the collection that returned a newer updatedAt', async () => {
+      stubCollectionCursors();
+      (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([
+        {
+          id: 1,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+          updatedAt: '2026-06-15T12:00:00.000Z',
+        },
+      ]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+
+      await syncMasterData();
+
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+        'languages',
+        '2026-06-15T12:00:00.000Z',
+      );
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith('books', prior);
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith('bibles', prior);
+    });
+
+    it('keeps the original server string when updatedAt values tie', async () => {
+      stubCollectionCursors();
+      const tied = '2026-04-01T00:00:00.123Z';
+      (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([
+        {
+          id: 1,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+          updatedAt: tied,
+        },
+        {
+          id: 2,
+          langName: 'Spanish',
+          langCodeIso6393: 'spa',
+          updatedAt: tied,
+        },
+      ]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+
+      await syncMasterData();
+
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+        'languages',
+        tied,
+      );
+    });
+
+    it('keeps the prior cursor when items omit or send unparseable updatedAt', async () => {
+      stubCollectionCursors();
+      (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([
+        { id: 1, langName: 'English', langCodeIso6393: 'eng' },
+        {
+          id: 2,
+          langName: 'Spanish',
+          langCodeIso6393: 'spa',
+          updatedAt: null,
+        },
+        {
+          id: 3,
+          langName: 'French',
+          langCodeIso6393: 'fra',
+          updatedAt: 'not-a-date',
+        },
+      ]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+
+      await syncMasterData();
+
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+        'languages',
+        prior,
+      );
+    });
+
+    it('keeps the prior cursor when any item in a batch is missing updatedAt', async () => {
+      stubCollectionCursors();
+      (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([
+        {
+          id: 1,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+          updatedAt: '2026-10-23T12:00:00.000Z',
+        },
+        { id: 2, langName: 'Spanish', langCodeIso6393: 'spa' },
+      ]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+
+      await syncMasterData();
+
+      expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+        'languages',
+        prior,
+      );
+    });
+
+    it('does not advance any cursor when the third endpoint fails', async () => {
+      jest.useFakeTimers();
+      stubCollectionCursors();
+      (FluentAPI.getBibles as jest.Mock).mockRejectedValue(
+        new ApiError(500, 'bibles unavailable'),
+      );
+
+      try {
+        const pending = syncMasterData();
+        const expectation =
+          expect(pending).rejects.toThrow('bibles unavailable');
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(FluentAPI.getLanguages).toHaveBeenCalled();
+        expect(FluentAPI.getBooks).toHaveBeenCalled();
+        expect(insertMasterDataMock).not.toHaveBeenCalled();
+        expect(setMasterDataUpdatedAtMock).not.toHaveBeenCalled();
+        expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not advance cursors when insertMasterData fails after all fetches', async () => {
+      jest.useFakeTimers();
+      stubCollectionCursors();
+      insertMasterDataMock.mockRejectedValue(new Error('insert failed'));
+
+      try {
+        const pending = syncMasterData();
+        const expectation = expect(pending).rejects.toThrow('insert failed');
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(insertMasterDataMock).toHaveBeenCalled();
+        expect(setMasterDataUpdatedAtMock).not.toHaveBeenCalled();
+      } finally {
+        insertMasterDataMock.mockResolvedValue(undefined);
+        jest.useRealTimers();
+      }
+    });
+
+    it('advances cursors after a successful retry', async () => {
+      jest.useFakeTimers();
+      stubCollectionCursors();
+      (FluentAPI.getLanguages as jest.Mock)
+        .mockRejectedValueOnce(new ApiError(500, 'catalog unavailable'))
+        .mockResolvedValue([
+          {
+            id: 1,
+            langName: 'English',
+            langCodeIso6393: 'eng',
+            updatedAt: '2026-06-15T12:00:00.000Z',
+          },
+        ]);
+      (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
+      (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
+
+      try {
+        const pending = syncMasterData();
+        await jest.advanceTimersByTimeAsync(500);
+        await pending;
+
+        expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(2);
+        expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+          'languages',
+          '2026-06-15T12:00:00.000Z',
+        );
+        expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith('books', prior);
+        expect(setMasterDataUpdatedAtMock).toHaveBeenCalledWith(
+          'bibles',
+          prior,
+        );
+        expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('retries non-auth failures then sets the sync error', async () => {
@@ -332,6 +698,7 @@ describe('sync step orchestration', () => {
           'catalog unavailable',
         );
         expect(insertMasterDataMock).not.toHaveBeenCalled();
+        expect(setMasterDataUpdatedAtMock).not.toHaveBeenCalled();
         expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
       } finally {
         jest.useRealTimers();
@@ -357,6 +724,7 @@ describe('sync step orchestration', () => {
         'User not authenticated',
       );
       expect(insertMasterDataMock).not.toHaveBeenCalled();
+      expect(setMasterDataUpdatedAtMock).not.toHaveBeenCalled();
     });
 
     it('does not persist DNS/timeout transport failures as sync errors', async () => {
@@ -378,6 +746,7 @@ describe('sync step orchestration', () => {
         expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(3);
         expect(setSyncErrorMock).not.toHaveBeenCalled();
         expect(insertMasterDataMock).not.toHaveBeenCalled();
+        expect(setMasterDataUpdatedAtMock).not.toHaveBeenCalled();
       } finally {
         jest.useRealTimers();
       }
@@ -428,26 +797,327 @@ describe('sync step orchestration', () => {
       ).toBeLessThan(reconcileUserProjectsMock.mock.invocationCallOrder[0]);
       expect(ensureUserProjectMembershipMock).not.toHaveBeenCalled();
     });
+
+    it('seedFkParents fetches unique languages by id without advancing master cursor (#679)', async () => {
+      mockDbCount(1);
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 1,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockResolvedValue({
+        id: 1,
+        langName: 'English',
+        langCodeIso6393: 'eng',
+      });
+
+      await syncProjects(2, 'seed-tok', { seedFkParents: true });
+
+      expect(FluentAPI.getLanguage).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getLanguage).toHaveBeenCalledWith(1, 'seed-tok');
+      expect(insertMasterDataMock).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            id: 1,
+            langName: 'English',
+            langCode: 'eng',
+          }),
+        ],
+        [],
+        [],
+      );
+      expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+      expect(setMasterDataUpdatedAtMock).not.toHaveBeenCalled();
+      expect(insertProjectsMock).toHaveBeenCalled();
+      const seedOrder = insertMasterDataMock.mock.invocationCallOrder[0];
+      const projectOrder = insertProjectsMock.mock.invocationCallOrder[0];
+      expect(seedOrder).toBeLessThan(projectOrder);
+    });
+
+    it('seedFkParents failure does not insert projects (#679)', async () => {
+      jest.useFakeTimers();
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockRejectedValue(
+        new Error('language missing'),
+      );
+
+      try {
+        const pending = syncProjects(2, 'seed-tok', { seedFkParents: true });
+        const expectation = expect(pending).rejects.toThrow('language missing');
+
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+
+        expect(insertProjectsMock).not.toHaveBeenCalled();
+        expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+        expect(setMasterDataUpdatedAtMock).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('seedFkParentsBestEffort upserts successes and reports incomplete on 404', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([1, 2]));
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockImplementation((id: number) => {
+        if (id === 2) {
+          return Promise.reject(new ApiError(404, 'Language not found'));
+        }
+        return Promise.resolve({
+          id,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+        });
+      });
+
+      const result = await syncProjects(2, 'seed-tok', {
+        seedFkParents: true,
+        seedFkParentsBestEffort: true,
+      });
+
+      expect(result.parentSeedIncomplete).toEqual(
+        expect.stringContaining('Incomplete language parent refresh'),
+      );
+      expect(insertMasterDataMock).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: 1, langCode: 'eng' })],
+        [],
+        [],
+      );
+      expect(insertProjectsMock).toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_projects',
+        expect.stringContaining('Incomplete language parent refresh'),
+      );
+      expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
+    });
+
+    it('seedFkParentsBestEffort AuthError still aborts without project insert', async () => {
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockRejectedValue(
+        new AuthError('Invalid or revoked session token'),
+      );
+
+      await expect(
+        syncProjects(2, 'seed-tok', {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        }),
+      ).rejects.toBeInstanceOf(AuthError);
+
+      expect(insertProjectsMock).not.toHaveBeenCalled();
+      expect(insertMasterDataMock).not.toHaveBeenCalled();
+    });
+
+    it('seedFkParentsBestEffort warm warn logs classification/status only — never raw error text', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([1, 2]));
+      const warnPayloads: Array<Record<string, unknown>> = [];
+      logger.setTransport((level, _tag, message, context) => {
+        if (
+          level === 'warn' &&
+          typeof message === 'string' &&
+          message.includes('FK parent by-id lookup failed') &&
+          context
+        ) {
+          warnPayloads.push(context);
+        }
+      });
+
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockImplementation((id: number) => {
+        if (id === 2) {
+          return Promise.reject(
+            new ApiError(502, 'super-secret-token-xyz body leak'),
+          );
+        }
+        return Promise.resolve({
+          id,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+        });
+      });
+
+      try {
+        const result = await syncProjects(2, 'seed-tok', {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        });
+
+        expect(result.parentSeedIncomplete).toEqual(
+          expect.stringContaining('Incomplete language parent refresh'),
+        );
+        expect(warnPayloads).toHaveLength(1);
+        expect(warnPayloads[0]).toMatchObject({
+          kind: 'language',
+          id: 2,
+          classification: 'api',
+          apiStatus: 502,
+        });
+        expect(JSON.stringify(warnPayloads[0])).not.toContain(
+          'super-secret-token-xyz',
+        );
+        expect(warnPayloads[0]).not.toHaveProperty('error');
+        expect(warnPayloads[0]).not.toHaveProperty('message');
+        expect(warnPayloads[0]).not.toHaveProperty('body');
+        expect(warnPayloads[0]).not.toHaveProperty('stack');
+        expect(insertProjectsMock).toHaveBeenCalled();
+      } finally {
+        logger.reset();
+      }
+    });
+
+    it('seedFkParentsBestEffort warm warn retains Error classification without apiStatus', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([1, 2]));
+      const warnPayloads: Array<Record<string, unknown>> = [];
+      logger.setTransport((level, _tag, message, context) => {
+        if (
+          level === 'warn' &&
+          typeof message === 'string' &&
+          message.includes('FK parent by-id lookup failed') &&
+          context
+        ) {
+          warnPayloads.push(context);
+        }
+      });
+
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+      (FluentAPI.getLanguage as jest.Mock).mockImplementation((id: number) => {
+        if (id === 2) {
+          return Promise.reject(
+            new Error('raw-arbitrary-detail-should-not-log'),
+          );
+        }
+        return Promise.resolve({
+          id,
+          langName: 'English',
+          langCodeIso6393: 'eng',
+        });
+      });
+
+      try {
+        await syncProjects(2, 'seed-tok', {
+          seedFkParents: true,
+          seedFkParentsBestEffort: true,
+        });
+
+        expect(warnPayloads).toHaveLength(1);
+        expect(warnPayloads[0]).toMatchObject({
+          kind: 'language',
+          id: 2,
+          classification: 'error',
+        });
+        expect(warnPayloads[0]).not.toHaveProperty('apiStatus');
+        expect(JSON.stringify(warnPayloads[0])).not.toContain(
+          'raw-arbitrary-detail-should-not-log',
+        );
+      } finally {
+        logger.reset();
+      }
+    });
+
+    it('does not by-id seed when seedFkParents is omitted', async () => {
+      mockDbCount(1);
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 7,
+            name: 'Alpha',
+            sourceLanguageId: 1,
+            targetLanguageId: 2,
+          },
+        ],
+      });
+
+      await syncProjects(2, 'no-seed-tok');
+
+      expect(FluentAPI.getLanguage).not.toHaveBeenCalled();
+      expect(insertMasterDataMock).not.toHaveBeenCalled();
+    });
   });
 
   describe('syncChapterAssignments', () => {
     it('inserts assignments and user projects for fetched rows', async () => {
       mockDbCount(3);
-      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
-        data: [
-          {
-            chapterAssignmentId: 11,
-            projectUnitId: 22,
-            projectId: 5,
-            bibleId: 10,
-            bookId: 1,
-            chapterNumber: 1,
-            chapterStatus: 'in_progress',
-            totalVerses: 10,
-            completedVerses: 2,
-          },
-        ],
-      });
+      const pullRevision = getChapterAssignmentPullRevision();
+      (FluentAPI.getChapterAssignments as jest.Mock).mockImplementation(
+        async () => {
+          markChapterCompleteConfirmed(11);
+          return {
+            data: [
+              {
+                chapterAssignmentId: 11,
+                projectUnitId: 22,
+                projectId: 5,
+                bibleId: 10,
+                bookId: 1,
+                chapterNumber: 1,
+                chapterStatus: 'in_progress',
+                totalVerses: 10,
+                completedVerses: 2,
+              },
+            ],
+          };
+        },
+      );
 
       await syncChapterAssignments(2, '2026-06-01T00:00:00.000Z');
 
@@ -457,13 +1127,16 @@ describe('sync step orchestration', () => {
         undefined,
         undefined,
       );
-      expect(insertChapterAssignmentSyncDataMock).toHaveBeenCalledWith([
-        expect.objectContaining({
-          chapterAssignmentId: 11,
-          projectId: 5,
-          chapterStatus: 'in_progress',
-        }),
-      ]);
+      expect(insertChapterAssignmentSyncDataMock).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            chapterAssignmentId: 11,
+            projectId: 5,
+            chapterStatus: 'in_progress',
+          }),
+        ],
+        pullRevision,
+      );
       expect(insertUserProjectsMock).toHaveBeenCalledWith(2, [5]);
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_chapters', 3);
       expect(clearSyncErrorMock).toHaveBeenCalledWith(
@@ -511,6 +1184,123 @@ describe('sync step orchestration', () => {
         );
       } finally {
         jest.useRealTimers();
+        insertChapterAssignmentSyncDataMock.mockResolvedValue({
+          insertedCount: 1,
+          skipped: [],
+        });
+      }
+    });
+
+    it('seedFkParentsBestEffort soft-skips all-invalid catalogue and membership', async () => {
+      mockDbCount(0);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set());
+      insertChapterAssignmentSyncDataMock.mockResolvedValue({
+        insertedCount: 0,
+        skipped: [
+          { chapterAssignmentId: 11, reason: 'missing_project_unit' as const },
+        ],
+      });
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        syncedAt: '2026-08-18T07:10:52.908Z',
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 404,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 1,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+          },
+        ],
+      });
+
+      try {
+        const result = await syncChapterAssignments(
+          2,
+          undefined,
+          undefined,
+          'tok',
+          { seedFkParentsBestEffort: true },
+        );
+
+        expect(result.partialSkipWarning).toBe(
+          'Skipped all 1 chapter assignment(s) — missing FK parents',
+        );
+        expect(result.syncedAt).toBe('2026-08-18T07:10:52.908Z');
+        expect(insertUserProjectsMock).not.toHaveBeenCalled();
+      } finally {
+        insertChapterAssignmentSyncDataMock.mockResolvedValue({
+          insertedCount: 1,
+          skipped: [],
+        });
+      }
+    });
+
+    it('seedFkParentsBestEffort mixed catalogue membership uses existing projects only', async () => {
+      mockDbCount(1);
+      const selectExistingIdsMock = jest.requireMock('../db/repository')
+        .selectExistingIds as jest.Mock;
+      selectExistingIdsMock.mockResolvedValue(new Set([5]));
+      insertChapterAssignmentSyncDataMock.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [
+          {
+            chapterAssignmentId: 12,
+            reason: 'missing_project_unit' as const,
+          },
+        ],
+      });
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        syncedAt: '2026-08-18T07:10:52.908Z',
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 5,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 1,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+          },
+          {
+            chapterAssignmentId: 12,
+            projectUnitId: 23,
+            projectId: 404,
+            bibleId: 10,
+            bookId: 1,
+            chapterNumber: 2,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 0,
+          },
+        ],
+      });
+
+      try {
+        const result = await syncChapterAssignments(
+          2,
+          undefined,
+          undefined,
+          'tok',
+          { seedFkParentsBestEffort: true },
+        );
+
+        expect(result.partialSkipWarning).toBe(
+          'Skipped 1 of 2 chapter assignment(s) — missing FK parents',
+        );
+        expect(insertUserProjectsMock).toHaveBeenCalledWith(2, [5]);
+        expect(insertUserProjectsMock).not.toHaveBeenCalledWith(
+          2,
+          expect.arrayContaining([404]),
+        );
+      } finally {
         insertChapterAssignmentSyncDataMock.mockResolvedValue({
           insertedCount: 1,
           skipped: [],
@@ -679,12 +1469,64 @@ describe('sync step orchestration', () => {
   });
 
   describe('syncBibleTexts', () => {
+    beforeEach(() => {
+      // Bare ensure (DraftingScreen) scopes to active user only.
+      (getActiveUserId as jest.Mock).mockReturnValue('1');
+      (getKnownUserIds as jest.Mock).mockReturnValue(['1', '2']);
+    });
+
     it('short-circuits when there are no chapters to sync', async () => {
       await syncBibleTexts();
 
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([1]);
       expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_bibles', 0);
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_bible_texts');
+    });
+
+    it('passes explicit eligibleUserIds to getChaptersToSync', async () => {
+      await syncBibleTexts(undefined, { eligibleUserIds: [2, 3] });
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([2, 3]);
+      expect(FluentAPI.getBibleTexts).not.toHaveBeenCalled();
+    });
+
+    it('scopes bare syncBibleTexts to the active user only when many accounts are known', async () => {
+      (getKnownUserIds as jest.Mock).mockReturnValue(['4', '5']);
+      (getActiveUserId as jest.Mock).mockReturnValue('5');
+
+      await syncBibleTexts();
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([5]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([4, 5]);
+    });
+
+    it('uses known-user union for getChaptersToSync when remap is pending', async () => {
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      (getKnownUserIds as jest.Mock).mockReturnValue(['4', '5']);
+      (getActiveUserId as jest.Mock).mockReturnValue('5');
+
+      await syncBibleTexts();
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([4, 5]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([5]);
+
+      getChaptersToSyncMock.mockClear();
+      await syncBibleTexts(undefined, { eligibleUserIds: [5] });
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([4, 5]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([5]);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+    });
+
+    it('returns empty catalogue selection when there is no active user', async () => {
+      // Production shape: storage returns '' when unset (not undefined).
+      (getActiveUserId as jest.Mock).mockReturnValue('');
+
+      await syncBibleTexts();
+
+      expect(getChaptersToSyncMock).toHaveBeenCalledWith([]);
+      expect(getChaptersToSyncMock).not.toHaveBeenCalledWith([0]);
     });
 
     it('uses explicit chapterGroups instead of getChaptersToSync (#670)', async () => {
@@ -951,6 +1793,359 @@ describe('sync step orchestration', () => {
         jest.useRealTimers();
       }
     });
+
+    it('records all-empty full-fetch 404 as missing chapters and fails the step', async () => {
+      mockDbCount(0);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockRejectedValue(
+        new ApiError(404, 'Bible texts not found'),
+      );
+
+      await expect(syncBibleTexts()).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+      expect(insertBibleTextsMock).not.toHaveBeenCalled();
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):.*404/i),
+      );
+    });
+
+    it('fails empty full-fetch when #177 drops cursor despite updatedAfter (remap off)', async () => {
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(
+          /Missing bible text chapter\(s\):.*absent from full-fetch response/i,
+        ),
+      );
+    });
+
+    it('isolates #177 full-fetch 404 across bible groups (remap off + updatedAfter)', async () => {
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => {
+          if (bibleId === 10) {
+            throw new ApiError(404, 'Bible texts not found');
+          }
+          return {
+            data: [
+              {
+                bookId: 2,
+                chapterNumber: 1,
+                verses: [{ id: 2001, verseNumber: 1, text: 'Later bible' }],
+              },
+            ],
+          };
+        },
+      );
+
+      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        20,
+        [{ bookId: 2, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          bibleId: 20,
+          bookId: 2,
+          chapterNumber: 1,
+          verses: [expect.objectContaining({ id: 2001 })],
+        }),
+      ]);
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):.*404/i),
+      );
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+        expect.anything(),
+      );
+    });
+
+    it('stops before later bible groups when a non-404 fetch error is thrown', async () => {
+      jest.useFakeTimers();
+      mockDbCount(1);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => {
+          if (bibleId === 10) {
+            throw new ApiError(500, 'upstream failed');
+          }
+          return {
+            data: [
+              {
+                bookId: 2,
+                chapterNumber: 1,
+                verses: [{ id: 2001, verseNumber: 1, text: 'Later bible' }],
+              },
+            ],
+          };
+        },
+      );
+
+      try {
+        const pending = syncBibleTexts();
+        const expectation = expect(pending).rejects.toThrow(/upstream failed/i);
+        await jest.runAllTimersAsync();
+        await expectation;
+        const bibleIds = (FluentAPI.getBibleTexts as jest.Mock).mock.calls.map(
+          (call: unknown[]) => call[0],
+        );
+        expect(bibleIds.length).toBeGreaterThanOrEqual(1);
+        expect(bibleIds.every(id => id === 10)).toBe(true);
+        expect(insertBibleTextsMock).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('inserts returned chapters on partial full-fetch and still fails for missing', async () => {
+      mockDbCount(1);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [
+            10,
+            [
+              { bookId: 1, chapterNumber: 1 },
+              { bookId: 1, chapterNumber: 2 },
+            ],
+          ],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await expect(syncBibleTexts()).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+      expect(insertBibleTextsMock).toHaveBeenCalledTimes(1);
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          bibleId: 10,
+          bookId: 1,
+          chapterNumber: 1,
+          verses: [expect.objectContaining({ id: 9001 })],
+        }),
+      ]);
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(
+          /Missing bible text chapter\(s\):.*absent from full-fetch response/i,
+        ),
+      );
+    });
+
+    it('continues to a later bible group after an earlier full-fetch 404', async () => {
+      mockDbCount(1);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => {
+          if (bibleId === 10) {
+            throw new ApiError(404, 'Bible texts not found');
+          }
+          return {
+            data: [
+              {
+                bookId: 2,
+                chapterNumber: 1,
+                verses: [{ id: 2001, verseNumber: 1, text: 'Later bible' }],
+              },
+            ],
+          };
+        },
+      );
+
+      await expect(syncBibleTexts()).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        20,
+        [{ bookId: 2, chapterNumber: 1 }],
+        undefined,
+      );
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          bibleId: 20,
+          bookId: 2,
+          chapterNumber: 1,
+          verses: [expect.objectContaining({ id: 2001 })],
+        }),
+      ]);
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):.*404/i),
+      );
+    });
+
+    it('does not clear remap or sync error when missing chapters fail the step', async () => {
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+      try {
+        await expect(
+          syncBibleTexts('2026-01-01T00:00:00.000Z'),
+        ).rejects.toThrow(/Missing bible text chapter\(s\):/i);
+
+        expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_bible_texts',
+          expect.stringMatching(
+            /Missing bible text chapter\(s\):.*absent from full-fetch response/i,
+          ),
+        );
+        expect(clearSyncErrorMock).not.toHaveBeenCalledWith(
+          'sync_error_bible_texts',
+        );
+      } finally {
+        isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      }
+    });
+
+    it('treats full-fetch chapter with empty verses as missing', async () => {
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [],
+          },
+        ],
+      });
+
+      try {
+        await expect(syncBibleTexts()).rejects.toThrow(
+          /Missing bible text chapter\(s\):/i,
+        );
+
+        expect(insertBibleTextsMock).toHaveBeenCalledWith([]);
+        expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+        expect(setSyncErrorMock).toHaveBeenCalledWith(
+          'sync_error_bible_texts',
+          expect.stringMatching(
+            /Missing bible text chapter\(s\):.*empty verses/i,
+          ),
+        );
+      } finally {
+        isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      }
+    });
+
+    it('treats incremental empty data as success (no missing-chapter failure)', async () => {
+      mockDbCount(5);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        '2026-01-01T00:00:00.000Z',
+      );
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([]);
+      expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_bible_texts');
+      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+    });
+
+    it('does not isolate incremental 404 — aborts without fetching later bible groups', async () => {
+      mockDbCount(5);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockRejectedValue(
+        new ApiError(404, 'Bible texts not found'),
+      );
+
+      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).rejects.toThrow(
+        /Bible texts not found/,
+      );
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        '2026-01-01T00:00:00.000Z',
+      );
+      expect(insertBibleTextsMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(/Bible texts not found/),
+      );
+    });
   });
 
   describe('syncBibleTextsForChapters', () => {
@@ -979,10 +2174,398 @@ describe('sync step orchestration', () => {
         'sync_error_bible_texts',
       );
     });
+
+    it('fail-fast on 404 — does not isolate/continue like syncBibleTexts full-fetch', async () => {
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => {
+          if (bibleId === 10) {
+            throw new ApiError(404, 'Bible texts not found');
+          }
+          return {
+            data: [
+              {
+                bookId: 2,
+                chapterNumber: 1,
+                verses: [{ id: 2001, verseNumber: 1, text: 'Later bible' }],
+              },
+            ],
+          };
+        },
+      );
+
+      await expect(
+        syncBibleTextsForChapters([
+          { bibleId: 10, bookId: 1, chapterNumber: 1 },
+          { bibleId: 20, bookId: 2, chapterNumber: 1 },
+        ]),
+      ).rejects.toThrow(/Bible texts not found/);
+
+      const bibleIds = (FluentAPI.getBibleTexts as jest.Mock).mock.calls.map(
+        (call: unknown[]) => call[0],
+      );
+      expect(bibleIds).toEqual([10]);
+      expect(insertBibleTextsMock).not.toHaveBeenCalled();
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+        expect.stringMatching(/Bible texts not found/),
+      );
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.anything(),
+      );
+      // Distinct from #177 / #807 full-fetch missing-chapter accumulation.
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):/i),
+      );
+    });
+
+    it('does not treat empty prepare-offline payloads as full-fetch missing-chapter failures', async () => {
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+      await syncBibleTextsForChapters([
+        { bibleId: 10, bookId: 1, chapterNumber: 1 },
+      ]);
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(10, [
+        { bookId: 1, chapterNumber: 1 },
+      ]);
+      expect(insertBibleTextsMock).toHaveBeenCalledWith([]);
+      expect(clearSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+      );
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.anything(),
+      );
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_prepare_offline_bible_texts',
+        expect.stringMatching(/Missing bible text chapter\(s\):/i),
+      );
+    });
+  });
+
+  describe('phase timing instrumentation (#764)', () => {
+    const transport = jest.fn();
+
+    function timingContexts(): Record<string, unknown>[] {
+      return transport.mock.calls
+        .filter(
+          ([, tag, message]) =>
+            tag === 'SyncPhase' && message === SYNC_PHASE_LOG_MESSAGE,
+        )
+        .map(([, , , context]) => context as Record<string, unknown>);
+    }
+
+    beforeEach(() => {
+      transport.mockReset();
+      logger.setTransport(transport);
+      (getActiveUserId as jest.Mock).mockReturnValue('1');
+    });
+
+    afterEach(() => {
+      logger.reset();
+      jest.restoreAllMocks();
+    });
+
+    it('emits allowlisted attempt and total timing without changing auth classification', async () => {
+      const now = jest.spyOn(Date, 'now');
+      now
+        .mockReturnValueOnce(1_000)
+        .mockReturnValueOnce(1_000)
+        .mockReturnValueOnce(1_025)
+        .mockReturnValueOnce(1_040);
+      (FluentAPI.getLanguages as jest.Mock).mockRejectedValue(
+        new AuthError('User not authenticated'),
+      );
+
+      await expect(syncMasterData('session-tok')).rejects.toBeInstanceOf(
+        AuthError,
+      );
+
+      expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(1);
+      expect(setSyncErrorMock).toHaveBeenCalledTimes(1);
+
+      const phases = timingContexts();
+      expect(phases.map(entry => entry.phase)).toEqual([
+        'Master data sync.attempt',
+        'Master data sync.total',
+      ]);
+      expect(phases[0]).toEqual({
+        phase: 'Master data sync.attempt',
+        elapsedMs: 25,
+        attempt: 1,
+      });
+      expect(phases[1]).toEqual({
+        phase: 'Master data sync.total',
+        elapsedMs: 40,
+        attempt: 1,
+      });
+      for (const context of phases) {
+        expect(
+          Object.keys(context).every(key =>
+            (SYNC_PHASE_FIELDS as readonly string[]).includes(key),
+          ),
+        ).toBe(true);
+      }
+    });
+
+    it('times each retry attempt plus total and preserves transient classification', async () => {
+      jest.useFakeTimers();
+      (FluentAPI.getLanguages as jest.Mock).mockRejectedValue(
+        new ApiError(0, 'Unable to resolve host api.fluent.bible'),
+      );
+
+      try {
+        const pending = syncMasterData();
+        const expectation = expect(pending).rejects.toThrow(
+          'Unable to resolve host api.fluent.bible',
+        );
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+      } finally {
+        jest.useRealTimers();
+      }
+
+      expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(3);
+      expect(setSyncErrorMock).not.toHaveBeenCalled();
+
+      const phases = timingContexts().map(entry => entry.phase);
+      expect(phases).toEqual([
+        'Master data sync.attempt',
+        'Master data sync.attempt',
+        'Master data sync.attempt',
+        'Master data sync.total',
+      ]);
+      expect(
+        timingContexts()
+          .filter(entry => entry.phase === 'Master data sync.attempt')
+          .map(entry => entry.attempt),
+      ).toEqual([1, 2, 3]);
+      expect(
+        timingContexts().find(entry => entry.phase === 'Master data sync.total')
+          ?.attempt,
+      ).toBe(3);
+    });
+
+    it('records count check, combined fetchParse, write, and fullFetchReason', async () => {
+      mockDbCount(0);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      const phases = timingContexts();
+      expect(phases.map(entry => entry.phase)).toEqual([
+        BIBLE_TEXT_PHASE.reentry,
+        BIBLE_TEXT_PHASE.countCheck,
+        BIBLE_TEXT_PHASE.fetchParse,
+        BIBLE_TEXT_PHASE.write,
+        'Bible text sync.attempt',
+        'Bible text sync.total',
+      ]);
+      expect(
+        phases.find(entry => entry.phase === BIBLE_TEXT_PHASE.countCheck),
+      ).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+          fullFetchReason: 'missing_chapter',
+        }),
+      );
+      expect(
+        phases.find(entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse),
+      ).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+          fullFetchReason: 'missing_chapter',
+        }),
+      );
+      expect(
+        phases.find(entry => entry.phase === BIBLE_TEXT_PHASE.write),
+      ).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+          fullFetchReason: 'missing_chapter',
+        }),
+      );
+      const serialized = JSON.stringify(phases);
+      expect(serialized).not.toMatch(
+        /In the beginning|user@|Bearer|token|9001/i,
+      );
+      for (const context of phases) {
+        expect(
+          Object.keys(context).every(key =>
+            (SYNC_PHASE_FIELDS as readonly string[]).includes(key),
+          ),
+        ).toBe(true);
+      }
+    });
+
+    it('labels remap and no_cursor full-fetch reasons', async () => {
+      mockDbCount(2);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+      expect(
+        timingContexts().find(
+          entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse,
+        )?.fullFetchReason,
+      ).toBe('remap');
+      expect(
+        timingContexts().some(
+          entry => entry.phase === BIBLE_TEXT_PHASE.countCheck,
+        ),
+      ).toBe(false);
+
+      transport.mockClear();
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      await syncBibleTexts();
+      expect(
+        timingContexts().find(
+          entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse,
+        )?.fullFetchReason,
+      ).toBe('no_cursor');
+
+      transport.mockClear();
+      mockDbCount(2);
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+      expect(
+        timingContexts().find(
+          entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse,
+        )?.fullFetchReason,
+      ).toBeUndefined();
+      expect(
+        timingContexts().some(
+          entry => entry.phase === BIBLE_TEXT_PHASE.countCheck,
+        ),
+      ).toBe(true);
+    });
+
+    it('omits fullFetchReason on incremental warm fetch and still times countCheck', async () => {
+      mockDbCount(12);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 9001, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      const countCheck = timingContexts().find(
+        entry => entry.phase === BIBLE_TEXT_PHASE.countCheck,
+      );
+      const fetchParse = timingContexts().find(
+        entry => entry.phase === BIBLE_TEXT_PHASE.fetchParse,
+      );
+      expect(countCheck).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+        }),
+      );
+      expect(countCheck).not.toHaveProperty('fullFetchReason');
+      expect(fetchParse).toEqual(
+        expect.objectContaining({
+          rows: 1,
+          chunks: 0,
+        }),
+      );
+      expect(fetchParse).not.toHaveProperty('fullFetchReason');
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        '2026-01-01T00:00:00.000Z',
+      );
+    });
+
+    it('records chunks already committed before a retry without changing order', async () => {
+      jest.useFakeTimers();
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [10, [{ bookId: 1, chapterNumber: 1 }]],
+          [20, [{ bookId: 2, chapterNumber: 1 }]],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (bibleId: number) => ({
+          data: [
+            {
+              bookId: bibleId === 10 ? 1 : 2,
+              chapterNumber: 1,
+              verses: [
+                {
+                  id: bibleId * 100,
+                  verseNumber: 1,
+                  text: 'secret verse text',
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      insertBibleTextsMock.mockImplementation(async rows => {
+        if (rows[0]?.bibleId === 20) {
+          throw new ApiError(500, 'write failed');
+        }
+      });
+
+      try {
+        const pending = syncBibleTexts();
+        const expectation = expect(pending).rejects.toThrow('write failed');
+        await jest.advanceTimersByTimeAsync(500);
+        await jest.advanceTimersByTimeAsync(1000);
+        await expectation;
+      } finally {
+        jest.useRealTimers();
+      }
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(6);
+      expect(insertBibleTextsMock).toHaveBeenCalledTimes(6);
+      expect(
+        timingContexts()
+          .filter(entry => entry.phase === BIBLE_TEXT_PHASE.reentry)
+          .map(entry => entry.chunks),
+      ).toEqual([0, 1, 1]);
+      const serialized = JSON.stringify(timingContexts());
+      expect(serialized).not.toMatch(/secret verse text|user@|Bearer/i);
+    });
   });
 });
 
-describe('syncAllUsers displayMode wiring', () => {
+describe('syncAllUsers displayMode device-local (#777)', () => {
   const { userHasLocalProjects, userHasLocalChapterAssignments } =
     jest.requireMock('../db/repository') as {
       userHasLocalProjects: jest.Mock;
@@ -1024,6 +2607,11 @@ describe('syncAllUsers displayMode wiring', () => {
       conflicts: 0,
       failed: 0,
     });
+    syncPendingStageAdvancesMock.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+    });
   });
 
   afterEach(() => {
@@ -1031,20 +2619,35 @@ describe('syncAllUsers displayMode wiring', () => {
     __resetFullSyncSingleFlightForTests();
   });
 
-  it('invokes syncDisplayModeSettingsForUser with each user id and bearer', async () => {
+  it('does not call /self/settings when remote advertises displayMode capability', async () => {
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: { displayMode: 'verse', suppressTooltip: true },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
 
     await syncAllUsers();
 
-    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
-      '1',
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
+    expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
+    expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
+    expect(syncPendingStageAdvancesMock).toHaveBeenCalledWith(
+      1,
       'user-1-token',
     );
-    expect(syncDisplayModeSettingsForUser).toHaveBeenCalledWith(
-      '2',
+    expect(syncPendingStageAdvancesMock).toHaveBeenCalledWith(
+      2,
       'user-2-token',
     );
+    const claimsOrder =
+      syncPendingChapterClaimsMock.mock.invocationCallOrder[0];
+    const assignmentOrder = (FluentAPI.getChapterAssignments as jest.Mock).mock
+      .invocationCallOrder[0];
+    const stageOrder = syncPendingStageAdvancesMock.mock.invocationCallOrder[0];
+    expect(claimsOrder).toBeLessThan(assignmentOrder);
+    expect(assignmentOrder).toBeLessThan(stageOrder);
   });
 });

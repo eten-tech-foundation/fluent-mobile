@@ -1,5 +1,8 @@
 import React from 'react';
-import { renderHook, act } from '@testing-library/react-native';
+import {
+  renderHook as renderHookBase,
+  act,
+} from '@testing-library/react-native';
 import {
   ColorModeScope,
   useTheme,
@@ -9,6 +12,7 @@ import {
 import { setUiVersion } from '../services/userPreferences';
 import { legacyTheme } from './legacy';
 import { nextTheme, nextThemes } from './next';
+import { UiVersionPreferenceProvider } from './UiVersionPreferenceProvider';
 import { mockPreferenceStore } from '../test/mocks/preferenceStore';
 
 jest.mock('../services/storage', () => ({
@@ -17,6 +21,19 @@ jest.mock('../services/storage', () => ({
     setItemSync: jest.fn(),
   },
 }));
+
+function renderHook<T>(
+  callback: () => T,
+  options?: { wrapper: React.ComponentType<{ children: React.ReactNode }> },
+) {
+  const Scope = options?.wrapper;
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <UiVersionPreferenceProvider>
+      {Scope ? <Scope>{children}</Scope> : children}
+    </UiVersionPreferenceProvider>
+  );
+  return renderHookBase(callback, { wrapper });
+}
 
 describe('useUiVersion / useTheme', () => {
   beforeEach(() => {
@@ -32,6 +49,12 @@ describe('useUiVersion / useTheme', () => {
 
     expect(result.current.version).toBe('legacy');
     expect(result.current.theme).toBe(legacyTheme);
+  });
+
+  it('loads a persisted Next preference when the root bridge mounts', () => {
+    mockPreferenceStore({ pref_ui_version: 'next' });
+    const { result } = renderHook(() => useTheme());
+    expect(result.current).toBe(nextTheme);
   });
 
   it('switches theme at runtime without remounting', () => {

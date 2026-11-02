@@ -1,5 +1,7 @@
 # Next theme vs Figma Foundations audit
 
+> **Dated Figma audit.** Snapshot vs Foundations (see dates in body). Engineering theme contract: [ui-version-theming.md](../../guides/ui-version-theming.md). Not recording/sync product AC.
+
 Audited 2026-10-05 against `origin/main` at `4a10ff1` (after #616 and #618).
 Status updated 2026-10-07 for #638, which resolved most of it. Each section
 says whether it's **resolved** or **open**; the open items are collected in

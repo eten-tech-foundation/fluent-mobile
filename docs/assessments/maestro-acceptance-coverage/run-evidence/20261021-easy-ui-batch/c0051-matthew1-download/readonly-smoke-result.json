@@ -1,0 +1,70 @@
+{
+  "mode": "readonly-smoke",
+  "serial": "emulator-5554",
+  "runtime_pass_claimed": false,
+  "queueArgvSerialized": "run-as com.eten.fluent /system/bin/sqlite3 -readonly databases/default/fluent.db 'SELECT id, project_id, user_id, tier, kind, resource_name, label, source_url, status, progress, bytes_total, local_file_path, resource_id, book_code, start_chapter, end_chapter, file_ext FROM download_queue ORDER BY queue_order, id;'",
+  "cacheFindArgvSerialized": "run-as com.eten.fluent find files/downloads -type f",
+  "queue": {
+    "ok": true,
+    "rowCount": 0,
+    "bytesTotalSum": 0,
+    "error": null,
+    "stderr": null
+  },
+  "takes": {
+    "counts": {
+      "owner10": 10,
+      "owner9": 1,
+      "total": 11
+    },
+    "ids": [
+      "rec_mvhrtjam_t19xic7o",
+      "rec_mvgyi6ut_qg018vsu",
+      "rec_mvh032ch_05antbde",
+      "rec_mvh0ef5x_qaz9pxhq",
+      "rec_mvh0ps18_z1xxf0n7",
+      "rec_mvh163w0_gs1x0vp9",
+      "rec_mvh2cd4t_cur1vxdc",
+      "rec_mvh9zald_ts5k8ma8",
+      "rec_mvhan6h4_os7gqr7f",
+      "rec_mvhazn50_kqkdr2tm",
+      "rec_mvhkn3uc_n1tzsv67"
+    ],
+    "hashMatch": true
+  },
+  "cache": {
+    "ok": true,
+    "fileCount": 19,
+    "matchBaseline19": true,
+    "reasons": []
+  },
+  "prefs": {
+    "values": {
+      "10:drafting_unit": "verse",
+      "active_user_id": "12",
+      "known_user_ids": "10,9,12"
+    },
+    "check": {
+      "ok": true,
+      "active_user_id": "12",
+      "known_user_ids": [
+        "10",
+        "9",
+        "12"
+      ],
+      "wantActive": "12",
+      "wantKnown": [
+        "10",
+        "9",
+        "12"
+      ]
+    }
+  },
+  "outcome": "READONLY_SMOKE_OK",
+  "checks": {
+    "queue0": true,
+    "takes11": true,
+    "cache19": true,
+    "prefs": true
+  }
+}

@@ -8,7 +8,8 @@ import {
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraftingTab } from '../../types/drafting/types';
-import { theme, iconSizes, listIconStrokeWidth } from '../../theme';
+import { iconSizes, listIconStrokeWidth } from '../../theme';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 
 export type { DraftingTab };
 
@@ -35,6 +36,8 @@ export function DraftingTabBar({
   onTabChange,
 }: DraftingTabBarProps) {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
+  const styles = useStyles();
 
   return (
     <View
@@ -84,45 +87,46 @@ export function DraftingTabBar({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    // Lovable drafting tabs: `border-t border-border bg-card` (not pure white).
-    backgroundColor: theme.colors.tabBarBackground,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.border,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    paddingTop: theme.spacing.md + 2,
-    paddingBottom: theme.spacing.md,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  activeRule: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-  },
-  activeRuleOn: {
-    backgroundColor: theme.colors.primary,
-  },
-  activeRuleOff: {
-    backgroundColor: 'transparent',
-  },
-  label: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.medium,
-  },
-  labelActive: {
-    color: theme.colors.primary,
-  },
-  labelInactive: {
-    color: theme.colors.mutedForeground,
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    container: {
+      flexDirection: 'row',
+      // Lovable drafting tabs: `border-t border-border bg-card` (not pure white).
+      backgroundColor: theme.colors.tabBarBackground,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
+    },
+    tab: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.xs,
+      paddingTop: theme.spacing.md + 2,
+      paddingBottom: theme.spacing.md,
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    activeRule: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 2,
+    },
+    activeRuleOn: {
+      backgroundColor: theme.colors.primary,
+    },
+    activeRuleOff: {
+      backgroundColor: 'transparent',
+    },
+    label: {
+      fontSize: theme.typography.sizes.sm,
+      fontWeight: theme.typography.weights.medium,
+    },
+    labelActive: {
+      color: theme.colors.primary,
+    },
+    labelInactive: {
+      color: theme.colors.mutedForeground,
+    },
+  }));

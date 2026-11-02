@@ -82,13 +82,15 @@ function mapResource(item: {
     return null;
   }
 
+  const resourceName = item.resourceName?.trim() || item.label;
   return {
     id: item.id,
     projectId: item.projectId,
     userId: item.userId,
     label: item.label,
-    resourceName: item.resourceName?.trim() || item.label,
-    kind: item.kind ?? 'text',
+    resourceName,
+    // Pre-#417 rows omitted kind; do not coerce Reference Images back to text.
+    kind: item.kind ?? (resourceName === 'Reference Images' ? 'image' : 'text'),
     bytes: item.bytesTotal ?? 0,
     localFilePath: item.localFilePath,
   };

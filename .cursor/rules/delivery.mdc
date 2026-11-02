@@ -11,38 +11,26 @@ alwaysApply: true
 
 Every change — including infra, CI, docs, Dependabot follow-ups, and `expo install --fix` — goes through:
 
-1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing — except explicit **no-ticket chores** approved in-session (`Refs: none`). See [docs/issue-tracking.md](../../docs/issue-tracking.md). The repo Issues list is not the triage board. (Not Linear.) Board Status/Priority edits: [docs/guides/project-board.md](../../docs/guides/project-board.md) and [project-board.mdc](./project-board.mdc) — do not sweep Product or `Dev Ready` lanes without named approval.
-2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch`, or `/start-issue` for the full loop); no-ticket chores may use `{author}/chore/{slug}` without an issue number
-3. **Pull request** — title `[#NNN]: Description` (or plain title for no-ticket chores); body filled from the PR template (below); include `Refs #NNN` **or** `Refs: none` under Details (never `Closes` / `Fixes` / `Resolves`); **assign the PR to the author** (`gh pr create --assignee @me` or `gh pr edit --add-assignee @me`); set Project 4 Status to **In PR Review** when there is a ticket. Manually link the issue in the PR Development sidebar when needed (GitHub has no non-closing link API — do not use closing keywords). `/start-issue` chains to `/create-pr` (`/open-pr` is an alias) which automates the draft PR, board move, and CI watch.
-4. **Human merge** — agents open PRs and push **feature branches only**; never merge on GitHub unless the user explicitly asks for a Dependabot squash merge in that session. For **Needs-QA** PRs ([docs/guides/qa-process.md](../../docs/guides/qa-process.md)): check **Needs QA? Yes**; merge when an engineer approved and CI is green — **QA is post-merge** on the nightly (`In QA` + `@Roslin22`). Optional `preview-build` is debug-only. Engineering-only PRs: check **Needs QA? No** — after merge, automation sets **Done** and closes the linked issue. Never use `Closes` / `Fixes` / `Resolves` in the PR body.
-Allowed on `main` locally: `git checkout main`, `git pull`, read-only validation after merges. **Not allowed:** `git push origin main`, commits on `main`, or opening PRs with `main` as the head branch.
+1. **Ticket on Project 4** — GitHub Issue `#NNN` **on** the [Fluent Mobile Board](https://github.com/orgs/eten-tech-foundation/projects/4/views/9) (org project #4, view 9). Ask if missing — except explicit **no-ticket chores** approved in-session (`Refs: none`). See [docs/issue-tracking.md](../../docs/issue-tracking.md). Board Status/Priority edits: [docs/guides/project-board.md](../../docs/guides/project-board.md) and [project-board.mdc](./project-board.mdc).
+2. **Feature branch** — `{author}/{type}/{issue-number}-{slug}` (see `/create-pr-branch` or `/start-issue`); no-ticket chores may use `{author}/chore/{slug}` without an issue number.
+3. **Pull request** — title `[#NNN]: Description` (or plain title for no-ticket chores); body filled from [`.cursor/templates/pr-template.md`](../templates/pr-template.md) (mandatory — do not substitute a short Summary/Test plan); `Refs #NNN` **or** `Refs: none` under Details (never `Closes` / `Fixes` / `Resolves`); assign the PR to the author; set Project 4 to **In PR Review** when there is a ticket. Procedure: [`.claude/commands/create-pr.md`](../../.claude/commands/create-pr.md) (`/open-pr` alias).
+4. **Human merge** — agents push **feature branches only**; never merge unless the user explicitly asks for a Dependabot squash merge in that session. **Needs QA?** per [docs/guides/qa-process.md](../../docs/guides/qa-process.md) — QA is post-merge on the nightly; engineering-only (`Needs QA? No`) → automation sets **Done** and closes the linked issue. Never use closing keywords in the PR body.
 
-## PR body (mandatory)
+Allowed on `main` locally: `git checkout main`, `git pull`, read-only validation. **Not allowed:** `git push origin main`, commits on `main`, or opening PRs with `main` as the head branch.
 
-**Every** agent-opened PR body — whether via `/create-pr`, `gh pr create`, or any other path — **must** be filled from [`.cursor/templates/pr-template.md`](../templates/pr-template.md).
+## PR body
 
-Do **not** substitute a short “Summary / Test plan” or ad-hoc bullet list. Load the template and pre-fill:
-
-| Section | Required content |
-| ------- | ---------------- |
-| **TLDR** | 2–4 sentences: what / why / impact |
-| **Reviewer checklist** | Leave items unchecked unless verified |
-| **Details** | `Refs #NNN` on its own line (non-closing link), **or** `Refs: none` for an explicit no-ticket chore; short summary; type-of-change checkboxes |
-| **Technical changes** | Key files as `` `path` `` bullets |
-| **Testing** | What gates ran (`format:check`, `lint`, `typecheck`, `npm test -- --ci`) or waiver |
-| **How to verify** | Numbered steps + **Expected** |
-| **Follow-ups** | Deferred AC → linked issues (ticket-level waiver); otherwise say none |
-
-Prefer `/start-issue` (full loop) or `/create-pr` / `/generate-pr-description` so the template is not skipped. Keep under ~400 lines; no nested fenced code blocks inside the PR body.
-
-This repo’s template **wins** over generic personal or org-wide PR body shapes when they conflict.
+Fill [`.cursor/templates/pr-template.md`](../templates/pr-template.md) on every agent-opened PR. Section requirements and Needs QA checkboxes live in that template and in `/create-pr`. Keep under ~400 lines; no nested fenced code blocks. This template wins over org-wide PR body shapes.
 
 ## Dependabot exception (merge only)
 
-When the user asks to **handle/process Dependabot PRs**, agents may **approve and squash-merge existing Dependabot PR branches** into `main` per [dependabot-workflow.mdc](./dependabot-workflow.mdc). That is merging **their** PRs, not pushing agent-authored commits to `main`.
-
-Agent-authored fixes (expo doctor CI, lockfile repair, conflict resolution) still require a **separate ticketed PR** — never push those straight to `main`.
+When the user asks to **handle/process Dependabot PRs**, agents may approve and squash-merge **existing** Dependabot PR branches into `main` per [dependabot-workflow.mdc](./dependabot-workflow.mdc). Agent-authored fixes still need a separate ticketed PR — never push those to `main`.
 
 ## Before delivery
 
-Run gates from [commands.mdc](./commands.mdc). Also apply delivery judgment from root [`AGENTS.md`](../../AGENTS.md) (AC, scope, abstraction, human QA) — Cursor pointer: [agent-guardrails.mdc](./agent-guardrails.mdc). Use `/start-issue` for issue → branch → implement → PR, or `/create-pr` when the branch already has commits (template still required if opening the PR another way). See [pr-delivery-ci-gate.mdc](./pr-delivery-ci-gate.mdc).
+1. Run local gates from [commands.mdc](./commands.mdc) (also listed in [`AGENTS.md`](../../AGENTS.md)).
+2. Apply delivery judgment from [`AGENTS.md`](../../AGENTS.md) (AC, scope, abstraction, human QA).
+3. One independent `code-reviewer` pass on the final intended diff (proportional re-review — see [`AGENTS.md`](../../AGENTS.md) and [`.claude/commands/create-pr.md`](../../.claude/commands/create-pr.md)); fix or waive per-item before handoff.
+4. Watch CI after push/open; report done only when required checks are green (or an out-of-scope base-branch blocker is documented).
+
+Human merges — agents do not merge over unfixed review findings.

@@ -32,6 +32,7 @@ jest.mock('../utils/logger', () => ({
 
 import {
   chapterHasUnuploadableSelectedTakes,
+  assignmentHasPendingUploads,
   getPendingUploadChapters,
   getPendingUploadCount,
   getUnsyncedRecordingCount,
@@ -58,7 +59,48 @@ describe('pending upload queries (#545)', () => {
       expect(sql).toContain(fragment);
     }
     expect(sql).toContain('JOIN bible_texts');
-    expect(sql).not.toContain('project_unit_id');
+    // project_unit_id appears only in the #701 canonical-deferral subquery —
+    // never for assignment resolution in this count.
+    expect(sql.match(/project_unit_id/g)).toHaveLength(2);
+    expect(sql).toContain('c.project_unit_id IS r.project_unit_id');
+  });
+
+  it('uploadable pending queries include canonical rows regardless of owner (#701)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+    await getPendingUploadCount();
+    const countSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(countSql).toContain('r.is_canonical = 1');
+
+    mockExecute.mockReset();
+    mockExecute.mockResolvedValue({ rows: [] });
+    await getPendingUploadChapters();
+    const chaptersSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(chaptersSql).toContain('r.is_canonical = 1');
+  });
+
+  it('uploadable pending queries defer selected takes while the verse has a canonical take (#701)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+    await getPendingUploadCount();
+    const countSql = String(mockExecute.mock.calls[0]?.[0]);
+    // PM rule: canonical is the take sent as the selected take. Selected-only
+    // rows on a verse with a canonical take (same text + unit) are excluded.
+    expect(countSql).toMatch(/NOT \(\s*r\.is_selected = 1\s*AND EXISTS/);
+    expect(countSql).toContain('c.bible_text_id = r.bible_text_id');
+    expect(countSql).toContain('c.is_canonical = 1');
+
+    mockExecute.mockReset();
+    mockExecute.mockResolvedValue({ rows: [] });
+    await getPendingUploadChapters();
+    const chaptersSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(chaptersSql).toMatch(/NOT \(\s*r\.is_selected = 1\s*AND EXISTS/);
+    expect(chaptersSql).toContain('c.is_canonical = 1');
+  });
+
+  it('uploadable pending queries count non-selected takes (#716)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+    await getPendingUploadCount();
+    const countSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(countSql).not.toMatch(/OR \(\s*r\.is_selected = 1 AND/);
   });
 
   it('getUnsyncedRecordingCount includes pericope takes not yet on the server', async () => {
@@ -77,6 +119,64 @@ describe('pending upload queries (#545)', () => {
     mockExecute.mockRejectedValue(failure);
 
     await expect(getUnsyncedRecordingCount()).rejects.toBe(failure);
+  });
+
+  it('pending upload count and chapters include queued take deletions (#716)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 1 }] });
+    await getPendingUploadCount();
+    const countSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(countSql).toContain('FROM recording_deletions d');
+    expect(countSql).toContain(
+      'JOIN bible_texts bt ON bt.id = d.bible_text_id',
+    );
+    expect(countSql).toContain('d.recorded_by_user_id = ?');
+    expect(mockExecute.mock.calls[0]?.[1]).toEqual([7, 7]);
+
+    mockExecute.mockReset();
+    mockExecute.mockResolvedValue({
+      rows: [
+        { book_id: 1, chapter_number: 2 },
+        { book_id: 1, chapter_number: 3 },
+      ],
+    });
+    await expect(getPendingUploadChapters()).resolves.toEqual([
+      { bookId: 1, chapterNumber: 2 },
+      { bookId: 1, chapterNumber: 3 },
+    ]);
+    const chaptersSql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(chaptersSql).toContain('UNION');
+    expect(chaptersSql).toContain('FROM recording_deletions d');
+    expect(chaptersSql).toContain(
+      'JOIN bible_texts bt ON bt.id = d.bible_text_id',
+    );
+    expect(chaptersSql).toContain('d.recorded_by_user_id = ?');
+    expect(mockExecute.mock.calls[0]?.[1]).toEqual([7, 7]);
+  });
+
+  it('assignmentHasPendingUploads joins the assignment chapter and treats a hit as pending (#257)', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 2 }] });
+
+    await expect(assignmentHasPendingUploads(41863, 7)).resolves.toBe(true);
+
+    const sql = String(mockExecute.mock.calls[0]?.[0]);
+    expect(sql).toContain('JOIN chapter_assignments ca');
+    expect(sql).toContain('ca.id = ?');
+    expect(sql).toContain('FROM recordings r');
+    expect(sql).toContain('FROM recording_deletions d');
+    expect(sql).toContain('r.project_unit_id = ca.project_unit_id');
+    expect(mockExecute.mock.calls[0]?.[1]).toEqual([41863, 7, 41863, 7]);
+  });
+
+  it('assignmentHasPendingUploads is false when the assignment has no upload work', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ count: 0 }] });
+
+    await expect(assignmentHasPendingUploads(1, 7)).resolves.toBe(false);
+  });
+
+  it('assignmentHasPendingUploads fails closed when the query throws', async () => {
+    mockExecute.mockRejectedValue(new Error('db'));
+
+    await expect(assignmentHasPendingUploads(1, 7)).resolves.toBe(true);
   });
 
   it('getPendingUploadChapters only lists chapters with upload-eligible verse or pericope takes', async () => {

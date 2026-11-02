@@ -49,11 +49,13 @@ These describe the app. When they disagree with reality, *they* are wrong.
 - Nested `src/**/AGENTS.md`
 - Convention / onboarding scripts: `scripts/*architecture*`, `scripts/*claude*`,
   `.cursor/hooks/*`
+- **`.claude/rules/`** — Claude path-scoped topic rules (when present)
 - **`.cursor/`**
   - `.cursor/commands/*.md` — **parity shims** only (must point at
     `.claude/commands/*`; no duplicated logic)
-  - `.cursor/rules/*.mdc` — always-on contract; audit for drift vs
-    `package.json` / workflows / docs
+  - `.cursor/rules/*.mdc` — Cursor injection adapters; audit for drift vs
+    `AGENTS.md` / `package.json` / workflows / docs (do not assume Claude loads
+    these)
   - `.cursor/templates/pr-template.md` and `.github/PULL_REQUEST_TEMPLATE.md`
     (keep these two identical)
 
@@ -143,14 +145,21 @@ selection.
 
 ### Phase 5 — Execute and open a PR
 
-1. Create a ticketed branch via `/create-pr-branch` (or `/start-issue` if the
-   user named an issue). Do not invent a branch off `main` without a ticket.
+Phase 4’s per-change selection is the go-ahead for this phase (apply approved
+edits + chain `/create-pr`). If the user only wanted an audit report, **STOP**
+after Phase 4 — do not branch, push, or open a PR.
+
+1. Create a branch via `/create-pr-branch` when the user named
+   an issue. If the user **explicitly** approved a **no-ticket chore** this
+   session, use `{author}/chore/{slug}` and `Refs: none` — do not invent that
+   path without the ask.
 2. Launch an **execution subagent** given ONLY the approved findings. It applies
    each edit precisely and reports back.
 3. Sanity-check **before** writing the state file: `git diff` matches the
-   approved set. For **every** change (not only scripts/config), run:
-   `npm run format:check`, `npm run lint`, `npm run typecheck`,
-   `npm test -- --ci`.
+   approved set. For **every** change (not only scripts/config), run the five
+   gates from [`AGENTS.md`](../../../AGENTS.md):
+   `npm run format:check`, `npm run lint`, `npm run architecture-guard`,
+   `npm run typecheck`, `npm test -- --ci`.
 4. Only after validation passes, update `.claude/.config-sync-state.json` with
    timestamp, `lastRunBy` (`git config user.name`), a one-line note, and
    `lastSyncedSha` set to the **source HEAD** whose approved changes passed
@@ -159,7 +168,7 @@ selection.
    the state file if validation failed — failed runs must not mark the tree as
    synced.
 5. Chain into `/create-pr` (`.claude/commands/create-pr.md`). Include
-   `Refs #<issue>` — never closing keywords.
+   `Refs #<issue>` or `Refs: none` — never closing keywords.
 
 ## Notes
 

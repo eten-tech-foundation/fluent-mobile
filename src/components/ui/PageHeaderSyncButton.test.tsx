@@ -40,6 +40,23 @@ describe('PageHeaderSyncButton', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
+  it('forwards onPressIn for mid-tap diagnostics (#721)', () => {
+    const onPress = jest.fn();
+    const onPressIn = jest.fn();
+
+    render(
+      <PageHeaderSyncButton
+        syncStatus="online_synced"
+        onPress={onPress}
+        onPressIn={onPressIn}
+      />,
+    );
+
+    fireEvent(screen.getByTestId('home-sync-button'), 'pressIn');
+    expect(onPressIn).toHaveBeenCalledTimes(1);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
   it('includes sanitized failure reason in the a11y label when uploads failed', () => {
     render(
       <PageHeaderSyncButton

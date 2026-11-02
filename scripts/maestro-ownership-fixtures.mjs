@@ -1,25 +1,44 @@
 #!/usr/bin/env node
 /**
- * Deterministic Maestro ownership fixtures (#574).
+ * Deterministic Maestro ownership fixtures (#574 / #607).
  *
- * Uses the Fluent web PM API (same as Assign Users dialog):
+ * Existing API:
  *   PATCH /projects/:id/chapter-assignments/assign-selected
- *   body: { assignments: [{ chapterAssignmentId, drafterId, peerCheckerId }] }
- *   Clear: drafterId: null, peerCheckerId: null
+ *   POST  /chapter-assignments/:id/claim
+ *   PATCH /chapter-assignments/:id/submit
+ *   PUT   /verse-audio/:projectUnitId/:bibleTextId  (3rd take, stale token)
+ *   GET   /projects/:id/chapter-assignments/progress  (hasConflict rollup)
  *
- * Auth: MAESTRO_PM_EMAIL / MAESTRO_PM_PASSWORD (Project Manager on the
- * disposable fixture project). Translator: MAESTRO_EMAIL (drafter "mine").
+ * Claim restore (fluent-api#464, may be undeployed):
+ *   PATCH /projects/:id/chapter-assignments/reset-selected
+ *   body: { chapterAssignmentIds: number[] }
+ *   404 → log and fall back to claim-label rotation.
+ *
+ * Auth: MAESTRO_PM_* (Project Manager), MAESTRO_EMAIL (drafter "mine" /
+ * conflict uploads), MAESTRO_EMAIL_2 (other translator - "other" + open
+ * Peer Check submit).
  *
  * Commands:
  *   verify  — assert configured labels match expected ownership baseline
  *   seed    — apply baseline roles on the disposable project
- *   reset   — alias of seed (restores baseline; claim chapter may rotate)
+ *   reset   - alias of seed (restores baseline; prefers reset-selected)
  *
  * Origin note: Better Auth requires a non-null Origin (use API base or web app).
  */
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+const {
+  readMergedConflict,
+  isUsableClaimChapter,
+  resetSelectedMissingMessage,
+  staleBaseVersionToken,
+  interpretResetSelectedHttp,
+  minimalWavBytes,
+} = require('./maestro-ownership-fixtures.lib.cjs');
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MANIFEST_PATH = join(
@@ -144,25 +163,12 @@ function deriveOwnership(assignedUserId, currentUserId) {
   return 'other';
 }
 
-function readConflict(assignment) {
-  if (typeof assignment.hasConflict === 'boolean') return assignment.hasConflict;
-  if (typeof assignment.has_conflict === 'boolean') {
-    return assignment.has_conflict;
-  }
-  if (typeof assignment.hasClaimConflict === 'boolean') {
-    return assignment.hasClaimConflict;
-  }
-  if (typeof assignment.has_claim_conflict === 'boolean') {
-    return assignment.has_claim_conflict;
-  }
-  return false;
-}
-
 function displayLabel(bookName, chapterNumber) {
   return `${bookName} ${chapterNumber}`;
 }
 
-async function apiJson(baseUrl, path, { method = 'GET', token, body } = {}) {
+function jsonHeaders(baseUrl, token) {
+  /** @type {Record<string, string>} */
   const headers = {
     'Content-Type': 'application/json',
     'x-client-type': 'mobile',
@@ -171,10 +177,13 @@ async function apiJson(baseUrl, path, { method = 'GET', token, body } = {}) {
     Origin: baseUrl,
   };
   if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
 
+async function apiJson(baseUrl, path, { method = 'GET', token, body } = {}) {
   const res = await fetch(`${baseUrl}${path}`, {
     method,
-    headers,
+    headers: jsonHeaders(baseUrl, token),
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
@@ -194,6 +203,62 @@ async function apiJson(baseUrl, path, { method = 'GET', token, body } = {}) {
   return { data, response: res };
 }
 
+/**
+ * PATCH that must observe 404 (undeployed fluent-api#464) without throwing.
+ * @returns {Promise<{ ok: true, data: unknown } | { ok: false, status: number, data: unknown }>}
+ */
+async function apiJsonAllowError(baseUrl, path, { method, token, body }) {
+  const res = await fetch(`${baseUrl}${path}`, {
+    method,
+    headers: jsonHeaders(baseUrl, token),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  let data = {};
+  if (text.trim()) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text.slice(0, 240) };
+    }
+  }
+  if (!res.ok) {
+    return { ok: false, status: res.status, data };
+  }
+  return { ok: true, data };
+}
+
+async function apiMultipart(baseUrl, path, { token, form }) {
+  /** @type {Record<string, string>} */
+  const headers = {
+    'x-client-type': 'mobile',
+    'User-Agent': 'fluent-mobile-maestro-fixtures',
+    Origin: baseUrl,
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`${baseUrl}${path}`, {
+    method: 'PUT',
+    headers,
+    body: form,
+  });
+  const text = await res.text();
+  let data = {};
+  if (text.trim()) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(`PUT ${path} → ${res.status}: non-JSON body`);
+    }
+  }
+  if (!res.ok) {
+    throw new Error(
+      `PUT ${path} → ${res.status}: ${JSON.stringify(data).slice(0, 240)}`,
+    );
+  }
+  return { data, response: res };
+}
+
 async function signIn(baseUrl, email, password) {
   const { data, response } = await apiJson(baseUrl, '/api/auth/sign-in/email', {
     method: 'POST',
@@ -207,6 +272,67 @@ async function signIn(baseUrl, email, password) {
   return token;
 }
 
+function mapAssignmentRow(a, bookNames, translatorId, progressById) {
+  const id = a.id ?? a.chapterAssignmentId ?? a.assignmentId;
+  const progress = progressById.get(Number(id)) ?? {};
+  const bookId = a.bookId ?? progress.bookId;
+  const bookName =
+    bookNames.get(bookId) ??
+    progress.bookNameEng ??
+    `book:${bookId}`;
+  const status = a.chapterStatus ?? a.status ?? progress.status;
+  const assignedUserId =
+    a.assignedUserId ??
+    a.assigned_user_id ??
+    progress.assignedUserId ??
+    progress.assignedUser?.id ??
+    undefined;
+  const peerCheckerId =
+    a.peerCheckerId ??
+    a.peer_checker_id ??
+    progress.peerCheckerId ??
+    progress.peerChecker?.id ??
+    undefined;
+  const stageAssignee = resolveStageAssigneeId(
+    status,
+    assignedUserId,
+    peerCheckerId,
+  );
+  return {
+    id,
+    label: displayLabel(bookName, a.chapterNumber ?? progress.chapterNumber),
+    bookId,
+    chapterNumber: a.chapterNumber ?? progress.chapterNumber,
+    projectUnitId: a.projectUnitId ?? progress.projectUnitId ?? null,
+    bibleId: a.bibleId ?? progress.bibleId ?? null,
+    ownership: deriveOwnership(stageAssignee, translatorId),
+    conflict: readMergedConflict(progress, a),
+    status: normalizeStatus(status),
+    stage: workflowStage(status),
+    assignedUserId: assignedUserId ?? null,
+    peerCheckerId: peerCheckerId ?? null,
+  };
+}
+
+async function fetchProgressById(baseUrl, projectId, pmToken) {
+  const progressRows = unwrapList(
+    (
+      await apiJson(baseUrl, `/projects/${projectId}/chapter-assignments/progress`, {
+        token: pmToken,
+      })
+    ).data,
+  );
+  /** @type {Map<number, Record<string, unknown>>} */
+  const progressById = new Map();
+  if (Array.isArray(progressRows)) {
+    for (const row of progressRows) {
+      const id = row.assignmentId ?? row.id ?? row.chapterAssignmentId;
+      if (id != null) progressById.set(Number(id), row);
+    }
+  }
+  return progressById;
+}
+
 async function loadContext() {
   loadEnvMaestroLiteral(ENV_MAESTRO_PATH);
   const baseUrl = requireEnv('EXPO_PUBLIC_API_BASE_URL').replace(/\/$/, '');
@@ -217,6 +343,8 @@ async function loadContext() {
     requireEnv('MAESTRO_TRANSLATOR_PASSWORD');
   const pmEmail = requireEnv('MAESTRO_PM_EMAIL');
   const pmPassword = requireEnv('MAESTRO_PM_PASSWORD');
+  const otherEmail = optionalEnv('MAESTRO_EMAIL_2');
+  const otherPassword = optionalEnv('MAESTRO_PASSWORD_2');
 
   const translatorToken = await signIn(
     baseUrl,
@@ -224,6 +352,20 @@ async function loadContext() {
     translatorPassword,
   );
   const pmToken = await signIn(baseUrl, pmEmail, pmPassword);
+  let otherTranslatorToken = null;
+  if (otherEmail && otherPassword) {
+    if (otherEmail === pmEmail) {
+      throw new Error(
+        'MAESTRO_EMAIL_2 must be a second Project Translator, not the PM (MAESTRO_PM_EMAIL).',
+      );
+    }
+    if (otherEmail === translatorEmail) {
+      throw new Error(
+        'MAESTRO_EMAIL_2 must differ from MAESTRO_EMAIL (other translator for open Peer Check).',
+      );
+    }
+    otherTranslatorToken = await signIn(baseUrl, otherEmail, otherPassword);
+  }
 
   const translator = (
     await apiJson(
@@ -237,6 +379,15 @@ async function loadContext() {
       token: pmToken,
     })
   ).data;
+  const otherTranslator = otherEmail
+    ? (
+        await apiJson(
+          baseUrl,
+          `/users/email/${encodeURIComponent(otherEmail)}`,
+          { token: otherTranslatorToken ?? pmToken },
+        )
+      ).data
+    : null;
 
   const books = unwrapList(
     (await apiJson(baseUrl, '/books', { token: pmToken })).data,
@@ -304,31 +455,11 @@ async function loadContext() {
     throw new Error('project chapter-assignments did not return an array');
   }
 
-  const enriched = projectAssignments.map(a => {
-    const id = a.id ?? a.chapterAssignmentId;
-    const bookName = bookNames.get(a.bookId) ?? `book:${a.bookId}`;
-    const status = a.chapterStatus ?? a.status;
-    const assignedUserId =
-      a.assignedUserId ?? a.assigned_user_id ?? undefined;
-    const peerCheckerId = a.peerCheckerId ?? a.peer_checker_id ?? undefined;
-    const stageAssignee = resolveStageAssigneeId(
-      status,
-      assignedUserId,
-      peerCheckerId,
-    );
-    return {
-      id,
-      label: displayLabel(bookName, a.chapterNumber),
-      bookId: a.bookId,
-      chapterNumber: a.chapterNumber,
-      ownership: deriveOwnership(stageAssignee, translator.id),
-      conflict: readConflict(a),
-      status: normalizeStatus(status),
-      stage: workflowStage(status),
-      assignedUserId: assignedUserId ?? null,
-      peerCheckerId: peerCheckerId ?? null,
-    };
-  });
+  const progressById = await fetchProgressById(baseUrl, projectId, pmToken);
+
+  const enriched = projectAssignments.map(a =>
+    mapAssignmentRow(a, bookNames, translator.id, progressById),
+  );
 
   const byLabel = new Map(enriched.map(row => [row.label, row]));
 
@@ -344,11 +475,16 @@ async function loadContext() {
   );
   const otherMember =
     translators.find(m => Number(m.userId) !== Number(translator.id)) ?? null;
-  const otherUserId = optionalEnv('MAESTRO_FIXTURE_OTHER_USER_ID')
+  const otherUserIdFromEnv = optionalEnv('MAESTRO_FIXTURE_OTHER_USER_ID')
     ? Number(optionalEnv('MAESTRO_FIXTURE_OTHER_USER_ID'))
-    : otherMember
-      ? Number(otherMember.userId)
-      : null;
+    : null;
+  const otherUserId = otherTranslator
+    ? Number(otherTranslator.id)
+    : otherUserIdFromEnv
+      ? otherUserIdFromEnv
+      : otherMember
+        ? Number(otherMember.userId)
+        : null;
 
   return {
     baseUrl,
@@ -358,11 +494,39 @@ async function loadContext() {
     pm,
     pmToken,
     translatorToken,
+    otherTranslatorToken,
+    otherTranslator,
     enriched,
     byLabel,
+    bookNames,
     otherUserId,
-    otherDisplayName: otherMember?.displayName ?? null,
+    otherDisplayName:
+      otherTranslator?.username ??
+      otherMember?.displayName ??
+      null,
   };
+}
+
+async function refreshRows(ctx) {
+  const projectAssignments = unwrapList(
+    (
+      await apiJson(
+        ctx.baseUrl,
+        `/projects/${ctx.projectId}/chapter-assignments`,
+        { token: ctx.pmToken },
+      )
+    ).data,
+  );
+  const progressById = await fetchProgressById(
+    ctx.baseUrl,
+    ctx.projectId,
+    ctx.pmToken,
+  );
+  ctx.enriched = (Array.isArray(projectAssignments) ? projectAssignments : []).map(
+    a => mapAssignmentRow(a, ctx.bookNames, ctx.translator.id, progressById),
+  );
+  ctx.byLabel = new Map(ctx.enriched.map(row => [row.label, row]));
+  return ctx;
 }
 
 async function assignSelected(ctx, assignments) {
@@ -400,11 +564,7 @@ function pickClaimChapter(ctx, preferredLabel, reservedLabels) {
 
   if (preferredLabel) {
     const preferred = ctx.byLabel.get(preferredLabel);
-    if (
-      preferred &&
-      preferred.assignedUserId == null &&
-      preferred.status === 'not_started'
-    ) {
+    if (isUsableClaimChapter(preferred)) {
       return preferred;
     }
     if (!allowRotate) {
@@ -413,23 +573,195 @@ function pickClaimChapter(ctx, preferredLabel, reservedLabels) {
         : 'label not found in project';
       throw new Error(
         `claim chapter "${preferredLabel}" is not usable (${status}). ` +
-          `Pick a pristine not_started unassigned chapter, or re-run seed with ` +
+          `Re-seed after fluent-api#464 reset-selected is deployed, or re-run with ` +
           `MAESTRO_FIXTURE_ALLOW_CLAIM_ROTATE=1 (local only — EAS should update the secret).`,
       );
     }
   }
   const next = ctx.enriched.find(
-    r =>
-      r.assignedUserId == null &&
-      r.status === 'not_started' &&
-      !reserved.has(r.label),
+    r => isUsableClaimChapter(r) && !reserved.has(r.label),
   );
   if (!next) {
     throw new Error(
-      'No not_started unassigned chapter left for claim role — add books to the disposable project or clear draft leftovers via Fluent web Status (API cannot reset status to not_started).',
+      'No not_started unassigned chapter left for claim role - add books to the disposable project or wait for fluent-api#464 reset-selected.',
     );
   }
   return next;
+}
+
+/**
+ * @returns {Promise<{ ok: true } | { ok: false, notImplemented: true } | { ok: false, error: string }>}
+ */
+async function tryResetSelected(ctx, chapterAssignmentIds) {
+  const result = await apiJsonAllowError(
+    ctx.baseUrl,
+    `/projects/${ctx.projectId}/chapter-assignments/reset-selected`,
+    {
+      method: 'PATCH',
+      token: ctx.pmToken,
+      body: { chapterAssignmentIds },
+    },
+  );
+  const status = result.ok ? 200 : result.status;
+  const interpreted = interpretResetSelectedHttp(status, result.data);
+  if (interpreted.reset) return { ok: true };
+  if (status === 404) {
+    return { ok: false, notImplemented: true };
+  }
+  return { ok: false, error: interpreted.reason };
+}
+
+async function restoreClaimBaseline(ctx, preferredLabel, reservedLabels) {
+  const preferred = preferredLabel ? ctx.byLabel.get(preferredLabel) : null;
+  if (isUsableClaimChapter(preferred)) {
+    return preferred;
+  }
+
+  if (preferred) {
+    const reset = await tryResetSelected(ctx, [preferred.id]);
+    if (reset.ok) {
+      console.log(
+        `  claim       ${preferred.label}: reset-selected → not_started (fluent-api#464)`,
+      );
+      await refreshRows(ctx);
+      const restored = ctx.byLabel.get(preferred.label);
+      if (isUsableClaimChapter(restored)) {
+        return restored;
+      }
+      throw new Error(
+        `reset-selected returned ok but "${preferred.label}" is still status=${restored?.status} assigned=${restored?.assignedUserId}`,
+      );
+    }
+    if (reset.notImplemented) {
+      console.warn(
+        resetSelectedMissingMessage(
+          ctx.baseUrl,
+          `/projects/${ctx.projectId}/chapter-assignments/reset-selected`,
+        ),
+      );
+    } else {
+      throw new Error(`reset-selected failed for "${preferred.label}": ${reset.error}`);
+    }
+  }
+
+  return pickClaimChapter(ctx, preferredLabel, reservedLabels);
+}
+
+async function firstVerseTextId(ctx, row) {
+  if (row.bibleId == null || row.bookId == null || row.chapterNumber == null) {
+    throw new Error(
+      `conflict "${row.label}": missing bibleId/bookId/chapterNumber for texts`,
+    );
+  }
+  const { data } = await apiJson(
+    ctx.baseUrl,
+    `/bibles/${row.bibleId}/books/${row.bookId}/chapters/${row.chapterNumber}/texts`,
+    { token: ctx.translatorToken },
+  );
+  const verses = unwrapList(data);
+  const first = Array.isArray(verses) ? verses[0] : null;
+  if (!first?.id) {
+    throw new Error(`conflict "${row.label}": no bible text id from chapter texts`);
+  }
+  return Number(first.id);
+}
+
+async function uploadTake(ctx, projectUnitId, bibleTextId, seed, baseVersionToken) {
+  const form = new FormData();
+  const wav = minimalWavBytes(seed);
+  form.append(
+    'file',
+    new File([wav], `maestro-conflict-${seed}.wav`, { type: 'audio/wav' }),
+  );
+  form.append('durationSeconds', '0.002');
+  if (baseVersionToken !== undefined) {
+    form.append('baseVersionToken', String(baseVersionToken));
+  }
+  const { data } = await apiMultipart(
+    ctx.baseUrl,
+    `/verse-audio/${projectUnitId}/${bibleTextId}`,
+    { token: ctx.translatorToken, form },
+  );
+  return data;
+}
+
+/**
+ * assign-selected auto-transitions not_started → draft when a drafter is set.
+ * That is enough for verse-audio upload (conflict) and PATCH submit (Peer Check).
+ */
+async function assignDrafter(ctx, row, userId) {
+  await assignSelected(ctx, [
+    {
+      chapterAssignmentId: row.id,
+      drafterId: userId,
+      peerCheckerId: null,
+    },
+  ]);
+  return {
+    ...row,
+    status: row.status === 'not_started' ? 'draft' : row.status,
+    assignedUserId: userId,
+    peerCheckerId: null,
+  };
+}
+
+async function seedConflict(ctx, row) {
+  if (row.projectUnitId == null) {
+    throw new Error(`conflict "${row.label}": missing projectUnitId`);
+  }
+  if (row.conflict) {
+    console.log(`  conflict    ${row.label}: already hasConflict - skip uploads`);
+    return;
+  }
+
+  const drafted = await assignDrafter(ctx, row, ctx.translator.id);
+  const bibleTextId = await firstVerseTextId(ctx, drafted);
+  const take1 = await uploadTake(ctx, drafted.projectUnitId, bibleTextId, 1);
+  const token1 = take1.versionToken;
+  if (token1 == null) {
+    throw new Error(`conflict "${row.label}": take 1 did not return versionToken`);
+  }
+  await uploadTake(ctx, drafted.projectUnitId, bibleTextId, 2, token1);
+  const staleToken = staleBaseVersionToken(token1);
+  const take3 = await uploadTake(
+    ctx,
+    drafted.projectUnitId,
+    bibleTextId,
+    3,
+    staleToken,
+  );
+  if (take3.conflictStatus !== 'conflict') {
+    throw new Error(
+      `conflict "${row.label}": expected conflictStatus=conflict after stale take 3, got ${take3.conflictStatus}`,
+    );
+  }
+  console.log(
+    `  conflict    ${row.label}: 3 takes uploaded (take 3 stale baseVersionToken=${staleToken})`,
+  );
+}
+
+async function seedOpenPeerCheck(ctx, row) {
+  if (!ctx.otherUserId || !ctx.otherTranslatorToken) {
+    throw new Error(
+      'Open Peer Check seed needs MAESTRO_EMAIL_2 / MAESTRO_PASSWORD_2 (other translator) to PATCH submit.',
+    );
+  }
+
+  if (row.status === 'peer_check' && row.peerCheckerId == null) {
+    console.log(
+      `  openPeerCheck ${row.label}: already peer_check with no peerChecker`,
+    );
+    return;
+  }
+
+  await assignDrafter(ctx, row, ctx.otherUserId);
+  await apiJson(ctx.baseUrl, `/chapter-assignments/${row.id}/submit`, {
+    method: 'PATCH',
+    token: ctx.otherTranslatorToken,
+  });
+  console.log(
+    `  openPeerCheck ${row.label}: assigned drafter=${ctx.otherUserId}, submitted → peer_check`,
+  );
 }
 
 async function seed() {
@@ -445,9 +777,9 @@ async function seed() {
   }
 
   const ctx = await loadContext();
-  if (!ctx.otherUserId) {
+  if (!ctx.otherUserId || !ctx.otherTranslatorToken) {
     throw new Error(
-      'Need a second Project Translator on the fixture project (for "other" / peerChecker). Set MAESTRO_FIXTURE_OTHER_USER_ID or add another translator in Fluent web.',
+      'Need MAESTRO_EMAIL_2 / MAESTRO_PASSWORD_2 (second Project Translator) for "other" and open Peer Check submit.',
     );
   }
 
@@ -455,17 +787,22 @@ async function seed() {
   const otherLabel = requireEnv('MAESTRO_FIXTURE_OTHER_LABEL');
   const unassignedLabel = requireEnv('MAESTRO_FIXTURE_UNASSIGNED_LABEL');
   const claimPreferred = optionalEnv('MAESTRO_FIXTURE_CLAIM_LABEL');
+  const conflictLabel = requireEnv('MAESTRO_FIXTURE_CONFLICT_LABEL');
+  const openPeerCheckLabel = requireEnv('MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL');
 
   const mine = requireRow(ctx, mineLabel, 'mine');
   const other = requireRow(ctx, otherLabel, 'other');
   const unassigned = requireRow(ctx, unassignedLabel, 'unassigned');
-  const claim = pickClaimChapter(ctx, claimPreferred, [
+  const conflict = requireRow(ctx, conflictLabel, 'conflict');
+  const openPeerCheck = requireRow(ctx, openPeerCheckLabel, 'openPeerCheck');
+  const reserved = [
     mineLabel,
     otherLabel,
     unassignedLabel,
-    optionalEnv('MAESTRO_FIXTURE_CONFLICT_LABEL'),
-    optionalEnv('MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL'),
-  ]);
+    conflictLabel,
+    openPeerCheckLabel,
+  ];
+  const claim = await restoreClaimBaseline(ctx, claimPreferred, reserved);
 
   /** @type {Array<{chapterAssignmentId:number,drafterId:number|null,peerCheckerId:number|null}>} */
   const assignments = [
@@ -483,9 +820,6 @@ async function seed() {
     },
   ];
 
-  // Clearing via assign-selected leaves status=draft (API cannot restore
-  // not_started). Only PATCH nulls when the chapter still has an assignee —
-  // pristine not_started rows must be left untouched for auto-claim.
   if (unassigned.assignedUserId != null || unassigned.peerCheckerId != null) {
     assignments.push({
       chapterAssignmentId: unassigned.id,
@@ -495,17 +829,17 @@ async function seed() {
   }
   if (claim.assignedUserId != null || claim.peerCheckerId != null) {
     throw new Error(
-      `claim chapter "${claim.label}" is assigned (id=${claim.id}). Pick a pristine not_started chapter — clearing via API would leave status=draft and break POST /claim.`,
+      `claim chapter "${claim.label}" is assigned (id=${claim.id}). reset-selected should have cleared it, or pick a pristine not_started chapter.`,
     );
   }
   if (claim.status !== 'not_started') {
     throw new Error(
-      `claim chapter "${claim.label}" status=${claim.status} (need not_started). Choose another unused chapter label.`,
+      `claim chapter "${claim.label}" status=${claim.status} (need not_started).`,
     );
   }
 
   console.log(
-    `About to mutate project ${ctx.projectId} ("${ctx.projectName}") via assign-selected:`,
+    `About to mutate project ${ctx.projectId} ("${ctx.projectName}"):`,
   );
   console.log(
     `  mine        ${mineLabel} (id=${mine.id}): ${mine.ownership}/${mine.status} → drafter=${ctx.translator.id}`,
@@ -517,13 +851,32 @@ async function seed() {
     `  unassigned  ${unassignedLabel} (id=${unassigned.id}): ${unassigned.ownership}/${unassigned.status} → clear assignees`,
   );
   console.log(
-    `  claim       ${claim.label} (id=${claim.id}): leave pristine not_started (no PATCH)`,
+    `  claim       ${claim.label} (id=${claim.id}): leave/restore pristine not_started`,
   );
   console.log(
-    'Note: burned claim chapters stay draft after auto-claim; API cannot restore not_started — rotate claim label or reset Status in Fluent web.',
+    `  conflict    ${conflictLabel} (id=${conflict.id}): 3 verse-audio takes, 3rd stale token`,
+  );
+  console.log(
+    `  openPeerCheck ${openPeerCheckLabel} (id=${openPeerCheck.id}): other drafter + submit`,
   );
 
   await assignSelected(ctx, assignments);
+  await seedConflict(ctx, conflict);
+  await seedOpenPeerCheck(ctx, openPeerCheck);
+  await refreshRows(ctx);
+
+  const conflictAfter = ctx.byLabel.get(conflictLabel);
+  if (!conflictAfter?.conflict) {
+    throw new Error(
+      `conflict verify via GET progress: "${conflictLabel}" hasConflict=${conflictAfter?.conflict} (expected true)`,
+    );
+  }
+  const peerAfter = ctx.byLabel.get(openPeerCheckLabel);
+  if (peerAfter?.status !== 'peer_check' || peerAfter.peerCheckerId != null) {
+    throw new Error(
+      `openPeerCheck verify: "${openPeerCheckLabel}" status=${peerAfter?.status} peerCheckerId=${peerAfter?.peerCheckerId} (expected peer_check / null)`,
+    );
+  }
 
   const state = {
     projectId: ctx.projectId,
@@ -536,11 +889,12 @@ async function seed() {
       other: otherLabel,
       unassigned: unassignedLabel,
       claim: claim.label,
+      conflict: conflictLabel,
+      openPeerCheck: openPeerCheckLabel,
     },
   };
   writeFileSync(STATE_PATH, `${JSON.stringify(state, null, 2)}\n`);
 
-  // Keep .env.maestro claim label in sync when we rotated — print export hint only.
   console.log(`Seeded project ${ctx.projectId} (${ctx.projectName}):`);
   console.log(`  mine        ${mineLabel} → drafter=${ctx.translator.id}`);
   console.log(
@@ -548,7 +902,11 @@ async function seed() {
   );
   console.log(`  unassigned  ${unassignedLabel} → cleared`);
   console.log(
-    `  claim       ${claim.label} → cleared (status=${claim.status}; auto-claim needs not_started)`,
+    `  claim       ${claim.label} → not_started unassigned (status=${claim.status})`,
+  );
+  console.log(`  conflict    ${conflictLabel} → hasConflict=true`);
+  console.log(
+    `  openPeerCheck ${openPeerCheckLabel} → peer_check, no peerChecker`,
   );
   if (claim.label !== claimPreferred) {
     console.log(
@@ -566,8 +924,6 @@ async function verify() {
   const errors = [];
   const warnings = [];
 
-  // Prefer last seed's claim label when state exists (seed may have rotated
-  // after a burned not_started chapter). Env alone can point at a draft leftover.
   let claimLabel = optionalEnv('MAESTRO_FIXTURE_CLAIM_LABEL');
   if (existsSync(STATE_PATH)) {
     try {
@@ -588,10 +944,6 @@ async function verify() {
     const label =
       labelOverrides[role] || optionalEnv(spec.envLabel) || null;
     if (!label) {
-      if (spec.optional) {
-        warnings.push(`skip optional role ${role}: ${spec.envLabel} unset`);
-        continue;
-      }
       errors.push(`missing required env ${spec.envLabel} for role ${role}`);
       continue;
     }
@@ -631,7 +983,7 @@ async function verify() {
 
     if (spec.expectedConflict === true && row.conflict !== true) {
       errors.push(
-        `role ${role} ("${label}"): expected hasConflict=true, got ${row.conflict}`,
+        `role ${role} ("${label}"): expected hasConflict=true via GET progress, got ${row.conflict}`,
       );
     }
     if (spec.expectedConflict === false && row.conflict === true) {
@@ -649,10 +1001,15 @@ async function verify() {
       );
     }
 
+    if (role === 'openPeerCheck' && row.peerCheckerId != null) {
+      errors.push(
+        `role openPeerCheck ("${label}"): peerCheckerId=${row.peerCheckerId}, expected null`,
+      );
+    }
+
     if (role === 'claim' && row.status !== 'not_started') {
-      // expectedStatus on the claim role already fails hard; keep a loud note.
       warnings.push(
-        `claim ("${label}") status=${row.status} (claim API requires not_started). Re-seed will pick another not_started chapter if available.`,
+        `claim ("${label}") status=${row.status} (claim API requires not_started). Re-seed will reset-selected or rotate.`,
       );
     }
 

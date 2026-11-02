@@ -1,8 +1,11 @@
 import { getDatabase } from './db';
+import { chapterCompletedAfterPull } from '../utils/chapterCompletionSyncGuard';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { Transaction } from '@op-engineering/op-sqlite';
 import { StageAdvanceStatus } from '@/utils/stageAdvancement';
+import { insertStageAdvanceQueueEntry } from './stageAdvanceQueueRepository';
+import { uploadProjectUnitSql } from './recordingsRepository';
 
 const log = logger.create('DBRepository');
 
@@ -323,8 +326,15 @@ function collectAssigneeIds(
 async function insertChapterAssignmentTx(
   tx: Transaction,
   assignment: DBTypes.ChapterAssignment,
+  pullRevision?: number,
 ) {
   if (!assignment?.chapterAssignmentId) return;
+  if (
+    pullRevision !== undefined &&
+    chapterCompletedAfterPull(assignment.chapterAssignmentId, pullRevision)
+  ) {
+    return;
+  }
 
   await tx.execute(
     `INSERT INTO chapter_assignments
@@ -338,8 +348,22 @@ async function insertChapterAssignmentTx(
       book_id = excluded.book_id,
       chapter_number = excluded.chapter_number,
       assigned_user_id = excluded.assigned_user_id,
-      peer_checker_id = excluded.peer_checker_id,
-      status = excluded.status,
+      peer_checker_id = CASE
+        WHEN EXISTS (
+          SELECT 1 FROM stage_advance_queue saq
+          WHERE saq.chapter_assignment_id = chapter_assignments.id
+            AND saq.sync_status = 'pending'
+        ) THEN chapter_assignments.peer_checker_id
+        ELSE excluded.peer_checker_id
+      END,
+      status = CASE
+        WHEN EXISTS (
+          SELECT 1 FROM stage_advance_queue saq
+          WHERE saq.chapter_assignment_id = chapter_assignments.id
+            AND saq.sync_status = 'pending'
+        ) THEN chapter_assignments.status
+        ELSE excluded.status
+      END,
       submitted_time = excluded.submitted_time,
       updated_at = excluded.updated_at,
       total_verses = MAX(chapter_assignments.total_verses, excluded.total_verses),
@@ -558,6 +582,7 @@ export type InsertChapterAssignmentSyncResult = {
 
 export async function insertChapterAssignmentSyncData(
   assignments: DBTypes.ChapterAssignment[],
+  pullRevision?: number,
 ): Promise<InsertChapterAssignmentSyncResult> {
   const db = getDatabase();
   const userIds = collectAssigneeIds(assignments);
@@ -619,7 +644,7 @@ export async function insertChapterAssignmentSyncData(
       await insertProjectUnitTx(tx, unit);
     }
     for (const assignment of validAssignments) {
-      await insertChapterAssignmentTx(tx, assignment);
+      await insertChapterAssignmentTx(tx, assignment, pullRevision);
     }
   });
 
@@ -649,15 +674,31 @@ function chapterRowsToBibleGroups(
   return bibleGroups;
 }
 
-export async function getChaptersToSync() {
+/**
+ * Full-catalogue chapters for bible-text sync: assignments on projects where
+ * any eligible known user has `user_projects` membership (not assignee-only).
+ * Empty `userIds` returns an empty Map (no unscoped fallback).
+ */
+export async function getChaptersToSync(userIds: number[]) {
   const db = getDatabase();
 
+  if (userIds.length === 0) {
+    return new Map();
+  }
+
   try {
-    const result = await db.execute(`
-      SELECT DISTINCT bible_id, book_id, chapter_number
-      FROM chapter_assignments
-      ORDER BY bible_id, book_id, chapter_number
-    `);
+    const placeholders = userIds.map(() => '?').join(',');
+    const result = await db.execute(
+      `
+      SELECT DISTINCT ca.bible_id, ca.book_id, ca.chapter_number
+      FROM chapter_assignments ca
+      INNER JOIN project_units pu ON pu.id = ca.project_unit_id
+      INNER JOIN user_projects up ON up.project_id = pu.project_id
+      WHERE up.user_id IN (${placeholders})
+      ORDER BY ca.bible_id, ca.book_id, ca.chapter_number
+    `,
+      userIds,
+    );
 
     const rows = result.rows as unknown as DBTypes.ChapterRow[];
     return chapterRowsToBibleGroups(rows);
@@ -919,6 +960,40 @@ export async function hasLanguagesMissingIsoCode(): Promise<boolean> {
   }
 }
 
+const MASTER_PARENT_ID_TABLES = {
+  languages: 'languages',
+  books: 'books',
+  bibles: 'bibles',
+  projects: 'projects',
+} as const;
+
+export type MasterParentIdTable = keyof typeof MASTER_PARENT_ID_TABLES;
+
+/** Which of the requested master-parent ids already exist locally. */
+export async function selectExistingIds(
+  table: MasterParentIdTable,
+  ids: number[],
+): Promise<Set<number>> {
+  const unique = [
+    ...new Set(
+      ids.filter(id => typeof id === 'number' && Number.isFinite(id) && id > 0),
+    ),
+  ];
+  if (unique.length === 0) {
+    return new Set();
+  }
+
+  const db = getDatabase();
+  const placeholders = unique.map(() => '?').join(',');
+  const result = await db.execute(
+    `SELECT id FROM ${MASTER_PARENT_ID_TABLES[table]} WHERE id IN (${placeholders})`,
+    unique,
+  );
+  return new Set(
+    ((result.rows ?? []) as Array<{ id: number }>).map(row => Number(row.id)),
+  );
+}
+
 export async function insertUserProjects(userId: number, projectIds: number[]) {
   if (projectIds.length === 0) return;
 
@@ -1011,13 +1086,21 @@ export async function userHasLocalChapterAssignments(
 }
 
 /**
- * Selected recordings not yet uploaded (`is_selected = 1` and not uploaded/conflicted).
- *
- * TODO(#71 follow-up): only the selected take per verse is upload-eligible.
- * All audio recoridngs takes needs to be uploaded.
+ * Every take not yet uploaded (not uploaded/conflicted), selected or not
+ * (#716). Canonical and selected takes upload with `activate=true`; other
+ * takes upload with `activate=false` so the server's active take is unchanged.
  *
  * Pericope takes (#584) upload via PUT /verse-audio/{projectUnitId}/range
  * (fluent-api#377); verse takes keep the single-bibleTextId path.
+ *
+ * #701: pending canonical designations are included even when not the
+ * owner's active draft — designation alone must sync (replaces #279, where
+ * it was sent only with the owning account's upload).
+ *
+ * #701 PM rule: the canonical take is what syncs as the server's selected
+ * take. When a verse (+unit) has a canonical take, a merely-selected
+ * pending take is deferred — it becomes eligible again once the canonical
+ * designation moves off the verse.
  */
 export async function getPendingRecordings(chapter?: {
   bookId: number;
@@ -1046,30 +1129,23 @@ export async function getPendingRecordings(chapter?: {
        r.start_verse AS start_verse,
        r.end_chapter AS end_chapter,
        r.end_verse AS end_verse,
+       r.is_canonical AS is_canonical,
+       r.is_selected AS is_selected,
        bt.book_id AS book_id,
        bt.chapter_number AS chapter_number,
-       CASE
-         WHEN r.project_unit_id IS NOT NULL AND r.project_unit_id > 0
-           THEN r.project_unit_id
-         ELSE (
-           SELECT ca.project_unit_id
-           FROM chapter_assignments ca
-           WHERE ca.bible_id = bt.bible_id
-             AND ca.book_id = bt.book_id
-             AND ca.chapter_number = bt.chapter_number
-             AND (
-               SELECT COUNT(DISTINCT ca2.project_unit_id)
-               FROM chapter_assignments ca2
-               WHERE ca2.bible_id = bt.bible_id
-                 AND ca2.book_id = bt.book_id
-                 AND ca2.chapter_number = bt.chapter_number
-             ) = 1
-           LIMIT 1
-         )
-       END AS project_unit_id
+       ${uploadProjectUnitSql('r.project_unit_id')} AS project_unit_id
      FROM recordings r
      JOIN bible_texts bt ON bt.id = r.bible_text_id
-     WHERE r.is_selected = 1
+     WHERE NOT (
+       r.is_canonical = 0
+       AND r.is_selected = 1
+       AND EXISTS (
+         SELECT 1 FROM recordings c
+         WHERE c.bible_text_id = r.bible_text_id
+           AND c.is_canonical = 1
+           AND c.project_unit_id IS r.project_unit_id
+       )
+     )
        AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
        AND r.sync_status NOT IN ('uploaded', 'conflicted')
        AND r.bible_text_id > 0
@@ -1126,6 +1202,8 @@ export async function getPendingRecordings(chapter?: {
       startVerse: toNullableInt(row.start_verse),
       endChapter: toNullableInt(row.end_chapter),
       endVerse: toNullableInt(row.end_verse),
+      isCanonical: Number(row.is_canonical) === 1,
+      isSelected: Number(row.is_selected) === 1,
     };
   });
 }
@@ -1196,19 +1274,34 @@ export async function resolveChapterClaimQueueEntry(id: number): Promise<void> {
 }
 
 /**
- * Immediately apply a local stage advance (#258, #443, #442). Optional
- * peerCheckerId is set when an unassigned Peer Check is sent to Community
- * Review. Server confirmation and pending-sync queue behavior are owned by #257.
+ * Immediately apply a local stage advance and enqueue it in the same
+ * transaction (#257). Optional peerCheckerId is set when an unassigned Peer
+ * Check is sent to Community Review. Drain owns the server PATCH.
  */
 export async function updateChapterAssignmentStatusLocally(
   chapterAssignmentId: number,
   status: StageAdvanceStatus,
-  peerCheckerId?: number,
+  peerCheckerId: number | undefined,
+  userId: number,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
   const submittedTime = new Date().toISOString();
   await db.transaction(async (tx: Transaction) => {
+    const current = await tx.execute(
+      `SELECT status FROM chapter_assignments WHERE id = ?`,
+      [chapterAssignmentId],
+    );
+    const currentRow = current.rows?.[0] as { status?: string } | undefined;
+    // Never apply a local advance that cannot be queued: it would look sent
+    // but never reach the server, and the next pull would revert it.
+    if (!currentRow) {
+      throw new Error(
+        `Chapter assignment ${chapterAssignmentId} not found locally`,
+      );
+    }
+    // An empty status is the start of the chain (`'' → peer_check` is allowed).
+    const fromStatus = String(currentRow.status ?? '').trim() || 'not_started';
     if (peerCheckerId !== undefined) {
       await tx.execute(
         `UPDATE chapter_assignments
@@ -1219,15 +1312,38 @@ export async function updateChapterAssignmentStatusLocally(
          WHERE id = ?`,
         [status, submittedTime, updatedAt, peerCheckerId, chapterAssignmentId],
       );
-      return;
+    } else {
+      await tx.execute(
+        `UPDATE chapter_assignments
+         SET status = ?,
+             submitted_time = ?,
+             updated_at = ?
+         WHERE id = ?`,
+        [status, submittedTime, updatedAt, chapterAssignmentId],
+      );
     }
+    await insertStageAdvanceQueueEntry(tx, {
+      chapterAssignmentId,
+      userId,
+      fromStatus,
+      toStatus: status,
+      peerCheckerId: peerCheckerId ?? null,
+      createdAt: updatedAt,
+    });
+  });
+}
+
+/** Write a resolved status without enqueueing. Used when a queued advance loses to a lower server stage (#257). */
+export async function setChapterAssignmentStatus(
+  chapterAssignmentId: number,
+  status: string,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.transaction(async (tx: Transaction) => {
     await tx.execute(
-      `UPDATE chapter_assignments
-       SET status = ?,
-           submitted_time = ?,
-           updated_at = ?
-       WHERE id = ?`,
-      [status, submittedTime, updatedAt, chapterAssignmentId],
+      `UPDATE chapter_assignments SET status = ?, updated_at = ? WHERE id = ?`,
+      [status, updatedAt, chapterAssignmentId],
     );
   });
 }
@@ -1236,6 +1352,7 @@ export async function markRecordingUploaded(
   id: string,
   blobKey: string,
   versionToken: number,
+  serverTakeId: number | null = null,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
@@ -1244,10 +1361,11 @@ export async function markRecordingUploaded(
      SET sync_status = 'uploaded',
          blob_key = ?,
          version_token = ?,
+         server_take_id = COALESCE(?, server_take_id),
          upload_error = NULL,
          updated_at = ?
      WHERE id = ?`,
-    [blobKey, versionToken, updatedAt, id],
+    [blobKey, versionToken, serverTakeId, updatedAt, id],
   );
 }
 
@@ -1297,6 +1415,7 @@ export async function markRecordingAndChapterConflicted(
   recordingId: string,
   bibleTextId: number,
   versionToken: number,
+  serverTakeId: number | null = null,
 ): Promise<void> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
@@ -1307,10 +1426,11 @@ export async function markRecordingAndChapterConflicted(
       `UPDATE recordings
        SET sync_status = 'conflicted',
            version_token = ?,
+           server_take_id = COALESCE(?, server_take_id),
            upload_error = NULL,
            updated_at = ?
        WHERE id = ?`,
-      [versionToken, updatedAt, recordingId],
+      [versionToken, serverTakeId, updatedAt, recordingId],
     );
 
     // Mark chapter as having conflict (for #260 UI indicator)
@@ -1332,17 +1452,47 @@ export async function markRecordingAndChapterConflicted(
   });
 }
 
+/**
+ * Raise the unit's local version token after a server write that did not go
+ * through an upload of this row, such as a take delete that promoted a new
+ * active take (#716). Never lowers a newer token already stored.
+ */
+export async function raiseVerseVersionToken(
+  bibleTextId: number,
+  projectUnitId: number,
+  versionToken: number,
+): Promise<void> {
+  const db = getDatabase();
+  const updatedAt = new Date().toISOString();
+  await db.execute(
+    `UPDATE recordings
+     SET version_token = ?, updated_at = ?
+     WHERE bible_text_id = ?
+       AND project_unit_id IS ?
+       AND (version_token IS NULL OR version_token < ?)`,
+    [versionToken, updatedAt, bibleTextId, projectUnitId, versionToken],
+  );
+}
+
 export async function getLatestVersionToken(
   bibleTextId: number,
+  projectUnitId: number | null,
 ): Promise<number | undefined> {
   const db = getDatabase();
+  // The server keeps one version token per (projectUnitId, bibleTextId).
+  // Scope the MAX to this unit; a higher token from another unit for the
+  // same verse is not accepted for this unit, and the server returns 200
+  // without changing the active take (no 409).
   const result = await db.execute(
-    `SELECT version_token FROM recordings
-     WHERE bible_text_id = ? AND version_token IS NOT NULL
-     ORDER BY updated_at DESC LIMIT 1`,
-    [bibleTextId],
+    `SELECT MAX(version_token) AS version_token FROM recordings
+     WHERE bible_text_id = ?
+       AND project_unit_id IS ?
+       AND version_token IS NOT NULL`,
+    [bibleTextId, projectUnitId],
   );
-  const row = (result?.rows as { version_token: number }[] | undefined)?.[0];
+  const row = (
+    result?.rows as { version_token: number | null }[] | undefined
+  )?.[0];
   return row?.version_token ?? undefined;
 }
 
@@ -1422,7 +1572,6 @@ const PROJECT_UNIT_PENDING_UPLOAD_GUARD = `
       AND bt.book_id = ca.book_id
       AND bt.chapter_number = ca.chapter_number
     INNER JOIN recordings r ON r.bible_text_id = bt.id
-      AND r.is_selected = 1
       AND r.sync_status NOT IN ('uploaded', 'conflicted')
       AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)
     WHERE ca.project_unit_id = pu.id
@@ -1614,6 +1763,8 @@ export {
   deleteRecordingTake,
   selectRecordingTake,
   setCanonicalTake,
+  getPendingRecordingDeletions,
+  clearRecordingDeletion,
 } from './recordingsRepository';
 export type {
   AddRecordingTakeInput,

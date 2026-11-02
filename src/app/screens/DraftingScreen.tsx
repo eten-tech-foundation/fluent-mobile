@@ -9,7 +9,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  AppState,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
@@ -36,6 +43,7 @@ import { syncBibleTexts, syncMasterData } from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
 import { setRecordCaptureGate } from '../../navigation/recordCaptureGate';
+import { setDraftingUploadHold } from '../../services/uploadOrchestrator';
 import {
   parseRequiredNumber,
   parseRequiredString,
@@ -223,6 +231,48 @@ export default function DraftingScreen() {
       alertRecordingInProgress(() => router.back());
     });
   }, [alertRecordingInProgress, navigation, recordCaptureActive, router]);
+
+  // Automatic uploads wait while this screen is in use. Bible, Resources, and
+  // Record share the screen, so a tab change does not release the hold.
+  // Backgrounding the app does: the person is no longer using the screen.
+  const screenFocusedRef = useRef(false);
+  const appActiveRef = useRef(AppState.currentState === 'active');
+  const syncDraftingUploadHold = useCallback(() => {
+    void setDraftingUploadHold(
+      screenFocusedRef.current && appActiveRef.current,
+    );
+  }, []);
+
+  useEffect(() => {
+    const unsubFocus = navigation.addListener('focus', () => {
+      screenFocusedRef.current = true;
+      syncDraftingUploadHold();
+    });
+    const unsubBlur = navigation.addListener('blur', () => {
+      screenFocusedRef.current = false;
+      syncDraftingUploadHold();
+    });
+    const appStateSub = AppState.addEventListener('change', nextState => {
+      // Match recordingAppState: ignore iOS `inactive` (Control Center).
+      if (nextState === 'inactive') {
+        return;
+      }
+      appActiveRef.current = nextState === 'active';
+      syncDraftingUploadHold();
+    });
+    // `focus` does not fire when this effect runs after the screen is already
+    // focused. Read the current state so Stop cannot upload before a later
+    // focus event.
+    screenFocusedRef.current = navigation.isFocused();
+    syncDraftingUploadHold();
+    return () => {
+      unsubFocus();
+      unsubBlur();
+      appStateSub.remove();
+      screenFocusedRef.current = false;
+      void setDraftingUploadHold(false);
+    };
+  }, [navigation, syncDraftingUploadHold]);
 
   const goBack = useCallback(() => {
     router.back();

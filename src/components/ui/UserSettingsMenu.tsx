@@ -2,10 +2,8 @@ import React, { useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ActivityIndicator,
   StatusBar,
-  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 import {
@@ -17,7 +15,7 @@ import {
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { UserPlus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../../theme';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
 import { appStyles } from '../../app/appStyles';
 import { ACCOUNT_SIGN_OUT_LABEL } from '../../constants/messages';
 import { useAccountActions } from '../../hooks/useAccountActions';
@@ -51,15 +49,19 @@ export const drawerAccountItemStyle: ViewStyle = {
   marginVertical: 0,
 };
 
-export const drawerMenuLabelStyle: TextStyle = {
-  fontSize: 14,
-  fontWeight: theme.typography.weights.regular,
-  lineHeight: theme.typography.lineHeights.tight,
-};
-
-export const drawerMenuActiveLabelStyle: TextStyle = {
-  fontWeight: theme.typography.weights.semibold,
-};
+/** Shared by drawer content and the route shell; both resolve the same scope. */
+export function useDrawerMenuLabelStyles() {
+  return useThemedStyles(theme => ({
+    label: {
+      fontSize: 14,
+      fontWeight: theme.typography.weights.regular,
+      lineHeight: theme.typography.lineHeights.tight,
+    },
+    active: {
+      fontWeight: theme.typography.weights.semibold,
+    },
+  }));
+}
 
 interface UserSettingsMenuProps extends DrawerContentComponentProps {
   onSignOut?: () => void;
@@ -77,6 +79,9 @@ export function UserSettingsMenu({
   onUserSwitched,
   ...drawerProps
 }: UserSettingsMenuProps) {
+  const theme = useTheme();
+  const styles = useStyles();
+  const labelStyles = useDrawerMenuLabelStyles();
   const insets = useSafeAreaInsets();
   const drawerStatus = useDrawerStatus();
   const { accounts, hasAccountLimit, loading, reload } =
@@ -133,9 +138,8 @@ export function UserSettingsMenu({
             inactiveBackgroundColor="transparent"
             style={drawerMenuItemStyle}
             labelStyle={[
-              drawerMenuLabelStyle,
-              focusedRouteName === DRAWER_ROUTE_SETTINGS &&
-                drawerMenuActiveLabelStyle,
+              labelStyles.label,
+              focusedRouteName === DRAWER_ROUTE_SETTINGS && labelStyles.active,
             ]}
             onPress={() => {
               navigateDrawerRoute(DRAWER_ROUTE_SETTINGS);
@@ -165,9 +169,8 @@ export function UserSettingsMenu({
             inactiveBackgroundColor="transparent"
             style={drawerMenuItemStyle}
             labelStyle={[
-              drawerMenuLabelStyle,
-              focusedRouteName === DRAWER_ROUTE_PRIVACY &&
-                drawerMenuActiveLabelStyle,
+              labelStyles.label,
+              focusedRouteName === DRAWER_ROUTE_PRIVACY && labelStyles.active,
             ]}
             onPress={() => {
               navigateDrawerRoute(DRAWER_ROUTE_PRIVACY);
@@ -192,9 +195,8 @@ export function UserSettingsMenu({
             inactiveBackgroundColor="transparent"
             style={drawerMenuItemStyle}
             labelStyle={[
-              drawerMenuLabelStyle,
-              focusedRouteName === DRAWER_ROUTE_TERMS &&
-                drawerMenuActiveLabelStyle,
+              labelStyles.label,
+              focusedRouteName === DRAWER_ROUTE_TERMS && labelStyles.active,
             ]}
             onPress={() => {
               navigateDrawerRoute(DRAWER_ROUTE_TERMS);
@@ -235,8 +237,8 @@ export function UserSettingsMenu({
                   inactiveBackgroundColor="transparent"
                   style={drawerAccountItemStyle}
                   labelStyle={[
-                    drawerMenuLabelStyle,
-                    account.isActive && drawerMenuActiveLabelStyle,
+                    labelStyles.label,
+                    account.isActive && labelStyles.active,
                   ]}
                   onPress={() => {
                     void switchTo(account.userId);
@@ -273,7 +275,7 @@ export function UserSettingsMenu({
               activeBackgroundColor="transparent"
               inactiveBackgroundColor="transparent"
               style={drawerMenuItemStyle}
-              labelStyle={drawerMenuLabelStyle}
+              labelStyle={labelStyles.label}
               onPress={handleAddUser}
               icon={({ color }) => (
                 <UserPlus size={DRAWER_MENU_ICON_SIZE} color={color} />
@@ -297,7 +299,7 @@ export function UserSettingsMenu({
             activeBackgroundColor="transparent"
             inactiveBackgroundColor="transparent"
             style={drawerMenuItemStyle}
-            labelStyle={[drawerMenuLabelStyle, appStyles.menuItemDanger]}
+            labelStyle={[labelStyles.label, appStyles.menuItemDanger]}
             onPress={() => {
               void signOut();
             }}
@@ -317,34 +319,35 @@ export function UserSettingsMenu({
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: theme.colors.cardBackground,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: theme.spacing.sm,
-  },
-  footer: {
-    backgroundColor: theme.colors.cardBackground,
-  },
-  panelDivider: {
-    backgroundColor: theme.colors.border,
-  },
-  loadingRow: {
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
-  },
-  limitText: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm + theme.spacing.xs,
-    fontSize: 13,
-    color: theme.colors.mutedForeground,
-    textAlign: 'center',
-  },
-});
+const useStyles = () =>
+  useThemedStyles(theme => ({
+    root: {
+      flex: 1,
+      backgroundColor: theme.colors.cardBackground,
+    },
+    scroll: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: theme.spacing.sm,
+    },
+    footer: {
+      backgroundColor: theme.colors.cardBackground,
+    },
+    panelDivider: {
+      backgroundColor: theme.colors.border,
+    },
+    loadingRow: {
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: theme.spacing.sm,
+    },
+    limitText: {
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + theme.spacing.xs,
+      fontSize: 13,
+      color: theme.colors.mutedForeground,
+      textAlign: 'center',
+    },
+  }));

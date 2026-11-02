@@ -3,6 +3,10 @@ import { Text } from 'react-native';
 import { render, screen } from '@testing-library/react-native';
 import { PageHeader } from './PageHeader';
 
+jest.mock('../../services/storage', () => ({
+  kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
+}));
+
 jest.mock('../../assets/icons/fluent-logo-white.svg', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
