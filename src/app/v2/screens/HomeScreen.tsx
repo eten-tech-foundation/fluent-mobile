@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AVATAR_SIZE, Avatar } from '../../../components/ui/Avatar';
 import { Banner } from '../../../components/ui/Banner';
@@ -67,6 +67,8 @@ function HomeBody({
   userSwitchEpoch: number;
 }) {
   const router = useRouter();
+  const isFocused = useIsFocused();
+  const syncPushLockRef = useRef(false);
   const [accountsOpen, setAccountsOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -167,16 +169,19 @@ function HomeBody({
     [router],
   );
 
-  if (showLoading) {
-    return (
-      <View style={[styles.screen, { paddingTop: insets.top }]}>
-        <View style={styles.centered} testID="home-loading">
-          <ActivityIndicator size="large" color={theme.roles.accentPrimary} />
-          <Text style={styles.message}>Syncing…</Text>
-        </View>
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (isFocused) syncPushLockRef.current = false;
+  }, [isFocused]);
+
+  const openSync = useCallback(() => {
+    if (syncPushLockRef.current) return;
+    syncPushLockRef.current = true;
+    try {
+      router.push(hrefs.sync);
+    } catch {
+      syncPushLockRef.current = false;
+    }
+  }, [router]);
 
   const name = {
     firstName: account.firstName,
@@ -194,7 +199,14 @@ function HomeBody({
     (listsLoading && !loadedOnce) || (isSyncingChapters && !chapters.length);
 
   let body: React.ReactNode;
-  if (waitingForChapters) {
+  if (showLoading) {
+    body = (
+      <View style={styles.centered} testID="home-loading">
+        <ActivityIndicator size="large" color={theme.roles.accentPrimary} />
+        <Text style={styles.message}>Syncing…</Text>
+      </View>
+    );
+  } else if (waitingForChapters) {
     body = (
       <View style={styles.centered} testID="home-chapters-loading">
         <ActivityIndicator size="large" color={theme.roles.accentPrimary} />
@@ -250,6 +262,7 @@ function HomeBody({
           <SyncStatusButton
             status={syncStatus}
             failedErrorText={failedErrorText}
+            onPress={openSync}
             testID="home-sync"
           />
         </View>

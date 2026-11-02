@@ -1,4 +1,5 @@
-import { legacyTheme, type Theme } from './legacy';
+import type { Theme } from './legacy';
+import { nextBaseline } from './nextBaseline';
 import { buildElevation } from './elevation';
 import { buildFades } from './gradients';
 import {
@@ -101,9 +102,9 @@ function deriveLayoutTokens(theme: Theme): Theme {
 }
 
 /**
- * Apply deep overrides onto the Legacy theme, then re-derive layout tokens
- * from the resolved colors/spacing/radius. Groups not listed stay shared with
- * Legacy. Always returns a new object so `nextTheme !== legacyTheme`.
+ * Apply deep overrides onto an independently owned baseline, then re-derive
+ * layout tokens from the resolved colors/spacing/radius. Groups not listed
+ * stay on that baseline copy. Always returns a new object.
  */
 function applyThemeOverrides(base: Theme, overrides: ThemeOverrides): Theme {
   const merged: Record<string, unknown> = { ...base };
@@ -187,10 +188,16 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
  *
  * Source: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2308-6
  */
+/** One mode, copied from the baseline so it shares no nested object with Legacy or another mode. */
+function createNextTheme(mode: NextColorRoleMode): Theme {
+  const baseline = JSON.parse(JSON.stringify(nextBaseline)) as Theme;
+  return applyThemeOverrides(baseline, buildNextOverrides(mode));
+}
+
 export const nextThemes: Record<NextColorRoleMode, Theme> = {
-  canvas: applyThemeOverrides(legacyTheme, buildNextOverrides('canvas')),
-  hardware: applyThemeOverrides(legacyTheme, buildNextOverrides('hardware')),
-  accent: applyThemeOverrides(legacyTheme, buildNextOverrides('accent')),
+  canvas: createNextTheme('canvas'),
+  hardware: createNextTheme('hardware'),
+  accent: createNextTheme('accent'),
 };
 
 /** Resolved Next theme in the default (Hardware) mode. */

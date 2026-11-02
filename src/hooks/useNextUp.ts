@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { getMilestoneChapters } from '../db/queries';
 import { getProjectPericopeSetId } from '../db/repository';
+import { parseUserId } from '../utils/parseUserId';
 import type { MyWorkChapter } from '../types/db/types';
 import { logger } from '../utils/logger';
 import {
@@ -74,7 +76,40 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
       };
       const pericopeSets = new Map<number, Promise<number | null>>();
       const coverages = new Map<number, CoveragesFor>();
+      const stageMaps = new Map<
+        number,
+        Promise<Map<string, MyWorkChapter['workflowStage']> | null>
+      >();
       const loaded = new Map<number, Promise<BookPassage[]>>();
+
+      const stagesFor = (projectUnitId: number) => {
+        const cached = stageMaps.get(projectUnitId);
+        if (cached) return cached;
+        const userId = parseUserId();
+        const pending =
+          userId === null
+            ? Promise.resolve(null)
+            : getMilestoneChapters(projectUnitId, userId)
+                .then(rows => {
+                  const stages = new Map<
+                    string,
+                    MyWorkChapter['workflowStage']
+                  >();
+                  for (const row of rows) {
+                    stages.set(
+                      `${row.bookName}:${row.chapterNumber}`,
+                      row.workflowStage,
+                    );
+                  }
+                  return stages;
+                })
+                .catch(error => {
+                  log.error('Failed to load milestone stages', { error });
+                  return null;
+                });
+        stageMaps.set(projectUnitId, pending);
+        return pending;
+      };
 
       const passagesOf = (chapter: MyWorkChapter) => {
         const cached = loaded.get(chapter.id);
@@ -87,8 +122,21 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
           coverages.get(chapter.projectUnitId) ??
           coverageLookup(chapter.projectUnitId);
         coverages.set(chapter.projectUnitId, coveragesFor);
-        const passages = pericopeSetId
-          .then(setId => loadChapterPassages(chapter, setId, coveragesFor))
+        const passages = Promise.all([
+          pericopeSetId,
+          stagesFor(chapter.projectUnitId),
+        ])
+          .then(([setId, stages]) =>
+            loadChapterPassages(
+              chapter,
+              setId,
+              coveragesFor,
+              stages
+                ? chapterNumber =>
+                    stages.get(`${chapter.bookName}:${chapterNumber}`)
+                : undefined,
+            ),
+          )
           .catch(error => {
             log.error('Failed to load passages', { error });
             return [wholeChapter(chapter)];

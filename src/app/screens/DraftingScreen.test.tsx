@@ -39,11 +39,17 @@ let capturedHeaderHandlers: {
   onAccountPress?: () => void;
 } | null = null;
 let capturedTabBarHandlers: {
+  activeTab?: 'bible' | 'resources' | 'record';
   onTabChange?: (tab: 'bible' | 'resources' | 'record') => void;
 } | null = null;
 
 const mockResume = jest.fn().mockResolvedValue(undefined);
 const mockDiscard = jest.fn().mockResolvedValue(undefined);
+/** Mirrors useRecordSession: controls only while recording or paused. */
+let mockRecordSession: { state: string; captureActive: boolean } = {
+  state: 'idle',
+  captureActive: false,
+};
 
 jest.mock('../../services/uploadOrchestrator', () => ({
   setDraftingUploadHold: (...args: unknown[]) =>
@@ -124,6 +130,7 @@ jest.mock('../../components/layout/DraftingTabBar', () => {
   const { View } = require('react-native');
   return {
     DraftingTabBar: (props: {
+      activeTab?: 'bible' | 'resources' | 'record';
       onTabChange?: (tab: 'bible' | 'resources' | 'record') => void;
     }) => {
       capturedTabBarHandlers = props;
@@ -170,6 +177,16 @@ jest.mock('../tabs/RecordTab', () => {
         onCaptureActiveChange,
         onRegisterCaptureControls,
       };
+      const leaveBlocked =
+        mockRecordSession.captureActive || mockRecordSession.state === 'saving';
+      MockReact.useEffect(() => {
+        onCaptureActiveChange?.(leaveBlocked);
+        onRegisterCaptureControls?.(
+          mockRecordSession.captureActive
+            ? { resume: mockResume, discardCapture: mockDiscard }
+            : null,
+        );
+      }, [leaveBlocked, onCaptureActiveChange, onRegisterCaptureControls]);
       return MockReact.createElement(
         View,
         null,
@@ -271,6 +288,7 @@ describe('DraftingScreen onChapterClaimed', () => {
     capturedRecordTabHandlers = null;
     capturedHeaderHandlers = null;
     capturedTabBarHandlers = null;
+    mockRecordSession = { state: 'idle', captureActive: false };
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockGetChapterAssignmentById
       .mockResolvedValueOnce(baseAssignment)
@@ -491,6 +509,26 @@ describe('DraftingScreen onChapterClaimed', () => {
       await waitFor(() => {
         expect(screen.getByTestId('account-switcher-panel')).toBeTruthy();
       });
+    });
+
+    it('tab change while a take is saving stays on Record and shows the saving alert', async () => {
+      mockRecordSession = { state: 'saving', captureActive: false };
+      render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-activate')).toBeTruthy();
+      });
+
+      capturedTabBarHandlers?.onTabChange?.('bible');
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Saving take',
+        expect.any(String),
+        expect.arrayContaining([expect.objectContaining({ text: 'OK' })]),
+      );
+      expect(lastAlertButtons().some(b => b.text === 'Discard')).toBe(false);
+      expect(setLastActiveTab).not.toHaveBeenCalled();
+      expect(capturedTabBarHandlers?.activeTab).toBe('record');
     });
 
     it('inactive capture leaves navigation unguarded', async () => {

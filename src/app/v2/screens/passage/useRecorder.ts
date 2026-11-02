@@ -14,6 +14,7 @@ import { useLiveLevels } from '../../../../hooks/useLiveLevels';
 import { usePendingDelete } from '../../../../hooks/usePendingDelete';
 import type { PassageTake } from '../../../../hooks/usePassage';
 import { useRecordSession } from '../../../../hooks/useRecordSession';
+import type { CaptureControls } from '../../../../types/captureControls';
 import { logger } from '../../../../utils/logger';
 import type { RecordStatus } from './Footer';
 import type { FrontTake } from './TakeCard';
@@ -34,6 +35,8 @@ export function useRecorder({
   userId,
   showing,
   onReload,
+  onCaptureActiveChange,
+  onRegisterCaptureControls,
 }: {
   passage: Ready;
   userId: number | null;
@@ -41,6 +44,8 @@ export function useRecorder({
   showing: boolean;
   /** Re-reads the passage, e.g. after recording claims its chapter. */
   onReload: () => void;
+  onCaptureActiveChange?: (active: boolean) => void;
+  onRegisterCaptureControls?: (controls: CaptureControls | null) => void;
 }) {
   const { assignment } = passage;
   const anchorVerse =
@@ -55,6 +60,8 @@ export function useRecorder({
     versesLength: passage.chapterVerseCount,
     draftingUnit: 'pericope',
     onChapterClaimed: onReload,
+    onCaptureActiveChange,
+    onRegisterCaptureControls,
   });
   const { verseAudio } = session;
   const capturing = session.captureActive;
@@ -80,6 +87,14 @@ export function useRecorder({
   latestAudio.current = verseAudio;
   const showingRef = useRef(showing);
   showingRef.current = showing;
+  // Source audio owns Listen. A take does not keep playing once Record is
+  // hidden, so the two never run together.
+  const pausePlaybackRef = useRef(verseAudio.pausePlayback);
+  pausePlaybackRef.current = verseAudio.pausePlayback;
+  useEffect(() => {
+    if (showing || verseAudio.state !== 'playing') return;
+    void pausePlaybackRef.current();
+  }, [showing, verseAudio.state]);
   useEffect(
     () => () => {
       showingRef.current = false;
@@ -318,7 +333,14 @@ export function useRecorder({
       await verseAudio.resume();
       return;
     }
-    if (session.stageLocked || noPericope) return;
+    if (
+      session.stageLocked ||
+      session.drafterCaptureBlocked ||
+      session.isTaken ||
+      noPericope
+    ) {
+      return;
+    }
     if (!(await session.ensureMic())) return;
     // A new take counts toward the limit, so a pending delete goes first.
     await deletion.commit();
@@ -339,10 +361,11 @@ export function useRecorder({
     // The take in front, which may not be the session's selected take.
     if (!frontTake) return;
     setParked(null);
-    // Scrubbed to the very end, Play starts over.
+    const parkedHere = parked?.id === frontTake.id;
+    // Nothing parked resumes. A scrub, including to 0 or the end, is explicit.
     await verseAudio.playTake(
       frontTake,
-      parkedMs >= frontLength ? 0 : parkedMs,
+      parkedHere ? (parkedMs >= frontLength ? 0 : parkedMs) : undefined,
     );
   }
 
@@ -350,7 +373,7 @@ export function useRecorder({
     if (!frontTake) return;
     const ms = Math.round(p * frontLength);
     if (playingFront && verseAudio.state === 'playing') {
-      await verseAudio.seek(ms, frontTake.id);
+      await verseAudio.seek(ms, frontTake);
       return;
     }
     setParked({ id: frontTake.id, ms });
@@ -391,6 +414,8 @@ export function useRecorder({
     },
     footer,
     keys,
+    /** Stops a take so Listen's source audio can start alone. */
+    pauseTakePlayback: verseAudio.pausePlayback,
     discardCapture: verseAudio.discardCapture,
   };
 }

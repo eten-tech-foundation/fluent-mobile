@@ -4,19 +4,31 @@ import {
   getBibleTextId,
   getBibleTexts,
   getChapterAssignmentById,
+  getChapterAssignmentVerseCount,
   getPericopeForVerse,
   getSelectedTakeCoverages,
+  hasPendingStageAdvance,
 } from '../db/queries';
 import { getTakesForVerse } from '../db/recordingsRepository';
 import { getProjectPericopeSetId } from '../db/repository';
 import { syncBibleTexts } from '../services/sync';
+import { emitSyncComplete } from '../services/syncEvents';
+
+jest.mock('expo-router', () => ({
+  useFocusEffect: (effect: () => void) => {
+    focusEffect = effect;
+    require('react').useEffect(effect, [effect]);
+  },
+}));
 
 jest.mock('../db/queries', () => ({
   getBibleTextId: jest.fn(),
   getBibleTexts: jest.fn(),
   getChapterAssignmentById: jest.fn(),
+  getChapterAssignmentVerseCount: jest.fn(),
   getPericopeForVerse: jest.fn(),
   getSelectedTakeCoverages: jest.fn(),
+  hasPendingStageAdvance: jest.fn(),
 }));
 
 jest.mock('../db/recordingsRepository', () => ({
@@ -31,6 +43,8 @@ jest.mock('../services/sync', () => ({
   syncBibleTexts: jest.fn(),
 }));
 
+let focusEffect: (() => void) | null = null;
+
 const mockAssignment = getChapterAssignmentById as jest.Mock;
 const mockSetId = getProjectPericopeSetId as jest.Mock;
 const mockPericope = getPericopeForVerse as jest.Mock;
@@ -39,6 +53,8 @@ const mockCoverages = getSelectedTakeCoverages as jest.Mock;
 const mockTextId = getBibleTextId as jest.Mock;
 const mockTakes = getTakesForVerse as jest.Mock;
 const mockSync = syncBibleTexts as jest.Mock;
+const mockVerseCount = getChapterAssignmentVerseCount as jest.Mock;
+const mockPending = hasPendingStageAdvance as jest.Mock;
 
 const verseTexts = [22, 23, 24, 25].map(n => ({
   bibleId: 1,
@@ -89,6 +105,8 @@ describe('usePassage', () => {
       { startChapter: 14, startVerse: 22, endChapter: 14, endVerse: 23 },
     ]);
     mockTextId.mockResolvedValue(1022);
+    mockVerseCount.mockResolvedValue(0);
+    mockPending.mockResolvedValue(false);
     mockTakes.mockResolvedValue([
       take({ id: 'a', takeNumber: 1 }),
       take({ id: 'b', takeNumber: 2, isSelected: true }),
@@ -178,5 +196,113 @@ describe('usePassage', () => {
       chapterGroups: new Map([[1, [{ bookId: 41, chapterNumber: 14 }]]]),
     });
     expect(result.current.downloadState).toBe('idle');
+  });
+
+  it('is not downloaded while a pericope verse has no text', async () => {
+    mockTexts.mockResolvedValue(
+      verseTexts.map(v => (v.verseNumber === 25 ? { ...v, text: '' } : v)),
+    );
+
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(result.current.passage).toMatchObject({ downloaded: false });
+  });
+
+  it('is not downloaded when the chapter count is unknown', async () => {
+    mockSetId.mockResolvedValue(null);
+    mockVerseCount.mockResolvedValue(0);
+
+    const { result } = renderHook(() => usePassage(5, 1, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(result.current.passage).toMatchObject({ downloaded: false });
+  });
+
+  it('is downloaded when every verse the chapter contains has text', async () => {
+    mockSetId.mockResolvedValue(null);
+    mockVerseCount.mockResolvedValue(verseTexts.length);
+
+    const { result } = renderHook(() => usePassage(5, 1, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(result.current.passage).toMatchObject({ downloaded: true });
+  });
+
+  it('downloads every chapter the passage spans', async () => {
+    mockPericope.mockResolvedValue({
+      pericopeNumber: '2',
+      pericopeTitle: 'Across',
+      section: null,
+      verses: [
+        { chapterNumber: 14, verseNumber: 25 },
+        { chapterNumber: 15, verseNumber: 1 },
+      ],
+    });
+    mockTexts.mockResolvedValue([]);
+    mockSync.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => usePassage(5, 25, 3));
+    await waitFor(() =>
+      expect(result.current.passage).toMatchObject({ downloaded: false }),
+    );
+
+    act(() => result.current.download());
+
+    await waitFor(() => expect(mockSync).toHaveBeenCalled());
+    expect(mockSync).toHaveBeenCalledWith(undefined, {
+      chapterGroups: new Map([
+        [
+          1,
+          [
+            { bookId: 41, chapterNumber: 14 },
+            { bookId: 41, chapterNumber: 15 },
+          ],
+        ],
+      ]),
+    });
+  });
+
+  it('shows waiting to send while a stage advance is queued', async () => {
+    mockPending.mockResolvedValue(true);
+
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() =>
+      expect(result.current.passage).toMatchObject({ waitingToSend: true }),
+    );
+  });
+
+  it('reloads after a sync and keeps the passage when the reload fails', async () => {
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+
+    mockAssignment.mockRejectedValueOnce(new Error('offline'));
+    act(() => emitSyncComplete());
+
+    await waitFor(() => expect(mockAssignment).toHaveBeenCalledTimes(2));
+    expect(result.current.passage.status).toBe('ready');
+  });
+
+  it('drops the previous passage when a different chapter fails to load', async () => {
+    const { result, rerender } = renderHook(
+      ({ id }: { id: number }) => usePassage(id, 22, 3),
+      { initialProps: { id: 5 } },
+    );
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+
+    mockAssignment.mockRejectedValueOnce(new Error('gone'));
+    rerender({ id: 6 });
+
+    await waitFor(() => expect(result.current.passage.status).toBe('missing'));
+  });
+
+  it('reloads when the screen is focused again', async () => {
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+
+    act(() => focusEffect?.());
+
+    await waitFor(() => expect(mockAssignment).toHaveBeenCalledTimes(2));
   });
 });

@@ -35,17 +35,26 @@ export interface RecordStatus {
  * it. Listen shows the page and page dots; Record brings the take card in
  * over both, so the waveform never moves between modes.
  */
+export interface ListenWave {
+  /** 0–1 through the source chapter. 0 when its duration is unknown. */
+  progress: number;
+  /** Set when a duration is known, so a scrub can seek that chapter. */
+  onSeek?: (progress: number) => void;
+}
+
 export function Footer({
   passage,
   page,
   recordMode,
   record,
+  listen,
   dimmed = false,
 }: {
   passage: Ready;
   page: number;
   recordMode: boolean;
   record: RecordStatus;
+  listen: ListenWave;
   /** A take is lifted: dim everything above the keys but the fan. */
   dimmed?: boolean;
 }) {
@@ -109,10 +118,11 @@ export function Footer({
     <LayoutAnimationConfig skipEntering>
       <View style={styles.footer}>
         <Animated.View style={[styles.wave, listenStyle]} {...listenProps}>
-          {/* Materials have no audio yet, so their waveform stays empty. */}
+          {/* Step pages have no tracks; only the script shows the source chapter. */}
           <Waveform
             verses={page === 0 ? scriptBars(passage.verses) : []}
-            progress={0}
+            progress={page === 0 ? listen.progress : 0}
+            onSeek={page === 0 ? listen.onSeek : undefined}
             accessibilityLabel={`${name} playback`}
             testID="passage-waveform"
           />
@@ -146,8 +156,9 @@ export function Footer({
 }
 
 /**
- * Stand-in levels until playback is wired: a bar per word, taller for longer
- * words, so each verse's chip and segment follow its length.
+ * Stand-in levels for the source chapter: a bar per word, taller for longer
+ * words, so each verse's chip and segment follow its length. Progress and
+ * scrubbing come from the chapter file, not from these heights.
  */
 function scriptBars(verses: PassageVerse[]): WaveformVerse[] {
   return verses

@@ -28,7 +28,7 @@ describe('userPreferences', () => {
   it('returns default preferences when nothing is stored', () => {
     expect(getUserPreferences()).toEqual({
       uploadOverCellular: false,
-      uiVersion: 'legacy',
+      uiVersion: 'next',
     });
   });
 
@@ -36,7 +36,7 @@ describe('userPreferences', () => {
     mockPreferenceStore({ pref_upload_over_cellular: 'true' });
     expect(getUserPreferences()).toEqual({
       uploadOverCellular: true,
-      uiVersion: 'legacy',
+      uiVersion: 'next',
     });
     expect(getUploadOverCellular()).toBe(true);
   });
@@ -75,8 +75,13 @@ describe('userPreferences', () => {
     expect(getUiVersion()).toBe('next');
   });
 
-  it('falls back to legacy when stored uiVersion is invalid', () => {
+  it('falls back to Next when stored uiVersion is invalid', () => {
     mockPreferenceStore({ pref_ui_version: 'dark' });
+    expect(getUiVersion()).toBe('next');
+  });
+
+  it('keeps a stored legacy uiVersion', () => {
+    mockPreferenceStore({ pref_ui_version: 'legacy' });
     expect(getUiVersion()).toBe('legacy');
   });
 
@@ -102,12 +107,12 @@ describe('userPreferences', () => {
     const listener = jest.fn();
 
     subscribeToPreference('uiVersion', listener);
-    setUiVersion('next');
+    setUiVersion('legacy');
 
     expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith('next');
+    expect(listener).toHaveBeenCalledWith('legacy');
 
-    setUiVersion('next');
+    setUiVersion('legacy');
     expect(listener).toHaveBeenCalledTimes(1);
   });
 });

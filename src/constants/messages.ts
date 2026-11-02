@@ -130,6 +130,8 @@ export const CAPTURE_LEAVE_MESSAGE =
   'You have a take in progress. What would you like to do?';
 export const CAPTURE_LEAVE_RESUME = 'Resume';
 export const CAPTURE_LEAVE_DISCARD = 'Discard';
+export const CAPTURE_SAVING_TITLE = 'Saving take';
+export const CAPTURE_SAVING_MESSAGE = 'Wait until this take finishes saving.';
 
 /**
  * Next passage player: why the Record key is off, or what the take in

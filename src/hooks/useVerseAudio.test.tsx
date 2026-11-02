@@ -679,8 +679,8 @@ describe('useVerseAudio', () => {
       await result.current.playTake(take, 0);
     });
 
-    expect(mockPlaybackPlay).toHaveBeenCalledWith(take.localFilePath);
-    expect(mockPlaybackResume).not.toHaveBeenCalled();
+    expect(mockPlaybackResume).toHaveBeenCalledWith(0, take.localFilePath);
+    expect(mockPlaybackPlay).not.toHaveBeenCalled();
   });
 
   it("won't play an empty take from a start position", async () => {
@@ -714,7 +714,7 @@ describe('useVerseAudio', () => {
 
     await waitFor(() => expect(result.current.state).toBe('recorded'));
     await act(async () => {
-      await result.current.seek(300, 'rec_2');
+      await result.current.seek(300, other);
     });
 
     expect(mockPlaybackLoad).toHaveBeenCalledWith(other.localFilePath);

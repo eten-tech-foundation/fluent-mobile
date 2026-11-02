@@ -105,6 +105,26 @@ describe('loadChapterPassages', () => {
       }),
     ]);
   });
+
+  it('counts a crossed passage from each chapter stage', async () => {
+    const coveragesFor = jest.fn().mockResolvedValue([]);
+
+    const passages = await loadChapterPassages(
+      chapter(1, 14, { workflowStage: 'peer_check' }),
+      7,
+      coveragesFor,
+      chapterNumber => (chapterNumber === 15 ? 'draft' : 'peer_check'),
+    );
+
+    expect(passages).toEqual([
+      expect.objectContaining({
+        recordedStatus: 'partial',
+        recordedVerses: 1,
+        submitted: false,
+        peerChecked: false,
+      }),
+    ]);
+  });
 });
 
 describe('useBookPassages', () => {

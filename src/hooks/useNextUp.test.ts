@@ -6,7 +6,9 @@ import {
   type NextUp,
 } from './useNextUp';
 import { loadChapterPassages, type BookPassage } from './useBookPassages';
+import { getMilestoneChapters } from '../db/queries';
 import { getProjectPericopeSetId } from '../db/repository';
+import { parseUserId } from '../utils/parseUserId';
 import type { MyWorkChapter } from '../types/db/types';
 
 jest.mock('expo-router', () => ({
@@ -18,7 +20,13 @@ jest.mock('../db/repository', () => ({
   getProjectPericopeSetId: jest.fn(),
 }));
 
-jest.mock('../db/queries', () => ({}));
+jest.mock('../db/queries', () => ({
+  getMilestoneChapters: jest.fn(),
+}));
+
+jest.mock('../utils/parseUserId', () => ({
+  parseUserId: jest.fn(() => null),
+}));
 
 jest.mock('./useBookPassages', () => ({
   ...jest.requireActual('./useBookPassages'),
@@ -28,6 +36,8 @@ jest.mock('./useBookPassages', () => ({
 
 const mockSetId = getProjectPericopeSetId as jest.Mock;
 const mockLoad = loadChapterPassages as jest.Mock;
+const mockStages = getMilestoneChapters as jest.Mock;
+const mockUserId = parseUserId as jest.Mock;
 
 function chapter(
   id: number,
@@ -110,6 +120,7 @@ describe('useNextUp', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSetId.mockResolvedValue(7);
+    mockUserId.mockReturnValue(null);
   });
 
   it('keeps going on a part-recorded passage from the chapter worked on last', async () => {
@@ -273,5 +284,22 @@ describe('useNextUp', () => {
     expect(keys(result.current)).toEqual([null, []]);
     expect(result.current.status).toBe('ready');
     await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
+  });
+
+  it("reads each chapter's stage from the milestone, not from this list", async () => {
+    mockUserId.mockReturnValue(4);
+    mockStages.mockResolvedValue([
+      { bookName: 'Mark', chapterNumber: 14, workflowStage: 'draft' },
+      { bookName: 'Mark', chapterNumber: 15, workflowStage: 'submitted' },
+    ]);
+    mockLoad.mockResolvedValue([passage('14a')]);
+
+    const { result } = renderHook(() => useNextUp([chapter(14)]));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    expect(mockStages).toHaveBeenCalledWith(3, 4);
+    const stageOf = mockLoad.mock.calls[0][3] as (n: number) => string;
+    expect(stageOf(14)).toBe('draft');
+    expect(stageOf(15)).toBe('submitted');
   });
 });

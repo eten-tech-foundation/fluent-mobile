@@ -87,27 +87,35 @@ export interface KeyAction {
 /**
  * The player's Hardware panel; the player chrome puts it in Hardware. Record
  * mode captures real takes through the shared record session: Record starts,
- * pauses and resumes a take, and Eject finishes it. Listen mode's Play opens
- * Legacy drafting until playback is wired; Previous and Next turn the pages,
- * like swiping.
+ * pauses and resumes a take, and Eject finishes it. Listen mode's Play plays
+ * this chapter's source audio. Previous and Next turn the pages, like swiping.
  */
+export interface ListenKeys {
+  playing: boolean;
+  /** Missing, still loading, or the file is opening. */
+  playDisabled: boolean;
+  /** Play, Pause, or why this chapter can't play. */
+  playLabel: string;
+  onPlay: () => void;
+}
+
 export function PlayerKeys({
   recordMode,
   onRecordModeChange,
   modeLocked,
   record,
+  listen,
   previous,
   next,
-  onOpenDrafting,
 }: {
   recordMode: boolean;
   onRecordModeChange: (record: boolean) => void;
   /** Locked for the whole take. */
   modeLocked: boolean;
   record: RecordKeys;
+  listen: ListenKeys;
   previous: KeyAction;
   next: KeyAction;
-  onOpenDrafting: () => void;
 }) {
   return (
     <HardwarePanel
@@ -155,10 +163,14 @@ export function PlayerKeys({
       ) : (
         <>
           <Key
-            icon={PlayFill}
-            accessibilityLabel="Listen in drafting"
-            onPress={onOpenDrafting}
+            icon={listen.playing ? PauseFill : PlayFill}
+            accessibilityLabel={listen.playLabel}
+            announceLatched={false}
+            active={listen.playing}
+            disabled={listen.playDisabled}
+            onPress={listen.onPlay}
             style={styles.key}
+            testID="passage-key-listen"
           />
           <Key
             icon={SkipBackFill}

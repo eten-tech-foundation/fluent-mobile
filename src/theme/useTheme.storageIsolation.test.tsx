@@ -12,12 +12,12 @@ import { nextTheme } from './next';
 describe('presentation theme without native preference storage', () => {
   it('resolves default and explicitly scoped themes without importing preferences', () => {
     const { result } = renderHook(() => useTheme());
-    expect(result.current).toBe(legacyTheme);
+    expect(result.current).toBe(nextTheme);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <UiVersionOverride value="next">{children}</UiVersionOverride>
+      <UiVersionOverride value="legacy">{children}</UiVersionOverride>
     );
     const scoped = renderHook(() => useTheme(), { wrapper });
-    expect(scoped.result.current).toBe(nextTheme);
+    expect(scoped.result.current).toBe(legacyTheme);
   });
 });

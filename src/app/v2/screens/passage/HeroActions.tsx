@@ -9,6 +9,7 @@ import { ArrowDown, PlayFill } from '../../../../components/ui/icons';
 import { RoundButton } from '../../../../components/ui/RoundButton';
 import type { PassageTake, usePassage } from '../../../../hooks/usePassage';
 import { useThemedStyles } from '../../../../theme/useTheme';
+import { isRecordingLockedByStage } from '../../../../utils/stageAdvancement';
 import { RecordAction } from './RecordAction';
 import { type Ready } from './steps';
 import { takesLine } from './Takes';
@@ -100,11 +101,13 @@ export function HeroActions({
           style={styles.primary}
           testID="passage-listen"
         />
-        <RecordAction
-          accessibilityLabel={takes.length > 0 ? 'Record a take' : 'Record'}
-          onPress={onRecord}
-          testID="passage-record"
-        />
+        {isRecordingLockedByStage(passage.assignment) ? null : (
+          <RecordAction
+            accessibilityLabel={takes.length > 0 ? 'Record a take' : 'Record'}
+            onPress={onRecord}
+            testID="passage-record"
+          />
+        )}
         {passage.downloaded ? null : (
           <RoundButton
             variant="flat"

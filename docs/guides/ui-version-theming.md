@@ -9,8 +9,8 @@ lands:
 
 | Version | Meaning |
 | --- | --- |
-| `legacy` | Current shipped design (default, safe) |
-| `next` | Redesign surface — evolves independently |
+| `next` | Current design (default). An unset or invalid `pref_ui_version` resolves here. |
+| `legacy` | Previous design. Stays selected only when Settings stored `legacy`. |
 
 This is **not** light/dark mode. Prefer structural/token changes over scattering
 `isNextUI ? … : …` checks.
@@ -24,7 +24,8 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 | `src/theme/nextPrimitives.ts` | Next color ramps (bone / blue / red) from Figma |
 | `src/theme/nextRoles.ts` | Canvas / Hardware / Accent semantic roles |
 | `src/theme/nextFoundation.ts` | Next spacing, radius, type scale, motion, opacity, control sizes |
-| `src/theme/next.ts` | Per-mode `nextThemes` (Canvas / Hardware / Accent) + deep-merge + layout derive |
+| `src/theme/nextBaseline.ts` | Full `Theme` copied as the base of every Next mode |
+| `src/theme/next.ts` | Per-mode `nextThemes`: deep-copies `nextBaseline`, then applies Figma overrides |
 | `src/theme/legacyRoles.ts` | Nearest Legacy colors for the Foundations role names (`theme.roles` in Legacy) |
 | `src/theme/elevation.ts` | Effect styles as `boxShadow` strings, built from roles |
 | `src/theme/gradients.ts` | Fades (`fade/reading`) as `experimental_backgroundImage` strings, built from roles |
@@ -32,13 +33,14 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 | `src/theme/uiVersion.ts` | `resolveTheme()` |
 | `src/theme/useTheme.ts` | `useUiVersion()`, `useTheme()`, `useThemedStyles()` — import from this module (not the `theme` barrel) so static consumers stay free of preference/storage |
 | `src/theme/UiVersionPreferenceProvider.tsx` | Root bridge from the stored preference into `useTheme()` |
-| `src/services/userPreferences.ts` | Device-level `pref_ui_version` (default `legacy`) |
+| `src/services/userPreferences.ts` | Device-level `pref_ui_version` (default `next`; a stored `legacy` or `next` is kept) |
 
 Settings → **Interface → UI version** toggles the preference. No app restart.
+Next is the default. Choosing Legacy writes `legacy` and is not migrated back.
 `UiVersionPreferenceProvider` at the application root bridges persistent
 preferences into the presentation context. Shared components import only the
 storage-free `useTheme` hooks; standalone components without a provider default
-to Legacy. Subtree `UiVersionOverride` values take precedence within that root.
+to Next. Subtree `UiVersionOverride` values take precedence within that root.
 
 ## Figma source (Next)
 

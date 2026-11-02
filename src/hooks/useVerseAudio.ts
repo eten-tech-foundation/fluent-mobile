@@ -810,6 +810,7 @@ export function useVerseAudio({
    * paused segments and their marker (#567): `start()` no longer does.
    */
   const discardCapture = useCallback(async () => {
+    if (state === 'saving') return;
     if (capturePersistRef.current === null) return;
     try {
       const { uri } = await recording.stop();
@@ -857,7 +858,7 @@ export function useVerseAudio({
       // only fires from `recorded`.
       dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
     }
-  }, [recording, sessionKey, takes]);
+  }, [recording, sessionKey, state, takes]);
 
   const stop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
@@ -1010,7 +1011,7 @@ export function useVerseAudio({
 
   /** File checks + engine play, shared by single takes and stitched segments. */
   const playUri = useCallback(
-    async (path: string, isStale?: () => boolean, fromMs = 0) => {
+    async (path: string, isStale?: () => boolean, fromMs?: number) => {
       const exists = await fileExists(path);
       if (!exists) {
         throw new Error('Take file is missing on disk. Re-record this verse.');
@@ -1020,8 +1021,12 @@ export function useVerseAudio({
         throw new Error('Take file is empty (0 bytes). Re-record this verse.');
       }
       if (isStale?.()) return;
-      if (fromMs > 0) await playback.resume(fromMs, path);
-      else await playback.play(path);
+      // Omitted resumes a loaded file in place. An explicit 0 starts over.
+      if (fromMs !== undefined) {
+        await playback.resume(Math.max(0, fromMs), path);
+      } else {
+        await playback.play(path);
+      }
     },
     [playback],
   );
@@ -1221,14 +1226,10 @@ export function useVerseAudio({
    * takes are remuxed via {@link getRemuxNativeModule} on commit (#233).
    */
   const seek = useCallback(
-    /** A take id or recording picks the row; otherwise the loaded take, then the selected. */
-    async (ms: number, target?: string | Recording) => {
-      const explicit =
-        typeof target === 'string'
-          ? takes.find(take => take.id === target)
-          : target;
+    /** A recording picks the row; otherwise the loaded take, then the selected. */
+    async (ms: number, target?: Recording) => {
       const take =
-        explicit ??
+        target ??
         (loadedTakeId !== null
           ? takes.find(take => take.id === loadedTakeId) ??
             allTakes.find(take => take.id === loadedTakeId)

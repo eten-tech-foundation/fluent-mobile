@@ -10,7 +10,19 @@ import {
   nextThemes,
   nextTypeStyles,
 } from './next';
+import { nextBaseline } from './nextBaseline';
 import { resolveTheme } from './uiVersion';
+
+function expectIndependentGroups(left: unknown, right: unknown): void {
+  if (left === null || typeof left !== 'object') return;
+  expect(right).not.toBe(left);
+  for (const key of Object.keys(left)) {
+    expectIndependentGroups(
+      (left as Record<string, unknown>)[key],
+      (right as Record<string, unknown>)[key],
+    );
+  }
+}
 
 describe('legacyTheme', () => {
   it('exports theme as an alias of legacyTheme', () => {
@@ -160,6 +172,42 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     expect(mapRolesToThemeColors(nextColorRoles.canvas).background).toBe(
       nextPrimitives.black,
     );
+  });
+
+  it('keeps Next modes isolated from each other', () => {
+    expectIndependentGroups(nextThemes.hardware, nextThemes.canvas);
+    expectIndependentGroups(nextThemes.hardware, nextThemes.accent);
+    expectIndependentGroups(nextThemes.canvas, nextThemes.accent);
+    expectIndependentGroups(legacyTheme, nextTheme);
+    expectIndependentGroups(nextBaseline, nextTheme);
+  });
+
+  it('does not bleed a Next token edit into Legacy, its baseline or another mode', () => {
+    const colors = nextThemes.hardware.colors as { primary: string };
+    const sizes = nextThemes.hardware.typography.sizes as { lg: number };
+    const waveform = nextThemes.hardware.waveform as { barGap: number };
+    const originalPrimary = colors.primary;
+    const legacyPrimary = legacyTheme.colors.primary;
+    const baselinePrimary = nextBaseline.colors.primary;
+    const originalSize = sizes.lg;
+    const originalGap = waveform.barGap;
+    try {
+      colors.primary = '#123456';
+      sizes.lg = 99;
+      waveform.barGap = 11;
+      expect(legacyTheme.colors.primary).toBe(legacyPrimary);
+      expect(nextBaseline.colors.primary).toBe(baselinePrimary);
+      expect(nextBaseline.typography.sizes.lg).toBe(originalSize);
+      expect(nextBaseline.waveform.barGap).toBe(originalGap);
+      expect(nextThemes.canvas.colors.primary).not.toBe('#123456');
+      expect(nextThemes.accent.colors.primary).not.toBe('#123456');
+      expect(nextThemes.canvas.typography.sizes.lg).toBe(originalSize);
+      expect(nextThemes.canvas.waveform.barGap).toBe(originalGap);
+    } finally {
+      colors.primary = originalPrimary;
+      sizes.lg = originalSize;
+      waveform.barGap = originalGap;
+    }
   });
 
   it('resolves Hardware roles from primitives', () => {

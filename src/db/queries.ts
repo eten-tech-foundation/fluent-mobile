@@ -492,6 +492,46 @@ export async function getChapterAssignmentById(
   }
 }
 
+/** Verses the chapter assignment says it contains. 0 when the count is unknown. */
+export async function getChapterAssignmentVerseCount(
+  id: number,
+): Promise<number> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT total_verses FROM chapter_assignments WHERE id = ?`,
+      [id],
+    );
+    return Number(result.rows?.[0]?.total_verses) || 0;
+  } catch (error) {
+    log.error('Error fetching chapter verse count', { error, id });
+    throw error;
+  }
+}
+
+/** A chapter send still sitting in the local stage-advance queue. */
+export async function hasPendingStageAdvance(
+  chapterAssignmentId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT 1 AS pending
+       FROM stage_advance_queue
+       WHERE chapter_assignment_id = ? AND sync_status = 'pending'
+       LIMIT 1`,
+      [chapterAssignmentId],
+    );
+    return (result.rows?.length ?? 0) > 0;
+  } catch (error) {
+    log.error('Error fetching pending stage advance', {
+      error,
+      chapterAssignmentId,
+    });
+    throw error;
+  }
+}
+
 /** Chapter-level unresolved audio-take conflict rollup (#260). */
 export type PendingChapterClaim = {
   id: number;

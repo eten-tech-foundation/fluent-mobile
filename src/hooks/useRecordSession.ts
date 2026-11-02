@@ -350,11 +350,13 @@ export function useRecordSession({
 
   const captureActive =
     verseAudio.state === 'recording' || verseAudio.state === 'paused';
+  // Saving is not a capture the keys can pause, but leaving would drop it.
+  const leaveBlocked = captureActive || verseAudio.state === 'saving';
 
   useEffect(() => {
-    onCaptureActiveChange?.(captureActive);
+    onCaptureActiveChange?.(leaveBlocked);
     return () => onCaptureActiveChange?.(false);
-  }, [captureActive, onCaptureActiveChange]);
+  }, [leaveBlocked, onCaptureActiveChange]);
 
   // `useRecordingEngine` returns a fresh object every render, so
   // `verseAudio.resume` / `discardCapture` change identity each render. Hand the
@@ -379,6 +381,8 @@ export function useRecordSession({
   );
 
   useEffect(() => {
+    // Saving stays on the leave gate, but Discard would delete the take
+    // while persistTake is still running.
     onRegisterCaptureControls?.(captureActive ? captureControls : null);
     return () => onRegisterCaptureControls?.(null);
   }, [captureActive, captureControls, onRegisterCaptureControls]);

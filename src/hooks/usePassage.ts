@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   getBibleTextId,
   getBibleTexts,
   getChapterAssignmentById,
+  getChapterAssignmentVerseCount,
   getPericopeForVerse,
   getSelectedTakeCoverages,
+  hasPendingStageAdvance,
 } from '../db/queries';
 import { getTakesForVerse } from '../db/recordingsRepository';
 import { getProjectPericopeSetId } from '../db/repository';
 import { syncBibleTexts } from '../services/sync';
+import { onSyncComplete } from '../services/syncEvents';
 import type { BibleUnitVerse } from '../utils/bibleTabUnits';
 import {
   buildBibleUnits,
@@ -100,6 +104,13 @@ async function loadPassage(
     ...v,
     text: textOf.get(`${v.chapterNumber}:${v.verseNumber}`) ?? '',
   }));
+  const expectedVerses = group
+    ? group.verses.length
+    : await getChapterAssignmentVerseCount(assignment.id);
+  const downloaded =
+    expectedVerses > 0 &&
+    verses.length >= expectedVerses &&
+    verses.every(v => v.text !== '');
 
   const reference = group
     ? buildBibleUnits({
@@ -162,14 +173,13 @@ async function loadPassage(
     title: group?.pericopeTitle?.trim() || null,
     reference,
     verses,
-    downloaded: verses.some(v => v.text !== ''),
+    downloaded,
     recordedStatus: unitRecordedStatus(unitVerses, coverages),
     takes,
     assignment,
     chapterVerseCount: texts.filter(t => t.chapterNumber === chapterNumber)
       .length,
-    // Nothing queues a send on the device yet; #770's stage-advance queue will.
-    waitingToSend: false,
+    waitingToSend: await hasPendingStageAdvance(assignment.id),
   };
 }
 
@@ -192,8 +202,30 @@ export function usePassage(
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [downloadState, setDownloadState] = useState<PassageDownload>('idle');
   const [epoch, setEpoch] = useState(0);
+  const sawFocus = useRef(false);
+  const showedReady = useRef(false);
+  const loadedKey = useRef('');
 
   useEffect(() => {
+    return onSyncComplete(() => setEpoch(value => value + 1));
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!sawFocus.current) {
+        sawFocus.current = true;
+        return;
+      }
+      setEpoch(value => value + 1);
+    }, []),
+  );
+
+  useEffect(() => {
+    const key = `${chapterAssignmentId}:${anchorVerse}:${projectUnitId}`;
+    if (loadedKey.current !== key) {
+      loadedKey.current = key;
+      showedReady.current = false;
+    }
     let cancelled = false;
     (async () => {
       const found = await getChapterAssignmentById(chapterAssignmentId);
@@ -205,12 +237,15 @@ export function usePassage(
     })()
       .then(({ found, next }) => {
         if (cancelled) return;
+        if (next.status === 'ready') showedReady.current = true;
         setAssignment(found);
         setPassage(next);
       })
       .catch(error => {
         log.error('Failed to load passage', { error });
-        if (!cancelled) setPassage({ status: 'missing' });
+        if (!cancelled && !showedReady.current) {
+          setPassage({ status: 'missing' });
+        }
       });
     return () => {
       cancelled = true;
@@ -222,9 +257,19 @@ export function usePassage(
   const download = useCallback(() => {
     if (!assignment || downloadState === 'downloading') return;
     const { bibleId, bookId, chapterNumber } = assignment;
+    const requested =
+      passage.status === 'ready'
+        ? Array.from(new Set(passage.verses.map(verse => verse.chapterNumber)))
+        : [chapterNumber];
+    const chapters = requested.length > 0 ? requested : [chapterNumber];
     setDownloadState('downloading');
     syncBibleTexts(undefined, {
-      chapterGroups: new Map([[bibleId, [{ bookId, chapterNumber }]]]),
+      chapterGroups: new Map([
+        [
+          bibleId,
+          chapters.map(chapter => ({ bookId, chapterNumber: chapter })),
+        ],
+      ]),
     })
       .then(() => loadPassage(assignment, anchorVerse, projectUnitId))
       .then(next => {
@@ -237,7 +282,7 @@ export function usePassage(
         log.warn('Passage download failed', { error });
         setDownloadState('failed');
       });
-  }, [assignment, anchorVerse, projectUnitId, downloadState]);
+  }, [assignment, passage, anchorVerse, projectUnitId, downloadState]);
 
   return { passage, download, downloadState, reload };
 }

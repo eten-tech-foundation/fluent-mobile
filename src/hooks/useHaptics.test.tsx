@@ -54,6 +54,7 @@ describe('useHaptics', () => {
   });
 
   it('is a no-op in Legacy', () => {
+    setUiVersion('legacy');
     const { result } = renderHook(() => useHaptics());
     result.current.press();
     expect(perform).not.toHaveBeenCalled();

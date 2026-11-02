@@ -4,15 +4,30 @@ import {
   act,
   fireEvent,
   render,
+  renderHook,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 import PassageScreen from './PassageScreen';
+import { useAccountActions } from '../../../hooks/useAccountActions';
 import type { Passage, PassageDownload } from '../../../hooks/usePassage';
 import { UNDO_MS } from '../../../hooks/usePendingDelete';
 import { hrefs } from '../../../navigation/hrefs';
+import {
+  getRecordCaptureGate,
+  resetRecordCaptureGateForTests,
+  setRecordCaptureGate,
+} from '../../../navigation/recordCaptureGate';
 import { logger } from '../../../utils/logger';
+
+const mockAddListener = jest.fn(
+  (
+    _event: string,
+    _listener: (event: { preventDefault: () => void }) => void,
+  ) => jest.fn(),
+);
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -22,8 +37,13 @@ const mockStop = jest.fn(async () => {});
 const mockPause = jest.fn(async () => {});
 const mockResume = jest.fn(async () => {});
 const mockDiscard = jest.fn(async () => {});
+const publishedControls = {
+  resume: mockResume,
+  discardCapture: mockDiscard,
+};
 const mockEnsureMic = jest.fn(async () => true);
 const mockPlayTake = jest.fn(async () => {});
+const mockPauseTake = jest.fn(async () => {});
 const mockDeleteTake = jest.fn(async (_id: string) => {});
 const mockSelectTake = jest.fn();
 const mockSetCanonical = jest.fn();
@@ -40,6 +60,7 @@ const sessionDefaults = {
   isTaken: false,
   stageLocked: false,
   captureDisabled: false,
+  drafterCaptureBlocked: false,
   canRecordNewTake: true,
   pericopeUnavailable: false,
   takes: [] as MockTake[],
@@ -72,43 +93,70 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: mockBack }),
   useLocalSearchParams: () => mockParams,
   useIsFocused: () => mockFocused,
-}));
-
-jest.mock('../../../hooks/useRecordSession', () => ({
-  useRecordSession: () => ({
-    verseAudio: {
-      state: mockSession.state,
-      takes: mockSession.takes,
-      deleteTake: mockDeleteTake,
-      playingTakeId: null,
-      selectedTake: mockSession.takes.find(t => t.isSelected) ?? null,
-      start: mockStart,
-      stop: mockStop,
-      pause: mockPause,
-      resume: mockResume,
-      discardCapture: mockDiscard,
-      pausePlayback: jest.fn(),
-      playTake: mockPlayTake,
-      selectTake: mockSelectTake,
-      setCanonical: mockSetCanonical,
-      ownCanonicalTakeId: null,
-      getMetering: () => null,
-      canRecordNewTake: mockSession.canRecordNewTake,
-    },
-    effectiveUnit: 'pericope',
-    elapsedMs: 13000,
-    setElapsedMs: jest.fn(),
-    captureActive: mockSession.captureActive,
-    syncingMessage: null,
-    isTaken: mockSession.isTaken,
-    stageLocked: mockSession.stageLocked,
-    drafterCaptureBlocked: false,
-    captureDisabled: mockSession.captureDisabled,
-    pericopeUnavailable: mockSession.pericopeUnavailable,
-    activeRecordingUnit: { coveredViews: [] },
-    ensureMic: mockEnsureMic,
+  useNavigation: () => ({
+    addListener: mockAddListener,
+    isFocused: () => mockFocused,
   }),
 }));
+
+jest.mock('../../../hooks/useRecordSession', () => {
+  const React = require('react');
+  return {
+    useRecordSession: (args: {
+      onCaptureActiveChange?: (active: boolean) => void;
+      onRegisterCaptureControls?: (
+        controls: {
+          resume: () => Promise<void>;
+          discardCapture: () => Promise<void>;
+        } | null,
+      ) => void;
+    }) => {
+      const blocked =
+        mockSession.captureActive || mockSession.state === 'saving';
+      const onCaptureActiveChange = args.onCaptureActiveChange;
+      const onRegisterCaptureControls = args.onRegisterCaptureControls;
+      React.useEffect(() => {
+        onCaptureActiveChange?.(blocked);
+        onRegisterCaptureControls?.(
+          mockSession.captureActive ? publishedControls : null,
+        );
+      }, [blocked, onCaptureActiveChange, onRegisterCaptureControls]);
+      return {
+        verseAudio: {
+          state: mockSession.state,
+          takes: mockSession.takes,
+          deleteTake: mockDeleteTake,
+          playingTakeId: null,
+          selectedTake: mockSession.takes.find(t => t.isSelected) ?? null,
+          start: mockStart,
+          stop: mockStop,
+          pause: mockPause,
+          resume: mockResume,
+          discardCapture: mockDiscard,
+          pausePlayback: mockPauseTake,
+          playTake: mockPlayTake,
+          selectTake: mockSelectTake,
+          setCanonical: mockSetCanonical,
+          ownCanonicalTakeId: null,
+          getMetering: () => null,
+          canRecordNewTake: mockSession.canRecordNewTake,
+        },
+        effectiveUnit: 'pericope',
+        elapsedMs: 13000,
+        setElapsedMs: jest.fn(),
+        captureActive: mockSession.captureActive,
+        syncingMessage: null,
+        isTaken: mockSession.isTaken,
+        stageLocked: mockSession.stageLocked,
+        drafterCaptureBlocked: mockSession.drafterCaptureBlocked,
+        captureDisabled: mockSession.captureDisabled,
+        pericopeUnavailable: mockSession.pericopeUnavailable,
+        activeRecordingUnit: { coveredViews: [] },
+        ensureMic: mockEnsureMic,
+      };
+    },
+  };
+});
 
 jest.mock('../../../utils/parseUserId', () => ({ parseUserId: () => 7 }));
 
@@ -172,6 +220,36 @@ jest.mock('../../../hooks/usePassage', () => ({
   }),
 }));
 
+const mockPlaySource = jest.fn(async () => {});
+const mockPauseSource = jest.fn(async () => {});
+const mockSeekSource = jest.fn(async (_ms: number) => {});
+const mockRetrySource = jest.fn();
+type MockLoadState = 'loading' | 'ready' | 'empty' | 'error';
+const sourceDefaults = {
+  loadState: 'ready' as MockLoadState,
+  status: 'idle',
+  positionMs: 0,
+  durationMs: 0,
+  isPlaying: false,
+  isLoadingAudio: false,
+  play: mockPlaySource,
+  pause: mockPauseSource,
+  seek: mockSeekSource,
+  stop: jest.fn(async () => {}),
+  retry: mockRetrySource,
+  verseTimestamps: undefined,
+};
+let mockSource = { ...sourceDefaults };
+const mockUseSourceAudio = jest.fn((_args: unknown) => mockSource);
+
+jest.mock('../../../hooks/useSourceAudio', () => ({
+  useSourceAudio: (args: unknown) => mockUseSourceAudio(args),
+}));
+
+jest.mock('../../../hooks/useConnectivity', () => ({
+  useConnectivity: () => ({ isOnline: true, hasResolved: true }),
+}));
+
 const ready: Extract<Passage, { status: 'ready' }> = {
   status: 'ready',
   title: 'The Last Supper',
@@ -184,7 +262,11 @@ const ready: Extract<Passage, { status: 'ready' }> = {
   recordedStatus: 'recorded',
   assignment: {
     id: 5,
+    projectId: 9,
+    bibleId: 4,
+    bookCode: 'MRK',
     chapterNumber: 14,
+    sourceLanguageCode: 'tel',
   } as Extract<Passage, { status: 'ready' }>['assignment'],
   chapterVerseCount: 72,
   waitingToSend: false,
@@ -244,10 +326,12 @@ function tickerOffset(): number {
 describe('PassageScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetRecordCaptureGateForTests();
     mockSession = { ...sessionDefaults };
     mockParams = { ...baseParams };
     mockPassage = ready;
     mockDownloadState = 'idle';
+    mockSource = { ...sourceDefaults };
     mockReduceMotion = false;
     mockFocused = true;
   });
@@ -340,6 +424,22 @@ describe('PassageScreen', () => {
     expect(tickerOffset()).toBe(0);
   });
 
+  it('shows a finished chapter as peer checked, with no Record', () => {
+    mockPassage = {
+      ...ready,
+      recordedStatus: 'none',
+      takes: [],
+      assignment: { ...ready.assignment, status: 'complete' },
+    };
+    render(<PassageScreen />);
+
+    expect(screen.getByTestId('passage-takes-meta').props.children).toBe(
+      "Peer checked · Takes aren't on this phone",
+    );
+    expect(screen.queryByTestId('passage-record')).toBeNull();
+    expect(screen.getByLabelText('Listen')).toBeTruthy();
+  });
+
   it('keeps a long title still when motion is reduced', () => {
     mockReduceMotion = true;
     renderSettled();
@@ -378,31 +478,128 @@ describe('PassageScreen', () => {
     expect(screen.getByLabelText('Close the player')).toBeTruthy();
   });
 
-  it('opens drafting from the Listen keys until playback is wired', () => {
+  it('plays this chapter from Listen and pauses on the next press', async () => {
     render(<PassageScreen />);
-
     fireEvent.press(screen.getByTestId('passage-listen'));
-    fireEvent.press(screen.getByLabelText('Listen in drafting'));
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockUseSourceAudio.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
-        pathname: '/(app)/(stack)/verse-detail',
-        params: expect.objectContaining({
-          chapterId: '5',
-          chapterName: 'Mark 14',
-          recoverVerse: '22',
-        }),
+        projectId: 9,
+        bookCode: 'MRK',
+        chapter: 14,
+        bibleId: 4,
+        languageCode: 'tel',
+        verse: 22,
+        enabled: true,
+        isOnline: true,
+        userId: 7,
       }),
     );
+    expect(screen.getByLabelText('Play source audio')).toBeTruthy();
+    expect(screen.getByLabelText('Close the player')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Play source audio'));
+    });
+
+    expect(mockPauseTake).toHaveBeenCalled();
+    expect(mockPlaySource).toHaveBeenCalledTimes(1);
+    expect(mockPauseTake.mock.invocationCallOrder[0]).toBeLessThan(
+      mockPlaySource.mock.invocationCallOrder[0],
+    );
+    expect(mockPush).not.toHaveBeenCalled();
+
+    mockSource = {
+      ...mockSource,
+      isPlaying: true,
+      positionMs: 2500,
+      durationMs: 10000,
+    };
+    screen.rerender(<PassageScreen />);
+
+    expect(
+      screen.getByTestId('passage-waveform').props.accessibilityValue,
+    ).toMatchObject({ now: 25 });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Pause source audio'));
+    });
+    expect(mockPauseSource).toHaveBeenCalledTimes(1);
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it('opens the player in Listen mode', () => {
+  it('seeks the source chapter from the script waveform', () => {
+    mockSource = { ...mockSource, durationMs: 10000 };
     render(<PassageScreen />);
-
     fireEvent.press(screen.getByTestId('passage-listen'));
 
-    expect(screen.getByLabelText('Listen in drafting')).toBeTruthy();
-    expect(screen.getByLabelText('Close the player')).toBeTruthy();
+    expect(screen.getByTestId('passage-waveform').props.accessibilityRole).toBe(
+      'adjustable',
+    );
+    fireEvent(
+      screen.getByLabelText('Mark 14:22–25 playback'),
+      'accessibilityAction',
+      { nativeEvent: { actionName: 'increment' } },
+    );
+
+    expect(mockSeekSource).toHaveBeenCalledWith(500);
+    fireEvent.press(screen.getByLabelText('Next: Hear & Heart'));
+    expect(
+      screen.getByLabelText('Hear & Heart playback').props.accessibilityValue,
+    ).toMatchObject({ now: 0 });
+    expect(mockSeekSource).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not play or leave when source audio is missing', () => {
+    mockSource = { ...mockSource, loadState: 'empty' };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-listen'));
+
+    expect(
+      screen.getByTestId('passage-key-listen').props.accessibilityState,
+    ).toMatchObject({ disabled: true });
+    fireEvent.press(screen.getByLabelText('No source audio'));
+    expect(mockPlaySource).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed source load without leaving the passage', () => {
+    mockSource = { ...mockSource, loadState: 'error' };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-listen'));
+
+    fireEvent.press(screen.getByLabelText('Retry loading source audio'));
+    expect(mockRetrySource).toHaveBeenCalledTimes(1);
+    expect(mockPlaySource).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('plays a take in Record and does not open Legacy drafting', async () => {
+    mockSession = { ...mockSession, takes: [take(1)] };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    expect(mockUseSourceAudio.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ enabled: false }),
+    );
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Play take'));
+    });
+
+    expect(mockPlayTake).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 't1' }),
+      undefined,
+    );
+    expect(mockPlaySource).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('keeps source audio off while a take capture is active', () => {
+    mockSession = { ...mockSession, state: 'recording', captureActive: true };
+    render(<PassageScreen />);
+
+    expect(mockUseSourceAudio.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ enabled: false }),
+    );
   });
 
   it('turns the pages from Previous and Next, like swiping', () => {
@@ -634,6 +831,27 @@ describe('PassageScreen', () => {
     );
   });
 
+  it('plays from the start after a scrub to the end', async () => {
+    mockSession = { ...mockSession, takes: [take(1)] };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    const playback = screen.getByLabelText('Take 1 playback');
+    for (let step = 0; step < 20; step += 1) {
+      fireEvent(playback, 'accessibilityAction', {
+        nativeEvent: { actionName: 'increment' },
+      });
+    }
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Play take'));
+    });
+
+    expect(mockPlayTake).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 't1' }),
+      0,
+    );
+  });
+
   it('deletes a take only once the undo window closes', async () => {
     jest.useFakeTimers();
     try {
@@ -741,7 +959,7 @@ describe('PassageScreen', () => {
     fireEvent.press(screen.getByTestId('passage-key-play'));
     expect(mockPlayTake).toHaveBeenCalledWith(
       expect.objectContaining({ id: 't1' }),
-      0,
+      undefined,
     );
   });
 
@@ -833,6 +1051,97 @@ describe('PassageScreen', () => {
     } finally {
       listen.mockRestore();
     }
+  });
+
+  it('blocks leaving while a recovered take is paused and the player is closed', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockSession = { ...mockSession, state: 'paused', captureActive: true };
+    const view = render(<PassageScreen />);
+    await waitFor(() => expect(getRecordCaptureGate()).toBe(true));
+
+    fireEvent.press(screen.getByTestId('passage-back', hidden));
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(alert).toHaveBeenCalledWith(
+      'Recording in progress',
+      expect.any(String),
+      expect.any(Array),
+    );
+
+    view.unmount();
+    expect(getRecordCaptureGate()).toBe(false);
+  });
+
+  it('blocks account, settings and drawer exits from the shared gate', () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    setRecordCaptureGate(true);
+    const close = jest.fn();
+    const { result } = renderHook(() => useAccountActions({ close }));
+    expect(result.current.blockIfRecording()).toBe(true);
+    expect(close).toHaveBeenCalled();
+    expect(alert).toHaveBeenCalledWith(
+      'Recording in progress',
+      expect.any(String),
+      expect.any(Array),
+    );
+    alert.mockRestore();
+  });
+
+  it('holds the book page and a back removal while a save is in flight', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockSession = { ...mockSession, state: 'saving', captureActive: false };
+    render(<PassageScreen />);
+    await waitFor(() => expect(getRecordCaptureGate()).toBe(true));
+
+    fireEvent.press(
+      screen.getByRole('header', { name: 'The Last Supper. Show details.' }),
+    );
+    fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Mark 14 · Gospels Phase 1. Open book page.',
+      }),
+    );
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(alert).toHaveBeenCalled();
+
+    const beforeRemove = mockAddListener.mock.calls.filter(
+      call => call[0] === 'beforeRemove',
+    );
+    const listener = beforeRemove[beforeRemove.length - 1]?.[1];
+    if (!listener) throw new Error('beforeRemove was not registered');
+    const preventDefault = jest.fn();
+    listener({ preventDefault });
+    expect(preventDefault).toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it('plays source audio in place while a save is in flight', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockSession = { ...mockSession, state: 'saving', captureActive: false };
+    render(<PassageScreen />);
+    await waitFor(() => expect(getRecordCaptureGate()).toBe(true));
+
+    fireEvent.press(screen.getByTestId('passage-listen'));
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Play source audio'));
+    });
+
+    expect(mockPlaySource).toHaveBeenCalledTimes(1);
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(alert).not.toHaveBeenCalled();
+    alert.mockRestore();
+  });
+
+  it('does not start a take when peer check or a taken chapter blocks it', async () => {
+    mockSession = {
+      ...mockSession,
+      drafterCaptureBlocked: true,
+    };
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
   it("won't open the title's sheet on a take in progress", () => {

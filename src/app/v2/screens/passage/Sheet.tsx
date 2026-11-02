@@ -27,14 +27,18 @@ import {
   CAPTURE_LEAVE_RESUME,
   CAPTURE_LEAVE_TITLE,
 } from '../../../../constants/messages';
+import { useConnectivity } from '../../../../hooks/useConnectivity';
 import { useHaptics } from '../../../../hooks/useHaptics';
 import type { usePassage } from '../../../../hooks/usePassage';
+import { useSourceAudio } from '../../../../hooks/useSourceAudio';
+import type { CaptureControls } from '../../../../types/captureControls';
+import type { SourceAudioLoadState } from '../../../../types/sourceAudio';
 import { ColorModeScope, useTheme } from '../../../../theme/useTheme';
 import { Footer } from './Footer';
 import { ListeningMaterials } from './ListeningMaterials';
 import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
-import { PlayerKeys, type KeyAction } from './PlayerKeys';
+import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
 import { useScriptMetrics } from './scriptMetrics';
 import { PAGE_COUNT, pageName, type Ready } from './steps';
 import { TakeFan } from './TakeFan';
@@ -44,6 +48,50 @@ import { useRecorder } from './useRecorder';
 /** How far the hero drags before a release opens or closes it. */
 const SNAP_AT = 0.35;
 const FLING = 500;
+
+function listenKeys(
+  source: {
+    loadState: SourceAudioLoadState;
+    isPlaying: boolean;
+    isLoadingAudio: boolean;
+    play: () => Promise<void>;
+    pause: () => Promise<void>;
+    retry: () => void;
+  },
+  pauseTake: () => Promise<void>,
+): ListenKeys {
+  const loading = source.loadState === 'loading' || source.isLoadingAudio;
+  const failed = source.loadState === 'error';
+  const playLabel = failed
+    ? 'Retry loading source audio'
+    : loading
+    ? 'Loading source audio'
+    : source.loadState === 'empty'
+    ? 'No source audio'
+    : source.isPlaying
+    ? 'Pause source audio'
+    : 'Play source audio';
+  return {
+    playing: source.isPlaying,
+    playDisabled: loading || source.loadState === 'empty',
+    playLabel,
+    onPlay: () => {
+      void (async () => {
+        if (failed) {
+          source.retry();
+          return;
+        }
+        if (source.isPlaying) {
+          await source.pause();
+          return;
+        }
+        // A take still winding down must finish pausing before the chapter starts.
+        await pauseTake();
+        await source.play();
+      })();
+    },
+  };
+}
 
 /**
  * The hero and the player are one sheet. Opening it keeps the script where
@@ -59,26 +107,31 @@ export function Sheet({
   passage,
   userId,
   onReload,
+  anchorVerse,
   chapterName,
   milestoneName,
   onBack,
   onOpenBook,
-  onOpenDrafting,
   onDownload,
   downloadState,
+  onCaptureActiveChange,
+  onRegisterCaptureControls,
 }: {
   passage: Ready;
   userId: number | null;
   /** Re-reads the passage, e.g. after recording claims its chapter. */
   onReload: () => void;
+  /** Verse this passage was opened on; source audio seeks here. */
+  anchorVerse: number;
   /** e.g. "Mark 14"; the title's sheet links it up to the book page. */
   chapterName: string;
   milestoneName: string;
   onBack: () => void;
   onOpenBook: () => void;
-  onOpenDrafting: () => void;
   onDownload: () => void;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
+  onCaptureActiveChange?: (active: boolean) => void;
+  onRegisterCaptureControls?: (controls: CaptureControls | null) => void;
 }) {
   const { spacing } = useTheme();
   const haptics = useHaptics();
@@ -112,10 +165,33 @@ export function Sheet({
     userId,
     showing: expanded && recordMode,
     onReload,
+    onCaptureActiveChange,
+    onRegisterCaptureControls,
   });
   /** A take is lifted to delete it: everything but the fan dims. */
   const [lifted, setLifted] = useState(false);
   const { capturing } = recorder;
+  const { isOnline, hasResolved } = useConnectivity();
+  // Same gate as Legacy's source bar: no API until /health resolves.
+  const source = useSourceAudio({
+    projectId: passage.assignment.projectId,
+    bookCode: passage.assignment.bookCode,
+    chapter: passage.assignment.chapterNumber,
+    bibleId: passage.assignment.bibleId,
+    languageCode: passage.assignment.sourceLanguageCode,
+    verse: anchorVerse,
+    enabled: !recordMode && !capturing,
+    isOnline: hasResolved && isOnline,
+    userId,
+  });
+  const sourceProgress =
+    source.durationMs > 0 ? source.positionMs / source.durationMs : 0;
+  const seekSource =
+    source.durationMs > 0
+      ? (ratio: number) => {
+          void source.seek(Math.round(ratio * source.durationMs));
+        }
+      : undefined;
   const goToPage = useCallback(
     (index: number, animated = false) => {
       setPage(index);
@@ -318,6 +394,7 @@ export function Sheet({
             page={page}
             recordMode={recordMode}
             record={recorder.footer}
+            listen={{ progress: sourceProgress, onSeek: seekSource }}
             dimmed={lifted}
           />
         }
@@ -327,9 +404,9 @@ export function Sheet({
             onRecordModeChange={changeMode}
             modeLocked={capturing}
             record={recorder.keys}
+            listen={listenKeys(source, recorder.pauseTakePlayback)}
             previous={turnKey(page - 1, 'Previous')}
             next={turnKey(page + 1, 'Next')}
-            onOpenDrafting={onOpenDrafting}
           />
         }
       />

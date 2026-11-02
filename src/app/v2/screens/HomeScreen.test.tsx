@@ -27,6 +27,7 @@ let mockNextUp: NextUp = { status: 'ready', hero: null, after: [] };
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
+  useIsFocused: () => true,
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -161,11 +162,12 @@ describe('Next HomeScreen', () => {
     expect(screen.getByTestId('home-summary').props.children).toBe(
       '2 chapters · All synced',
     );
-    expect(screen.getByLabelText('Online · all synced')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Sync page/ })).toBeNull();
+    expect(
+      screen.getByLabelText('Online · all synced. Open Sync page.'),
+    ).toBeTruthy();
   });
 
-  it('opens accounts from the avatar, while the cloud does nothing yet', () => {
+  it('opens accounts from the avatar and the Sync page from the cloud', () => {
     render(<HomeScreen />);
     expect(screen.queryByTestId('accounts-sheet')).toBeNull();
 
@@ -176,7 +178,9 @@ describe('Next HomeScreen', () => {
     expect(screen.queryByTestId('accounts-sheet')).toBeNull();
 
     fireEvent.press(screen.getByTestId('home-sync'));
-    expect(mockPush).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('home-sync'));
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
   });
 
   it('asks to sign in again when the session expired', () => {
@@ -192,7 +196,8 @@ describe('Next HomeScreen', () => {
     render(<HomeScreen />);
 
     expect(screen.getByTestId('home-loading')).toBeTruthy();
-    expect(screen.queryByText('My work')).toBeNull();
+    expect(screen.getByTestId('home-sync')).toBeTruthy();
+    expect(screen.getByText('My work')).toBeTruthy();
   });
 
   it('shows the empty message when no milestone has chapters', () => {
