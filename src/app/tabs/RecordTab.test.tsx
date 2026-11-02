@@ -199,6 +199,7 @@ const idleAudio: VerseAudioApi = {
   seekStitched: jest.fn(),
   seek: jest.fn(),
   pausePlayback: jest.fn(),
+  stopPlayback: jest.fn(),
   selectTake: jest.fn(),
   deleteTake: jest.fn(),
   setCanonical: jest.fn(),
@@ -251,6 +252,11 @@ type RenderTabOptions = {
   onRegisterCaptureControls?: (
     controls: import('../../types/captureControls').CaptureControls | null,
   ) => void;
+  onRegisterDraftPlayback?: (
+    controls:
+      | import('../../types/draftPlaybackControls').DraftPlaybackControls
+      | null,
+  ) => void;
 };
 
 function renderTab(
@@ -264,6 +270,7 @@ function renderTab(
         userId={options?.userId ?? 42}
         onCaptureActiveChange={onCaptureActiveChange}
         onRegisterCaptureControls={options?.onRegisterCaptureControls}
+        onRegisterDraftPlayback={options?.onRegisterDraftPlayback}
         onChapterClaimed={options?.onChapterClaimed}
       />
     </DraftingProvider>,
@@ -899,6 +906,23 @@ describe('RecordTab', () => {
   });
 
   // --- #49: leave prompt with Resume / Discard ------------------------------
+
+  it('registers draft playback stop so Drafting can halt audio on Back (#866)', () => {
+    const onRegisterDraftPlayback = jest.fn();
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'playing',
+    });
+    renderTab(undefined, { onRegisterDraftPlayback });
+    expect(onRegisterDraftPlayback).toHaveBeenCalledWith(
+      expect.objectContaining({ stopPlayback: expect.any(Function) }),
+    );
+    const registered = onRegisterDraftPlayback.mock.calls[0]?.[0] as {
+      stopPlayback: () => Promise<void>;
+    };
+    void registered.stopPlayback();
+    expect(idleAudio.stopPlayback).toHaveBeenCalled();
+  });
 
   describe('capture leave prompt (#49)', () => {
     const twoVerseChapterVerses = [

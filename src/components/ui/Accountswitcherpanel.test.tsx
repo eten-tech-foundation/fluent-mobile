@@ -251,12 +251,18 @@ describe('AccountSwitcherPanel', () => {
   });
 
   it('navigates to Add Account and closes the panel', () => {
+    const onBeforeAddAccount = jest.fn();
     const { getByTestId } = render(
-      <AccountSwitcherPanel visible onClose={onClose} />,
+      <AccountSwitcherPanel
+        visible
+        onClose={onClose}
+        onBeforeAddAccount={onBeforeAddAccount}
+      />,
     );
 
     fireEvent.press(getByTestId('account-switcher-add-account'));
 
+    expect(onBeforeAddAccount).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith('/(app)/(stack)/add-user');
   });

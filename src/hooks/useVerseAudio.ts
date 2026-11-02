@@ -1024,22 +1024,34 @@ export function useVerseAudio({
   const playTake = useCallback(
     async (take: Recording) => {
       playbackLoadInFlightRef.current = true;
+      clearStitchQueue();
+      // Same generation `stopPlayback` bumps via `clearStitchQueue`, so a
+      // leave/Sync during file checks cannot restore playing/loaded ids (#866).
+      const generation = stitchPlaybackGenerationRef.current;
+      const isStale = () => generation !== stitchPlaybackGenerationRef.current;
       try {
-        clearStitchQueue();
         setErrorMessage(null);
-        await playUri(take.localFilePath);
+        await playUri(take.localFilePath, isStale);
+        if (isStale()) {
+          return;
+        }
         setPlayingTakeId(take.id);
         setLoadedTakeId(take.id);
         dispatch({ type: 'PLAY' });
       } catch (error) {
+        if (isStale()) {
+          return;
+        }
         setPlayingTakeId(null);
         setLoadedTakeId(null);
         const message = error instanceof Error ? error.message : 'play failed';
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
       } finally {
-        playbackLoadInFlightRef.current = false;
-        setPlaybackLoadGate(n => n + 1);
+        if (!isStale()) {
+          playbackLoadInFlightRef.current = false;
+          setPlaybackLoadGate(n => n + 1);
+        }
       }
     },
     [clearStitchQueue, playUri],
@@ -1256,6 +1268,36 @@ export function useVerseAudio({
     [allTakes, clearStitchQueue, loadedTakeId, playback, selectedTake, takes],
   );
 
+  /**
+   * Halt draft review playback (#866): stop the engine, drop loaded/playing
+   * ids, and return the reducer to `recorded` so the take row shows Play.
+   * Verse changes already stop via the load effect; this is for Back / leave
+   * while Record stays mounted, and for unmount of a frozen screen.
+   */
+  const stopPlayback = useCallback(async () => {
+    clearStitchQueue();
+    setPlayingTakeId(null);
+    setLoadedTakeId(null);
+    try {
+      await playback.stop();
+    } catch {
+      // Leave / Back must proceed even if native stop rejects.
+    }
+    dispatch({ type: 'PLAYBACK_END' });
+  }, [clearStitchQueue, playback.stop]);
+
+  const playbackStopRef = useRef(playback.stop);
+  playbackStopRef.current = playback.stop;
+  useEffect(() => {
+    return () => {
+      // Engine-only: do not setState after unmount. Drafting also calls
+      // stopPlayback while still mounted (Back / Sync).
+      void playbackStopRef.current().catch(() => {
+        // Native stop can reject if the player was already released.
+      });
+    };
+  }, []);
+
   /** Pause draft review playback (design review control shows Pause while playing). */
   const pausePlayback = useCallback(async () => {
     // No-op when already idle/paused so exclusivity fallbacks cannot cascade
@@ -1455,6 +1497,7 @@ export function useVerseAudio({
     seekStitched,
     seek,
     pausePlayback,
+    stopPlayback,
     selectTake,
     deleteTake,
     setCanonical,

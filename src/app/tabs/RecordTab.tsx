@@ -75,6 +75,7 @@ import {
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
 import type { CaptureControls } from '../../types/captureControls';
+import type { DraftPlaybackControls } from '../../types/draftPlaybackControls';
 import type { PericopeGroupResult } from '../../db/queries';
 import { ChapterAssignmentData } from '../../types/db/types';
 import { getProjectPericopeSetId } from '../../db/repository';
@@ -151,6 +152,8 @@ type RecordTabProps = {
    * switch — not just the verse chevrons handled here.
    */
   onRegisterCaptureControls?: (controls: CaptureControls | null) => void;
+  /** Always registered while mounted so Drafting can stop review audio on Back. */
+  onRegisterDraftPlayback?: (controls: DraftPlaybackControls | null) => void;
   onChapterClaimed?: () => void;
 };
 
@@ -169,6 +172,7 @@ export function RecordTab({
   userId,
   onCaptureActiveChange,
   onRegisterCaptureControls,
+  onRegisterDraftPlayback,
   onChapterClaimed,
 }: RecordTabProps) {
   const router = useRouter();
@@ -771,6 +775,23 @@ export function RecordTab({
     onRegisterCaptureControls?.(captureActive ? captureControls : null);
     return () => onRegisterCaptureControls?.(null);
   }, [captureActive, captureControls, onRegisterCaptureControls]);
+
+  const draftPlaybackActionsRef = useRef({
+    stopPlayback: verseAudio.stopPlayback,
+  });
+  draftPlaybackActionsRef.current = {
+    stopPlayback: verseAudio.stopPlayback,
+  };
+  const draftPlaybackControls = useMemo<DraftPlaybackControls>(
+    () => ({
+      stopPlayback: () => draftPlaybackActionsRef.current.stopPlayback(),
+    }),
+    [],
+  );
+  useEffect(() => {
+    onRegisterDraftPlayback?.(draftPlaybackControls);
+    return () => onRegisterDraftPlayback?.(null);
+  }, [draftPlaybackControls, onRegisterDraftPlayback]);
 
   const recordDisabled = captureBibleTextId === null;
   const syncingMessage = recordSourceTextHint(captureBibleTextId, isSyncing);
