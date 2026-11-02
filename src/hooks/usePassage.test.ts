@@ -42,6 +42,7 @@ jest.mock('../db/repository', () => ({
 jest.mock('../services/sync', () => ({
   syncBibleTexts: jest.fn(),
   ensureSourceLanguageIso: jest.fn(),
+  releaseSourceLanguageIsoEnsure: jest.fn(),
 }));
 
 let mockOnline = false;

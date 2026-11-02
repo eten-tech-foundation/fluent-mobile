@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from '../../../components/ui/icons';
@@ -57,6 +57,17 @@ export default function PassageScreen() {
     projectUnitId,
   );
   const sync = useHeaderSync({ onSyncComplete: reload, guard: guardAction });
+  const { refresh: refreshSyncStatus } = sync;
+  const downloadBusy = useRef(false);
+  useEffect(() => {
+    if (downloadState === 'downloading') {
+      downloadBusy.current = true;
+      return;
+    }
+    if (!downloadBusy.current) return;
+    downloadBusy.current = false;
+    refreshSyncStatus();
+  }, [downloadState, refreshSyncStatus]);
   const styles = useThemedStyles(t => ({
     screen: { flex: 1, backgroundColor: t.roles.bgDefault },
     centered: {

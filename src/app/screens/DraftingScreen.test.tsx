@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react-native';
 import DraftingScreen from './DraftingScreen';
 import { hrefs } from '../../navigation/hrefs';
+import { syncBibleTexts } from '../../services/sync';
 import { setLastActiveTab } from '../../utils/draftingTabState';
 const mockBack = jest.fn();
 const mockPush = jest.fn();
@@ -105,11 +106,15 @@ jest.mock('../../hooks/useActiveAccountSummary', () => ({
 
 jest.mock('../../services/syncEvents', () => ({
   onSyncComplete: () => jest.fn(),
+  emitSyncStart: jest.fn(),
+  emitSyncComplete: jest.fn(),
 }));
 
 jest.mock('../../services/sync', () => ({
   syncBibleTexts: jest.fn().mockResolvedValue(undefined),
   syncMasterData: jest.fn().mockResolvedValue(undefined),
+  ensureSourceLanguageIso: jest.fn().mockResolvedValue(false),
+  releaseSourceLanguageIsoEnsure: jest.fn(),
 }));
 
 jest.mock('../../utils/draftingTabState', () => ({
@@ -344,6 +349,27 @@ describe('DraftingScreen onChapterClaimed', () => {
     expect(mockGetBibleTexts).toHaveBeenCalledTimes(1);
     expect(mockGetRecordedVerseNumbers).toHaveBeenCalledTimes(2);
     expect(capturedOnChapterClaimed).toBeDefined();
+  });
+
+  it('fetches this chapter when its text is missing, ignoring a catalogue absence', async () => {
+    mockGetBibleTexts.mockReset();
+    mockGetBibleTexts.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        bibleId: 1,
+        bookId: 40,
+        chapterNumber: 14,
+        verseNumber: 1,
+        text: 'Verse one',
+      },
+    ]);
+
+    render(<DraftingScreen />);
+
+    await waitFor(() => {
+      expect(syncBibleTexts).toHaveBeenCalledWith(undefined, {
+        chapterGroups: new Map([[1, [{ bookId: 40, chapterNumber: 14 }]]]),
+      });
+    });
   });
 
   it('renders the shell source-audio bar slot above the tab bar', async () => {

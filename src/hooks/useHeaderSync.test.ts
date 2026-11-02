@@ -9,12 +9,20 @@ jest.mock('expo-router', () => ({
   useIsFocused: () => mockFocused,
 }));
 
+let onGlobalSyncComplete: (() => void) | undefined;
 jest.mock('./useGlobalSyncStatus', () => ({
-  useGlobalSyncStatus: () => false,
+  useGlobalSyncStatus: (onComplete?: () => void) => {
+    onGlobalSyncComplete = onComplete;
+    return false;
+  },
 }));
 
+const mockUseSyncStatus = jest.fn((_opts?: { refreshKey?: number }) => ({
+  status: 'online_synced' as const,
+  failedErrorText: null as string | null,
+}));
 jest.mock('./useSyncStatus', () => ({
-  useSyncStatus: () => ({ status: 'online_synced', failedErrorText: null }),
+  useSyncStatus: (opts: { refreshKey?: number }) => mockUseSyncStatus(opts),
 }));
 
 describe('useHeaderSync', () => {
@@ -49,5 +57,26 @@ describe('useHeaderSync', () => {
 
     act(() => guard.mock.calls[0][0]());
     expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-reads sync health after a sync finishes and when the screen returns', () => {
+    const { result, rerender } = renderHook(() => useHeaderSync());
+    expect(mockUseSyncStatus).toHaveBeenLastCalledWith(
+      expect.objectContaining({ refreshKey: 0 }),
+    );
+
+    act(() => onGlobalSyncComplete?.());
+    expect(mockUseSyncStatus).toHaveBeenLastCalledWith(
+      expect.objectContaining({ refreshKey: 1 }),
+    );
+
+    mockFocused = false;
+    rerender({});
+    mockFocused = true;
+    rerender({});
+    expect(mockUseSyncStatus).toHaveBeenLastCalledWith(
+      expect.objectContaining({ refreshKey: 2 }),
+    );
+    expect(result.current.refresh).toEqual(expect.any(Function));
   });
 });

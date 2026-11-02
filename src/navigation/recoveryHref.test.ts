@@ -1,4 +1,9 @@
-import { getChapterAssignmentById, getChapterRouteNames } from '../db/queries';
+import {
+  getChapterAssignmentById,
+  getChapterRouteNames,
+  getPericopeForVerse,
+} from '../db/queries';
+import { getProjectPericopeSetId } from '../db/repository';
 import type { PausedTakeMarker } from '../services/pausedTakes';
 import { hrefs } from './hrefs';
 import { resolveRecoveryHref } from './recoveryHref';
@@ -6,10 +11,17 @@ import { resolveRecoveryHref } from './recoveryHref';
 jest.mock('../db/queries', () => ({
   getChapterAssignmentById: jest.fn(),
   getChapterRouteNames: jest.fn(),
+  getPericopeForVerse: jest.fn(),
+}));
+
+jest.mock('../db/repository', () => ({
+  getProjectPericopeSetId: jest.fn(),
 }));
 
 const mockAssignment = getChapterAssignmentById as jest.Mock;
 const mockNames = getChapterRouteNames as jest.Mock;
+const mockPericope = getPericopeForVerse as jest.Mock;
+const mockSetId = getProjectPericopeSetId as jest.Mock;
 
 const marker: PausedTakeMarker = {
   sessionKey: '5:22',
@@ -42,6 +54,7 @@ describe('resolveRecoveryHref', () => {
       id: 5,
       projectId: 9,
       projectUnitId: 3,
+      bookId: 41,
       bookName: 'Mark',
       chapterNumber: 14,
     });
@@ -49,6 +62,13 @@ describe('resolveRecoveryHref', () => {
       projectName: 'Mark Telugu',
       milestoneName: 'Gospels Phase 1',
       language: 'Telugu',
+    });
+    mockSetId.mockResolvedValue(3);
+    mockPericope.mockResolvedValue({
+      verses: [
+        { chapterNumber: 14, verseNumber: 22 },
+        { chapterNumber: 14, verseNumber: 25 },
+      ],
     });
   });
 
@@ -68,6 +88,35 @@ describe('resolveRecoveryHref', () => {
         projectName: 'Mark Telugu',
         milestoneName: 'Gospels Phase 1',
         language: 'Telugu',
+      }),
+    );
+  });
+
+  it('opens Legacy drafting when the take was paused after the passage start', async () => {
+    mockPericope.mockResolvedValue({
+      verses: [
+        { chapterNumber: 14, verseNumber: 3 },
+        { chapterNumber: 14, verseNumber: 8 },
+      ],
+    });
+
+    await expect(
+      resolveRecoveryHref(
+        {
+          ...marker,
+          verseNumber: 8,
+          capture: { ...capture, startVerse: 3, granularity: 'pericope' },
+        },
+        'next',
+      ),
+    ).resolves.toEqual(
+      hrefs.verseDetail({
+        chapterId: 5,
+        chapterName: 'Mark 14',
+        projectName: '',
+        language: '',
+        recoverSessionKey: '5:22',
+        recoverVerse: 8,
       }),
     );
   });

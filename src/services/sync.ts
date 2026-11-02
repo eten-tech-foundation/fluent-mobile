@@ -2683,7 +2683,7 @@ async function maybeBackfillMasterDataOnRefresh(
   }
 }
 
-/** One master-data ISO ensure attempt per project per JS session (#235 review). */
+/** One master-data ISO ensure attempt per project until the screen releases it. */
 const sourceLanguageIsoEnsureAttempted = new Set<number>();
 
 export function __resetSourceLanguageIsoEnsureForTests(): void {
@@ -2691,11 +2691,20 @@ export function __resetSourceLanguageIsoEnsureForTests(): void {
 }
 
 /**
+ * Lets the next open of a screen try again. A sync-complete refresh must not
+ * call this: that refresh is what the pull itself emits.
+ */
+export function releaseSourceLanguageIsoEnsure(projectId: number): void {
+  sourceLanguageIsoEnsureAttempted.delete(projectId);
+}
+
+/**
  * Source audio needs ISO-639-3 on the project language, and devices that
  * synced languages before mapApiLanguage may still have null codes. Pulls
- * master data in full once per project; `readCode` re-reads the code after,
- * and a still-blank code (or a failed pull) lets a later open retry.
- * True when it pulled, so the caller reloads.
+ * master data in full once per project until `releaseSourceLanguageIsoEnsure`.
+ * A failed pull or a code that is still blank stays latched, so the
+ * sync-complete event this emits cannot start another pull. `readCode`
+ * re-reads the code after a pull. True when it pulled, so the caller reloads.
  */
 export async function ensureSourceLanguageIso(
   projectId: number,
@@ -2709,15 +2718,12 @@ export async function ensureSourceLanguageIso(
   try {
     await syncMasterData(undefined, { forceFull: true });
   } catch (error) {
-    sourceLanguageIsoEnsureAttempted.delete(projectId);
     log.error('Master data sync for language ISO failed', { error });
     return false;
   } finally {
     emitSyncComplete();
   }
-  if (!(await readCode())?.trim()) {
-    sourceLanguageIsoEnsureAttempted.delete(projectId);
-  }
+  await readCode();
   return true;
 }
 

@@ -199,10 +199,12 @@ jest.mock('../../../services/storage', () => ({
 }));
 
 const mockOpenSync = jest.fn();
+const mockRefreshSync = jest.fn();
 const mockUseHeaderSync = jest.fn((_args: unknown) => ({
   status: 'online_synced',
   failedErrorText: null,
   openSync: mockOpenSync,
+  refresh: mockRefreshSync,
 }));
 jest.mock('../../../hooks/useHeaderSync', () => ({
   useHeaderSync: (args: unknown) => mockUseHeaderSync(args),
@@ -369,6 +371,7 @@ describe('PassageScreen', () => {
     mockParams = { ...baseParams };
     mockPassage = ready;
     mockDownloadState = 'idle';
+    mockRefreshSync.mockClear();
     mockSource = { ...sourceDefaults };
     mockReduceMotion = false;
     mockFocused = true;
@@ -723,6 +726,29 @@ describe('PassageScreen', () => {
     expect(mockUseSourceAudio.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({ enabled: false }),
     );
+  });
+
+  it('shows Eject when a take is recovered after Listen opened', () => {
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-listen'));
+    expect(screen.queryByLabelText('Finish take')).toBeNull();
+
+    mockSession = { ...mockSession, state: 'paused', captureActive: true };
+    screen.rerender(<PassageScreen />);
+
+    expect(screen.getByLabelText('Finish take')).toBeTruthy();
+    expect(screen.queryByLabelText('Play source audio')).toBeNull();
+  });
+
+  it('refreshes the sync cloud after the passage text download finishes', () => {
+    mockDownloadState = 'downloading';
+    render(<PassageScreen />);
+    expect(mockRefreshSync).not.toHaveBeenCalled();
+
+    mockDownloadState = 'idle';
+    screen.rerender(<PassageScreen />);
+
+    expect(mockRefreshSync).toHaveBeenCalledTimes(1);
   });
 
   it('keeps Previous and Next off on the one page', () => {

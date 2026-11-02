@@ -182,6 +182,10 @@ export function Sheet({
   /** A take is lifted to delete it: everything but the fan dims. */
   const [lifted, setLifted] = useState(false);
   const { capturing } = recorder;
+  // A recovered or live take can arrive after Listen opened, or after a drag
+  // that never went through open(). Record stays up for the whole take so
+  // Eject is reachable; Discard is not the only way out.
+  const showRecord = recordMode || capturing;
   // Leaving mid-take would ask first; the bridge waits until it's done.
   const openClassic = capturing ? undefined : onOpenClassic;
   const { isOnline, hasResolved } = useConnectivity();
@@ -194,7 +198,7 @@ export function Sheet({
     bibleId: passage.assignment.bibleId,
     languageCode: passage.assignment.sourceLanguageCode,
     verse: anchorVerse,
-    enabled: !recordMode && !capturing,
+    enabled: !showRecord,
     isOnline: hasResolved && isOnline,
     userId,
     onPlayingVerseChange: setPlayingVerse,
@@ -383,12 +387,12 @@ export function Sheet({
         shown={expanded}
         style={chromeStyle}
         onLayout={measure(setPanel)}
-        fanShown={recordMode}
+        fanShown={showRecord}
         fan={
           <LayoutAnimationConfig skipEntering>
             <TakeFan
               {...recorder.fan}
-              visible={recordMode}
+              visible={showRecord}
               onLiftChange={setLifted}
             />
           </LayoutAnimationConfig>
@@ -396,7 +400,7 @@ export function Sheet({
         footer={
           <Footer
             passage={passage}
-            recordMode={recordMode}
+            recordMode={showRecord}
             record={recorder.footer}
             listen={{ progress: sourceProgress, onSeek: seekSource }}
             notices={recorder.notices}
@@ -406,7 +410,7 @@ export function Sheet({
         }
         keys={
           <PlayerKeys
-            recordMode={recordMode}
+            recordMode={showRecord}
             onRecordModeChange={setRecordMode}
             modeLocked={capturing}
             record={recorder.keys}

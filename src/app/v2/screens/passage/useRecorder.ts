@@ -20,6 +20,7 @@ import { MAX_RECORDING_TAKES } from '../../../../constants/recordingTakes';
 import { chapterHasUnuploadableSelectedTakes } from '../../../../db/queries';
 import { useChapterConflictStatus } from '../../../../hooks/useChapterConflictStatus';
 import { useDraftingUnit } from '../../../../hooks/useDraftingUnit';
+import { passageSessionVerse } from '../../../../navigation/passageSessionVerse';
 import { useLiveLevels } from '../../../../hooks/useLiveLevels';
 import { usePendingDelete } from '../../../../hooks/usePendingDelete';
 import type { PassageTake } from '../../../../hooks/usePassage';
@@ -93,10 +94,7 @@ export function useRecorder({
 }) {
   const { assignment } = passage;
   const anchorVerse =
-    passage.verses.find(v => v.chapterNumber === assignment.chapterNumber)
-      ?.verseNumber ??
-    passage.verses[0]?.verseNumber ??
-    1;
+    passageSessionVerse(passage.verses, assignment.chapterNumber) ?? 1;
   // The player records whole passages, so its session is always pericope;
   // a verse-by-verse setting sends Record to classic drafting instead.
   const { draftingUnit } = useDraftingUnit();
@@ -173,16 +171,19 @@ export function useRecorder({
   // record() awaits a commit, then starts from the session as it is by then.
   const latestAudio = useRef(verseAudio);
   latestAudio.current = verseAudio;
-  const showingRef = useRef(showing);
-  showingRef.current = showing;
+  // Capture can become active while the sheet is still in Listen. Treat that
+  // as Record showing so a pending delete is not committed and Eject can run.
+  const shown = showing || capturing;
+  const showingRef = useRef(shown);
+  showingRef.current = shown;
   // Source audio owns Listen. A take does not keep playing once Record is
   // hidden, so the two never run together.
   const pausePlaybackRef = useRef(verseAudio.pausePlayback);
   pausePlaybackRef.current = verseAudio.pausePlayback;
   useEffect(() => {
-    if (showing || verseAudio.state !== 'playing') return;
+    if (shown || verseAudio.state !== 'playing') return;
     void pausePlaybackRef.current();
-  }, [showing, verseAudio.state]);
+  }, [shown, verseAudio.state]);
   useEffect(
     () => () => {
       showingRef.current = false;
@@ -455,8 +456,8 @@ export function useRecorder({
   // Closing the player or leaving Record hides the undo, so it commits.
   const { commit: commitDelete } = deletion;
   useEffect(() => {
-    if (!showing) void commitDelete();
-  }, [showing, commitDelete]);
+    if (!shown) void commitDelete();
+  }, [shown, commitDelete]);
 
   // The recorder's state only changes once the native call returns, so a
   // second key pressed meanwhile would act on a recorder mid-change.

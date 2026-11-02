@@ -2,6 +2,7 @@ import { FluentAPI } from './api';
 import {
   __resetSourceLanguageIsoEnsureForTests,
   ensureSourceLanguageIso,
+  releaseSourceLanguageIsoEnsure,
 } from './sync';
 import { ApiError } from '../types/api/errors';
 import { emitSyncComplete, emitSyncStart } from './syncEvents';
@@ -68,21 +69,29 @@ describe('ensureSourceLanguageIso', () => {
     expect(emitSyncComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('tries again next time when the code is still missing', async () => {
+  it('does not pull again while the screen is still open and the code is blank', async () => {
     const readCode = jest.fn(async () => '  ');
 
     await ensureSourceLanguageIso(9, readCode);
     await ensureSourceLanguageIso(9, readCode);
 
+    expect(getLanguages).toHaveBeenCalledTimes(1);
+
+    releaseSourceLanguageIsoEnsure(9);
+    await ensureSourceLanguageIso(9, readCode);
     expect(getLanguages).toHaveBeenCalledTimes(2);
   });
 
-  it('tries again next time when the pull fails', async () => {
+  it('does not pull again until the next open when the pull fails', async () => {
     getLanguages.mockRejectedValueOnce(new ApiError(400, 'Bad Request'));
     const readCode = jest.fn(async () => 'eng');
 
     await expect(ensureSourceLanguageIso(9, readCode)).resolves.toBe(false);
     expect(emitSyncComplete).toHaveBeenCalledTimes(1);
+    await expect(ensureSourceLanguageIso(9, readCode)).resolves.toBe(false);
+    expect(getLanguages).toHaveBeenCalledTimes(1);
+
+    releaseSourceLanguageIsoEnsure(9);
     await expect(ensureSourceLanguageIso(9, readCode)).resolves.toBe(true);
     expect(readCode).toHaveBeenCalledTimes(1);
   });

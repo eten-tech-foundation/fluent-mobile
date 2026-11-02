@@ -32,7 +32,11 @@ import {
   getChapterAssignmentById,
   getRecordedVerseNumbers,
 } from '../../db/queries';
-import { ensureSourceLanguageIso, syncBibleTexts } from '../../services/sync';
+import {
+  ensureSourceLanguageIso,
+  releaseSourceLanguageIsoEnsure,
+  syncBibleTexts,
+} from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
 import { useDraftingUploadHold } from '../../hooks/useDraftingUploadHold';
@@ -78,6 +82,15 @@ export default function DraftingScreen() {
     recoverSessionKey ? 'record' : getLastActiveTab(chapterId) ?? 'bible',
   );
   const bibleTextEnsureForChapterRef = useRef<number | null>(null);
+  const isoProjectIdRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (isoProjectIdRef.current !== null) {
+        releaseSourceLanguageIsoEnsure(isoProjectIdRef.current);
+      }
+    },
+    [],
+  );
   const stopDraftPlaybackRef = useRef<() => Promise<void>>(async () => {});
   const registerDraftPlayback = useCallback(
     (controls: DraftPlaybackControls | null) => {
@@ -233,6 +246,13 @@ export default function DraftingScreen() {
           !assignment.sourceLanguageCode?.trim() &&
           assignment.projectId !== null
         ) {
+          if (
+            isoProjectIdRef.current !== null &&
+            isoProjectIdRef.current !== assignment.projectId
+          ) {
+            releaseSourceLanguageIsoEnsure(isoProjectIdRef.current);
+          }
+          isoProjectIdRef.current = assignment.projectId;
           const pulled = await ensureSourceLanguageIso(
             assignment.projectId,
             async () => (await loadChapterAssignment())?.sourceLanguageCode,
@@ -264,7 +284,24 @@ export default function DraftingScreen() {
             chapterNumber: assignment.chapterNumber,
           });
           try {
-            await withSyncChrome(() => syncBibleTexts());
+            // Scoped to this chapter. A catalogue pass records chapters a
+            // bible does not carry and then skips them; Record still needs
+            // this one fetched.
+            await withSyncChrome(() =>
+              syncBibleTexts(undefined, {
+                chapterGroups: new Map([
+                  [
+                    assignment.bibleId,
+                    [
+                      {
+                        bookId: assignment.bookId,
+                        chapterNumber: assignment.chapterNumber,
+                      },
+                    ],
+                  ],
+                ]),
+              }),
+            );
             bibleTextEnsureForChapterRef.current = chapterId;
           } catch (syncError) {
             // Leave ref unset so refreshKey / remount can retry.

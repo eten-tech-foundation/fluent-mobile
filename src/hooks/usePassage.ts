@@ -11,7 +11,11 @@ import {
 } from '../db/queries';
 import { getTakesForVerse } from '../db/recordingsRepository';
 import { getProjectPericopeSetId } from '../db/repository';
-import { ensureSourceLanguageIso, syncBibleTexts } from '../services/sync';
+import {
+  ensureSourceLanguageIso,
+  releaseSourceLanguageIsoEnsure,
+  syncBibleTexts,
+} from '../services/sync';
 import { onSyncComplete } from '../services/syncEvents';
 import { useConnectivity } from './useConnectivity';
 import type { BibleUnitVerse } from '../utils/bibleTabUnits';
@@ -308,6 +312,12 @@ export function usePassage(
       cancelled = true;
     };
   }, [missingIso, projectId, online, chapterAssignmentId, reload]);
+
+  useEffect(() => {
+    return () => {
+      if (projectId !== null) releaseSourceLanguageIsoEnsure(projectId);
+    };
+  }, [projectId]);
 
   // And fetch the text once when it isn't here, rather than waiting on the
   // Download button, which stays as the retry.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIsFocused, useRouter } from 'expo-router';
 import { hrefs } from '../navigation/hrefs';
 import { useGlobalSyncStatus } from './useGlobalSyncStatus';
@@ -10,8 +10,10 @@ const unguarded = (run: () => void) => run();
 
 /**
  * A header's sync cloud: the status, and opening the Sync page once per tap
- * until this screen is focused again. `guard` wraps the push, e.g. to confirm
- * leaving a take.
+ * until this screen is focused again. The missing-text count is re-read when
+ * a sync finishes, when the screen is focused again, and when `refresh` is
+ * called (a passage download does not emit sync events). `guard` wraps the
+ * push, e.g. to confirm leaving a take.
  */
 export function useHeaderSync({
   onSyncComplete,
@@ -22,13 +24,28 @@ export function useHeaderSync({
 } = {}) {
   const router = useRouter();
   const isFocused = useIsFocused();
-  const isSyncing = useGlobalSyncStatus(onSyncComplete);
-  const { status, failedErrorText } = useSyncStatus({ isSyncing });
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = useCallback(() => setRefreshKey(key => key + 1), []);
+  const onCompleteRef = useRef(onSyncComplete);
+  onCompleteRef.current = onSyncComplete;
+  const handleSyncComplete = useCallback(() => {
+    refresh();
+    onCompleteRef.current?.();
+  }, [refresh]);
+  const isSyncing = useGlobalSyncStatus(handleSyncComplete);
+  const { status, failedErrorText } = useSyncStatus({ isSyncing, refreshKey });
   const lockRef = useRef(false);
+  const focusedOnce = useRef(false);
 
   useEffect(() => {
-    if (isFocused) lockRef.current = false;
-  }, [isFocused]);
+    if (!isFocused) return;
+    lockRef.current = false;
+    if (focusedOnce.current) {
+      refresh();
+      return;
+    }
+    focusedOnce.current = true;
+  }, [isFocused, refresh]);
 
   const openSync = useCallback(() => {
     guard(() => {
@@ -42,5 +59,5 @@ export function useHeaderSync({
     });
   }, [guard, router]);
 
-  return { status, failedErrorText, openSync };
+  return { status, failedErrorText, openSync, refresh };
 }
