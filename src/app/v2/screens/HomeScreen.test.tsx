@@ -23,7 +23,12 @@ const mockRefresh = jest.fn();
 let mockBooks: HomeBookSummary[] = [];
 let mockBooksLoading = false;
 const mockRefreshBooks = jest.fn();
-let mockNextUp: NextUp = { status: 'ready', hero: null, after: [] };
+let mockNextUp: NextUp = {
+  status: 'ready',
+  hero: null,
+  after: [],
+  checking: [],
+};
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -55,7 +60,7 @@ jest.mock('../../../hooks/useHomeSyncState', () => ({
 
 jest.mock('../../../hooks/useActiveAccountSummary', () => ({
   useActiveAccountSummary: () => ({
-    activeUserId: '7',
+    activeUserId: mockActiveUserId,
     email: 'jordan@example.org',
     firstName: 'Jordan',
     lastName: 'Smith',
@@ -82,6 +87,17 @@ let mockChangesPreview = false;
 jest.mock('../../../config/devPreviewChangesRequested', () => ({
   isDevPreviewChangesRequestedEnabled: () => mockChangesPreview,
 }));
+
+const observerHref = {
+  pathname: '/(app)/(stack)/observer-draft',
+  params: { chapterAssignmentId: '1', projectId: '9' },
+};
+let mockOpen: unknown = { kind: 'work' };
+jest.mock('../../../navigation/chapterOpen', () => ({
+  resolveChapterOpen: async () => mockOpen,
+}));
+
+let mockActiveUserId: string | null = '7';
 
 jest.mock('../../../hooks/useNextUp', () => ({
   ...jest.requireActual('../../../hooks/useNextUp'),
@@ -140,6 +156,7 @@ const MARK: HomeBookSummary = {
   totalChapters: 16,
   recordedChapters: 1,
   checkedChapters: 0,
+  pendingUploads: 0,
 };
 
 describe('Next HomeScreen', () => {
@@ -150,8 +167,10 @@ describe('Next HomeScreen', () => {
     mockChaptersLoading = false;
     mockBooks = [MARK];
     mockBooksLoading = false;
-    mockNextUp = { status: 'ready', hero: null, after: [] };
+    mockNextUp = { status: 'ready', hero: null, after: [], checking: [] };
     mockChangesPreview = false;
+    mockOpen = { kind: 'work' };
+    mockActiveUserId = '7';
   });
 
   it('shows the account, the sync status and a chapter summary', () => {
@@ -302,18 +321,21 @@ describe('Next HomeScreen', () => {
           },
         },
         after: [],
+        checking: [],
       };
     });
 
-    it('opens the passage to record next on its passage page', () => {
+    it('opens the passage to record next on its passage page', async () => {
       render(<HomeScreen />);
 
       expect(screen.getByRole('header', { name: 'Next up' })).toBeTruthy();
-      fireEvent.press(
-        screen.getByRole('button', {
-          name: 'The Last Supper, Mark 14:22–25, Draft · Gospels Phase 1. Keep recording.',
-        }),
-      );
+      await act(async () => {
+        fireEvent.press(
+          screen.getByRole('button', {
+            name: 'The Last Supper, Mark 14:22–25, Draft · Gospels Phase 1. Keep recording.',
+          }),
+        );
+      });
       expect(mockPush).toHaveBeenCalledWith(
         hrefs.passage({
           chapterId: 1,
@@ -327,18 +349,90 @@ describe('Next HomeScreen', () => {
         }),
       );
     });
+
+    it('sends an observer to the read-only view, never the passage', async () => {
+      mockOpen = { kind: 'observer', href: observerHref };
+      render(<HomeScreen />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('home-next-up-hero'));
+      });
+      expect(mockPush).toHaveBeenCalledWith(observerHref);
+      expect(mockPush).toHaveBeenCalledTimes(1);
+    });
+
+    it("doesn't open anything when the access check stops it", async () => {
+      mockOpen = null;
+      render(<HomeScreen />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('home-next-up-hero'));
+      });
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('lists the chapters I check or observe after the passages', () => {
+      const peer = {
+        ...chapter(2, 'Mark', 15),
+        workflowStage: 'peer_check',
+        listAccess: 'open_peer',
+      } as MyWorkChapter;
+      mockNextUp = {
+        ...mockNextUp,
+        checking: [
+          {
+            key: '2:chapter:2',
+            chapter: peer,
+            passage: {
+              key: 'chapter:2',
+              title: null,
+              reference: 'Mark 15',
+              verses: '1–20',
+              anchorVerse: 1,
+              recordedStatus: 'none',
+              recordedVerses: 0,
+              totalVerses: 20,
+              submitted: true,
+              peerChecked: false,
+              seed: 'Mark:15:chapter',
+              groupSeed: 'Mark:15',
+            },
+          },
+        ],
+      } as NextUp;
+      render(<HomeScreen />);
+
+      expect(screen.getByTestId('home-checking')).toBeTruthy();
+      expect(
+        screen.getByText('Open peer check · Gospels Phase 1', {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+    });
+  });
+
+  it('keeps accounts and settings reachable without an account summary', () => {
+    mockActiveUserId = null;
+    render(<HomeScreen />);
+
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Accounts and settings' }),
+    );
+    expect(screen.getByTestId('accounts-sheet')).toBeTruthy();
   });
 
   describe('Changes requested', () => {
-    it('opens the passage to re-record', () => {
+    it('opens the passage to re-record', async () => {
       mockChangesPreview = true;
       render(<HomeScreen />);
 
-      fireEvent.press(
-        screen.getByRole('button', {
-          name: 'Changes requested. Ravi left 3 notes on your Mark 14. Make changes.',
-        }),
-      );
+      await act(async () => {
+        fireEvent.press(
+          screen.getByRole('button', {
+            name: 'Changes requested. Ravi left 3 notes on your Mark 14. Make changes.',
+          }),
+        );
+      });
       expect(mockPush).toHaveBeenCalledWith(
         hrefs.passage({
           chapterId: 1,

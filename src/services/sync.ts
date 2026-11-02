@@ -2683,6 +2683,44 @@ async function maybeBackfillMasterDataOnRefresh(
   }
 }
 
+/** One master-data ISO ensure attempt per project per JS session (#235 review). */
+const sourceLanguageIsoEnsureAttempted = new Set<number>();
+
+export function __resetSourceLanguageIsoEnsureForTests(): void {
+  sourceLanguageIsoEnsureAttempted.clear();
+}
+
+/**
+ * Source audio needs ISO-639-3 on the project language, and devices that
+ * synced languages before mapApiLanguage may still have null codes. Pulls
+ * master data in full once per project; `readCode` re-reads the code after,
+ * and a still-blank code (or a failed pull) lets a later open retry.
+ * True when it pulled, so the caller reloads.
+ */
+export async function ensureSourceLanguageIso(
+  projectId: number,
+  readCode: () => Promise<string | null | undefined>,
+): Promise<boolean> {
+  if (sourceLanguageIsoEnsureAttempted.has(projectId)) return false;
+  sourceLanguageIsoEnsureAttempted.add(projectId);
+  log.info('Source language ISO missing; syncing master data', { projectId });
+  // Sync chrome, so Record's #448 hint sees the pull as syncing.
+  emitSyncStart();
+  try {
+    await syncMasterData(undefined, { forceFull: true });
+  } catch (error) {
+    sourceLanguageIsoEnsureAttempted.delete(projectId);
+    log.error('Master data sync for language ISO failed', { error });
+    return false;
+  } finally {
+    emitSyncComplete();
+  }
+  if (!(await readCode())?.trim()) {
+    sourceLanguageIsoEnsureAttempted.delete(projectId);
+  }
+  return true;
+}
+
 export async function refreshChapterMetadataIfOnline(
   userId: number,
 ): Promise<void> {

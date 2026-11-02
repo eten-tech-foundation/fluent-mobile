@@ -25,10 +25,30 @@ export function nextUpAction({ passage }: NextPassage): string {
     : 'Start recording';
 }
 
-/** e.g. "Draft · Gospels Phase 1"; the cover already names the chapter. */
+/**
+ * e.g. "Draft · Gospels Phase 1 · Upload pending"; the cover already names
+ * the chapter. A conflict or a take still on the phone shows as on Legacy's
+ * My Work row.
+ */
 export function nextUpStatusLine({ chapter }: NextPassage): string {
-  const stage = chapter.workflowStage === 'draft' ? 'Draft' : 'Not started';
-  return `${stage} · ${chapter.milestoneName}`;
+  return [
+    chapterRole(chapter),
+    chapter.milestoneName,
+    chapter.hasConflict
+      ? 'Sync conflict'
+      : chapter.syncState === 'deviceOnly'
+      ? 'Upload pending'
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function chapterRole(chapter: NextPassage['chapter']): string {
+  if (chapter.listAccess === 'observer') return 'Observing';
+  if (chapter.listAccess === 'open_peer') return 'Open peer check';
+  if (chapter.workflowStage === 'peer_check') return 'Peer check';
+  return chapter.workflowStage === 'draft' ? 'Draft' : 'Not started';
 }
 
 function passageTitle({ passage }: NextPassage): string {
@@ -44,7 +64,8 @@ function heroLabel({ passage }: NextPassage): string {
 
 /**
  * Home's default top: the one passage to record now as a wide card, then
- * the few after it as covers. Every one opens its passage.
+ * the few after it as covers, then the chapters I'm checking or observing.
+ * Every one opens its passage, or the observer view for an observer.
  */
 export function NextUp({
   nextUp,
@@ -99,7 +120,31 @@ export function NextUp({
   }));
 
   if (nextUp.status === 'loading') return null;
-  const { hero, after } = nextUp;
+  const { hero, after, checking } = nextUp;
+  const rail = (items: NextPassage[], label: (i: NextPassage) => string) => (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.rail}
+    >
+      {items.map(item => (
+        <PassageCover
+          key={item.key}
+          eyebrow={item.chapter.displayLabel}
+          verses={item.passage.verses}
+          title={label(item)}
+          reference={item.passage.reference}
+          seed={item.passage.seed}
+          groupSeed={item.passage.groupSeed}
+          recordedVerses={item.passage.recordedVerses}
+          totalVerses={item.passage.totalVerses}
+          onPress={() => onOpen(item)}
+          style={styles.tile}
+          testID={`home-next-${item.key}`}
+        />
+      ))}
+    </ScrollView>
+  );
 
   return (
     <View testID="home-next-up">
@@ -155,29 +200,14 @@ export function NextUp({
       {after.length > 0 ? (
         <>
           <Text style={styles.thenLabel}>Then</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.rail}
-          >
-            {after.map(item => (
-              <PassageCover
-                key={item.key}
-                eyebrow={item.chapter.displayLabel}
-                verses={item.passage.verses}
-                title={passageTitle(item)}
-                reference={item.passage.reference}
-                seed={item.passage.seed}
-                groupSeed={item.passage.groupSeed}
-                recordedVerses={item.passage.recordedVerses}
-                totalVerses={item.passage.totalVerses}
-                onPress={() => onOpen(item)}
-                style={styles.tile}
-                testID={`home-next-${item.key}`}
-              />
-            ))}
-          </ScrollView>
+          {rail(after, passageTitle)}
         </>
+      ) : null}
+      {checking.length > 0 ? (
+        <View testID="home-checking">
+          <Text style={styles.thenLabel}>Checking and observing</Text>
+          {rail(checking, nextUpStatusLine)}
+        </View>
       ) : null}
     </View>
   );

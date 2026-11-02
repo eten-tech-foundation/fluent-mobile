@@ -1,9 +1,12 @@
 import React, { useCallback } from 'react';
 import { Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft } from '../../../components/ui/icons';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
+import { RoundButton } from '../../../components/ui/RoundButton';
 import { usePassage } from '../../../hooks/usePassage';
 import { useDraftingUploadHold } from '../../../hooks/useDraftingUploadHold';
+import { useHeaderSync } from '../../../hooks/useHeaderSync';
 import { useRecordCaptureLeaveGuard } from '../../../hooks/useRecordCaptureLeaveGuard';
 import { hrefs } from '../../../navigation/hrefs';
 import {
@@ -17,10 +20,10 @@ import { Sheet } from './passage/Sheet';
 
 /**
  * Next passage page: a dark hero with the script, Listen and Record, and the
- * takes, which grows into the full player; then the listening materials as
- * Figma's passage rows. The title opens a sheet linking up to the book page.
- * Listen plays this chapter's source audio on this screen. FIA step tracks
- * are not connected.
+ * takes, which grows into the full player. The title opens a sheet linking up
+ * to the book page and into classic drafting, which covers what the player
+ * has no design for yet. Listen plays this chapter's source audio here. The
+ * FIA listening steps are hidden until their audio exists (Q11).
  */
 export default function PassageScreen() {
   const router = useRouter();
@@ -53,9 +56,15 @@ export default function PassageScreen() {
     anchorVerse,
     projectUnitId,
   );
+  const sync = useHeaderSync({ onSyncComplete: reload, guard: guardAction });
   const styles = useThemedStyles(t => ({
     screen: { flex: 1, backgroundColor: t.roles.bgDefault },
-    centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: t.spacing.lg,
+    },
     message: { ...t.type.body, color: t.roles.fgPrimary },
   }));
 
@@ -88,6 +97,14 @@ export default function PassageScreen() {
     chapterId,
     guardAction,
   ]);
+  // Legacy drafting is always the route for this chapter, whatever the UI.
+  const openClassic = useCallback(() => {
+    guardAction(() =>
+      router.push(
+        hrefs.verseDetail({ chapterId, chapterName, projectName, language }),
+      ),
+    );
+  }, [router, chapterId, chapterName, projectName, language, guardAction]);
 
   if (passage.status === 'loading') {
     return (
@@ -100,6 +117,14 @@ export default function PassageScreen() {
     return (
       <View style={[styles.screen, styles.centered]}>
         <Text style={styles.message}>This couldn't be found.</Text>
+        <RoundButton
+          variant="flat"
+          icon={ArrowLeft}
+          label="Go back"
+          accessibilityLabel="Go back"
+          onPress={() => router.back()}
+          testID="passage-missing-back"
+        />
       </View>
     );
   }
@@ -114,6 +139,8 @@ export default function PassageScreen() {
         anchorVerse={anchorVerse}
         onBack={() => guardAction(() => router.back())}
         onOpenBook={openBook}
+        onOpenClassic={openClassic}
+        sync={sync}
         onCaptureActiveChange={onCaptureActiveChange}
         onRegisterCaptureControls={onRegisterCaptureControls}
         onDownload={download}

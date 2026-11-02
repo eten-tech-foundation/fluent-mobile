@@ -71,6 +71,7 @@ const MARK: HomeBookSummary = {
   totalChapters: 3,
   recordedChapters: 0,
   checkedChapters: 0,
+  pendingUploads: 0,
 };
 
 function deferred() {

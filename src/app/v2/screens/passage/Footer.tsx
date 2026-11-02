@@ -10,7 +10,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { NEXT_SPRING } from '../../../../components/ui/motion';
-import { PageDots } from '../../../../components/ui/PageDots';
 import {
   Waveform,
   type WaveformVerse,
@@ -18,8 +17,17 @@ import {
 import type { PassageVerse } from '../../../../hooks/usePassage';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import { OFFICIAL_TOGGLE } from './OfficialToggle';
-import { PAGE_COUNT, pageName, type Ready } from './steps';
+import { PassageNotices } from './PassageNotices';
+import { type Ready } from './ready';
+import type { RecordNotice } from './useRecorder';
 import { BAR_MAX, BAR_MIN, TakeCard, WAVE_H, type FrontTake } from './TakeCard';
+
+/**
+ * What Listen warns about: the chapter's state. Why Record is off, and the
+ * takes only classic drafting shows, wait for Record, so they don't read as
+ * Listen being blocked.
+ */
+const LISTEN_NOTICES = new Set(['conflict', 'unuploadable', 'taken']);
 
 /** Figma's scrim while a take is lifted: bg/default at 82% (Q25). */
 const SCRIM = 0.82;
@@ -32,29 +40,33 @@ export interface RecordStatus {
 
 /**
  * Under the script, as in the Figma player: the waveform, then a row under
- * it. Listen shows the page and page dots; Record brings the take card in
- * over both, so the waveform never moves between modes.
+ * it. Listen shows the reference; Record brings the take card in over both,
+ * so the waveform never moves between modes. There's one page, so no dots
+ * (Q16).
  */
 export interface ListenWave {
-  /** 0–1 through the source chapter. 0 when its duration is unknown. */
+  /** 0–1 through the passage's stretch of the source chapter. */
   progress: number;
-  /** Set when a duration is known, so a scrub can seek that chapter. */
+  /** Set when a duration is known, so a scrub can seek the passage. */
   onSeek?: (progress: number) => void;
 }
 
 export function Footer({
   passage,
-  page,
   recordMode,
   record,
   listen,
+  notices,
+  onOpenClassic,
   dimmed = false,
 }: {
   passage: Ready;
-  page: number;
   recordMode: boolean;
   record: RecordStatus;
   listen: ListenWave;
+  /** Legacy's Record-tab banners, in both modes. */
+  notices: RecordNotice[];
+  onOpenClassic?: () => void;
   /** A take is lifted: dim everything above the keys but the fan. */
   dimmed?: boolean;
 }) {
@@ -106,7 +118,7 @@ export function Footer({
     transform: [{ translateY: interpolate(mode.value, [0, 1], [0, -6]) }],
   }));
 
-  const name = pageName(passage.reference, page);
+  const name = passage.reference;
   const listenProps = {
     pointerEvents: recordMode ? ('none' as const) : ('auto' as const),
     importantForAccessibility: recordMode
@@ -117,12 +129,20 @@ export function Footer({
   return (
     <LayoutAnimationConfig skipEntering>
       <View style={styles.footer}>
+        <PassageNotices
+          notices={
+            recordMode
+              ? notices.filter(n => n.message !== record.blockedReason)
+              : notices.filter(n => LISTEN_NOTICES.has(n.id))
+          }
+          onOpenClassic={onOpenClassic}
+          testID="player-notices"
+        />
         <Animated.View style={[styles.wave, listenStyle]} {...listenProps}>
-          {/* Step pages have no tracks; only the script shows the source chapter. */}
           <Waveform
-            verses={page === 0 ? scriptBars(passage.verses) : []}
-            progress={page === 0 ? listen.progress : 0}
-            onSeek={page === 0 ? listen.onSeek : undefined}
+            verses={scriptBars(passage.verses)}
+            progress={listen.progress}
+            onSeek={listen.onSeek}
             accessibilityLabel={`${name} playback`}
             testID="passage-waveform"
           />
@@ -131,12 +151,6 @@ export function Footer({
           <Text style={styles.label} numberOfLines={1}>
             {name}
           </Text>
-          <PageDots
-            count={PAGE_COUNT}
-            index={page}
-            accessibilityLabel={`${name}, ${page + 1} of ${PAGE_COUNT}`}
-            testID="passage-pages"
-          />
         </Animated.View>
         <TakeCard
           take={record.take}
@@ -158,7 +172,8 @@ export function Footer({
 /**
  * Stand-in levels for the source chapter: a bar per word, taller for longer
  * words, so each verse's chip and segment follow its length. Progress and
- * scrubbing come from the chapter file, not from these heights.
+ * scrubbing come from the passage's stretch of the chapter file, not from
+ * these heights.
  */
 function scriptBars(verses: PassageVerse[]): WaveformVerse[] {
   return verses

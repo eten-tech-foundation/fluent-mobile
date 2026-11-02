@@ -11,7 +11,7 @@ import {
 } from '../db/queries';
 import { getTakesForVerse } from '../db/recordingsRepository';
 import { getProjectPericopeSetId } from '../db/repository';
-import { syncBibleTexts } from '../services/sync';
+import { ensureSourceLanguageIso, syncBibleTexts } from '../services/sync';
 import { emitSyncComplete } from '../services/syncEvents';
 
 jest.mock('expo-router', () => ({
@@ -41,6 +41,12 @@ jest.mock('../db/repository', () => ({
 
 jest.mock('../services/sync', () => ({
   syncBibleTexts: jest.fn(),
+  ensureSourceLanguageIso: jest.fn(),
+}));
+
+let mockOnline = false;
+jest.mock('./useConnectivity', () => ({
+  useConnectivity: () => ({ isOnline: mockOnline, hasResolved: true }),
 }));
 
 let focusEffect: (() => void) | null = null;
@@ -55,6 +61,7 @@ const mockTakes = getTakesForVerse as jest.Mock;
 const mockSync = syncBibleTexts as jest.Mock;
 const mockVerseCount = getChapterAssignmentVerseCount as jest.Mock;
 const mockPending = hasPendingStageAdvance as jest.Mock;
+const mockEnsureIso = ensureSourceLanguageIso as jest.Mock;
 
 const verseTexts = [22, 23, 24, 25].map(n => ({
   bibleId: 1,
@@ -82,6 +89,8 @@ function take(overrides: Record<string, unknown>) {
 describe('usePassage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockOnline = false;
+    mockEnsureIso.mockResolvedValue(false);
     mockAssignment.mockResolvedValue({
       id: 5,
       projectId: 9,
@@ -89,6 +98,7 @@ describe('usePassage', () => {
       bookId: 41,
       chapterNumber: 14,
       bookName: 'Mark',
+      sourceLanguageCode: 'eng',
     });
     mockSetId.mockResolvedValue(7);
     mockPericope.mockResolvedValue({
@@ -196,6 +206,98 @@ describe('usePassage', () => {
       chapterGroups: new Map([[1, [{ bookId: 41, chapterNumber: 14 }]]]),
     });
     expect(result.current.downloadState).toBe('idle');
+  });
+
+  it('downloads the missing text once on open when online, like Legacy drafting', async () => {
+    mockOnline = true;
+    mockTexts.mockResolvedValueOnce([]);
+    mockSync.mockResolvedValue(undefined);
+
+    const { result, rerender } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() =>
+      expect(result.current.passage).toMatchObject({ downloaded: true }),
+    );
+    expect(mockSync).toHaveBeenCalledTimes(1);
+    rerender({});
+    act(() => focusEffect?.());
+    await waitFor(() => expect(mockAssignment).toHaveBeenCalledTimes(2));
+    expect(mockSync).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't download on open while offline", async () => {
+    mockTexts.mockResolvedValue([]);
+
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() =>
+      expect(result.current.passage).toMatchObject({ downloaded: false }),
+    );
+    expect(mockSync).not.toHaveBeenCalled();
+  });
+
+  it('downloads only once when the text still is missing after', async () => {
+    mockOnline = true;
+    mockTexts.mockResolvedValue([]);
+    mockSync.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() => expect(result.current.downloadState).toBe('failed'));
+    expect(mockSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('repairs a missing source-language code, then reloads', async () => {
+    mockOnline = true;
+    mockAssignment.mockResolvedValue({
+      id: 5,
+      projectId: 9,
+      bibleId: 1,
+      bookId: 41,
+      chapterNumber: 14,
+      bookName: 'Mark',
+      sourceLanguageCode: '',
+    });
+    mockEnsureIso.mockResolvedValueOnce(true);
+
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    await waitFor(() =>
+      expect(mockEnsureIso).toHaveBeenCalledWith(9, expect.any(Function)),
+    );
+    await waitFor(() => expect(mockAssignment).toHaveBeenCalledTimes(2));
+  });
+
+  it('waits to repair the code until online', async () => {
+    mockAssignment.mockResolvedValue({
+      id: 5,
+      projectId: 9,
+      bibleId: 1,
+      bookId: 41,
+      chapterNumber: 14,
+      bookName: 'Mark',
+      sourceLanguageCode: '',
+    });
+
+    const { result, rerender } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(mockEnsureIso).not.toHaveBeenCalled();
+
+    mockOnline = true;
+    rerender({});
+    await waitFor(() =>
+      expect(mockEnsureIso).toHaveBeenCalledWith(9, expect.any(Function)),
+    );
+  });
+
+  it("doesn't repair the code when it's there", async () => {
+    mockOnline = true;
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(mockEnsureIso).not.toHaveBeenCalled();
   });
 
   it('is not downloaded while a pericope verse has no text', async () => {

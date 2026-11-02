@@ -238,15 +238,22 @@ describe('useNextUp', () => {
     expect(result.current).toEqual({ status: 'loading' });
   });
 
-  it('is empty when I have nothing to draft', async () => {
-    const chapters = [chapter(1, { workflowStage: 'peer_check' })];
-    const { result } = renderHook(() => useNextUp(chapters));
+  it('has nothing to record, only to check, when I have nothing to draft', async () => {
+    const peer = chapter(1, { workflowStage: 'peer_check' });
+    const { result } = renderHook(() => useNextUp([peer]));
 
     await waitFor(() =>
       expect(result.current).toEqual({
         status: 'ready',
         hero: null,
         after: [],
+        checking: [
+          expect.objectContaining({
+            key: '1:chapter:1',
+            chapter: peer,
+            passage: expect.objectContaining({ reference: 'Mark 1' }),
+          }),
+        ],
       }),
     );
     expect(mockLoad).not.toHaveBeenCalled();

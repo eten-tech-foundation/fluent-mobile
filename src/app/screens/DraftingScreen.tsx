@@ -32,7 +32,7 @@ import {
   getChapterAssignmentById,
   getRecordedVerseNumbers,
 } from '../../db/queries';
-import { syncBibleTexts, syncMasterData } from '../../services/sync';
+import { ensureSourceLanguageIso, syncBibleTexts } from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
 import { useDraftingUploadHold } from '../../hooks/useDraftingUploadHold';
@@ -44,9 +44,6 @@ import {
 import { parseUserId } from '../../utils/parseUserId';
 
 const log = logger.create('DraftingScreen');
-
-/** One master-data ISO ensure attempt per project per JS session (#235 review). */
-const masterDataIsoEnsureAttempted = new Set<number>();
 
 /** Wrap silent auto-heal sync so Record’s #448 hint sees isSyncing. */
 async function withSyncChrome<T>(work: () => Promise<T>): Promise<T> {
@@ -214,38 +211,19 @@ export default function DraftingScreen() {
           return;
         }
 
-        // Source-audio needs ISO-639-3 on the project language. Devices that
-        // synced languages before mapApiLanguage may still have null codes.
-        if (!assignment.sourceLanguageCode?.trim()) {
-          const projectId = assignment.projectId;
-          if (
-            projectId !== null &&
-            !masterDataIsoEnsureAttempted.has(projectId)
-          ) {
-            masterDataIsoEnsureAttempted.add(projectId);
-            log.info('Source language ISO missing; syncing master data', {
-              chapterId,
-              projectId,
-            });
-            try {
-              await withSyncChrome(() =>
-                syncMasterData(undefined, { forceFull: true }),
-              );
-            } catch (masterError) {
-              // Allow a later chapter open / refresh to retry.
-              masterDataIsoEnsureAttempted.delete(projectId);
-              log.error('Master data sync for language ISO failed', {
-                error: masterError,
-              });
-            }
-            if (ignore) return;
+        if (
+          !assignment.sourceLanguageCode?.trim() &&
+          assignment.projectId !== null
+        ) {
+          const pulled = await ensureSourceLanguageIso(
+            assignment.projectId,
+            async () => (await loadChapterAssignment())?.sourceLanguageCode,
+          );
+          if (ignore) return;
+          if (pulled) {
             assignment = (await loadChapterAssignment()) ?? assignment;
             if (ignore) return;
             setChapterData(assignment);
-            // Only keep the one-shot latch when ISO is actually present.
-            if (!assignment.sourceLanguageCode?.trim()) {
-              masterDataIsoEnsureAttempted.delete(projectId);
-            }
           }
         }
 

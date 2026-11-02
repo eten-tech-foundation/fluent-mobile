@@ -378,15 +378,17 @@ describe('MyWorkTab', () => {
     render(<MyWorkTab />);
 
     fireEvent.press(await screen.findByTestId('my-work-row-10'));
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/(app)/(stack)/verse-detail',
-      params: {
-        chapterId: '10',
-        chapterName: 'Luke 4',
-        projectName: 'Gospel of Luke',
-        language: 'Baka',
-      },
-    });
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith({
+        pathname: '/(app)/(stack)/verse-detail',
+        params: {
+          chapterId: '10',
+          chapterName: 'Luke 4',
+          projectName: 'Gospel of Luke',
+          language: 'Baka',
+        },
+      }),
+    );
     expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
   });
 
@@ -410,15 +412,17 @@ describe('MyWorkTab', () => {
 
     fireEvent.press(await screen.findByTestId('my-work-row-10'));
 
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/(app)/(stack)/verse-detail',
-      params: {
-        chapterId: '10',
-        chapterName: 'Luke 4',
-        projectName: 'Gospel of Luke',
-        language: 'Baka',
-      },
-    });
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith({
+        pathname: '/(app)/(stack)/verse-detail',
+        params: {
+          chapterId: '10',
+          chapterName: 'Luke 4',
+          projectName: 'Gospel of Luke',
+          language: 'Baka',
+        },
+      }),
+    );
   });
 
   it('does not open a peer_check row without a queued stage advance when the user is the drafter', async () => {
@@ -577,16 +581,18 @@ describe('MyWorkTab', () => {
 
     fireEvent.press(await screen.findByTestId('my-work-row-12'));
 
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith({
+        pathname: '/(app)/(stack)/verse-detail',
+        params: {
+          chapterId: '12',
+          chapterName: 'Luke 5',
+          projectName: 'Gospel of Luke',
+          language: 'Baka',
+        },
+      }),
+    );
     expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/(app)/(stack)/verse-detail',
-      params: {
-        chapterId: '12',
-        chapterName: 'Luke 5',
-        projectName: 'Gospel of Luke',
-        language: 'Baka',
-      },
-    });
   });
 
   it('blocks open Peer Check navigation when Translator grant is revoked before press', async () => {

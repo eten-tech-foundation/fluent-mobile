@@ -33,7 +33,7 @@ const BADGES: Record<PassageStatus, CoverBadgeState> = {
   partial: { kind: 'none' },
   recorded: { kind: 'none' },
   waiting: { kind: 'waiting' },
-  peerCheck: { kind: 'ring', fraction: 0.5 },
+  peerCheck: { kind: 'peerCheck' },
   checked: { kind: 'checked' },
 };
 

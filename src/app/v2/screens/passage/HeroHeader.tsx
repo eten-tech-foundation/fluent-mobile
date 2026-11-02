@@ -20,6 +20,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ArrowDown, ArrowLeft } from '../../../../components/ui/icons';
 import { RoundButton } from '../../../../components/ui/RoundButton';
+import { SyncStatusButton } from '../../../../components/ui/SyncStatusButton';
+import type { HeaderSync } from '../../../../hooks/useHeaderSync';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 
 /** Round button size; the centered title stays clear of the corners. */
@@ -31,10 +33,11 @@ const TICKER_PAUSE_MS = 2000;
 const TICKER_SPEED = 30;
 
 /**
- * Back, the passage's title and Close. The title sits centered in the hero
- * and slides to the left edge as the player arrives; Back fades out and
- * Close fades in. A title too long for its room runs as a ticker, and
- * pressing it opens its sheet. Dragging the header closes the player.
+ * Back, the passage's title, the sync cloud and Close. The title sits
+ * centered in the hero and slides to the left edge as the player arrives;
+ * Back and the cloud fade out and Close fades in. A title too long for its
+ * room runs as a ticker, and pressing it opens its sheet. Dragging the header
+ * closes the player.
  */
 export function HeroHeader({
   title,
@@ -45,6 +48,7 @@ export function HeroHeader({
   onLayout,
   onBack,
   onClose,
+  sync,
   onTitlePress,
 }: {
   title: string;
@@ -57,6 +61,8 @@ export function HeroHeader({
   onLayout: (height: number, width: number) => void;
   onBack: () => void;
   onClose: () => void;
+  /** The cloud opposite Back, which gives way to Close in the player. */
+  sync: HeaderSync;
   /** Omit to turn pressing off, e.g. during a take. */
   onTitlePress?: () => void;
 }) {
@@ -217,6 +223,19 @@ export function HeroHeader({
               </ScrollView>
             )}
           </Pressable>
+        </Animated.View>
+        <Animated.View
+          style={[styles.corner, backStyle]}
+          pointerEvents={expanded ? 'none' : 'auto'}
+          importantForAccessibility={expanded ? 'no-hide-descendants' : 'auto'}
+        >
+          <SyncStatusButton
+            variant="flat"
+            status={sync.status}
+            failedErrorText={sync.failedErrorText}
+            onPress={sync.openSync}
+            testID="passage-sync"
+          />
         </Animated.View>
         <Animated.View
           style={[styles.corner, closeStyle]}

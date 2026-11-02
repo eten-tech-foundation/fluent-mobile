@@ -12,13 +12,15 @@ import { ArrowLeft } from '../../../components/ui/icons';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { PassageCover } from '../../../components/ui/PassageCover';
 import { RoundButton } from '../../../components/ui/RoundButton';
+import { SyncStatusButton } from '../../../components/ui/SyncStatusButton';
 import { PROJECT_CHAPTERS_EMPTY_MESSAGE } from '../../../constants/messages';
 import {
   useBookPassages,
   type BookPassage,
 } from '../../../hooks/useBookPassages';
-import { useGlobalSyncStatus } from '../../../hooks/useGlobalSyncStatus';
+import { useHeaderSync } from '../../../hooks/useHeaderSync';
 import { useMilestoneChapters } from '../../../hooks/useMilestoneChapters';
+import { resolveAssignmentOpen } from '../../../navigation/chapterOpen';
 import { hrefs } from '../../../navigation/hrefs';
 import {
   parseOptionalNumber,
@@ -27,6 +29,36 @@ import {
 } from '../../../navigation/routeParams';
 import { useTheme, useThemedStyles } from '../../../theme/useTheme';
 import type { ProjectChapter } from '../../../types/db/types';
+import { getWorkflowStageLabel } from '../../../utils/workflowStage';
+
+const OWNERSHIP: Record<ProjectChapter['ownershipState'], string> = {
+  mine: 'Yours',
+  other: "Someone else's",
+  unassigned: 'Unassigned',
+};
+
+/**
+ * e.g. "2 of 3 recorded · Draft · Yours · Upload pending": what Legacy's
+ * chapter row shows, the stage, whose it is, a take still on the phone or a
+ * sync conflict.
+ */
+export function chapterMeta(
+  chapter: ProjectChapter,
+  recorded: string | null,
+): string {
+  return [
+    recorded,
+    chapter.workflowStage ? getWorkflowStageLabel(chapter.workflowStage) : null,
+    OWNERSHIP[chapter.ownershipState],
+    chapter.hasConflict
+      ? 'Sync conflict'
+      : chapter.syncState === 'deviceOnly'
+      ? 'Upload pending'
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
 
 /** Lets a chapter past the first render window lay out before the retry. */
 const SCROLL_RETRY_MS = 100;
@@ -72,7 +104,7 @@ export default function BookScreen() {
     retry,
     reload,
   } = useMilestoneChapters(projectUnitId, projectId);
-  useGlobalSyncStatus(reload);
+  const sync = useHeaderSync({ onSyncComplete: reload });
   const passages = useBookPassages(chapters, projectId, projectUnitId);
   const listRef = useRef<FlatList<ProjectChapter>>(null);
   const focusedRef = useRef(false);
@@ -129,7 +161,12 @@ export default function BookScreen() {
 
   const styles = useThemedStyles(t => ({
     screen: { flex: 1, backgroundColor: t.roles.bgDefault },
-    back: { marginLeft: t.spacing.xl, marginTop: t.spacing.sm },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: t.spacing.xl,
+      paddingTop: t.spacing.sm,
+    },
     hero: {
       paddingHorizontal: t.spacing.xl,
       paddingTop: t.spacing.lg,
@@ -184,8 +221,18 @@ export default function BookScreen() {
   );
   const recordedCount = all.filter(p => p.recordedStatus === 'recorded').length;
 
+  const tapRef = useRef(0);
+  // An observer only ever gets the read-only view.
   const openPassage = useCallback(
-    (chapter: ProjectChapter, passage: BookPassage) =>
+    async (chapter: ProjectChapter, passage: BookPassage) => {
+      const tap = ++tapRef.current;
+      const isCurrent = () => tap === tapRef.current;
+      const open = await resolveAssignmentOpen(chapter.id, isCurrent);
+      if (open === null || !isCurrent()) return;
+      if (open.kind === 'observer') {
+        router.push(open.href);
+        return;
+      }
       router.push(
         hrefs.passage({
           chapterId: chapter.id,
@@ -198,22 +245,27 @@ export default function BookScreen() {
           language,
           from: 'book',
         }),
-      ),
+      );
+    },
     [router, projectId, projectUnitId, projectName, milestoneName, language],
   );
 
   const renderChapter: ListRenderItem<ProjectChapter> = ({ item }) => {
     const list: BookPassage[] = byChapter.get(item.id) ?? [];
     const recorded = list.filter(p => p.recordedStatus === 'recorded').length;
+    const meta = chapterMeta(
+      item,
+      list.length > 0 ? `${recorded} of ${list.length} recorded` : null,
+    );
     return (
       <View style={styles.section} testID={`book-chapter-${item.id}`}>
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle} accessibilityRole="header">
             {singleBook ? `Chapter ${item.chapterNumber}` : item.displayLabel}
           </Text>
-          {list.length > 0 ? (
-            <Text style={styles.meta}>
-              {recorded} of {list.length} recorded
+          {meta ? (
+            <Text style={styles.meta} testID={`book-chapter-${item.id}-meta`}>
+              {meta}
             </Text>
           ) : null}
         </View>
@@ -231,7 +283,8 @@ export default function BookScreen() {
               totalVerses={passage.totalVerses}
               submitted={passage.submitted}
               peerChecked={passage.peerChecked}
-              onPress={() => openPassage(item, passage)}
+              waitingToSend={passage.waitingToSend}
+              onPress={() => void openPassage(item, passage)}
               style={styles.cover}
               testID={`book-passage-${item.id}-${passage.key}`}
             />
@@ -242,14 +295,21 @@ export default function BookScreen() {
   };
 
   // Soft on the light page, like the passage page's Flat one on the dark hero.
-  const backButton = (
-    <RoundButton
-      icon={ArrowLeft}
-      accessibilityLabel="Back"
-      onPress={() => router.back()}
-      style={styles.back}
-      testID="book-back"
-    />
+  const header = (
+    <View style={styles.header}>
+      <RoundButton
+        icon={ArrowLeft}
+        accessibilityLabel="Back"
+        onPress={() => router.back()}
+        testID="book-back"
+      />
+      <SyncStatusButton
+        status={sync.status}
+        failedErrorText={sync.failedErrorText}
+        onPress={sync.openSync}
+        testID="book-sync"
+      />
+    </View>
   );
 
   let body: React.ReactNode;
@@ -317,7 +377,7 @@ export default function BookScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {backButton}
+      {header}
       {body}
     </View>
   );

@@ -10,9 +10,11 @@ import { RoundButton } from '../../../../components/ui/RoundButton';
 import type { PassageTake, usePassage } from '../../../../hooks/usePassage';
 import { useThemedStyles } from '../../../../theme/useTheme';
 import { isRecordingLockedByStage } from '../../../../utils/stageAdvancement';
+import { PassageNotices } from './PassageNotices';
 import { RecordAction } from './RecordAction';
-import { type Ready } from './steps';
+import { type Ready } from './ready';
 import { takesLine } from './Takes';
+import type { RecordNotice } from './useRecorder';
 
 /**
  * Under the hero's script: the takes line, Listen and Record (plus Download
@@ -25,11 +27,14 @@ export function HeroActions({
   downloadState,
   progress,
   expanded,
+  recordBlocked,
+  notices,
   top,
   onLayout,
   onListen,
   onRecord,
   onDownload,
+  onOpenClassic,
 }: {
   passage: Ready;
   /** The passage's takes, live as they're recorded. */
@@ -37,12 +42,16 @@ export function HeroActions({
   downloadState: ReturnType<typeof usePassage>['downloadState'];
   progress: SharedValue<number>;
   expanded: boolean;
+  /** Why Record can't start; it shows under the takes line, Record off. */
+  recordBlocked: string | null;
+  notices: RecordNotice[];
   top: number;
   /** The row's height, for the sheet's layout. */
   onLayout: (height: number) => void;
   onListen: () => void;
   onRecord: () => void;
   onDownload: () => void;
+  onOpenClassic?: () => void;
 }) {
   const styles = useThemedStyles(t => ({
     actions: {
@@ -90,6 +99,16 @@ export function HeroActions({
       <Text style={styles.meta} testID="passage-takes-meta">
         {takesLine(passage, takes)}
       </Text>
+      <PassageNotices
+        notices={
+          recordBlocked !== null &&
+          !notices.some(n => n.message === recordBlocked)
+            ? [{ id: 'blocked', message: recordBlocked }, ...notices]
+            : notices
+        }
+        onOpenClassic={onOpenClassic}
+        testID="passage-notices"
+      />
       {/* Like a music app: one labelled primary, plain circles beside. */}
       <View style={styles.row}>
         <RoundButton
@@ -105,6 +124,7 @@ export function HeroActions({
           <RecordAction
             accessibilityLabel={takes.length > 0 ? 'Record a take' : 'Record'}
             onPress={onRecord}
+            blocked={recordBlocked !== null}
             testID="passage-record"
           />
         )}
@@ -115,6 +135,8 @@ export function HeroActions({
             accessibilityLabel={
               downloadState === 'downloading'
                 ? 'Downloading the text'
+                : downloadState === 'failed'
+                ? "The text didn't download. Try again"
                 : 'Download the text'
             }
             onPress={onDownload}

@@ -7,42 +7,36 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { usePassage } from '../../../../hooks/usePassage';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
-import { MaterialPage } from './MaterialPage';
+import { type Ready } from './ready';
 import { useScriptMetrics } from './scriptMetrics';
-import { STEPS, type Ready } from './steps';
 
 /**
- * The script, then one page per listening material, swiped sideways in the
- * player. The script stays where it is as the player opens and grows from
- * body to reading size, with Figma's fade/reading over its last line.
+ * The script. It stays where it is as the player opens and grows from body
+ * to reading size, with Figma's fade/reading over its last line. The FIA
+ * listening steps that once paged beside it are hidden until their audio
+ * exists (Q11).
  */
 export function ScriptPager({
   passage,
   downloadState,
   progress,
   expanded,
-  recordMode,
-  pageWidth,
+  playingVerse,
   top,
   height,
-  pagerRef,
   scriptRef,
-  onPageChange,
   onOpen,
 }: {
   passage: Ready;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
   progress: SharedValue<number>;
   expanded: boolean;
-  /** Recording is always of the script, so paging is off. */
-  recordMode: boolean;
-  pageWidth: number;
+  /** Source audio's verse; the rest of the script dims while it plays (Q10). */
+  playingVerse: number | null;
   /** Where the script sits, hero then player. */
   top: readonly [number, number];
   height: readonly [number, number];
-  pagerRef: RefObject<ScrollView | null>;
   scriptRef: RefObject<ScrollView | null>;
-  onPageChange: (page: number) => void;
   /** Tapping the hero's script opens the player. */
   onOpen: () => void;
 }) {
@@ -59,6 +53,7 @@ export function ScriptPager({
       fontWeight: t.type.label.fontWeight,
       color: t.roles.fgSecondary,
     },
+    notPlaying: { color: t.roles.fgSecondary },
     note: { ...t.type.label, color: t.roles.fgSecondary },
     fade: {
       position: 'absolute',
@@ -109,30 +104,25 @@ export function ScriptPager({
     ),
   }));
 
+  // Legacy shows whatever verses are on the phone; so does the script.
+  const shown = passage.verses.filter(v => v.text);
+  const missingNote =
+    downloadState === 'failed'
+      ? "The text didn't download. Check your connection and try again."
+      : downloadState === 'downloading'
+      ? 'Downloading the text…'
+      : 'The text isn’t on this phone yet.';
+
   return (
     <>
-      <Animated.ScrollView
-        ref={pagerRef}
-        horizontal
-        pagingEnabled
-        style={[styles.pager, pagerStyle]}
-        scrollEnabled={expanded && !recordMode}
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={e =>
-          onPageChange(
-            Math.round(e.nativeEvent.contentOffset.x / (pageWidth || 1)),
-          )
-        }
-        testID="passage-pager"
-      >
+      <Animated.View style={[styles.pager, pagerStyle]} testID="passage-pager">
         <ScrollView
           ref={scriptRef}
-          style={{ width: pageWidth }}
           scrollEnabled={expanded}
           showsVerticalScrollIndicator={false}
           testID="passage-script-frame"
         >
-          {passage.downloaded ? (
+          {shown.length > 0 ? (
             <Pressable
               onPress={expanded ? undefined : onOpen}
               accessibilityRole={expanded ? undefined : 'button'}
@@ -145,31 +135,36 @@ export function ScriptPager({
                 style={[styles.reading, textStyle]}
                 maxFontSizeMultiplier={theme.fontScale.readingMax}
               >
-                {passage.verses.map(v => (
-                  <Text key={`${v.chapterNumber}:${v.verseNumber}`}>
-                    <Text style={styles.verseNumber}>{v.verseNumber} </Text>
-                    {v.text}{' '}
-                  </Text>
-                ))}
+                {shown.map(v => {
+                  // Source audio is the assignment's chapter only (Q12).
+                  const playing =
+                    v.chapterNumber === passage.assignment.chapterNumber &&
+                    v.verseNumber === playingVerse;
+                  return (
+                    <Text
+                      key={`${v.chapterNumber}:${v.verseNumber}`}
+                      style={
+                        playingVerse !== null && !playing
+                          ? styles.notPlaying
+                          : undefined
+                      }
+                      testID={playing ? 'passage-script-playing' : undefined}
+                    >
+                      <Text style={styles.verseNumber}>{v.verseNumber} </Text>
+                      {v.text}{' '}
+                    </Text>
+                  );
+                })}
               </Animated.Text>
+              {passage.downloaded ? null : (
+                <Text style={styles.note}>{missingNote}</Text>
+              )}
             </Pressable>
           ) : (
-            <Text style={styles.note}>
-              {downloadState === 'failed'
-                ? "The text didn't download. Check your connection and try again."
-                : 'The text isn’t on this phone yet.'}
-            </Text>
+            <Text style={styles.note}>{missingNote}</Text>
           )}
         </ScrollView>
-        {STEPS.map(name => (
-          <MaterialPage
-            key={name}
-            name={name}
-            width={pageWidth}
-            hidden={!expanded}
-          />
-        ))}
-      </Animated.ScrollView>
+      </Animated.View>
       <Animated.View
         style={[styles.fade, fadeStyle]}
         pointerEvents="none"

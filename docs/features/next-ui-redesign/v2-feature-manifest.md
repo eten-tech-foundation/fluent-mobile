@@ -333,8 +333,39 @@ Settle these before anyone builds them:
   pericope-first (Settings › Record by).
 - Selected-take sync (#701, #723), upload of every take (#716, #828), and the
   offline stage-advance queue (#257, #770) shipped after this list was written.
-  Next reads that queue for "waiting to send" and does not add a Send action;
-  stage actions stay on the Legacy Record tab.
+  Next reads that queue for "waiting to send" on passage and book-page covers.
+  Next's own Send is a separate ticket (Q29, Q30). Until it ships, the passage
+  page bridges to Legacy classic drafting, where Send lives.
+
+### Next parity with Legacy
+
+Where Next has no design yet, it bridges to the matching Legacy screen rather
+than dead-ending:
+
+- **Classic drafting** (`verse-detail`): "Open in classic drafting" on the
+  passage page, for a chapter without pericopes, a verse-by-verse chapter, or
+  to Send. A paused verse take recovered after a crash also resumes there.
+- **Observer view** (`observer-draft`): an Observer's chapter opens read-only
+  from Home and the book page, with the grant and membership re-checked at
+  the tap.
+
+Folded in from Legacy, so Next blocks and warns the same way:
+
+- **Conflicts and uploads:** a sync conflict or takes that can't upload block
+  Record with Legacy's banner. Home, Next up and the book page show "Sync
+  conflict" or "Upload pending", and Books count takes waiting to upload.
+- **Ownership:** a chapter taken by someone else, an open Peer Check
+  (Translator grant re-checked at the tap) and Observer chapters block or
+  route as in Legacy. Next up lists peer checks, open peer checks and
+  observed chapters under "Checking and observing". The book page names each
+  chapter's stage and whose it is.
+- **Recovery:** a paused pericope or chapter take resumes on the passage page;
+  a verse take resumes in classic drafting.
+- **Source text:** opening a passage repairs a blank language code and
+  downloads missing text once when online.
+- **Home:** milestones with no chapters still list, "recorded" counts chapters
+  with takes, the accounts sheet has Privacy Policy and Terms of Use, and the
+  Legacy drawer's swipe is off in Next.
 
 ### Hold until after the summit
 

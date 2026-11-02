@@ -9,7 +9,7 @@ import {
   isPastDraft,
   isPastPeerCheck,
 } from '../../../../utils/workflowStage';
-import type { Ready } from './steps';
+import type { Ready } from './ready';
 
 /**
  * Like a music app's "Updated 3d ago": how many takes, and when, then

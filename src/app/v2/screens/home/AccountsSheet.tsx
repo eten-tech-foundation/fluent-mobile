@@ -20,7 +20,8 @@ import { useTheme } from '../../../../theme/useTheme';
 
 /**
  * The avatar's sheet (Figma Home · Accounts sheet, node 2646:166): switch
- * between this device's accounts, add one, open Settings or log out.
+ * between this device's accounts, add one, open Settings or the legal
+ * pages, as Legacy's drawer does, or log out.
  */
 export function AccountsSheet({
   visible,
@@ -43,11 +44,19 @@ export function AccountsSheet({
   const active = accounts.find(a => a.isActive);
   const firstLoad = loading && accounts.length === 0;
 
-  const openSettings = useCallback(() => {
-    if (blockIfRecording()) return;
-    onClose();
-    router.push(hrefs.settings);
-  }, [blockIfRecording, onClose, router]);
+  const open = useCallback(
+    (
+      href:
+        | typeof hrefs.settings
+        | typeof hrefs.privacyPolicyApp
+        | typeof hrefs.termsOfUseApp,
+    ) => {
+      if (blockIfRecording()) return;
+      onClose();
+      router.push(href);
+    },
+    [blockIfRecording, onClose, router],
+  );
 
   return (
     <BottomSheet
@@ -104,8 +113,20 @@ export function AccountsSheet({
         icon={Gear}
         title="Settings"
         trailing="chevron"
-        onPress={openSettings}
+        onPress={() => open(hrefs.settings)}
         testID="home-accounts-settings"
+      />
+      <ListRow
+        title="Privacy Policy"
+        trailing="chevron"
+        onPress={() => open(hrefs.privacyPolicyApp)}
+        testID="home-accounts-privacy"
+      />
+      <ListRow
+        title="Terms of Use"
+        trailing="chevron"
+        onPress={() => open(hrefs.termsOfUseApp)}
+        testID="home-accounts-terms"
       />
       <ListRow
         icon={SignOut}

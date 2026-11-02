@@ -78,7 +78,8 @@ The token-level detail is in the
   and Speaking the Word don't exist in fluent-mobile, fluent-web or
   fluent-api. Only Source Text maps to real audio. Nearest lead: Aquifer
   "Guide" resources, which mobile doesn't call. Until then, screens ship
-  Source Text only.
+  Source Text only: the six step pages and their listening-material rows are
+  hidden, so the player has one page and no dots (Q16).
 - **Q12 · Pericope window inside a chapter file** *(API)*. Source audio is
   one file per chapter with verse start times only. The uncalled
   `GET /projects/{projectId}/playback-audio/{bookCode}/{chapter}` adds
@@ -114,7 +115,9 @@ translator hears them all last.
   notifications ("your turn").
 - **Q22 · Who are the reviewers?** *(product)*. Peer checker, community
   reviewers, Observers (#452), or anyone present? Do seats need accounts, or
-  just a name for the round?
+  just a name for the round? Meanwhile an Observer's chapter, from Home or the
+  book page, opens Legacy's read-only Observer view (`observer-draft`), never
+  the passage page.
 - **Q23 · How does this relate to the comment tickets?** *(product + design)*.
   #451 specs text and audio comments in a half drawer, one level of threading
   and emoji reactions; #703 adds comment counts to My Work rows. The Review
@@ -152,7 +155,9 @@ translator hears them all last.
   covers it, and the title's sheet (which names the chapter) is off during
   a take. The script's verse numbers don't mark where a second chapter
   starts (Mark 14:72–15:5 reads 72, then 1–5). The verse-mode parts wait
-  until verse mode is designed.
+  until verse mode is designed. Meanwhile a chapter without pericopes, or one
+  recorded verse by verse, offers "Open in classic drafting" (Legacy
+  `verse-detail`), and a verse take paused by a crash resumes there.
 - **Q30 · Who sees Send, and what shows before it** *(design + product)*.
   Split from Q29. It shapes the book page's chapter header (`BookScreen`,
   on `jskager/feature/next-ui-theme`) and the Home card's copy, so the
@@ -180,7 +185,9 @@ Rows marked — were decided before this doc had IDs.
 | Q20 | Contrast of unplayed and resting marks | Keep `fg/inactive` (about 1.5:1 on `bg/default`) as a deliberate quiet state, decided after seeing it rendered in all three modes. The Canvas take card sits on `surface/sunken` (1.33:1) on purpose | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q26 | What Next takes from `main` | Builds on Q8. Next uses `main`'s shared logic but keeps its own screen layout, grouping and UX. That logic includes Home sync behavior (#804), drawer theming (#749, `UserSettingsMenu`) and the My Work query and hook changes (`assignmentStatus` from #772; `useMyWorkChapters` and `myWorkChapterFilter` from #780). Legacy-only, so Next doesn't adopt them: My Work's stage accordion (`MyWorkTab`, `myWorkStageGroups`, #772) and its download chip (`DraftDownloadChip`, #780; the `useDraftDownload` hook behind it is shared). When `main` merges into `jskager/feature/next-ui-theme`, combine both sides of a conflict instead of taking either one whole. For example, Legacy `HomeScreen.tsx` keeps #824's guard against a double sync tap and its header staying mounted while loading, and also #853's move of its sync state into `useHomeSyncState` (on `jskager/feature/837-next-home` until #853 merges) | 2026-10-29 | [#853](https://github.com/eten-tech-foundation/fluent-mobile/pull/853) |
 | Q27 | Which chapter a passage that crosses chapters sends | Both. Each chapter is sent on its own, outside the player (Q29), so Mark 14:72–15:5 is part of both Mark 14's and Mark 15's sends. The rest moved to Q28 | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
-| Q29 | Where sending a chapter lives | Two places: an `AttentionCard` on Home like `ChangesRequested` (eyebrow "Ready to send", title "Mark 14 is recorded", action "Send to Peer Check"), and a Send button inline with the chapter's header on the book page (`BookScreen`; both on `jskager/feature/next-ui-theme`). Both show only once every verse or pericope in the chapter is recorded, as in Legacy (#542) and web. The server doesn't check that, but the drafter can't change the chapter once it's in Peer Check and the app has no way to send it back, so the rule stays. Not built yet. Still to come with it: the confirm (Dialog, in the gallery), picking the peer checker, sending both chapters of a passage that crosses them (Q27), and, offline, the send waiting in #770's stage-advance queue (on `main`, not yet on `jskager/feature/next-ui-theme`), shown as "Waiting to send" on the passage's cover and page. A send moves the chapter's stage and saves a copy of its typed text, not its recordings. Who sees Send, and what shows before then, is Q30 | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q29 | Where sending a chapter lives | Two places: an `AttentionCard` on Home like `ChangesRequested` (eyebrow "Ready to send", title "Mark 14 is recorded", action "Send to Peer Check"), and a Send button inline with the chapter's header on the book page (`BookScreen`; both on `jskager/feature/next-ui-theme`). Both show only once every verse or pericope in the chapter is recorded, as in Legacy (#542) and web. The server doesn't check that, but the drafter can't change the chapter once it's in Peer Check and the app has no way to send it back, so the rule stays. Not built yet. Still to come with it: the confirm (Dialog, in the gallery), picking the peer checker, sending both chapters of a passage that crosses them (Q27), and, offline, the send waiting in #770's stage-advance queue (on `main`, not yet on `jskager/feature/next-ui-theme`), shown as "Waiting to send" on the passage's cover and page. Until Send
+ships (a separate ticket), the passage page's "Open in classic drafting"
+bridge is how a Next user sends a chapter. A send moves the chapter's stage and saves a copy of its typed text, not its recordings. Who sees Send, and what shows before then, is Q30 | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | — | Header progress dots on the Pericope screen | They're a resting waveform: Level wave, short variant | 2026-10-13 | Figma Level wave `2595:772` |
 | — | Speaker grill hole color | `surface/inverse` (was the `bone/800` primitive) | 2026-10-14 | Figma Speaker grill `2409:533` |
 | — | Icon/md size | `theme.controlSizes.icon20` | 2026-10-14 | `jskager/feature/695-hardware-panel` |

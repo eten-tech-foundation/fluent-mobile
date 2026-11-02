@@ -146,8 +146,13 @@ describe('getHomeBookSummaries', () => {
       'JOIN user_projects up ON up.project_id = pu.project_id',
     );
     expect(sql).toContain('up.user_id = ?');
-    expect(sql).toContain('ORDER BY b.id, pu.id, ca.chapter_number');
-    expect(mockExecute).toHaveBeenCalledWith(expect.any(String), [ME]);
+    expect(sql).toContain(
+      'ORDER BY b.id IS NULL, b.id, pu.id, ca.chapter_number',
+    );
+    expect(sql).toContain(
+      'LEFT JOIN chapter_assignments ca ON ca.project_unit_id = pu.id',
+    );
+    expect(mockExecute).toHaveBeenCalledWith(expect.any(String), [ME, ME]);
   });
 
   it('returns nothing when the read fails', async () => {

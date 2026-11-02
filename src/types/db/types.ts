@@ -93,9 +93,13 @@ export interface MyWorkChapter {
  * the current stage is.
  */
 export interface HomeBookSummary {
-  /** `${projectUnitId}:${bookId}`; a book in two milestones is two cards. */
+  /**
+   * `${projectUnitId}:${bookId}`; a book in two milestones is two cards. A
+   * milestone with no chapters yet is one card, `${projectUnitId}:empty`.
+   */
   key: string;
-  bookId: number;
+  /** Null for a milestone with no chapters yet; it's named for the milestone. */
+  bookId: number | null;
   bookName: string;
   projectId: number;
   projectUnitId: number;
@@ -103,7 +107,7 @@ export interface HomeBookSummary {
   milestoneName: string;
   targetLanguageName: string;
   /** The book's lowest chapter in this milestone; where its book page opens. */
-  firstChapterId: number;
+  firstChapterId: number | null;
   /** Not started, draft or peer check, and the stage is mine. */
   mine: number;
   /** Someone else's stage, an unassigned peer check, or any stage past it. */
@@ -112,10 +116,12 @@ export interface HomeBookSummary {
   open: number;
   complete: number;
   totalChapters: number;
-  /** Submitted for peer check or further along; one sent back drops out. */
+  /** With a take on this phone, or submitted for peer check or further along. */
   recordedChapters: number;
   /** Past peer check. */
   checkedChapters: number;
+  /** My selected takes in this book still to upload, as Legacy Milestones counts. */
+  pendingUploads: number;
 }
 
 export interface ProjectChapter {

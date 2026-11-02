@@ -14,15 +14,18 @@ function RecordIcon({ size }: NextIconProps) {
 
 /**
  * The hero's Record: a Flat Round button with a red dot, ringed in
- * accent/record like the Soft rim, beside the labelled Listen.
+ * accent/record like the Soft rim, beside the labelled Listen. A blocked
+ * Record greys its ring but still opens the player, where the takes play.
  */
 export function RecordAction({
   accessibilityLabel,
   onPress,
+  blocked = false,
   testID,
 }: {
   accessibilityLabel: string;
   onPress: () => void;
+  blocked?: boolean;
   testID?: string;
 }) {
   const styles = useThemedStyles(t => ({
@@ -32,9 +35,10 @@ export function RecordAction({
       borderColor: t.roles.accentRecord,
       padding: t.spacing.xxs,
     },
+    off: { borderColor: t.roles.fgInactive },
   }));
   return (
-    <View style={styles.ring}>
+    <View style={[styles.ring, blocked && styles.off]}>
       <RoundButton
         variant="flat"
         icon={RecordIcon}

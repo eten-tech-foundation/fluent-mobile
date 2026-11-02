@@ -37,8 +37,22 @@ jest.mock('../../../services/storage', () => ({
   },
 }));
 
-jest.mock('../../../hooks/useGlobalSyncStatus', () => ({
-  useGlobalSyncStatus: () => false,
+const observerHref = {
+  pathname: '/(app)/(stack)/observer-draft',
+  params: { chapterAssignmentId: '1', projectId: '9' },
+};
+let mockOpen: unknown = { kind: 'work' };
+jest.mock('../../../navigation/chapterOpen', () => ({
+  resolveAssignmentOpen: async () => mockOpen,
+}));
+
+const mockOpenSync = jest.fn();
+jest.mock('../../../hooks/useHeaderSync', () => ({
+  useHeaderSync: () => ({
+    status: 'online_pending',
+    failedErrorText: null,
+    openSync: mockOpenSync,
+  }),
 }));
 
 jest.mock('../../../hooks/useMilestoneChapters', () => ({
@@ -81,6 +95,7 @@ function art(key: string, recordedVerses: number, totalVerses: number) {
 describe('BookScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockOpen = { kind: 'work' };
     mockParams = { ...baseParams };
     mockLoadState = { loading: false, error: null, removed: false };
     mockChapters = [chapter(1, 14), chapter(2, 15)];
@@ -143,6 +158,15 @@ describe('BookScreen', () => {
     expect(
       screen.getByLabelText('Mark 14:26–31, Not recorded yet'),
     ).toBeTruthy();
+  });
+
+  it('shows the sync status and opens Sync, like Legacy drafting', () => {
+    render(<BookScreen />);
+
+    const cloud = screen.getByTestId('book-sync');
+    expect(cloud.props.accessibilityLabel).toMatch(/pending/i);
+    fireEvent.press(cloud);
+    expect(mockOpenSync).toHaveBeenCalledTimes(1);
   });
 
   it('says when a passage is in peer check', () => {
@@ -241,10 +265,81 @@ describe('BookScreen', () => {
     expect(screen.getByText('1 of 2 chapters recorded')).toBeTruthy();
   });
 
-  it('opens the passage page for the passage, marked as from the book', () => {
+  it('says each chapter’s stage, whose it is, and what has to sync', () => {
+    mockChapters = [
+      {
+        ...chapter(1, 14),
+        workflowStage: 'community_review',
+        ownershipState: 'other',
+        syncState: 'deviceOnly',
+        hasConflict: false,
+      },
+      {
+        ...chapter(2, 15),
+        workflowStage: 'draft',
+        ownershipState: 'mine',
+        syncState: 'synced',
+        hasConflict: true,
+      },
+    ];
     render(<BookScreen />);
 
-    fireEvent.press(screen.getByTestId('book-passage-1-pericope::1'));
+    expect(screen.getByTestId('book-chapter-1-meta').props.children).toBe(
+      "1 of 2 recorded · Community Check · Someone else's · Upload pending",
+    );
+    expect(screen.getByTestId('book-chapter-2-meta').props.children).toBe(
+      '0 of 1 recorded · Draft · Yours · Sync conflict',
+    );
+  });
+
+  it('shows a waiting send on its covers', () => {
+    mockChapters = [chapter(1, 14)];
+    mockPassages = {
+      status: 'ready',
+      byChapter: new Map([
+        [
+          1,
+          [
+            {
+              key: 'pericope::1',
+              title: 'The Last Supper',
+              reference: 'Mark 14:22–25',
+              verses: '22–25',
+              anchorVerse: 22,
+              recordedStatus: 'recorded',
+              ...art('pericope::1', 4, 4),
+              waitingToSend: true,
+            },
+          ],
+        ],
+      ]),
+      pericopes: true,
+    };
+    render(<BookScreen />);
+
+    expect(
+      screen.getByLabelText('The Last Supper, Mark 14:22–25, Waiting to send'),
+    ).toBeTruthy();
+  });
+
+  it('sends an observer to the read-only view, never the passage', async () => {
+    mockOpen = { kind: 'observer', href: observerHref };
+    render(<BookScreen />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('book-passage-1-pericope::1'));
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(observerHref);
+    expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the passage page for the passage, marked as from the book', async () => {
+    render(<BookScreen />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('book-passage-1-pericope::1'));
+    });
 
     expect(mockPush).toHaveBeenCalledWith(
       hrefs.passage({

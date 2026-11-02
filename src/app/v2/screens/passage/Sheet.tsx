@@ -29,18 +29,19 @@ import {
 } from '../../../../constants/messages';
 import { useConnectivity } from '../../../../hooks/useConnectivity';
 import { useHaptics } from '../../../../hooks/useHaptics';
+import type { HeaderSync } from '../../../../hooks/useHeaderSync';
 import type { usePassage } from '../../../../hooks/usePassage';
 import { useSourceAudio } from '../../../../hooks/useSourceAudio';
 import type { CaptureControls } from '../../../../types/captureControls';
 import type { SourceAudioLoadState } from '../../../../types/sourceAudio';
 import { ColorModeScope, useTheme } from '../../../../theme/useTheme';
 import { Footer } from './Footer';
-import { ListeningMaterials } from './ListeningMaterials';
 import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
+import { type Ready } from './ready';
 import { useScriptMetrics } from './scriptMetrics';
-import { PAGE_COUNT, pageName, type Ready } from './steps';
+import { sourceWindow, windowProgress, windowSeekMs } from './sourceWindow';
 import { TakeFan } from './TakeFan';
 import { TitleSheet } from './TitleSheet';
 import { useRecorder } from './useRecorder';
@@ -48,6 +49,13 @@ import { useRecorder } from './useRecorder';
 /** How far the hero drags before a release opens or closes it. */
 const SNAP_AT = 0.35;
 const FLING = 500;
+
+/** One page now the FIA steps are hidden (Q11), so these stay off. */
+const NO_TURN = (label: string): KeyAction => ({
+  label,
+  disabled: true,
+  onPress: () => {},
+});
 
 function listenKeys(
   source: {
@@ -59,6 +67,8 @@ function listenKeys(
     retry: () => void;
   },
   pauseTake: () => Promise<void>,
+  /** Play from the passage's start when it last stopped at its end. */
+  rewind: () => Promise<void>,
 ): ListenKeys {
   const loading = source.loadState === 'loading' || source.isLoadingAudio;
   const failed = source.loadState === 'error';
@@ -87,6 +97,7 @@ function listenKeys(
         }
         // A take still winding down must finish pausing before the chapter starts.
         await pauseTake();
+        await rewind();
         await source.play();
       })();
     },
@@ -99,9 +110,8 @@ function listenKeys(
  * header, then raises the keys from below the screen.
  *
  * This file owns the open: the gesture, `progress` and the layout it drives.
- * It also picks each surface's mode, once: the hero is Canvas, the listening
- * materials and the title's sheet Hardware, and the player chrome sets its
- * own two.
+ * It also picks each surface's mode, once: the hero is Canvas, the title's
+ * sheet Hardware, and the player chrome sets its own two.
  */
 export function Sheet({
   passage,
@@ -112,6 +122,8 @@ export function Sheet({
   milestoneName,
   onBack,
   onOpenBook,
+  onOpenClassic,
+  sync,
   onDownload,
   downloadState,
   onCaptureActiveChange,
@@ -128,6 +140,9 @@ export function Sheet({
   milestoneName: string;
   onBack: () => void;
   onOpenBook: () => void;
+  /** Legacy drafting for this chapter, for what Next can't do yet. */
+  onOpenClassic: () => void;
+  sync: HeaderSync;
   onDownload: () => void;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
   onCaptureActiveChange?: (active: boolean) => void;
@@ -144,14 +159,10 @@ export function Sheet({
   const [titleSheetOpen, setTitleSheetOpen] = useState(false);
   const [container, setContainer] = useState(0);
   const [header, setHeader] = useState(0);
-  const [headerWidth, setHeaderWidth] = useState(0);
   const [actions, setActions] = useState(0);
   const [panel, setPanel] = useState(0);
   const progress = useSharedValue(0);
   const scriptRef = useRef<ScrollView>(null);
-  const pagerRef = useRef<ScrollView>(null);
-  /** 0 is the script; then one page per listening material. */
-  const [page, setPage] = useState(0);
 
   const headerBottom = insets.top + header;
   const scriptTop = headerBottom + spacing.sm;
@@ -159,11 +170,11 @@ export function Sheet({
   const collapsed = actionsTop + actions + spacing.xl;
   const range = Math.max(1, container - collapsed);
   const fullScript = Math.max(preview, container - headerBottom - panel);
-  const pageWidth = headerWidth;
   const recorder = useRecorder({
     passage,
     userId,
     showing: expanded && recordMode,
+    downloading: downloadState === 'downloading',
     onReload,
     onCaptureActiveChange,
     onRegisterCaptureControls,
@@ -171,7 +182,10 @@ export function Sheet({
   /** A take is lifted to delete it: everything but the fan dims. */
   const [lifted, setLifted] = useState(false);
   const { capturing } = recorder;
+  // Leaving mid-take would ask first; the bridge waits until it's done.
+  const openClassic = capturing ? undefined : onOpenClassic;
   const { isOnline, hasResolved } = useConnectivity();
+  const [playingVerse, setPlayingVerse] = useState<number | null>(null);
   // Same gate as Legacy's source bar: no API until /health resolves.
   const source = useSourceAudio({
     projectId: passage.assignment.projectId,
@@ -183,31 +197,43 @@ export function Sheet({
     enabled: !recordMode && !capturing,
     isOnline: hasResolved && isOnline,
     userId,
+    onPlayingVerseChange: setPlayingVerse,
   });
-  const sourceProgress =
-    source.durationMs > 0 ? source.positionMs / source.durationMs : 0;
+  // The waveform and scrubbing cover the passage, not the whole chapter.
+  const span = sourceWindow(
+    passage.verses,
+    passage.assignment.chapterNumber,
+    source.verseTimestamps,
+    source.dblAudioBibleId,
+    source.durationMs,
+  );
+  const sourceProgress = windowProgress(
+    source.positionMs,
+    source.durationMs,
+    span,
+  );
   const seekSource =
     source.durationMs > 0
       ? (ratio: number) => {
-          void source.seek(Math.round(ratio * source.durationMs));
+          void source.seek(windowSeekMs(ratio, source.durationMs, span));
         }
       : undefined;
-  const goToPage = useCallback(
-    (index: number, animated = false) => {
-      setPage(index);
-      pagerRef.current?.scrollTo({ x: index * pageWidth, animated });
-    },
-    [pageWidth],
-  );
-  const turnKey = (to: number, direction: 'Previous' | 'Next'): KeyAction => {
-    const off = to < 0 || to >= PAGE_COUNT;
-    return {
-      label: off
-        ? direction
-        : `${direction}: ${pageName(passage.reference, to)}`,
-      disabled: off,
-      onPress: () => goToPage(to, !reduceMotion),
-    };
+  // Listen ends with the passage, and plays it again from the top.
+  const spanEnd = span?.endMs ?? null;
+  const { isPlaying, positionMs, pause: pauseSource } = source;
+  // Only crossing the end stops it: right after a replay's rewind the
+  // position can still read the old end for a tick.
+  const lastPositionRef = useRef(positionMs);
+  useEffect(() => {
+    const last = lastPositionRef.current;
+    lastPositionRef.current = positionMs;
+    if (spanEnd === null || !isPlaying) return;
+    if (last < spanEnd && positionMs >= spanEnd) void pauseSource();
+  }, [spanEnd, isPlaying, positionMs, pauseSource]);
+  const rewind = async () => {
+    if (span && source.positionMs >= span.endMs) {
+      await source.seek(span.startMs);
+    }
   };
 
   const settled = useCallback(() => haptics.press(), [haptics]);
@@ -215,10 +241,7 @@ export function Sheet({
     (open: boolean, velocity = 0) => {
       setExpanded(open);
       // The hero previews the first verses, wherever the player was scrolled.
-      if (!open) {
-        scriptRef.current?.scrollTo({ y: 0, animated: true });
-        goToPage(0);
-      }
+      if (!open) scriptRef.current?.scrollTo({ y: 0, animated: true });
       const target = open ? 1 : 0;
       const done = (finished?: boolean) => {
         'worklet';
@@ -228,26 +251,15 @@ export function Sheet({
         ? withTiming(target, { duration: 0 }, done)
         : withSpring(target, { ...NEXT_SPRING, velocity }, done);
     },
-    [progress, reduceMotion, settled, goToPage],
+    [progress, reduceMotion, settled],
   );
-  /** Opens on the script, or on a listening material's page. */
   const open = useCallback(
-    (record: boolean, atPage = 0) => {
+    (record: boolean) => {
       // A take in progress (or recovered) always opens on the recorder.
-      const toRecord = record || capturing;
-      setRecordMode(toRecord);
-      goToPage(toRecord ? 0 : atPage);
+      setRecordMode(record || capturing);
       animateTo(true);
     },
-    [animateTo, goToPage, capturing],
-  );
-  // Recording is always of the script.
-  const changeMode = useCallback(
-    (record: boolean) => {
-      setRecordMode(record);
-      if (record) goToPage(0);
-    },
-    [goToPage],
+    [animateTo, capturing],
   );
 
   // A take in progress asks first, like leaving a verse in the Record tab.
@@ -329,7 +341,9 @@ export function Sheet({
           downloadState={downloadState}
           progress={progress}
           expanded={expanded}
-          recordMode={recordMode}
+          playingVerse={playingVerse}
+          recordBlocked={recorder.cannotRecord}
+          notices={recorder.notices}
           layout={{
             measured: header > 0 && actions > 0 && container > 0,
             collapsed,
@@ -338,33 +352,23 @@ export function Sheet({
             scriptTop: [scriptTop, headerBottom],
             scriptHeight: [preview, fullScript],
             actionsTop,
-            pageWidth,
           }}
           openGesture={drag(!expanded)}
           closeGesture={drag(expanded && !capturing)}
-          pagerRef={pagerRef}
           scriptRef={scriptRef}
-          onHeaderLayout={(height, width) => {
-            setHeader(height);
-            setHeaderWidth(width);
-          }}
+          onHeaderLayout={setHeader}
           onActionsLayout={setActions}
-          onPageChange={setPage}
           onOpen={record => open(record)}
           onBack={onBack}
           onClose={close}
+          sync={sync}
           onDownload={onDownload}
+          onOpenClassic={openClassic}
           // Its book link would leave without asking, unlike Close.
           onTitlePress={capturing ? undefined : () => setTitleSheetOpen(true)}
         />
       </ColorModeScope>
       <ColorModeScope value="hardware">
-        <ListeningMaterials
-          reference={passage.reference}
-          progress={progress}
-          hidden={expanded}
-          onOpen={step => open(false, step + 1)}
-        />
         <TitleSheet
           visible={titleSheetOpen}
           title={title}
@@ -372,6 +376,7 @@ export function Sheet({
           milestoneName={milestoneName}
           onClose={() => setTitleSheetOpen(false)}
           onOpenBook={onOpenBook}
+          onOpenClassic={onOpenClassic}
         />
       </ColorModeScope>
       <PlayerChrome
@@ -391,22 +396,23 @@ export function Sheet({
         footer={
           <Footer
             passage={passage}
-            page={page}
             recordMode={recordMode}
             record={recorder.footer}
             listen={{ progress: sourceProgress, onSeek: seekSource }}
+            notices={recorder.notices}
+            onOpenClassic={openClassic}
             dimmed={lifted}
           />
         }
         keys={
           <PlayerKeys
             recordMode={recordMode}
-            onRecordModeChange={changeMode}
+            onRecordModeChange={setRecordMode}
             modeLocked={capturing}
             record={recorder.keys}
-            listen={listenKeys(source, recorder.pauseTakePlayback)}
-            previous={turnKey(page - 1, 'Previous')}
-            next={turnKey(page + 1, 'Next')}
+            listen={listenKeys(source, recorder.pauseTakePlayback, rewind)}
+            previous={NO_TURN('Previous')}
+            next={NO_TURN('Next')}
           />
         }
       />

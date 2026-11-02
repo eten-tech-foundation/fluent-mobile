@@ -11,8 +11,9 @@ import {
 } from '../db/queries';
 import { getTakesForVerse } from '../db/recordingsRepository';
 import { getProjectPericopeSetId } from '../db/repository';
-import { syncBibleTexts } from '../services/sync';
+import { ensureSourceLanguageIso, syncBibleTexts } from '../services/sync';
 import { onSyncComplete } from '../services/syncEvents';
+import { useConnectivity } from './useConnectivity';
 import type { BibleUnitVerse } from '../utils/bibleTabUnits';
 import {
   buildBibleUnits,
@@ -283,6 +284,41 @@ export function usePassage(
         setDownloadState('failed');
       });
   }, [assignment, passage, anchorVerse, projectUnitId, downloadState]);
+
+  const { isOnline, hasResolved } = useConnectivity();
+  const online = hasResolved && isOnline;
+
+  // Repair a blank source-language code on open, so Listen can find source
+  // audio.
+  const projectId = assignment?.projectId ?? null;
+  const missingIso =
+    assignment !== null && !assignment.sourceLanguageCode?.trim();
+  useEffect(() => {
+    if (!missingIso || projectId === null || !online) return;
+    let cancelled = false;
+    void ensureSourceLanguageIso(
+      projectId,
+      async () =>
+        (await getChapterAssignmentById(chapterAssignmentId))
+          ?.sourceLanguageCode,
+    ).then(pulled => {
+      if (pulled && !cancelled) reload();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [missingIso, projectId, online, chapterAssignmentId, reload]);
+
+  // And fetch the text once when it isn't here, rather than waiting on the
+  // Download button, which stays as the retry.
+  const autoDownloadedFor = useRef<number | null>(null);
+  const needsText = passage.status === 'ready' && !passage.downloaded;
+  useEffect(() => {
+    if (!needsText || !online || downloadState !== 'idle') return;
+    if (autoDownloadedFor.current === chapterAssignmentId) return;
+    autoDownloadedFor.current = chapterAssignmentId;
+    download();
+  }, [needsText, online, downloadState, chapterAssignmentId, download]);
 
   return { passage, download, downloadState, reload };
 }

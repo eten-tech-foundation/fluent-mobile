@@ -9,6 +9,7 @@ import {
   getChapterAssignmentById,
   getPericopesForChapter,
   getSelectedTakeCoverages,
+  hasPendingStageAdvance,
 } from '../db/queries';
 import type { ProjectChapter } from '../types/db/types';
 
@@ -20,6 +21,7 @@ jest.mock('../db/queries', () => ({
   getChapterAssignmentById: jest.fn(),
   getPericopesForChapter: jest.fn(),
   getSelectedTakeCoverages: jest.fn(),
+  hasPendingStageAdvance: jest.fn(async () => false),
 }));
 
 const mockSetId = getProjectPericopeSetId as jest.Mock;
@@ -141,6 +143,22 @@ describe('useBookPassages', () => {
       { startChapter: 14, startVerse: 1, endChapter: 14, endVerse: 2 },
       { startChapter: 14, startVerse: 22, endChapter: 14, endVerse: 23 },
     ]);
+  });
+
+  it('marks the passages of a chapter whose send is waiting to go up', async () => {
+    mockPericopes.mockResolvedValue([]);
+    (hasPendingStageAdvance as jest.Mock).mockImplementation(
+      async (id: number) => id === 2,
+    );
+    const chapters = [chapter(1, 14), chapter(2, 15)];
+
+    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    if (result.current.status !== 'ready') return;
+    expect(result.current.byChapter.get(1)?.[0]?.waitingToSend).toBeUndefined();
+    expect(result.current.byChapter.get(2)?.[0]?.waitingToSend).toBe(true);
+    (hasPendingStageAdvance as jest.Mock).mockImplementation(async () => false);
   });
 
   it("lists each chapter's passages with how much is recorded", async () => {

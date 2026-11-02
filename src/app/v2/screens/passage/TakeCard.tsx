@@ -265,6 +265,7 @@ export function TakeCard({
           exiting={FadeOut.duration(EDGE_MS)}
           style={[styles.label, take.official && styles.onAccent]}
           numberOfLines={1}
+          accessibilityLiveRegion={blockedReason ? 'polite' : 'none'}
         >
           {blockedReason ?? takeLabel}
         </Animated.Text>

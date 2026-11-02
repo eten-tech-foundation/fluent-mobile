@@ -36,6 +36,7 @@ function book(overrides: Partial<HomeBookSummary> = {}): HomeBookSummary {
     totalChapters: 50,
     recordedChapters: 0,
     checkedChapters: 0,
+    pendingUploads: 0,
     ...overrides,
   };
 }
@@ -43,6 +44,9 @@ function book(overrides: Partial<HomeBookSummary> = {}): HomeBookSummary {
 describe('bookCounts', () => {
   it('lists the counts that are not zero', () => {
     expect(bookCounts(book())).toBe('1 yours · 2 with others · 47 open');
+    expect(bookCounts(book({ pendingUploads: 3 }))).toBe(
+      '1 yours · 2 with others · 47 open · 3 to upload',
+    );
     expect(
       bookCounts(book({ mine: 0, withOthers: 0, open: 0, complete: 0 })),
     ).toBe('');
@@ -156,6 +160,31 @@ describe('Books', () => {
     );
     expect(screen.getByText('Design team 1st')).toBeTruthy();
     expect(screen.queryByText(/yours|open/)).toBeNull();
+  });
+
+  it('shows a milestone with no chapters yet, said once', () => {
+    render(
+      <Books
+        books={[
+          book({
+            key: '4:empty',
+            bookId: null,
+            firstChapterId: null,
+            bookName: 'Design team 1st',
+            mine: 0,
+            withOthers: 0,
+            open: 0,
+            totalChapters: 0,
+          }),
+        ]}
+        onOpen={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText('No chapters yet')).toBeTruthy();
+    expect(screen.getByRole('button').props.accessibilityLabel).toBe(
+      'Design team 1st, No chapters yet. Open book page.',
+    );
   });
 
   it('renders nothing without books', () => {

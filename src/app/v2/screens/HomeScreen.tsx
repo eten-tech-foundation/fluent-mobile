@@ -8,8 +8,10 @@ import {
 } from 'react-native';
 import { useIsFocused, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AVATAR_SIZE, Avatar } from '../../../components/ui/Avatar';
+import { Avatar } from '../../../components/ui/Avatar';
 import { Banner } from '../../../components/ui/Banner';
+import { Gear } from '../../../components/ui/icons';
+import { RoundButton } from '../../../components/ui/RoundButton';
 import { SyncStatusButton } from '../../../components/ui/SyncStatusButton';
 import { HOME_EMPTY_MESSAGE } from '../../../constants/messages';
 import { useActiveAccountSummary } from '../../../hooks/useActiveAccountSummary';
@@ -18,6 +20,7 @@ import { useHomeSyncState } from '../../../hooks/useHomeSyncState';
 import { useMyWorkChapters } from '../../../hooks/useMyWorkChapters';
 import { useNextUp } from '../../../hooks/useNextUp';
 import { useAuthSession } from '../../../navigation/AuthSessionProvider';
+import { resolveChapterOpen } from '../../../navigation/chapterOpen';
 import { hrefs } from '../../../navigation/hrefs';
 import { useTheme, useThemedStyles } from '../../../theme/useTheme';
 import type { HomeBookSummary, MyWorkChapter } from '../../../types/db/types';
@@ -109,7 +112,6 @@ function HomeBody({
       paddingHorizontal: t.spacing.xl,
       paddingTop: t.spacing.lg,
     },
-    avatarSlot: { width: AVATAR_SIZE, height: AVATAR_SIZE },
     banner: { marginHorizontal: t.spacing.lg, marginTop: t.spacing.lg },
     heading: {
       paddingHorizontal: t.spacing.xl,
@@ -138,8 +140,28 @@ function HomeBody({
   const signInAgain = useCallback(() => {
     router.push(hrefs.reauth({ returnTo: 'home' }));
   }, [router]);
+  const tapRef = useRef(0);
+  // An observer only ever gets the read-only view.
   const openPassage = useCallback(
-    (chapter: MyWorkChapter, anchorVerse: number) =>
+    async (chapter: MyWorkChapter, anchorVerse: number) => {
+      const tap = ++tapRef.current;
+      const isCurrent = () => tap === tapRef.current;
+      const open = await resolveChapterOpen(
+        {
+          chapterId: chapter.id,
+          projectId: chapter.projectId,
+          assignmentStatus: chapter.assignmentStatus,
+          assignedUserId: chapter.assignedUserId,
+          peerCheckerId: chapter.peerCheckerId,
+          hasPendingStageAdvance: chapter.hasPendingStageAdvance,
+        },
+        isCurrent,
+      );
+      if (open === null || !isCurrent()) return;
+      if (open.kind === 'observer') {
+        router.push(open.href);
+        return;
+      }
       router.push(
         hrefs.passage({
           chapterId: chapter.id,
@@ -151,7 +173,8 @@ function HomeBody({
           milestoneName: chapter.milestoneName,
           language: chapter.targetLanguageName,
         }),
-      ),
+      );
+    },
     [router],
   );
   const openBook = useCallback(
@@ -163,7 +186,7 @@ function HomeBody({
           projectName: book.projectName,
           milestoneName: book.milestoneName,
           language: book.targetLanguageName,
-          focusChapterId: book.firstChapterId,
+          focusChapterId: book.firstChapterId ?? undefined,
         }),
       ),
     [router],
@@ -225,7 +248,7 @@ function HomeBody({
         <NextUp
           nextUp={nextUp}
           onOpen={({ chapter, passage }) =>
-            openPassage(chapter, passage.anchorVerse)
+            void openPassage(chapter, passage.anchorVerse)
           }
         />
         <Books books={books} onOpen={openBook} />
@@ -257,7 +280,13 @@ function HomeBody({
               testID="home-account"
             />
           ) : (
-            <View style={styles.avatarSlot} />
+            // Settings and sign-out stay reachable while the summary loads.
+            <RoundButton
+              icon={Gear}
+              accessibilityLabel="Accounts and settings"
+              onPress={openAccounts}
+              testID="home-account"
+            />
           )}
           <SyncStatusButton
             status={syncStatus}

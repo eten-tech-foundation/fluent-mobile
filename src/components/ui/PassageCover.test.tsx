@@ -5,7 +5,7 @@ import { PassageCover, type PassageCoverProps } from './PassageCover';
 import * as generator from './coverArt/generator';
 import { resolveTheme } from '../../theme';
 import { UiVersionOverride } from '../../theme/useTheme';
-import { measureFace, ringFill } from '../../test/coverBadge';
+import { measureFace } from '../../test/coverBadge';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
 jest.mock('../../services/storage', () => ({
@@ -96,10 +96,11 @@ describe('PassageCover', () => {
     expect(screen.getByTestId('cover-badge', hidden)).toBeTruthy();
   });
 
-  it('half fills the ring once it is in peer check', () => {
+  it('shows a static peer check badge, with no progress to fake', () => {
     render(cover({ recordedVerses: 4, submitted: true }));
     measure();
-    expect(ringFill()).toBeCloseTo(0.5);
+    expect(screen.getByTestId('cover-badge-peer-check', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('cover-badge-ring', hidden)).toBeNull();
     expect(screen.queryByTestId('cover-badge-check', hidden)).toBeNull();
     expect(
       screen.getByRole('button', {

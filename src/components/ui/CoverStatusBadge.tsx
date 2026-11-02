@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { CheckBold, CloudArrowUp } from './icons';
+import { CheckBold, CloudArrowUp, UserSound } from './icons';
 import { useTheme } from '../../theme/useTheme';
 
 /** Sizes before `scale`. */
@@ -19,6 +19,8 @@ export type CoverBadgeState =
       fraction: number;
     }
   | { kind: 'checked' }
+  /** In peer check; the app has no progress through it to show. */
+  | { kind: 'peerCheck' }
   /** Sent on from this device; the send hasn't reached the server. */
   | { kind: 'waiting' };
 
@@ -34,8 +36,8 @@ export function coverBadgeState(
 /**
  * A cover's status in its top-right corner: a ring, then a check once it all
  * passes peer check. A book's ring fills as its chapters are recorded; a
- * passage's is half full while it's in peer check, and a cloud while its send
- * waits to go up. TalkBack skips it; the cover's label already says the
+ * passage shows a listener while it's in peer check, and a cloud while its
+ * send waits to go up. TalkBack skips it; the cover's label already says the
  * status.
  */
 export function CoverStatusBadge({
@@ -95,6 +97,10 @@ export function CoverStatusBadge({
       ) : state.kind === 'waiting' ? (
         <View testID="cover-badge-waiting">
           <CloudArrowUp color={fg} size={ring} />
+        </View>
+      ) : state.kind === 'peerCheck' ? (
+        <View testID="cover-badge-peer-check">
+          <UserSound color={fg} size={ring} />
         </View>
       ) : (
         <Svg width={ring} height={ring} testID="cover-badge-ring">

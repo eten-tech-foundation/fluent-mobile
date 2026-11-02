@@ -146,6 +146,17 @@ describe('AccountsSheet', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it('opens the privacy policy and terms of use', () => {
+    const onClose = jest.fn();
+    render(<AccountsSheet visible onClose={onClose} />);
+
+    fireEvent.press(screen.getByTestId('home-accounts-privacy'));
+    expect(mockPush).toHaveBeenCalledWith(hrefs.privacyPolicyApp);
+    fireEvent.press(screen.getByTestId('home-accounts-terms'));
+    expect(mockPush).toHaveBeenCalledWith(hrefs.termsOfUseApp);
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
   it('logs out of the active account', () => {
     render(<AccountsSheet visible onClose={jest.fn()} />);
 

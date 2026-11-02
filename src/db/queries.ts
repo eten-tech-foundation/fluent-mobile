@@ -492,6 +492,48 @@ export async function getChapterAssignmentById(
   }
 }
 
+/**
+ * The names a passage route shows for a chapter assignment, named as on
+ * Home: the project, its milestone and the target language.
+ */
+export async function getChapterRouteNames(id: number): Promise<{
+  projectName: string;
+  milestoneName: string;
+  language: string;
+} | null> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT
+        p.name AS project_name,
+        COALESCE(NULLIF(pu.name, ''), p.name, 'Milestone ' || pu.id) AS milestone_name,
+        tl.lang_name AS target_language_name
+      FROM chapter_assignments ca
+      JOIN project_units pu ON ca.project_unit_id = pu.id
+      JOIN projects p ON pu.project_id = p.id
+      LEFT JOIN languages tl ON p.target_language_id = tl.id
+      WHERE ca.id = ?`,
+      [id],
+    );
+    const row = result.rows?.[0] as
+      | {
+          project_name: string | null;
+          milestone_name: string | null;
+          target_language_name: string | null;
+        }
+      | undefined;
+    if (!row) return null;
+    return {
+      projectName: row.project_name ?? '',
+      milestoneName: row.milestone_name ?? '',
+      language: row.target_language_name ?? '',
+    };
+  } catch (error) {
+    log.error('Error fetching chapter route names', { error });
+    return null;
+  }
+}
+
 /** Verses the chapter assignment says it contains. 0 when the count is unknown. */
 export async function getChapterAssignmentVerseCount(
   id: number,
@@ -990,7 +1032,19 @@ type HomeBookChapterRow = {
   project_name: string;
   milestone_name: string;
   target_language_name: string;
+  has_recordings: number;
+  pending_uploads: number;
 };
+
+/** A milestone with no chapters yet: the left join's lone row. */
+type HomeBookRow =
+  | HomeBookChapterRow
+  | (Omit<HomeBookChapterRow, 'id' | 'status' | 'book_id' | 'book_name'> & {
+      id: null;
+      status: null;
+      book_id: null;
+      book_name: null;
+    });
 
 type ChapterTurn = 'mine' | 'withOthers' | 'open' | 'complete';
 
@@ -1015,8 +1069,9 @@ function chapterTurn(row: HomeBookChapterRow, userId: number): ChapterTurn {
 
 /**
  * Next Home's books: every chapter in the milestones I belong to, as one row
- * per book and milestone, counted by whose turn it is. Books with my
- * chapters come first, then canonical book order.
+ * per book and milestone, counted by whose turn it is. A milestone with no
+ * chapters yet still lists, as on Legacy Milestones. Books with my chapters
+ * come first, then canonical book order.
  */
 export async function getHomeBookSummaries(
   userId: number,
@@ -1036,34 +1091,52 @@ export async function getHomeBookSummaries(
         pu.project_id,
         p.name AS project_name,
         COALESCE(NULLIF(pu.name, ''), p.name, 'Milestone ' || pu.id) AS milestone_name,
-        tl.lang_name AS target_language_name
-      FROM chapter_assignments ca
-      JOIN books b ON ca.book_id = b.id
-      JOIN project_units pu ON ca.project_unit_id = pu.id
+        tl.lang_name AS target_language_name,
+        EXISTS (
+          SELECT 1
+          FROM bible_texts bt
+          JOIN recordings r ON r.bible_text_id = bt.id
+          WHERE ${BIBLE_TEXTS_MATCH_CA}
+            AND ${RECORDING_IN_ASSIGNMENT_UNIT}
+        ) AS has_recordings,
+        (
+          SELECT COUNT(*)
+          FROM bible_texts bt
+          JOIN recordings r ON r.bible_text_id = bt.id
+          WHERE ${BIBLE_TEXTS_MATCH_CA}
+            AND ${RECORDING_IN_ASSIGNMENT_UNIT}
+            AND r.is_selected = 1
+            AND r.recorded_by_user_id = ?
+            AND r.sync_status NOT IN ('uploaded', 'conflicted')
+        ) AS pending_uploads
+      FROM project_units pu
       JOIN projects p ON pu.project_id = p.id
       JOIN user_projects up ON up.project_id = pu.project_id
+      LEFT JOIN chapter_assignments ca ON ca.project_unit_id = pu.id
+      LEFT JOIN books b ON ca.book_id = b.id
       LEFT JOIN languages tl ON p.target_language_id = tl.id
       WHERE up.user_id = ?
-      ORDER BY b.id, pu.id, ca.chapter_number`,
-      [userId],
+      ORDER BY b.id IS NULL, b.id, pu.id, ca.chapter_number`,
+      [userId, userId],
     );
 
-    const rows = (result?.rows as unknown as HomeBookChapterRow[]) || [];
+    const rows = (result?.rows as unknown as HomeBookRow[]) || [];
     const books = new Map<string, DBTypes.HomeBookSummary>();
     for (const row of rows) {
       const projectUnitId = Number(row.project_unit_id);
-      const bookId = Number(row.book_id);
-      const key = `${projectUnitId}:${bookId}`;
+      const empty = row.id === null;
+      const bookId = empty ? null : Number(row.book_id);
+      const key = `${projectUnitId}:${bookId ?? 'empty'}`;
       const book = books.get(key) ?? {
         key,
         bookId,
-        bookName: row.book_name,
+        bookName: row.book_name ?? row.milestone_name,
         projectId: Number(row.project_id),
         projectUnitId,
         projectName: row.project_name,
         milestoneName: row.milestone_name,
         targetLanguageName: row.target_language_name,
-        firstChapterId: Number(row.id),
+        firstChapterId: empty ? null : Number(row.id),
         mine: 0,
         withOthers: 0,
         open: 0,
@@ -1071,13 +1144,18 @@ export async function getHomeBookSummaries(
         totalChapters: 0,
         recordedChapters: 0,
         checkedChapters: 0,
+        pendingUploads: 0,
       };
+      books.set(key, book);
+      if (row.id === null) continue;
       book[chapterTurn(row, userId)] += 1;
       const stage = getWorkflowStage(row.status);
       book.totalChapters += 1;
-      if (isPastDraft(stage)) book.recordedChapters += 1;
+      if (Number(row.has_recordings) === 1 || isPastDraft(stage)) {
+        book.recordedChapters += 1;
+      }
       if (isPastPeerCheck(stage)) book.checkedChapters += 1;
-      books.set(key, book);
+      book.pendingUploads += Number(row.pending_uploads) || 0;
     }
 
     const all = Array.from(books.values());
@@ -1208,9 +1286,10 @@ export type UnuploadablePendingSummary = {
 };
 
 /**
- * True when this chapter has selected pending takes outside the uploadable
- * verse bucket (e.g. pericope-only until #584). Used to block stage advance
- * (#585) so Peer Check is not entered without server audio.
+ * True when this chapter has selected pending takes the upload worker will
+ * never send: not a verse or pericope take (#584), or without a bible text.
+ * Used to block stage advance (#585) so Peer Check is not entered without
+ * server audio.
  */
 export async function chapterHasUnuploadableSelectedTakes(
   bibleId: number,
@@ -1241,7 +1320,7 @@ export async function chapterHasUnuploadableSelectedTakes(
          AND ${recordedByUserPredicate('r', userId)}
          AND NOT (
            r.bible_text_id > 0
-           AND IFNULL(r.granularity, 'verse') = 'verse'
+           AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
          )
          AND (
            bt.chapter_number = ?

@@ -1,28 +1,69 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
 import {
+  RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_MAX_TAKES,
   RECORD_MAX_VERSE_TAKES,
   RECORD_NO_PERICOPE,
   RECORD_NOT_OPEN,
+  RECORD_OBSERVER,
+  RECORD_OTHERS_OFFICIAL,
   RECORD_PAUSED_TAKE,
   RECORD_RECOVERED_TAKE,
+  RECORD_SOURCE_TEXT_SYNCING,
+  RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
+  RECORD_VERSE_TAKES_HERE,
+  RECORD_VERSE_UNIT,
 } from '../../../../constants/messages';
 import { MAX_RECORDING_TAKES } from '../../../../constants/recordingTakes';
+import { chapterHasUnuploadableSelectedTakes } from '../../../../db/queries';
+import { useChapterConflictStatus } from '../../../../hooks/useChapterConflictStatus';
+import { useDraftingUnit } from '../../../../hooks/useDraftingUnit';
 import { useLiveLevels } from '../../../../hooks/useLiveLevels';
 import { usePendingDelete } from '../../../../hooks/usePendingDelete';
 import type { PassageTake } from '../../../../hooks/usePassage';
 import { useRecordSession } from '../../../../hooks/useRecordSession';
+import { hasProjectObserverGrant } from '../../../../services/userOrgGrants';
 import type { CaptureControls } from '../../../../types/captureControls';
 import { logger } from '../../../../utils/logger';
+import { hasProjectTranslatorGrant } from '../../../../utils/myWorkDraftDownload';
 import type { RecordStatus } from './Footer';
 import type { FrontTake } from './TakeCard';
 import type { RecordKeys } from './PlayerKeys';
 import type { FanTake } from './TakeFan';
-import type { Ready } from './steps';
+import type { Ready } from './ready';
 
 const log = logger.create('useRecorder');
+
+/**
+ * Something about this passage Legacy's Record tab would show as a banner.
+ * `classic`: what it points at is only in classic drafting, so the notice
+ * carries the way there.
+ */
+export interface RecordNotice {
+  id: string;
+  message: string;
+  classic?: boolean;
+}
+
+/**
+ * Observing only: an Observer grant here, no Translator grant, and not this
+ * chapter's drafter or checker. Unknown grants don't block, as elsewhere.
+ */
+function isObserverOnly(
+  assignment: Ready['assignment'],
+  userId: number | null,
+): boolean {
+  const { projectId, assignedUserId, peerCheckerId } = assignment;
+  if (userId === null || projectId === null) return false;
+  if (assignedUserId === userId || peerCheckerId === userId) return false;
+  const id = String(userId);
+  return (
+    hasProjectObserverGrant(id, projectId) &&
+    !hasProjectTranslatorGrant(id, projectId)
+  );
+}
 
 /**
  * Record mode's state for the passage player. Recording works as in Legacy's
@@ -34,6 +75,7 @@ export function useRecorder({
   passage,
   userId,
   showing,
+  downloading,
   onReload,
   onCaptureActiveChange,
   onRegisterCaptureControls,
@@ -42,6 +84,8 @@ export function useRecorder({
   userId: number | null;
   /** The player is open in Record mode; leaving it commits a pending delete. */
   showing: boolean;
+  /** The passage's text is downloading, so recording waits on it. */
+  downloading: boolean;
   /** Re-reads the passage, e.g. after recording claims its chapter. */
   onReload: () => void;
   onCaptureActiveChange?: (active: boolean) => void;
@@ -53,6 +97,9 @@ export function useRecorder({
       ?.verseNumber ??
     passage.verses[0]?.verseNumber ??
     1;
+  // The player records whole passages, so its session is always pericope;
+  // a verse-by-verse setting sends Record to classic drafting instead.
+  const { draftingUnit } = useDraftingUnit();
   const session = useRecordSession({
     chapterData: assignment,
     userId,
@@ -64,6 +111,47 @@ export function useRecorder({
     onRegisterCaptureControls,
   });
   const { verseAudio } = session;
+  const { hasConflict } = useChapterConflictStatus(assignment.id);
+  const observerOnly = isObserverOnly(assignment, userId);
+  const classicReason =
+    draftingUnit !== 'pericope'
+      ? RECORD_VERSE_UNIT
+      : session.pericopeUnavailable
+      ? RECORD_NO_PERICOPE
+      : null;
+
+  // A saved, deleted or newly picked take re-reads the passage, so its recorded state and send line stay current.
+  // Keyed on what changed, so a reload that finds the same takes can't loop.
+  const takesKey = verseAudio.takes
+    .map(t => `${t.id}:${t.isSelected ? 1 : 0}:${t.syncStatus}`)
+    .join(',');
+  const sawTakes = useRef(false);
+  const reloadRef = useRef(onReload);
+  reloadRef.current = onReload;
+  useEffect(() => {
+    if (!sawTakes.current) {
+      sawTakes.current = true;
+      return;
+    }
+    reloadRef.current();
+  }, [takesKey]);
+
+  // Legacy's Record tab warns when a selected take here can't upload (#585).
+  const { bibleId, bookId, chapterNumber } = assignment;
+  const [unuploadable, setUnuploadable] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void chapterHasUnuploadableSelectedTakes(
+      bibleId,
+      bookId,
+      chapterNumber,
+    ).then(found => {
+      if (!cancelled) setUnuploadable(found);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bibleId, bookId, chapterNumber, takesKey]);
   const capturing = session.captureActive;
   const live = verseAudio.state === 'recording';
   const paused = verseAudio.state === 'paused';
@@ -150,6 +238,26 @@ export function useRecorder({
     .sort((a, b) => a.takeNumber - b.takeNumber);
   const nextTakeNumber =
     passageTakes.reduce((n, t) => Math.max(n, t.takeNumber), 0) + 1;
+  // Takes the player can't list: verse by verse, or someone else's official.
+  const hasVerseTakes = verseAudio.takes.some(
+    t => t.granularity !== 'pericope',
+  );
+  const first = passage.verses[0];
+  const last = passage.verses[passage.verses.length - 1];
+  const othersOfficial =
+    first !== undefined &&
+    last !== undefined &&
+    verseAudio.allTakes.some(
+      t =>
+        t.isCanonical &&
+        typeof t.recordedByUserId === 'number' &&
+        t.recordedByUserId !== userId &&
+        t.granularity === 'pericope' &&
+        t.startChapter === first.chapterNumber &&
+        t.startVerse === first.verseNumber &&
+        t.endChapter === last.chapterNumber &&
+        t.endVerse === last.verseNumber,
+    );
   // The new take keeps its tile and wave from Eject until it's saved.
   const held = capturing || verseAudio.state === 'saving';
   const pendingId = deletion.pending?.id ?? null;
@@ -227,9 +335,11 @@ export function useRecorder({
           ? { official: false, onUndo: () => undoDelete() }
           : {
               official: frontTake.id === verseAudio.ownCanonicalTakeId,
-              onToggleOfficial: session.stageLocked
-                ? undefined
-                : () => void verseAudio.setCanonical(frontTake.id),
+              // Someone else's official take isn't taken over unseen.
+              onToggleOfficial:
+                session.stageLocked || othersOfficial
+                  ? undefined
+                  : () => void verseAudio.setCanonical(frontTake.id),
             }),
       }
     : {
@@ -240,28 +350,71 @@ export function useRecorder({
         recording: false,
         official: false,
       };
-  // The player only records whole passages, so no pericope means no recording.
-  const noPericope = session.pericopeUnavailable;
   // A take waiting on undo is deleted first when Record is pressed.
   const atCap =
-    !held && !noPericope && !deletion.pending && !verseAudio.canRecordNewTake;
+    !held &&
+    classicReason === null &&
+    !deletion.pending &&
+    !verseAudio.canRecordNewTake;
+  // Our own download doesn't go through sync, so say it's on its way.
+  const textHint =
+    session.syncingMessage !== null && downloading
+      ? RECORD_SOURCE_TEXT_SYNCING
+      : session.syncingMessage;
+  // Why Record can't start at all, which the hero's Record shows too.
+  const cannotRecord =
+    textHint ??
+    (session.isTaken
+      ? RECORD_TAKEN_CHAPTER_WARNING
+      : session.stageLocked || session.drafterCaptureBlocked
+      ? RECORD_NOT_OPEN
+      : observerOnly
+      ? RECORD_OBSERVER
+      : classicReason);
   const blockedReason = recovered
     ? RECORD_RECOVERED_TAKE
     : paused
     ? RECORD_PAUSED_TAKE
-    : session.syncingMessage ??
-      (session.isTaken
-        ? RECORD_TAKEN_CHAPTER_WARNING
-        : session.stageLocked || session.drafterCaptureBlocked
-        ? RECORD_NOT_OPEN
-        : noPericope
-        ? RECORD_NO_PERICOPE
-        : atCap && session.activeRecordingUnit !== null
+    : cannotRecord ??
+      (atCap && session.activeRecordingUnit !== null
         ? // The cap is per verse, so verse-by-verse takes count too.
           passageTakes.length >= MAX_RECORDING_TAKES
           ? RECORD_MAX_TAKES
           : RECORD_MAX_VERSE_TAKES
         : null);
+
+  const notices: RecordNotice[] = [];
+  if (hasConflict) {
+    notices.push({ id: 'conflict', message: RECORD_AUDIO_CONFLICT_WARNING });
+  } else if (unuploadable) {
+    notices.push({
+      id: 'unuploadable',
+      message: RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
+    });
+  }
+  if (session.isTaken) {
+    notices.push({ id: 'taken', message: RECORD_TAKEN_CHAPTER_WARNING });
+  } else if (session.drafterCaptureBlocked && !session.stageLocked) {
+    notices.push({ id: 'not-open', message: RECORD_NOT_OPEN });
+  } else if (observerOnly) {
+    notices.push({ id: 'observer', message: RECORD_OBSERVER });
+  }
+  if (classicReason !== null && !session.stageLocked) {
+    notices.push({ id: 'classic', message: classicReason, classic: true });
+  } else if (hasVerseTakes) {
+    notices.push({
+      id: 'verse-takes',
+      message: RECORD_VERSE_TAKES_HERE,
+      classic: true,
+    });
+  }
+  if (othersOfficial) {
+    notices.push({
+      id: 'others-official',
+      message: RECORD_OTHERS_OFFICIAL,
+      classic: true,
+    });
+  }
 
   function deleteTake(id: string) {
     const target = passageTakes.find(t => t.id === id);
@@ -337,7 +490,8 @@ export function useRecorder({
       session.stageLocked ||
       session.drafterCaptureBlocked ||
       session.isTaken ||
-      noPericope
+      observerOnly ||
+      classicReason !== null
     ) {
       return;
     }
@@ -389,7 +543,8 @@ export function useRecorder({
     recordDisabled:
       !capturing &&
       (held ||
-        noPericope ||
+        observerOnly ||
+        classicReason !== null ||
         atCap ||
         session.captureDisabled ||
         session.isTaken),
@@ -414,6 +569,10 @@ export function useRecorder({
     },
     footer,
     keys,
+    /** Why Record can't start here; null when it can. */
+    cannotRecord: live || capturing ? null : cannotRecord,
+    /** Legacy's Record-tab banners, for the hero and player. */
+    notices,
     /** Stops a take so Listen's source audio can start alone. */
     pauseTakePlayback: verseAudio.pausePlayback,
     discardCapture: verseAudio.discardCapture,

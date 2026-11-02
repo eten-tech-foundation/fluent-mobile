@@ -1,7 +1,6 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { hrefs } from '../../navigation/hrefs';
-import { getChapterAssignmentById } from '../../db/queries';
+import { resolveRecoveryHref } from '../../navigation/recoveryHref';
 import { useWindowDimensions, type ColorValue } from 'react-native';
 import { Drawer, type DrawerContentComponentProps } from 'expo-router/drawer';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
@@ -14,7 +13,7 @@ import {
   drawerMenuItemStyle,
   useDrawerMenuLabelStyles,
 } from '../../components/ui/UserSettingsMenu';
-import { useTheme } from '../../theme/useTheme';
+import { useTheme, useUiVersion } from '../../theme/useTheme';
 import { logger } from '../../utils/logger';
 
 const log = logger.create('AppDrawerLayout');
@@ -42,30 +41,14 @@ export default function AppDrawerLayout() {
   const drawerLabelStyles = useDrawerMenuLabelStyles();
   const router = useRouter();
 
+  const uiVersion = useUiVersion();
+
   useLaunchRecoveryPrompt({
     onResume: async marker => {
-      const { chapterAssignmentId, verseNumber, sessionKey } = marker;
-      if (
-        typeof chapterAssignmentId !== 'number' ||
-        typeof verseNumber !== 'number'
-      ) {
-        return false;
-      }
       try {
-        const assignment = await getChapterAssignmentById(chapterAssignmentId);
-        if (!assignment) return false;
-        router.navigate(
-          hrefs.verseDetail({
-            chapterId: chapterAssignmentId,
-            chapterName: `${assignment.bookName ?? ''} ${
-              assignment.chapterNumber
-            }`.trim(),
-            projectName: '',
-            language: '',
-            recoverSessionKey: sessionKey,
-            recoverVerse: verseNumber,
-          }),
-        );
+        const href = await resolveRecoveryHref(marker, uiVersion);
+        if (!href) return false;
+        router.navigate(href);
         return true;
       } catch (error) {
         log.warn('Resume navigation failed', { error });
@@ -83,7 +66,8 @@ export default function AppDrawerLayout() {
         headerShown: false,
         drawerType: 'front',
         // Disabled while a take is recording/paused so swipe cannot leave drafting (#568).
-        swipeEnabled: !recordCaptureActive,
+        // Next has no drawer button; its accounts sheet opens from the avatar.
+        swipeEnabled: !recordCaptureActive && uiVersion !== 'next',
         // Drawer draws under the status bar; content pads via DrawerContentScrollView.
         overlayColor: theme.colors.drawerOverlay,
         drawerActiveTintColor: theme.colors.primary,

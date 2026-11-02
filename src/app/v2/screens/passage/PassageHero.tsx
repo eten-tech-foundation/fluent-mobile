@@ -8,12 +8,14 @@ import Animated, {
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated';
+import type { HeaderSync } from '../../../../hooks/useHeaderSync';
 import type { PassageTake, usePassage } from '../../../../hooks/usePassage';
 import { useThemedStyles } from '../../../../theme/useTheme';
 import { HeroActions } from './HeroActions';
 import { HeroHeader } from './HeroHeader';
+import { type Ready } from './ready';
 import { ScriptPager } from './ScriptPager';
-import { type Ready } from './steps';
+import type { RecordNotice } from './useRecorder';
 
 /** Where the hero's pieces sit, worked out by the sheet. */
 export interface HeroLayout {
@@ -26,7 +28,6 @@ export interface HeroLayout {
   scriptTop: readonly [number, number];
   scriptHeight: readonly [number, number];
   actionsTop: number;
-  pageWidth: number;
 }
 
 /**
@@ -41,19 +42,21 @@ export function PassageHero({
   downloadState,
   progress,
   expanded,
-  recordMode,
+  playingVerse,
+  recordBlocked,
+  notices,
   layout,
   openGesture,
   closeGesture,
-  pagerRef,
   scriptRef,
   onHeaderLayout,
   onActionsLayout,
-  onPageChange,
   onOpen,
   onBack,
   onClose,
+  sync,
   onDownload,
+  onOpenClassic,
   onTitlePress,
 }: {
   passage: Ready;
@@ -62,20 +65,24 @@ export function PassageHero({
   downloadState: ReturnType<typeof usePassage>['downloadState'];
   progress: SharedValue<number>;
   expanded: boolean;
-  recordMode: boolean;
+  /** The source verse playing, highlighted in the script. */
+  playingVerse: number | null;
+  /** Why Record can't start here; the hero's Record is off with it. */
+  recordBlocked: string | null;
+  notices: RecordNotice[];
   layout: HeroLayout;
   openGesture: GestureType;
   closeGesture: GestureType;
-  pagerRef: RefObject<ScrollView | null>;
   scriptRef: RefObject<ScrollView | null>;
-  onHeaderLayout: (height: number, width: number) => void;
+  onHeaderLayout: (height: number) => void;
   onActionsLayout: (height: number) => void;
-  onPageChange: (page: number) => void;
   /** Opens the player, on the recorder or the script. */
   onOpen: (record: boolean) => void;
   onBack: () => void;
   onClose: () => void;
+  sync: HeaderSync;
   onDownload: () => void;
+  onOpenClassic?: () => void;
   onTitlePress?: () => void;
 }) {
   const styles = useThemedStyles(t => ({
@@ -95,13 +102,10 @@ export function PassageHero({
           downloadState={downloadState}
           progress={progress}
           expanded={expanded}
-          recordMode={recordMode}
-          pageWidth={layout.pageWidth}
+          playingVerse={playingVerse}
           top={layout.scriptTop}
           height={layout.scriptHeight}
-          pagerRef={pagerRef}
           scriptRef={scriptRef}
-          onPageChange={onPageChange}
           onOpen={() => onOpen(false)}
         />
         <HeroActions
@@ -110,11 +114,14 @@ export function PassageHero({
           downloadState={downloadState}
           progress={progress}
           expanded={expanded}
+          recordBlocked={recordBlocked}
+          notices={notices}
           top={layout.actionsTop}
           onLayout={onActionsLayout}
           onListen={() => onOpen(false)}
           onRecord={() => onOpen(true)}
           onDownload={onDownload}
+          onOpenClassic={onOpenClassic}
         />
         <HeroHeader
           title={title}
@@ -122,9 +129,10 @@ export function PassageHero({
           progress={progress}
           expanded={expanded}
           closeGesture={closeGesture}
-          onLayout={onHeaderLayout}
+          onLayout={height => onHeaderLayout(height)}
           onBack={onBack}
           onClose={onClose}
+          sync={sync}
           onTitlePress={onTitlePress}
         />
       </Animated.View>

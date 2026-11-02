@@ -70,6 +70,35 @@ describe('nextUpStatusLine', () => {
       ),
     ).toBe('Not started · Gospels Phase 1');
   });
+
+  it('says what I am doing on a chapter and what it has to sync', () => {
+    expect(
+      nextUpStatusLine(item('a', {}, { ...MATTHEW_1, listAccess: 'observer' })),
+    ).toBe('Observing · Gospels Phase 1');
+    expect(
+      nextUpStatusLine(
+        item('a', {}, { ...MATTHEW_1, workflowStage: 'peer_check' }),
+      ),
+    ).toBe('Peer check · Gospels Phase 1');
+    expect(
+      nextUpStatusLine(
+        item('a', {}, { ...MATTHEW_1, syncState: 'deviceOnly' }),
+      ),
+    ).toBe('Draft · Gospels Phase 1 · Upload pending');
+    expect(
+      nextUpStatusLine(
+        item(
+          'a',
+          {},
+          {
+            ...MATTHEW_1,
+            syncState: 'deviceOnly',
+            hasConflict: true,
+          },
+        ),
+      ),
+    ).toBe('Draft · Gospels Phase 1 · Sync conflict');
+  });
 });
 
 describe('NextUp', () => {
@@ -77,7 +106,10 @@ describe('NextUp', () => {
     const onOpen = jest.fn();
     const hero = item('birth', { recordedStatus: 'partial' });
     render(
-      <NextUp nextUp={{ status: 'ready', hero, after: [] }} onOpen={onOpen} />,
+      <NextUp
+        nextUp={{ status: 'ready', hero, after: [], checking: [] }}
+        onOpen={onOpen}
+      />,
     );
 
     expect(screen.getByRole('header', { name: 'Next up' })).toBeTruthy();
@@ -99,6 +131,7 @@ describe('NextUp', () => {
           status: 'ready',
           hero: item('chapter:1', { title: null }),
           after: [],
+          checking: [],
         }}
         onOpen={jest.fn()}
       />,
@@ -121,7 +154,12 @@ describe('NextUp', () => {
     });
     render(
       <NextUp
-        nextUp={{ status: 'ready', hero: item('birth'), after: [next] }}
+        nextUp={{
+          status: 'ready',
+          hero: item('birth'),
+          after: [next],
+          checking: [],
+        }}
         onOpen={onOpen}
       />,
     );
@@ -140,7 +178,7 @@ describe('NextUp', () => {
   it('points to the books when nothing is left to record', () => {
     render(
       <NextUp
-        nextUp={{ status: 'ready', hero: null, after: [] }}
+        nextUp={{ status: 'ready', hero: null, after: [], checking: [] }}
         onOpen={jest.fn()}
       />,
     );

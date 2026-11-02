@@ -3,6 +3,7 @@ import {
   getChapterAssignmentById,
   getPericopesForChapter,
   getSelectedTakeCoverages,
+  hasPendingStageAdvance,
 } from '../db/queries';
 import { getProjectPericopeSetId } from '../db/repository';
 import type { ProjectChapter, WorkflowBadgeStage } from '../types/db/types';
@@ -38,6 +39,8 @@ export interface BookPassage {
   submitted: boolean;
   /** Every chapter it's in passed peer check. */
   peerChecked: boolean;
+  /** Its chapter was sent on here and the send hasn't synced; book page only. */
+  waitingToSend?: boolean;
   /** Stable id the cover art is drawn from. */
   seed: string;
   /** The chapter it starts in, so a chapter's covers share a style. */
@@ -221,11 +224,17 @@ export function useBookPassages(
         ]),
       );
       const lists = await Promise.all(
-        chapters.map(c =>
-          loadChapterPassages(c, pericopeSetId, coveragesFor, n =>
-            stages.get(`${c.bookName}:${n}`),
-          ),
-        ),
+        chapters.map(async c => {
+          const [list, waitingToSend] = await Promise.all([
+            loadChapterPassages(c, pericopeSetId, coveragesFor, n =>
+              stages.get(`${c.bookName}:${n}`),
+            ),
+            hasPendingStageAdvance(c.id).catch(() => false),
+          ]);
+          return waitingToSend
+            ? list.map(p => ({ ...p, waitingToSend }))
+            : list;
+        }),
       );
       return {
         byChapter: new Map(chapters.map((c, i) => [c.id, lists[i] ?? []])),

@@ -12,19 +12,25 @@ function peerChecked(book: HomeBookSummary): boolean {
 
 /** Spoken after the meta, since the cover's badge is hidden from TalkBack. */
 export function bookStatus(book: HomeBookSummary): string {
+  if (book.totalChapters === 0) return 'No chapters yet';
   if (peerChecked(book)) return 'Peer checked';
   if (book.recordedChapters === 0) return 'Not recorded yet';
   if (book.recordedChapters === book.totalChapters) return 'Recorded';
   return `${book.recordedChapters} of ${book.totalChapters} chapters recorded`;
 }
 
-/** e.g. "1 yours · 2 with others · 47 open"; zero counts drop out. */
+/**
+ * e.g. "1 yours · 2 with others · 47 open · 3 to upload"; zero counts drop
+ * out.
+ */
 export function bookCounts(book: HomeBookSummary): string {
+  if (book.totalChapters === 0) return 'No chapters yet';
   const counts: [number, string][] = [
     [book.mine, 'yours'],
     [book.withOthers, 'with others'],
     [book.open, 'open'],
     [book.complete, 'complete'],
+    [book.pendingUploads, 'to upload'],
   ];
   return counts
     .filter(([n]) => n > 0)
@@ -35,6 +41,15 @@ export function bookCounts(book: HomeBookSummary): string {
 /** e.g. "Design team 1st · 1 yours · 2 with others · 47 open". */
 export function bookMeta(book: HomeBookSummary): string {
   return [book.milestoneName, bookCounts(book)].filter(Boolean).join(' · ');
+}
+
+function bookLabel(book: HomeBookSummary): string {
+  if (book.totalChapters === 0) {
+    return `${book.milestoneName}, No chapters yet. Open book page.`;
+  }
+  return `${book.bookName}, ${bookMeta(book)}, ${bookStatus(
+    book,
+  )}. Open book page.`;
 }
 
 /**
@@ -86,9 +101,7 @@ export function Books({
               onPress={() => onOpen(book)}
               android_disableSound
               accessibilityRole="button"
-              accessibilityLabel={`${book.bookName}, ${bookMeta(
-                book,
-              )}, ${bookStatus(book)}. Open book page.`}
+              accessibilityLabel={bookLabel(book)}
               style={({ pressed }) => [styles.book, pressed && styles.pressed]}
               testID={`home-book-${book.key}`}
             >

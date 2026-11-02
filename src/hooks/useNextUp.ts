@@ -25,15 +25,37 @@ export interface NextPassage {
 
 export type NextUp =
   | { status: 'loading' }
-  | { status: 'ready'; hero: NextPassage | null; after: NextPassage[] };
+  | {
+      status: 'ready';
+      hero: NextPassage | null;
+      after: NextPassage[];
+      /** My Work's other rows: peer checks, open peer checks, observing. */
+      checking: NextPassage[];
+    };
+
+function isDrafting(c: MyWorkChapter): boolean {
+  return (
+    c.ownershipState === 'mine' &&
+    (c.workflowStage === 'draft' || c.workflowStage === 'not_started')
+  );
+}
 
 /** Chapters I'm drafting, in book order as they arrive. */
 export function draftingChapters(chapters: MyWorkChapter[]): MyWorkChapter[] {
-  return chapters.filter(
-    c =>
-      c.ownershipState === 'mine' &&
-      (c.workflowStage === 'draft' || c.workflowStage === 'not_started'),
-  );
+  return chapters.filter(isDrafting);
+}
+
+/**
+ * The rest of Legacy My Work, a whole chapter each: what I peer check, open
+ * peer checks a Translator can take, and chapters I observe.
+ */
+export function checkingPassages(chapters: MyWorkChapter[]): NextPassage[] {
+  return chapters
+    .filter(c => !isDrafting(c))
+    .map(chapter => {
+      const passage = wholeChapter(chapter);
+      return { key: `${chapter.id}:${passage.key}`, chapter, passage };
+    });
 }
 
 /** Drafting chapters with something recorded, the one worked on last first. */
@@ -46,7 +68,8 @@ export function startedChapters(chapters: MyWorkChapter[]): MyWorkChapter[] {
 }
 
 /**
- * Home's "Next up": the one passage to record now, then the few after it.
+ * Home's "Next up": the one passage to record now, then the few after it,
+ * then the chapters I'm checking or observing.
  * The hero keeps going on a part-recorded passage in the chapter I worked on
  * last; otherwise it's the first unrecorded passage in book order. The rest
  * are always the first unrecorded passages in book order, so they can come
@@ -72,7 +95,11 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
         after: NextPassage[];
       }) => {
         readyWithDrafts.current = hasDrafts;
-        setNextUp({ status: 'ready', ...result });
+        setNextUp({
+          status: 'ready',
+          ...result,
+          checking: checkingPassages(chapters),
+        });
       };
       const pericopeSets = new Map<number, Promise<number | null>>();
       const coverages = new Map<number, CoveragesFor>();

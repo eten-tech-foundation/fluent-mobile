@@ -43,6 +43,8 @@ export interface SyncStatusButtonProps {
   failedErrorText?: string | null;
   /** Opens the Sync page; the spoken status says so only when it's given. */
   onPress?: () => void;
+  /** Flat on a dark hero, like its Back. */
+  variant?: 'soft' | 'flat';
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -55,11 +57,13 @@ export function SyncStatusButton({
   status,
   failedErrorText,
   onPress,
+  variant,
   style,
   testID,
 }: SyncStatusButtonProps) {
   return (
     <RoundButton
+      variant={variant}
       icon={STATUS_ICONS[status]}
       accessibilityLabel={
         onPress
