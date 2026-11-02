@@ -170,6 +170,15 @@ describe('getMilestonesWithSummary', () => {
     expect(recordingSql).toContain('GROUP BY pu.id');
     expect(recordingSql).toContain('INNER JOIN bible_texts bt_r');
     expect(recordingSql).not.toContain('LEFT JOIN bible_texts');
+    expect(recordingSql).toContain('AND r.is_selected = 1');
+    expect(recordingSql).toContain(
+      'AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)',
+    );
+    expect(recordingSql).toContain('AND r.recorded_by_user_id = ?');
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.stringContaining('FROM recordings r'),
+      [99, 99],
+    );
   });
 
   it('returns [] on error', async () => {
