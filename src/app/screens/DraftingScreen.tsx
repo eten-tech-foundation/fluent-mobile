@@ -42,6 +42,7 @@ import {
   parseRequiredString,
 } from '../../navigation/routeParams';
 import { parseUserId } from '../../utils/parseUserId';
+import type { DraftPlaybackControls } from '../../types/draftPlaybackControls';
 
 const log = logger.create('DraftingScreen');
 
@@ -77,12 +78,22 @@ export default function DraftingScreen() {
     recoverSessionKey ? 'record' : getLastActiveTab(chapterId) ?? 'bible',
   );
   const bibleTextEnsureForChapterRef = useRef<number | null>(null);
+  const stopDraftPlaybackRef = useRef<() => Promise<void>>(async () => {});
+  const registerDraftPlayback = useCallback(
+    (controls: DraftPlaybackControls | null) => {
+      stopDraftPlaybackRef.current = controls?.stopPlayback ?? (async () => {});
+    },
+    [],
+  );
+  const haltDraftPlayback = useCallback(() => {
+    void stopDraftPlaybackRef.current();
+  }, []);
   const {
     recordCaptureActive,
     onCaptureActiveChange,
     onRegisterCaptureControls,
     alertRecordingInProgress,
-  } = useRecordCaptureLeaveGuard();
+  } = useRecordCaptureLeaveGuard(haltDraftPlayback);
 
   const setActiveTab = useCallback(
     (tab: DraftingTab) => {
@@ -145,12 +156,18 @@ export default function DraftingScreen() {
   // Sync page instead of kicking off a sync directly (per #38 / #149).
   // Sync pushes another route (beforeRemove may not fire) — guard explicitly.
   const handleSyncPress = useCallback(() => {
+    haltDraftPlayback();
     if (recordCaptureActive) {
       alertRecordingInProgress(() => router.push(hrefs.sync));
       return;
     }
     router.push(hrefs.sync);
-  }, [alertRecordingInProgress, router, recordCaptureActive]);
+  }, [
+    alertRecordingInProgress,
+    haltDraftPlayback,
+    router,
+    recordCaptureActive,
+  ]);
 
   const renderHeader = () => (
     <DraftingHeader
@@ -171,6 +188,7 @@ export default function DraftingScreen() {
     <AccountSwitcherPanel
       visible={accountSwitcherVisible}
       onClose={closeAccountSwitcher}
+      onBeforeAddAccount={haltDraftPlayback}
     />
   );
 
@@ -387,6 +405,7 @@ export default function DraftingScreen() {
                   userId={userId}
                   onCaptureActiveChange={onCaptureActiveChange}
                   onRegisterCaptureControls={onRegisterCaptureControls}
+                  onRegisterDraftPlayback={registerDraftPlayback}
                   onChapterClaimed={handleChapterClaimed}
                 />
               </View>

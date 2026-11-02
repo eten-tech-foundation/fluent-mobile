@@ -1134,6 +1134,88 @@ describe('useVerseAudio', () => {
     expect(result.current.state).toBe('recording');
   });
 
+  it('stopPlayback stops the engine and restores the recorded player UI (#866)', async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    await act(async () => {
+      await result.current.playTake(take);
+    });
+    expect(result.current.state).toBe('playing');
+    expect(result.current.playingTakeId).toBe(take.id);
+    expect(result.current.loadedTakeId).toBe(take.id);
+
+    mockPlaybackStop.mockClear();
+    await act(async () => {
+      await result.current.stopPlayback();
+    });
+
+    expect(mockPlaybackStop).toHaveBeenCalled();
+    expect(result.current.state).toBe('recorded');
+    expect(result.current.playingTakeId).toBeNull();
+    expect(result.current.loadedTakeId).toBeNull();
+  });
+
+  it('ignores a late playTake after stopPlayback (#866)', async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+    let releaseFileCheck: (exists: boolean) => void = () => {};
+    mockFileExists.mockImplementationOnce(
+      () =>
+        new Promise<boolean>(resolve => {
+          releaseFileCheck = resolve;
+        }),
+    );
+
+    const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    let playTakeDone: Promise<void> = Promise.resolve();
+    await act(async () => {
+      playTakeDone = result.current.playTake(take);
+    });
+    await waitFor(() => expect(mockFileExists).toHaveBeenCalled());
+
+    await act(async () => {
+      await result.current.stopPlayback();
+    });
+    await act(async () => {
+      releaseFileCheck(true);
+      await playTakeDone;
+    });
+
+    expect(mockPlaybackPlay).not.toHaveBeenCalled();
+    expect(mockPlaybackResume).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('recorded');
+    expect(result.current.playingTakeId).toBeNull();
+    expect(result.current.loadedTakeId).toBeNull();
+
+    await act(async () => {
+      await result.current.playTake(take);
+    });
+    expect(mockPlaybackPlay).toHaveBeenCalledWith(take.localFilePath);
+    expect(result.current.state).toBe('playing');
+    expect(result.current.playingTakeId).toBe(take.id);
+  });
+
+  it('stops the playback engine when the hook unmounts (#866)', async () => {
+    const take = makeTake();
+    loadTakes.mockResolvedValue([take]);
+    const { result, unmount } = renderHook(() =>
+      useVerseAudio(verseAudioArgs()),
+    );
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+    await act(async () => {
+      await result.current.playTake(take);
+    });
+    mockPlaybackStop.mockClear();
+    unmount();
+    expect(mockPlaybackStop).toHaveBeenCalled();
+  });
+
   it('pausePlayback is a no-op when draft is not playing', async () => {
     const take = makeTake();
     loadTakes.mockResolvedValue([take]);

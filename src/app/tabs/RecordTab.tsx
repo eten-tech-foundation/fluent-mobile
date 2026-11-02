@@ -67,6 +67,7 @@ import {
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
 import type { CaptureControls } from '../../types/captureControls';
+import type { DraftPlaybackControls } from '../../types/draftPlaybackControls';
 import type { PericopeGroupResult } from '../../db/queries';
 import { ChapterAssignmentData } from '../../types/db/types';
 import { type VerseRunItem } from '../../components/ui/VerseRun';
@@ -137,6 +138,8 @@ type RecordTabProps = {
    * switch — not just the verse chevrons handled here.
    */
   onRegisterCaptureControls?: (controls: CaptureControls | null) => void;
+  /** Always registered while mounted so Drafting can stop review audio on Back. */
+  onRegisterDraftPlayback?: (controls: DraftPlaybackControls | null) => void;
   onChapterClaimed?: () => void;
 };
 
@@ -155,6 +158,7 @@ export function RecordTab({
   userId,
   onCaptureActiveChange,
   onRegisterCaptureControls,
+  onRegisterDraftPlayback,
   onChapterClaimed,
 }: RecordTabProps) {
   const router = useRouter();
@@ -468,6 +472,23 @@ export function RecordTab({
     pericopeSetId,
     verseAudio.state,
   ]);
+
+  const draftPlaybackActionsRef = useRef({
+    stopPlayback: verseAudio.stopPlayback,
+  });
+  draftPlaybackActionsRef.current = {
+    stopPlayback: verseAudio.stopPlayback,
+  };
+  const draftPlaybackControls = useMemo<DraftPlaybackControls>(
+    () => ({
+      stopPlayback: () => draftPlaybackActionsRef.current.stopPlayback(),
+    }),
+    [],
+  );
+  useEffect(() => {
+    onRegisterDraftPlayback?.(draftPlaybackControls);
+    return () => onRegisterDraftPlayback?.(null);
+  }, [draftPlaybackControls, onRegisterDraftPlayback]);
 
   /**
    * Pericope take in Verse mode (#623): always confirm — delete removes the

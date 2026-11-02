@@ -17,7 +17,7 @@ import type { CaptureControls } from '../types/captureControls';
  * screen. While a take is recording, paused, recovered or saving, drawer and
  * account exits see the shared gate, and removing this route prompts first.
  */
-export function useRecordCaptureLeaveGuard() {
+export function useRecordCaptureLeaveGuard(onBeforeRemove?: () => void) {
   const router = useRouter();
   const navigation = useNavigation();
   const [recordCaptureActive, setRecordCaptureActive] = useState(false);
@@ -92,6 +92,7 @@ export function useRecordCaptureLeaveGuard() {
 
   useEffect(() => {
     return navigation.addListener('beforeRemove', e => {
+      onBeforeRemove?.();
       if (discardPendingBeforeRemove.current) {
         e.preventDefault();
         return;
@@ -106,7 +107,13 @@ export function useRecordCaptureLeaveGuard() {
       e.preventDefault();
       alertRecordingInProgress(() => router.back());
     });
-  }, [alertRecordingInProgress, navigation, recordCaptureActive, router]);
+  }, [
+    alertRecordingInProgress,
+    navigation,
+    onBeforeRemove,
+    recordCaptureActive,
+    router,
+  ]);
 
   const guardAction = useCallback(
     (action: () => void) => {
