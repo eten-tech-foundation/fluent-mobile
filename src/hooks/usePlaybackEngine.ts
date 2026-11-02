@@ -92,6 +92,13 @@ export function usePlaybackEngine(): UsePlaybackEngineApi {
 
   useEffect(() => {
     return () => {
+      // `remove()` alone can leave Android audio running after Drafting
+      // remounts a new player (#866). Pause first so Back actually stops.
+      try {
+        player.pause();
+      } catch {
+        // Native teardown must not throw during unmount.
+      }
       player.remove?.();
     };
   }, [player]);

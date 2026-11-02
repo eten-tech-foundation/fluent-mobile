@@ -56,6 +56,7 @@ import {
 } from '../../constants/messages';
 import { parseUserId } from '../../utils/parseUserId';
 import type { CaptureControls } from '../../types/captureControls';
+import type { DraftPlaybackControls } from '../../types/draftPlaybackControls';
 
 const CAPTURE_LEAVE_ALERT_BUTTONS = (
   discard: () => void,
@@ -110,6 +111,16 @@ export default function DraftingScreen() {
   /** #49: Resume/Discard controls for the in-progress capture, when active. */
   const [captureControls, setCaptureControls] =
     useState<CaptureControls | null>(null);
+  const stopDraftPlaybackRef = useRef<() => Promise<void>>(async () => {});
+  const registerDraftPlayback = useCallback(
+    (controls: DraftPlaybackControls | null) => {
+      stopDraftPlaybackRef.current = controls?.stopPlayback ?? (async () => {});
+    },
+    [],
+  );
+  const haltDraftPlayback = useCallback(() => {
+    void stopDraftPlaybackRef.current();
+  }, []);
   const bibleTextEnsureForChapterRef = useRef<number | null>(null);
 
   const setActiveTab = useCallback(
@@ -213,9 +224,18 @@ export default function DraftingScreen() {
     }
   }, [recoverSessionKey]);
 
+  useEffect(() => {
+    return () => {
+      haltDraftPlayback();
+    };
+  }, [haltDraftPlayback]);
+
   // Block header back, Android system back, and any other pop while capturing.
+  // Always halt draft review playback on leave (#866); capture prompt still
+  // wins when a take is in progress.
   useEffect(() => {
     return navigation.addListener('beforeRemove', e => {
+      haltDraftPlayback();
       if (discardPendingBeforeRemove.current) {
         e.preventDefault();
         return;
@@ -230,7 +250,13 @@ export default function DraftingScreen() {
       e.preventDefault();
       alertRecordingInProgress(() => router.back());
     });
-  }, [alertRecordingInProgress, navigation, recordCaptureActive, router]);
+  }, [
+    alertRecordingInProgress,
+    haltDraftPlayback,
+    navigation,
+    recordCaptureActive,
+    router,
+  ]);
 
   // Automatic uploads wait while this screen is in use. Bible, Resources, and
   // Record share the screen, so a tab change does not release the hold.
@@ -290,12 +316,18 @@ export default function DraftingScreen() {
   // Sync page instead of kicking off a sync directly (per #38 / #149).
   // Sync pushes another route (beforeRemove may not fire) — guard explicitly.
   const handleSyncPress = useCallback(() => {
+    haltDraftPlayback();
     if (recordCaptureActive) {
       alertRecordingInProgress(() => router.push(hrefs.sync));
       return;
     }
     router.push(hrefs.sync);
-  }, [alertRecordingInProgress, router, recordCaptureActive]);
+  }, [
+    alertRecordingInProgress,
+    haltDraftPlayback,
+    router,
+    recordCaptureActive,
+  ]);
 
   const renderHeader = () => (
     <DraftingHeader
@@ -316,6 +348,7 @@ export default function DraftingScreen() {
     <AccountSwitcherPanel
       visible={accountSwitcherVisible}
       onClose={closeAccountSwitcher}
+      onBeforeAddAccount={haltDraftPlayback}
     />
   );
 
@@ -551,6 +584,7 @@ export default function DraftingScreen() {
                   userId={userId}
                   onCaptureActiveChange={setRecordCaptureActive}
                   onRegisterCaptureControls={setCaptureControls}
+                  onRegisterDraftPlayback={registerDraftPlayback}
                   onChapterClaimed={handleChapterClaimed}
                 />
               </View>

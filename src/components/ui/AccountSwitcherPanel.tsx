@@ -26,11 +26,18 @@ const log = logger.create('AccountSwitcherPanel');
 interface AccountSwitcherPanelProps {
   visible: boolean;
   onClose: () => void;
+  /**
+   * Fired before pushing Add Account. Drafting stays mounted under that
+   * stack screen, so callers must halt review audio here (#866) — the same
+   * hole as Sync (`beforeRemove` may not fire on push).
+   */
+  onBeforeAddAccount?: () => void;
 }
 
 export function AccountSwitcherPanel({
   visible,
   onClose,
+  onBeforeAddAccount,
 }: AccountSwitcherPanelProps) {
   const router = useRouter();
   const theme = useTheme();
@@ -49,9 +56,10 @@ export function AccountSwitcherPanel({
   );
 
   const handleOpenAddAccount = useCallback(() => {
+    onBeforeAddAccount?.();
     onClose();
     router.push(hrefs.addUser);
-  }, [router, onClose]);
+  }, [onBeforeAddAccount, onClose, router]);
 
   const handleSwitchAccount = useCallback(
     async (userId: string) => {
