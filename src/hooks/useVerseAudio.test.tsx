@@ -1041,9 +1041,18 @@ describe('useVerseAudio', () => {
       await playTakeDone;
     });
 
+    expect(mockPlaybackPlay).not.toHaveBeenCalled();
+    expect(mockPlaybackResume).not.toHaveBeenCalled();
     expect(result.current.state).toBe('recorded');
     expect(result.current.playingTakeId).toBeNull();
     expect(result.current.loadedTakeId).toBeNull();
+
+    await act(async () => {
+      await result.current.playTake(take);
+    });
+    expect(mockPlaybackPlay).toHaveBeenCalledWith(take.localFilePath);
+    expect(result.current.state).toBe('playing');
+    expect(result.current.playingTakeId).toBe(take.id);
   });
 
   it('stops the playback engine when the hook unmounts (#866)', async () => {

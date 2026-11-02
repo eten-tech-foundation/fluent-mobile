@@ -224,12 +224,6 @@ export default function DraftingScreen() {
     }
   }, [recoverSessionKey]);
 
-  useEffect(() => {
-    return () => {
-      haltDraftPlayback();
-    };
-  }, [haltDraftPlayback]);
-
   // Block header back, Android system back, and any other pop while capturing.
   // Always halt draft review playback on leave (#866); capture prompt still
   // wins when a take is in progress.
