@@ -33,6 +33,11 @@ let capturedRecordTabHandlers: {
   onRegisterCaptureControls?: (
     controls: import('../../types/captureControls').CaptureControls | null,
   ) => void;
+  onRegisterDraftPlayback?: (
+    controls:
+      | import('../../types/draftPlaybackControls').DraftPlaybackControls
+      | null,
+  ) => void;
 } | null = null;
 let capturedHeaderHandlers: {
   onSyncPress?: () => void;
@@ -44,6 +49,7 @@ let capturedTabBarHandlers: {
 
 const mockResume = jest.fn().mockResolvedValue(undefined);
 const mockDiscard = jest.fn().mockResolvedValue(undefined);
+const mockStopPlayback = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../../services/uploadOrchestrator', () => ({
   setDraftingUploadHold: (...args: unknown[]) =>
@@ -158,18 +164,28 @@ jest.mock('../tabs/RecordTab', () => {
       onChapterClaimed,
       onCaptureActiveChange,
       onRegisterCaptureControls,
+      onRegisterDraftPlayback,
     }: {
       onChapterClaimed?: () => void;
       onCaptureActiveChange?: (active: boolean) => void;
       onRegisterCaptureControls?: (
         controls: import('../../types/captureControls').CaptureControls | null,
       ) => void;
+      onRegisterDraftPlayback?: (
+        controls:
+          | import('../../types/draftPlaybackControls').DraftPlaybackControls
+          | null,
+      ) => void;
     }) => {
       capturedOnChapterClaimed = onChapterClaimed;
       capturedRecordTabHandlers = {
         onCaptureActiveChange,
         onRegisterCaptureControls,
+        onRegisterDraftPlayback,
       };
+      onRegisterDraftPlayback?.({
+        stopPlayback: mockStopPlayback,
+      });
       return MockReact.createElement(
         View,
         null,
@@ -509,6 +525,44 @@ describe('DraftingScreen onChapterClaimed', () => {
       expect(Alert.alert).not.toHaveBeenCalled();
       expect(setLastActiveTab).toHaveBeenCalledWith(5, 'bible');
       expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+    });
+  });
+
+  describe('draft playback halt on leave (#866)', () => {
+    function lastBeforeRemove(): BeforeRemoveListener {
+      const calls = mockAddListener.mock.calls.filter(
+        call => call[0] === 'beforeRemove',
+      );
+      expect(calls.length).toBeGreaterThan(0);
+      return calls[calls.length - 1][1];
+    }
+
+    async function renderDrafting() {
+      render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
+      });
+    }
+
+    it('stops draft playback on header or system Back', async () => {
+      await renderDrafting();
+      lastBeforeRemove()({ preventDefault: jest.fn() });
+      expect(mockStopPlayback).toHaveBeenCalled();
+    });
+
+    it('stops draft playback when opening Sync (beforeRemove may not fire)', async () => {
+      await renderDrafting();
+      capturedHeaderHandlers?.onSyncPress?.();
+      expect(mockStopPlayback).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+    });
+
+    it('does not stop draft playback when switching to Bible or Resources', async () => {
+      await renderDrafting();
+      mockStopPlayback.mockClear();
+      capturedTabBarHandlers?.onTabChange?.('bible');
+      capturedTabBarHandlers?.onTabChange?.('resources');
+      expect(mockStopPlayback).not.toHaveBeenCalled();
     });
   });
 
