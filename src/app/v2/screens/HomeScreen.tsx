@@ -196,6 +196,8 @@ function HomeBody({
     if (isFocused) syncPushLockRef.current = false;
   }, [isFocused]);
 
+  // Home already watches sync for the empty state, so the cloud keeps this
+  // lock instead of a second useHeaderSync subscription.
   const openSync = useCallback(() => {
     if (syncPushLockRef.current) return;
     syncPushLockRef.current = true;
