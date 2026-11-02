@@ -36,9 +36,12 @@ import {
 import * as syncEvents from './syncEvents';
 import { getDatabase } from '../db/db';
 import {
+  getBibleTextAbsencesForBible,
   getChaptersToSync,
   getRecordingLinkedChaptersToSync,
+  clearBibleTextAbsences,
   insertBibleTexts,
+  recordBibleTextAbsences,
   insertChapterAssignmentSyncData,
   insertMasterData,
   insertProjects,
@@ -181,6 +184,9 @@ jest.mock('../db/repository', () => ({
     skipped: [],
   }),
   insertBibleTexts: jest.fn().mockResolvedValue(undefined),
+  recordBibleTextAbsences: jest.fn().mockResolvedValue(undefined),
+  clearBibleTextAbsences: jest.fn().mockResolvedValue(undefined),
+  getBibleTextAbsencesForBible: jest.fn().mockResolvedValue([]),
   getChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getMyWorkChaptersToSync: jest.fn().mockResolvedValue(new Map()),
   getRecordingLinkedChaptersToSync: jest.fn().mockResolvedValue(new Map()),
@@ -217,6 +223,11 @@ const insertChapterAssignmentSyncDataMock = jest.mocked(
   insertChapterAssignmentSyncData,
 );
 const insertBibleTextsMock = jest.mocked(insertBibleTexts);
+const recordBibleTextAbsencesMock = jest.mocked(recordBibleTextAbsences);
+const clearBibleTextAbsencesMock = jest.mocked(clearBibleTextAbsences);
+const getBibleTextAbsencesForBibleMock = jest.mocked(
+  getBibleTextAbsencesForBible,
+);
 const getChaptersToSyncMock = jest.mocked(getChaptersToSync);
 const getRecordingLinkedChaptersToSyncMock = jest.mocked(
   getRecordingLinkedChaptersToSync,
@@ -1794,7 +1805,7 @@ describe('sync step orchestration', () => {
       }
     });
 
-    it('records all-empty full-fetch 404 as missing chapters and fails the step', async () => {
+    it('records an all-empty full-fetch 404 as absent without failing the step', async () => {
       mockDbCount(0);
       getChaptersToSyncMock.mockResolvedValue(
         new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
@@ -1803,20 +1814,20 @@ describe('sync step orchestration', () => {
         new ApiError(404, 'Bible texts not found'),
       );
 
-      await expect(syncBibleTexts()).rejects.toThrow(
-        /Missing bible text chapter\(s\):/i,
-      );
+      await expect(syncBibleTexts()).resolves.toBeUndefined();
 
       expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
       expect(insertBibleTextsMock).not.toHaveBeenCalled();
-      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
-      expect(setSyncErrorMock).toHaveBeenCalledWith(
+      expect(recordBibleTextAbsencesMock).toHaveBeenCalledWith([
+        { bibleId: 10, bookId: 1, chapterNumber: 1 },
+      ]);
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
         'sync_error_bible_texts',
-        expect.stringMatching(/Missing bible text chapter\(s\):.*404/i),
+        expect.anything(),
       );
     });
 
-    it('fails empty full-fetch when #177 drops cursor despite updatedAfter (remap off)', async () => {
+    it('records a chapter absent from a full-fetch response rather than failing', async () => {
       mockDbCount(0);
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
       getChaptersToSyncMock.mockResolvedValue(
@@ -1824,22 +1835,71 @@ describe('sync step orchestration', () => {
       );
       (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
 
-      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).rejects.toThrow(
-        /Missing bible text chapter\(s\):/i,
-      );
+      await expect(
+        syncBibleTexts('2026-01-01T00:00:00.000Z'),
+      ).resolves.toBeUndefined();
 
       expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
         10,
         [{ bookId: 1, chapterNumber: 1 }],
         undefined,
       );
-      expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
+      expect(recordBibleTextAbsencesMock).toHaveBeenCalledWith([
+        { bibleId: 10, bookId: 1, chapterNumber: 1 },
+      ]);
+      expect(setSyncErrorMock).not.toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.anything(),
+      );
+    });
+
+    it('still fails when a chapter whose verses are already here comes back empty', async () => {
+      // #177 regression guard: local verses disappearing is a real failure.
+      mockDbCount(1);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
+
+      await expect(syncBibleTexts()).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(recordBibleTextAbsencesMock).not.toHaveBeenCalled();
       expect(setSyncErrorMock).toHaveBeenCalledWith(
         'sync_error_bible_texts',
         expect.stringMatching(
           /Missing bible text chapter\(s\):.*absent from full-fetch response/i,
         ),
       );
+    });
+
+    it('clears a recorded absence once the chapter returns verses', async () => {
+      mockDbCount(0);
+      isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
+      getBibleTextAbsencesForBibleMock.mockResolvedValue([
+        { bookId: 1, chapterNumber: 1 },
+      ]);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            bookId: 1,
+            chapterNumber: 1,
+            verses: [{ id: 11, verseNumber: 1, text: 'In the beginning' }],
+          },
+        ],
+      });
+
+      await expect(syncBibleTexts()).resolves.toBeUndefined();
+
+      expect(clearBibleTextAbsencesMock).toHaveBeenCalledWith([
+        { bibleId: 10, bookId: 1, chapterNumber: 1 },
+      ]);
+      expect(recordBibleTextAbsencesMock).not.toHaveBeenCalled();
     });
 
     it('isolates #177 full-fetch 404 across bible groups (remap off + updatedAfter)', async () => {
@@ -1868,9 +1928,9 @@ describe('sync step orchestration', () => {
         },
       );
 
-      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).rejects.toThrow(
-        /Missing bible text chapter\(s\):/i,
-      );
+      await expect(
+        syncBibleTexts('2026-01-01T00:00:00.000Z'),
+      ).resolves.toBeUndefined();
 
       expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
         10,
@@ -1890,10 +1950,9 @@ describe('sync step orchestration', () => {
           verses: [expect.objectContaining({ id: 2001 })],
         }),
       ]);
-      expect(setSyncErrorMock).toHaveBeenCalledWith(
-        'sync_error_bible_texts',
-        expect.stringMatching(/Missing bible text chapter\(s\):.*404/i),
-      );
+      expect(recordBibleTextAbsencesMock).toHaveBeenCalledWith([
+        { bibleId: 10, bookId: 1, chapterNumber: 1 },
+      ]);
       expect(setSyncErrorMock).not.toHaveBeenCalledWith(
         'sync_error_prepare_offline_bible_texts',
         expect.anything(),
@@ -2038,7 +2097,9 @@ describe('sync step orchestration', () => {
     });
 
     it('does not clear remap or sync error when missing chapters fail the step', async () => {
-      mockDbCount(0);
+      // Local verses present, so the empty response is a regression, not an
+      // absence — the step must still fail.
+      mockDbCount(1);
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
       getChaptersToSyncMock.mockResolvedValue(
         new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
@@ -2065,7 +2126,7 @@ describe('sync step orchestration', () => {
       }
     });
 
-    it('treats full-fetch chapter with empty verses as missing', async () => {
+    it('treats a full-fetch chapter with empty verses as absent when none are local', async () => {
       mockDbCount(0);
       isBibleTextsServerIdRemapPendingMock.mockReturnValue(true);
       getChaptersToSyncMock.mockResolvedValue(
@@ -2082,21 +2143,38 @@ describe('sync step orchestration', () => {
       });
 
       try {
-        await expect(syncBibleTexts()).rejects.toThrow(
-          /Missing bible text chapter\(s\):/i,
-        );
+        await expect(syncBibleTexts()).resolves.toBeUndefined();
 
         expect(insertBibleTextsMock).toHaveBeenCalledWith([]);
-        expect(clearBibleTextsServerIdRemapPendingMock).not.toHaveBeenCalled();
-        expect(setSyncErrorMock).toHaveBeenCalledWith(
-          'sync_error_bible_texts',
-          expect.stringMatching(
-            /Missing bible text chapter\(s\):.*empty verses/i,
-          ),
-        );
+        expect(recordBibleTextAbsencesMock).toHaveBeenCalledWith([
+          { bibleId: 10, bookId: 1, chapterNumber: 1 },
+        ]);
+        // Absences no longer block the remap clear.
+        expect(clearBibleTextsServerIdRemapPendingMock).toHaveBeenCalled();
       } finally {
         isBibleTextsServerIdRemapPendingMock.mockReturnValue(false);
       }
+    });
+
+    it('fails on empty verses for a chapter whose verses are already local', async () => {
+      mockDbCount(2);
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+        data: [{ bookId: 1, chapterNumber: 1, verses: [] }],
+      });
+
+      await expect(syncBibleTexts()).rejects.toThrow(
+        /Missing bible text chapter\(s\):/i,
+      );
+
+      expect(setSyncErrorMock).toHaveBeenCalledWith(
+        'sync_error_bible_texts',
+        expect.stringMatching(
+          /Missing bible text chapter\(s\):.*empty verses/i,
+        ),
+      );
     });
 
     it('treats incremental empty data as success (no missing-chapter failure)', async () => {
@@ -2509,6 +2587,63 @@ describe('sync step orchestration', () => {
         [{ bookId: 1, chapterNumber: 1 }],
         '2026-01-01T00:00:00.000Z',
       );
+    });
+
+    it('full-fetches only chapters with no local verses and keeps the cursor for the rest', async () => {
+      (getDatabase as jest.Mock).mockReturnValue({
+        execute: jest.fn(async (sql: string, params?: unknown[]) => {
+          if (sql.includes('COUNT(DISTINCT bible_id)')) {
+            return { rows: [{ count: 1 }] };
+          }
+          const chapterNumber = params?.[2];
+          return { rows: [{ count: chapterNumber === 2 ? 0 : 8 }] };
+        }),
+      });
+      getChaptersToSyncMock.mockResolvedValue(
+        new Map([
+          [
+            10,
+            [
+              { bookId: 1, chapterNumber: 1 },
+              { bookId: 1, chapterNumber: 2 },
+            ],
+          ],
+        ]),
+      );
+      (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+        async (
+          _bibleId: number,
+          requested: Array<{ bookId: number; chapterNumber: number }>,
+        ) => ({
+          data: requested.map(chapter => ({
+            bookId: chapter.bookId,
+            chapterNumber: chapter.chapterNumber,
+            verses: [
+              {
+                id: chapter.chapterNumber * 100,
+                verseNumber: 1,
+                text: 'verse',
+              },
+            ],
+          })),
+        }),
+      );
+
+      await syncBibleTexts('2026-01-01T00:00:00.000Z');
+
+      expect(FluentAPI.getBibleTexts).toHaveBeenNthCalledWith(
+        1,
+        10,
+        [{ bookId: 1, chapterNumber: 2 }],
+        undefined,
+      );
+      expect(FluentAPI.getBibleTexts).toHaveBeenNthCalledWith(
+        2,
+        10,
+        [{ bookId: 1, chapterNumber: 1 }],
+        '2026-01-01T00:00:00.000Z',
+      );
+      expect(recordBibleTextAbsencesMock).not.toHaveBeenCalled();
     });
 
     it('records chunks already committed before a retry without changing order', async () => {

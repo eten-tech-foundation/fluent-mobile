@@ -678,6 +678,11 @@ function chapterRowsToBibleGroups(
  * Full-catalogue chapters for bible-text sync: assignments on projects where
  * any eligible known user has `user_projects` membership (not assignee-only).
  * Empty `userIds` returns an empty Map (no unscoped fallback).
+ *
+ * Chapters recorded in `bible_text_absences` are left out so a background pass
+ * stops re-requesting text the bible does not contain. Scoped passes (My Work,
+ * recording-linked, explicit Download, drafting ensure) stay unfiltered, so a
+ * server-side fix is picked up there and clears the absence.
  */
 export async function getChaptersToSync(userIds: number[]) {
   const db = getDatabase();
@@ -695,6 +700,12 @@ export async function getChaptersToSync(userIds: number[]) {
       INNER JOIN project_units pu ON pu.id = ca.project_unit_id
       INNER JOIN user_projects up ON up.project_id = pu.project_id
       WHERE up.user_id IN (${placeholders})
+        AND NOT EXISTS (
+          SELECT 1 FROM bible_text_absences a
+          WHERE a.bible_id = ca.bible_id
+            AND a.book_id = ca.book_id
+            AND a.chapter_number = ca.chapter_number
+        )
       ORDER BY ca.bible_id, ca.book_id, ca.chapter_number
     `,
       userIds,
@@ -757,6 +768,89 @@ export async function getRecordingLinkedChaptersToSync(): Promise<BibleChapterGr
   } catch (error) {
     log.error('Error getting recording-linked chapters to sync:', { error });
     return new Map();
+  }
+}
+
+export interface BibleTextChapterRef {
+  bibleId: number;
+  bookId: number;
+  chapterNumber: number;
+}
+
+/**
+ * Mark chapters the API has no text for, so later catalogue passes stop
+ * re-requesting them and the text sync does not fail over an absence the
+ * bible is simply not expected to cover.
+ */
+export async function recordBibleTextAbsences(
+  chapters: BibleTextChapterRef[],
+): Promise<void> {
+  if (!chapters.length) return;
+  const db = getDatabase();
+  const recordedAt = new Date().toISOString();
+
+  try {
+    await db.transaction(async (tx: Transaction) => {
+      for (const chapter of chapters) {
+        await tx.execute(
+          `INSERT OR REPLACE INTO bible_text_absences
+            (bible_id, book_id, chapter_number, recorded_at)
+           VALUES (?, ?, ?, ?)`,
+          [chapter.bibleId, chapter.bookId, chapter.chapterNumber, recordedAt],
+        );
+      }
+    });
+  } catch (error) {
+    log.error('Error recording bible text absences:', { error });
+    throw error;
+  }
+}
+
+/** Chapters already known absent for one bible, so self-heals stay cheap. */
+export async function getBibleTextAbsencesForBible(
+  bibleId: number,
+): Promise<Array<{ bookId: number; chapterNumber: number }>> {
+  const db = getDatabase();
+
+  try {
+    const result = await db.execute(
+      `SELECT book_id, chapter_number FROM bible_text_absences WHERE bible_id = ?`,
+      [bibleId],
+    );
+    const rows = (result.rows ?? []) as unknown as Array<{
+      book_id: number;
+      chapter_number: number;
+    }>;
+    return rows.map(row => ({
+      bookId: Number(row.book_id),
+      chapterNumber: Number(row.chapter_number),
+    }));
+  } catch (error) {
+    log.error('Error reading bible text absences:', { error, bibleId });
+    return [];
+  }
+}
+
+/** Drop absence rows once a chapter does return verses (server-side fix). */
+export async function clearBibleTextAbsences(
+  chapters: BibleTextChapterRef[],
+): Promise<void> {
+  if (!chapters.length) return;
+  const db = getDatabase();
+
+  try {
+    await db.transaction(async (tx: Transaction) => {
+      for (const chapter of chapters) {
+        await tx.execute(
+          `DELETE FROM bible_text_absences
+           WHERE bible_id = ? AND book_id = ? AND chapter_number = ?`,
+          [chapter.bibleId, chapter.bookId, chapter.chapterNumber],
+        );
+      }
+    });
+  } catch (error) {
+    log.error('Error clearing bible text absences:', { error });
+    throw error;
   }
 }
 

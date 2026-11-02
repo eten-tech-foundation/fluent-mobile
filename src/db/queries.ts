@@ -509,6 +509,48 @@ export async function getChapterAssignmentVerseCount(
   }
 }
 
+/**
+ * Chapters in the user's projects whose verse text is not on the device and
+ * is not already known to be absent from its bible — i.e. text a sync could
+ * still fetch. Drives the "updates available" sync chrome.
+ */
+export async function countChaptersMissingBibleText(
+  userIds: number[],
+): Promise<number> {
+  if (userIds.length === 0) return 0;
+  const db = getDatabase();
+  const placeholders = userIds.map(() => '?').join(',');
+
+  try {
+    const result = await db.execute(
+      `SELECT COUNT(*) AS count FROM (
+         SELECT DISTINCT ca.bible_id, ca.book_id, ca.chapter_number
+         FROM chapter_assignments ca
+         INNER JOIN project_units pu ON pu.id = ca.project_unit_id
+         INNER JOIN user_projects up ON up.project_id = pu.project_id
+         WHERE up.user_id IN (${placeholders})
+           AND NOT EXISTS (
+             SELECT 1 FROM bible_texts bt
+             WHERE bt.bible_id = ca.bible_id
+               AND bt.book_id = ca.book_id
+               AND bt.chapter_number = ca.chapter_number
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM bible_text_absences a
+             WHERE a.bible_id = ca.bible_id
+               AND a.book_id = ca.book_id
+               AND a.chapter_number = ca.chapter_number
+           )
+       )`,
+      userIds,
+    );
+    return Number(result.rows?.[0]?.count) || 0;
+  } catch (error) {
+    log.error('Error counting chapters missing bible text', { error });
+    throw error;
+  }
+}
+
 /** A chapter send still sitting in the local stage-advance queue. */
 export async function hasPendingStageAdvance(
   chapterAssignmentId: number,
