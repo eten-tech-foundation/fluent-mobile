@@ -297,13 +297,16 @@ export async function getProjectsWithSummary(
   }
 }
 
-type MilestoneSummaryRow = {
+type MilestoneSummaryBaseRow = {
   id: number;
   name: string;
   project_id: number;
   project_name: string;
   target_language_name: string;
   milestone_count: number;
+};
+
+type MilestoneSummaryRow = MilestoneSummaryBaseRow & {
   recording_count: number;
   pending_count: number;
 };
@@ -325,51 +328,97 @@ function mapMilestoneSummaryRow(
   };
 }
 
+/** Milestone list fields for Home — no chapter or recording joins. */
+async function fetchMilestoneSummaryBases(
+  userId: number,
+): Promise<MilestoneSummaryBaseRow[]> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT
+       pu.id,
+       COALESCE(NULLIF(pu.name, ''), p.name, 'Milestone ' || pu.id) AS name,
+       p.id AS project_id,
+       p.name AS project_name,
+       tl.lang_name AS target_language_name,
+       (
+         SELECT COUNT(*)
+         FROM project_units pu2
+         WHERE pu2.project_id = p.id
+       ) AS milestone_count
+     FROM project_units pu
+     INNER JOIN projects p ON p.id = pu.project_id
+     INNER JOIN user_projects up ON up.project_id = p.id
+     LEFT JOIN languages tl ON p.target_language_id = tl.id
+     WHERE up.user_id = ?
+     ORDER BY p.name COLLATE NOCASE, name COLLATE NOCASE;`,
+    [userId],
+  );
+
+  return (result?.rows as unknown as MilestoneSummaryBaseRow[]) || [];
+}
+
+/** Recording sync aggregates per unit — starts from recordings, not all bible_texts. */
+async function fetchMilestoneRecordingCounts(
+  userId: number,
+): Promise<Map<number, ProjectRecordingCounts>> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT
+       pu.id AS id,
+       COUNT(DISTINCT r.id) AS recording_count,
+       COUNT(DISTINCT CASE
+         WHEN r.sync_status NOT IN ('uploaded', 'conflicted') THEN r.id
+       END) AS pending_count
+     FROM recordings r
+     INNER JOIN bible_texts bt_r ON r.bible_text_id = bt_r.id
+     INNER JOIN chapter_assignments ca
+       ON bt_r.bible_id = ca.bible_id
+       AND bt_r.book_id = ca.book_id
+       AND bt_r.chapter_number = ca.chapter_number
+     INNER JOIN project_units pu ON ca.project_unit_id = pu.id
+     INNER JOIN user_projects up ON up.project_id = pu.project_id
+     WHERE up.user_id = ?
+       AND r.is_selected = 1
+       AND ${RECORDING_IN_ASSIGNMENT_UNIT}
+       AND r.recorded_by_user_id = ?
+     GROUP BY pu.id;`,
+    [userId, userId],
+  );
+
+  const counts = new Map<number, ProjectRecordingCounts>();
+  for (const row of (result.rows ?? []) as Array<{
+    id: number;
+    recording_count: number;
+    pending_count: number;
+  }>) {
+    counts.set(row.id, {
+      recording_count: Number(row.recording_count) || 0,
+      pending_count: Number(row.pending_count) || 0,
+    });
+  }
+  return counts;
+}
+
 export async function getMilestonesWithSummary(
   userId: number,
 ): Promise<DBTypes.MilestoneSummary[]> {
   try {
     await ensureUserProjectMembership(userId);
-    const db = getDatabase();
-    const result = await db.execute(
-      `SELECT
-         pu.id,
-         COALESCE(NULLIF(pu.name, ''), p.name, 'Milestone ' || pu.id) AS name,
-         p.id AS project_id,
-         p.name AS project_name,
-         tl.lang_name AS target_language_name,
-         (
-           SELECT COUNT(*)
-           FROM project_units pu2
-           WHERE pu2.project_id = p.id
-         ) AS milestone_count,
-         COUNT(DISTINCT CASE
-           WHEN r.id IS NOT NULL AND r.is_selected = 1 THEN r.id
-         END) AS recording_count,
-         COUNT(DISTINCT CASE
-           WHEN r.id IS NOT NULL AND r.is_selected = 1
-             AND r.sync_status NOT IN ('uploaded', 'conflicted') THEN r.id
-         END) AS pending_count
-       FROM project_units pu
-       INNER JOIN projects p ON p.id = pu.project_id
-       INNER JOIN user_projects up ON up.project_id = p.id
-       LEFT JOIN languages tl ON p.target_language_id = tl.id
-       LEFT JOIN chapter_assignments ca ON ca.project_unit_id = pu.id
-       LEFT JOIN bible_texts bt_r
-         ON bt_r.bible_id = ca.bible_id
-         AND bt_r.book_id = ca.book_id
-         AND bt_r.chapter_number = ca.chapter_number
-       LEFT JOIN recordings r ON r.bible_text_id = bt_r.id
-         AND r.is_selected = 1
-         AND ${RECORDING_IN_ASSIGNMENT_UNIT}
-         AND r.recorded_by_user_id = ?
-       WHERE up.user_id = ?
-       GROUP BY pu.id
-       ORDER BY p.name COLLATE NOCASE, name COLLATE NOCASE;`,
-      [userId, userId],
-    );
 
-    const rows = (result?.rows as unknown as MilestoneSummaryRow[]) || [];
+    const [bases, recordingCounts] = await Promise.all([
+      fetchMilestoneSummaryBases(userId),
+      fetchMilestoneRecordingCounts(userId),
+    ]);
+
+    const rows: MilestoneSummaryRow[] = bases.map(row => {
+      const recordings = recordingCounts.get(row.id);
+      return {
+        ...row,
+        recording_count: recordings?.recording_count ?? 0,
+        pending_count: recordings?.pending_count ?? 0,
+      };
+    });
+
     log.info('Milestones with summary fetched', { count: rows.length });
     return rows.map(mapMilestoneSummaryRow);
   } catch (error) {
