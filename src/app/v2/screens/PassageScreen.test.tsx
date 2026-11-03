@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, BackHandler } from 'react-native';
+import { Alert, BackHandler, StyleSheet } from 'react-native';
 import {
   act,
   fireEvent,
@@ -12,6 +12,7 @@ import {
 import { getAnimatedStyle } from 'react-native-reanimated';
 import PassageScreen from './PassageScreen';
 import { useAccountActions } from '../../../hooks/useAccountActions';
+import type { TranslationNoteItem } from '../../../types/resources/translationNotes';
 import type { Passage, PassageDownload } from '../../../hooks/usePassage';
 import { UNDO_MS } from '../../../hooks/usePendingDelete';
 import { hrefs } from '../../../navigation/hrefs';
@@ -78,6 +79,7 @@ let mockPassage: Passage = { status: 'loading' };
 let mockDownloadState: PassageDownload = 'idle';
 let mockReduceMotion = false;
 let mockFocused = true;
+let mockNotes: TranslationNoteItem[] = [];
 const baseParams = {
   chapterId: '5',
   anchorVerse: '22',
@@ -249,6 +251,17 @@ jest.mock('../../../assets/icons/trash-open.svg', () => {
   return () => MockReact.createElement(View);
 });
 
+jest.mock('../../../hooks/useConnectivity', () => ({
+  useConnectivity: () => ({ isOnline: true, hasResolved: true }),
+}));
+
+jest.mock('../../../hooks/useTranslationNotesForUnit', () => ({
+  useTranslationNotesForUnit: () => ({
+    state: { status: 'ready', notes: mockNotes },
+    retry: jest.fn(),
+  }),
+}));
+
 jest.mock('../../../hooks/usePassage', () => ({
   usePassage: () => ({
     passage: mockPassage,
@@ -375,6 +388,7 @@ describe('PassageScreen', () => {
     mockSource = { ...sourceDefaults };
     mockReduceMotion = false;
     mockFocused = true;
+    mockNotes = [];
     mockDraftingUnit = 'pericope';
     mockConflict = false;
     mockUnuploadable.mockResolvedValue(false);
@@ -537,8 +551,10 @@ describe('PassageScreen', () => {
     act(() => onPlayingVerseChange(23));
 
     expect(
-      screen.getByTestId('passage-script-playing').props.children,
-    ).toContain('Then he took a cup');
+      within(screen.getByTestId('passage-script-playing')).getByText(
+        /Then he took a cup/,
+      ),
+    ).toBeTruthy();
   });
 
   it('plays this chapter from Listen and pauses on the next press', async () => {
@@ -760,6 +776,91 @@ describe('PassageScreen', () => {
         disabled: true,
       });
     }
+  });
+
+  it('opens a translation note from its phrase and steps through the notes', () => {
+    mockNotes = [
+      {
+        id: 'elsewhere',
+        title: 'Mark 14:22',
+        quote: 'a phrase from another translation',
+        body: 'This note quotes another translation.',
+        verse: { chapterNumber: 14, verseNumber: 22 },
+      },
+      {
+        id: 'cup',
+        title: 'Mark 14:23',
+        quote: '"took a cup"',
+        body: '"took a cup"\nThe cup held wine.',
+        verse: { chapterNumber: 14, verseNumber: 23 },
+      },
+    ];
+    mockSource = { ...mockSource, isPlaying: true };
+    jest.useFakeTimers();
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-listen'));
+    // Phrases are drawn once the player stops moving.
+    expect(screen.queryByLabelText('Translation note: took a cup')).toBeNull();
+    settle();
+    expect(mockPauseSource).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByLabelText('Translation note: took a cup'));
+
+    expect(screen.getByText('The cup held wine.')).toBeTruthy();
+    expect(mockPauseSource).toHaveBeenCalled();
+    expect(
+      screen.getByLabelText("This note's audio isn't available yet"),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('passage-key-previous').props.accessibilityState,
+    ).toMatchObject({ disabled: true });
+    fireEvent.press(
+      screen.getByLabelText('Next note: a phrase from another translation'),
+    );
+    expect(screen.getByLabelText('Note 2 of 2')).toBeTruthy();
+
+    // The blue shrinks back before the note goes.
+    fireEvent.press(screen.getByLabelText('Close the note'));
+    expect(screen.getByTestId('passage-note')).toBeTruthy();
+    settle();
+    expect(screen.queryByTestId('passage-note')).toBeNull();
+    expect(screen.getByLabelText('1 more translation note')).toBeTruthy();
+  });
+
+  it("squares a phrase's corners where its words share a line, not across a wrap", () => {
+    mockNotes = [
+      {
+        id: 'cup',
+        title: 'Mark 14:23',
+        quote: 'took a cup',
+        body: 'The cup held wine.',
+        verse: { chapterNumber: 14, verseNumber: 23 },
+      },
+    ];
+    jest.useFakeTimers();
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-listen'));
+    settle();
+    const chip = (j: number) =>
+      StyleSheet.flatten(
+        screen.getByTestId(`passage-note-chip-0-${j}`, hidden).props.style,
+      );
+
+    // "took a" ends one line, "cup" starts the next. Verse numbers are
+    // inline views too.
+    fireEvent(screen.getByTestId('passage-script-text', hidden), 'textLayout', {
+      nativeEvent: {
+        lines: [
+          { text: '\uFFFC While they were eating \uFFFC Then he \uFFFC\uFFFC' },
+          { text: '\uFFFC ' },
+        ],
+      },
+    });
+
+    expect(chip(0).borderTopRightRadius).toBe(0);
+    expect(chip(1).borderTopLeftRadius).toBe(0);
+    expect(chip(1).borderTopRightRadius).not.toBe(0);
+    expect(chip(2).borderTopLeftRadius).not.toBe(0);
   });
 
   it('says when the send is waiting to go up', () => {

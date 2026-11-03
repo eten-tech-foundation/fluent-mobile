@@ -53,6 +53,9 @@ const UserSoundIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/UserSound').UserSoundIcon;
 const WarningIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/Warning').WarningIcon;
+const NotebookIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Notebook').NotebookIcon;
+const XIcon: PhosphorIcon = require('phosphor-react-native/src/icons/X').XIcon;
 const WaveformIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/Waveform').WaveformIcon;
 
@@ -109,6 +112,8 @@ export const UserPlus = weighted(UserPlusIcon, 'regular', 'UserPlus');
 export const UserSound = weighted(UserSoundIcon, 'regular', 'UserSound');
 export const Warning = weighted(WarningIcon, 'regular', 'Warning');
 export const Waveform = weighted(WaveformIcon, 'regular', 'Waveform');
+export const Notebook = weighted(NotebookIcon, 'regular', 'Notebook');
+export const X = weighted(XIcon, 'regular', 'X');
 
 export const PlayFill = weighted(PlayIcon, 'fill', 'PlayFill');
 export const PauseFill = weighted(PauseIcon, 'fill', 'PauseFill');

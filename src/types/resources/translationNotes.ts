@@ -5,4 +5,8 @@ export interface TranslationNoteItem {
   title: string;
   /** Plain-text body with paragraphs/lists flattened for mobile. */
   body: string;
+  /** The phrase the note is about: the block's first line, when short. */
+  quote?: string;
+  /** The verse the note was loaded for. */
+  verse?: { chapterNumber: number; verseNumber: number };
 }

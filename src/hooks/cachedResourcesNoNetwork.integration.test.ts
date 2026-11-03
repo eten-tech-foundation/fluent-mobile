@@ -267,6 +267,8 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
         id: 'tn-api-local-tn-0',
         title: 'Mark 14:2',
         body: 'connecting word\nThis phrase connects the current verse to the previous one.',
+        quote: 'connecting word',
+        verse: { chapterNumber: 14, verseNumber: 2 },
       },
     ]);
     expect(tq.result.current.state.questions).toEqual([

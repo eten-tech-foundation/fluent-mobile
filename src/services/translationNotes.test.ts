@@ -80,6 +80,7 @@ describe('parseTranslationNotesItem', () => {
         id: 'tn-api-12345-0',
         title: 'Mark 14:2',
         body: 'connecting word\nThis phrase connects the current verse to the previous one.',
+        quote: 'connecting word',
       },
     ]);
   });
@@ -182,6 +183,8 @@ describe('loadTranslationNotesForUnit', () => {
         id: 'tn-api-12345-0',
         title: 'Mark 14:2',
         body: 'connecting word\nThis phrase connects the current verse to the previous one.',
+        quote: 'connecting word',
+        verse: { chapterNumber: 14, verseNumber: 2 },
       },
     ]);
 
@@ -246,6 +249,8 @@ describe('loadTranslationNotesForUnit', () => {
           id: 'tn-api-42-7-tn-mrk-14-2-0',
           title: 'Mark 14:2',
           body: 'connecting word\nThis phrase connects the current verse to the previous one.',
+          quote: 'connecting word',
+          verse: { chapterNumber: 14, verseNumber: 2 },
         },
       ]);
       expect(getTranslationNotes).not.toHaveBeenCalled();
@@ -269,6 +274,8 @@ describe('loadTranslationNotesForUnit', () => {
           id: 'tn-api-12345-0',
           title: 'Mark 14:2',
           body: 'connecting word\nThis phrase connects the current verse to the previous one.',
+          quote: 'connecting word',
+          verse: { chapterNumber: 14, verseNumber: 2 },
         },
       ]);
       expect(getTranslationNotes).toHaveBeenCalledTimes(1);
@@ -311,6 +318,8 @@ describe('loadTranslationNotesForUnit', () => {
           id: 'tn-api-12345-0',
           title: 'Mark 14:2',
           body: 'connecting word\nThis phrase connects the current verse to the previous one.',
+          quote: 'connecting word',
+          verse: { chapterNumber: 14, verseNumber: 2 },
         },
       ]);
       expect(getTranslationNotes).toHaveBeenCalledTimes(1);

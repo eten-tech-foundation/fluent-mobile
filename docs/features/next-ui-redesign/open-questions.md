@@ -99,6 +99,28 @@ The token-level detail is in the
 - **Q19 · What "Understanding" shows** *(product)*. The player's
   Understanding variant shows notes. Translation notes are wired today; is
   that the content, or Aquifer Guide content?
+  #873 builds it from translation notes: a note's phrase is found in its
+  verse (exactly, or by the longest run of at least 3 of its words that
+  covers 60% of the quote, since notes can quote another translation) and
+  shows as a Phrase chip. Notes that don't place follow in the note pager
+  and open from "N more notes" at the end of the script. Note audio is
+  missing (DES-2989), so the note screen has no waveform or Play yet.
+- **Q31 · How many translation notes a passage shows** *(product + API)*.
+  unfoldingWord's notes are dense: Matthew 1:1–17 has 44 over 17 verses,
+  including about 14 whole-verse notes (one per "X fathered Y" verse), about
+  12 on names, several on overlapping phrases ("The book", "The book of the
+  genealogy", "…of Jesus Christ") and a few exact repeats. They quote the
+  ULT, so where the source text reads differently ("was the father of",
+  "Ram", "Asa") they have no phrase to sit on and only open from "N more
+  notes" (#873). Options, none built:
+  1. Merge notes with the same quote in the same verse into one page.
+  2. Show whole-verse notes once as an "about this verse" note, not as chips.
+  3. Pair the source text with the notes' translation: a ULT source text, or
+     word alignment from the API, so notes place on the right words.
+  Meanwhile phrases rest as a quiet Note style (fg/primary text in a
+  stroke/2 accent/primary outline) and only the note last read stays a blue
+  Phrase chip, since Genesis 1:1–2:3's 188 notes turned most of its script
+  blue. Note isn't a Word style in Figma yet; it needs adding there.
 
 ### Review
 
@@ -143,7 +165,8 @@ translator hears them all last.
   undo card and the bin also use raw
   colors in Figma (2557-1257, 2557-1092); code maps them to
   `surface/sunken`, `border/highlight`, `surface/inverse` and `accent/record`,
-  and the bin's lighter dashed ring to `fg/on-accent` at 40%.
+  and the bin's lighter dashed ring to `fg/on-accent` at 40%. The note screen's reveal adds a 380ms open, a
+  300ms close and a 12pt rise for its content (#873).
 - **Q28 · Which chapter you're in** *(design + product)*. Split from Q27.
   In verse mode, do Previous / Next stop at a chapter's last verse or cross
   into the next chapter (another assignment)? And where should the open

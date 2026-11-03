@@ -19,6 +19,7 @@ export function PlayerChrome({
   fanShown = false,
   footer,
   keys,
+  onKeysLayout,
   shown,
   style,
   onLayout,
@@ -29,6 +30,8 @@ export function PlayerChrome({
   fanShown?: boolean;
   footer: React.ReactNode;
   keys: React.ReactNode;
+  /** The keys' own height, for screens that stop above them. */
+  onKeysLayout?: (e: LayoutChangeEvent) => void;
   shown: boolean;
   style: StyleProp<AnimatedStyle<StyleProp<ViewStyle>>>;
   /** The footer and keys only, without the fan's slot. */
@@ -47,7 +50,9 @@ export function PlayerChrome({
       </ColorModeScope>
       <View onLayout={onLayout}>
         <ColorModeScope value="canvas">{footer}</ColorModeScope>
-        <ColorModeScope value="hardware">{keys}</ColorModeScope>
+        <ColorModeScope value="hardware">
+          <View onLayout={onKeysLayout}>{keys}</View>
+        </ColorModeScope>
       </View>
     </Animated.View>
   );

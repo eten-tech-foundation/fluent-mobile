@@ -52,7 +52,10 @@ export interface RoundButtonProps {
 export function RoundButton({ variant = 'soft', ...props }: RoundButtonProps) {
   const mode = useColorMode();
   return (
-    <ColorModeScope value={variant === 'flat' ? 'canvas' : mode}>
+    // Flat is for the dark and blue screens: Canvas, or Accent on blue.
+    <ColorModeScope
+      value={variant === 'flat' && mode !== 'accent' ? 'canvas' : mode}
+    >
       <RoundButtonBody variant={variant} {...props} />
     </ColorModeScope>
   );

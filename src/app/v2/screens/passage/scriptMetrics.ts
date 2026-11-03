@@ -14,7 +14,7 @@ const PLAYER_FADE_LINES = 2;
 export function useScriptMetrics() {
   const theme = useTheme();
   const small = theme.type.body;
-  const large = theme.type.reading;
+  const large = theme.type.lead;
   const fontScale = PixelRatio.getFontScale();
   const capped = Math.min(fontScale, theme.fontScale.readingMax);
   const lineProp = (lineHeight: number) => (lineHeight * capped) / fontScale;

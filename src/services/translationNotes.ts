@@ -57,6 +57,7 @@ function isContentItemArray(value: unknown): value is TipTapContentItem[] {
  */
 export function parseTranslationNotesItem(
   item: ApiTranslationNoteItem,
+  ref?: ResourceVerseRef,
 ): TranslationNoteItem[] {
   if (!isContentItemArray(item.content)) {
     return [];
@@ -93,6 +94,17 @@ export function parseTranslationNotesItem(
       id: `tn-api-${item.id}-${index}`,
       title,
       body: noteBody || body,
+      ...(firstLine.length > 0 && firstLine.length <= 120
+        ? { quote: firstLine }
+        : {}),
+      ...(ref
+        ? {
+            verse: {
+              chapterNumber: ref.chapterNumber,
+              verseNumber: ref.verseNumber,
+            },
+          }
+        : {}),
     });
   });
 
@@ -143,7 +155,7 @@ async function loadLocalTranslationNotesForRef(
       // TipTap block array, so rewrap non-arrays to keep the parser happy.
       content: Array.isArray(content) ? content : [content],
     } as unknown as ApiTranslationNoteItem;
-    notes.push(...parseTranslationNotesItem(item));
+    notes.push(...parseTranslationNotesItem(item, ref));
   }
   // Every downloaded file was unreadable (missing/corrupt): fall back to the
   // API instead of showing an empty section.
@@ -220,7 +232,7 @@ export async function loadTranslationNotesForUnit(
       languageCode,
     );
     const items = Array.isArray(response?.items) ? response.items : [];
-    return items.flatMap(parseTranslationNotesItem);
+    return items.flatMap(item => parseTranslationNotesItem(item, ref));
   });
   mergeNotesById(localNotes, remote, seenIds);
   return localNotes;
