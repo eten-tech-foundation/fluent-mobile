@@ -1,0 +1,137 @@
+import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fanPlacement, overBin, TakeFan } from './TakeFan';
+import { mockPreferenceStore } from '../../../../test/mocks/preferenceStore';
+
+jest.mock('../../../../assets/icons/trash-open.svg', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  return () => MockReact.createElement(View);
+});
+
+jest.mock('../../../../services/storage', () => ({
+  kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
+}));
+
+describe('fanPlacement', () => {
+  it('peeks each step out past the one in front, as in Figma', () => {
+    expect(fanPlacement(0)).toEqual({ x: 0, scale: 1, visible: true });
+    // Figma: Take 4 sits at x 123, 66 wide, beside the front at 166–246.
+    expect(fanPlacement(-1).x).toBeCloseTo(123 + 33 - 206);
+    expect(fanPlacement(1).x).toBeCloseTo(-fanPlacement(-1).x);
+    expect(fanPlacement(5).visible).toBe(false);
+  });
+});
+
+describe('overBin', () => {
+  // The bin is 140 across, its center 202 above the front take's.
+  it('counts a drop on the bin, or just past its edge', () => {
+    expect(overBin(0, 0, -202)).toBe(true);
+    expect(overBin(0, 80, -202)).toBe(true);
+    expect(overBin(-60, 60, -202)).toBe(true);
+  });
+
+  it('puts a take dropped anywhere else back', () => {
+    expect(overBin(0, 0, 0)).toBe(false);
+    expect(overBin(0, 90, -202)).toBe(false);
+    // A take from the side has to be dragged across to the bin.
+    expect(overBin(-120, 0, -202)).toBe(false);
+  });
+});
+
+describe('TakeFan', () => {
+  beforeEach(() => mockPreferenceStore());
+
+  it('brings a take to the front when tapped and marks the official one', () => {
+    const onSelect = jest.fn();
+    render(
+      <TakeFan
+        takes={[
+          { id: 'a', takeNumber: 1, official: true },
+          { id: 'b', takeNumber: 2, official: false, selected: true },
+        ]}
+        frontId="b"
+        onSelect={onSelect}
+      />,
+    );
+
+    expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Take 1, official'));
+    expect(onSelect).toHaveBeenCalledWith('a');
+  });
+
+  it("doesn't select the take still being recorded", () => {
+    const onSelect = jest.fn();
+    render(
+      <TakeFan
+        takes={[
+          { id: 'recording', takeNumber: 3, official: false, recording: true },
+        ]}
+        frontId="recording"
+        onSelect={onSelect}
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText('Take 3, recording'));
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('ends with an empty dashed slot for the next take', () => {
+    const onSelect = jest.fn();
+    render(
+      <TakeFan
+        takes={[
+          { id: 'a', takeNumber: 1, official: false },
+          {
+            id: 'placeholder',
+            takeNumber: 2,
+            official: false,
+            placeholder: true,
+          },
+        ]}
+        frontId="a"
+        onSelect={onSelect}
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText('Take 2, not recorded yet'));
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.queryByText('2')).toBeNull();
+  });
+
+  it('offers Delete to TalkBack, and undoes a deleted take on tap', () => {
+    const onSelect = jest.fn();
+    const onDelete = jest.fn();
+    const { rerender } = render(
+      <TakeFan
+        takes={[{ id: 'a', takeNumber: 1, official: false, selected: true }]}
+        frontId="a"
+        onSelect={onSelect}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent(
+      screen.getByLabelText('Take 1, selected'),
+      'accessibilityAction',
+      {
+        nativeEvent: { actionName: 'delete' },
+      },
+    );
+    expect(onDelete).toHaveBeenCalledWith('a');
+
+    rerender(
+      <TakeFan
+        takes={[{ id: 'a', takeNumber: 1, official: false, deleted: true }]}
+        frontId="a"
+        onSelect={onSelect}
+        onDelete={onDelete}
+      />,
+    );
+    fireEvent.press(screen.getByLabelText('Take 1, deleted'));
+    expect(onSelect).toHaveBeenCalledWith('a');
+    expect(
+      screen.getByLabelText('Take 1, deleted').props.accessibilityActions,
+    ).toBeUndefined();
+  });
+});

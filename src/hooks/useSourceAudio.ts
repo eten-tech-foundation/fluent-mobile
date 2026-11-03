@@ -435,5 +435,6 @@ export function useSourceAudio({
     stop,
     retry,
     verseTimestamps,
+    dblAudioBibleId,
   };
 }

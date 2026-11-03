@@ -12,6 +12,9 @@ import {
   insertProjects,
   insertChapterAssignmentSyncData,
   insertBibleTexts,
+  recordBibleTextAbsences,
+  clearBibleTextAbsences,
+  getBibleTextAbsencesForBible,
   getChaptersToSync,
   getMyWorkChaptersToSync,
   getRecordingLinkedChaptersToSync,
@@ -32,6 +35,7 @@ import {
   selectExistingIds,
   upsertProjectUnits,
 } from '../db/repository';
+import type { BibleTextChapterRef } from '../db/repository';
 import { logger } from '../utils/logger';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
@@ -1419,27 +1423,83 @@ export async function syncBibleTexts(
 
       let totalTextsInserted = 0;
       const missingChapterFailures: string[] = [];
+      const absentChapters: BibleTextChapterRef[] = [];
       const db = getDatabase();
+
+      /**
+       * A chapter the API has no text for is only a failure when this device
+       * already held its verses — otherwise the bible simply does not cover it
+       * (an NT-only bible in an OT catalogue) and it is recorded as absent.
+       */
+      const classifyChaptersWithoutText = async (
+        bibleId: number,
+        chapters: Array<{ bookId: number; chapterNumber: number }>,
+        reason: string,
+      ) => {
+        for (const chapter of chapters) {
+          const countResult = await db.execute(
+            `SELECT COUNT(*) AS count FROM bible_texts
+               WHERE bible_id = ? AND book_id = ? AND chapter_number = ?`,
+            [bibleId, chapter.bookId, chapter.chapterNumber],
+          );
+          const hadLocalVerses =
+            Number(
+              (countResult.rows?.[0] as { count?: number } | undefined)
+                ?.count ?? 0,
+            ) > 0;
+          if (hadLocalVerses) {
+            missingChapterFailures.push(
+              formatMissingBibleTextChapter(
+                bibleId,
+                chapter.bookId,
+                chapter.chapterNumber,
+                reason,
+              ),
+            );
+          } else {
+            absentChapters.push({
+              bibleId,
+              bookId: chapter.bookId,
+              chapterNumber: chapter.chapterNumber,
+            });
+          }
+        }
+      };
 
       for (const [bibleId, chapters] of bibleGroups) {
         log.info('Syncing chapters for bible', {
           bibleId,
           chapterCount: chapters.length,
         });
+        // Only chapters already marked absent can self-heal, so the clear
+        // below stays a no-op on the usual path.
+        const knownAbsent = new Set(
+          (await getBibleTextAbsencesForBible(bibleId)).map(chapter =>
+            bibleChapterKey(chapter.bookId, chapter.chapterNumber),
+          ),
+        );
 
         for (let i = 0; i < chapters.length; i += BIBLE_TEXT_CHUNK_SIZE) {
-          const chunk = chapters.slice(i, i + BIBLE_TEXT_CHUNK_SIZE);
+          const window = chapters.slice(i, i + BIBLE_TEXT_CHUNK_SIZE);
           const chunkIndex = Math.floor(i / BIBLE_TEXT_CHUNK_SIZE);
 
-          // Root cause (#177): incremental `updatedAfter` can return empty payloads
-          // for newly assigned chapters whose verses were never inserted locally.
-          // Force a full chapter fetch when any chapter in the chunk has 0 verses.
-          let cursor = cursorForSync;
-          let missingChapter = false;
+          // #177: incremental `updatedAfter` can return an empty payload for a
+          // chapter whose verses were never stored locally. Full-fetch those
+          // chapters only. One gap must not drop the cursor for chapters that
+          // already have text, or every sync re-downloads them.
+          type BibleTextPass = {
+            chapters: typeof window;
+            cursor: string | undefined;
+            missingChapter: boolean;
+          };
+          const passes: BibleTextPass[] = [];
           if (cursorForSync) {
             const countCheck = startPhase(BIBLE_TEXT_PHASE.countCheck);
+            const missing: typeof window = [];
+            const present: typeof window = [];
+            let missingChapter = false;
             try {
-              for (const chapter of chunk) {
+              for (const chapter of window) {
                 const countResult = await db.execute(
                   `SELECT COUNT(*) AS count FROM bible_texts
                  WHERE bible_id = ? AND book_id = ? AND chapter_number = ?`,
@@ -1459,13 +1519,14 @@ export async function syncBibleTexts(
                     },
                   );
                   missingChapter = true;
-                  cursor = undefined;
-                  break;
+                  missing.push(chapter);
+                } else {
+                  present.push(chapter);
                 }
               }
             } finally {
               countCheck.end({
-                rows: chunk.length,
+                rows: window.length,
                 chunks: chunkIndex,
                 fullFetchReason: resolveBibleTextFullFetchReason(
                   updatedAfter,
@@ -1474,156 +1535,196 @@ export async function syncBibleTexts(
                 ),
               });
             }
-          }
-
-          const isFullFetch = !cursor;
-          const fullFetchReason = resolveBibleTextFullFetchReason(
-            updatedAfter,
-            remapPending,
-            missingChapter,
-          );
-
-          log.info('Fetching chunk', {
-            bibleId,
-            chunkIndex,
-            chunkSize: chunk.length,
-            incremental: Boolean(cursor),
-          });
-
-          const fetchParse = startPhase(BIBLE_TEXT_PHASE.fetchParse);
-          let books: ApiBook[];
-          let textsWithBibleId: Array<{
-            bibleId: number;
-            bookId: number;
-            chapterNumber: number;
-            verses: ReturnType<typeof mapBibleTextRow>[];
-          }> = [];
-          let chunkVerseCount = 0;
-          try {
-            try {
-              const response = await FluentAPI.getBibleTexts(
-                bibleId,
-                chunk,
-                cursor,
-              );
-              books = response.data;
-            } catch (error) {
-              if (shouldRethrowBibleTextFetchError(error)) {
-                throw error;
-              }
-              if (isFullFetch && isMissingBibleTextResource404(error)) {
-                for (const chapter of chunk) {
-                  missingChapterFailures.push(
-                    formatMissingBibleTextChapter(
-                      bibleId,
-                      chapter.bookId,
-                      chapter.chapterNumber,
-                      '404',
-                    ),
-                  );
-                }
-                log.warn(
-                  'Full bible text fetch returned 404; recording missing chapters',
-                  {
-                    bibleId,
-                    chunkIndex,
-                    chapterCount: chunk.length,
-                  },
-                );
-                continue;
-              }
-              throw error;
+            if (missing.length > 0) {
+              passes.push({
+                chapters: missing,
+                cursor: undefined,
+                missingChapter: true,
+              });
             }
-
-            if (!Array.isArray(books)) {
-              throw new Error(
-                `Invalid bible text response for bible ${bibleId}`,
-              );
+            if (present.length > 0) {
+              passes.push({
+                chapters: present,
+                cursor: cursorForSync,
+                missingChapter: false,
+              });
             }
-
-            if (isFullFetch) {
-              const returnedByKey = new Map<string, ApiBook>();
-              for (const book of books) {
-                returnedByKey.set(
-                  bibleChapterKey(book.bookId, book.chapterNumber),
-                  book,
-                );
-              }
-              for (const chapter of chunk) {
-                const returned = returnedByKey.get(
-                  bibleChapterKey(chapter.bookId, chapter.chapterNumber),
-                );
-                const hasVerses =
-                  returned !== undefined &&
-                  Array.isArray(returned.verses) &&
-                  returned.verses.length > 0;
-                if (!hasVerses) {
-                  missingChapterFailures.push(
-                    formatMissingBibleTextChapter(
-                      bibleId,
-                      chapter.bookId,
-                      chapter.chapterNumber,
-                      returned === undefined
-                        ? 'absent from full-fetch response'
-                        : 'empty verses',
-                    ),
-                  );
-                }
-              }
-            }
-
-            // Skip chapters with no verses before insert (full-fetch also records
-            // them as missing above).
-            const booksToInsert = books.filter(
-              (book: ApiBook) =>
-                Array.isArray(book.verses) && book.verses.length > 0,
-            );
-
-            textsWithBibleId = booksToInsert.map((book: ApiBook) => ({
-              bibleId,
-              bookId: book.bookId,
-              chapterNumber: book.chapterNumber,
-              verses: book.verses.map((verse: ApiVerse) =>
-                mapBibleTextRow(
-                  bibleId,
-                  book.bookId,
-                  book.chapterNumber,
-                  verse,
-                ),
-              ),
-            }));
-
-            chunkVerseCount = textsWithBibleId.reduce(
-              (count, book) => count + book.verses.length,
-              0,
-            );
-          } finally {
-            fetchParse.end({
-              rows: chunkVerseCount,
-              chunks: chunkIndex,
-              fullFetchReason,
+          } else {
+            passes.push({
+              chapters: window,
+              cursor: undefined,
+              missingChapter: false,
             });
           }
 
-          const write = startPhase(BIBLE_TEXT_PHASE.write);
-          try {
-            await insertBibleTexts(textsWithBibleId);
-            committedThisAttempt += 1;
-            if (committedThisAttempt > maxCommittedChunks) {
-              maxCommittedChunks = committedThisAttempt;
-            }
-            totalTextsInserted += chunkVerseCount;
-            log.info('Chunk synced', {
+          for (const pass of passes) {
+            const chunk = pass.chapters;
+            const cursor = pass.cursor;
+            const missingChapter = pass.missingChapter;
+            const isFullFetch = !cursor;
+            const fullFetchReason = resolveBibleTextFullFetchReason(
+              updatedAfter,
+              remapPending,
+              missingChapter,
+            );
+
+            log.info('Fetching chunk', {
               bibleId,
               chunkIndex,
-              versesInserted: chunkVerseCount,
+              chunkSize: chunk.length,
+              incremental: Boolean(cursor),
             });
-          } finally {
-            write.end({
-              rows: chunkVerseCount,
-              chunks: chunkIndex,
-              fullFetchReason,
-            });
+
+            const fetchParse = startPhase(BIBLE_TEXT_PHASE.fetchParse);
+            let books: ApiBook[];
+            let textsWithBibleId: Array<{
+              bibleId: number;
+              bookId: number;
+              chapterNumber: number;
+              verses: ReturnType<typeof mapBibleTextRow>[];
+            }> = [];
+            let chunkVerseCount = 0;
+            try {
+              try {
+                const response = await FluentAPI.getBibleTexts(
+                  bibleId,
+                  chunk,
+                  cursor,
+                );
+                books = response.data;
+              } catch (error) {
+                if (shouldRethrowBibleTextFetchError(error)) {
+                  throw error;
+                }
+                if (isFullFetch && isMissingBibleTextResource404(error)) {
+                  await classifyChaptersWithoutText(bibleId, chunk, '404');
+                  log.warn(
+                    'Full bible text fetch returned 404; recording missing chapters',
+                    {
+                      bibleId,
+                      chunkIndex,
+                      chapterCount: chunk.length,
+                    },
+                  );
+                  continue;
+                }
+                throw error;
+              }
+
+              if (!Array.isArray(books)) {
+                throw new Error(
+                  `Invalid bible text response for bible ${bibleId}`,
+                );
+              }
+
+              if (isFullFetch) {
+                const returnedByKey = new Map<string, ApiBook>();
+                for (const book of books) {
+                  returnedByKey.set(
+                    bibleChapterKey(book.bookId, book.chapterNumber),
+                    book,
+                  );
+                }
+                const notReturned: typeof chunk = [];
+                const returnedEmpty: typeof chunk = [];
+                for (const chapter of chunk) {
+                  const returned = returnedByKey.get(
+                    bibleChapterKey(chapter.bookId, chapter.chapterNumber),
+                  );
+                  const hasVerses =
+                    returned !== undefined &&
+                    Array.isArray(returned.verses) &&
+                    returned.verses.length > 0;
+                  if (!hasVerses) {
+                    (returned === undefined ? notReturned : returnedEmpty).push(
+                      chapter,
+                    );
+                  }
+                }
+                await classifyChaptersWithoutText(
+                  bibleId,
+                  notReturned,
+                  'absent from full-fetch response',
+                );
+                await classifyChaptersWithoutText(
+                  bibleId,
+                  returnedEmpty,
+                  'empty verses',
+                );
+              }
+
+              // Skip chapters with no verses before insert (full-fetch also records
+              // them as missing above).
+              const booksToInsert = books.filter(
+                (book: ApiBook) =>
+                  Array.isArray(book.verses) && book.verses.length > 0,
+              );
+
+              textsWithBibleId = booksToInsert.map((book: ApiBook) => ({
+                bibleId,
+                bookId: book.bookId,
+                chapterNumber: book.chapterNumber,
+                verses: book.verses.map((verse: ApiVerse) =>
+                  mapBibleTextRow(
+                    bibleId,
+                    book.bookId,
+                    book.chapterNumber,
+                    verse,
+                  ),
+                ),
+              }));
+
+              chunkVerseCount = textsWithBibleId.reduce(
+                (count, book) => count + book.verses.length,
+                0,
+              );
+            } finally {
+              fetchParse.end({
+                rows: chunkVerseCount,
+                chunks: chunkIndex,
+                fullFetchReason,
+              });
+            }
+
+            const write = startPhase(BIBLE_TEXT_PHASE.write);
+            try {
+              await insertBibleTexts(textsWithBibleId);
+              if (knownAbsent.size > 0) {
+                const healed = textsWithBibleId
+                  .filter(book =>
+                    knownAbsent.has(
+                      bibleChapterKey(book.bookId, book.chapterNumber),
+                    ),
+                  )
+                  .map(book => ({
+                    bibleId,
+                    bookId: book.bookId,
+                    chapterNumber: book.chapterNumber,
+                  }));
+                await clearBibleTextAbsences(healed);
+                for (const chapter of healed) {
+                  knownAbsent.delete(
+                    bibleChapterKey(chapter.bookId, chapter.chapterNumber),
+                  );
+                }
+              }
+              committedThisAttempt += 1;
+              if (committedThisAttempt > maxCommittedChunks) {
+                maxCommittedChunks = committedThisAttempt;
+              }
+              totalTextsInserted += chunkVerseCount;
+              log.info('Chunk synced', {
+                bibleId,
+                chunkIndex,
+                versesInserted: chunkVerseCount,
+              });
+            } finally {
+              write.end({
+                rows: chunkVerseCount,
+                chunks: chunkIndex,
+                fullFetchReason,
+              });
+            }
           }
         }
       }
@@ -1634,6 +1735,17 @@ export async function syncBibleTexts(
       const uniqueBiblesCount = result.rows?.[0]?.count || 0;
       setSyncCount(KV_KEYS.SYNC_COUNT_BIBLES, Number(uniqueBiblesCount));
 
+      // Catalogues legitimately span chapters a bible does not carry. Remember
+      // them so later passes skip them instead of re-requesting and failing.
+      if (absentChapters.length > 0) {
+        await recordBibleTextAbsences(absentChapters);
+        log.warn('Bible texts sync recorded chapters with no text', {
+          absentChapterCount: absentChapters.length,
+        });
+      }
+
+      // Only a chapter whose verses were already here and came back empty is a
+      // real regression (#177) — that still fails the step.
       if (missingChapterFailures.length > 0) {
         log.warn('Bible texts sync finished with missing chapters', {
           textsInserted: totalTextsInserted,
@@ -1649,6 +1761,7 @@ export async function syncBibleTexts(
       log.info('Bible texts sync completed', {
         textsInserted: totalTextsInserted,
         uniqueBiblesInDb: uniqueBiblesCount,
+        absentChapterCount: absentChapters.length,
       });
 
       // Scoped Tier 1 (#670) must not clear remap — catalogue chapters still
@@ -1718,6 +1831,13 @@ export async function syncPericopes(
         return;
       }
 
+      const pericopeBookCounts = {
+        bundledCurrent: 0,
+        reseeded: 0,
+        notModified: 0,
+        fetched: 0,
+      };
+
       for (const [pericopeSetId, setChapters] of chaptersBySetId) {
         const bundledVersion = getBundledPericopeSetVersion(pericopeSetId);
         const distinctBookCodes = [
@@ -1732,7 +1852,8 @@ export async function syncPericopes(
 
           if (bundledVersion) {
             if (storedBookVersion === bundledVersion) {
-              log.info('Pericope book already current, skipping reseed', {
+              pericopeBookCounts.bundledCurrent += 1;
+              log.debug('Pericope book already current, skipping reseed', {
                 pericopeSetId,
                 bookCode,
               });
@@ -1743,10 +1864,11 @@ export async function syncPericopes(
             if (verses) {
               await upsertPericopeSet(pericopeSetId, bookCode, verses);
               setPericopeBookVersion(pericopeSetId, bookCode, bundledVersion);
+              pericopeBookCounts.reseeded += 1;
               continue;
             }
 
-            log.info(
+            log.debug(
               'Book missing from bundled set — falling back to GET /pericope-sets/{id}',
               { pericopeSetId, bookCode },
             );
@@ -1762,7 +1884,8 @@ export async function syncPericopes(
           );
 
           if (result.status === 304) {
-            log.info('Pericope book not modified (304)', {
+            pericopeBookCounts.notModified += 1;
+            log.debug('Pericope book not modified (304)', {
               pericopeSetId,
               bookCode,
             });
@@ -1776,6 +1899,7 @@ export async function syncPericopes(
           const verses = flattenApiPericopeSetGroups(groups);
           if (verses.length > 0) {
             await upsertPericopeSet(pericopeSetId, bookCode, verses);
+            pericopeBookCounts.fetched += 1;
           }
           if (result.etag) {
             setPericopeBookVersion(pericopeSetId, bookCode, result.etag);
@@ -1787,6 +1911,8 @@ export async function syncPericopes(
           }
         }
       }
+
+      log.info('Pericope books checked', pericopeBookCounts);
     },
     failingUserId,
   );
@@ -2555,6 +2681,50 @@ async function maybeBackfillMasterDataOnRefresh(
   if (!(await hasLanguagesMissingIsoCode())) {
     masterDataBackfilledThisSession = true;
   }
+}
+
+/** One master-data ISO ensure attempt per project until the screen releases it. */
+const sourceLanguageIsoEnsureAttempted = new Set<number>();
+
+export function __resetSourceLanguageIsoEnsureForTests(): void {
+  sourceLanguageIsoEnsureAttempted.clear();
+}
+
+/**
+ * Lets the next open of a screen try again. A sync-complete refresh must not
+ * call this: that refresh is what the pull itself emits.
+ */
+export function releaseSourceLanguageIsoEnsure(projectId: number): void {
+  sourceLanguageIsoEnsureAttempted.delete(projectId);
+}
+
+/**
+ * Source audio needs ISO-639-3 on the project language, and devices that
+ * synced languages before mapApiLanguage may still have null codes. Pulls
+ * master data in full once per project until `releaseSourceLanguageIsoEnsure`.
+ * A failed pull or a code that is still blank stays latched, so the
+ * sync-complete event this emits cannot start another pull. `readCode`
+ * re-reads the code after a pull. True when it pulled, so the caller reloads.
+ */
+export async function ensureSourceLanguageIso(
+  projectId: number,
+  readCode: () => Promise<string | null | undefined>,
+): Promise<boolean> {
+  if (sourceLanguageIsoEnsureAttempted.has(projectId)) return false;
+  sourceLanguageIsoEnsureAttempted.add(projectId);
+  log.info('Source language ISO missing; syncing master data', { projectId });
+  // Sync chrome, so Record's #448 hint sees the pull as syncing.
+  emitSyncStart();
+  try {
+    await syncMasterData(undefined, { forceFull: true });
+  } catch (error) {
+    log.error('Master data sync for language ISO failed', { error });
+    return false;
+  } finally {
+    emitSyncComplete();
+  }
+  await readCode();
+  return true;
 }
 
 export async function refreshChapterMetadataIfOnline(

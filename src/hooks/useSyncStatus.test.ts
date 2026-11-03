@@ -124,6 +124,7 @@ describe('useSyncStatus cellular gate', () => {
     });
     mockUseLocalSyncHealth.mockReturnValue({
       needsDownloadSync: false,
+      missingTextChapters: 0,
       checking: false,
     });
   });
@@ -294,6 +295,7 @@ describe('useSyncStatus metadata / reauth retry work', () => {
     });
     mockUseLocalSyncHealth.mockReturnValue({
       needsDownloadSync: false,
+      missingTextChapters: 0,
       checking: false,
     });
     mockOnlineWifi();
@@ -314,6 +316,25 @@ describe('useSyncStatus metadata / reauth retry work', () => {
       expect(result.current.status).not.toBe('online_synced');
       expect(result.current.hasSyncRetryWork).toBe(true);
       // Auto-repair must stay assignee-repair-only.
+      expect(result.current.needsDownloadSync).toBe(false);
+    });
+  });
+
+  it('is online_needs_sync when verse text is still missing locally', async () => {
+    mockUseLocalSyncHealth.mockReturnValue({
+      needsDownloadSync: false,
+      missingTextChapters: 1071,
+      checking: false,
+    });
+
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('online_needs_sync');
+      expect(result.current.needsTextSync).toBe(true);
+      // Home auto-repair keys off needsDownloadSync, which must stay false.
       expect(result.current.needsDownloadSync).toBe(false);
     });
   });

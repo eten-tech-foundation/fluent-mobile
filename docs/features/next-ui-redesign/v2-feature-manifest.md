@@ -42,14 +42,15 @@ Ranked by how much they block a full switch to v2.
    screen.
 4. **Recording rules live inside the v1 screen.** v2 gets its own screens and
    Legacy screens stay frozen (see [v2 routes](#v2-routes)), so the 76 Legacy-styled files
-   don't need migrating. But `RecordTab.tsx` (1,785 lines, 17 effects, 6
-   alerts) holds the stage-advance rules, recording gates and take handling,
-   and `DraftingScreen` holds the leave-while-recording guard. Those move into
-   shared hooks both versions call, so v2 reuses them instead of copying them.
-5. **v1 bugs v2 inherits.** The drafting flow reuses v1's logic, so these come
-   along: offline stage advances aren't queued (#257), only the picked take
-   uploads and changing it doesn't sync (#701), takes play silent on Xiaomi
-   (#707), and pericope uploads target an unmerged endpoint (fluent-api #391).
+   don't need migrating. `RecordTab.tsx` still holds the stage-advance rules
+   and take handling. The leave-while-recording guard and the drafting upload
+   hold live in `useRecordCaptureLeaveGuard` and `useDraftingUploadHold`,
+   which Legacy drafting and the Next passage screen both call.
+5. **v1 bugs v2 inherits.** The drafting flow reuses v1's logic. Offline stage
+   advances are queued and synced on reconnect (#257, #770). Changing the
+   selected take syncs (#701, #723), and takes other than the selected one
+   upload (#716, #828). Still open: takes play silent on Xiaomi (#707), and
+   pericope uploads target an unmerged endpoint (fluent-api #391).
 
 What isn't a gap: drafting itself. Listening, reading, recording, takes,
 resources and stage advance all work in v1, and the backend supports them.
@@ -146,8 +147,8 @@ Resources, Images) → the player and recorder.
 | Source audio | Play, pause, scrub, verse position, source label; loading, "no audio" and retry states; offline playback when prepared; stops when recording | ✅ Listen player (prototype built) | Wired: `GET /projects/{id}/source-audio/…`. Available: `GET …/playback-audio/…` (verse end times, licence, TTS permission), TTS when no recording exists |
 | Reading along | Highlight what's being read and keep it in view | ✅ word highlight + scrolling text | Verse-level only. Missing: word timing (Q10) |
 | Resources | Translation notes, questions, images and maps for the selected verse or pericope, offline when downloaded | ◐ Understanding notes view, Resources and Images entries | Wired: `…/translation-resources/notes`, `questions`, `images`. Available: verse-range resources (fluent-api #389), Aquifer search and Guides |
-| Unit navigation | Previous / next unit with reference and pericope title | ✅ Hardware panel keys (built) | Local |
-| Recording | Record, pause, resume, stop; mic permission with a Settings link; live waveform and timer; error alerts | ✅ recorder, Level wave (built) | Local. Live mic levels need metering turned on (Q6) |
+| Unit navigation | Previous / next unit with reference and pericope title | ◐ The book page's passages. In pericope mode the Hardware panel's Previous / Next turn the player's pages instead; in verse mode they'll jump verses (Q17, Q28) | Local |
+| Recording | Record, pause, resume, stop; mic permission with a Settings link; live waveform and timer; error alerts | ✅ recorder, Level wave (built). Record pauses and resumes a take; Eject finishes it (Q3) | Local. Live mic levels need metering turned on (Q6) |
 | Crash recovery | Pause when the app is backgrounded; offer to resume or discard a paused take after a crash | — (needs a v2 dialog) | Local |
 | Recording gates | Wait for source text, block on Complete, block the drafter during open Peer Check | — (states need design) | Local |
 | Takes | Up to 5 per unit: play one at a time, seek, pick the one to submit, delete, record another | ✅ take cards, stacking, delete, mark official | Local (only the picked take uploads). Available: `GET /verse-audio` to list and download server takes |
@@ -158,7 +159,7 @@ Resources, Images) → the player and recorder.
 
 | Feature | What we need to support | v2 design | Backend |
 | --- | --- | --- | --- |
-| Send to the next stage | Appears once every unit is recorded; confirm sheet; blocked by conflicts or takes that can't upload | — | Wired: `PATCH /chapter-assignments/{id}/submit`. Offline advances aren't queued (#257) |
+| Send to the next stage | Appears once every unit is recorded; confirm sheet; blocked by conflicts or takes that can't upload | ◐ The confirm's Dialog (built, in the gallery); a Home alert card and a Send button on the book page's chapter header (Q29, not built) | Wired: `PATCH /chapter-assignments/{id}/submit`. Offline advances aren't queued (#257) |
 | Stage badges | Not Started → Draft → Peer Check → Community Review → Linguist / Theological / Consultant Check → Complete | — | Labels are hard-coded. Available: `GET /projects/{id}/workflow-stages` |
 
 ### Sync, offline and downloads
@@ -330,8 +331,41 @@ Settle these before anyone builds them:
   who the reviewers are (Q22). #505 redesigns My Work, which v2 Home replaces.
 - #408 Bible tab verse / pericope toggle (Passed QA in v1): v2 is
   pericope-first (Settings › Record by).
-- #701 selected-take sync and #257 offline stage advance: not MVP, but Review
-  needs #701.
+- Selected-take sync (#701, #723), upload of every take (#716, #828), and the
+  offline stage-advance queue (#257, #770) shipped after this list was written.
+  Next reads that queue for "waiting to send" on passage and book-page covers.
+  Next's own Send is a separate ticket (Q29, Q30). Until it ships, the passage
+  page bridges to Legacy classic drafting, where Send lives.
+
+### Next parity with Legacy
+
+Where Next has no design yet, it bridges to the matching Legacy screen rather
+than dead-ending:
+
+- **Classic drafting** (`verse-detail`): "Open in classic drafting" on the
+  passage page, for a chapter without pericopes, a verse-by-verse chapter, or
+  to Send. A paused verse take recovered after a crash also resumes there.
+- **Observer view** (`observer-draft`): an Observer's chapter opens read-only
+  from Home and the book page, with the grant and membership re-checked at
+  the tap.
+
+Folded in from Legacy, so Next blocks and warns the same way:
+
+- **Conflicts and uploads:** a sync conflict or takes that can't upload block
+  Record with Legacy's banner. Home, Next up and the book page show "Sync
+  conflict" or "Upload pending", and Books count takes waiting to upload.
+- **Ownership:** a chapter taken by someone else, an open Peer Check
+  (Translator grant re-checked at the tap) and Observer chapters block or
+  route as in Legacy. Next up lists peer checks, open peer checks and
+  observed chapters under "Checking and observing". The book page names each
+  chapter's stage and whose it is.
+- **Recovery:** a paused pericope or chapter take resumes on the passage page;
+  a verse take resumes in classic drafting.
+- **Source text:** opening a passage repairs a blank language code and
+  downloads missing text once when online.
+- **Home:** milestones with no chapters still list, "recorded" counts chapters
+  with takes, the accounts sheet has Privacy Policy and Terms of Use, and the
+  Legacy drawer's swipe is off in Next.
 
 ### Hold until after the summit
 
@@ -359,9 +393,9 @@ the plan.
 After the summit, v2 stays in the app as a beta so backend hooks and
 connectors can land a little at a time.
 
-- **Gate:** the Legacy / Next toggle in Settings (default Legacy), labelled
-  "Next (beta)". Later, `GET /config/features` can turn it on per user or
-  project from the server.
+- **Gate:** Settings → Interface → UI version. Next is the default. An explicit
+  Legacy choice stays stored. Later, `GET /config/features` can turn it on per
+  user or project from the server.
 - **Who gets it:** the team on the nightly APK (QA API), and wider testers on
   the Play internal track, which is the only place production builds go today.
 - **Safe to switch back and forth:** v2 writes through the same hooks and
@@ -370,6 +404,8 @@ connectors can land a little at a time.
 - **Connectors land on `main` behind the toggle**, one small PR each: the
   endpoints mobile can adopt today first, then the API work as it ships.
 - **Unfinished areas** link to the v1 screen rather than show an empty v2 one.
+  Listen plays the chapter's source audio on the Next passage screen. FIA and
+  other material tracks are not connected (no API yet).
 - **Review contract:** PRs that only touch v2 screens, `src/components/ui`, the
   gallery or docs get a light review, since Legacy users can't reach them.
   PRs that touch shared hooks or services get the normal review. Needs the
@@ -377,14 +413,17 @@ connectors can land a little at a time.
 
 ### Before a public release
 
-- Make v2 the default, then retire the toggle and the Legacy routes.
+- Next is now the default. Retire the toggle and the Legacy routes later.
 
 ## Known v1 issues that carry over
 
 Fix these regardless of v2, since v2 reuses the same logic:
 
-- Offline stage advances aren't queued and can be reverted by the next sync (#257).
-- Only the picked take reaches the server, changing the pick doesn't sync (#701), and deleting a take doesn't remove the uploaded audio.
+- Offline stage advances are queued and pushed on reconnect (#257, #770). Next
+  shows that pending row as waiting to send; it does not send from the passage
+  screen.
+- Take upload is no longer selected-only, and deleting an uploaded take syncs
+  (#716, #828). Changing the selected take syncs (#701, #723).
 - Takes recorded since #567 play silence on Xiaomi devices (#707, High).
 - "Maximum update depth exceeded" during Record tab playback (#569).
 - The Prepare for Offline Download button disappears when a chapter is selected (#702).

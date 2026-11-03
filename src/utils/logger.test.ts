@@ -89,4 +89,12 @@ describe('Logger', () => {
     log.info('info msg');
     expect(consoleLogSpy).toHaveBeenCalled();
   });
+
+  it('keeps debug off the dev console', () => {
+    logger.setTransport(defaultTransport);
+
+    logger.create('Test').debug('per-book detail', { bookCode: 'GEN' });
+
+    expect(consoleLogSpy).not.toHaveBeenCalled();
+  });
 });

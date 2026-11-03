@@ -23,6 +23,11 @@ export interface SyncStatusInputs {
    * work with empty media queues (same chrome as needsDownloadSync).
    */
   hasSyncRetryWork?: boolean;
+  /**
+   * Verse text a sync could still fetch is missing locally. Same chrome as
+   * the flags above, but deliberately not part of Home auto-repair.
+   */
+  needsTextSync?: boolean;
 }
 
 export function deriveSyncStatus({
@@ -33,6 +38,7 @@ export function deriveSyncStatus({
   hasFailedUploads = false,
   needsDownloadSync = false,
   hasSyncRetryWork = false,
+  needsTextSync = false,
 }: SyncStatusInputs): SyncStatus {
   if (!isOnline) {
     return hasPendingUploads || hasFailedUploads
@@ -56,7 +62,7 @@ export function deriveSyncStatus({
     return 'online_pending';
   }
 
-  if (needsDownloadSync || hasSyncRetryWork) {
+  if (needsDownloadSync || hasSyncRetryWork || needsTextSync) {
     return 'online_needs_sync';
   }
 

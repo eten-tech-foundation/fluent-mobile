@@ -19,10 +19,17 @@ type UserProjectSeed = {
   project_id: number;
 };
 
+type AbsenceSeed = {
+  bible_id: number;
+  book_id: number;
+  chapter_number: number;
+};
+
 function createGetChaptersToSyncDb(seed: {
   assignments: ChapterAssignmentSeed[];
   projectUnits: ProjectUnitSeed[];
   userProjects: UserProjectSeed[];
+  absences?: AbsenceSeed[];
 }) {
   const execute = async (query: string, params: unknown[] = []) => {
     const sql = query.replace(/\s+/g, ' ').trim();
@@ -45,6 +52,13 @@ function createGetChaptersToSyncDb(seed: {
           .map(pu => pu.id),
       );
 
+      const absent = new Set(
+        (seed.absences ?? []).map(
+          a => `${a.bible_id}:${a.book_id}:${a.chapter_number}`,
+        ),
+      );
+      const filtersAbsences = sql.includes('FROM bible_text_absences a');
+
       const seen = new Set<string>();
       const rows: Array<{
         bible_id: number;
@@ -55,6 +69,7 @@ function createGetChaptersToSyncDb(seed: {
       for (const ca of seed.assignments) {
         if (!unitIdsForProjects.has(ca.project_unit_id)) continue;
         const key = `${ca.bible_id}:${ca.book_id}:${ca.chapter_number}`;
+        if (filtersAbsences && absent.has(key)) continue;
         if (seen.has(key)) continue;
         seen.add(key);
         rows.push({
@@ -200,6 +215,21 @@ describe('getChaptersToSync', () => {
       ]),
     );
     expect(chapterList(groups)).toHaveLength(3);
+  });
+
+  it('skips chapters already known absent from their bible', async () => {
+    setDatabase(
+      createGetChaptersToSyncDb({
+        ...baseSeed,
+        absences: [{ bible_id: 10, book_id: 41, chapter_number: 1 }],
+      }) as never,
+    );
+
+    const groups = await getChaptersToSync([1]);
+
+    expect(chapterList(groups)).toEqual([
+      { bibleId: 10, bookId: 19, chapterNumber: 1 },
+    ]);
   });
 
   it('returns an empty Map when eligible user ids are empty', async () => {

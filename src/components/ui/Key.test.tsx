@@ -146,6 +146,9 @@ describe('Key', () => {
   });
 
   it('fades only the icon when disabled, keeping the key solid', () => {
+    act(() => {
+      setUiVersion('legacy');
+    });
     renderWithPreferences(
       <Key icon={ColorIcon} accessibilityLabel="Play" disabled testID="k" />,
     );
@@ -181,6 +184,9 @@ describe('Key', () => {
   });
 
   it('fades fg/primary over fg/secondary as the key goes down', () => {
+    act(() => {
+      setUiVersion('legacy');
+    });
     jest.useFakeTimers();
     const { rerender } = renderWithPreferences(
       <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" />,
@@ -208,6 +214,7 @@ describe('Key', () => {
     const original = roles.fgSecondary;
     try {
       roles.fgSecondary = '#123456';
+      act(() => setUiVersion('legacy'));
       renderWithPreferences(<Key icon={ColorIcon} accessibilityLabel="Play" />);
       expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(
         legacyTheme.roles.fgSecondary,

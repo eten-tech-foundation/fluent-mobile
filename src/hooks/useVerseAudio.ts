@@ -658,6 +658,9 @@ export function useVerseAudio({
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
+    // The last take is still saving; the reducer would drop this START and
+    // leave the mic running with nothing on screen.
+    if (state === 'saving') return;
     // Wait until capture metadata resolves so pericope mode cannot persist as verse.
     if (draftingUnit === 'pericope' && recordingUnit === null) return;
 
@@ -735,6 +738,7 @@ export function useVerseAudio({
     projectUnitId,
     recording,
     recordingUnit,
+    state,
     verseNumber,
   ]);
 
@@ -806,6 +810,7 @@ export function useVerseAudio({
    * paused segments and their marker (#567): `start()` no longer does.
    */
   const discardCapture = useCallback(async () => {
+    if (state === 'saving') return;
     if (capturePersistRef.current === null) return;
     try {
       const { uri } = await recording.stop();
@@ -853,7 +858,7 @@ export function useVerseAudio({
       // only fires from `recorded`.
       dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
     }
-  }, [recording, sessionKey, takes]);
+  }, [recording, sessionKey, state, takes]);
 
   const stop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
@@ -1006,7 +1011,7 @@ export function useVerseAudio({
 
   /** File checks + engine play, shared by single takes and stitched segments. */
   const playUri = useCallback(
-    async (path: string, isStale?: () => boolean) => {
+    async (path: string, isStale?: () => boolean, fromMs?: number) => {
       const exists = await fileExists(path);
       if (!exists) {
         throw new Error('Take file is missing on disk. Re-record this verse.');
@@ -1016,13 +1021,19 @@ export function useVerseAudio({
         throw new Error('Take file is empty (0 bytes). Re-record this verse.');
       }
       if (isStale?.()) return;
-      await playback.play(path);
+      // Omitted resumes a loaded file in place. An explicit 0 starts over.
+      if (fromMs !== undefined) {
+        await playback.resume(Math.max(0, fromMs), path);
+      } else {
+        await playback.play(path);
+      }
     },
     [playback],
   );
 
   const playTake = useCallback(
-    async (take: Recording) => {
+    /** `fromMs` starts partway in, e.g. where the take was scrubbed to. */
+    async (take: Recording, fromMs?: number) => {
       playbackLoadInFlightRef.current = true;
       clearStitchQueue();
       // Same generation `stopPlayback` bumps via `clearStitchQueue`, so a
@@ -1031,7 +1042,7 @@ export function useVerseAudio({
       const isStale = () => generation !== stitchPlaybackGenerationRef.current;
       try {
         setErrorMessage(null);
-        await playUri(take.localFilePath, isStale);
+        await playUri(take.localFilePath, isStale, fromMs);
         if (isStale()) {
           return;
         }
@@ -1227,12 +1238,13 @@ export function useVerseAudio({
    * takes are remuxed via {@link getRemuxNativeModule} on commit (#233).
    */
   const seek = useCallback(
+    /** A recording picks the row; otherwise the loaded take, then the selected. */
     async (ms: number, target?: Recording) => {
       const take =
         target ??
         (loadedTakeId !== null
-          ? takes.find(t => t.id === loadedTakeId) ??
-            allTakes.find(t => t.id === loadedTakeId)
+          ? takes.find(take => take.id === loadedTakeId) ??
+            allTakes.find(take => take.id === loadedTakeId)
           : null) ??
         selectedTake;
       if (!take?.localFilePath) return;
@@ -1378,7 +1390,11 @@ export function useVerseAudio({
         clearStitchQueue();
         // The player still holds this file even after playback ended.
         if (loadedTakeId === id) {
-          await playback.stop();
+          try {
+            await playback.stop();
+          } catch {
+            // The player may already be released (screen unmounting).
+          }
           setPlayingTakeId(null);
           setLoadedTakeId(null);
         }
@@ -1394,11 +1410,15 @@ export function useVerseAudio({
         if (bibleTextId !== null) {
           await refreshAllTakes(bibleTextId);
         }
-        dispatch(
-          rows.length > 0
-            ? { type: 'REHYDRATE', hasTake: true }
-            : { type: 'DELETE' },
-        );
+        // Another take still playing keeps playing; REHYDRATE would drop
+        // the state to recorded under it.
+        if (!(state === 'playing' && loadedTakeId !== id)) {
+          dispatch(
+            rows.length > 0
+              ? { type: 'REHYDRATE', hasTake: true }
+              : { type: 'DELETE' },
+          );
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'delete failed';
@@ -1412,6 +1432,7 @@ export function useVerseAudio({
       loadTakesFn,
       loadedTakeId,
       playback,
+      state,
       takes,
       deleteTakeFn,
       refreshAllTakes,
@@ -1481,6 +1502,8 @@ export function useVerseAudio({
     playbackStatus: playback.status,
     errorMessage,
     recoveredElapsedMs,
+    /** Live input level in dBFS while recording, for the Level wave. */
+    getMetering: recording.getMetering,
     positionMs: playback.positionMs,
     durationMs: playback.durationMs,
     start,

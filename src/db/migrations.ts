@@ -20,7 +20,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 23;
+export const CURRENT_SCHEMA_VERSION = 24;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -360,6 +360,18 @@ async function applyStageAdvanceQueueTable(db: SqlExecutor): Promise<void> {
   );
   await db.execute(
     `CREATE INDEX IF NOT EXISTS idx_saq_status ON stage_advance_queue(sync_status)`,
+  );
+}
+
+async function applyBibleTextAbsencesTable(db: SqlExecutor): Promise<void> {
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS bible_text_absences (
+      bible_id       INTEGER NOT NULL,
+      book_id        INTEGER NOT NULL,
+      chapter_number INTEGER NOT NULL,
+      recorded_at    TEXT NOT NULL,
+      PRIMARY KEY (bible_id, book_id, chapter_number)
+    )`,
   );
 }
 
@@ -730,6 +742,11 @@ export const migrations: Migration[] = [
     version: 23,
     name: 'stage_advance_queue_table',
     up: applyStageAdvanceQueueTable,
+  },
+  {
+    version: 24,
+    name: 'bible_text_absences_table',
+    up: applyBibleTextAbsencesTable,
   },
 ];
 

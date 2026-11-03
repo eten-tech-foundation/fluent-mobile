@@ -66,6 +66,8 @@ export interface MyWorkChapter {
   lastActivityAt?: string;
   lastActivityLabel?: string;
   projectName: string;
+  /** The project unit's name, or the project's when it has none, as on Milestones. */
+  milestoneName: string;
   targetLanguageName: string;
   /** `chapter_assignments.project_unit_id` for draft-download requests. */
   projectUnitId: number;
@@ -84,6 +86,42 @@ export interface MyWorkChapter {
    * Set only after verified eligibility (not status alone).
    */
   listAccess: MyWorkListAccess;
+}
+
+/**
+ * One book in one milestone on Next Home, its chapters counted by whose turn
+ * the current stage is.
+ */
+export interface HomeBookSummary {
+  /**
+   * `${projectUnitId}:${bookId}`; a book in two milestones is two cards. A
+   * milestone with no chapters yet is one card, `${projectUnitId}:empty`.
+   */
+  key: string;
+  /** Null for a milestone with no chapters yet; it's named for the milestone. */
+  bookId: number | null;
+  bookName: string;
+  projectId: number;
+  projectUnitId: number;
+  projectName: string;
+  milestoneName: string;
+  targetLanguageName: string;
+  /** The book's lowest chapter in this milestone; where its book page opens. */
+  firstChapterId: number | null;
+  /** Not started, draft or peer check, and the stage is mine. */
+  mine: number;
+  /** Someone else's stage, an unassigned peer check, or any stage past it. */
+  withOthers: number;
+  /** Not started or draft with nobody assigned. */
+  open: number;
+  complete: number;
+  totalChapters: number;
+  /** With a take on this phone, or submitted for peer check or further along. */
+  recordedChapters: number;
+  /** Past peer check. */
+  checkedChapters: number;
+  /** My selected takes in this book still to upload, as Legacy Milestones counts. */
+  pendingUploads: number;
 }
 
 export interface ProjectChapter {
@@ -129,6 +167,7 @@ export interface MyWorkChapterRow {
   book_name: string;
   book_code: string;
   project_name: string;
+  milestone_name: string;
   target_language_name: string;
   project_unit_id: number;
   project_id: number;

@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
-import { Circle, Headphones, Speech } from 'lucide-react-native';
-import { Key, type KeyIconProps } from '../../../components/ui/Key';
+import {
+  Headphones,
+  RecordFill,
+  UserSound,
+} from '../../../components/ui/icons';
+import { Key } from '../../../components/ui/Key';
 import { Switch } from '../../../components/ui/Switch';
 import { useTheme, useThemedStyles } from '../../../theme/useTheme';
 
 /** Figma Mode toggle icons are Icon/md. */
 const MODE_ICON_SIZE = 20;
-
-function RecordIcon({ color, size }: KeyIconProps) {
-  return <Circle color={color} fill={color} size={size} />;
-}
 
 /**
  * Mode toggle from the Hardware panel (Figma 2409:538): the Switch picks
@@ -51,12 +51,12 @@ export function SwitchEntry() {
           disabled={recording}
           testID="gallery-mode-toggle"
         />
-        <Speech color={iconColor} size={MODE_ICON_SIZE} />
+        <UserSound color={iconColor} size={MODE_ICON_SIZE} />
       </View>
       <Text style={styles.status}>{status}</Text>
       {recordMode ? (
         <Key
-          icon={RecordIcon}
+          icon={RecordFill}
           accessibilityLabel={recording ? 'Stop recording' : 'Record'}
           announceLatched={false}
           active={recording}

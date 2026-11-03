@@ -39,6 +39,7 @@ export const nextBaseline = {
     workflowBadgePeerCheckText: '#1A1A1A',
   },
   controlSizes: {
+    icon20: 20,
     icon24: 24,
     icon32: 32,
   },
@@ -49,6 +50,12 @@ export const nextBaseline = {
     raised:
       'inset 0px 2px 2px #FFFFFF, inset 0px -2px 1px #c3c9d5, 0px 3px 6px rgba(0, 0, 0, 0.32)',
     soft: 'inset 1px 1px 1px #FFFFFF, inset -1px -1px 1px #c3c9d5, inset 3px 3px 10px rgba(0, 0, 0, 0.08), inset -3px -3px 10px #FFFFFF',
+  },
+  fade: {
+    reading: 'linear-gradient(to bottom, rgba(255, 255, 255, 0), #FFFFFF)',
+  },
+  cover: {
+    status: ['#022468', '#043692', '#0B50D0', '#2A70F4', '#538EFB'],
   },
   headerLayout: {
     minHeight: 56,

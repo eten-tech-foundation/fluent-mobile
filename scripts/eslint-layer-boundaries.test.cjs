@@ -26,6 +26,13 @@ const cases = [
     file: 'forbidden-react-navigation.tsx',
     expectMessages: [/@react-navigation/i],
   },
+  {
+    file: 'forbidden-phosphor-root.tsx',
+    expectMessages: [
+      /package root bundles every icon/i,
+      /one module at a time/i,
+    ],
+  },
 ];
 
 function runEslint(filePath) {

@@ -28,7 +28,7 @@ export const UiVersionOverride = UiVersionOverrideContext.Provider;
 /**
  * Active UI version from the root preference provider or a subtree override.
  * Presentation-only imports never initialize native preference storage. Outside
- * a provider, standalone chrome uses the safe Legacy default.
+ * a provider, standalone chrome uses Next, the same default as an unset preference.
  */
 export function useUiVersion(): UiVersion {
   return useContext(UiVersionOverrideContext) ?? DEFAULT_UI_VERSION;

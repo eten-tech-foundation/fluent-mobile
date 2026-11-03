@@ -23,6 +23,7 @@ function chapter(
     downloadedVerses: 0,
     hasConflict: false,
     projectName: 'Demo',
+    milestoneName: 'Phase 1',
     targetLanguageName: 'English',
     projectUnitId: 11,
     projectId: 3,

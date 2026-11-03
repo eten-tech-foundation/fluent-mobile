@@ -9,16 +9,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
 import { DraftingHeader } from '../../components/layout/DraftingHeader';
 import { ChapterAssignmentData, VerseData } from '../../types/db/types';
-import {
-  ActivityIndicator,
-  Alert,
-  AppState,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useActiveAccountSummary } from '../../hooks/useActiveAccountSummary';
 import { AccountSwitcherPanel } from '../../components/ui/AccountSwitcherPanel';
 import {
@@ -39,40 +32,23 @@ import {
   getChapterAssignmentById,
   getRecordedVerseNumbers,
 } from '../../db/queries';
-import { syncBibleTexts, syncMasterData } from '../../services/sync';
+import {
+  ensureSourceLanguageIso,
+  releaseSourceLanguageIsoEnsure,
+  syncBibleTexts,
+} from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
-import { setRecordCaptureGate } from '../../navigation/recordCaptureGate';
-import { setDraftingUploadHold } from '../../services/uploadOrchestrator';
+import { useDraftingUploadHold } from '../../hooks/useDraftingUploadHold';
+import { useRecordCaptureLeaveGuard } from '../../hooks/useRecordCaptureLeaveGuard';
 import {
   parseRequiredNumber,
   parseRequiredString,
 } from '../../navigation/routeParams';
-import {
-  CAPTURE_LEAVE_DISCARD,
-  CAPTURE_LEAVE_MESSAGE,
-  CAPTURE_LEAVE_RESUME,
-  CAPTURE_LEAVE_TITLE,
-} from '../../constants/messages';
 import { parseUserId } from '../../utils/parseUserId';
-import type { CaptureControls } from '../../types/captureControls';
 import type { DraftPlaybackControls } from '../../types/draftPlaybackControls';
 
-const CAPTURE_LEAVE_ALERT_BUTTONS = (
-  discard: () => void,
-): {
-  text: string;
-  style?: 'cancel' | 'destructive' | 'default';
-  onPress?: () => void;
-}[] => [
-  { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
-  { text: CAPTURE_LEAVE_DISCARD, style: 'destructive', onPress: discard },
-];
-
 const log = logger.create('DraftingScreen');
-
-/** One master-data ISO ensure attempt per project per JS session (#235 review). */
-const masterDataIsoEnsureAttempted = new Set<number>();
 
 /** Wrap silent auto-heal sync so Record’s #448 hint sees isSyncing. */
 async function withSyncChrome<T>(work: () => Promise<T>): Promise<T> {
@@ -86,7 +62,6 @@ async function withSyncChrome<T>(work: () => Promise<T>): Promise<T> {
 
 export default function DraftingScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const userId = parseUserId();
   const rawParams = useLocalSearchParams<{
     chapterId?: string;
@@ -106,11 +81,16 @@ export default function DraftingScreen() {
   const [activeTab, setActiveTabState] = useState<DraftingTab>(() =>
     recoverSessionKey ? 'record' : getLastActiveTab(chapterId) ?? 'bible',
   );
-  /** True while Record tab has an in-progress take (recording/paused). */
-  const [recordCaptureActive, setRecordCaptureActive] = useState(false);
-  /** #49: Resume/Discard controls for the in-progress capture, when active. */
-  const [captureControls, setCaptureControls] =
-    useState<CaptureControls | null>(null);
+  const bibleTextEnsureForChapterRef = useRef<number | null>(null);
+  const isoProjectIdRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (isoProjectIdRef.current !== null) {
+        releaseSourceLanguageIsoEnsure(isoProjectIdRef.current);
+      }
+    },
+    [],
+  );
   const stopDraftPlaybackRef = useRef<() => Promise<void>>(async () => {});
   const registerDraftPlayback = useCallback(
     (controls: DraftPlaybackControls | null) => {
@@ -121,34 +101,27 @@ export default function DraftingScreen() {
   const haltDraftPlayback = useCallback(() => {
     void stopDraftPlaybackRef.current();
   }, []);
-  const bibleTextEnsureForChapterRef = useRef<number | null>(null);
+  const {
+    recordCaptureActive,
+    onCaptureActiveChange,
+    onRegisterCaptureControls,
+    alertRecordingInProgress,
+  } = useRecordCaptureLeaveGuard(haltDraftPlayback);
 
   const setActiveTab = useCallback(
     (tab: DraftingTab) => {
       if (tab === activeTab) return;
       if (recordCaptureActive && activeTab === 'record' && tab !== 'record') {
-        Alert.alert(
-          CAPTURE_LEAVE_TITLE,
-          CAPTURE_LEAVE_MESSAGE,
-          CAPTURE_LEAVE_ALERT_BUTTONS(() => {
-            if (!captureControls) {
-              log.warn(
-                'Leave prompt: Discard pressed with no capture controls',
-              );
-              return;
-            }
-            void captureControls.discardCapture().then(() => {
-              setActiveTabState(tab);
-              setLastActiveTab(chapterId, tab);
-            });
-          }),
-        );
+        alertRecordingInProgress(() => {
+          setActiveTabState(tab);
+          setLastActiveTab(chapterId, tab);
+        });
         return;
       }
       setActiveTabState(tab);
       setLastActiveTab(chapterId, tab);
     },
-    [activeTab, captureControls, chapterId, recordCaptureActive],
+    [activeTab, alertRecordingInProgress, chapterId, recordCaptureActive],
   );
 
   const [verses, setVerses] = useState<VerseData[]>([]);
@@ -170,129 +143,15 @@ export default function DraftingScreen() {
     setAccountSwitcherVisible(false);
   }, []);
 
-  /**
-   * #49 leave prompt: Resume keeps the capture, Discard drops it and then
-   * runs the originally requested action (back / Sync / account switcher).
-   * `suppressNextBeforeRemove` covers the discard→proceed window: the capture
-   * ends (guard deactivates) before the deferred navigation runs, so a slow
-   * async gap must not let `beforeRemove` re-fire the prompt.
-   */
-  const suppressNextBeforeRemove = useRef(false);
-  const discardPendingBeforeRemove = useRef(false);
-
-  const alertRecordingInProgress = useCallback(
-    (continueAfterDiscard?: () => void) => {
-      Alert.alert(
-        CAPTURE_LEAVE_TITLE,
-        CAPTURE_LEAVE_MESSAGE,
-        CAPTURE_LEAVE_ALERT_BUTTONS(() => {
-          if (!captureControls) {
-            log.warn('Leave prompt: Discard pressed with no capture controls');
-            return;
-          }
-          discardPendingBeforeRemove.current = true;
-          void captureControls.discardCapture().then(() => {
-            discardPendingBeforeRemove.current = false;
-            suppressNextBeforeRemove.current = true;
-            continueAfterDiscard?.();
-          });
-        }),
-      );
-    },
-    [captureControls],
-  );
-
-  // A fresh capture re-arms the guard even if a previous discard never
-  // consumed its suppression (e.g. discard via tab change — no pop follows).
-  useEffect(() => {
-    if (recordCaptureActive) {
-      suppressNextBeforeRemove.current = false;
-    }
-  }, [recordCaptureActive]);
-
-  // Publish capture state so the root drawer can disable swipe / menu exits (#568).
-  useEffect(() => {
-    setRecordCaptureGate(recordCaptureActive);
-    return () => {
-      setRecordCaptureGate(false);
-    };
-  }, [recordCaptureActive]);
-
   useEffect(() => {
     if (recoverSessionKey) {
       setActiveTabState('record');
     }
   }, [recoverSessionKey]);
 
-  // Block header back, Android system back, and any other pop while capturing.
-  // Always halt draft review playback on leave (#866); capture prompt still
-  // wins when a take is in progress.
-  useEffect(() => {
-    return navigation.addListener('beforeRemove', e => {
-      haltDraftPlayback();
-      if (discardPendingBeforeRemove.current) {
-        e.preventDefault();
-        return;
-      }
-      if (!recordCaptureActive) {
-        return;
-      }
-      if (suppressNextBeforeRemove.current) {
-        suppressNextBeforeRemove.current = false;
-        return;
-      }
-      e.preventDefault();
-      alertRecordingInProgress(() => router.back());
-    });
-  }, [
-    alertRecordingInProgress,
-    haltDraftPlayback,
-    navigation,
-    recordCaptureActive,
-    router,
-  ]);
-
-  // Automatic uploads wait while this screen is in use. Bible, Resources, and
-  // Record share the screen, so a tab change does not release the hold.
-  // Backgrounding the app does: the person is no longer using the screen.
-  const screenFocusedRef = useRef(false);
-  const appActiveRef = useRef(AppState.currentState === 'active');
-  const syncDraftingUploadHold = useCallback(() => {
-    void setDraftingUploadHold(
-      screenFocusedRef.current && appActiveRef.current,
-    );
-  }, []);
-
-  useEffect(() => {
-    const unsubFocus = navigation.addListener('focus', () => {
-      screenFocusedRef.current = true;
-      syncDraftingUploadHold();
-    });
-    const unsubBlur = navigation.addListener('blur', () => {
-      screenFocusedRef.current = false;
-      syncDraftingUploadHold();
-    });
-    const appStateSub = AppState.addEventListener('change', nextState => {
-      // Match recordingAppState: ignore iOS `inactive` (Control Center).
-      if (nextState === 'inactive') {
-        return;
-      }
-      appActiveRef.current = nextState === 'active';
-      syncDraftingUploadHold();
-    });
-    // `focus` does not fire when this effect runs after the screen is already
-    // focused. Read the current state so Stop cannot upload before a later
-    // focus event.
-    screenFocusedRef.current = navigation.isFocused();
-    syncDraftingUploadHold();
-    return () => {
-      unsubFocus();
-      unsubBlur();
-      appStateSub.remove();
-      screenFocusedRef.current = false;
-      void setDraftingUploadHold(false);
-    };
-  }, [navigation, syncDraftingUploadHold]);
+  // Bible, Resources, and Record share this screen, so a tab change does not
+  // release the hold. Passage uses the same hook on its own route.
+  useDraftingUploadHold();
 
   const goBack = useCallback(() => {
     router.back();
@@ -383,38 +242,26 @@ export default function DraftingScreen() {
           return;
         }
 
-        // Source-audio needs ISO-639-3 on the project language. Devices that
-        // synced languages before mapApiLanguage may still have null codes.
-        if (!assignment.sourceLanguageCode?.trim()) {
-          const projectId = assignment.projectId;
+        if (
+          !assignment.sourceLanguageCode?.trim() &&
+          assignment.projectId !== null
+        ) {
           if (
-            projectId !== null &&
-            !masterDataIsoEnsureAttempted.has(projectId)
+            isoProjectIdRef.current !== null &&
+            isoProjectIdRef.current !== assignment.projectId
           ) {
-            masterDataIsoEnsureAttempted.add(projectId);
-            log.info('Source language ISO missing; syncing master data', {
-              chapterId,
-              projectId,
-            });
-            try {
-              await withSyncChrome(() =>
-                syncMasterData(undefined, { forceFull: true }),
-              );
-            } catch (masterError) {
-              // Allow a later chapter open / refresh to retry.
-              masterDataIsoEnsureAttempted.delete(projectId);
-              log.error('Master data sync for language ISO failed', {
-                error: masterError,
-              });
-            }
-            if (ignore) return;
+            releaseSourceLanguageIsoEnsure(isoProjectIdRef.current);
+          }
+          isoProjectIdRef.current = assignment.projectId;
+          const pulled = await ensureSourceLanguageIso(
+            assignment.projectId,
+            async () => (await loadChapterAssignment())?.sourceLanguageCode,
+          );
+          if (ignore) return;
+          if (pulled) {
             assignment = (await loadChapterAssignment()) ?? assignment;
             if (ignore) return;
             setChapterData(assignment);
-            // Only keep the one-shot latch when ISO is actually present.
-            if (!assignment.sourceLanguageCode?.trim()) {
-              masterDataIsoEnsureAttempted.delete(projectId);
-            }
           }
         }
 
@@ -437,7 +284,24 @@ export default function DraftingScreen() {
             chapterNumber: assignment.chapterNumber,
           });
           try {
-            await withSyncChrome(() => syncBibleTexts());
+            // Scoped to this chapter. A catalogue pass records chapters a
+            // bible does not carry and then skips them; Record still needs
+            // this one fetched.
+            await withSyncChrome(() =>
+              syncBibleTexts(undefined, {
+                chapterGroups: new Map([
+                  [
+                    assignment.bibleId,
+                    [
+                      {
+                        bookId: assignment.bookId,
+                        chapterNumber: assignment.chapterNumber,
+                      },
+                    ],
+                  ],
+                ]),
+              }),
+            );
             bibleTextEnsureForChapterRef.current = chapterId;
           } catch (syncError) {
             // Leave ref unset so refreshKey / remount can retry.
@@ -576,8 +440,8 @@ export default function DraftingScreen() {
                 <RecordTab
                   chapterData={chapterData}
                   userId={userId}
-                  onCaptureActiveChange={setRecordCaptureActive}
-                  onRegisterCaptureControls={setCaptureControls}
+                  onCaptureActiveChange={onCaptureActiveChange}
+                  onRegisterCaptureControls={onRegisterCaptureControls}
                   onRegisterDraftPlayback={registerDraftPlayback}
                   onChapterClaimed={handleChapterClaimed}
                 />

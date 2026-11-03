@@ -232,7 +232,7 @@ describe('pending upload queries (#545)', () => {
     await expect(getUnuploadablePendingSummary()).rejects.toThrow('db');
   });
 
-  it('chapterHasUnuploadableSelectedTakes is true when the chapter has non-verse pending (#585)', async () => {
+  it('chapterHasUnuploadableSelectedTakes is true when the chapter has pending takes the worker skips (#585)', async () => {
     mockExecute.mockResolvedValue({ rows: [{ count: 2 }] });
 
     await expect(chapterHasUnuploadableSelectedTakes(9, 40, 1)).resolves.toBe(
@@ -245,7 +245,8 @@ describe('pending upload queries (#545)', () => {
     );
     const sql = String(mockExecute.mock.calls[0]?.[0]);
     expect(sql).toContain('bt.bible_id = ?');
-    expect(sql).toContain("IFNULL(r.granularity, 'verse') = 'verse'");
+    // Pericope takes upload since #584, like verse takes.
+    expect(sql).toContain(UPLOADABLE_PREDICATES[0]);
     expect(sql).toContain('NOT (');
   });
 

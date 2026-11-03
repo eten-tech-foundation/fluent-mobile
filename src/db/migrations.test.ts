@@ -1446,7 +1446,18 @@ describe('recording server take id + delete queue migration (#716)', () => {
     expect(await columnExists(db, 'recordings', 'server_take_id')).toBe(true);
     expect(db._tables.has('recording_deletions')).toBe(true);
     await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(23);
+    expect(CURRENT_SCHEMA_VERSION).toBe(24);
+  });
+});
+
+describe('bible_text_absences table (migration 24)', () => {
+  it('creates the table when upgrading from v23', async () => {
+    const db = createFakeDb(23);
+
+    await runMigrations(db);
+
+    expect(db._tables.has('bible_text_absences')).toBe(true);
+    await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
   });
 });
 

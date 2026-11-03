@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { countChaptersMissingBibleText } from '../db/queries';
 import { userNeedsAssigneeRepair } from '../db/repository';
 import { parseUserId } from '../utils/parseUserId';
 import { logger } from '../utils/logger';
@@ -8,9 +9,12 @@ const log = logger.create('useLocalSyncHealth');
 /**
  * Detects when SQLite has project chapters but is missing assignee/checker
  * fields needed for My Work — usually means a download sync is required.
+ * Also counts chapters whose verse text a sync could still fetch, which the
+ * assignee check does not see.
  */
 export function useLocalSyncHealth(refreshKey = 0) {
   const [needsDownloadSync, setNeedsDownloadSync] = useState(false);
+  const [missingTextChapters, setMissingTextChapters] = useState(0);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -23,6 +27,7 @@ export function useLocalSyncHealth(refreshKey = 0) {
       if (!userId) {
         if (!cancelled) {
           setNeedsDownloadSync(false);
+          setMissingTextChapters(0);
           setChecking(false);
         }
         return;
@@ -38,6 +43,20 @@ export function useLocalSyncHealth(refreshKey = 0) {
         if (!cancelled) {
           setNeedsDownloadSync(false);
         }
+      }
+
+      // Separate from the assignee repair above: a text gap must not fail the
+      // repair signal, and a repair failure must not hide a text gap.
+      try {
+        const missing = await countChaptersMissingBibleText([userId]);
+        if (!cancelled) {
+          setMissingTextChapters(missing);
+        }
+      } catch (error) {
+        log.error('Failed to count chapters missing text', { error, userId });
+        if (!cancelled) {
+          setMissingTextChapters(0);
+        }
       } finally {
         if (!cancelled) {
           setChecking(false);
@@ -52,5 +71,5 @@ export function useLocalSyncHealth(refreshKey = 0) {
     };
   }, [refreshKey]);
 
-  return { needsDownloadSync, checking };
+  return { needsDownloadSync, missingTextChapters, checking };
 }

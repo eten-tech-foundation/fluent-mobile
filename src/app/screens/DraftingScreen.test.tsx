@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react-native';
 import DraftingScreen from './DraftingScreen';
 import { hrefs } from '../../navigation/hrefs';
+import { syncBibleTexts } from '../../services/sync';
 import { setLastActiveTab } from '../../utils/draftingTabState';
 const mockBack = jest.fn();
 const mockPush = jest.fn();
@@ -44,11 +45,17 @@ let capturedHeaderHandlers: {
   onAccountPress?: () => void;
 } | null = null;
 let capturedTabBarHandlers: {
+  activeTab?: 'bible' | 'resources' | 'record';
   onTabChange?: (tab: 'bible' | 'resources' | 'record') => void;
 } | null = null;
 
 const mockResume = jest.fn().mockResolvedValue(undefined);
 const mockDiscard = jest.fn().mockResolvedValue(undefined);
+/** Mirrors useRecordSession: controls only while recording or paused. */
+let mockRecordSession: { state: string; captureActive: boolean } = {
+  state: 'idle',
+  captureActive: false,
+};
 const mockStopPlayback = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../../services/uploadOrchestrator', () => ({
@@ -99,11 +106,15 @@ jest.mock('../../hooks/useActiveAccountSummary', () => ({
 
 jest.mock('../../services/syncEvents', () => ({
   onSyncComplete: () => jest.fn(),
+  emitSyncStart: jest.fn(),
+  emitSyncComplete: jest.fn(),
 }));
 
 jest.mock('../../services/sync', () => ({
   syncBibleTexts: jest.fn().mockResolvedValue(undefined),
   syncMasterData: jest.fn().mockResolvedValue(undefined),
+  ensureSourceLanguageIso: jest.fn().mockResolvedValue(false),
+  releaseSourceLanguageIsoEnsure: jest.fn(),
 }));
 
 jest.mock('../../utils/draftingTabState', () => ({
@@ -130,6 +141,7 @@ jest.mock('../../components/layout/DraftingTabBar', () => {
   const { View } = require('react-native');
   return {
     DraftingTabBar: (props: {
+      activeTab?: 'bible' | 'resources' | 'record';
       onTabChange?: (tab: 'bible' | 'resources' | 'record') => void;
     }) => {
       capturedTabBarHandlers = props;
@@ -183,6 +195,16 @@ jest.mock('../tabs/RecordTab', () => {
         onRegisterCaptureControls,
         onRegisterDraftPlayback,
       };
+      const leaveBlocked =
+        mockRecordSession.captureActive || mockRecordSession.state === 'saving';
+      MockReact.useEffect(() => {
+        onCaptureActiveChange?.(leaveBlocked);
+        onRegisterCaptureControls?.(
+          mockRecordSession.captureActive
+            ? { resume: mockResume, discardCapture: mockDiscard }
+            : null,
+        );
+      }, [leaveBlocked, onCaptureActiveChange, onRegisterCaptureControls]);
       onRegisterDraftPlayback?.({
         stopPlayback: mockStopPlayback,
       });
@@ -287,6 +309,7 @@ describe('DraftingScreen onChapterClaimed', () => {
     capturedRecordTabHandlers = null;
     capturedHeaderHandlers = null;
     capturedTabBarHandlers = null;
+    mockRecordSession = { state: 'idle', captureActive: false };
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockGetChapterAssignmentById
       .mockResolvedValueOnce(baseAssignment)
@@ -326,6 +349,27 @@ describe('DraftingScreen onChapterClaimed', () => {
     expect(mockGetBibleTexts).toHaveBeenCalledTimes(1);
     expect(mockGetRecordedVerseNumbers).toHaveBeenCalledTimes(2);
     expect(capturedOnChapterClaimed).toBeDefined();
+  });
+
+  it('fetches this chapter when its text is missing, ignoring a catalogue absence', async () => {
+    mockGetBibleTexts.mockReset();
+    mockGetBibleTexts.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        bibleId: 1,
+        bookId: 40,
+        chapterNumber: 14,
+        verseNumber: 1,
+        text: 'Verse one',
+      },
+    ]);
+
+    render(<DraftingScreen />);
+
+    await waitFor(() => {
+      expect(syncBibleTexts).toHaveBeenCalledWith(undefined, {
+        chapterGroups: new Map([[1, [{ bookId: 40, chapterNumber: 14 }]]]),
+      });
+    });
   });
 
   it('renders the shell source-audio bar slot above the tab bar', async () => {
@@ -507,6 +551,26 @@ describe('DraftingScreen onChapterClaimed', () => {
       await waitFor(() => {
         expect(screen.getByTestId('account-switcher-panel')).toBeTruthy();
       });
+    });
+
+    it('tab change while a take is saving stays on Record and shows the saving alert', async () => {
+      mockRecordSession = { state: 'saving', captureActive: false };
+      render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-activate')).toBeTruthy();
+      });
+
+      capturedTabBarHandlers?.onTabChange?.('bible');
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Saving take',
+        expect.any(String),
+        expect.arrayContaining([expect.objectContaining({ text: 'OK' })]),
+      );
+      expect(lastAlertButtons().some(b => b.text === 'Discard')).toBe(false);
+      expect(setLastActiveTab).not.toHaveBeenCalled();
+      expect(capturedTabBarHandlers?.activeTab).toBe('record');
     });
 
     it('inactive capture leaves navigation unguarded', async () => {

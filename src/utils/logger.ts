@@ -9,6 +9,9 @@ export type Transport = (
 
 export const defaultTransport: Transport = (level, tag, message, context) => {
   if (!(globalThis as any).__DEV__) return;
+  // Debug stays on the transport for tests. The Metro console only shows
+  // info and above, so per-request timings do not flood a refresh.
+  if (level === 'debug') return;
   const prefix = `[${tag}]`;
 
   const logMethod =

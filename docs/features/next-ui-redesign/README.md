@@ -51,8 +51,10 @@ being tested.
   data in the component gallery, try it on a device, and change direction
   cheaply. Wiring to real data often comes later.
 - **What holds up gets split into PRs.** The components a screen needs land
-  first, then the screen wired to real hooks. Each PR is based on `main`, one
-  at a time per chain, while demos keep running ahead locally.
+  first, then the screen wired to real hooks. PRs go into the theme branch,
+  `jskager/feature/next-ui-theme`, and stack when one builds on another. `main`
+  is merged into the theme branch every day or two, and one theme-to-`main` PR
+  lands after the summit.
 - The designer builds with an AI agent, and the devs review it like any other PR.
 - Work that needs QA references an issue. The rest of the v2 plan is tracked in
   the manifest. Device QA happens on the nightly.

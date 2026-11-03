@@ -29,6 +29,10 @@ export const MILESTONES_EMPTY_MESSAGE =
 export const MY_WORK_EMPTY_MESSAGE =
   "You don't have any chapters to work on right now. Check the Milestones tab to find available work.";
 
+/** Next Home has no Milestones tab to point to. */
+export const HOME_EMPTY_MESSAGE =
+  "You don't have any chapters to work on right now. Connect to the internet to sync and find available work.";
+
 export const PROJECT_CHAPTERS_EMPTY_MESSAGE =
   'No chapters are available in this project yet.';
 
@@ -126,3 +130,37 @@ export const CAPTURE_LEAVE_MESSAGE =
   'You have a take in progress. What would you like to do?';
 export const CAPTURE_LEAVE_RESUME = 'Resume';
 export const CAPTURE_LEAVE_DISCARD = 'Discard';
+export const CAPTURE_SAVING_TITLE = 'Saving take';
+export const CAPTURE_SAVING_MESSAGE = 'Wait until this take finishes saving.';
+
+/**
+ * Next passage player: why the Record key is off, or what the take in
+ * progress waits on.
+ */
+export const RECORD_NOT_OPEN =
+  "Recording isn't open on this chapter right now.";
+export const RECORD_MAX_TAKES =
+  'This passage has 5 takes. Delete one to record another.';
+/** The cap counts verse-by-verse takes too (#623), which the player doesn't show. */
+export const RECORD_MAX_VERSE_TAKES =
+  'A verse here has 5 takes. Delete one in classic drafting to record.';
+export const RECORD_NO_PERICOPE =
+  "This chapter isn't split into pericopes. Record it in classic drafting.";
+/** Settings says verse by verse; the player only records whole passages. */
+export const RECORD_VERSE_UNIT =
+  'You draft verse by verse. Record it in classic drafting.';
+export const RECORD_OBSERVER =
+  "You're observing this project, so you can listen but not record.";
+/** Another translator's take is official; the player only lists yours. */
+export const RECORD_OTHERS_OFFICIAL =
+  "Another translator's take is official. Change it in classic drafting.";
+export const RECORD_VERSE_TAKES_HERE =
+  'Some of this passage was recorded verse by verse. See it in classic drafting.';
+/**
+ * Legacy drafting, opened from the Next player for what it has no design for
+ * yet: verse mode, other people's takes, resources and Send.
+ */
+export const OPEN_CLASSIC_DRAFTING = 'Open in classic drafting';
+/** One line on the take card, so these stay short. */
+export const RECORD_RECOVERED_TAKE = 'Take recovered. Eject finishes it.';
+export const RECORD_PAUSED_TAKE = 'Paused. Eject finishes the take.';

@@ -87,6 +87,20 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_bt_chapter ON bible_texts(bible_id, book_id, chapter_number);`,
 
   /**
+   * Chapters the API has no text for (an NT-only bible asked for an OT
+   * chapter). Catalogues legitimately request these, so they are recorded as
+   * known-absent rather than failing the text sync. A row is dropped as soon
+   * as the chapter does return verses.
+   */
+  `CREATE TABLE IF NOT EXISTS bible_text_absences (
+      bible_id       INTEGER NOT NULL,
+      book_id        INTEGER NOT NULL,
+      chapter_number INTEGER NOT NULL,
+      recorded_at    TEXT NOT NULL,
+      PRIMARY KEY (bible_id, book_id, chapter_number)
+    )`,
+
+  /**
    * Recordings link to a verse via `bible_text_id` (canonical; see #98 / #99).
    * Do not join recordings on `chapter_assignment_id` — that column is not used.
    * `recorded_by_user_id` attributes the take to the active account (#105).

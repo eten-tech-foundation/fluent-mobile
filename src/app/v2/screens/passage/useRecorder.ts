@@ -1,0 +1,581 @@
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
+import {
+  RECORD_AUDIO_CONFLICT_WARNING,
+  RECORD_MAX_TAKES,
+  RECORD_MAX_VERSE_TAKES,
+  RECORD_NO_PERICOPE,
+  RECORD_NOT_OPEN,
+  RECORD_OBSERVER,
+  RECORD_OTHERS_OFFICIAL,
+  RECORD_PAUSED_TAKE,
+  RECORD_RECOVERED_TAKE,
+  RECORD_SOURCE_TEXT_SYNCING,
+  RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
+  RECORD_TAKEN_CHAPTER_WARNING,
+  RECORD_VERSE_TAKES_HERE,
+  RECORD_VERSE_UNIT,
+} from '../../../../constants/messages';
+import { MAX_RECORDING_TAKES } from '../../../../constants/recordingTakes';
+import { chapterHasUnuploadableSelectedTakes } from '../../../../db/queries';
+import { useChapterConflictStatus } from '../../../../hooks/useChapterConflictStatus';
+import { useDraftingUnit } from '../../../../hooks/useDraftingUnit';
+import { passageSessionVerse } from '../../../../navigation/passageSessionVerse';
+import { useLiveLevels } from '../../../../hooks/useLiveLevels';
+import { usePendingDelete } from '../../../../hooks/usePendingDelete';
+import type { PassageTake } from '../../../../hooks/usePassage';
+import { useRecordSession } from '../../../../hooks/useRecordSession';
+import { hasProjectObserverGrant } from '../../../../services/userOrgGrants';
+import type { CaptureControls } from '../../../../types/captureControls';
+import { logger } from '../../../../utils/logger';
+import { hasProjectTranslatorGrant } from '../../../../utils/myWorkDraftDownload';
+import type { RecordStatus } from './Footer';
+import type { FrontTake } from './TakeCard';
+import type { RecordKeys } from './PlayerKeys';
+import type { FanTake } from './TakeFan';
+import type { Ready } from './ready';
+
+const log = logger.create('useRecorder');
+
+/**
+ * Something about this passage Legacy's Record tab would show as a banner.
+ * `classic`: what it points at is only in classic drafting, so the notice
+ * carries the way there.
+ */
+export interface RecordNotice {
+  id: string;
+  message: string;
+  classic?: boolean;
+}
+
+/**
+ * Observing only: an Observer grant here, no Translator grant, and not this
+ * chapter's drafter or checker. Unknown grants don't block, as elsewhere.
+ */
+function isObserverOnly(
+  assignment: Ready['assignment'],
+  userId: number | null,
+): boolean {
+  const { projectId, assignedUserId, peerCheckerId } = assignment;
+  if (userId === null || projectId === null) return false;
+  if (assignedUserId === userId || peerCheckerId === userId) return false;
+  const id = String(userId);
+  return (
+    hasProjectObserverGrant(id, projectId) &&
+    !hasProjectTranslatorGrant(id, projectId)
+  );
+}
+
+/**
+ * Record mode's state for the passage player. Recording works as in Legacy's
+ * Record tab: the shared session holds the capture unit, the chapter claim
+ * and the rules for who can record here. This turns it into what the fan,
+ * the take card and the keys show.
+ */
+export function useRecorder({
+  passage,
+  userId,
+  showing,
+  downloading,
+  onReload,
+  onCaptureActiveChange,
+  onRegisterCaptureControls,
+}: {
+  passage: Ready;
+  userId: number | null;
+  /** The player is open in Record mode; leaving it commits a pending delete. */
+  showing: boolean;
+  /** The passage's text is downloading, so recording waits on it. */
+  downloading: boolean;
+  /** Re-reads the passage, e.g. after recording claims its chapter. */
+  onReload: () => void;
+  onCaptureActiveChange?: (active: boolean) => void;
+  onRegisterCaptureControls?: (controls: CaptureControls | null) => void;
+}) {
+  const { assignment } = passage;
+  const anchorVerse =
+    passageSessionVerse(passage.verses, assignment.chapterNumber) ?? 1;
+  // The player records whole passages, so its session is always pericope;
+  // a verse-by-verse setting sends Record to classic drafting instead.
+  const { draftingUnit } = useDraftingUnit();
+  const session = useRecordSession({
+    chapterData: assignment,
+    userId,
+    selectedVerse: anchorVerse,
+    versesLength: passage.chapterVerseCount,
+    draftingUnit: 'pericope',
+    onChapterClaimed: onReload,
+    onCaptureActiveChange,
+    onRegisterCaptureControls,
+  });
+  const { verseAudio } = session;
+  const { hasConflict } = useChapterConflictStatus(assignment.id);
+  const observerOnly = isObserverOnly(assignment, userId);
+  const classicReason =
+    draftingUnit !== 'pericope'
+      ? RECORD_VERSE_UNIT
+      : session.pericopeUnavailable
+      ? RECORD_NO_PERICOPE
+      : null;
+
+  // A saved, deleted or newly picked take re-reads the passage, so its recorded state and send line stay current.
+  // Keyed on what changed, so a reload that finds the same takes can't loop.
+  const takesKey = verseAudio.takes
+    .map(t => `${t.id}:${t.isSelected ? 1 : 0}:${t.syncStatus}`)
+    .join(',');
+  const sawTakes = useRef(false);
+  const reloadRef = useRef(onReload);
+  reloadRef.current = onReload;
+  useEffect(() => {
+    if (!sawTakes.current) {
+      sawTakes.current = true;
+      return;
+    }
+    reloadRef.current();
+  }, [takesKey]);
+
+  // Legacy's Record tab warns when a selected take here can't upload (#585).
+  const { bibleId, bookId, chapterNumber } = assignment;
+  const [unuploadable, setUnuploadable] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void chapterHasUnuploadableSelectedTakes(
+      bibleId,
+      bookId,
+      chapterNumber,
+    ).then(found => {
+      if (!cancelled) setUnuploadable(found);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bibleId, bookId, chapterNumber, takesKey]);
+  const capturing = session.captureActive;
+  const live = verseAudio.state === 'recording';
+  const paused = verseAudio.state === 'paused';
+  // A take found paused without recording here was recovered after a crash.
+  // A failed save also lands on paused, so saving keeps what came before.
+  const [wentLive, setWentLive] = useState(false);
+  useEffect(() => {
+    if (live) setWentLive(true);
+    else if (!paused && verseAudio.state !== 'saving') setWentLive(false);
+  }, [live, paused, verseAudio.state]);
+  const recovered = paused && !wentLive;
+  // A deleted take waits out the undo window first; Legacy's deleteTake does
+  // the rest, including handing off the selection.
+  const deletion = usePendingDelete(async id => {
+    await verseAudio.deleteTake(id);
+    // The hero's takes line falls back to the loaded passage once none are left.
+    onReload();
+  });
+  // record() awaits a commit, then starts from the session as it is by then.
+  const latestAudio = useRef(verseAudio);
+  latestAudio.current = verseAudio;
+  // Capture can become active while the sheet is still in Listen. Treat that
+  // as Record showing so a pending delete is not committed and Eject can run.
+  const shown = showing || capturing;
+  const showingRef = useRef(shown);
+  showingRef.current = shown;
+  // Source audio owns Listen. A take does not keep playing once Record is
+  // hidden, so the two never run together.
+  const pausePlaybackRef = useRef(verseAudio.pausePlayback);
+  pausePlaybackRef.current = verseAudio.pausePlayback;
+  useEffect(() => {
+    if (shown || verseAudio.state !== 'playing') return;
+    void pausePlaybackRef.current();
+  }, [shown, verseAudio.state]);
+  useEffect(
+    () => () => {
+      showingRef.current = false;
+    },
+    [],
+  );
+  /** A take just deleted shows in front, with its undo, until it's settled. */
+  const [frontOverride, setFrontOverride] = useState<string | null>(null);
+  /** On a stage-locked chapter, the take tapped forward to play; the pick stays. */
+  const [lockedFront, setLockedFront] = useState<string | null>(null);
+  /** A paused or scrubbed spot in a take, for Play to start from. */
+  const [parked, setParked] = useState<{ id: string; ms: number } | null>(null);
+  const isPassageTake = (t: { id: string; granularity: string }) =>
+    (session.effectiveUnit !== 'pericope' || t.granularity === 'pericope') &&
+    !deletion.hiddenIds.has(t.id);
+  // Whole-passage takes, live, so a new take shows as soon as it's saved.
+  const liveTakes: PassageTake[] = verseAudio.takes
+    .filter(isPassageTake)
+    .map(t => ({
+      id: t.id,
+      takeNumber: t.takeNumber,
+      selected: t.isSelected,
+      recordedAt: t.createdAt,
+    }));
+  const takes =
+    liveTakes.length > 0
+      ? liveTakes
+      : passage.takes.filter(t => !deletion.hiddenIds.has(t.id));
+
+  // Live input levels for the take in progress, kept per take for this
+  // session so a take just recorded still shows its wave.
+  const liveLevels = useLiveLevels(
+    verseAudio.getMetering,
+    capturing,
+    verseAudio.state === 'recording',
+  );
+  const levelsByTake = useRef(new Map<string, number[]>());
+  const knownTakeIds = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const ids = verseAudio.takes.map(t => t.id);
+    const known = knownTakeIds.current;
+    const fresh = known ? ids.filter(id => !known.has(id)) : [];
+    if (fresh.length === 1 && liveLevels.length > 0) {
+      levelsByTake.current.set(fresh[0], liveLevels);
+    }
+    knownTakeIds.current = new Set(ids);
+    // Only a change in the takes means one was saved.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verseAudio.takes]);
+
+  const passageTakes = verseAudio.takes
+    .filter(isPassageTake)
+    .sort((a, b) => a.takeNumber - b.takeNumber);
+  const nextTakeNumber =
+    passageTakes.reduce((n, t) => Math.max(n, t.takeNumber), 0) + 1;
+  // Takes the player can't list: verse by verse, or someone else's official.
+  const hasVerseTakes = verseAudio.takes.some(
+    t => t.granularity !== 'pericope',
+  );
+  const first = passage.verses[0];
+  const last = passage.verses[passage.verses.length - 1];
+  const othersOfficial =
+    first !== undefined &&
+    last !== undefined &&
+    verseAudio.allTakes.some(
+      t =>
+        t.isCanonical &&
+        typeof t.recordedByUserId === 'number' &&
+        t.recordedByUserId !== userId &&
+        t.granularity === 'pericope' &&
+        t.startChapter === first.chapterNumber &&
+        t.startVerse === first.verseNumber &&
+        t.endChapter === last.chapterNumber &&
+        t.endVerse === last.verseNumber,
+    );
+  // The new take keeps its tile and wave from Eject until it's saved.
+  const held = capturing || verseAudio.state === 'saving';
+  const pendingId = deletion.pending?.id ?? null;
+  // Only while that take's undo is open; after that the selected take leads.
+  const overrideId = frontOverride === pendingId ? frontOverride : null;
+  const leadId = overrideId ?? (session.stageLocked ? lockedFront : null);
+  const pickedTake =
+    passageTakes.find(t => t.id === verseAudio.selectedTake?.id) ??
+    passageTakes[passageTakes.length - 1] ??
+    null;
+  const fan: FanTake[] = passageTakes.map(t => ({
+    id: t.id,
+    takeNumber: t.takeNumber,
+    official: t.id === verseAudio.ownCanonicalTakeId,
+    selected: t.id === pickedTake?.id,
+    deleted: t.id === pendingId,
+  }));
+  if (held) {
+    fan.push({
+      id: 'recording',
+      takeNumber: nextTakeNumber,
+      official: false,
+      recording: live,
+      paused,
+    });
+  } else if (fan.length < MAX_RECORDING_TAKES) {
+    // Figma's dashed slot: where the next take lands, in front until the first.
+    fan.push({
+      id: 'placeholder',
+      takeNumber: nextTakeNumber,
+      official: false,
+      placeholder: true,
+    });
+  }
+  const frontTake = held
+    ? null
+    : passageTakes.find(t => t.id === leadId) ?? pickedTake;
+  const frontDeleted = frontTake !== null && frontTake.id === pendingId;
+  const frontId = held ? 'recording' : frontTake?.id ?? 'placeholder';
+  const playingFront =
+    frontTake !== null && verseAudio.playingTakeId === frontTake.id;
+  // Where Play picks up the front take: where it was paused or scrubbed to.
+  const frontLength = frontTake?.durationMs ?? 0;
+  const parkedMs =
+    parked !== null && frontTake !== null && parked.id === frontTake.id
+      ? parked.ms
+      : 0;
+  const take: FrontTake = held
+    ? {
+        takeNumber: nextTakeNumber,
+        durationMs: session.elapsedMs,
+        levels: liveLevels,
+        progress: live ? 1 : 0,
+        recording: live,
+        paused,
+        official: false,
+      }
+    : frontTake
+    ? {
+        takeNumber: frontTake.takeNumber,
+        durationMs: frontTake.durationMs ?? null,
+        levels: levelsByTake.current.get(frontTake.id) ?? [],
+        progress:
+          playingFront && verseAudio.durationMs > 0
+            ? verseAudio.positionMs / verseAudio.durationMs
+            : frontLength > 0
+            ? parkedMs / frontLength
+            : 0,
+        onSeek:
+          frontDeleted || frontLength <= 0
+            ? undefined
+            : p => void scrubFront(p),
+        recording: false,
+        ...(frontDeleted
+          ? { official: false, onUndo: () => undoDelete() }
+          : {
+              official: frontTake.id === verseAudio.ownCanonicalTakeId,
+              // Someone else's official take isn't taken over unseen.
+              onToggleOfficial:
+                session.stageLocked || othersOfficial
+                  ? undefined
+                  : () => void verseAudio.setCanonical(frontTake.id),
+            }),
+      }
+    : {
+        takeNumber: 1,
+        durationMs: null,
+        levels: [],
+        progress: 0,
+        recording: false,
+        official: false,
+      };
+  // A take waiting on undo is deleted first when Record is pressed.
+  const atCap =
+    !held &&
+    classicReason === null &&
+    !deletion.pending &&
+    !verseAudio.canRecordNewTake;
+  // Our own download doesn't go through sync, so say it's on its way.
+  const textHint =
+    session.syncingMessage !== null && downloading
+      ? RECORD_SOURCE_TEXT_SYNCING
+      : session.syncingMessage;
+  // Why Record can't start at all, which the hero's Record shows too.
+  const cannotRecord =
+    textHint ??
+    (session.isTaken
+      ? RECORD_TAKEN_CHAPTER_WARNING
+      : session.stageLocked || session.drafterCaptureBlocked
+      ? RECORD_NOT_OPEN
+      : observerOnly
+      ? RECORD_OBSERVER
+      : classicReason);
+  const blockedReason = recovered
+    ? RECORD_RECOVERED_TAKE
+    : paused
+    ? RECORD_PAUSED_TAKE
+    : cannotRecord ??
+      (atCap && session.activeRecordingUnit !== null
+        ? // The cap is per verse, so verse-by-verse takes count too.
+          passageTakes.length >= MAX_RECORDING_TAKES
+          ? RECORD_MAX_TAKES
+          : RECORD_MAX_VERSE_TAKES
+        : null);
+
+  const notices: RecordNotice[] = [];
+  if (hasConflict) {
+    notices.push({ id: 'conflict', message: RECORD_AUDIO_CONFLICT_WARNING });
+  } else if (unuploadable) {
+    notices.push({
+      id: 'unuploadable',
+      message: RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
+    });
+  }
+  if (session.isTaken) {
+    notices.push({ id: 'taken', message: RECORD_TAKEN_CHAPTER_WARNING });
+  } else if (session.drafterCaptureBlocked && !session.stageLocked) {
+    notices.push({ id: 'not-open', message: RECORD_NOT_OPEN });
+  } else if (observerOnly) {
+    notices.push({ id: 'observer', message: RECORD_OBSERVER });
+  }
+  if (classicReason !== null && !session.stageLocked) {
+    notices.push({ id: 'classic', message: classicReason, classic: true });
+  } else if (hasVerseTakes) {
+    notices.push({
+      id: 'verse-takes',
+      message: RECORD_VERSE_TAKES_HERE,
+      classic: true,
+    });
+  }
+  if (othersOfficial) {
+    notices.push({
+      id: 'others-official',
+      message: RECORD_OTHERS_OFFICIAL,
+      classic: true,
+    });
+  }
+
+  function deleteTake(id: string) {
+    const target = passageTakes.find(t => t.id === id);
+    if (!target) return;
+    if (verseAudio.state === 'playing' && verseAudio.playingTakeId === id) {
+      void verseAudio.pausePlayback();
+    }
+    deletion.remove({ id, takeNumber: target.takeNumber });
+    setFrontOverride(id);
+    AccessibilityInfo.announceForAccessibility(
+      `Take ${target.takeNumber} deleted. Undo is on the take card.`,
+    );
+  }
+
+  function undoDelete() {
+    const target = deletion.pending;
+    deletion.undo();
+    if (target) {
+      AccessibilityInfo.announceForAccessibility(
+        `Take ${target.takeNumber} restored.`,
+      );
+    }
+  }
+
+  function selectTake(id: string) {
+    if (id === pendingId) {
+      undoDelete();
+      return;
+    }
+    setFrontOverride(null);
+    if (session.stageLocked) {
+      setLockedFront(id);
+      return;
+    }
+    void verseAudio.selectTake(id);
+  }
+
+  // Closing the player or leaving Record hides the undo, so it commits.
+  const { commit: commitDelete } = deletion;
+  useEffect(() => {
+    if (!shown) void commitDelete();
+  }, [shown, commitDelete]);
+
+  // The recorder's state only changes once the native call returns, so a
+  // second key pressed meanwhile would act on a recorder mid-change.
+  const busy = useRef(false);
+  async function oneAtATime(action: () => Promise<void>) {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      await action();
+    } catch (error) {
+      // Recorder calls report their own errors; the mic request and start()'s
+      // take count can still reject.
+      log.error('Player key failed', { error });
+    } finally {
+      busy.current = false;
+    }
+  }
+
+  // Record pauses and resumes one take; Eject finishes it.
+  async function record() {
+    if (verseAudio.state === 'saving') return;
+    if (verseAudio.state === 'recording') {
+      await verseAudio.pause();
+      return;
+    }
+    if (verseAudio.state === 'paused') {
+      await verseAudio.resume();
+      return;
+    }
+    if (
+      session.stageLocked ||
+      session.drafterCaptureBlocked ||
+      session.isTaken ||
+      observerOnly ||
+      classicReason !== null
+    ) {
+      return;
+    }
+    if (!(await session.ensureMic())) return;
+    // A new take counts toward the limit, so a pending delete goes first.
+    await deletion.commit();
+    // The player may have closed while the delete ran; don't record hidden.
+    if (!showingRef.current) return;
+    session.setElapsedMs(0);
+    await latestAudio.current.start();
+  }
+
+  async function playTake() {
+    if (verseAudio.state === 'playing') {
+      if (playingFront) {
+        setParked({ id: frontTake.id, ms: verseAudio.positionMs });
+      }
+      await verseAudio.pausePlayback();
+      return;
+    }
+    // The take in front, which may not be the session's selected take.
+    if (!frontTake) return;
+    setParked(null);
+    const parkedHere = parked?.id === frontTake.id;
+    // Nothing parked resumes. A scrub, including to 0 or the end, is explicit.
+    await verseAudio.playTake(
+      frontTake,
+      parkedHere ? (parkedMs >= frontLength ? 0 : parkedMs) : undefined,
+    );
+  }
+
+  async function scrubFront(p: number) {
+    if (!frontTake) return;
+    const ms = Math.round(p * frontLength);
+    if (playingFront && verseAudio.state === 'playing') {
+      await verseAudio.seek(ms, frontTake);
+      return;
+    }
+    setParked({ id: frontTake.id, ms });
+  }
+
+  const footer: RecordStatus = {
+    blockedReason: live ? null : blockedReason,
+    take,
+  };
+  const keys: RecordKeys = {
+    recording: live,
+    paused,
+    recordDisabled:
+      !capturing &&
+      (held ||
+        observerOnly ||
+        classicReason !== null ||
+        atCap ||
+        session.captureDisabled ||
+        session.isTaken),
+    onRecord: () => void oneAtATime(record),
+    playing: verseAudio.state === 'playing',
+    playDisabled: held || frontTake === null || frontDeleted,
+    onPlay: () => void playTake(),
+    finishDisabled: !capturing,
+    onFinish: () => void oneAtATime(() => verseAudio.stop()),
+  };
+
+  return {
+    /** A take is recording or paused: lock the mode and guard the close. */
+    capturing,
+    /** The passage's takes, live, for the hero's takes line. */
+    takes,
+    fan: {
+      takes: fan,
+      frontId,
+      onSelect: selectTake,
+      onDelete: held || session.stageLocked ? undefined : deleteTake,
+    },
+    footer,
+    keys,
+    /** Why Record can't start here; null when it can. */
+    cannotRecord: live || capturing ? null : cannotRecord,
+    /** Legacy's Record-tab banners, for the hero and player. */
+    notices,
+    /** Stops a take so Listen's source audio can start alone. */
+    pauseTakePlayback: verseAudio.pausePlayback,
+    discardCapture: verseAudio.discardCapture,
+  };
+}

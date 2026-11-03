@@ -100,11 +100,17 @@ export function startPhase(name: string) {
   const startedAt = Date.now();
   return {
     end(counts?: Record<string, unknown>) {
-      log.info(SYNC_PHASE_LOG_MESSAGE, {
+      const payload = {
         phase: name,
         elapsedMs: Date.now() - startedAt,
         ...pickSyncPhaseCounts(counts),
-      });
+      };
+      // One line per request (network + parse) hides the step summaries.
+      if (name === HTTP_PHASE.network || name === HTTP_PHASE.parse) {
+        log.debug(SYNC_PHASE_LOG_MESSAGE, payload);
+        return;
+      }
+      log.info(SYNC_PHASE_LOG_MESSAGE, payload);
     },
   };
 }

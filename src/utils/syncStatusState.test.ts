@@ -118,6 +118,17 @@ describe('deriveSyncStatus', () => {
     ).toBe('online_needs_sync');
   });
 
+  it('returns online_needs_sync when verse text is still fetchable', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: true,
+        isSyncing: false,
+        hasPendingUploads: false,
+        needsTextSync: true,
+      }),
+    ).toBe('online_needs_sync');
+  });
+
   it('returns online_synced when queues empty and no retry work', () => {
     expect(
       deriveSyncStatus({
@@ -126,6 +137,7 @@ describe('deriveSyncStatus', () => {
         hasPendingUploads: false,
         needsDownloadSync: false,
         hasSyncRetryWork: false,
+        needsTextSync: false,
       }),
     ).toBe('online_synced');
   });

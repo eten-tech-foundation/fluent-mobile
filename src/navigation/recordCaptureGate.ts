@@ -1,5 +1,5 @@
 /**
- * Cross-tree gate for an in-progress record take (recording or paused).
+ * Cross-tree gate for an in-progress record take (recording, paused or saving).
  * Drafting publishes; the root drawer and settings menu subscribe so swipe /
  * drawer navigation cannot discard a take (#568).
  */
