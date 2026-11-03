@@ -247,7 +247,12 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
       'Malformed verse audio response: missing contentType',
     );
   }
-  if (typeof body.downloadUrl !== 'string' || body.downloadUrl.length === 0) {
+  // A stored-only PUT on a unit with no active take is a 200 with
+  // downloadUrl: null (#864). Empty string is still malformed.
+  if (
+    body.downloadUrl !== null &&
+    (typeof body.downloadUrl !== 'string' || body.downloadUrl.length === 0)
+  ) {
     throw createApiError(
       500,
       'Malformed verse audio response: missing downloadUrl',
@@ -290,7 +295,7 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
         : (body.activeTakeId as number),
     ...(isFiniteNumber(body.takeId) ? { takeId: body.takeId } : {}),
     verseNumber: body.verseNumber as number,
-    downloadUrl: body.downloadUrl,
+    downloadUrl: body.downloadUrl === null ? null : body.downloadUrl,
     takes: body.takes.map(parseVerseAudioTake),
     createdAt: body.createdAt,
     updatedAt: body.updatedAt,
