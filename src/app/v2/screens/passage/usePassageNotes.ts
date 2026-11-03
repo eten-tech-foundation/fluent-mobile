@@ -44,11 +44,11 @@ export function usePassageNotes(
   const ready = state.status === 'ready' ? state.notes : null;
   const failed = state.status === 'error';
   const settled = useMemo(
-    () => (ready ? matchNotes(verses, ready) : failed ? NONE : null),
-    [ready, failed, verses],
+    () => (ready ? matchNotes(verses, ready) : null),
+    [ready, verses],
   );
-  // A reload (e.g. coming back online) keeps the notes it had meanwhile, as
-  // long as they're in the same language.
+  // A reload (e.g. coming back online) keeps the notes it had meanwhile, and
+  // after a failed one, as long as they're in the same language.
   const [kept, setKept] = useState({ languageCode, notes: NONE });
   useEffect(() => {
     if (settled) setKept({ languageCode, notes: settled });

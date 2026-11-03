@@ -32,7 +32,7 @@ export interface RoundButtonProps {
   onPress?: (event: GestureResponderEvent) => void;
   /**
    * Figma `Style`. Soft is tactile, for light screens; Flat is for dark and
-   * blue screens and always uses Canvas colors.
+   * blue screens: Accent colors on blue, Canvas colors anywhere else.
    */
   variant?: 'soft' | 'flat';
   /**

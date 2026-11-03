@@ -67,6 +67,13 @@ export function NoteScreen({
   const win = useWindowDimensions();
   const [width, setWidth] = useState(win.width);
   const [first] = useState(index);
+  const settle = (x: number) => {
+    const to = Math.min(
+      Math.max(Math.round(x / (width || 1)), 0),
+      notes.length - 1,
+    );
+    if (to !== index) onIndexChange(to);
+  };
   const [frame, setFrame] = useState({
     x: 0,
     y: 0,
@@ -219,9 +226,11 @@ export function NoteScreen({
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           contentOffset={{ x: first * width, y: 0 }}
-          onMomentumScrollEnd={e => {
-            const to = Math.round(e.nativeEvent.contentOffset.x / (width || 1));
-            if (to !== index) onIndexChange(to);
+          onMomentumScrollEnd={e => settle(e.nativeEvent.contentOffset.x)}
+          // A slow drag can stop without momentum, so it settles here.
+          onScrollEndDrag={e => {
+            if (!e.nativeEvent.velocity?.x)
+              settle(e.nativeEvent.contentOffset.x);
           }}
           testID="passage-note-pager"
         >

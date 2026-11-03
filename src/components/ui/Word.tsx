@@ -71,13 +71,13 @@ export function Word({
       borderWidth: t.stroke[2],
       borderColor: t.roles.accentPrimary,
     },
-    // Touching words of an outlined phrase drop the border between them,
-    // padding its width back so the line doesn't re-wrap.
-    noteJoinStart: {
+    // Touching words of a phrase drop the border between them, padding its
+    // width back so the line doesn't re-wrap when the phrase is focused.
+    collapseStart: {
       borderLeftWidth: 0,
       paddingLeft: t.spacing.xs + t.stroke[2],
     },
-    noteJoinEnd: {
+    collapseEnd: {
       borderRightWidth: 0,
       paddingRight: t.spacing.xs + t.stroke[2],
     },
@@ -94,8 +94,8 @@ export function Word({
     variant === 'note' && styles.note,
     joinStart && styles.joinStart,
     joinEnd && styles.joinEnd,
-    variant === 'note' && joinStart && styles.noteJoinStart,
-    variant === 'note' && joinEnd && styles.noteJoinEnd,
+    variant !== 'plain' && joinStart && styles.collapseStart,
+    variant !== 'plain' && joinEnd && styles.collapseEnd,
   ];
   const label = (
     <Animated.Text

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Word } from './Word';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
@@ -54,6 +54,22 @@ describe('Word', () => {
       screen.getByTestId('w2', { includeHiddenElements: true }).props
         .importantForAccessibility,
     ).toBe('no-hide-descendants');
+  });
+
+  it('stays one width whether a joined phrase is focused or at rest', () => {
+    const box = (variant: 'note' | 'phrase') => {
+      render(<Word word="my" variant={variant} joinEnd testID={variant} />);
+      const style = StyleSheet.flatten(screen.getByTestId(variant).props.style);
+      const edge = (border?: number, padding?: unknown) =>
+        (border ?? style.borderWidth ?? 0) +
+        Number(padding ?? style.paddingHorizontal ?? 0);
+      return {
+        start: edge(style.borderLeftWidth, style.paddingLeft),
+        end: edge(style.borderRightWidth, style.paddingRight),
+      };
+    };
+
+    expect(box('phrase')).toEqual(box('note'));
   });
 
   it('is plain text without a press', () => {

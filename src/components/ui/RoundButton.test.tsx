@@ -6,6 +6,7 @@ import { setUiVersion } from '../../services/userPreferences';
 import { legacyTheme, resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
+import { ColorModeScope } from '../../theme/useTheme';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -121,7 +122,7 @@ describe('RoundButton', () => {
     expect(screen.queryByTestId('b-rim')).toBeNull();
   });
 
-  it('pins Flat to Canvas colors in Next, whatever the surrounding mode', () => {
+  it('pins Flat to Canvas colors in Next, except on Accent', () => {
     act(() => {
       setUiVersion('next');
     });
@@ -132,9 +133,21 @@ describe('RoundButton', () => {
         variant="flat"
       />,
     );
-
     expect(screen.getByTestId('round-icon')).toHaveTextContent(
       resolveTheme('next', 'canvas').roles.fgPrimary,
+    );
+
+    screen.rerender(
+      <ColorModeScope value="accent">
+        <RoundButton
+          icon={ColorIcon}
+          accessibilityLabel="Download"
+          variant="flat"
+        />
+      </ColorModeScope>,
+    );
+    expect(screen.getByTestId('round-icon')).toHaveTextContent(
+      resolveTheme('next', 'accent').roles.fgPrimary,
     );
   });
 

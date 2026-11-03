@@ -80,6 +80,7 @@ let mockDownloadState: PassageDownload = 'idle';
 let mockReduceMotion = false;
 let mockFocused = true;
 let mockNotes: TranslationNoteItem[] = [];
+let mockNotesFailed = false;
 const baseParams = {
   chapterId: '5',
   anchorVerse: '22',
@@ -257,7 +258,9 @@ jest.mock('../../../hooks/useConnectivity', () => ({
 
 jest.mock('../../../hooks/useTranslationNotesForUnit', () => ({
   useTranslationNotesForUnit: () => ({
-    state: { status: 'ready', notes: mockNotes },
+    state: mockNotesFailed
+      ? { status: 'error', message: 'Notes failed' }
+      : { status: 'ready', notes: mockNotes },
     retry: jest.fn(),
   }),
 }));
@@ -389,6 +392,7 @@ describe('PassageScreen', () => {
     mockReduceMotion = false;
     mockFocused = true;
     mockNotes = [];
+    mockNotesFailed = false;
     mockDraftingUnit = 'pericope';
     mockConflict = false;
     mockUnuploadable.mockResolvedValue(false);
@@ -862,6 +866,42 @@ describe('PassageScreen', () => {
     expect(
       screen.getByText('This note quotes another translation.'),
     ).toBeTruthy();
+
+    // A slow drag settles without momentum, and stays on the notes there are.
+    fireEvent(pager, 'scrollEndDrag', {
+      nativeEvent: { contentOffset: { x: 0, y: 0 }, velocity: { x: 2, y: 0 } },
+    });
+    expect(screen.getByLabelText('Note 2 of 2')).toBeTruthy();
+    fireEvent(pager, 'scrollEndDrag', {
+      nativeEvent: { contentOffset: { x: 0, y: 0 }, velocity: { x: 0, y: 0 } },
+    });
+    expect(screen.getByLabelText('Note 1 of 2')).toBeTruthy();
+    fireEvent(pager, 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { x: 1080, y: 0 } },
+    });
+    expect(screen.getByLabelText('Note 2 of 2')).toBeTruthy();
+  });
+
+  it('keeps the notes it has when a reload fails', () => {
+    mockNotes = [
+      {
+        id: 'cup',
+        title: 'Mark 14:23',
+        quote: 'took a cup',
+        body: 'The cup held wine.',
+        verse: { chapterNumber: 14, verseNumber: 23 },
+      },
+    ];
+    jest.useFakeTimers();
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-listen'));
+    settle();
+    expect(screen.getByLabelText('Translation note: took a cup')).toBeTruthy();
+
+    mockNotesFailed = true;
+    screen.rerender(<PassageScreen />);
+
+    expect(screen.getByLabelText('Translation note: took a cup')).toBeTruthy();
   });
 
   it('leaves the note chips inert while Record is open', () => {

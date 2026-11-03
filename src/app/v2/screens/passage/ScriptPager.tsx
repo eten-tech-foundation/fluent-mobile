@@ -306,6 +306,10 @@ export function ScriptPager({
           {shown.length > 0 ? (
             <Pressable
               onPress={expanded ? undefined : onOpen}
+              // Open, the chips inside are the buttons.
+              accessible={!expanded}
+              focusable={!expanded}
+              importantForAccessibility={expanded ? 'no' : 'auto'}
               accessibilityRole={expanded ? undefined : 'button'}
               accessibilityLabel={
                 expanded ? undefined : 'Open the script in the player'
