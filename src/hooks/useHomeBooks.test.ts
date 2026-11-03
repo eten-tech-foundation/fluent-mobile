@@ -140,6 +140,44 @@ describe('useHomeBooks', () => {
     );
   });
 
+  it('keeps the newer books when an older read finishes last', async () => {
+    let resolveOld: (books: HomeBookSummary[]) => void = () => {};
+    mockGetHomeBookSummaries.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveOld = resolve;
+        }),
+    );
+    const metadata = deferred();
+    mockRefresh.mockReturnValueOnce(metadata.promise);
+    const { result } = renderHook(() => useHomeBooks());
+
+    await act(async () => {
+      metadata.resolve();
+      await metadata.promise;
+    });
+    await waitFor(() => expect(result.current.books).toEqual([MARK]));
+
+    await act(async () => {
+      resolveOld([]);
+    });
+    expect(result.current.books).toEqual([MARK]);
+  });
+
+  it('keeps the books already shown when a later read fails', async () => {
+    const { result, rerender } = renderHook(
+      ({ key }: { key: number }) => useHomeBooks(key),
+      { initialProps: { key: 0 } },
+    );
+    await waitFor(() => expect(result.current.books).toEqual([MARK]));
+
+    mockGetHomeBookSummaries.mockRejectedValueOnce(new Error('disk I/O error'));
+    rerender({ key: 1 });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.books).toEqual([MARK]);
+  });
+
   it('reloads when the refresh key changes', async () => {
     const { result, rerender } = renderHook(
       ({ key }: { key: number }) => useHomeBooks(key),

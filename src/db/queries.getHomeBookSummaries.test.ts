@@ -155,10 +155,10 @@ describe('getHomeBookSummaries', () => {
     expect(mockExecute).toHaveBeenCalledWith(expect.any(String), [ME, ME]);
   });
 
-  it('returns nothing when the read fails', async () => {
+  it('throws when the read fails, so Home can keep the books it already showed', async () => {
     mockExecute.mockRejectedValue(new Error('disk I/O error'));
 
-    await expect(getHomeBookSummaries(ME)).resolves.toEqual([]);
+    await expect(getHomeBookSummaries(ME)).rejects.toThrow('disk I/O error');
   });
 });
 

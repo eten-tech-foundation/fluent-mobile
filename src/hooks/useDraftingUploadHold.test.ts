@@ -60,4 +60,30 @@ describe('useDraftingUploadHold', () => {
     second.unmount();
     expect(mockHold).toHaveBeenLastCalledWith(false);
   });
+
+  it('drops the hold when the app backgrounds, and ignores inactive', () => {
+    let onChange: ((state: string) => void) | undefined;
+    const remove = jest.fn();
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_type, listener) => {
+        onChange = listener as (state: string) => void;
+        return { remove };
+      });
+
+    const { unmount } = renderHook(() => useDraftingUploadHold());
+    expect(mockHold).toHaveBeenLastCalledWith(true);
+
+    onChange?.('background');
+    expect(mockHold).toHaveBeenLastCalledWith(false);
+
+    onChange?.('active');
+    expect(mockHold).toHaveBeenLastCalledWith(true);
+
+    onChange?.('inactive');
+    expect(mockHold).toHaveBeenLastCalledWith(true);
+
+    unmount();
+    expect(remove).toHaveBeenCalled();
+  });
 });

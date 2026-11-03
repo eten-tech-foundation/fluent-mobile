@@ -19,22 +19,34 @@ export function useHomeBooks(refreshKey = 0) {
   const [books, setBooks] = useState<HomeBookSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const refreshGenerationRef = useRef(0);
+  const loadGenerationRef = useRef(0);
 
   const loadBooks = useCallback(async () => {
     const userId = parseUserId();
     if (!userId) {
+      // A signed-out read must not publish after this.
+      loadGenerationRef.current += 1;
       setBooks([]);
       return;
     }
+    const generation = ++loadGenerationRef.current;
     try {
-      setBooks(await getHomeBookSummaries(userId));
+      const next = await getHomeBookSummaries(userId);
+      if (loadGenerationRef.current !== generation) return;
+      if (parseUserId() !== userId) {
+        setBooks([]);
+        return;
+      }
+      setBooks(next);
     } catch (error) {
+      if (loadGenerationRef.current !== generation) return;
       log.error('Error loading home books', { error });
-      setBooks([]);
+      // Keep the books already on screen. An empty list is what "no books" looks like.
     }
   }, []);
 
   useEffect(() => {
+    loadGenerationRef.current += 1;
     setLoading(true);
     loadBooks().finally(() => setLoading(false));
   }, [loadBooks, refreshKey]);

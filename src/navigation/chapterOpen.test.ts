@@ -97,6 +97,72 @@ describe('resolveChapterOpen', () => {
     await expect(resolveChapterOpen(chapter, current)).resolves.toBeNull();
   });
 
+  it('stops when the account changes while the observer checks are running', async () => {
+    mockObserverIds = [9];
+    let resolveMember: (member: boolean) => void = () => {};
+    mockMember.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveMember = resolve;
+        }),
+    );
+    const pending = resolveChapterOpen(
+      { ...chapter, assignmentStatus: 'community_review', assignedUserId: 8 },
+      current,
+    );
+    mockActiveUserId = '8';
+    resolveMember(true);
+    await expect(pending).resolves.toBeNull();
+  });
+
+  it('stops when membership is gone by the last observer check', async () => {
+    mockObserverIds = [9];
+    mockMember.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    await expect(
+      resolveChapterOpen(
+        { ...chapter, assignmentStatus: 'community_review', assignedUserId: 8 },
+        current,
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it('stops when the observer grant is revoked mid-check', async () => {
+    mockObserverIds = [9];
+    mockMember.mockImplementationOnce(async () => {
+      mockObserverIds = [];
+      return true;
+    });
+    await expect(
+      resolveChapterOpen(
+        { ...chapter, assignmentStatus: 'community_review', assignedUserId: 8 },
+        current,
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it('stops when the Translator grant is gone before an open peer check opens', async () => {
+    const openPeer = {
+      ...chapter,
+      assignmentStatus: 'peer_check',
+      assignedUserId: 8,
+    };
+    let reads = 0;
+    const ids = jest.requireMock('../utils/myWorkDraftDownload') as {
+      getTranslatorProjectIds: () => number[];
+    };
+    const original = ids.getTranslatorProjectIds;
+    ids.getTranslatorProjectIds = () => {
+      reads += 1;
+      return reads === 1 ? [9] : [];
+    };
+    try {
+      await expect(resolveChapterOpen(openPeer, current)).resolves.toBeNull();
+      expect(reads).toBeGreaterThan(1);
+    } finally {
+      ids.getTranslatorProjectIds = original;
+    }
+  });
+
   it('opens an open peer check only with a Translator grant', async () => {
     const openPeer = {
       ...chapter,

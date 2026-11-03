@@ -392,7 +392,7 @@ describe('PassageScreen', () => {
     expect(screen.queryByTestId('passage-book')).toBeNull();
 
     fireEvent.press(
-      screen.getByRole('header', { name: 'The Last Supper. Show details.' }),
+      screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
     );
     expect(
       within(screen.getByTestId('passage-title-sheet')).getByRole('header', {
@@ -500,7 +500,7 @@ describe('PassageScreen', () => {
     render(<PassageScreen />);
 
     expect(
-      screen.getByRole('header', { name: 'The Last Supper. Show details.' }),
+      screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
     ).toBeTruthy();
     expect(screen.getAllByText('Mark 14:22–25', hidden).length).toBeGreaterThan(
       0,
@@ -970,7 +970,7 @@ describe('PassageScreen', () => {
   it('opens classic drafting from the title sheet', () => {
     renderSettled();
     fireEvent.press(
-      screen.getByRole('header', { name: 'The Last Supper. Show details.' }),
+      screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
     );
     settle();
     fireEvent.press(screen.getByTestId('passage-classic'));
@@ -1341,7 +1341,7 @@ describe('PassageScreen', () => {
     await waitFor(() => expect(getRecordCaptureGate()).toBe(true));
 
     fireEvent.press(
-      screen.getByRole('header', { name: 'The Last Supper. Show details.' }),
+      screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
     );
     fireEvent.press(
       screen.getByRole('button', {

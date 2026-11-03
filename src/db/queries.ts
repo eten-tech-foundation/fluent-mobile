@@ -1169,7 +1169,7 @@ export async function getHomeBookSummaries(
     log.error('Error fetching home book summaries', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return [];
+    throw error;
   }
 }
 

@@ -187,7 +187,7 @@ export function HeroHeader({
             onPress={onTitlePress}
             disabled={!onTitlePress}
             android_disableSound
-            accessibilityRole="header"
+            accessibilityRole={onTitlePress ? 'button' : 'header'}
             accessibilityLabel={
               onTitlePress ? `${title}. Show details.` : title
             }
