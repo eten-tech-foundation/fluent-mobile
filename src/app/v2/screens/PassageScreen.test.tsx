@@ -827,6 +827,62 @@ describe('PassageScreen', () => {
     expect(screen.getByLabelText('1 more translation note')).toBeTruthy();
   });
 
+  it('turns to the next note when the pager is swiped', () => {
+    mockNotes = [
+      {
+        id: 'cup',
+        title: 'Mark 14:23',
+        quote: 'took a cup',
+        body: 'The cup held wine.',
+        verse: { chapterNumber: 14, verseNumber: 23 },
+      },
+      {
+        id: 'elsewhere',
+        title: 'Mark 14:22',
+        quote: 'a phrase from another translation',
+        body: 'This note quotes another translation.',
+        verse: { chapterNumber: 14, verseNumber: 22 },
+      },
+    ];
+    jest.useFakeTimers();
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-listen'));
+    settle();
+    fireEvent.press(screen.getByLabelText('Translation note: took a cup'));
+    const pager = screen.getByTestId('passage-note-pager');
+    fireEvent(pager.parent!.parent!, 'layout', {
+      nativeEvent: { layout: { width: 360, height: 400 } },
+    });
+
+    fireEvent(pager, 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { x: 360, y: 0 } },
+    });
+
+    expect(screen.getByLabelText('Note 2 of 2')).toBeTruthy();
+    expect(
+      screen.getByText('This note quotes another translation.'),
+    ).toBeTruthy();
+  });
+
+  it('leaves the note chips inert while Record is open', () => {
+    mockNotes = [
+      {
+        id: 'cup',
+        title: 'Mark 14:23',
+        quote: 'took a cup',
+        body: 'The cup held wine.',
+        verse: { chapterNumber: 14, verseNumber: 23 },
+      },
+    ];
+    jest.useFakeTimers();
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    settle();
+
+    expect(screen.getByTestId('passage-note-chip-0-0')).toBeTruthy();
+    expect(screen.queryByLabelText('Translation note: took a cup')).toBeNull();
+  });
+
   it("squares a phrase's corners where its words share a line, not across a wrap", () => {
     mockNotes = [
       {

@@ -200,38 +200,60 @@ export function Sheet({
     onRegisterCaptureControls,
   });
   const notes = usePassageNotes(passage, userId, arrived || expanded);
-  /** The translation note on the blue screen, by index. */
-  const [noteIndex, setNoteIndex] = useState<number | null>(null);
+  // Notes that failed to load try again each time the player opens.
+  const notesRef = useRef(notes);
+  useEffect(() => {
+    notesRef.current = notes;
+  });
+  useEffect(() => {
+    if (expanded && notesRef.current.failed) void notesRef.current.retry();
+  }, [expanded]);
+  /** A take is lifted to delete it: everything but the fan dims. */
+  const [lifted, setLifted] = useState(false);
+  const { capturing } = recorder;
+  // A recovered or live take can arrive after Listen opened, or after a drag
+  // that never went through open(). Record stays up for the whole take so
+  // Eject is reachable; Discard is not the only way out.
+  const showRecord = recordMode || capturing;
+  /** The translation note on the blue screen, by id so a reload keeps it. */
+  const [noteId, setNoteId] = useState<string | null>(null);
   /** Where its phrase was tapped; the blue grows from there. */
   const [noteFrom, setNoteFrom] = useState<{ x: number; y: number } | null>(
     null,
   );
   const [noteClosing, setNoteClosing] = useState(false);
   /** The note last read; its phrase stays marked in the script. */
-  const [lastNote, setLastNote] = useState<number | null>(null);
+  const [lastNoteId, setLastNoteId] = useState<string | null>(null);
   useEffect(() => {
-    if (noteIndex !== null) setLastNote(noteIndex);
-  }, [noteIndex]);
-  const noteIndexRef = useRef(noteIndex);
-  noteIndexRef.current = noteIndex;
+    if (noteId !== null) setLastNoteId(noteId);
+  }, [noteId]);
+  const noteIndex = useMemo(
+    () => indexOfNote(notes.notes, noteId),
+    [notes.notes, noteId],
+  );
+  const lastNote = useMemo(
+    () => indexOfNote(notes.notes, lastNoteId),
+    [notes.notes, lastNoteId],
+  );
   // A note belongs to the open player's Listen side.
   const openNote = useCallback(
     (index: number, from?: { x: number; y: number }) => {
-      if (!expanded || recordMode) return;
-      if (noteIndexRef.current === null) setNoteFrom(from ?? null);
+      const target = notes.notes[index];
+      if (!expanded || recordMode || !target) return;
+      if (noteId === null) setNoteFrom(from ?? null);
       setNoteClosing(false);
-      setNoteIndex(index);
+      setNoteId(target.id);
     },
-    [expanded, recordMode],
+    [expanded, recordMode, notes.notes, noteId],
   );
   const noteOpen = noteIndex !== null && expanded && !recordMode;
   useEffect(() => {
-    if (!expanded || recordMode) setNoteIndex(null);
+    if (!expanded || recordMode) setNoteId(null);
   }, [expanded, recordMode]);
-  // The notes can reload with fewer; don't hold an index past them.
+  // The notes can reload without it; don't hold on to a note that's gone.
   useEffect(() => {
-    if (noteIndex !== null && !notes.notes[noteIndex]) setNoteIndex(null);
-  }, [notes.notes, noteIndex]);
+    if (noteId !== null && noteIndex === null) setNoteId(null);
+  }, [noteId, noteIndex]);
   const noteKey = (to: number, direction: 'Previous' | 'Next'): KeyAction => {
     const target = notes.notes[to];
     return {
@@ -239,7 +261,7 @@ export function Sheet({
       disabled: !target,
       onPress: () => {
         setNoteClosing(false);
-        setNoteIndex(to);
+        if (target) setNoteId(target.id);
       },
     };
   };
@@ -251,18 +273,12 @@ export function Sheet({
             quotes: notes.notes.map(n => n.quote),
             unplaced: notes.notes.filter(n => n.span === null).length,
             current: lastNote,
-            onOpen: openNote,
+            // Notes are Listen's; the chips stay but don't open in Record.
+            onOpen: showRecord ? undefined : openNote,
           }
         : undefined,
-    [atRest, notes, lastNote, openNote],
+    [atRest, notes, lastNote, showRecord, openNote],
   );
-  /** A take is lifted to delete it: everything but the fan dims. */
-  const [lifted, setLifted] = useState(false);
-  const { capturing } = recorder;
-  // A recovered or live take can arrive after Listen opened, or after a drag
-  // that never went through open(). Record stays up for the whole take so
-  // Eject is reachable; Discard is not the only way out.
-  const showRecord = recordMode || capturing;
   // Leaving mid-take would ask first; the bridge waits until it's done.
   const openClassic = capturing ? undefined : onOpenClassic;
   const { isOnline, hasResolved } = useConnectivity();
@@ -462,6 +478,7 @@ export function Sheet({
           onOpenClassic={openClassic}
           // Its book link would leave without asking, unlike Close.
           onTitlePress={capturing ? undefined : () => setTitleSheetOpen(true)}
+          covered={noteOpen}
         />
       </ColorModeScope>
       <ColorModeScope value="hardware">
@@ -481,6 +498,7 @@ export function Sheet({
         onLayout={measure(setPanel)}
         onKeysLayout={measure(setKeys)}
         fanShown={showRecord}
+        footerCovered={noteOpen}
         fan={
           <LayoutAnimationConfig skipEntering>
             <TakeFan
@@ -535,10 +553,10 @@ export function Sheet({
             bottom={keys}
             from={noteFrom}
             closing={noteClosing}
-            onIndexChange={setNoteIndex}
+            onIndexChange={i => setNoteId(notes.notes[i]?.id ?? null)}
             onClose={() => setNoteClosing(true)}
             onClosed={() => {
-              setNoteIndex(null);
+              setNoteId(null);
               setNoteClosing(false);
             }}
           />
@@ -549,3 +567,8 @@ export function Sheet({
 }
 
 const styles = StyleSheet.create({ sheet: { flex: 1 } });
+
+function indexOfNote(notes: { id: string }[], id: string | null) {
+  const index = id === null ? -1 : notes.findIndex(n => n.id === id);
+  return index < 0 ? null : index;
+}

@@ -18,6 +18,7 @@ export function PlayerChrome({
   fan,
   fanShown = false,
   footer,
+  footerCovered = false,
   keys,
   onKeysLayout,
   shown,
@@ -29,6 +30,8 @@ export function PlayerChrome({
   /** The fan only takes touches and TalkBack focus while it's showing. */
   fanShown?: boolean;
   footer: React.ReactNode;
+  /** Under a screen that stops above the keys; TalkBack skips the footer. */
+  footerCovered?: boolean;
   keys: React.ReactNode;
   /** The keys' own height, for screens that stop above them. */
   onKeysLayout?: (e: LayoutChangeEvent) => void;
@@ -49,7 +52,15 @@ export function PlayerChrome({
         {fan ? <FanSlot shown={fanShown}>{fan}</FanSlot> : null}
       </ColorModeScope>
       <View onLayout={onLayout}>
-        <ColorModeScope value="canvas">{footer}</ColorModeScope>
+        <ColorModeScope value="canvas">
+          <View
+            importantForAccessibility={
+              footerCovered ? 'no-hide-descendants' : 'auto'
+            }
+          >
+            {footer}
+          </View>
+        </ColorModeScope>
         <ColorModeScope value="hardware">
           <View onLayout={onKeysLayout}>{keys}</View>
         </ColorModeScope>

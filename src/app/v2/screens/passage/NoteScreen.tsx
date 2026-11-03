@@ -225,10 +225,11 @@ export function NoteScreen({
           }}
           testID="passage-note-pager"
         >
-          {/* Only the pages beside this one are built; a passage can have
-              a couple hundred notes. */}
+          {/* Only the pages near this one are built; a passage can have
+              a couple hundred notes. Two each side, so a drag that
+              interrupts a snap still lands on a built page. */}
           {notes.map((n, i) =>
-            Math.abs(i - index) > 1 ? (
+            Math.abs(i - index) > 2 ? (
               <View key={n.id} style={{ width }} />
             ) : (
               <ScrollView

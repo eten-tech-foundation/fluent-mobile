@@ -20,6 +20,14 @@ const PHRASES = [
  * wrap between words. Tapping one shows its note, as the player opens it.
  */
 export function WordEntry() {
+  return (
+    <ColorModeScope value="canvas">
+      <Script />
+    </ColorModeScope>
+  );
+}
+
+function Script() {
   const [open, setOpen] = useState<number | null>(null);
   const styles = useThemedStyles(t => ({
     stage: {
@@ -35,33 +43,29 @@ export function WordEntry() {
     note: { ...t.type.body, color: t.roles.fgSecondary },
   }));
   return (
-    <ColorModeScope value="canvas">
-      <View style={styles.stage}>
-        <Text style={styles.reading}>
-          He said to them,{' '}
-          {PHRASES.map((p, i) => (
-            <React.Fragment key={i}>
-              {p.words.map((w, j) => (
-                <Word
-                  key={j}
-                  word={w}
-                  variant="phrase"
-                  textStyle={styles.chip}
-                  onPress={() => setOpen(i)}
-                  accessibilityLabel={`Translation note: ${p.words.join(' ')}`}
-                  hiddenFromAccessibility={j > 0}
-                />
-              ))}{' '}
-            </React.Fragment>
-          ))}
-          which is poured out for many.
-        </Text>
-        <Text style={styles.note}>
-          {open === null
-            ? 'Tap a phrase to read its note.'
-            : PHRASES[open].note}
-        </Text>
-      </View>
-    </ColorModeScope>
+    <View style={styles.stage}>
+      <Text style={styles.reading}>
+        He said to them,{' '}
+        {PHRASES.map((p, i) => (
+          <React.Fragment key={i}>
+            {p.words.map((w, j) => (
+              <Word
+                key={j}
+                word={w}
+                variant="phrase"
+                textStyle={styles.chip}
+                onPress={() => setOpen(i)}
+                accessibilityLabel={`Translation note: ${p.words.join(' ')}`}
+                hiddenFromAccessibility={j > 0}
+              />
+            ))}{' '}
+          </React.Fragment>
+        ))}
+        which is poured out for many.
+      </Text>
+      <Text style={styles.note}>
+        {open === null ? 'Tap a phrase to read its note.' : PHRASES[open].note}
+      </Text>
+    </View>
   );
 }

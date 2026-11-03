@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useConnectivity } from '../../../../hooks/useConnectivity';
 import { useTranslationNotesForUnit } from '../../../../hooks/useTranslationNotesForUnit';
 import { matchNotes, type NoteChips, type PassageNote } from './noteMatch';
@@ -30,7 +30,8 @@ export function usePassageNotes(
       })),
     [verses],
   );
-  const { state } = useTranslationNotesForUnit({
+  const languageCode = assignment.sourceLanguageCode;
+  const { state, retry } = useTranslationNotesForUnit({
     projectId: enabled ? assignment.projectId ?? null : null,
     userId,
     isOnline: hasResolved && isOnline,
@@ -38,16 +39,21 @@ export function usePassageNotes(
     chapterNumber: assignment.chapterNumber,
     verseNumber: verseRefs[0]?.verseNumber ?? 1,
     verseRefs,
-    languageCode: assignment.sourceLanguageCode,
+    languageCode,
   });
-  // A reload (e.g. coming back online) keeps the notes it had meanwhile.
-  const last = useRef(NONE);
-  return useMemo(() => {
-    if (state.status === 'ready') {
-      last.current = matchNotes(verses, state.notes);
-    } else if (state.status === 'error') {
-      last.current = NONE;
-    }
-    return last.current;
-  }, [state, verses]);
+  const ready = state.status === 'ready' ? state.notes : null;
+  const failed = state.status === 'error';
+  const settled = useMemo(
+    () => (ready ? matchNotes(verses, ready) : failed ? NONE : null),
+    [ready, failed, verses],
+  );
+  // A reload (e.g. coming back online) keeps the notes it had meanwhile, as
+  // long as they're in the same language.
+  const [kept, setKept] = useState({ languageCode, notes: NONE });
+  useEffect(() => {
+    if (settled) setKept({ languageCode, notes: settled });
+  }, [settled, languageCode]);
+  const notes =
+    settled ?? (kept.languageCode === languageCode ? kept.notes : NONE);
+  return useMemo(() => ({ ...notes, failed, retry }), [notes, failed, retry]);
 }

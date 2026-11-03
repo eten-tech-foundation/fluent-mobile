@@ -23,8 +23,8 @@ export interface ScriptNotes {
   current: number | null;
   /** Notes whose phrase isn't in this text; they follow the placed ones. */
   unplaced: number;
-  /** Opens a note by index, from where it was tapped on screen. */
-  onOpen: (note: number, from?: { x: number; y: number }) => void;
+  /** Opens a note by index, from where it was tapped. Unset, chips are inert. */
+  onOpen?: (note: number, from?: { x: number; y: number }) => void;
 }
 import { useScriptMetrics } from './scriptMetrics';
 
@@ -247,14 +247,17 @@ export function ScriptPager({
                       textStyle={chip.text}
                       boxStyle={chip.box}
                       maxFontSizeMultiplier={theme.fontScale.readingMax}
-                      onPress={e =>
-                        notes?.onOpen(
-                          seg.note,
-                          e?.nativeEvent && {
-                            x: e.nativeEvent.pageX,
-                            y: e.nativeEvent.pageY,
-                          },
-                        )
+                      onPress={
+                        notes?.onOpen
+                          ? e =>
+                              notes.onOpen?.(
+                                seg.note,
+                                e?.nativeEvent && {
+                                  x: e.nativeEvent.pageX,
+                                  y: e.nativeEvent.pageY,
+                                },
+                              )
+                          : undefined
                       }
                       accessibilityLabel={`Translation note: ${
                         notes?.quotes[seg.note] ?? seg.text
@@ -318,7 +321,7 @@ export function ScriptPager({
               >
                 {script}
               </Animated.Text>
-              {expanded && notes && notes.unplaced > 0 ? (
+              {expanded && notes?.onOpen && notes.unplaced > 0 ? (
                 // Notes quoting another translation have no phrase to tap.
                 <RoundButton
                   variant="flat"
@@ -330,7 +333,7 @@ export function ScriptPager({
                     notes.unplaced === 1 ? 'note' : 'notes'
                   }`}
                   onPress={() =>
-                    notes.onOpen(notes.quotes.length - notes.unplaced)
+                    notes.onOpen?.(notes.quotes.length - notes.unplaced)
                   }
                   style={styles.more}
                   testID="passage-more-notes"

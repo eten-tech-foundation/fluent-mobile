@@ -59,6 +59,7 @@ export function PassageHero({
   onDownload,
   onOpenClassic,
   onTitlePress,
+  covered = false,
 }: {
   passage: Ready;
   takes: PassageTake[];
@@ -87,6 +88,8 @@ export function PassageHero({
   onDownload: () => void;
   onOpenClassic?: () => void;
   onTitlePress?: () => void;
+  /** Under a note; TalkBack skips it. */
+  covered?: boolean;
 }) {
   const styles = useThemedStyles(t => ({
     frame: { overflow: 'hidden', backgroundColor: t.roles.bgDefault },
@@ -99,7 +102,10 @@ export function PassageHero({
   );
   return (
     <GestureDetector gesture={openGesture}>
-      <Animated.View style={[styles.frame, frameStyle]}>
+      <Animated.View
+        style={[styles.frame, frameStyle]}
+        importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
+      >
         <ScriptPager
           passage={passage}
           downloadState={downloadState}
