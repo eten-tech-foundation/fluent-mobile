@@ -56,9 +56,11 @@ export function takeIdFromVerseAudioResponse(
 }
 
 /**
- * Unit version token from a take delete response (#716). Read loosely: after
- * the last take is deleted the unit has no download URL or active take, which
- * the strict upload parser rejects.
+ * Unit version token from a take delete response (#716). Only `versionToken`
+ * is used. A missing or non-numeric token is null, so a partial body does not
+ * fail the delete. A null unit `downloadUrl` is valid on the strict parser
+ * (#864); this reader stays loose because the worker does not need the rest
+ * of the unit.
  */
 export function versionTokenFromVerseAudioBody(data: unknown): {
   versionToken: number | null;
