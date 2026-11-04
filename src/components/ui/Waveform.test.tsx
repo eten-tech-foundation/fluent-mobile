@@ -170,6 +170,25 @@ describe('Waveform windowing and chips', () => {
     expect(screen.queryByTestId('w-bar-580', hidden)).toBeNull();
   });
 
+  it('still mounts only nearby bars without verse chips', () => {
+    const long = Array.from({ length: 30 }, () => ({
+      verse: null,
+      bars: Array(20).fill(10),
+    }));
+    render(
+      <Waveform
+        verses={long}
+        progress={0}
+        accessibilityLabel="Mark 14"
+        testID="w"
+      />,
+    );
+
+    expect(screen.getByTestId('w-bar-0', hidden)).toBeTruthy();
+    expect(screen.queryByTestId('w-bar-580', hidden)).toBeNull();
+    expect(screen.queryByTestId('w-verse-1', hidden)).toBeNull();
+  });
+
   it('keeps the way mounted while a seek glides, then trims it', () => {
     jest.useFakeTimers();
     const long = Array.from({ length: 30 }, (_, i) => ({

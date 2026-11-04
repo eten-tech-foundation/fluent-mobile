@@ -33,6 +33,8 @@ const SWEEP_MS = 320;
 
 export interface FrontTake {
   takeNumber: number;
+  /** In place of "Take 3", e.g. for verses recorded on their own. */
+  label?: string;
   durationMs: number | null;
   /** 0–1 per 100ms sample; empty while there's nothing to draw. */
   levels: number[];
@@ -197,7 +199,7 @@ export function TakeCard({
     waveWidth > 0 ? { width: waveWidth * sweep.value } : {},
   );
 
-  const takeLabel = `Take ${take.takeNumber}`;
+  const takeLabel = take.label ?? `Take ${take.takeNumber}`;
   // Only as many bars as fit: the newest until Eject, the whole take
   // squeezed to fit after. A bar per sample would grow without end.
   const maxBars =

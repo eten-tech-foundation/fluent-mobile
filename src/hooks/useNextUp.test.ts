@@ -28,6 +28,11 @@ jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(() => null),
 }));
 
+let mockUnit = 'pericope';
+jest.mock('./useDraftingUnit', () => ({
+  useDraftingUnit: () => ({ draftingUnit: mockUnit }),
+}));
+
 jest.mock('./useBookPassages', () => ({
   ...jest.requireActual('./useBookPassages'),
   coverageLookup: jest.fn(() => jest.fn()),
@@ -121,6 +126,18 @@ describe('useNextUp', () => {
     jest.clearAllMocks();
     mockSetId.mockResolvedValue(7);
     mockUserId.mockReturnValue(null);
+    mockUnit = 'pericope';
+  });
+
+  it('works through whole chapters when recording verse by verse', async () => {
+    mockUnit = 'verse';
+    mockLoad.mockResolvedValue([passage('1a')]);
+
+    const { result } = renderHook(() => useNextUp([chapter(1)]));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(mockSetId).not.toHaveBeenCalled();
+    expect(mockLoad.mock.calls[0]?.[1]).toBeNull();
   });
 
   it('keeps going on a part-recorded passage from the chapter worked on last', async () => {

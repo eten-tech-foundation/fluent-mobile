@@ -4,6 +4,7 @@ import {
   getPericopeForVerse,
 } from '../db/queries';
 import { getProjectPericopeSetId } from '../db/repository';
+import { getDraftingUnit } from '../services/draftingUnitPreference';
 import type { PausedTakeMarker } from '../services/pausedTakes';
 import { hrefs } from './hrefs';
 import { resolveRecoveryHref } from './recoveryHref';
@@ -18,10 +19,19 @@ jest.mock('../db/repository', () => ({
   getProjectPericopeSetId: jest.fn(),
 }));
 
+jest.mock('../services/draftingUnitPreference', () => ({
+  getDraftingUnit: jest.fn(),
+}));
+
+jest.mock('../services/storage', () => ({
+  getActiveUserId: () => '7',
+}));
+
 const mockAssignment = getChapterAssignmentById as jest.Mock;
 const mockNames = getChapterRouteNames as jest.Mock;
 const mockPericope = getPericopeForVerse as jest.Mock;
 const mockSetId = getProjectPericopeSetId as jest.Mock;
+const mockUnit = getDraftingUnit as jest.Mock;
 
 const marker: PausedTakeMarker = {
   sessionKey: '5:22',
@@ -64,6 +74,7 @@ describe('resolveRecoveryHref', () => {
       language: 'Telugu',
     });
     mockSetId.mockResolvedValue(3);
+    mockUnit.mockReturnValue('pericope');
     mockPericope.mockResolvedValue({
       verses: [
         { chapterNumber: 14, verseNumber: 22 },
@@ -127,7 +138,58 @@ describe('resolveRecoveryHref', () => {
     );
   });
 
-  it("opens Legacy drafting for a verse take, which Next can't hold", async () => {
+  const versePassage = (verse: number) =>
+    hrefs.passage({
+      chapterId: 5,
+      anchorVerse: verse,
+      projectId: 9,
+      projectUnitId: 3,
+      chapterName: 'Mark 14',
+      projectName: 'Mark Telugu',
+      milestoneName: 'Gospels Phase 1',
+      language: 'Telugu',
+      verse,
+    });
+
+  it('reopens a verse take on its verse when Next records verse by verse', async () => {
+    mockUnit.mockReturnValue('verse');
+
+    await expect(
+      resolveRecoveryHref(
+        {
+          ...marker,
+          verseNumber: 23,
+          capture: { ...capture, granularity: 'verse' },
+        },
+        'next',
+      ),
+    ).resolves.toEqual(versePassage(23));
+    expect(mockUnit).toHaveBeenCalledWith('7');
+  });
+
+  it('reopens a verse take in a chapter without pericopes, whatever the setting', async () => {
+    mockPericope.mockResolvedValue(null);
+
+    await expect(
+      resolveRecoveryHref(
+        { ...marker, capture: { ...capture, granularity: 'verse' } },
+        'next',
+      ),
+    ).resolves.toEqual(versePassage(22));
+  });
+
+  it('opens Legacy drafting for a passage take while Next records verse by verse', async () => {
+    mockUnit.mockReturnValue('verse');
+
+    await expect(
+      resolveRecoveryHref(
+        { ...marker, capture: { ...capture, granularity: 'pericope' } },
+        'next',
+      ),
+    ).resolves.toEqual(legacyHref);
+  });
+
+  it('opens Legacy drafting for a verse take while Next records passages', async () => {
     await expect(
       resolveRecoveryHref(
         { ...marker, capture: { ...capture, granularity: 'verse' } },

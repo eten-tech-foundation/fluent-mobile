@@ -1813,6 +1813,7 @@ export async function getSelectedTakeCoverages(
   projectUnitId?: number | null,
 ): Promise<
   {
+    granularity: string;
     startChapter: number;
     startVerse: number;
     endChapter: number;
@@ -1853,6 +1854,7 @@ export async function getSelectedTakeCoverages(
     return rows.map(row => {
       const hasRange = row.start_chapter > 0 && row.start_verse > 0;
       return {
+        granularity: row.granularity,
         startChapter: hasRange ? row.start_chapter : row.chapter_number,
         startVerse: hasRange ? row.start_verse : row.verse_number,
         endChapter: hasRange ? row.end_chapter : row.chapter_number,

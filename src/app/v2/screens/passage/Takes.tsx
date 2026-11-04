@@ -18,15 +18,23 @@ import type { Ready } from './ready';
 export function takesLine(
   passage: Ready,
   takes: PassageTake[] = passage.takes,
+  countVerses = false,
 ) {
-  const line = takesSummary(passage, takes);
+  const line = countVerses
+    ? versesSummary(passage) ?? takesSummary(passage, [])
+    : takesSummary(passage, takes);
   return passage.waitingToSend ? `${line} · Waiting to send` : line;
 }
 
-function takesSummary(
-  { recordedStatus, assignment }: Ready,
-  takes: PassageTake[],
-) {
+/** Verse mode counts this chapter's verses recorded; null until one is. */
+function versesSummary({ verses, assignment }: Ready) {
+  const mine = verses.filter(v => v.chapterNumber === assignment.chapterNumber);
+  const done = mine.filter(v => v.recorded !== null).length;
+  return done === 0 ? null : `${done} of ${mine.length} verses recorded`;
+}
+
+function takesSummary(passage: Ready, takes: PassageTake[]) {
+  const { recordedStatus, assignment } = passage;
   if (takes.length === 0) {
     // Like the book's cover: a sent chapter was recorded, maybe on another
     // phone or by another translator, so its takes needn't be here.
@@ -36,7 +44,9 @@ function takesSummary(
       return `${label} · Takes aren't on this phone`;
     }
     if (recordedStatus === 'recorded') return 'Recorded verse by verse';
-    if (recordedStatus === 'partial') return 'Partly recorded';
+    if (recordedStatus === 'partial') {
+      return versesSummary(passage) ?? 'Partly recorded';
+    }
     return 'Not recorded yet';
   }
   const latest = takes.reduce((a, b) => (b.recordedAt > a.recordedAt ? b : a));

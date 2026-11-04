@@ -27,6 +27,8 @@ export interface ScriptNotes {
   onOpen?: (note: number, from?: { x: number; y: number }) => void;
 }
 import { useScriptMetrics } from './scriptMetrics';
+import type { VerseSteps } from './useRecorder';
+import { VersePages } from './VersePages';
 
 /**
  * The script. It stays where it is as the player opens and grows from body
@@ -40,6 +42,8 @@ export function ScriptPager({
   progress,
   expanded,
   playingVerse,
+  verseSteps,
+  versePages,
   top,
   height,
   scriptRef,
@@ -52,6 +56,10 @@ export function ScriptPager({
   expanded: boolean;
   /** Source audio's verse; the rest of the script dims while it plays (Q10). */
   playingVerse: number | null;
+  /** Verse mode: recorded verse numbers fill, other chapters dim. */
+  verseSteps: VerseSteps | null;
+  /** The open player in verse mode shows a page per verse instead. */
+  versePages: boolean;
   /** Where the script sits, hero then player. */
   top: readonly [number, number];
   height: readonly [number, number];
@@ -75,9 +83,11 @@ export function ScriptPager({
       color: t.roles.fgSecondary,
     },
     notPlaying: { color: t.roles.fgSecondary },
+    recordedNumber: { color: t.roles.accentPrimary },
     note: { ...t.type.label, color: t.roles.fgSecondary },
     more: { alignSelf: 'flex-start', marginTop: t.spacing.lg },
     scriptTop: { paddingTop: t.spacing.xs },
+    hidden: { display: 'none' },
     fade: {
       position: 'absolute',
       left: 0,
@@ -212,25 +222,31 @@ export function ScriptPager({
     ),
   }));
 
+  const verseMode = verseSteps !== null;
   // Only what the script shows re-renders it, not the sheet around it.
   const script = useMemo(
     () =>
       shown.map(v => {
         const key = verseKey(v.chapterNumber, v.verseNumber);
         // Source audio is the assignment's chapter only (Q12).
-        const playing =
-          v.chapterNumber === passage.assignment.chapterNumber &&
-          v.verseNumber === playingVerse;
+        const inChapter = v.chapterNumber === passage.assignment.chapterNumber;
+        const playing = inChapter && v.verseNumber === playingVerse;
+        const dim =
+          (playingVerse !== null && !playing) || (verseMode && !inChapter);
+        const filled = verseMode && inChapter && v.recorded !== null;
         return (
           <Text
             key={key}
-            style={
-              playingVerse !== null && !playing ? styles.notPlaying : undefined
-            }
+            style={dim ? styles.notPlaying : undefined}
             testID={playing ? 'passage-script-playing' : undefined}
           >
             <Animated.View style={numberStyle}>
-              <Text style={styles.verseNumber}>{v.verseNumber}</Text>
+              <Text
+                style={[styles.verseNumber, filled && styles.recordedNumber]}
+                testID={`passage-script-verse-${v.verseNumber}`}
+              >
+                {v.verseNumber}
+              </Text>
             </Animated.View>{' '}
             {segments(v.text, notes?.chips.get(key)).map((seg, i) =>
               seg.note === null ? (
@@ -278,6 +294,7 @@ export function ScriptPager({
       shown,
       passage.assignment.chapterNumber,
       playingVerse,
+      verseMode,
       notes,
       joined,
       styles,
@@ -295,7 +312,11 @@ export function ScriptPager({
   return (
     <>
       <Animated.View style={[styles.pager, pagerStyle]} testID="passage-pager">
+        {versePages && verseSteps ? (
+          <VersePages steps={verseSteps} playing={playingVerse} />
+        ) : null}
         <ScrollView
+          style={versePages && verseSteps ? styles.hidden : undefined}
           ref={scriptRef}
           // Room for the first line's chip outlines.
           contentContainerStyle={styles.scriptTop}

@@ -790,6 +790,101 @@ describe('useSourceAudio', () => {
     );
   });
 
+  it('resumes in place when the caller follows the verse playback reached', async () => {
+    fetchChapterSourceAudio.mockResolvedValue({
+      provider: 'aquifer',
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+        },
+      ],
+      verseTimestamps: [
+        { verse: 1, startSeconds: 0 },
+        { verse: 2, startSeconds: 4 },
+      ],
+    });
+
+    const { result, rerender } = renderHook(
+      (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
+      { initialProps: baseArgs() },
+    );
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+    await act(async () => {
+      await result.current.play();
+    });
+    playbackState.positionMs = 4500;
+    await waitFor(
+      () => {
+        expect(onPlayingVerseChange).toHaveBeenCalledWith(2);
+      },
+      { timeout: 2000, interval: 50 },
+    );
+
+    await act(async () => {
+      await result.current.pause();
+    });
+    rerender({ ...baseArgs(), verse: 2 });
+    mockPlaybackSeek.mockClear();
+    await act(async () => {
+      await result.current.play();
+    });
+
+    expect(mockPlaybackSeek).not.toHaveBeenCalled();
+  });
+
+  it('keeps its place when a pause lands past the caller verse', async () => {
+    fetchChapterSourceAudio.mockResolvedValue({
+      provider: 'aquifer',
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3',
+          url: 'https://cdn.example/ch.mp3',
+          scope: 'chapter',
+        },
+      ],
+      verseTimestamps: [
+        { verse: 1, startSeconds: 0 },
+        { verse: 2, startSeconds: 4 },
+      ],
+    });
+
+    const { result } = renderHook(
+      (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
+      { initialProps: baseArgs() },
+    );
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('ready');
+    });
+    await act(async () => {
+      await result.current.play();
+    });
+    playbackState.positionMs = 4500;
+    await waitFor(
+      () => {
+        expect(onPlayingVerseChange).toHaveBeenCalledWith(2);
+      },
+      { timeout: 2000, interval: 50 },
+    );
+    mockPlaybackSeek.mockClear();
+
+    await act(async () => {
+      await result.current.pause();
+    });
+
+    expect(result.current.status).toBe('paused');
+    expect(mockPlaybackSeek).not.toHaveBeenCalled();
+  });
+
   it('does not snap to verse start after scrub then play', async () => {
     fetchChapterSourceAudio.mockResolvedValue({
       provider: 'aquifer',

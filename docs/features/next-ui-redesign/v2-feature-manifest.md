@@ -147,7 +147,7 @@ Resources, Images) → the player and recorder.
 | Source audio | Play, pause, scrub, verse position, source label; loading, "no audio" and retry states; offline playback when prepared; stops when recording | ✅ Listen player (prototype built) | Wired: `GET /projects/{id}/source-audio/…`. Available: `GET …/playback-audio/…` (verse end times, licence, TTS permission), TTS when no recording exists |
 | Reading along | Highlight what's being read and keep it in view | ✅ word highlight + scrolling text | Verse-level only. Missing: word timing (Q10) |
 | Resources | Translation notes, questions, images and maps for the selected verse or pericope, offline when downloaded | ◐ Understanding notes view, Resources and Images entries | Wired: `…/translation-resources/notes`, `questions`, `images`. Available: verse-range resources (fluent-api #389), Aquifer search and Guides |
-| Unit navigation | Previous / next unit with reference and pericope title | ◐ The book page's passages. In pericope mode the Hardware panel's Previous / Next turn the player's pages instead; in verse mode they'll jump verses (Q17, Q28) | Local |
+| Unit navigation | Previous / next unit with reference and pericope title | ◐ The book page's passages (whole chapters in verse mode, Q31). In pericope mode the Hardware panel's Previous / Next turn the player's pages instead; in verse mode they step verses, and Listen and Record both swipe verse pages (Q17, Q31) | Local |
 | Recording | Record, pause, resume, stop; mic permission with a Settings link; live waveform and timer; error alerts | ✅ recorder, Level wave (built). Record pauses and resumes a take; Eject finishes it (Q3) | Local. Live mic levels need metering turned on (Q6) |
 | Crash recovery | Pause when the app is backgrounded; offer to resume or discard a paused take after a crash | — (needs a v2 dialog) | Local |
 | Recording gates | Wait for source text, block on Complete, block the drafter during open Peer Check | — (states need design) | Local |
@@ -342,9 +342,9 @@ Settle these before anyone builds them:
 Where Next has no design yet, it bridges to the matching Legacy screen rather
 than dead-ending:
 
-- **Classic drafting** (`verse-detail`): "Open in classic drafting" on the
-  passage page, for a chapter without pericopes, a verse-by-verse chapter, or
-  to Send. A paused verse take recovered after a crash also resumes there.
+- **Classic drafting** (`verse-detail`): "Open in classic drafting" in the
+  passage title's sheet, to Send and as a fallback. Verse mode records in the
+  player (Q31).
 - **Observer view** (`observer-draft`): an Observer's chapter opens read-only
   from Home and the book page, with the grant and membership re-checked at
   the tap.
@@ -359,8 +359,9 @@ Folded in from Legacy, so Next blocks and warns the same way:
   route as in Legacy. Next up lists peer checks, open peer checks and
   observed chapters under "Checking and observing". The book page names each
   chapter's stage and whose it is.
-- **Recovery:** a paused pericope or chapter take resumes on the passage page;
-  a verse take resumes in classic drafting.
+- **Recovery:** a paused pericope or chapter take resumes on the passage page,
+  and so does a verse take, on its verse, when the player records verse by
+  verse there. Otherwise a verse take resumes in classic drafting.
 - **Source text:** opening a passage repairs a blank language code and
   downloads missing text once when online.
 - **Home:** milestones with no chapters still list, "recorded" counts chapters
@@ -373,6 +374,17 @@ Folded in from Legacy, so Next blocks and warns the same way:
   freeze is the biggest schedule risk in the backlog.
 - #691 bootsplash major and #499 Prettier 3 / TypeScript 7 are already
   deferred.
+- Verse mode (Q31, #884): translation notes (#873) only show as chips in
+  the open script, and verse mode's open player shows verse pages instead,
+  so notes can't be reached in verse mode, the default unit. The verse pages
+  need the same chips, or a notes entry.
+- Verse mode (Q31, #884): in pericope mode the verses recorded on
+  their own have no tile in the take fan, so once a passage take is picked
+  there's no way back to them there. A tile with a verses mark, which
+  reselects each verse's take, would close that. It also fixes a full fan
+  (5 passage takes) leading with take 1 while those verses are the draft.
+- Passage page, no issue yet: resources go under the hero, in a new card,
+  where the FIA listening materials were (Q11), until those have audio.
 
 ### Elsewhere on Project 4
 

@@ -46,6 +46,11 @@ jest.mock('../services/sync', () => ({
 }));
 
 let mockOnline = false;
+let mockUnit: 'verse' | 'pericope' = 'pericope';
+jest.mock('./useDraftingUnit', () => ({
+  useDraftingUnit: () => ({ draftingUnit: mockUnit }),
+}));
+
 jest.mock('./useConnectivity', () => ({
   useConnectivity: () => ({ isOnline: mockOnline, hasResolved: true }),
 }));
@@ -90,6 +95,7 @@ function take(overrides: Record<string, unknown>) {
 describe('usePassage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUnit = 'pericope';
     mockOnline = false;
     mockEnsureIso.mockResolvedValue(false);
     mockAssignment.mockResolvedValue({
@@ -113,7 +119,13 @@ describe('usePassage', () => {
     });
     mockTexts.mockResolvedValue(verseTexts);
     mockCoverages.mockResolvedValue([
-      { startChapter: 14, startVerse: 22, endChapter: 14, endVerse: 23 },
+      {
+        granularity: 'pericope',
+        startChapter: 14,
+        startVerse: 22,
+        endChapter: 14,
+        endVerse: 23,
+      },
     ]);
     mockTextId.mockResolvedValue(1022);
     mockVerseCount.mockResolvedValue(0);
@@ -133,11 +145,13 @@ describe('usePassage', () => {
     expect(result.current.passage).toEqual({
       status: 'ready',
       title: 'The Last Supper',
+      wholeChapter: false,
       reference: 'Mark 14:22–25',
       verses: verseTexts.map(v => ({
         chapterNumber: 14,
         verseNumber: v.verseNumber,
         text: v.text,
+        recorded: v.verseNumber <= 23 ? 'passage' : null,
       })),
       downloaded: true,
       recordedStatus: 'partial',
@@ -176,10 +190,73 @@ describe('usePassage', () => {
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({
       title: null,
+      wholeChapter: true,
       reference: 'Mark 14',
       takes: [],
     });
     expect(mockTakes).not.toHaveBeenCalled();
+  });
+
+  it('is the whole chapter when recording verse by verse', async () => {
+    mockUnit = 'verse';
+
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(mockSetId).not.toHaveBeenCalled();
+    expect(mockPericope).not.toHaveBeenCalled();
+    expect(result.current.passage).toMatchObject({
+      title: null,
+      wholeChapter: true,
+      reference: 'Mark 14',
+    });
+  });
+
+  it('counts a one-verse pericope take as a passage take', async () => {
+    mockCoverages.mockResolvedValue([
+      {
+        granularity: 'pericope',
+        startChapter: 14,
+        startVerse: 24,
+        endChapter: 14,
+        endVerse: 24,
+      },
+    ]);
+
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    const passage = result.current.passage;
+    expect(
+      passage.status === 'ready' && passage.verses.map(v => v.recorded),
+    ).toEqual([null, null, 'passage', null]);
+  });
+
+  it('marks a verse recorded on its own apart from one in a passage take', async () => {
+    mockCoverages.mockResolvedValue([
+      {
+        granularity: 'pericope',
+        startChapter: 14,
+        startVerse: 22,
+        endChapter: 14,
+        endVerse: 23,
+      },
+      {
+        granularity: 'verse',
+        startChapter: 14,
+        startVerse: 25,
+        endChapter: 14,
+        endVerse: 25,
+      },
+    ]);
+
+    const { result } = renderHook(() => usePassage(5, 22, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    const passage = result.current.passage;
+    expect(
+      passage.status === 'ready' && passage.verses.map(v => v.recorded),
+    ).toEqual(['passage', 'passage', null, 'verse']);
   });
 
   it('is missing when the chapter is gone', async () => {

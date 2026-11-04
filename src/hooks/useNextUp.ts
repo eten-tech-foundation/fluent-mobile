@@ -5,6 +5,7 @@ import { getProjectPericopeSetId } from '../db/repository';
 import { parseUserId } from '../utils/parseUserId';
 import type { MyWorkChapter } from '../types/db/types';
 import { logger } from '../utils/logger';
+import { useDraftingUnit } from './useDraftingUnit';
 import {
   coverageLookup,
   loadChapterPassages,
@@ -77,6 +78,7 @@ export function startedChapters(chapters: MyWorkChapter[]): MyWorkChapter[] {
  * player moves on when I come back.
  */
 export function useNextUp(chapters: MyWorkChapter[]): NextUp {
+  const { draftingUnit } = useDraftingUnit();
   const [nextUp, setNextUp] = useState<NextUp>({ status: 'loading' });
   const readyWithDrafts = useRef(false);
 
@@ -101,6 +103,8 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
           checking: checkingPassages(chapters),
         });
       };
+      // Verse by verse works through whole chapters, as Legacy does.
+      const byVerse = draftingUnit === 'verse';
       const pericopeSets = new Map<number, Promise<number | null>>();
       const coverages = new Map<number, CoveragesFor>();
       const stageMaps = new Map<
@@ -143,7 +147,9 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
         if (cached) return cached;
         const pericopeSetId =
           pericopeSets.get(chapter.projectId) ??
-          getProjectPericopeSetId(chapter.projectId);
+          (byVerse
+            ? Promise.resolve(null)
+            : getProjectPericopeSetId(chapter.projectId));
         pericopeSets.set(chapter.projectId, pericopeSetId);
         const coveragesFor =
           coverages.get(chapter.projectUnitId) ??
@@ -224,7 +230,7 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
       return () => {
         cancelled = true;
       };
-    }, [chapters]),
+    }, [chapters, draftingUnit]),
   );
 
   return nextUp;

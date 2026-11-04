@@ -131,6 +131,24 @@ change. All from #873.
 | Word chips in running text | Separate boxes laid out with `space/4` gaps | Inline in the script's text, a `space/4` + border shorter than the line and dropped 0.2 em onto the baseline (Android sits an inline view's bottom on it) |
 | Round button, Flat | Pinned to Canvas | Canvas, or Accent on a blue (Accent) screen, matching its description ("Flat = black and blue screens") |
 
+### 7. Code ahead of Figma (open)
+
+Built in code with no Figma frame yet. Each needs a frame to match or replace.
+
+- **Verse mode (Q31, 2026-11-03).** The Verses list under the passage hero
+  (Progress ring with a check, or the verse number while unrecorded), and
+  the open player's verse pages in Listen and Record: one row at the left,
+  Page dots with the current verse's Verse chip in place of its dot, or past
+  12 verses the chip and "of 71", above the verse at reading size, kept apart
+  from the take card so it doesn't read as paging takes. In verse mode the hero's recorded verse numbers use
+  `accent/primary`. Without verse timings the Listen waveform drops its verse
+  chips (Q32).
+  The take card names its unit ("Passage take 2", "v. 23 · Take 1"),
+  where Figma reads "Take 2". Copy for the passage-take line on the take card, the confirms before
+  recording over a passage take or over verse takes, and the pericope-mode
+  take card for verses recorded on their own ("Recorded verse by verse") is
+  code's too.
+
 ## Still open
 
 In dependency order:

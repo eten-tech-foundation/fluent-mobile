@@ -14,6 +14,7 @@ import {
   type BibleUnitVerse,
 } from '../utils/bibleTabUnits';
 import { logger } from '../utils/logger';
+import { useDraftingUnit } from './useDraftingUnit';
 import { isPastDraft, isPastPeerCheck } from '../utils/workflowStage';
 
 const log = logger.create('useBookPassages');
@@ -199,7 +200,8 @@ export async function loadChapterPassages(
 }
 
 /**
- * Each chapter's passages from the project's pericope set, with how much of
+ * Each chapter's passages from the project's pericope set (whole chapters
+ * when recording verse by verse), with how much of
  * each is recorded, read from the local DB like the Legacy Bible tab.
  * Reloads whenever `chapters` changes, so returning from drafting refreshes it.
  */
@@ -208,6 +210,7 @@ export function useBookPassages(
   projectId: number,
   projectUnitId: number,
 ): BookPassages {
+  const { draftingUnit } = useDraftingUnit();
   const [passages, setPassages] = useState<BookPassages>({
     status: 'loading',
   });
@@ -216,7 +219,11 @@ export function useBookPassages(
     let cancelled = false;
     const coveragesFor = coverageLookup(projectUnitId);
     (async () => {
-      const pericopeSetId = await getProjectPericopeSetId(projectId);
+      // Verse by verse works through whole chapters, as Legacy does.
+      const pericopeSetId =
+        draftingUnit === 'verse'
+          ? null
+          : await getProjectPericopeSetId(projectId);
       const stages = new Map(
         chapters.map(c => [
           `${c.bookName}:${c.chapterNumber}`,
@@ -257,7 +264,7 @@ export function useBookPassages(
     return () => {
       cancelled = true;
     };
-  }, [chapters, projectId, projectUnitId]);
+  }, [chapters, projectId, projectUnitId, draftingUnit]);
 
   return passages;
 }

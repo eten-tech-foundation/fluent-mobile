@@ -17,7 +17,9 @@ import {
   syncBibleTexts,
 } from '../services/sync';
 import { onSyncComplete } from '../services/syncEvents';
+import type { DraftingUnit } from '../services/draftingUnitPreference';
 import { useConnectivity } from './useConnectivity';
+import { useDraftingUnit } from './useDraftingUnit';
 import type { BibleUnitVerse } from '../utils/bibleTabUnits';
 import {
   buildBibleUnits,
@@ -25,11 +27,14 @@ import {
   type BibleUnitRecordedStatus,
 } from '../utils/bibleTabUnits';
 import { logger } from '../utils/logger';
+import { rangeCoversVerse } from '../utils/recordingRange';
 
 const log = logger.create('usePassage');
 
 export interface PassageVerse extends BibleUnitVerse {
   text: string;
+  /** A selected take of mine covers it: its own take, or a passage take. */
+  recorded: 'verse' | 'passage' | null;
 }
 
 export interface PassageTake {
@@ -52,6 +57,8 @@ export type Passage =
       status: 'ready';
       /** Pericope title; null when the set has none, or for a whole chapter. */
       title: string | null;
+      /** No pericope here, so the passage is the whole chapter. */
+      wholeChapter: boolean;
       /** e.g. "Mark 14:22–25". */
       reference: string;
       verses: PassageVerse[];
@@ -74,12 +81,16 @@ async function loadPassage(
   assignment: Assignment,
   anchorVerse: number,
   projectUnitId: number,
+  unit: DraftingUnit,
 ): Promise<Passage> {
   const { bibleId, bookId, chapterNumber, projectId } = assignment;
   const bookName = assignment.bookName ?? '';
   const chapterName = `${bookName} ${chapterNumber}`.trim();
+  // Verse by verse works through the whole chapter, as Legacy does.
   const pericopeSetId =
-    projectId === null ? null : await getProjectPericopeSetId(projectId);
+    projectId === null || unit === 'verse'
+      ? null
+      : await getProjectPericopeSetId(projectId);
   const group =
     pericopeSetId === null
       ? null
@@ -105,17 +116,13 @@ async function loadPassage(
       chapterNumber: t.chapterNumber,
       verseNumber: t.verseNumber,
     }));
-  const verses = unitVerses.map(v => ({
-    ...v,
-    text: textOf.get(`${v.chapterNumber}:${v.verseNumber}`) ?? '',
-  }));
   const expectedVerses = group
     ? group.verses.length
     : await getChapterAssignmentVerseCount(assignment.id);
   const downloaded =
     expectedVerses > 0 &&
-    verses.length >= expectedVerses &&
-    verses.every(v => v.text !== '');
+    unitVerses.length >= expectedVerses &&
+    unitVerses.every(v => textOf.get(`${v.chapterNumber}:${v.verseNumber}`));
 
   const reference = group
     ? buildBibleUnits({
@@ -133,6 +140,20 @@ async function loadPassage(
     bookId,
     projectUnitId,
   );
+  const verses: PassageVerse[] = unitVerses.map(v => {
+    const cover = coverages.find(range =>
+      rangeCoversVerse(range, v.chapterNumber, v.verseNumber),
+    );
+    return {
+      ...v,
+      text: textOf.get(`${v.chapterNumber}:${v.verseNumber}`) ?? '',
+      recorded: !cover
+        ? null
+        : cover.granularity === 'pericope'
+        ? 'passage'
+        : 'verse',
+    };
+  });
   const first = unitVerses[0];
   const last = unitVerses[unitVerses.length - 1];
   const anchorId =
@@ -176,6 +197,7 @@ async function loadPassage(
   return {
     status: 'ready',
     title: group?.pericopeTitle?.trim() || null,
+    wholeChapter: group === null,
     reference,
     verses,
     downloaded,
@@ -191,7 +213,8 @@ async function loadPassage(
 /**
  * One passage for the Next passage page: its text, how much is recorded and
  * its takes, read from the local DB, plus a download for its chapter's text
- * when it isn't on the device yet. Without a pericope set it's the chapter.
+ * when it isn't on the device yet. Without a pericope set, or verse by
+ * verse, it's the chapter.
  */
 export function usePassage(
   chapterAssignmentId: number,
@@ -203,6 +226,7 @@ export function usePassage(
   downloadState: PassageDownload;
   reload: () => void;
 } {
+  const { draftingUnit } = useDraftingUnit();
   const [passage, setPassage] = useState<Passage>({ status: 'loading' });
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [downloadState, setDownloadState] = useState<PassageDownload>('idle');
@@ -226,7 +250,7 @@ export function usePassage(
   );
 
   useEffect(() => {
-    const key = `${chapterAssignmentId}:${anchorVerse}:${projectUnitId}`;
+    const key = `${chapterAssignmentId}:${anchorVerse}:${projectUnitId}:${draftingUnit}`;
     if (loadedKey.current !== key) {
       loadedKey.current = key;
       showedReady.current = false;
@@ -237,7 +261,12 @@ export function usePassage(
       if (!found) return { found, next: { status: 'missing' } as const };
       return {
         found,
-        next: await loadPassage(found, anchorVerse, projectUnitId),
+        next: await loadPassage(
+          found,
+          anchorVerse,
+          projectUnitId,
+          draftingUnit,
+        ),
       };
     })()
       .then(({ found, next }) => {
@@ -255,7 +284,7 @@ export function usePassage(
     return () => {
       cancelled = true;
     };
-  }, [chapterAssignmentId, anchorVerse, projectUnitId, epoch]);
+  }, [chapterAssignmentId, anchorVerse, projectUnitId, epoch, draftingUnit]);
 
   const reload = useCallback(() => setEpoch(e => e + 1), []);
 
@@ -276,7 +305,9 @@ export function usePassage(
         ],
       ]),
     })
-      .then(() => loadPassage(assignment, anchorVerse, projectUnitId))
+      .then(() =>
+        loadPassage(assignment, anchorVerse, projectUnitId, draftingUnit),
+      )
       .then(next => {
         setPassage(next);
         setDownloadState(
@@ -287,7 +318,14 @@ export function usePassage(
         log.warn('Passage download failed', { error });
         setDownloadState('failed');
       });
-  }, [assignment, passage, anchorVerse, projectUnitId, downloadState]);
+  }, [
+    assignment,
+    passage,
+    anchorVerse,
+    projectUnitId,
+    downloadState,
+    draftingUnit,
+  ]);
 
   const { isOnline, hasResolved } = useConnectivity();
   const online = hasResolved && isOnline;
