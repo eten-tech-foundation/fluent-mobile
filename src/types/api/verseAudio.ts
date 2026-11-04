@@ -81,7 +81,11 @@ export interface VerseAudioResponse {
   /** Take written or matched by a PUT upload (fluent-api#465). Absent on GET. */
   takeId?: number;
   verseNumber: number;
-  downloadUrl: string;
+  /**
+   * Official take URL. `null` when a stored-only upload is accepted before
+   * any take is active (#864).
+   */
+  downloadUrl: string | null;
   takes: VerseAudioTakeResponse[];
   createdAt: string;
   updatedAt: string;
