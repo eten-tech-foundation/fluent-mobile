@@ -199,6 +199,17 @@ describe('verseAudioContract', () => {
     ).toThrow(/conflictStatus/);
   });
 
+  it('accepts a null unit downloadUrl when no take is active (#864)', () => {
+    expect(
+      parseVerseAudioResponse({
+        ...validResponse,
+        downloadUrl: null,
+        activeTakeId: null,
+        takeId: 11,
+      }).downloadUrl,
+    ).toBeNull();
+  });
+
   it('allows null durationSeconds', () => {
     expect(
       parseVerseAudioResponse({ ...validResponse, durationSeconds: null })
