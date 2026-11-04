@@ -186,7 +186,7 @@ Things the Figma designs add that v1 doesn't do.
 | Listened progress | A progress ring per track showing how much you've heard | ✅ | **Missing** (Q13). Could ride on `…/editor-state` or `/self/settings` with an API change |
 | Now playing bar | Audio keeps playing in a mini player when you leave the player | ✅ | Local, but needs an app-level player (Q9) |
 | Word and phrase highlight | Highlight the spoken word and its phrase | ✅ | **Missing** word timing (Q10); verse-level in v1 |
-| Understanding view | Notes tied to the phrase being read | ✅ | Wired per verse; per-phrase mapping not checked |
+| Understanding view | Notes tied to the phrase being read | ✅ | Wired per verse; phrases placed by matching the note's quote in its verse (#873, Q19) |
 | Pericope titles as headings | The pericope list and player header lead with titles | ✅ | Partial (Q15, Q18) |
 | Official take card | The take marked official shows as a blue (Accent) card with a Review chip: "Open" before anyone reviews, the comment count after | ✅ (Foundations › 10 · Review, Record page R&R 01, 10) | Partial. Mobile marks the official take on the device only; changing it doesn't sync (#701) |
 | Review | From the official take, reviewers take turns: listen, play earlier comments, record a voice comment at a point on the timeline, pass to the next reviewer; the translator hears them all last. Earlier review rounds can be shown | ✅ (Record page › Record & Review – states, 10 frames) | **Missing.** No comments, audio comments, reviewer seats, turn order or review rounds in fluent-api (Q21–Q23) |

@@ -1,7 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Alert,
   BackHandler,
+  InteractionManager,
   ScrollView,
   StyleSheet,
   View,
@@ -36,6 +43,7 @@ import type { CaptureControls } from '../../../../types/captureControls';
 import type { SourceAudioLoadState } from '../../../../types/sourceAudio';
 import { ColorModeScope, useTheme } from '../../../../theme/useTheme';
 import { Footer } from './Footer';
+import { NoteScreen } from './NoteScreen';
 import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
@@ -44,6 +52,7 @@ import { useScriptMetrics } from './scriptMetrics';
 import { sourceWindow, windowProgress, windowSeekMs } from './sourceWindow';
 import { TakeFan } from './TakeFan';
 import { TitleSheet } from './TitleSheet';
+import { usePassageNotes } from './usePassageNotes';
 import { useRecorder } from './useRecorder';
 
 /** How far the hero drags before a release opens or closes it. */
@@ -155,12 +164,23 @@ export function Sheet({
   const focused = useIsFocused();
   const { preview } = useScriptMetrics();
   const [expanded, setExpanded] = useState(false);
+  /** The player is open and still; phrases are only drawn then. */
+  const [atRest, setAtRest] = useState(false);
+  /** Notes load once the screen has arrived, ready for the player. */
+  const [arrived, setArrived] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() =>
+      setArrived(true),
+    );
+    return () => task.cancel();
+  }, []);
   const [recordMode, setRecordMode] = useState(false);
   const [titleSheetOpen, setTitleSheetOpen] = useState(false);
   const [container, setContainer] = useState(0);
   const [header, setHeader] = useState(0);
   const [actions, setActions] = useState(0);
   const [panel, setPanel] = useState(0);
+  const [keys, setKeys] = useState(0);
   const progress = useSharedValue(0);
   const scriptRef = useRef<ScrollView>(null);
 
@@ -179,6 +199,15 @@ export function Sheet({
     onCaptureActiveChange,
     onRegisterCaptureControls,
   });
+  const notes = usePassageNotes(passage, userId, arrived || expanded);
+  // Notes that failed to load try again each time the player opens.
+  const notesRef = useRef(notes);
+  useEffect(() => {
+    notesRef.current = notes;
+  });
+  useEffect(() => {
+    if (expanded && notesRef.current.failed) void notesRef.current.retry();
+  }, [expanded]);
   /** A take is lifted to delete it: everything but the fan dims. */
   const [lifted, setLifted] = useState(false);
   const { capturing } = recorder;
@@ -186,6 +215,70 @@ export function Sheet({
   // that never went through open(). Record stays up for the whole take so
   // Eject is reachable; Discard is not the only way out.
   const showRecord = recordMode || capturing;
+  /** The translation note on the blue screen, by id so a reload keeps it. */
+  const [noteId, setNoteId] = useState<string | null>(null);
+  /** Where its phrase was tapped; the blue grows from there. */
+  const [noteFrom, setNoteFrom] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  const [noteClosing, setNoteClosing] = useState(false);
+  /** The note last read; its phrase stays marked in the script. */
+  const [lastNoteId, setLastNoteId] = useState<string | null>(null);
+  useEffect(() => {
+    if (noteId !== null) setLastNoteId(noteId);
+  }, [noteId]);
+  const noteIndex = useMemo(
+    () => indexOfNote(notes.notes, noteId),
+    [notes.notes, noteId],
+  );
+  const lastNote = useMemo(
+    () => indexOfNote(notes.notes, lastNoteId),
+    [notes.notes, lastNoteId],
+  );
+  // A note belongs to the open player's Listen side.
+  const openNote = useCallback(
+    (index: number, from?: { x: number; y: number }) => {
+      const target = notes.notes[index];
+      if (!expanded || recordMode || !target) return;
+      if (noteId === null) setNoteFrom(from ?? null);
+      setNoteClosing(false);
+      setNoteId(target.id);
+    },
+    [expanded, recordMode, notes.notes, noteId],
+  );
+  const noteOpen = noteIndex !== null && expanded && !recordMode;
+  useEffect(() => {
+    if (!expanded || recordMode) setNoteId(null);
+  }, [expanded, recordMode]);
+  // The notes can reload without it; don't hold on to a note that's gone.
+  useEffect(() => {
+    if (noteId !== null && noteIndex === null) setNoteId(null);
+  }, [noteId, noteIndex]);
+  const noteKey = (to: number, direction: 'Previous' | 'Next'): KeyAction => {
+    const target = notes.notes[to];
+    return {
+      label: target ? `${direction} note: ${target.quote}` : direction,
+      disabled: !target,
+      onPress: () => {
+        setNoteClosing(false);
+        if (target) setNoteId(target.id);
+      },
+    };
+  };
+  const scriptNotes = useMemo(
+    () =>
+      atRest
+        ? {
+            chips: notes.chips,
+            quotes: notes.notes.map(n => n.quote),
+            unplaced: notes.notes.filter(n => n.span === null).length,
+            current: lastNote,
+            // Notes are Listen's; the chips stay but don't open in Record.
+            onOpen: showRecord ? undefined : openNote,
+          }
+        : undefined,
+    [atRest, notes, lastNote, showRecord, openNote],
+  );
   // Leaving mid-take would ask first; the bridge waits until it's done.
   const openClassic = capturing ? undefined : onOpenClassic;
   const { isOnline, hasResolved } = useConnectivity();
@@ -234,16 +327,26 @@ export function Sheet({
     if (spanEnd === null || !isPlaying) return;
     if (last < spanEnd && positionMs >= spanEnd) void pauseSource();
   }, [spanEnd, isPlaying, positionMs, pauseSource]);
+  // Play is off on a note, so the chapter can't keep playing under it.
+  useEffect(() => {
+    if (noteOpen && isPlaying) void pauseSource();
+  }, [noteOpen, isPlaying, pauseSource]);
   const rewind = async () => {
     if (span && source.positionMs >= span.endMs) {
       await source.seek(span.startMs);
     }
   };
 
-  const settled = useCallback(() => haptics.press(), [haptics]);
+  const settled = useCallback(() => {
+    haptics.press();
+    setAtRest(true);
+  }, [haptics]);
   const animateTo = useCallback(
     (open: boolean, velocity = 0) => {
       setExpanded(open);
+      // Hundreds of phrases resizing with the script every frame is the
+      // lag; they wait out the motion as plain text.
+      setAtRest(false);
       // The hero previews the first verses, wherever the player was scrolled.
       if (!open) scriptRef.current?.scrollTo({ y: 0, animated: true });
       const target = open ? 1 : 0;
@@ -289,11 +392,12 @@ export function Sheet({
   useEffect(() => {
     if (!expanded || !focused) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      close();
+      if (noteOpen) setNoteClosing(true);
+      else close();
       return true;
     });
     return () => sub.remove();
-  }, [expanded, focused, close]);
+  }, [expanded, focused, close, noteOpen]);
 
   // The collapsed hero drags open; once open, only the header drags it
   // closed, so the script keeps its own scrolling.
@@ -301,6 +405,9 @@ export function Sheet({
     Gesture.Pan()
       .enabled(enabled)
       .activeOffsetY([-12, 12])
+      .onStart(() => {
+        scheduleOnRN(setAtRest, false);
+      })
       .onUpdate(e => {
         const start = expanded ? 1 : 0;
         progress.value = Math.min(
@@ -362,6 +469,7 @@ export function Sheet({
           scriptRef={scriptRef}
           onHeaderLayout={setHeader}
           onActionsLayout={setActions}
+          notes={scriptNotes}
           onOpen={record => open(record)}
           onBack={onBack}
           onClose={close}
@@ -370,6 +478,7 @@ export function Sheet({
           onOpenClassic={openClassic}
           // Its book link would leave without asking, unlike Close.
           onTitlePress={capturing ? undefined : () => setTitleSheetOpen(true)}
+          covered={noteOpen}
         />
       </ColorModeScope>
       <ColorModeScope value="hardware">
@@ -387,7 +496,9 @@ export function Sheet({
         shown={expanded}
         style={chromeStyle}
         onLayout={measure(setPanel)}
+        onKeysLayout={measure(setKeys)}
         fanShown={showRecord}
+        footerCovered={noteOpen}
         fan={
           <LayoutAnimationConfig skipEntering>
             <TakeFan
@@ -414,14 +525,50 @@ export function Sheet({
             onRecordModeChange={setRecordMode}
             modeLocked={capturing}
             record={recorder.keys}
-            listen={listenKeys(source, recorder.pauseTakePlayback, rewind)}
-            previous={NO_TURN('Previous')}
-            next={NO_TURN('Next')}
+            listen={
+              noteOpen
+                ? // Notes have no audio yet (tap-to-hear, DES-2989).
+                  {
+                    playing: false,
+                    playDisabled: true,
+                    playLabel: "This note's audio isn't available yet",
+                    onPlay: () => undefined,
+                  }
+                : listenKeys(source, recorder.pauseTakePlayback, rewind)
+            }
+            previous={
+              noteOpen
+                ? noteKey(noteIndex - 1, 'Previous')
+                : NO_TURN('Previous')
+            }
+            next={noteOpen ? noteKey(noteIndex + 1, 'Next') : NO_TURN('Next')}
           />
         }
       />
+      {noteOpen ? (
+        <ColorModeScope value="accent">
+          <NoteScreen
+            notes={notes.notes}
+            index={noteIndex}
+            bottom={keys}
+            from={noteFrom}
+            closing={noteClosing}
+            onIndexChange={i => setNoteId(notes.notes[i]?.id ?? null)}
+            onClose={() => setNoteClosing(true)}
+            onClosed={() => {
+              setNoteId(null);
+              setNoteClosing(false);
+            }}
+          />
+        </ColorModeScope>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({ sheet: { flex: 1 } });
+
+function indexOfNote(notes: { id: string }[], id: string | null) {
+  const index = id === null ? -1 : notes.findIndex(n => n.id === id);
+  return index < 0 ? null : index;
+}

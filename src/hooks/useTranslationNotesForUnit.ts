@@ -23,6 +23,7 @@ type TrackedLoadState = {
   projectId: number | null;
   bookCode: string;
   versesKey: string;
+  languageCode: string | undefined;
   value: TranslationNotesLoadState;
 };
 
@@ -90,6 +91,7 @@ export function useTranslationNotesForUnit(
     projectId,
     bookCode,
     versesKey,
+    languageCode,
     value: { status: 'loading' },
   });
   const requestIdRef = useRef(0);
@@ -100,6 +102,7 @@ export function useTranslationNotesForUnit(
       projectId,
       bookCode,
       versesKey,
+      languageCode,
       value: { status: 'loading' },
     });
     try {
@@ -120,6 +123,7 @@ export function useTranslationNotesForUnit(
         projectId,
         bookCode,
         versesKey,
+        languageCode,
         value: { status: 'ready', notes },
       });
     } catch (error) {
@@ -136,6 +140,7 @@ export function useTranslationNotesForUnit(
         projectId,
         bookCode,
         versesKey,
+        languageCode,
         value: {
           status: 'error',
           message: TRANSLATION_NOTES_LOAD_ERROR,
@@ -164,7 +169,8 @@ export function useTranslationNotesForUnit(
   const state: TranslationNotesLoadState =
     tracked.projectId === projectId &&
     tracked.bookCode === bookCode &&
-    tracked.versesKey === versesKey
+    tracked.versesKey === versesKey &&
+    tracked.languageCode === languageCode
       ? tracked.value
       : { status: 'loading' };
 

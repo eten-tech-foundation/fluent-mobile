@@ -14,7 +14,7 @@ import { useThemedStyles } from '../../../../theme/useTheme';
 import { HeroActions } from './HeroActions';
 import { HeroHeader } from './HeroHeader';
 import { type Ready } from './ready';
-import { ScriptPager } from './ScriptPager';
+import { ScriptPager, type ScriptNotes } from './ScriptPager';
 import type { RecordNotice } from './useRecorder';
 
 /** Where the hero's pieces sit, worked out by the sheet. */
@@ -51,6 +51,7 @@ export function PassageHero({
   scriptRef,
   onHeaderLayout,
   onActionsLayout,
+  notes,
   onOpen,
   onBack,
   onClose,
@@ -58,6 +59,7 @@ export function PassageHero({
   onDownload,
   onOpenClassic,
   onTitlePress,
+  covered = false,
 }: {
   passage: Ready;
   takes: PassageTake[];
@@ -76,6 +78,8 @@ export function PassageHero({
   scriptRef: RefObject<ScrollView | null>;
   onHeaderLayout: (height: number) => void;
   onActionsLayout: (height: number) => void;
+  /** The passage's translation notes, as chips in the script. */
+  notes?: ScriptNotes;
   /** Opens the player, on the recorder or the script. */
   onOpen: (record: boolean) => void;
   onBack: () => void;
@@ -84,6 +88,8 @@ export function PassageHero({
   onDownload: () => void;
   onOpenClassic?: () => void;
   onTitlePress?: () => void;
+  /** Under a note; TalkBack skips it. */
+  covered?: boolean;
 }) {
   const styles = useThemedStyles(t => ({
     frame: { overflow: 'hidden', backgroundColor: t.roles.bgDefault },
@@ -96,7 +102,10 @@ export function PassageHero({
   );
   return (
     <GestureDetector gesture={openGesture}>
-      <Animated.View style={[styles.frame, frameStyle]}>
+      <Animated.View
+        style={[styles.frame, frameStyle]}
+        importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
+      >
         <ScriptPager
           passage={passage}
           downloadState={downloadState}
@@ -106,6 +115,7 @@ export function PassageHero({
           top={layout.scriptTop}
           height={layout.scriptHeight}
           scriptRef={scriptRef}
+          notes={notes}
           onOpen={() => onOpen(false)}
         />
         <HeroActions

@@ -12,6 +12,7 @@ import { RoundButtonEntry } from './RoundButtonEntry';
 import { SwitchEntry } from './SwitchEntry';
 import { TrackRowEntry } from './TrackRowEntry';
 import { WaveformEntry } from './WaveformEntry';
+import { WordEntry } from './WordEntry';
 
 export interface GalleryEntry {
   id: string;
@@ -46,6 +47,14 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Waveform · Page dots',
     modes: 'Canvas (the player)',
     Component: WaveformEntry,
+  },
+  {
+    // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-495
+    // In the player: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2440-30858
+    id: 'word',
+    name: 'Word · Phrase chips',
+    modes: 'Canvas (the player)',
+    Component: WordEntry,
   },
   {
     // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-509

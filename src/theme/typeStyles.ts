@@ -24,17 +24,22 @@ function style(
 export function buildTypeStyles(sans: string | undefined, mono: string) {
   return {
     /**
-     * Scripture. Pass `maxFontSizeMultiplier={theme.fontScale.readingMax}`;
-     * that doesn't cap lineHeight, so see the recipe in figma-to-component.md.
+     * Scripture at Figma's read-along size. The Next player reads at `lead`
+     * instead (theme-figma-audit.md §6). Pass
+     * `maxFontSizeMultiplier={theme.fontScale.readingMax}`; that doesn't cap
+     * lineHeight, so see the recipe in figma-to-component.md.
      */
     reading: style(sans, 42, 52, '400'),
     /** The word being spoken. */
     readingStrong: style(sans, 42, 52, '700'),
     /** Screen headings ("Chapter 14"). */
     heading: style(sans, 42, 48, '700'),
-    /** Long-form notes and explanations. */
+    /**
+     * Long-form reading in the player: the script, translation notes and
+     * listening materials, so moving between them keeps one size.
+     */
     lead: style(sans, 32, 40, '400'),
-    /** Passage reference, labels. */
+    /** Passage reference, labels, verse numbers in the script. */
     title: style(sans, 18, 24, '600'),
     /** List titles and body copy. */
     body: style(sans, 18, 24, '400'),
