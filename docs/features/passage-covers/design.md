@@ -99,9 +99,11 @@ Legibility: `textShadowColor` = the ground, `textShadowRadius` ≈ 10 × s
 ### Passage status
 
 A pericope is recorded in one take, so its badge doesn't meter recording; the
-art and the status line under the cover carry that.
+art carries that. The status isn't printed under the cover, only spoken in
+the `Pressable`'s label, and the title under it shows only for a pericope
+title, since the cover already has the chapter and verses.
 
-| State | Status line | Badge |
+| State | Spoken status | Badge |
 | --- | --- | --- |
 | not recorded | Not recorded yet | none |
 | partly recorded | Partly recorded (Legacy verse takes, or crossing into a chapter still in draft) | none |
@@ -122,8 +124,9 @@ book is the same square face as a passage cover, with eyebrow "Book" and the
 book's name as the heading (one line, shrinking to fit), on a stack of two
 sheets: strips `spacing.sm` tall, `radius.sm` top corners, `surfaceDefault`,
 inset `spacing.sm` per step, with a `stroke[1]` gap. The back sheet is at 50 %
-so it fades toward the page. Under the cover: the name, the milestone on one
-line, then its counts (yours, with others, open, complete), which wrap.
+so it fades toward the page. Under the cover: the milestone on one
+line, then its counts (yours, with others, open, complete, to upload), which
+wrap. The name isn't repeated under the cover.
 
 Its badge meters the book: a ring (track `rgba(230,229,221,0.32)`, arc
 `fgPrimary`, clockwise from 12) for the share of the book's chapters submitted

@@ -74,8 +74,8 @@ export interface PassageCoverProps extends CoverArtProps {
   eyebrow: string;
   /** Verse range set large on the cover, e.g. "22–25". */
   verses: string;
-  /** Under the cover: the pericope title, or the reference without one. */
-  title: string;
+  /** Under the cover, when it adds to the cover: a pericope title, say. */
+  title?: string;
   onPress?: () => void;
   /** Spoken reference, e.g. "Mark 14:22–25". */
   reference: string;
@@ -85,7 +85,7 @@ export interface PassageCoverProps extends CoverArtProps {
 
 /**
  * A passage in the book page's gallery: a cover with art drawn from the
- * passage and its verse range, then its title and status. The art grows bluer
+ * passage and its verse range, then its title if it has one. The art grows bluer
  * as verses are recorded; the badge is a cloud while the send waits to go up,
  * a half ring in peer check, then a check once it passes. Flat, since tactile
  * controls stay in the player.
@@ -104,7 +104,6 @@ export function PassageCover({
     item: { gap: t.spacing.xs },
     pressed: { opacity: PRESSED_OPACITY },
     title: { ...t.type.label, color: t.roles.fgPrimary },
-    status: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
   const statusLabel = STATUS_LABELS[passageStatus(art)];
 
@@ -113,9 +112,9 @@ export function PassageCover({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={
-        title === reference
-          ? `${reference}, ${statusLabel}`
-          : `${title}, ${reference}, ${statusLabel}`
+        title && title !== reference
+          ? `${title}, ${reference}, ${statusLabel}`
+          : `${reference}, ${statusLabel}`
       }
       style={({ pressed }) => [styles.item, pressed && styles.pressed, style]}
       testID={testID}
@@ -126,12 +125,11 @@ export function PassageCover({
         testID={testID && `${testID}-face`}
         {...art}
       />
-      <Text style={styles.title} numberOfLines={2}>
-        {title}
-      </Text>
-      <Text style={styles.status} testID={testID && `${testID}-status`}>
-        {statusLabel}
-      </Text>
+      {title ? (
+        <Text style={styles.title} numberOfLines={2}>
+          {title}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }

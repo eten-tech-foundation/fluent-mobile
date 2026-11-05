@@ -94,6 +94,7 @@ describe('Books', () => {
     render(<Books books={[mark, genesis]} onOpen={onOpen} />);
 
     expect(screen.getByText('Books')).toBeTruthy();
+    expect(screen.getAllByText('Mark')).toHaveLength(1);
     const cards = screen.getAllByRole('button');
     expect(cards.map(c => c.props.accessibilityLabel)).toEqual([
       'Mark, Design team 1st · 1 yours · 2 with others · 47 open, Not recorded yet. Open book page.',

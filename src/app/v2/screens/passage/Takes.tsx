@@ -19,11 +19,12 @@ export function takesLine(
   passage: Ready,
   takes: PassageTake[] = passage.takes,
   countVerses = false,
-) {
+): string | null {
   const line = countVerses
     ? versesSummary(passage) ?? takesSummary(passage, [])
     : takesSummary(passage, takes);
-  return passage.waitingToSend ? `${line} · Waiting to send` : line;
+  if (!passage.waitingToSend) return line;
+  return line ? `${line} · Waiting to send` : 'Waiting to send';
 }
 
 /** Counts the passage's verses recorded; null until one is. */
@@ -32,7 +33,7 @@ function versesSummary({ verses }: Ready) {
   return done === 0 ? null : `${done} of ${verses.length} verses recorded`;
 }
 
-function takesSummary(passage: Ready, takes: PassageTake[]) {
+function takesSummary(passage: Ready, takes: PassageTake[]): string | null {
   const { recordedStatus, assignment } = passage;
   if (takes.length === 0) {
     // Like the book's cover: a sent chapter was recorded, maybe on another
@@ -46,7 +47,7 @@ function takesSummary(passage: Ready, takes: PassageTake[]) {
     if (recordedStatus === 'partial') {
       return versesSummary(passage) ?? 'Partly recorded';
     }
-    return 'Not recorded yet';
+    return null;
   }
   const latest = takes.reduce((a, b) => (b.recordedAt > a.recordedAt ? b : a));
   const when = formatLastActivity(latest.recordedAt);

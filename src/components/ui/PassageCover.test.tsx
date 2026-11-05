@@ -55,9 +55,15 @@ describe('PassageCover', () => {
       }),
     );
     expect(onPress).toHaveBeenCalled();
-    expect(screen.getByTestId('cover-status')).toHaveTextContent(
-      'Partly recorded',
-    );
+    expect(screen.queryByText('Partly recorded')).toBeNull();
+  });
+
+  it('shows no title under the cover without a pericope title', () => {
+    render(cover({ title: undefined }));
+    expect(screen.queryByText('Mark 14:22–25')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Mark 14:22–25, Not recorded yet' }),
+    ).toBeTruthy();
   });
 
   it('draws some art before anything is recorded', () => {
@@ -86,7 +92,11 @@ describe('PassageCover', () => {
     render(cover({ recordedVerses }));
     measure();
     expect(screen.queryByTestId('cover-badge', hidden)).toBeNull();
-    expect(screen.getByTestId('cover-status')).toHaveTextContent(status);
+    expect(
+      screen.getByRole('button', {
+        name: `The Last Supper, Mark 14:22–25, ${status}`,
+      }),
+    ).toBeTruthy();
   });
 
   it('waits to draw the badge until the cover is measured', () => {
@@ -114,9 +124,11 @@ describe('PassageCover', () => {
     measure();
     expect(screen.getByTestId('cover-badge-waiting', hidden)).toBeTruthy();
     expect(screen.queryByTestId('cover-badge-ring', hidden)).toBeNull();
-    expect(screen.getByTestId('cover-status')).toHaveTextContent(
-      'Waiting to send',
-    );
+    expect(
+      screen.getByRole('button', {
+        name: 'The Last Supper, Mark 14:22–25, Waiting to send',
+      }),
+    ).toBeTruthy();
   });
 
   it('waits to send before it reads as in peer check', () => {

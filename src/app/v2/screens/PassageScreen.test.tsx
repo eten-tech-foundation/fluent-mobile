@@ -992,6 +992,28 @@ describe('PassageScreen', () => {
     expect(chip(2).borderTopLeftRadius).not.toBe(0);
   });
 
+  it('speaks the missing takes line on Record when nothing is recorded', () => {
+    mockPassage = { ...ready, recordedStatus: 'none', takes: [] };
+    render(<PassageScreen />);
+
+    expect(screen.queryByTestId('passage-takes-meta')).toBeNull();
+    expect(screen.getByLabelText('Record, not recorded yet')).toBeTruthy();
+  });
+
+  it('says the send is waiting even with no takes on this phone', () => {
+    mockPassage = {
+      ...ready,
+      recordedStatus: 'none',
+      takes: [],
+      waitingToSend: true,
+    };
+    render(<PassageScreen />);
+
+    expect(screen.getByTestId('passage-takes-meta').props.children).toBe(
+      'Waiting to send',
+    );
+  });
+
   it('says when the send is waiting to go up', () => {
     mockPassage = { ...ready, waitingToSend: true };
     render(<PassageScreen />);
@@ -1305,6 +1327,10 @@ describe('PassageScreen', () => {
       render(<PassageScreen />);
 
       expect(screen.getByText('1 of 2 recorded')).toBeTruthy();
+      // The rings show recorded or not; only a passage take gets a line.
+      expect(screen.getByText('Recorded in a passage take')).toBeTruthy();
+      expect(screen.queryByText('Not recorded yet')).toBeNull();
+      expect(screen.getByLabelText('Verse 23, Not recorded yet')).toBeTruthy();
       expect(lastSession()).toMatchObject({ selectedVerse: 23 });
       await act(async () => {
         fireEvent.press(screen.getByTestId('passage-verse-row-22'));
@@ -1422,7 +1448,7 @@ describe('PassageScreen', () => {
       expect(screen.getByTestId('passage-verse-list')).toBeTruthy();
     });
 
-    it('says nothing is recorded yet before any verse is', () => {
+    it('leaves the takes line out before any verse is recorded', () => {
       mockPassage = {
         ...ready,
         recordedStatus: 'none',
@@ -1430,9 +1456,7 @@ describe('PassageScreen', () => {
       };
       render(<PassageScreen />);
 
-      expect(screen.getByTestId('passage-takes-meta').props.children).toBe(
-        'Not recorded yet',
-      );
+      expect(screen.queryByTestId('passage-takes-meta')).toBeNull();
     });
 
     it('deletes a take waiting on undo before stepping to another verse', async () => {

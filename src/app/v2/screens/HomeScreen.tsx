@@ -311,9 +311,7 @@ function HomeBody({
             My work
           </Text>
           <Text style={styles.meta} testID="home-summary">
-            {waitingForChapters
-              ? SYNC_SUMMARY[syncStatus]
-              : `${chaptersLabel} · ${SYNC_SUMMARY[syncStatus]}`}
+            {waitingForChapters ? SYNC_SUMMARY[syncStatus] : chaptersLabel}
           </Text>
         </View>
         {body}

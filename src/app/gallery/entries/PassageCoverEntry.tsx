@@ -7,7 +7,7 @@ import { useThemedStyles } from '../../../theme/useTheme';
 
 const PASSAGES: {
   verses: string;
-  title: string;
+  title?: string;
   reference: string;
   recordedVerses: number;
   totalVerses: number;
@@ -32,7 +32,6 @@ const PASSAGES: {
   },
   {
     verses: '26–31',
-    title: 'Mark 14:26–31',
     reference: 'Mark 14:26–31',
     recordedVerses: 6,
     totalVerses: 6,
@@ -80,8 +79,8 @@ const BOOKS: { bookName: string; recorded: number; peerChecked: boolean }[] = [
 
 /**
  * A chapter of the book page: tap a cover to open it. Covers show art drawn
- * from the passage, its verse range, a title (or the reference when there
- * isn't one) and status. Below, each art style through recording, the send
+ * from the passage and its verse range, with a pericope title under it when
+ * there is one. Below, each art style through recording, the send
  * waiting to go up, and peer check, then book covers.
  */
 export function PassageCoverEntry() {

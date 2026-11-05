@@ -71,6 +71,14 @@ describe('nextUpStatusLine', () => {
     ).toBe('Not started · Gospels Phase 1');
   });
 
+  it('leaves out a milestone named for its book', () => {
+    expect(
+      nextUpStatusLine(
+        item('a', {}, { ...MATTHEW_1, milestoneName: 'Matthew' }),
+      ),
+    ).toBe('Draft');
+  });
+
   it('says what I am doing on a chapter and what it has to sync', () => {
     expect(
       nextUpStatusLine(item('a', {}, { ...MATTHEW_1, listAccess: 'observer' })),
@@ -120,11 +128,12 @@ describe('NextUp', () => {
       }),
     );
     expect(onOpen).toHaveBeenCalledWith(hero);
-    expect(screen.getByText('Matthew 1:18–25')).toBeTruthy();
+    expect(screen.getByText('Birth')).toBeTruthy();
+    expect(screen.queryByText('Matthew 1:18–25')).toBeNull();
     expect(screen.queryByText('Then')).toBeNull();
   });
 
-  it('says the reference once when the passage has no title', () => {
+  it('leaves the reference to the cover when the passage has no title', () => {
     render(
       <NextUp
         nextUp={{
@@ -137,7 +146,7 @@ describe('NextUp', () => {
       />,
     );
 
-    expect(screen.getAllByText('Matthew 1:18–25')).toHaveLength(1);
+    expect(screen.queryByText('Matthew 1:18–25')).toBeNull();
     expect(
       screen.getByRole('button', {
         name: 'Matthew 1:18–25, Draft · Gospels Phase 1. Start recording.',
@@ -165,6 +174,7 @@ describe('NextUp', () => {
     );
 
     expect(screen.getByText('Then')).toBeTruthy();
+    expect(screen.queryByText('Matthew 1:1–17')).toBeNull();
     fireEvent.press(screen.getByTestId('home-next-1:genealogy'));
     expect(onOpen).toHaveBeenCalledWith(next);
   });

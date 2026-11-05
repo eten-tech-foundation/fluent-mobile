@@ -17,7 +17,8 @@ import { takesLine } from './Takes';
 import type { RecordNotice } from './useRecorder';
 
 /**
- * Under the hero's script: the takes line, Listen and Record (plus Download
+ * Under the hero's script: the takes line once something's recorded or
+ * waiting, Listen and Record (plus Download
  * while the text isn't on the phone), and the grip that opens the player.
  * Gone before the growing script reaches them.
  */
@@ -91,6 +92,7 @@ export function HeroActions({
       },
     ],
   }));
+  const line = takesLine(passage, takes, countVerses);
 
   return (
     <Animated.View
@@ -99,9 +101,11 @@ export function HeroActions({
       importantForAccessibility={expanded ? 'no-hide-descendants' : 'auto'}
       onLayout={e => onLayout(Math.round(e.nativeEvent.layout.height))}
     >
-      <Text style={styles.meta} testID="passage-takes-meta">
-        {takesLine(passage, takes, countVerses)}
-      </Text>
+      {line ? (
+        <Text style={styles.meta} testID="passage-takes-meta">
+          {line}
+        </Text>
+      ) : null}
       <PassageNotices
         notices={
           recordBlocked !== null &&
@@ -125,7 +129,13 @@ export function HeroActions({
         />
         {isRecordingLockedByStage(passage.assignment) ? null : (
           <RecordAction
-            accessibilityLabel={takes.length > 0 ? 'Record a take' : 'Record'}
+            accessibilityLabel={
+              takes.length > 0
+                ? 'Record a take'
+                : line
+                ? 'Record'
+                : 'Record, not recorded yet'
+            }
             onPress={onRecord}
             blocked={recordBlocked !== null}
             testID="passage-record"

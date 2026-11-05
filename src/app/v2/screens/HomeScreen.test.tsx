@@ -179,7 +179,7 @@ describe('Next HomeScreen', () => {
     expect(screen.getByRole('header', { name: 'My work' })).toBeTruthy();
     expect(screen.getByText('JS')).toBeTruthy();
     expect(screen.getByTestId('home-summary').props.children).toBe(
-      '2 chapters · All synced',
+      '2 chapters',
     );
     expect(
       screen.getByLabelText('Online · all synced. Open Sync page.'),
@@ -226,7 +226,7 @@ describe('Next HomeScreen', () => {
 
     expect(screen.getByTestId('home-empty')).toBeTruthy();
     expect(screen.getByTestId('home-summary').props.children).toBe(
-      '0 chapters · All synced',
+      '0 chapters',
     );
   });
 
