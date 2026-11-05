@@ -11,6 +11,7 @@ import { PassageCoverEntry } from './PassageCoverEntry';
 import { RoundButtonEntry } from './RoundButtonEntry';
 import { SwitchEntry } from './SwitchEntry';
 import { TrackRowEntry } from './TrackRowEntry';
+import { TypeEntry } from './TypeEntry';
 import { WaveformEntry } from './WaveformEntry';
 import { WordEntry } from './WordEntry';
 
@@ -25,6 +26,13 @@ export interface GalleryEntry {
 
 /** One entry per Next component — see docs/guides/figma-to-component.md step 7. */
 export const galleryEntries: GalleryEntry[] = [
+  {
+    // Figma: Foundations · 03 Type (families still placeholders there)
+    id: 'type',
+    name: 'Type styles',
+    modes: 'Hardware · Canvas · Accent',
+    Component: TypeEntry,
+  },
   {
     // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-34
     id: 'key',

@@ -49,6 +49,8 @@
     "maestro:eas": "npx --yes eas-cli@24.3.0 workflow:run .eas/workflows/maestro-android.yml"
   },
   "dependencies": {
+    "@expo-google-fonts/atkinson-hyperlegible-next": "^0.4.1",
+    "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@op-engineering/op-sqlite": "^15.2.11",
     "@react-native-community/netinfo": "^12.0.1",
     "@react-native-vector-icons/ionicons": "^13.1.5",
@@ -61,6 +63,7 @@
     "expo-constants": "~57.0.12",
     "expo-dev-client": "~57.0.18",
     "expo-file-system": "~57.0.4",
+    "expo-font": "~57.0.4",
     "expo-haptics": "~57.0.3",
     "expo-image": "~57.0.4",
     "expo-linking": "~57.0.9",

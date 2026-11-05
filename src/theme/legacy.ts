@@ -55,7 +55,7 @@ export const legacyTheme = {
   /** Figma `stroke/1` (rims on screen buttons), `stroke/2` (hardware bevels). */
   stroke: { 1: 1, 2: 2 },
   /** Figma named type styles; no Legacy screen uses them, so same metrics. */
-  type: buildTypeStyles(systemFontFamilies.sans, systemFontFamilies.mono),
+  type: buildTypeStyles(systemFontFamilies),
   typeTelugu: teluguTypeOverrides,
   fontScale: { readingMax: 1.3 },
   workflowBadges,
