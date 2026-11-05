@@ -144,18 +144,55 @@ export const RECORD_MAX_TAKES =
 /** The cap counts verse-by-verse takes too (#623), which the player doesn't show. */
 export const RECORD_MAX_VERSE_TAKES =
   'A verse here has 5 takes. Delete one in classic drafting to record.';
+export const RECORD_MAX_IN_PASSAGE_TAKES =
+  'This verse is in 5 passage takes. Switch to Pericope in Settings and delete one to record it on its own.';
+export const RECORD_MAX_WITH_PASSAGE_TAKES =
+  'This verse has 5 takes, counting passage takes over it. Delete one to record.';
 export const RECORD_NO_PERICOPE =
   "This chapter isn't split into pericopes. Record it in classic drafting.";
-/** Settings says verse by verse; the player only records whole passages. */
-export const RECORD_VERSE_UNIT =
-  'You draft verse by verse. Record it in classic drafting.';
 export const RECORD_OBSERVER =
   "You're observing this project, so you can listen but not record.";
 /** Another translator's take is official; the player only lists yours. */
 export const RECORD_OTHERS_OFFICIAL =
   "Another translator's take is official. Change it in classic drafting.";
-export const RECORD_VERSE_TAKES_HERE =
-  'Some of this passage was recorded verse by verse. See it in classic drafting.';
+export const RECORD_VERSE_BY_VERSE = 'Recorded verse by verse';
+export const recordedOnTheirOwn = (count: number, total: number) =>
+  `${count} of ${total} verses recorded on their own`;
+export const RECORD_OVER_VERSES_TITLE = 'Record the whole passage?';
+/** Names its verses when the passage is wider than the page, e.g. "v. 1–7". */
+export const pickOverVersesTitle = (takeNumber: number, verses?: string) =>
+  `Use passage take ${takeNumber} for ${verses ?? 'the whole passage'}?`;
+export const PICK_OVER_VERSES_CONFIRM = 'Use it';
+export const RECORD_OVER_VERSES_MESSAGE =
+  "The verses recorded on their own here won't be used anymore.";
+export const pickOverPassageTitle = (takeNumber: number, verse: number) =>
+  `Use take ${takeNumber} for v. ${verse}?`;
+export const recordInPassageTake = (takeNumber: number) =>
+  `This verse is in passage take ${takeNumber}.`;
+export const recordOverPassageTitle = (verse: number) =>
+  `Record v. ${verse} on its own?`;
+type RangedTake = {
+  takeNumber: number;
+  startChapter: number;
+  startVerse: number;
+  endChapter: number;
+  endVerse: number;
+};
+const takeRange = (take: RangedTake) =>
+  take.startChapter === take.endChapter
+    ? `v. ${take.startVerse}–${take.endVerse}`
+    : `${take.startChapter}:${take.startVerse}–${take.endChapter}:${take.endVerse}`;
+export const recordOverPassageMessage = (take: RangedTake) =>
+  `Passage take ${take.takeNumber} won't be used for ${takeRange(
+    take,
+  )} anymore, so the rest of those verses will need recording too.`;
+/** Swapping one passage take for another over a verse. */
+export const swapPassageMessage = (take: RangedTake) =>
+  `Passage take ${take.takeNumber} won't be used for ${takeRange(
+    take,
+  )} anymore.`;
+export const RECORD_OVER_PASSAGE_CANCEL = 'Cancel';
+export const RECORD_OVER_PASSAGE_CONFIRM = 'Record';
 /**
  * Legacy drafting, opened from the Next player for what it has no design for
  * yet: verse mode, other people's takes, resources and Send.

@@ -126,10 +126,29 @@ change. All from #873.
 | --- | --- | --- |
 | The player's reading size | Script and listening materials in `type/reading` (42/52), notes in `type/lead` (32/40) | All three in `type/lead` (32/40), so the player reads at one size and more fits on screen; `type/reading` stays for read-along elsewhere |
 | Verse numbers in the script | `type/label` (14) | `type/title` (18), a little larger at the new reading size, raised in the player so its top meets the capitals |
-| Word, Note style | Not a Word style | A phrase with a translation note at rest: `fg/primary` text in a `stroke/2` `accent/primary` outline, `radius/xs`; touching words of a phrase square their corners and drop the shared border |
+| Word, Note style | Not a Word style | A phrase with a translation note at rest: `fg/primary` text in a `stroke/2` `accent/primary` outline, `radius/xs`; touching words of a phrase square their corners and drop the shared border. In Record, where notes don't open, the outline is `fg/inactive` and the focused phrase drops its fill |
 | Word, Phrase style | `accent/primary` fill | Adds a `stroke/2` border in the fill's color, so Phrase and Note are one size and swap without reflow |
 | Word chips in running text | Separate boxes laid out with `space/4` gaps | Inline in the script's text, a `space/4` + border shorter than the line and dropped 0.2 em onto the baseline (Android sits an inline view's bottom on it) |
 | Round button, Flat | Pinned to Canvas | Canvas, or Accent on a blue (Accent) screen, matching its description ("Flat = black and blue screens") |
+
+### 7. Code ahead of Figma (open)
+
+Built in code with no Figma frame yet. Each needs a frame to match or replace.
+
+- **Verse mode (Q31, 2026-11-03).** The Verses list under the passage hero
+  (Progress ring with a check, or the verse number while unrecorded), and
+  the open player's verse pages in Listen and Record: one row at the left,
+  Page dots with the current verse's Verse chip in place of its dot, or past
+  12 verses the chip and "of 71", above the verse at reading size, kept apart
+  from the take card so it doesn't read as paging takes. In verse mode the hero's recorded verse numbers use
+  `accent/primary`. Without verse timings the Listen waveform drops its verse
+  chips (Q32).
+  In verse mode a passage take over the verse gets a fan tile that can't be
+  deleted there, and its card reads "Passage take 1 · v. 1–7". The take card names its unit ("Passage take 2", "v. 23 · Take 1"),
+  where Figma reads "Take 2". Copy for the passage-take line on the take card, the confirms before
+  recording over a passage take or over verse takes, and the pericope-mode
+  take card for verses recorded on their own ("Recorded verse by verse") is
+  code's too.
 
 ## Still open
 

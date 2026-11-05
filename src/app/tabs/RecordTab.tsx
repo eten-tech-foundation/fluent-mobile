@@ -33,6 +33,7 @@ import {
 } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
 import { useRecordSession } from '../../hooks/useRecordSession';
+import { useVerseStep } from '../../hooks/useVerseStep';
 import {
   formatTakeSubtitle,
   formatTakeVerseSpan,
@@ -56,10 +57,6 @@ import {
 import { WarningBanner } from '../../components/ui/WarningBanner';
 import { StageAdvanceConfirmSheet } from '../../components/ui/StageAdvanceConfirmSheet';
 import {
-  CAPTURE_LEAVE_DISCARD,
-  CAPTURE_LEAVE_MESSAGE,
-  CAPTURE_LEAVE_RESUME,
-  CAPTURE_LEAVE_TITLE,
   PERICOPE_UNAVAILABLE_WARNING,
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_SOURCE_TEXT_OPEN_SYNC,
@@ -206,7 +203,15 @@ export function RecordTab({
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
+  const verseStep = useVerseStep({
+    verses,
+    selectedVerse,
+    onChange: setSelectedVerse,
+    audioState: verseAudio.state,
+    discardCapture: verseAudio.discardCapture,
+    resetCapture,
+  });
+  const verseIndex = verseStep.index;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
 
   const [lastPericopeOfChapter, setLastPericopeOfChapter] =
@@ -541,31 +546,6 @@ export function RecordTab({
     );
   }
 
-  function changeVerse(next: number) {
-    resetCapture();
-    setSelectedVerse(next);
-  }
-
-  /** #49: capture in progress — offer Resume or Discard, then proceed. */
-  function requestVerseChange(next: number) {
-    if (verseAudio.state === 'paused' || verseAudio.state === 'recording') {
-      Alert.alert(CAPTURE_LEAVE_TITLE, CAPTURE_LEAVE_MESSAGE, [
-        { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
-        {
-          text: CAPTURE_LEAVE_DISCARD,
-          style: 'destructive',
-          onPress: () => {
-            void verseAudio.discardCapture().then(() => {
-              changeVerse(next);
-            });
-          },
-        },
-      ]);
-      return;
-    }
-    changeVerse(next);
-  }
-
   const showIdle =
     (verseAudio.state === 'idle' && !activeViewHasTakes) ||
     (verseAudio.state === 'error' && !activeViewHasTakes);
@@ -787,7 +767,7 @@ export function RecordTab({
               const targetIndex = isPericopeNav
                 ? pericopePrevIndex
                 : verseIndex - 1;
-              requestVerseChange(verses[targetIndex]!.verseNumber);
+              verseStep.request(verses[targetIndex]!.verseNumber);
             }
           }}
           disabled={prevDisabled}
@@ -828,7 +808,7 @@ export function RecordTab({
               const targetIndex = isPericopeNav
                 ? pericopeNextIndex
                 : verseIndex + 1;
-              requestVerseChange(verses[targetIndex]!.verseNumber);
+              verseStep.request(verses[targetIndex]!.verseNumber);
             }
           }}
           disabled={nextDisabled}

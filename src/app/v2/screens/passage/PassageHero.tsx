@@ -15,7 +15,7 @@ import { HeroActions } from './HeroActions';
 import { HeroHeader } from './HeroHeader';
 import { type Ready } from './ready';
 import { ScriptPager, type ScriptNotes } from './ScriptPager';
-import type { RecordNotice } from './useRecorder';
+import type { RecordNotice, VerseSteps } from './useRecorder';
 
 /** Where the hero's pieces sit, worked out by the sheet. */
 export interface HeroLayout {
@@ -43,6 +43,9 @@ export function PassageHero({
   progress,
   expanded,
   playingVerse,
+  verseSteps,
+  versesAreDraft,
+  versePages,
   recordBlocked,
   notices,
   layout,
@@ -69,6 +72,12 @@ export function PassageHero({
   expanded: boolean;
   /** The source verse playing, highlighted in the script. */
   playingVerse: number | null;
+  /** Verse mode's place; null when Record takes whole passages. */
+  verseSteps: VerseSteps | null;
+  /** Pericope mode's draft is verses recorded on their own. */
+  versesAreDraft: boolean;
+  /** Record in verse mode: a page per verse instead of the script. */
+  versePages: boolean;
   /** Why Record can't start here; the hero's Record is off with it. */
   recordBlocked: string | null;
   notices: RecordNotice[];
@@ -112,6 +121,8 @@ export function PassageHero({
           progress={progress}
           expanded={expanded}
           playingVerse={playingVerse}
+          verseSteps={verseSteps}
+          versePages={versePages}
           top={layout.scriptTop}
           height={layout.scriptHeight}
           scriptRef={scriptRef}
@@ -121,6 +132,7 @@ export function PassageHero({
         <HeroActions
           passage={passage}
           takes={takes}
+          countVerses={verseSteps !== null || versesAreDraft}
           downloadState={downloadState}
           progress={progress}
           expanded={expanded}

@@ -101,6 +101,8 @@ export const hrefs = {
     language: string;
     /** Opened from the book page, so going up to the book is going back. */
     from?: 'book';
+    /** Verse mode opens Record here, e.g. on a recovered verse take. */
+    verse?: number;
   }) =>
     ({
       pathname: '/(app)/(stack)/passage' as const,
@@ -114,6 +116,7 @@ export const hrefs = {
         milestoneName: params.milestoneName,
         language: params.language,
         ...(params.from ? { from: params.from } : {}),
+        ...(params.verse !== undefined ? { verse: String(params.verse) } : {}),
       },
     } as const),
   addUser: '/(app)/(stack)/add-user' as const,

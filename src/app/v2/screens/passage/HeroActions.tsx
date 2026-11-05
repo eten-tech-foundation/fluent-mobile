@@ -24,6 +24,7 @@ import type { RecordNotice } from './useRecorder';
 export function HeroActions({
   passage,
   takes,
+  countVerses,
   downloadState,
   progress,
   expanded,
@@ -39,6 +40,8 @@ export function HeroActions({
   passage: Ready;
   /** The passage's takes, live as they're recorded. */
   takes: PassageTake[];
+  /** The takes line counts verses instead of passage takes. */
+  countVerses: boolean;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
   progress: SharedValue<number>;
   expanded: boolean;
@@ -97,7 +100,7 @@ export function HeroActions({
       onLayout={e => onLayout(Math.round(e.nativeEvent.layout.height))}
     >
       <Text style={styles.meta} testID="passage-takes-meta">
-        {takesLine(passage, takes)}
+        {takesLine(passage, takes, countVerses)}
       </Text>
       <PassageNotices
         notices={

@@ -6,7 +6,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  Alert,
   BackHandler,
   InteractionManager,
   ScrollView,
@@ -35,13 +34,19 @@ import {
   CAPTURE_LEAVE_TITLE,
 } from '../../../../constants/messages';
 import { useConnectivity } from '../../../../hooks/useConnectivity';
+import { useDraftingUnit } from '../../../../hooks/useDraftingUnit';
 import { useHaptics } from '../../../../hooks/useHaptics';
 import type { HeaderSync } from '../../../../hooks/useHeaderSync';
 import type { usePassage } from '../../../../hooks/usePassage';
+import {
+  hasVerseStart,
+  verseStartMs,
+} from '../../../../hooks/sourceAudioHelpers';
 import { useSourceAudio } from '../../../../hooks/useSourceAudio';
 import type { CaptureControls } from '../../../../types/captureControls';
 import type { SourceAudioLoadState } from '../../../../types/sourceAudio';
 import { ColorModeScope, useTheme } from '../../../../theme/useTheme';
+import { Dialog, type DialogProps } from '../../../../components/ui/Dialog';
 import { Footer } from './Footer';
 import { NoteScreen } from './NoteScreen';
 import { PassageHero } from './PassageHero';
@@ -54,6 +59,7 @@ import { TakeFan } from './TakeFan';
 import { TitleSheet } from './TitleSheet';
 import { usePassageNotes } from './usePassageNotes';
 import { useRecorder } from './useRecorder';
+import { VerseList } from './VerseList';
 
 /** How far the hero drags before a release opens or closes it. */
 const SNAP_AT = 0.35;
@@ -65,6 +71,37 @@ const NO_TURN = (label: string): KeyAction => ({
   disabled: true,
   onPress: () => {},
 });
+
+/** Verse mode's Previous and Next step verses in Listen (Q17). */
+function verseTurn(
+  steps: ReturnType<typeof useRecorder>['verse'],
+  side: 'previous' | 'next',
+  /** The verse playing, which they step from until the place catches up. */
+  heard: number | null,
+  /** Plays a verse from its start, for one that's already the place. */
+  replay: (verse: number) => (() => void) | null,
+): KeyAction {
+  const label = side === 'previous' ? 'Previous' : 'Next';
+  if (!steps) return NO_TURN(label);
+  const at =
+    heard === null ? -1 : steps.verses.findIndex(v => v.verseNumber === heard);
+  const target =
+    at < 0
+      ? steps[side]
+      : steps.verses[side === 'previous' ? at - 1 : at + 1]?.verseNumber ??
+        null;
+  const replaying = heard !== null && target === steps.current;
+  const replayTarget = replaying && target !== null ? replay(target) : null;
+  return {
+    label: target === null ? label : `${label}: verse ${target}`,
+    disabled: target === null || steps.locked || (replaying && !replayTarget),
+    onPress: () => {
+      if (target === null) return;
+      if (replaying) replayTarget?.();
+      else steps.go(target);
+    },
+  };
+}
 
 function listenKeys(
   source: {
@@ -127,6 +164,7 @@ export function Sheet({
   userId,
   onReload,
   anchorVerse,
+  openVerse,
   chapterName,
   milestoneName,
   onBack,
@@ -144,6 +182,8 @@ export function Sheet({
   onReload: () => void;
   /** Verse this passage was opened on; source audio seeks here. */
   anchorVerse: number;
+  /** In verse mode, the verse Record opens on, e.g. a recovered take's. */
+  openVerse?: number;
   /** e.g. "Mark 14"; the title's sheet links it up to the book page. */
   chapterName: string;
   milestoneName: string;
@@ -190,9 +230,14 @@ export function Sheet({
   const collapsed = actionsTop + actions + spacing.xl;
   const range = Math.max(1, container - collapsed);
   const fullScript = Math.max(preview, container - headerBottom - panel);
+  // Settings picks the unit; a chapter without pericopes is verse by verse.
+  const { draftingUnit } = useDraftingUnit();
+  const unit = passage.wholeChapter ? 'verse' : draftingUnit;
   const recorder = useRecorder({
     passage,
     userId,
+    unit,
+    openVerse,
     showing: expanded && recordMode,
     downloading: downloadState === 'downloading',
     onReload,
@@ -272,9 +317,11 @@ export function Sheet({
             chips: notes.chips,
             quotes: notes.notes.map(n => n.quote),
             unplaced: notes.notes.filter(n => n.span === null).length,
+            unplacedAt: unplacedByVerse(notes.notes),
             current: lastNote,
-            // Notes are Listen's; the chips stay but don't open in Record.
+            // Notes are Listen's; the chips stay, quiet, but don't open in Record.
             onOpen: showRecord ? undefined : openNote,
+            dimmed: showRecord,
           }
         : undefined,
     [atRest, notes, lastNote, showRecord, openNote],
@@ -283,6 +330,10 @@ export function Sheet({
   const openClassic = capturing ? undefined : onOpenClassic;
   const { isOnline, hasResolved } = useConnectivity();
   const [playingVerse, setPlayingVerse] = useState<number | null>(null);
+  const steps = recorder.verse;
+  // Until the text is in, the script shows why instead.
+  const versePages =
+    steps !== null && expanded && passage.downloaded && steps.verses.length > 0;
   // Same gate as Legacy's source bar: no API until /health resolves.
   const source = useSourceAudio({
     projectId: passage.assignment.projectId,
@@ -290,7 +341,7 @@ export function Sheet({
     chapter: passage.assignment.chapterNumber,
     bibleId: passage.assignment.bibleId,
     languageCode: passage.assignment.sourceLanguageCode,
-    verse: anchorVerse,
+    verse: steps?.current ?? anchorVerse,
     enabled: !showRecord,
     isOnline: hasResolved && isOnline,
     userId,
@@ -336,6 +387,72 @@ export function Sheet({
       await source.seek(span.startMs);
     }
   };
+  // Verse mode marks its own place once the source stops. Without verse
+  // timings the source can't say which verse is playing, so it claims none.
+  const timed = (source.verseTimestamps?.length ?? 0) > 0;
+  const heardVerse = steps && (!isPlaying || !timed) ? null : playingVerse;
+  // Verse mode takes up the last verse heard once the source stops, so Record
+  // opens there. Moving it mid-play would seek against the playback.
+  const goVerse = steps?.go;
+  const stepCurrent = steps?.current;
+  const lastHeard = useRef<number | null>(null);
+  useEffect(() => {
+    if (heardVerse !== null) {
+      lastHeard.current = heardVerse;
+      return;
+    }
+    const heard = lastHeard.current;
+    lastHeard.current = null;
+    if (!goVerse || heard === null || heard === stepCurrent) return;
+    if (!steps?.verses.some(v => v.verseNumber === heard)) return;
+    goVerse(heard);
+    // Only the verse playing moves the place.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heardVerse]);
+
+  // A tapped verse row plays once it's the place and the source has loaded.
+  const [playAt, setPlayAt] = useState<number | null>(null);
+  // Once the place reaches it, moving away again drops the play.
+  const reachedPlayAt = useRef(false);
+  const { loadState, verseTimestamps, dblAudioBibleId } = source;
+  const { pauseTakePlayback } = recorder;
+  const replayVerse = (verse: number) =>
+    hasVerseStart(verse, verseTimestamps, dblAudioBibleId)
+      ? () => {
+          void source.seek(
+            verseStartMs(verse, verseTimestamps, dblAudioBibleId),
+          );
+        }
+      : null;
+  useEffect(() => {
+    if (playAt === null) return;
+    if (showRecord || !expanded || loadState === 'error') {
+      setPlayAt(null);
+      return;
+    }
+    if (playAt !== stepCurrent) {
+      if (reachedPlayAt.current) setPlayAt(null);
+      return;
+    }
+    reachedPlayAt.current = true;
+    if (loadState !== 'ready') return;
+    setPlayAt(null);
+    // Without its timing it would play from the top of the chapter.
+    if (isPlaying || !hasVerseStart(playAt, verseTimestamps, dblAudioBibleId)) {
+      return;
+    }
+    void (async () => {
+      await pauseTakePlayback();
+      // Paused partway, play would resume there rather than at the verse.
+      if (source.status === 'paused') {
+        await source.seek(
+          verseStartMs(playAt, verseTimestamps, dblAudioBibleId),
+        );
+      }
+      await source.play();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playAt, stepCurrent, loadState, showRecord, expanded]);
 
   const settled = useCallback(() => {
     haptics.press();
@@ -371,22 +488,36 @@ export function Sheet({
 
   // A take in progress asks first, like leaving a verse in the Record tab.
   const { discardCapture } = recorder;
+  const [leaving, setLeaving] = useState(false);
+  // Nothing to leave once the take ends on its own.
+  useEffect(() => {
+    if (!capturing) setLeaving(false);
+  }, [capturing]);
   const close = useCallback(() => {
     if (!capturing) {
       animateTo(false);
       return;
     }
-    Alert.alert(CAPTURE_LEAVE_TITLE, CAPTURE_LEAVE_MESSAGE, [
-      { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
-      {
-        text: CAPTURE_LEAVE_DISCARD,
-        style: 'destructive',
-        onPress: () => {
+    setLeaving(true);
+  }, [capturing, animateTo]);
+  const leaveDialog: Omit<DialogProps, 'visible'> | null = leaving
+    ? {
+        title: CAPTURE_LEAVE_TITLE,
+        message: CAPTURE_LEAVE_MESSAGE,
+        confirmLabel: CAPTURE_LEAVE_DISCARD,
+        cancelLabel: CAPTURE_LEAVE_RESUME,
+        onConfirm: () => {
+          setLeaving(false);
           void discardCapture().then(() => animateTo(false));
         },
-      },
-    ]);
-  }, [capturing, animateTo, discardCapture]);
+        onCancel: () => setLeaving(false),
+      }
+    : null;
+  // One question at a time, drawn as the Next dialog. The last one stays
+  // while it fades out.
+  const asked = leaveDialog ?? recorder.confirm;
+  const lastAsked = useRef(asked);
+  if (asked) lastAsked.current = asked;
 
   // A screen pushed over the open player gets back presses first.
   useEffect(() => {
@@ -452,7 +583,10 @@ export function Sheet({
           downloadState={downloadState}
           progress={progress}
           expanded={expanded}
-          playingVerse={playingVerse}
+          playingVerse={heardVerse}
+          verseSteps={steps}
+          versesAreDraft={recorder.versesAreDraft}
+          versePages={versePages}
           recordBlocked={recorder.cannotRecord}
           notices={recorder.notices}
           layout={{
@@ -481,6 +615,17 @@ export function Sheet({
           covered={noteOpen}
         />
       </ColorModeScope>
+      {steps ? (
+        <VerseList
+          verses={steps.verses}
+          onOpen={verseNumber => {
+            steps.go(verseNumber);
+            open(false);
+            reachedPlayAt.current = false;
+            setPlayAt(verseNumber);
+          }}
+        />
+      ) : null}
       <ColorModeScope value="hardware">
         <TitleSheet
           visible={titleSheetOpen}
@@ -513,7 +658,11 @@ export function Sheet({
             passage={passage}
             recordMode={showRecord}
             record={recorder.footer}
-            listen={{ progress: sourceProgress, onSeek: seekSource }}
+            listen={{
+              progress: sourceProgress,
+              onSeek: seekSource,
+              verseChips: steps === null || timed,
+            }}
             notices={recorder.notices}
             onOpenClassic={openClassic}
             dimmed={lifted}
@@ -539,12 +688,23 @@ export function Sheet({
             previous={
               noteOpen
                 ? noteKey(noteIndex - 1, 'Previous')
-                : NO_TURN('Previous')
+                : verseTurn(steps, 'previous', heardVerse, replayVerse)
             }
-            next={noteOpen ? noteKey(noteIndex + 1, 'Next') : NO_TURN('Next')}
+            next={
+              noteOpen
+                ? noteKey(noteIndex + 1, 'Next')
+                : verseTurn(steps, 'next', heardVerse, replayVerse)
+            }
           />
         }
       />
+      {lastAsked.current ? (
+        <Dialog
+          {...lastAsked.current}
+          visible={asked !== null}
+          testID="passage-confirm"
+        />
+      ) : null}
       {noteOpen ? (
         <ColorModeScope value="accent">
           <NoteScreen
@@ -567,6 +727,16 @@ export function Sheet({
 }
 
 const styles = StyleSheet.create({ sheet: { flex: 1 } });
+
+function unplacedByVerse(notes: { span: unknown; verse: string | null }[]) {
+  const at = new Map<string, number[]>();
+  notes.forEach((n, i) => {
+    if (n.span !== null) return;
+    const key = n.verse ?? '';
+    at.set(key, [...(at.get(key) ?? []), i]);
+  });
+  return at;
+}
 
 function indexOfNote(notes: { id: string }[], id: string | null) {
   const index = id === null ? -1 : notes.findIndex(n => n.id === id);

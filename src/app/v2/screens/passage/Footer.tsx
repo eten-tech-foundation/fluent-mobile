@@ -36,6 +36,8 @@ export interface RecordStatus {
   /** Why recording is off here, or what the take in progress waits on. */
   blockedReason: string | null;
   take: FrontTake;
+  /** Where the take's verse chip starts: the passage's, or verse mode's verse. */
+  firstVerse: number;
 }
 
 /**
@@ -49,6 +51,8 @@ export interface ListenWave {
   progress: number;
   /** Set when a duration is known, so a scrub can seek the passage. */
   onSeek?: (progress: number) => void;
+  /** Off when the source can't say where each verse falls. */
+  verseChips: boolean;
 }
 
 export function Footer({
@@ -140,7 +144,7 @@ export function Footer({
         />
         <Animated.View style={[styles.wave, listenStyle]} {...listenProps}>
           <Waveform
-            verses={scriptBars(passage.verses)}
+            verses={scriptBars(passage.verses, listen.verseChips)}
             progress={listen.progress}
             onSeek={listen.onSeek}
             accessibilityLabel={`${name} playback`}
@@ -155,7 +159,7 @@ export function Footer({
         <TakeCard
           take={record.take}
           blockedReason={record.blockedReason}
-          firstVerse={passage.verses[0]?.verseNumber ?? 1}
+          firstVerse={record.firstVerse}
           mode={mode}
           shown={recordMode}
         />
@@ -175,8 +179,8 @@ export function Footer({
  * scrubbing come from the passage's stretch of the chapter file, not from
  * these heights.
  */
-function scriptBars(verses: PassageVerse[]): WaveformVerse[] {
-  return verses
+function scriptBars(verses: PassageVerse[], chips: boolean): WaveformVerse[] {
+  const groups = verses
     .filter(v => v.text)
     .map(v => ({
       verse: v.verseNumber,
@@ -185,4 +189,5 @@ function scriptBars(verses: PassageVerse[]): WaveformVerse[] {
         .filter(Boolean)
         .map(word => Math.min(BAR_MAX, BAR_MIN + word.length * 5)),
     }));
+  return chips ? groups : groups.map(g => ({ verse: null, bars: g.bars }));
 }

@@ -13,7 +13,7 @@ import { useTheme, useThemedStyles } from '../../theme/useTheme';
 
 /** Figma Page dot: Active 14, Inactive 10. */
 const ACTIVE_SIZE = 14;
-const INACTIVE_SIZE = 10;
+export const INACTIVE_SIZE = 10;
 
 export interface PageDotsProps {
   count: number;

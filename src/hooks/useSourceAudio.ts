@@ -11,6 +11,7 @@ import type { SourceAudioLoadState } from '../types/sourceAudio';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import {
   chapterSourceAudioCacheKey,
+  hasVerseStart,
   isCachedSourceAudioResponseValid,
   resolveSourceAudioUri,
   sourceAudioItemDurationMs,
@@ -95,6 +96,8 @@ export function useSourceAudio({
    * User scrub (`seek`) clears this so play does not jump back to verse start.
    */
   const seekToVerseOnNextPlayRef = useRef(true);
+  /** The verse the seek effect last saw while playing or paused. */
+  const navigatedVerseRef = useRef(verse);
 
   uriRef.current = uri;
   verseRef.current = verse;
@@ -270,9 +273,15 @@ export function useSourceAudio({
       playingVerseRef.current = null;
       return;
     }
-    if (playingVerseRef.current === verse) return;
+    // A pause landing in another verse isn't navigation: keep its position.
+    const moved = navigatedVerseRef.current !== verse;
+    navigatedVerseRef.current = verse;
+    if (playingVerseRef.current === verse || !moved) return;
+    const timed = hasVerseStart(verse, verseTimestamps, dblAudioBibleId);
+    // The poll knows what's playing; a verse without a timing can't claim it.
+    if (verseTimestamps?.length && !timed) return;
     playingVerseRef.current = verse;
-    if (verseTimestamps?.length) {
+    if (timed) {
       const startMs = verseStartMs(verse, verseTimestamps, dblAudioBibleId);
       void playbackRef.current.seek(startMs);
     }
@@ -307,9 +316,12 @@ export function useSourceAudio({
   }, [uri, playback.status, verseTimestamps, dblAudioBibleId]);
 
   // Verse change while paused/idle: next play should open at that verse.
-  // Depend on verse only so a plain pause does not force a rewind on resume.
+  // Depend on verse only so a plain pause does not force a rewind on resume,
+  // nor a verse the playback itself reached.
   useEffect(() => {
-    seekToVerseOnNextPlayRef.current = true;
+    if (playingVerseRef.current !== verse) {
+      seekToVerseOnNextPlayRef.current = true;
+    }
   }, [verse]);
 
   // Natural end clears Bible-tab highlight.

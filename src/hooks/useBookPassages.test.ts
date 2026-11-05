@@ -13,6 +13,11 @@ import {
 } from '../db/queries';
 import type { ProjectChapter } from '../types/db/types';
 
+let mockUnit: 'verse' | 'pericope' = 'pericope';
+jest.mock('./useDraftingUnit', () => ({
+  useDraftingUnit: () => ({ draftingUnit: mockUnit }),
+}));
+
 jest.mock('../db/repository', () => ({
   getProjectPericopeSetId: jest.fn(),
 }));
@@ -132,6 +137,7 @@ describe('loadChapterPassages', () => {
 describe('useBookPassages', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUnit = 'pericope';
     mockSetId.mockResolvedValue(7);
     mockAssignment.mockImplementation(async (id: number) => ({
       id,
@@ -159,6 +165,49 @@ describe('useBookPassages', () => {
     expect(result.current.byChapter.get(1)?.[0]?.waitingToSend).toBeUndefined();
     expect(result.current.byChapter.get(2)?.[0]?.waitingToSend).toBe(true);
     (hasPendingStageAdvance as jest.Mock).mockImplementation(async () => false);
+  });
+
+  it('lists whole chapters when recording verse by verse', async () => {
+    mockUnit = 'verse';
+    const chapters = [chapter(1, 14), chapter(2, 15)];
+
+    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    if (result.current.status !== 'ready') return;
+    expect(mockSetId).not.toHaveBeenCalled();
+    expect(result.current.pericopes).toBe(false);
+    expect(result.current.byChapter.get(1)).toEqual([
+      expect.objectContaining({ key: 'chapter:1', anchorVerse: 1 }),
+    ]);
+  });
+
+  it("counts this phone's takes on a whole chapter ahead of the stored count", async () => {
+    mockUnit = 'verse';
+    const chapters = [chapter(1, 14, { completedVerses: 1 })];
+
+    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    if (result.current.status !== 'ready') return;
+    expect(result.current.byChapter.get(1)?.[0]).toMatchObject({
+      recordedVerses: 2,
+      recordedStatus: 'partial',
+    });
+  });
+
+  it('shows loading, not the old covers, while the other unit loads', async () => {
+    const chapters = [chapter(1, 14)];
+    const { result, rerender } = renderHook(() =>
+      useBookPassages(chapters, 9, 3),
+    );
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    mockUnit = 'verse';
+    rerender({});
+
+    expect(result.current.status).toBe('loading');
+    await waitFor(() => expect(result.current.status).toBe('ready'));
   });
 
   it("lists each chapter's passages with how much is recorded", async () => {

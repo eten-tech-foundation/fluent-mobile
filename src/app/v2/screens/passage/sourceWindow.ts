@@ -1,6 +1,6 @@
 import { verseStartMs } from '../../../../hooks/sourceAudioHelpers';
 import type { ApiSourceAudioVerseTimestamp } from '../../../../types/api/sourceAudio';
-import type { PassageVerse } from '../../../../hooks/usePassage';
+import type { BibleUnitVerse } from '../../../../utils/bibleTabUnits';
 
 export interface SourceWindow {
   startMs: number;
@@ -14,7 +14,7 @@ export interface SourceWindow {
  * assignment's chapter only (Q12), so other chapters' verses don't count.
  */
 export function sourceWindow(
-  verses: PassageVerse[],
+  verses: readonly BibleUnitVerse[],
   chapterNumber: number,
   timestamps: ApiSourceAudioVerseTimestamp[] | undefined,
   dblAudioBibleId: string | undefined,

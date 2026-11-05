@@ -44,6 +44,7 @@ const publishedControls = {
 };
 const mockEnsureMic = jest.fn(async () => true);
 const mockPlayTake = jest.fn(async () => {});
+const mockPlayStitched = jest.fn(async (_row: unknown) => {});
 const mockPauseTake = jest.fn(async () => {});
 const mockDeleteTake = jest.fn(async (_id: string) => {});
 const mockSelectTake = jest.fn();
@@ -54,7 +55,14 @@ type MockTake = {
   granularity: string;
   isSelected: boolean;
   durationMs: number;
+  startChapter?: number;
+  startVerse?: number;
+  endChapter?: number;
+  endVerse?: number;
+  localFilePath?: string;
 };
+const mockSessionArgs = jest.fn();
+const mockReload = jest.fn();
 const sessionDefaults = {
   state: 'idle' as string,
   captureActive: false,
@@ -66,6 +74,9 @@ const sessionDefaults = {
   pericopeUnavailable: false,
   takes: [] as MockTake[],
   allTakes: [] as Record<string, unknown>[],
+  captureBibleTextId: 1022 as number | null,
+  playingTakeId: null as string | null,
+  positionMs: 0,
 };
 let mockSession = { ...sessionDefaults };
 const take = (n: number): MockTake => ({
@@ -74,6 +85,8 @@ const take = (n: number): MockTake => ({
   granularity: 'pericope',
   isSelected: false,
   durationMs: 10000,
+  startChapter: 14,
+  endChapter: 14,
 });
 let mockPassage: Passage = { status: 'loading' };
 let mockDownloadState: PassageDownload = 'idle';
@@ -107,6 +120,8 @@ jest.mock('../../../hooks/useRecordSession', () => {
   const React = require('react');
   return {
     useRecordSession: (args: {
+      selectedVerse: number;
+      draftingUnit: string;
       onCaptureActiveChange?: (active: boolean) => void;
       onRegisterCaptureControls?: (
         controls: {
@@ -115,6 +130,7 @@ jest.mock('../../../hooks/useRecordSession', () => {
         } | null,
       ) => void;
     }) => {
+      mockSessionArgs(args);
       const blocked =
         mockSession.captureActive || mockSession.state === 'saving';
       const onCaptureActiveChange = args.onCaptureActiveChange;
@@ -130,7 +146,8 @@ jest.mock('../../../hooks/useRecordSession', () => {
           state: mockSession.state,
           takes: mockSession.takes,
           deleteTake: mockDeleteTake,
-          playingTakeId: null,
+          playingTakeId: mockSession.playingTakeId,
+          positionMs: mockSession.positionMs,
           selectedTake: mockSession.takes.find(t => t.isSelected) ?? null,
           start: mockStart,
           stop: mockStop,
@@ -139,6 +156,9 @@ jest.mock('../../../hooks/useRecordSession', () => {
           discardCapture: mockDiscard,
           pausePlayback: mockPauseTake,
           playTake: mockPlayTake,
+          playStitched: mockPlayStitched,
+          seekStitched: jest.fn(),
+          stitchPositionMs: 0,
           selectTake: mockSelectTake,
           setCanonical: mockSetCanonical,
           ownCanonicalTakeId: null,
@@ -158,6 +178,8 @@ jest.mock('../../../hooks/useRecordSession', () => {
         pericopeUnavailable: mockSession.pericopeUnavailable,
         activeRecordingUnit: { coveredViews: [] },
         ensureMic: mockEnsureMic,
+        resetCapture: jest.fn(),
+        captureBibleTextId: mockSession.captureBibleTextId,
       };
     },
   };
@@ -270,7 +292,7 @@ jest.mock('../../../hooks/usePassage', () => ({
     passage: mockPassage,
     download: mockDownload,
     downloadState: mockDownloadState,
-    reload: jest.fn(),
+    reload: mockReload,
   }),
 }));
 
@@ -309,10 +331,21 @@ jest.mock('../../../hooks/useConnectivity', () => ({
 const ready: Extract<Passage, { status: 'ready' }> = {
   status: 'ready',
   title: 'The Last Supper',
+  wholeChapter: false,
   reference: 'Mark 14:22–25',
   verses: [
-    { chapterNumber: 14, verseNumber: 22, text: 'While they were eating' },
-    { chapterNumber: 14, verseNumber: 23, text: 'Then he took a cup' },
+    {
+      chapterNumber: 14,
+      verseNumber: 22,
+      text: 'While they were eating',
+      recorded: 'passage',
+    },
+    {
+      chapterNumber: 14,
+      verseNumber: 23,
+      text: 'Then he took a cup',
+      recorded: 'passage',
+    },
   ],
   downloaded: true,
   recordedStatus: 'recorded',
@@ -1053,7 +1086,9 @@ describe('PassageScreen', () => {
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
 
-    expect(screen.getByLabelText('Take 1, recording, 0:13')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Passage take 1, recording, 0:13'),
+    ).toBeTruthy();
     expect(screen.getByLabelText('Take 1, recording')).toBeTruthy();
     await act(async () => {
       fireEvent.press(screen.getByLabelText('Pause recording'));
@@ -1075,7 +1110,7 @@ describe('PassageScreen', () => {
     expect(
       screen.getByLabelText('Take 1, paused').props.accessibilityState,
     ).toMatchObject({ disabled: true });
-    expect(screen.getByLabelText('Take 1, paused, 0:13')).toBeTruthy();
+    expect(screen.getByLabelText('Passage take 1, paused, 0:13')).toBeTruthy();
     await act(async () => {
       fireEvent.press(screen.getByLabelText('Resume recording'));
     });
@@ -1145,23 +1180,814 @@ describe('PassageScreen', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('sends a verse-by-verse chapter to classic drafting from the hero', () => {
-    mockDraftingUnit = 'verse';
-    render(<PassageScreen />);
+  describe('verse by verse', () => {
+    const lastSession = () => mockSessionArgs.mock.calls.at(-1)?.[0];
 
-    expect(screen.getByTestId('passage-notices-classic').props.children).toBe(
-      'You draft verse by verse. Record it in classic drafting.',
-    );
-    fireEvent.press(screen.getByTestId('passage-notices-open-classic'));
+    beforeEach(() => {
+      mockDraftingUnit = 'verse';
+    });
 
-    expect(mockPush).toHaveBeenCalledWith(
-      hrefs.verseDetail({
-        chapterId: 5,
-        chapterName: 'Mark 14',
-        projectName: 'Mark Telugu',
-        language: 'Telugu',
-      }),
-    );
+    it('records inside the passage instead of sending it to classic drafting', () => {
+      render(<PassageScreen />);
+
+      expect(screen.queryByTestId('passage-notices-classic')).toBeNull();
+      expect(lastSession()).toMatchObject({
+        draftingUnit: 'verse',
+        selectedVerse: 22,
+      });
+      expect(screen.getByText('2 of 2 verses recorded')).toBeTruthy();
+    });
+
+    describe('listening', () => {
+      const timings = [
+        { verse: 22, startSeconds: 0 },
+        { verse: 23, startSeconds: 6 },
+      ];
+
+      function playThrough23() {
+        fireEvent.press(screen.getByTestId('passage-listen'));
+        mockSource = { ...mockSource, isPlaying: true };
+        screen.rerender(<PassageScreen />);
+        const { onPlayingVerseChange } = mockUseSourceAudio.mock.calls.at(
+          -1,
+        )?.[0] as { onPlayingVerseChange: (verse: number | null) => void };
+        act(() => onPlayingVerseChange(23));
+      }
+
+      it('follows the verse playing, with chips on the waveform', () => {
+        mockSource = { ...mockSource, verseTimestamps: timings };
+        render(<PassageScreen />);
+        playThrough23();
+
+        expect(
+          screen.getByLabelText(/^Verse 23(, recorded)?, 2 of 2$/),
+        ).toBeTruthy();
+        expect(
+          screen.getByTestId('passage-waveform-verse-22', {
+            includeHiddenElements: true,
+          }),
+        ).toBeTruthy();
+      });
+
+      it('moves the place to the last verse heard once playback stops', async () => {
+        mockSource = { ...mockSource, verseTimestamps: timings };
+        render(<PassageScreen />);
+        playThrough23();
+
+        expect(lastSession()).toMatchObject({ selectedVerse: 22 });
+        mockSource = { ...mockSource, isPlaying: false };
+        await act(async () => screen.rerender(<PassageScreen />));
+        expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+      });
+
+      it('steps from the verse playing with Previous and Next', async () => {
+        mockSource = { ...mockSource, verseTimestamps: timings };
+        render(<PassageScreen />);
+        playThrough23();
+
+        expect(
+          screen.getByTestId('passage-key-next').props.accessibilityState,
+        ).toMatchObject({ disabled: true });
+        await act(async () => {
+          fireEvent.press(screen.getByLabelText('Previous: verse 22'));
+        });
+        expect(mockSeekSource).toHaveBeenCalledWith(0);
+      });
+
+      it('claims no verse playing without verse timings', () => {
+        render(<PassageScreen />);
+        playThrough23();
+
+        expect(
+          screen.getByLabelText(/^Verse 22(, recorded)?, 1 of 2$/),
+        ).toBeTruthy();
+        expect(
+          screen.queryByTestId('passage-waveform-verse-22', {
+            includeHiddenElements: true,
+          }),
+        ).toBeNull();
+        expect(
+          screen.getByTestId('passage-waveform-bar-0', {
+            includeHiddenElements: true,
+          }),
+        ).toBeTruthy();
+      });
+    });
+
+    it('shows why the text is missing instead of empty verse pages', () => {
+      mockPassage = {
+        ...ready,
+        wholeChapter: true,
+        downloaded: false,
+        verses: [ready.verses[0]!],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-listen'));
+
+      expect(screen.queryByTestId('passage-verse-pages')).toBeNull();
+      expect(
+        screen.getByText('The text isn’t on this phone yet.'),
+      ).toBeTruthy();
+    });
+
+    it('opens Listen on a verse from its row and plays it', async () => {
+      mockSource = {
+        ...mockSource,
+        verseTimestamps: [
+          { verse: 22, startSeconds: 0 },
+          { verse: 23, startSeconds: 6 },
+        ],
+      };
+      mockPassage = {
+        ...ready,
+        verses: [ready.verses[0]!, { ...ready.verses[1]!, recorded: null }],
+      };
+      render(<PassageScreen />);
+
+      expect(screen.getByText('1 of 2 recorded')).toBeTruthy();
+      expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-verse-row-22'));
+      });
+
+      expect(lastSession()).toMatchObject({ selectedVerse: 22 });
+      expect(screen.getByTestId('passage-verse-pages')).toBeTruthy();
+      expect(mockUseSourceAudio.mock.calls.at(-1)?.[0]).toMatchObject({
+        verse: 22,
+        enabled: true,
+      });
+      expect(mockPlaySource).toHaveBeenCalledTimes(1);
+    });
+
+    it("opens a row's verse without playing when the source has no verse timings", async () => {
+      render(<PassageScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-verse-row-22'));
+      });
+
+      expect(screen.getByTestId('passage-verse-pages')).toBeTruthy();
+      expect(mockPlaySource).not.toHaveBeenCalled();
+    });
+
+    it("doesn't play a tapped row's verse that has no timing", async () => {
+      mockSource = {
+        ...mockSource,
+        verseTimestamps: [{ verse: 22, startSeconds: 0 }],
+      };
+      render(<PassageScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-verse-row-23'));
+      });
+
+      expect(screen.getByTestId('passage-verse-pages')).toBeTruthy();
+      expect(mockPlaySource).not.toHaveBeenCalled();
+    });
+
+    it("plays a tapped row's verse from its start when paused partway", async () => {
+      mockSource = {
+        ...mockSource,
+        status: 'paused',
+        positionMs: 9000,
+        verseTimestamps: [
+          { verse: 22, startSeconds: 0 },
+          { verse: 23, startSeconds: 6 },
+        ],
+      };
+      render(<PassageScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-verse-row-23'));
+      });
+
+      expect(mockSeekSource).toHaveBeenCalledWith(6000);
+      expect(mockPlaySource).toHaveBeenCalledTimes(1);
+    });
+
+    it('steps verses with Previous and Next in Listen', async () => {
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-listen'));
+
+      expect(
+        screen.getByTestId('passage-key-previous').props.accessibilityState,
+      ).toMatchObject({ disabled: true });
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Next: verse 23'));
+      });
+
+      expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+      expect(mockUseSourceAudio.mock.calls.at(-1)?.[0]).toMatchObject({
+        verse: 23,
+      });
+    });
+
+    it("re-reads the passage once a verse's first take is saved, not on a step", () => {
+      const verseTake = {
+        ...take(1),
+        granularity: 'verse',
+        isSelected: true,
+        startVerse: 22,
+        endVerse: 22,
+      };
+      render(<PassageScreen />);
+      mockReload.mockClear();
+
+      mockSession = { ...mockSession, takes: [verseTake] };
+      screen.rerender(<PassageScreen />);
+      expect(mockReload).toHaveBeenCalledTimes(1);
+
+      // A step clears the text id, then the next verse's takes load.
+      mockSession = { ...mockSession, captureBibleTextId: null, takes: [] };
+      screen.rerender(<PassageScreen />);
+      mockSession = {
+        ...mockSession,
+        captureBibleTextId: 1023,
+        takes: [{ ...verseTake, id: 't9', startVerse: 23, endVerse: 23 }],
+      };
+      screen.rerender(<PassageScreen />);
+      expect(mockReload).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens on the verse a recovered take was paused on', () => {
+      mockParams = { ...baseParams, verse: '23' };
+      render(<PassageScreen />);
+
+      expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+    });
+
+    it('is verse by verse in a chapter without pericopes, whatever the setting', () => {
+      mockDraftingUnit = 'pericope';
+      mockPassage = { ...ready, title: null, wholeChapter: true };
+      render(<PassageScreen />);
+
+      expect(lastSession()).toMatchObject({ draftingUnit: 'verse' });
+      expect(screen.getByTestId('passage-verse-list')).toBeTruthy();
+    });
+
+    it('says nothing is recorded yet before any verse is', () => {
+      mockPassage = {
+        ...ready,
+        recordedStatus: 'none',
+        verses: ready.verses.map(v => ({ ...v, recorded: null })),
+      };
+      render(<PassageScreen />);
+
+      expect(screen.getByTestId('passage-takes-meta').props.children).toBe(
+        'Not recorded yet',
+      );
+    });
+
+    it('deletes a take waiting on undo before stepping to another verse', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(1), granularity: 'verse', isSelected: true }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      fireEvent(
+        screen.getByLabelText('Take 1, selected'),
+        'accessibilityAction',
+        { nativeEvent: { actionName: 'delete' } },
+      );
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-verse-row-23'));
+      });
+
+      expect(mockDeleteTake).toHaveBeenCalledWith('t1');
+      expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+    });
+
+    it('points to the verse take to delete when passage takes fill the cap', () => {
+      mockSession = {
+        ...mockSession,
+        canRecordNewTake: false,
+        takes: [
+          { ...take(1), granularity: 'verse' },
+          { ...take(2), isSelected: true, startVerse: 22, endVerse: 23 },
+        ],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.getAllByText(
+          'This verse has 5 takes, counting passage takes over it. Delete one to record.',
+          hidden,
+        ).length,
+      ).toBeGreaterThan(0);
+    });
+
+    it('points to Pericope when only passage takes fill the cap', () => {
+      mockSession = {
+        ...mockSession,
+        canRecordNewTake: false,
+        takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.getAllByText(
+          'This verse is in 5 passage takes. Switch to Pericope in Settings and delete one to record it on its own.',
+          hidden,
+        ).length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("doesn't record over a passage take when the confirm is cancelled", async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-record'));
+      });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-confirm-cancel'));
+      });
+      expect(mockStart).not.toHaveBeenCalled();
+    });
+
+    it("names the verse on its take's card", () => {
+      mockSession = {
+        ...mockSession,
+        takes: [
+          {
+            ...take(1),
+            granularity: 'verse',
+            isSelected: true,
+            startVerse: 22,
+            endVerse: 22,
+          },
+        ],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.getAllByText('v. 22 · Take 1', hidden).length,
+      ).toBeGreaterThan(0);
+    });
+
+    it('names both chapters of a passage take that crosses them', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [
+          {
+            ...take(2),
+            isSelected: true,
+            startChapter: 14,
+            startVerse: 22,
+            endChapter: 15,
+            endVerse: 5,
+          },
+        ],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-record'));
+      });
+
+      expect(
+        screen.getByText(
+          "Passage take 2 won't be used for 14:22–15:5 anymore, so the rest of those verses will need recording too.",
+        ),
+      ).toBeTruthy();
+    });
+
+    it('plays the passage take over a verse with no take of its own', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.getAllByText('This verse is in passage take 2.', hidden).length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.getByTestId('passage-key-play').props.accessibilityState,
+      ).toMatchObject({ disabled: false });
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 't2' }),
+        undefined,
+      );
+    });
+
+    it('picks up a passage take where it was, on the next verse it covers', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
+        state: 'playing',
+        playingTakeId: 't2',
+        positionMs: 4000,
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent(
+          screen.getByTestId('passage-verse-position'),
+          'accessibilityAction',
+          { nativeEvent: { actionName: 'increment' } },
+        );
+      });
+      expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+
+      mockSession = { ...mockSession, state: 'idle', playingTakeId: null };
+      screen.rerender(<PassageScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't2' }),
+        4000,
+      );
+    });
+
+    it('names the passage take a swap replaces, not verses', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [
+          { ...take(1), startVerse: 22, endVerse: 23 },
+          { ...take(2), isSelected: true, startVerse: 22, endVerse: 23 },
+        ],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      fireEvent.press(screen.getByTestId('passage-fan-p1'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
+
+      expect(screen.getByText('Use passage take 1 for v. 22–23?')).toBeTruthy();
+      expect(
+        screen.getByText("Passage take 2 won't be used for v. 22–23 anymore."),
+      ).toBeTruthy();
+    });
+
+    it('makes a picked passage take official from its check, without asking', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
+
+      expect(screen.queryByTestId('passage-confirm')).toBeNull();
+      expect(mockSelectTake).not.toHaveBeenCalled();
+      expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+    });
+
+    it('resumes the passage take over a verse where it was paused, and restarts it from the end', async () => {
+      const cover = {
+        ...take(2),
+        isSelected: true,
+        startVerse: 22,
+        endVerse: 23,
+      };
+      mockSession = {
+        ...mockSession,
+        takes: [cover],
+        state: 'playing',
+        playingTakeId: 't2',
+        positionMs: 4000,
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPauseTake).toHaveBeenCalled();
+
+      mockSession = { ...mockSession, state: 'idle', playingTakeId: null };
+      screen.rerender(<PassageScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't2' }),
+        4000,
+      );
+
+      const playback = screen.getByLabelText(
+        'Passage take 2 · v. 22–23 playback',
+      );
+      for (let step = 0; step < 20; step += 1) {
+        fireEvent(playback, 'accessibilityAction', {
+          nativeEvent: { actionName: 'increment' },
+        });
+      }
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't2' }),
+        0,
+      );
+    });
+
+    describe('passage takes over the verse, as tiles', () => {
+      const passageTake = {
+        ...take(1),
+        startVerse: 22,
+        endVerse: 23,
+      };
+      const ownTake = {
+        ...take(2),
+        granularity: 'verse',
+        isSelected: true,
+        startVerse: 22,
+        endVerse: 22,
+      };
+
+      it('numbers the next take after a passage take that starts on the verse', () => {
+        mockSession = {
+          ...mockSession,
+          takes: [{ ...passageTake, isSelected: true }],
+        };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+
+        expect(
+          screen.getByLabelText('Passage take 1, v. 22–23, selected'),
+        ).toBeTruthy();
+        expect(screen.getByTestId('passage-fan-2')).toBeTruthy();
+      });
+
+      it('numbers the next take after a passage take that only covers the verse', () => {
+        mockSession = {
+          ...mockSession,
+          takes: [{ ...passageTake, isSelected: true, startVerse: 21 }],
+        };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+
+        expect(screen.getByTestId('passage-fan-2')).toBeTruthy();
+      });
+
+      it('shows a passage take beside the verse take that replaced it, and asks before picking it back', async () => {
+        mockSession = { ...mockSession, takes: [passageTake, ownTake] };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+
+        expect(screen.getByTestId('passage-fan-p1')).toBeTruthy();
+        expect(screen.getByTestId('passage-fan-2')).toBeTruthy();
+        // Tapping only brings it forward; the check asks.
+        fireEvent.press(screen.getByTestId('passage-fan-p1'));
+        expect(screen.queryByTestId('passage-confirm')).toBeNull();
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-take-official'));
+        });
+        expect(
+          screen.getByText('Use passage take 1 for v. 22–23?'),
+        ).toBeTruthy();
+        expect(
+          screen.getByText(
+            "The verses recorded on their own here won't be used anymore.",
+          ),
+        ).toBeTruthy();
+        expect(mockSelectTake).not.toHaveBeenCalled();
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+        });
+        expect(mockSelectTake).toHaveBeenCalledWith('t1');
+        expect(mockSetCanonical).toHaveBeenCalledWith('t1');
+      });
+
+      it("brings a picked passage take's tile forward to play it", async () => {
+        mockSession = {
+          ...mockSession,
+          takes: [
+            { ...passageTake, isSelected: true, startVerse: 21, endVerse: 23 },
+            { ...ownTake, isSelected: false },
+          ],
+        };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        fireEvent.press(screen.getByTestId('passage-fan-p1'));
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-key-play'));
+        });
+
+        expect(mockPlayTake).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 't1' }),
+          undefined,
+        );
+      });
+    });
+
+    it('asks before recording a verse over its passage take', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.getAllByText('This verse is in passage take 2.', hidden).length,
+      ).toBeGreaterThan(0);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-record'));
+      });
+      expect(screen.getByText('Record v. 22 on its own?')).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Passage take 2 won't be used for v. 22–23 anymore, so the rest of those verses will need recording too.",
+        ),
+      ).toBeTruthy();
+      expect(mockStart).not.toHaveBeenCalled();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+      });
+      expect(mockStart).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks before picking a verse take over its passage take', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [
+          { ...take(2), isSelected: true, startVerse: 22, endVerse: 23 },
+          { ...take(1), granularity: 'verse', startVerse: 22, endVerse: 22 },
+        ],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      fireEvent.press(screen.getByTestId('passage-fan-1'));
+      expect(screen.queryByTestId('passage-confirm')).toBeNull();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
+
+      expect(screen.getByText('Use take 1 for v. 22?')).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Passage take 2 won't be used for v. 22–23 anymore, so the rest of those verses will need recording too.",
+        ),
+      ).toBeTruthy();
+      expect(mockSelectTake).not.toHaveBeenCalled();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+      });
+      expect(mockSelectTake).toHaveBeenCalledWith('t1');
+    });
+
+    describe('translation notes', () => {
+      beforeEach(() => {
+        mockNotes = [
+          {
+            id: 'cup',
+            title: 'Mark 14:23',
+            quote: 'took a cup',
+            body: 'The cup held wine.',
+            verse: { chapterNumber: 14, verseNumber: 23 },
+          },
+        ];
+        jest.useFakeTimers();
+      });
+      const layOutPages = () =>
+        fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
+          nativeEvent: { layout: { width: 300, height: 600 } },
+        });
+
+      it('shows them as chips on the verse page and opens them in Listen', () => {
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-listen'));
+        settle();
+        layOutPages();
+
+        expect(screen.getByTestId('passage-verse-note-23-0-0')).toBeTruthy();
+        fireEvent.press(screen.getByLabelText('Translation note: took a cup'));
+        expect(screen.getByText('The cup held wine.')).toBeTruthy();
+      });
+
+      it("pins a verse's notes that have no phrase, and only on its page", async () => {
+        mockNotes = [
+          ...mockNotes,
+          {
+            id: 'elsewhere',
+            title: 'Mark 14:22',
+            quote: 'a phrase from another translation',
+            body: 'This note quotes another translation.',
+            verse: { chapterNumber: 14, verseNumber: 22 },
+          },
+        ];
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-listen'));
+        settle();
+        layOutPages();
+
+        expect(screen.getByLabelText('1 more translation note')).toBeTruthy();
+        await act(async () => {
+          fireEvent.press(screen.getByLabelText('Next: verse 23'));
+        });
+        expect(screen.queryByTestId('passage-more-notes')).toBeNull();
+        await act(async () => {
+          fireEvent.press(screen.getByLabelText('Previous: verse 22'));
+        });
+        fireEvent.press(screen.getByTestId('passage-more-notes'));
+        expect(
+          screen.getByText('This note quotes another translation.'),
+        ).toBeTruthy();
+      });
+
+      it("dims them in Record, where they don't open", () => {
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-listen'));
+        settle();
+        layOutPages();
+        const outline = () =>
+          StyleSheet.flatten(
+            screen.getByTestId('passage-verse-note-23-0-0', hidden).props.style,
+          ).borderColor;
+        const listening = outline();
+
+        fireEvent.press(screen.getByLabelText('Record mode'));
+        settle();
+
+        expect(outline()).not.toBe(listening);
+        expect(
+          screen.queryByLabelText('Translation note: took a cup'),
+        ).toBeNull();
+      });
+    });
+
+    describe("doesn't record on the verse it's leaving", () => {
+      const verseTakes = [
+        { ...take(1), granularity: 'verse', startVerse: 22, endVerse: 22 },
+        {
+          ...take(2),
+          granularity: 'verse',
+          isSelected: true,
+          startVerse: 22,
+          endVerse: 22,
+        },
+      ];
+      const stepToNext = () =>
+        fireEvent(
+          screen.getByTestId('passage-verse-position'),
+          'accessibilityAction',
+          { nativeEvent: { actionName: 'increment' } },
+        );
+
+      it('when the step waits on a delete', async () => {
+        let finishDelete = () => {};
+        mockDeleteTake.mockImplementationOnce(
+          () => new Promise<void>(resolve => (finishDelete = resolve)),
+        );
+        mockSession = { ...mockSession, takes: verseTakes };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        fireEvent(
+          screen.getByLabelText(/Take 2, selected/),
+          'accessibilityAction',
+          { nativeEvent: { actionName: 'delete' } },
+        );
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-key-record'));
+        });
+        await act(async () => stepToNext());
+
+        expect(
+          screen.getByTestId('passage-key-record').props.accessibilityState,
+        ).toMatchObject({ disabled: true });
+        await act(async () => finishDelete());
+        expect(mockStart).not.toHaveBeenCalled();
+        expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+        expect(
+          screen.getByTestId('passage-key-record').props.accessibilityState,
+        ).toMatchObject({ disabled: false });
+      });
+
+      it('when the step lands while the mic is asked for', async () => {
+        let grantMic = (_ok: boolean) => {};
+        mockEnsureMic.mockImplementationOnce(
+          () => new Promise<boolean>(resolve => (grantMic = resolve)),
+        );
+        mockSession = { ...mockSession, takes: verseTakes };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-key-record'));
+        });
+        await act(async () => stepToNext());
+        expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+
+        await act(async () => grantMic(true));
+        expect(mockStart).not.toHaveBeenCalled();
+      });
+    });
   });
 
   it('opens classic drafting from the title sheet', () => {
@@ -1210,18 +2036,195 @@ describe('PassageScreen', () => {
     expect(screen.getByTestId('passage-notices-conflict')).toBeTruthy();
   });
 
-  it('points to classic drafting for verse takes recorded here', () => {
-    mockSession = {
-      ...mockSession,
-      takes: [take(1), { ...take(2), granularity: 'verse' }],
-    };
-    render(<PassageScreen />);
+  describe('verses recorded on their own, in pericope mode', () => {
+    const verseTake = (n: number, verse: number) => ({
+      ...take(n),
+      granularity: 'verse',
+      isSelected: true,
+      startChapter: 14,
+      startVerse: verse,
+      endVerse: verse,
+      localFilePath: `file://v${verse}.m4a`,
+    });
 
-    expect(
-      screen.getByTestId('passage-notices-verse-takes').props.children,
-    ).toBe(
-      'Some of this passage was recorded verse by verse. See it in classic drafting.',
-    );
+    it('plays every verse back to back from one card', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [verseTake(1, 22), verseTake(2, 23)],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.getAllByText('Recorded verse by verse', hidden).length,
+      ).toBeGreaterThan(0);
+      expect(screen.queryByTestId('passage-notices-verse-takes')).toBeNull();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayStitched).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: 'stitched',
+          segments: [
+            expect.objectContaining({ verseNumber: 22 }),
+            expect.objectContaining({ verseNumber: 23 }),
+          ],
+        }),
+      );
+    });
+
+    it('plays and counts a passage that crosses into the next chapter', async () => {
+      mockPassage = {
+        ...ready,
+        verses: [
+          ready.verses[0]!,
+          {
+            chapterNumber: 15,
+            verseNumber: 1,
+            text: 'Very early in the morning',
+            recorded: 'verse',
+          },
+        ],
+      };
+      mockSession = {
+        ...mockSession,
+        takes: [
+          verseTake(1, 22),
+          {
+            ...verseTake(2, 1),
+            startChapter: 15,
+            localFilePath: 'file://c15v1.m4a',
+          },
+        ],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.getAllByText('Recorded verse by verse', hidden).length,
+      ).toBeGreaterThan(0);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayStitched).toHaveBeenCalledWith(
+        expect.objectContaining({
+          segments: [
+            expect.objectContaining({ chapterNumber: 14, verseNumber: 22 }),
+            expect.objectContaining({ chapterNumber: 15, verseNumber: 1 }),
+          ],
+        }),
+      );
+    });
+
+    it('counts the verses when only some are recorded', () => {
+      mockSession = { ...mockSession, takes: [verseTake(1, 22)] };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.getAllByText('1 of 2 verses recorded on their own', hidden)
+          .length,
+      ).toBeGreaterThan(0);
+    });
+
+    it('asks before a passage take replaces them', async () => {
+      mockSession = { ...mockSession, takes: [verseTake(1, 22)] };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-record'));
+      });
+
+      expect(screen.getByText('Record the whole passage?')).toBeTruthy();
+      expect(
+        screen.getByText(
+          "The verses recorded on their own here won't be used anymore.",
+        ),
+      ).toBeTruthy();
+      expect(mockStart).not.toHaveBeenCalled();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+      });
+      expect(mockStart).toHaveBeenCalledTimes(1);
+    });
+
+    it('counts the verses in the hero while they are the draft', () => {
+      mockPassage = {
+        ...ready,
+        recordedStatus: 'partial',
+        verses: [ready.verses[0]!, { ...ready.verses[1]!, recorded: null }],
+      };
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(3), isSelected: false }, verseTake(1, 22)],
+      };
+      render(<PassageScreen />);
+
+      expect(screen.getByTestId('passage-takes-meta').props.children).toBe(
+        '1 of 2 verses recorded',
+      );
+    });
+
+    it('asks before picking a passage take over them', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(3), isSelected: false }, verseTake(1, 22)],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      fireEvent.press(screen.getByTestId('passage-fan-3'));
+      expect(screen.queryByTestId('passage-confirm')).toBeNull();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
+
+      expect(
+        screen.getByText('Use passage take 3 for the whole passage?'),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          "The verses recorded on their own here won't be used anymore.",
+        ),
+      ).toBeTruthy();
+      expect(mockSelectTake).not.toHaveBeenCalled();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+      });
+      expect(mockSelectTake).toHaveBeenCalledWith('t3');
+    });
+
+    it('goes back to the verses card when the tile in front is tapped again', () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(3), isSelected: false }, verseTake(1, 22)],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      const versesCard = () =>
+        screen.queryAllByText('1 of 2 verses recorded on their own', hidden);
+
+      expect(versesCard().length).toBeGreaterThan(0);
+      fireEvent.press(screen.getByTestId('passage-fan-3'));
+      expect(versesCard()).toHaveLength(0);
+      fireEvent.press(screen.getByTestId('passage-fan-3'));
+      expect(versesCard().length).toBeGreaterThan(0);
+    });
+
+    it('leads with a passage take that is the draft', () => {
+      mockSession = {
+        ...mockSession,
+        takes: [
+          { ...take(3), isSelected: true },
+          { ...verseTake(1, 22), isSelected: false },
+        ],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.queryAllByText('1 of 2 verses recorded on their own', hidden),
+      ).toHaveLength(0);
+    });
   });
 
   it("says why it can't record when the chapter is someone else's", () => {
@@ -1263,9 +2266,13 @@ describe('PassageScreen', () => {
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
 
-    fireEvent(screen.getByLabelText('Take 1 playback'), 'accessibilityAction', {
-      nativeEvent: { actionName: 'increment' },
-    });
+    fireEvent(
+      screen.getByLabelText('Passage take 1 playback'),
+      'accessibilityAction',
+      {
+        nativeEvent: { actionName: 'increment' },
+      },
+    );
     await act(async () => {
       fireEvent.press(screen.getByLabelText('Play take'));
     });
@@ -1281,7 +2288,7 @@ describe('PassageScreen', () => {
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
 
-    const playback = screen.getByLabelText('Take 1 playback');
+    const playback = screen.getByLabelText('Passage take 1 playback');
     for (let step = 0; step < 20; step += 1) {
       fireEvent(playback, 'accessibilityAction', {
         nativeEvent: { actionName: 'increment' },
@@ -1312,7 +2319,7 @@ describe('PassageScreen', () => {
 
       remove();
       expect(screen.getByLabelText('Take 2, deleted')).toBeTruthy();
-      fireEvent.press(screen.getByLabelText('Undo deleting Take 2'));
+      fireEvent.press(screen.getByLabelText('Undo deleting Passage take 2'));
       await act(async () => {
         jest.advanceTimersByTime(UNDO_MS);
       });
@@ -1374,7 +2381,7 @@ describe('PassageScreen', () => {
     expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('only plays takes on a stage-locked chapter: no pick, official or delete', () => {
+  it('only plays takes on a stage-locked chapter: no pick, official or delete', async () => {
     const takes = [take(1), { ...take(2), isSelected: true }];
     mockSession = { ...mockSession, takes };
     const { unmount } = render(<PassageScreen />);
@@ -1382,10 +2389,18 @@ describe('PassageScreen', () => {
     expect(screen.getByLabelText('Take 1').props.accessibilityActions).toEqual([
       { name: 'delete', label: 'Delete' },
     ]);
-    fireEvent.press(screen.getByTestId('passage-take-official'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-take-official'));
+    });
     expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+    // A tap brings a take forward; its check picks it and makes it official.
     fireEvent.press(screen.getByTestId('passage-fan-1'));
+    expect(mockSelectTake).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-take-official'));
+    });
     expect(mockSelectTake).toHaveBeenCalledWith('t1');
+    expect(mockSetCanonical).toHaveBeenCalledWith('t1');
     unmount();
     jest.clearAllMocks();
 
@@ -1462,16 +2477,22 @@ describe('PassageScreen', () => {
     });
   });
 
-  it('asks before closing the player on a take in progress', () => {
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  it('asks before closing the player on a take in progress', async () => {
     mockSession = { ...mockSession, state: 'recording', captureActive: true };
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
 
     fireEvent.press(screen.getByTestId('passage-close'));
-
-    expect(alert).toHaveBeenCalled();
+    expect(screen.getByTestId('passage-confirm')).toBeTruthy();
     expect(screen.getByLabelText('Close the player')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('passage-confirm-cancel'));
+    expect(mockDiscard).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('passage-close'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+    });
+    expect(mockDiscard).toHaveBeenCalledTimes(1);
   });
 
   it('leaves back presses to a screen pushed over the open player', () => {

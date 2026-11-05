@@ -10,6 +10,7 @@ import { useHeaderSync } from '../../../hooks/useHeaderSync';
 import { useRecordCaptureLeaveGuard } from '../../../hooks/useRecordCaptureLeaveGuard';
 import { hrefs } from '../../../navigation/hrefs';
 import {
+  parseOptionalNumber,
   parseOptionalString,
   parseRequiredNumber,
   parseRequiredString,
@@ -37,6 +38,7 @@ export default function PassageScreen() {
     milestoneName?: string;
     language?: string;
     from?: string;
+    verse?: string;
   }>();
   const chapterId = parseRequiredNumber(raw.chapterId, 'chapterId');
   const anchorVerse = parseRequiredNumber(raw.anchorVerse, 'anchorVerse');
@@ -47,6 +49,7 @@ export default function PassageScreen() {
   const milestoneName = parseRequiredString(raw.milestoneName, 'milestoneName');
   const language = parseRequiredString(raw.language, 'language');
   const fromBook = parseOptionalString(raw.from) === 'book';
+  const openVerse = parseOptionalNumber(raw.verse);
   const userId = parseUserId();
   const { onCaptureActiveChange, onRegisterCaptureControls, guardAction } =
     useRecordCaptureLeaveGuard();
@@ -148,6 +151,7 @@ export default function PassageScreen() {
         chapterName={chapterName}
         milestoneName={milestoneName}
         anchorVerse={anchorVerse}
+        openVerse={openVerse}
         onBack={() => guardAction(() => router.back())}
         onOpenBook={openBook}
         onOpenClassic={openClassic}

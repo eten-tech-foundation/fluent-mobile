@@ -18,7 +18,7 @@ import {
 } from '../../theme/useTheme';
 
 /** Figma Round button: 48pt circle, which is also the minimum touch target. */
-const BUTTON_SIZE = 48;
+export const BUTTON_SIZE = 48;
 
 export type RoundButtonIconProps = { color: string; size: number };
 

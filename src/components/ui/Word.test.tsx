@@ -72,6 +72,21 @@ describe('Word', () => {
     expect(box('phrase')).toEqual(box('note'));
   });
 
+  it('goes quiet when dimmed: an unfilled outline, the word unchanged', () => {
+    render(
+      <Text>
+        <Word word="cup" variant="note" testID="open" />
+        <Word word="cup" variant="phrase" dimmed testID="dimmed" />
+      </Text>,
+    );
+    const open = StyleSheet.flatten(screen.getByTestId('open').props.style);
+    const dimmed = StyleSheet.flatten(screen.getByTestId('dimmed').props.style);
+
+    expect(dimmed.backgroundColor).toBeUndefined();
+    expect(dimmed.borderColor).not.toBe(open.borderColor);
+    expect(dimmed.borderWidth).toBe(open.borderWidth);
+  });
+
   it('is plain text without a press', () => {
     render(<Word word="which" variant="plain" testID="w" />);
 

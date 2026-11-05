@@ -28,9 +28,15 @@ jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(() => null),
 }));
 
+let mockUnit = 'pericope';
+jest.mock('./useDraftingUnit', () => ({
+  useDraftingUnit: () => ({ draftingUnit: mockUnit }),
+}));
+
+let mockCoverages: { startChapter: number; endChapter: number }[] = [];
 jest.mock('./useBookPassages', () => ({
   ...jest.requireActual('./useBookPassages'),
-  coverageLookup: jest.fn(() => jest.fn()),
+  coverageLookup: jest.fn(() => jest.fn(async () => mockCoverages)),
   loadChapterPassages: jest.fn(),
 }));
 
@@ -114,6 +120,12 @@ describe('startedChapters', () => {
 
     expect(startedChapters([older, untouched, newer])).toEqual([newer, older]);
   });
+
+  it('keeps a draft with takes only on this phone, which the count lags', () => {
+    const local = chapter(1);
+
+    expect(startedChapters([local], new Set([1]))).toEqual([local]);
+  });
 });
 
 describe('useNextUp', () => {
@@ -121,6 +133,45 @@ describe('useNextUp', () => {
     jest.clearAllMocks();
     mockSetId.mockResolvedValue(7);
     mockUserId.mockReturnValue(null);
+    mockUnit = 'pericope';
+    mockCoverages = [];
+  });
+
+  it('keeps going on a chapter recorded only on this phone', async () => {
+    mockCoverages = [{ startChapter: 2, endChapter: 2 }];
+    mockLoad.mockImplementation(async (c: MyWorkChapter) =>
+      c.id === 1 ? [passage('1a')] : [passage('2a', 'partial')],
+    );
+
+    const chapters = [chapter(1), chapter(2)];
+    const { result } = renderHook(() => useNextUp(chapters));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(keys(result.current)).toEqual(['2a', ['1a']]);
+  });
+
+  it('shows loading, not the old list, while the other unit loads', async () => {
+    mockLoad.mockResolvedValue([passage('1a')]);
+    const chapters = [chapter(1)];
+    const { result, rerender } = renderHook(() => useNextUp(chapters));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    mockUnit = 'verse';
+    rerender({});
+
+    expect(result.current.status).toBe('loading');
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+  });
+
+  it('works through whole chapters when recording verse by verse', async () => {
+    mockUnit = 'verse';
+    mockLoad.mockResolvedValue([passage('1a')]);
+
+    const { result } = renderHook(() => useNextUp([chapter(1)]));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(mockSetId).not.toHaveBeenCalled();
+    expect(mockLoad.mock.calls[0]?.[1]).toBeNull();
   });
 
   it('keeps going on a part-recorded passage from the chapter worked on last', async () => {

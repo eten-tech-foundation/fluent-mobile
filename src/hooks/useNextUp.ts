@@ -5,6 +5,8 @@ import { getProjectPericopeSetId } from '../db/repository';
 import { parseUserId } from '../utils/parseUserId';
 import type { MyWorkChapter } from '../types/db/types';
 import { logger } from '../utils/logger';
+import type { DraftingUnit } from '../services/draftingUnitPreference';
+import { useDraftingUnit } from './useDraftingUnit';
 import {
   coverageLookup,
   loadChapterPassages,
@@ -58,14 +60,22 @@ export function checkingPassages(chapters: MyWorkChapter[]): NextPassage[] {
     });
 }
 
-/** Drafting chapters with something recorded, the one worked on last first. */
-export function startedChapters(chapters: MyWorkChapter[]): MyWorkChapter[] {
+/**
+ * Drafting chapters with something recorded, the one worked on last first.
+ * `recordedHere` holds chapters with takes on this phone the stored count lags.
+ */
+export function startedChapters(
+  chapters: MyWorkChapter[],
+  recordedHere: ReadonlySet<number> = new Set(),
+): MyWorkChapter[] {
   const activity = (c: MyWorkChapter) =>
     c.lastActivityAt ? Date.parse(c.lastActivityAt) || 0 : 0;
   return draftingChapters(chapters)
-    .filter(c => c.completedVerses > 0)
+    .filter(c => c.completedVerses > 0 || recordedHere.has(c.id))
     .sort((a, b) => activity(b) - activity(a));
 }
+
+const LOADING: NextUp = { status: 'loading' };
 
 /**
  * Home's "Next up": the one passage to record now, then the few after it,
@@ -77,7 +87,12 @@ export function startedChapters(chapters: MyWorkChapter[]): MyWorkChapter[] {
  * player moves on when I come back.
  */
 export function useNextUp(chapters: MyWorkChapter[]): NextUp {
-  const [nextUp, setNextUp] = useState<NextUp>({ status: 'loading' });
+  const { draftingUnit } = useDraftingUnit();
+  // Tagged with the unit it was loaded under, so a switch doesn't show the old.
+  const [loaded, setLoaded] = useState<{ nextUp: NextUp; unit: DraftingUnit }>({
+    nextUp: LOADING,
+    unit: draftingUnit,
+  });
   const readyWithDrafts = useRef(false);
 
   useFocusEffect(
@@ -86,8 +101,10 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
       const hasDrafts = draftingChapters(chapters).length > 0;
       // Chapters arrive after a first empty pass; don't show its empty state.
       if (hasDrafts && !readyWithDrafts.current) {
-        setNextUp(prev =>
-          prev.status === 'loading' ? prev : { status: 'loading' },
+        setLoaded(prev =>
+          prev.nextUp.status === 'loading'
+            ? prev
+            : { nextUp: LOADING, unit: draftingUnit },
         );
       }
       const ready = (result: {
@@ -95,19 +112,24 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
         after: NextPassage[];
       }) => {
         readyWithDrafts.current = hasDrafts;
-        setNextUp({
-          status: 'ready',
-          ...result,
-          checking: checkingPassages(chapters),
+        setLoaded({
+          nextUp: {
+            status: 'ready',
+            ...result,
+            checking: checkingPassages(chapters),
+          },
+          unit: draftingUnit,
         });
       };
+      // Verse by verse works through whole chapters, as Legacy does.
+      const byVerse = draftingUnit === 'verse';
       const pericopeSets = new Map<number, Promise<number | null>>();
       const coverages = new Map<number, CoveragesFor>();
       const stageMaps = new Map<
         number,
         Promise<Map<string, MyWorkChapter['workflowStage']> | null>
       >();
-      const loaded = new Map<number, Promise<BookPassage[]>>();
+      const passageLists = new Map<number, Promise<BookPassage[]>>();
 
       const stagesFor = (projectUnitId: number) => {
         const cached = stageMaps.get(projectUnitId);
@@ -138,17 +160,24 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
         return pending;
       };
 
-      const passagesOf = (chapter: MyWorkChapter) => {
-        const cached = loaded.get(chapter.id);
-        if (cached) return cached;
-        const pericopeSetId =
-          pericopeSets.get(chapter.projectId) ??
-          getProjectPericopeSetId(chapter.projectId);
-        pericopeSets.set(chapter.projectId, pericopeSetId);
+      const coveragesOf = (chapter: MyWorkChapter) => {
         const coveragesFor =
           coverages.get(chapter.projectUnitId) ??
           coverageLookup(chapter.projectUnitId);
         coverages.set(chapter.projectUnitId, coveragesFor);
+        return coveragesFor;
+      };
+
+      const passagesOf = (chapter: MyWorkChapter) => {
+        const cached = passageLists.get(chapter.id);
+        if (cached) return cached;
+        const pericopeSetId =
+          pericopeSets.get(chapter.projectId) ??
+          (byVerse
+            ? Promise.resolve(null)
+            : getProjectPericopeSetId(chapter.projectId));
+        pericopeSets.set(chapter.projectId, pericopeSetId);
+        const coveragesFor = coveragesOf(chapter);
         const passages = Promise.all([
           pericopeSetId,
           stagesFor(chapter.projectUnitId),
@@ -168,7 +197,7 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
             log.error('Failed to load passages', { error });
             return [wholeChapter(chapter)];
           });
-        loaded.set(chapter.id, passages);
+        passageLists.set(chapter.id, passages);
         return passages;
       };
       const entry = (chapter: MyWorkChapter, passage: BookPassage) => ({
@@ -179,7 +208,21 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
 
       (async () => {
         let hero: NextPassage | null = null;
-        for (const chapter of startedChapters(chapters)) {
+        const recordedHere = new Set<number>();
+        for (const chapter of draftingChapters(chapters)) {
+          if (chapter.completedVerses > 0) continue;
+          const ranges = await coveragesOf(chapter)(
+            chapter.bibleId,
+            chapter.bookId,
+          );
+          const here = ranges.some(
+            r =>
+              r.startChapter <= chapter.chapterNumber &&
+              r.endChapter >= chapter.chapterNumber,
+          );
+          if (here) recordedHere.add(chapter.id);
+        }
+        for (const chapter of startedChapters(chapters, recordedHere)) {
           if (cancelled) return null;
           const partial = (await passagesOf(chapter)).find(
             p => p.recordedStatus === 'partial',
@@ -224,8 +267,8 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
       return () => {
         cancelled = true;
       };
-    }, [chapters]),
+    }, [chapters, draftingUnit]),
   );
 
-  return nextUp;
+  return loaded.unit === draftingUnit ? loaded.nextUp : LOADING;
 }

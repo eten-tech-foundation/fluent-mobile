@@ -4,6 +4,7 @@ const verse = (verseNumber: number, text: string) => ({
   chapterNumber: 14,
   verseNumber,
   text,
+  recorded: null,
 });
 const note = (id: string, quote: string, verseNumber?: number) => ({
   id,

@@ -37,7 +37,11 @@ const SETTLE_BARS = 2;
 const SETTLE_MS = 1000;
 
 export interface WaveformVerse {
-  verse: number;
+  /**
+   * Null draws the bars with no chip or gap, when where verses fall isn't
+   * known. The groups still let off-screen bars unmount.
+   */
+  verse: number | null;
   /** Bar heights in pt, one per sample. */
   bars: readonly number[];
 }
@@ -133,6 +137,7 @@ export function Waveform({
       paddingLeft: t.spacing.lg,
       gap: t.spacing.md,
     },
+    tight: { gap: t.spacing.xs },
     bars: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs },
     bar: {
       width: BAR_WIDTH,
@@ -151,19 +156,20 @@ export function Waveform({
     for (const v of verses) {
       verseStart.push(barX.length);
       const from = x;
-      x += verseChipWidth(v.verse) + spacing.md;
+      if (v.verse !== null) x += verseChipWidth(v.verse) + spacing.md;
       for (let i = 0; i < v.bars.length; i++) {
         barX.push(x);
         x += BAR_WIDTH + spacing.xs;
       }
       verseSpan.push({ from, to: x });
-      if (v.bars.length > 0) {
+      if (v.bars.length > 0 && v.verse !== null) {
         x += spacing.md - spacing.xs;
       }
     }
     return { barX, verseStart, verseSpan };
   }, [verses, spacing]);
 
+  const chipless = verses.every(v => v.verse === null);
   const total = layout.barX.length;
   const clamped = Math.min(1, Math.max(0, progress));
   // Rounded so a ratio like 20/77 lands on bar 20, not 19.999….
@@ -337,17 +343,19 @@ export function Waveform({
         testID={testID}
       >
         <Animated.View
-          style={[styles.strip, stripStyle]}
+          style={[styles.strip, chipless && styles.tight, stripStyle]}
           importantForAccessibility="no-hide-descendants"
           testID={testID ? `${testID}-strip` : undefined}
         >
           {verses.map((v, vi) => (
             <React.Fragment key={vi}>
-              <VerseChip
-                verse={v.verse}
-                current={layout.verseStart[vi] <= lastBar}
-                testID={testID ? `${testID}-verse-${v.verse}` : undefined}
-              />
+              {v.verse !== null ? (
+                <VerseChip
+                  verse={v.verse}
+                  current={layout.verseStart[vi] <= lastBar}
+                  testID={testID ? `${testID}-verse-${v.verse}` : undefined}
+                />
+              ) : null}
               {v.bars.length > 0 && !inWindow(vi) ? (
                 <View style={{ width: barsWidth(v.bars.length) }} />
               ) : v.bars.length > 0 ? (

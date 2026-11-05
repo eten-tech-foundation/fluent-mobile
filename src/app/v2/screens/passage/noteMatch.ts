@@ -9,6 +9,8 @@ export interface PassageNote {
   body: string;
   /** Where its chip sits: a verse key and the word range, end exclusive. */
   span: { verse: string; start: number; end: number } | null;
+  /** The verse key it's about, placed or not; null when it names none. */
+  verse: string | null;
 }
 
 /** A verse's chips: each word range and the note it opens. */
@@ -69,10 +71,10 @@ export function matchNotes(
       rest.length > 0 && unquote(first ?? '') === quote
         ? rest.join('\n').trim()
         : note.body;
-    const entry = { id: note.id, quote, body };
     const key = note.verse
       ? verseKey(note.verse.chapterNumber, note.verse.verseNumber)
       : null;
+    const entry = { id: note.id, quote, body, verse: key };
     const span = key ? find(words.get(key), quote, taken.get(key)) : null;
     if (key === null || span === null) {
       unplaced.push({ ...entry, span: null });
