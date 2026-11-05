@@ -1629,7 +1629,9 @@ describe('PassageScreen', () => {
         4000,
       );
 
-      const playback = screen.getByLabelText('Passage take 2 playback');
+      const playback = screen.getByLabelText(
+        'Passage take 2 · v. 22–23 playback',
+      );
       for (let step = 0; step < 20; step += 1) {
         fireEvent(playback, 'accessibilityAction', {
           nativeEvent: { actionName: 'increment' },

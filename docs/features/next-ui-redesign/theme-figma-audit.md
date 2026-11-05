@@ -143,9 +143,8 @@ Built in code with no Figma frame yet. Each needs a frame to match or replace.
   from the take card so it doesn't read as paging takes. In verse mode the hero's recorded verse numbers use
   `accent/primary`. Without verse timings the Listen waveform drops its verse
   chips (Q32).
-  In verse mode a passage take over the verse gets a fan tile with its
-  verses ("v. 1–7") in `type/meta` under the number, and can't be deleted
-  there. The take card names its unit ("Passage take 2", "v. 23 · Take 1"),
+  In verse mode a passage take over the verse gets a fan tile that can't be
+  deleted there, and its card reads "Passage take 1 · v. 1–7". The take card names its unit ("Passage take 2", "v. 23 · Take 1"),
   where Figma reads "Take 2". Copy for the passage-take line on the take card, the confirms before
   recording over a passage take or over verse takes, and the pericope-mode
   take card for verses recorded on their own ("Recorded verse by verse") is

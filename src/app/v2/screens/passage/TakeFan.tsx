@@ -47,7 +47,7 @@ export interface FanTake {
   placeholder?: boolean;
   /** Dropped in the bin, with the undo window still open. */
   deleted?: boolean;
-  /** A passage take over this verse, read-only here: its verses, "v. 1–7". */
+  /** A passage take over this verse: its verses, "v. 1–7", for TalkBack. */
   passage?: string;
 }
 
@@ -506,14 +506,6 @@ function Tile({
     number: { ...t.type.title, color: t.roles.fgSecondary },
     numberFront: { color: t.roles.fgPrimary },
     numberOnAccent: { color: t.roles.fgOnAccent },
-    // A passage tile's verses, under its number.
-    range: {
-      ...t.type.meta,
-      color: t.roles.fgSecondary,
-      position: 'absolute',
-      left: t.spacing.sm,
-      bottom: t.spacing.xs,
-    },
     numberDeleted: { color: t.roles.fgSecondary, opacity: t.opacity.disabled },
     badge: {
       position: 'absolute',
@@ -625,14 +617,6 @@ function Tile({
               {take.takeNumber}
             </Text>
           )}
-          {take.passage ? (
-            <Text
-              style={[styles.range, take.official && styles.numberOnAccent]}
-              numberOfLines={1}
-            >
-              {take.passage}
-            </Text>
-          ) : null}
           {take.official && !take.deleted ? (
             <Animated.View entering={ZoomIn.springify()} style={styles.badge}>
               <CheckBold color={roles.accentPrimary} size={BADGE_ICON} />

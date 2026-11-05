@@ -387,10 +387,7 @@ export function useRecorder({
     takeNumber: t.takeNumber,
     official: inUse(t),
     selected: t.isSelected,
-    passage:
-      t.startChapter === t.endChapter
-        ? `v. ${t.startVerse}–${t.endVerse}`
-        : `${t.startChapter}:${t.startVerse}–${t.endChapter}:${t.endVerse}`,
+    passage: coverRange(t),
   }));
   fan.push(
     ...passageTakes.map(t => ({
@@ -519,7 +516,9 @@ export function useRecorder({
     : frontCover
     ? {
         takeNumber: frontCover.takeNumber,
-        label: `Passage take ${frontCover.takeNumber}`,
+        label: `Passage take ${frontCover.takeNumber} · ${coverRange(
+          frontCover,
+        )}`,
         durationMs: frontCover.durationMs ?? null,
         levels: [],
         progress:
@@ -643,6 +642,18 @@ export function useRecorder({
     setFrontOverride(null);
     // Tapping the tile in front again goes back to the take in use.
     setViewId(id === viewId ? null : id);
+  }
+
+  /** A passage take's verses, "v. 1–7", or across chapters "1:30–2:3". */
+  function coverRange(t: {
+    startChapter: number;
+    startVerse: number;
+    endChapter: number;
+    endVerse: number;
+  }) {
+    return t.startChapter === t.endChapter
+      ? `v. ${t.startVerse}–${t.endVerse}`
+      : `${t.startChapter}:${t.startVerse}–${t.endChapter}:${t.endVerse}`;
   }
 
   /** The take in use and official: the card's check shows it. */
