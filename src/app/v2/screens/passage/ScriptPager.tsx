@@ -44,7 +44,6 @@ export function ScriptPager({
   playingVerse,
   verseSteps,
   versePages,
-  adjustablePages,
   top,
   height,
   scriptRef,
@@ -61,8 +60,6 @@ export function ScriptPager({
   verseSteps: VerseSteps | null;
   /** The open player in verse mode shows a page per verse instead. */
   versePages: boolean;
-  /** Record's verse pages turn from TalkBack too. */
-  adjustablePages: boolean;
   /** Where the script sits, hero then player. */
   top: readonly [number, number];
   height: readonly [number, number];
@@ -316,11 +313,7 @@ export function ScriptPager({
     <>
       <Animated.View style={[styles.pager, pagerStyle]} testID="passage-pager">
         {versePages && verseSteps ? (
-          <VersePages
-            steps={verseSteps}
-            playing={playingVerse}
-            adjustable={adjustablePages}
-          />
+          <VersePages steps={verseSteps} playing={playingVerse} />
         ) : null}
         <ScrollView
           style={versePages && verseSteps ? styles.hidden : undefined}

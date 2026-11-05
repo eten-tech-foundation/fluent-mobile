@@ -28,8 +28,8 @@ function steps(over: Partial<VerseSteps> = {}): VerseSteps {
   };
 }
 
-function laidOut(props: VerseSteps, adjustable = false) {
-  render(<VersePages steps={props} adjustable={adjustable} />);
+function laidOut(props: VerseSteps) {
+  render(<VersePages steps={props} />);
   fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
     nativeEvent: { layout: { width: 300, height: 600 } },
   });
@@ -56,9 +56,9 @@ describe('VersePages', () => {
     expect(props.go).not.toHaveBeenCalled();
   });
 
-  it('turns pages in Record from TalkBack on the position row', () => {
+  it('turns pages from TalkBack on the position row', () => {
     const props = steps();
-    laidOut(props, true);
+    laidOut(props);
     const position = screen.getByTestId('passage-verse-position');
 
     expect(position.props.accessibilityRole).toBe('adjustable');
@@ -68,16 +68,8 @@ describe('VersePages', () => {
     expect(props.go).toHaveBeenCalledWith(12);
   });
 
-  it('leaves turning to the keys in Listen', () => {
-    laidOut(steps());
-
-    expect(
-      screen.getByTestId('passage-verse-position').props.accessibilityRole,
-    ).toBeUndefined();
-  });
-
   it('turns no page from TalkBack while a take is in progress', () => {
-    laidOut(steps({ locked: true }), true);
+    laidOut(steps({ locked: true }));
 
     expect(
       screen.getByTestId('passage-verse-position').props.accessibilityActions,

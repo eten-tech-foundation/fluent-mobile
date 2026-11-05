@@ -46,7 +46,6 @@ export function PassageHero({
   verseSteps,
   versesAreDraft,
   versePages,
-  adjustablePages,
   recordBlocked,
   notices,
   layout,
@@ -79,8 +78,6 @@ export function PassageHero({
   versesAreDraft: boolean;
   /** Record in verse mode: a page per verse instead of the script. */
   versePages: boolean;
-  /** Record has no Previous / Next keys, so TalkBack turns its pages. */
-  adjustablePages: boolean;
   /** Why Record can't start here; the hero's Record is off with it. */
   recordBlocked: string | null;
   notices: RecordNotice[];
@@ -126,7 +123,6 @@ export function PassageHero({
           playingVerse={playingVerse}
           verseSteps={verseSteps}
           versePages={versePages}
-          adjustablePages={adjustablePages}
           top={layout.scriptTop}
           height={layout.scriptHeight}
           scriptRef={scriptRef}

@@ -24,13 +24,10 @@ const MAX_DOTS = 12;
 export function VersePages({
   steps,
   playing = null,
-  adjustable = false,
 }: {
   steps: VerseSteps;
   /** The source's verse while it plays; it leads the place until it stops. */
   playing?: number | null;
-  /** Record has no Previous / Next keys, so TalkBack turns pages here. */
-  adjustable?: boolean;
 }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
@@ -94,7 +91,7 @@ export function VersePages({
     });
   }, [index, width, reduceMotion]);
 
-  const turnable = adjustable && !steps.locked;
+  const turnable = !steps.locked;
 
   const verse = steps.verses[index];
   // The chip fills once its verse is recorded, like the Verses list's ring.
