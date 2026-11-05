@@ -58,12 +58,7 @@ function PassageRows() {
       includeFontPadding: false,
     },
     titlePlaying: { color: t.roles.fgPrimary },
-    reference: {
-      color: t.roles.fgSecondary,
-      fontSize: t.typography.sizes.sm,
-      textTransform: 'uppercase',
-      includeFontPadding: false,
-    },
+    reference: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
 
   const playingSteps = playing ? listened[playing] : 0;

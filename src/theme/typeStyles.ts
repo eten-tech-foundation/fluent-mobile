@@ -9,7 +9,7 @@ function style(
   fontSize: number,
   lineHeight: number,
   fontWeight: '400' | '500' | '600' | '700',
-  uppercase = false,
+  textTransform?: MetaCase,
 ) {
   return {
     ...(fontFamily ? { fontFamily } : {}),
@@ -17,20 +17,26 @@ function style(
     lineHeight,
     fontWeight,
     includeFontPadding: false,
-    ...(uppercase ? { textTransform: 'uppercase' as const } : {}),
+    ...(textTransform ? { textTransform } : {}),
   };
 }
+
+/** Legacy sets overline and meta in caps; Next doesn't. */
+type MetaCase = 'uppercase' | 'none';
 
 export type TypeFamilies = {
   /** heading, title */
   display: string | undefined;
   /** reading, lead, body, label */
   text: string | undefined;
-  /** overline, meta (uppercase) */
-  caps: string | undefined;
+  /** overline, meta */
+  meta: string | undefined;
 };
 
-export function buildTypeStyles({ display, text, caps }: TypeFamilies) {
+export function buildTypeStyles(
+  { display, text, meta }: TypeFamilies,
+  metaCase: MetaCase,
+) {
   return {
     /**
      * Scripture at Figma's read-along size. The Next player reads at `lead`
@@ -55,9 +61,9 @@ export function buildTypeStyles({ display, text, caps }: TypeFamilies) {
     /** Verse numbers in chips. */
     label: style(text, 14, 20, '600'),
     /** Passage title, eyebrows. In Legacy's `monospace`, 500 renders as 400. */
-    overline: style(caps, 20, 24, '500', true),
+    overline: style(meta, 20, 24, '500', metaCase),
     /** References and metadata under a title. */
-    meta: style(caps, 14, 20, '400', true),
+    meta: style(meta, 14, 20, '400', metaCase),
   };
 }
 
@@ -67,7 +73,7 @@ export type TypeStyleName = keyof ReturnType<typeof buildTypeStyles>;
 export const systemFontFamilies: TypeFamilies = {
   display: undefined,
   text: undefined,
-  caps: 'monospace',
+  meta: 'monospace',
 };
 
 /**

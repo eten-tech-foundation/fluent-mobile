@@ -74,11 +74,11 @@ export const nextRadius = {
 export const nextFontFamilies: TypeFamilies = {
   display: 'PlusJakartaSans',
   text: 'AtkinsonHyperlegibleNext',
-  caps: 'PlusJakartaSans',
+  meta: 'PlusJakartaSans',
 };
 
 /** Figma named type styles for Next (`Theme.type`). */
-export const nextTypeStyles = buildTypeStyles(nextFontFamilies);
+export const nextTypeStyles = buildTypeStyles(nextFontFamilies, 'none');
 
 /**
  * Partial `Theme.typography` overrides, read from the named styles.

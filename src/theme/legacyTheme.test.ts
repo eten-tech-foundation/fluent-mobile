@@ -128,8 +128,9 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     expect(nextTheme.type.overline).toMatchObject({
       fontFamily: 'PlusJakartaSans',
       fontSize: 20,
-      textTransform: 'uppercase',
+      textTransform: 'none',
     });
+    expect(nextTheme.type.meta.textTransform).toBe('none');
     expect(nextTheme.typeTelugu.reading.lineHeight).toBe(64);
     expect(nextTheme.fontScale.readingMax).toBe(1.3);
     expect(nextTheme.radius.xs).toBe(4);
@@ -154,6 +155,7 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
   it('keeps Legacy on system fonts', () => {
     expect(legacyTheme.type.title).not.toHaveProperty('fontFamily');
     expect(legacyTheme.type.meta.fontFamily).toBe('monospace');
+    expect(legacyTheme.type.meta.textTransform).toBe('uppercase');
   });
 
   it('keeps the same role keys in Legacy so components never branch', () => {

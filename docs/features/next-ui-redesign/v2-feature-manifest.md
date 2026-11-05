@@ -387,7 +387,8 @@ Folded in from Legacy, so Next blocks and warns the same way:
 - Type (Foundations · 03 Type): Next uses Plus Jakarta Sans for heading,
   title, overline and meta, and Atkinson Hyperlegible Next for reading, lead,
   body and label. Figma still shows Google Sans Flex and DM Mono, so the
-  styles need the new families, with overline and meta no longer mono.
+  styles need the new families, with overline and meta no longer mono or
+  uppercase.
 
 ### Elsewhere on Project 4
 
