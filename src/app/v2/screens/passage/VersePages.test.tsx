@@ -28,8 +28,8 @@ function steps(over: Partial<VerseSteps> = {}): VerseSteps {
   };
 }
 
-function laidOut(props: VerseSteps) {
-  render(<VersePages steps={props} />);
+function laidOut(props: VerseSteps, adjustable = false) {
+  render(<VersePages steps={props} adjustable={adjustable} />);
   fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
     nativeEvent: { layout: { width: 300, height: 600 } },
   });
@@ -54,6 +54,34 @@ describe('VersePages', () => {
     });
 
     expect(props.go).not.toHaveBeenCalled();
+  });
+
+  it('turns pages in Record from TalkBack on the position row', () => {
+    const props = steps();
+    laidOut(props, true);
+    const position = screen.getByTestId('passage-verse-position');
+
+    expect(position.props.accessibilityRole).toBe('adjustable');
+    fireEvent(position, 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    expect(props.go).toHaveBeenCalledWith(12);
+  });
+
+  it('leaves turning to the keys in Listen', () => {
+    laidOut(steps());
+
+    expect(
+      screen.getByTestId('passage-verse-position').props.accessibilityRole,
+    ).toBeUndefined();
+  });
+
+  it('turns no page from TalkBack while a take is in progress', () => {
+    laidOut(steps({ locked: true }), true);
+
+    expect(
+      screen.getByTestId('passage-verse-position').props.accessibilityActions,
+    ).toEqual([]);
   });
 
   it("doesn't swipe while a take is in progress or saving", () => {

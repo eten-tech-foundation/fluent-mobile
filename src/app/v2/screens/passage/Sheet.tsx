@@ -571,6 +571,7 @@ export function Sheet({
           verseSteps={steps}
           versesAreDraft={recorder.versesAreDraft}
           versePages={versePages}
+          adjustablePages={showRecord}
           recordBlocked={recorder.cannotRecord}
           notices={recorder.notices}
           layout={{

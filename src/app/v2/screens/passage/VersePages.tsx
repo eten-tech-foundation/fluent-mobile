@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, ScrollView, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  FlatList,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { INACTIVE_SIZE } from '../../../../components/ui/PageDots';
 import { VerseChip } from '../../../../components/ui/VerseChip';
@@ -18,10 +24,13 @@ const MAX_DOTS = 12;
 export function VersePages({
   steps,
   playing = null,
+  adjustable = false,
 }: {
   steps: VerseSteps;
   /** The source's verse while it plays; it leads the place until it stops. */
   playing?: number | null;
+  /** Record has no Previous / Next keys, so TalkBack turns pages here. */
+  adjustable?: boolean;
 }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
@@ -85,6 +94,8 @@ export function VersePages({
     });
   }, [index, width, reduceMotion]);
 
+  const turnable = adjustable && !steps.locked;
+
   const verse = steps.verses[index];
   // The chip fills once its verse is recorded, like the Verses list's ring.
   const chip = {
@@ -101,9 +112,26 @@ export function VersePages({
       <View
         style={styles.top}
         accessible
+        accessibilityRole={turnable ? 'adjustable' : undefined}
         accessibilityLabel={`Verse ${chip.verse}${
           chip.current ? ', recorded' : ''
         }, ${index + 1} of ${count}`}
+        accessibilityActions={
+          turnable ? [{ name: 'increment' }, { name: 'decrement' }] : []
+        }
+        // TalkBack turns a page with a swipe up or down.
+        onAccessibilityAction={e => {
+          const up = e.nativeEvent.actionName === 'increment';
+          const at = index + (up ? 1 : -1);
+          const to = steps.verses[at];
+          if (!to || !turnable) return;
+          setSwiped({ verse: to.verseNumber, reached: false });
+          steps.go(to.verseNumber);
+          // Android says nothing after an adjust without a range value.
+          AccessibilityInfo.announceForAccessibility(
+            `Verse ${to.verseNumber}, ${at + 1} of ${count}`,
+          );
+        }}
         testID="passage-verse-position"
       >
         {count <= MAX_DOTS ? (
