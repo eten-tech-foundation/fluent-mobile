@@ -23,6 +23,15 @@ export interface ScriptNotes {
   dimmed?: boolean;
 }
 
+/** What a "more notes" label says, for the screen and for TalkBack. */
+export function moreNotesLabels(count: number) {
+  const noun = count === 1 ? 'note' : 'notes';
+  return {
+    label: `${count} more ${noun}`,
+    spoken: `${count} more translation ${noun}`,
+  };
+}
+
 /** Google Sans Flex's descent, as a share of its size. */
 export const CHIP_DESCENT = 0.2;
 

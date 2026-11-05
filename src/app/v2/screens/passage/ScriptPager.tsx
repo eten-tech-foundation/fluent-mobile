@@ -1,4 +1,4 @@
-import React, { useMemo, type RefObject } from 'react';
+import React, { useMemo, useState, type RefObject } from 'react';
 import { Pressable, ScrollView, Text } from 'react-native';
 import Animated, {
   interpolate,
@@ -8,11 +8,15 @@ import Animated, {
 import type { usePassage } from '../../../../hooks/usePassage';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import { Notebook } from '../../../../components/ui/icons';
-import { RoundButton } from '../../../../components/ui/RoundButton';
+import {
+  BUTTON_SIZE,
+  RoundButton,
+} from '../../../../components/ui/RoundButton';
 import { verseKey } from './noteMatch';
 import {
   CHIP_DESCENT,
   chipIds,
+  moreNotesLabels,
   noteWords,
   segments,
   useChipJoins,
@@ -81,8 +85,14 @@ export function ScriptPager({
     notPlaying: { color: t.roles.fgSecondary },
     recordedNumber: { color: t.roles.accentPrimary },
     note: { ...t.type.label, color: t.roles.fgSecondary },
-    more: { alignSelf: 'flex-start', marginTop: t.spacing.lg },
+    // Pinned over the script's bottom right, above the waveform.
+    more: { position: 'absolute', right: 0, bottom: t.spacing.md },
     scriptTop: { paddingTop: t.spacing.xs },
+    // Room under the last line, so it scrolls clear of the pinned button.
+    scriptRoom: {
+      paddingTop: t.spacing.xs,
+      paddingBottom: BUTTON_SIZE + t.spacing.md + t.spacing.lg,
+    },
     hidden: { display: 'none' },
     fade: {
       position: 'absolute',
@@ -93,6 +103,16 @@ export function ScriptPager({
   }));
 
   const chip = useChipStyle();
+  // Notes quoting another translation have no phrase to tap. The script lists
+  // the passage's; a verse page, its verse's.
+  const [pageMore, setPageMore] = useState<number[]>([]);
+  const onPages = versePages && verseSteps !== null;
+  const allMore = useMemo(() => {
+    const count = notes?.unplaced ?? 0;
+    const from = (notes?.quotes.length ?? 0) - count;
+    return Array.from({ length: count }, (_, i) => from + i);
+  }, [notes?.unplaced, notes?.quotes.length]);
+  const more = !expanded || !notes?.onOpen ? [] : onPages ? pageMore : allMore;
   // Legacy shows whatever verses are on the phone; so does the script.
   const shown = useMemo(
     () => passage.verses.filter(v => v.text),
@@ -236,13 +256,20 @@ export function ScriptPager({
     <>
       <Animated.View style={[styles.pager, pagerStyle]} testID="passage-pager">
         {versePages && verseSteps ? (
-          <VersePages steps={verseSteps} playing={playingVerse} notes={notes} />
+          <VersePages
+            steps={verseSteps}
+            playing={playingVerse}
+            notes={notes}
+            onMoreNotes={setPageMore}
+          />
         ) : null}
         <ScrollView
           style={versePages && verseSteps ? styles.hidden : undefined}
           ref={scriptRef}
           // Room for the first line's chip outlines.
-          contentContainerStyle={styles.scriptTop}
+          contentContainerStyle={
+            more.length > 0 ? styles.scriptRoom : styles.scriptTop
+          }
           scrollEnabled={expanded}
           showsVerticalScrollIndicator={false}
           testID="passage-script-frame"
@@ -269,24 +296,6 @@ export function ScriptPager({
               >
                 {script}
               </Animated.Text>
-              {expanded && notes?.onOpen && notes.unplaced > 0 ? (
-                // Notes quoting another translation have no phrase to tap.
-                <RoundButton
-                  variant="flat"
-                  icon={Notebook}
-                  label={`${notes.unplaced} more ${
-                    notes.unplaced === 1 ? 'note' : 'notes'
-                  }`}
-                  accessibilityLabel={`${notes.unplaced} more translation ${
-                    notes.unplaced === 1 ? 'note' : 'notes'
-                  }`}
-                  onPress={() =>
-                    notes.onOpen?.(notes.quotes.length - notes.unplaced)
-                  }
-                  style={styles.more}
-                  testID="passage-more-notes"
-                />
-              ) : null}
               {passage.downloaded ? null : (
                 <Text style={styles.note}>{missingNote}</Text>
               )}
@@ -301,6 +310,23 @@ export function ScriptPager({
         pointerEvents="none"
         testID="passage-fade"
       />
+      {more.length > 0 && notes?.onOpen ? (
+        // Over the fade, in the script's frame; the text passes beneath.
+        <Animated.View
+          style={[styles.pager, pagerStyle]}
+          pointerEvents="box-none"
+        >
+          <RoundButton
+            variant="flat"
+            icon={Notebook}
+            label={moreNotesLabels(more.length).label}
+            accessibilityLabel={moreNotesLabels(more.length).spoken}
+            onPress={() => notes.onOpen?.(more[0])}
+            style={styles.more}
+            testID="passage-more-notes"
+          />
+        </Animated.View>
+      ) : null}
     </>
   );
 }

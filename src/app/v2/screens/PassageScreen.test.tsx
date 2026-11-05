@@ -1638,7 +1638,7 @@ describe('PassageScreen', () => {
         expect(screen.getByText('The cup held wine.')).toBeTruthy();
       });
 
-      it("opens a verse's notes that have no phrase from its own page", () => {
+      it("pins a verse's notes that have no phrase, and only on its page", async () => {
         mockNotes = [
           ...mockNotes,
           {
@@ -1654,8 +1654,15 @@ describe('PassageScreen', () => {
         settle();
         layOutPages();
 
-        expect(screen.queryByTestId('passage-verse-more-notes-23')).toBeNull();
-        fireEvent.press(screen.getByTestId('passage-verse-more-notes-22'));
+        expect(screen.getByLabelText('1 more translation note')).toBeTruthy();
+        await act(async () => {
+          fireEvent.press(screen.getByLabelText('Next: verse 23'));
+        });
+        expect(screen.queryByTestId('passage-more-notes')).toBeNull();
+        await act(async () => {
+          fireEvent.press(screen.getByLabelText('Previous: verse 22'));
+        });
+        fireEvent.press(screen.getByTestId('passage-more-notes'));
         expect(
           screen.getByText('This note quotes another translation.'),
         ).toBeTruthy();
