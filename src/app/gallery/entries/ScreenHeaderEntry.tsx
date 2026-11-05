@@ -12,7 +12,7 @@ const FRAME_HEIGHT = 260;
 
 /**
  * The book page's header over its list: scroll the rows under it and the
- * rim stroke fades in, then back to the top and it fades out.
+ * soft stroke fades in, then back to the top and it fades out.
  */
 export function ScreenHeaderEntry() {
   const scroll = useScrolled();

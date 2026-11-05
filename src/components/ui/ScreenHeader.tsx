@@ -24,7 +24,7 @@ export interface ScreenHeaderProps {
 }
 
 /**
- * A Next screen's header row: room under its buttons, and a rim stroke that
+ * A Next screen's header row: room under its buttons, and a soft stroke that
  * fades in along the bottom once the content scrolls under it.
  */
 export function ScreenHeader({
@@ -51,7 +51,7 @@ export function ScreenHeader({
       right: 0,
       bottom: 0,
       height: t.stroke[1],
-      backgroundColor: t.roles.borderRim,
+      backgroundColor: t.roles.shadowEdge,
     },
   }));
 

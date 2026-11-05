@@ -386,7 +386,7 @@ Folded in from Legacy, so Next blocks and warns the same way:
 
 - Screen header: Home, the book page and the translation note share a header
   row with `space-12` above and below its buttons, and a `stroke/1`
-  `border/rim` line along its bottom that fades in once the content scrolls
+  `shadow/edge` line along its bottom that fades in once the content scrolls
   under it. Home's header is pinned now instead of scrolling away. Figma's
   Home, book page and note frames need the padding, the pinned header and a
   scrolled state.

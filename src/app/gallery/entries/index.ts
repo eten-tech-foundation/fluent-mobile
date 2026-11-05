@@ -106,7 +106,7 @@ export const galleryEntries: GalleryEntry[] = [
   },
   {
     // No Figma component: the header row on Home, the book page and the
-    // note, with a rim stroke once the content scrolls under it.
+    // note, with a soft stroke once the content scrolls under it.
     id: 'screen-header',
     name: 'Screen header',
     modes: 'Hardware (Home, book page) · Accent (note)',
