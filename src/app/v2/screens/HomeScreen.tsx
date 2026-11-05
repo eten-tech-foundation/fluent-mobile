@@ -12,6 +12,7 @@ import { Avatar } from '../../../components/ui/Avatar';
 import { Banner } from '../../../components/ui/Banner';
 import { Gear } from '../../../components/ui/icons';
 import { RoundButton } from '../../../components/ui/RoundButton';
+import { ScreenHeader, useScrolled } from '../../../components/ui/ScreenHeader';
 import { SyncStatusButton } from '../../../components/ui/SyncStatusButton';
 import { HOME_EMPTY_MESSAGE } from '../../../constants/messages';
 import { useActiveAccountSummary } from '../../../hooks/useActiveAccountSummary';
@@ -75,6 +76,7 @@ function HomeBody({
   const [accountsOpen, setAccountsOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const scroll = useScrolled();
   const {
     refreshKey,
     showLoading,
@@ -105,17 +107,10 @@ function HomeBody({
   const styles = useThemedStyles(t => ({
     screen: { flex: 1, backgroundColor: t.roles.bgDefault },
     content: { flexGrow: 1 },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: t.spacing.xl,
-      paddingTop: t.spacing.lg,
-    },
-    banner: { marginHorizontal: t.spacing.lg, marginTop: t.spacing.lg },
+    banner: { marginHorizontal: t.spacing.lg, marginTop: t.spacing.sm },
     heading: {
       paddingHorizontal: t.spacing.xl,
-      paddingTop: t.spacing.xxl,
+      paddingTop: t.spacing.lg,
       paddingBottom: t.spacing.sm,
       gap: t.spacing.xs,
     },
@@ -260,11 +255,36 @@ function HomeBody({
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <ScreenHeader scrolled={scroll.scrolled} testID="home-header">
+        {account.activeUserId ? (
+          <Avatar
+            initials={getAccountInitials(name)}
+            accessibilityLabel={`${getAccountDisplayName(name)}. Accounts`}
+            onPress={openAccounts}
+            testID="home-account"
+          />
+        ) : (
+          // Settings and sign-out stay reachable while the summary loads.
+          <RoundButton
+            icon={Gear}
+            accessibilityLabel="Accounts and settings"
+            onPress={openAccounts}
+            testID="home-account"
+          />
+        )}
+        <SyncStatusButton
+          status={syncStatus}
+          failedErrorText={failedErrorText}
+          onPress={openSync}
+          testID="home-sync"
+        />
+      </ScreenHeader>
       <ScrollView
         contentContainerStyle={[
           styles.content,
           { paddingBottom: theme.spacing.xxl + insets.bottom },
         ]}
+        onScroll={scroll.onScroll}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -272,31 +292,8 @@ function HomeBody({
             colors={[theme.roles.accentPrimary]}
           />
         }
+        testID="home-scroll"
       >
-        <View style={styles.header}>
-          {account.activeUserId ? (
-            <Avatar
-              initials={getAccountInitials(name)}
-              accessibilityLabel={`${getAccountDisplayName(name)}. Accounts`}
-              onPress={openAccounts}
-              testID="home-account"
-            />
-          ) : (
-            // Settings and sign-out stay reachable while the summary loads.
-            <RoundButton
-              icon={Gear}
-              accessibilityLabel="Accounts and settings"
-              onPress={openAccounts}
-              testID="home-account"
-            />
-          )}
-          <SyncStatusButton
-            status={syncStatus}
-            failedErrorText={failedErrorText}
-            onPress={openSync}
-            testID="home-sync"
-          />
-        </View>
         {reauthRequired ? (
           <Banner
             message="Session expired. Enter your password to keep syncing."
