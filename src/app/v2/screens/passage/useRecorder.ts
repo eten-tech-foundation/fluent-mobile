@@ -255,12 +255,12 @@ export function useRecorder({
   );
   /** A take just deleted shows in front, with its undo, until it's settled. */
   const [frontOverride, setFrontOverride] = useState<string | null>(null);
-  /** On a stage-locked chapter, the take tapped forward to play; the pick stays. */
-  const [lockedFront, setLockedFront] = useState<string | null>(null);
+  /** The tile tapped forward to play. Tapping doesn't pick; the check does. */
+  const [viewId, setViewId] = useState<string | null>(null);
   /** A paused or scrubbed spot in a take, for Play to start from. */
   const [parked, setParked] = useState<{ id: string; ms: number } | null>(null);
   // Verse mode lists the verse's own takes; the passage takes over it get
-  // read-only tiles of their own (`coverTakes`).
+  // tiles of their own (`coverTakes`), which can't be deleted here.
   const isPassageTake = (t: { id: string; granularity: string }) =>
     (verseMode
       ? t.granularity !== 'pericope'
@@ -277,8 +277,6 @@ export function useRecorder({
         .sort((a, b) => a.takeNumber - b.takeNumber)
     : [];
   const coveringTake = coverTakes.find(t => t.isSelected) ?? null;
-  /** A passage take's tile tapped forward to play, in verse mode. */
-  const [coverView, setCoverView] = useState<string | null>(null);
   // Whole-passage takes, live, so a new take shows as soon as it's saved.
   const liveTakes: PassageTake[] = verseAudio.takes
     .filter(isPassageTake)
@@ -372,22 +370,22 @@ export function useRecorder({
   const pendingId = deletion.pending?.id ?? null;
   // Only while that take's undo is open; after that the selected take leads.
   const overrideId = frontOverride === pendingId ? frontOverride : null;
-  const leadId = overrideId ?? (session.stageLocked ? lockedFront : null);
+  const leadId = overrideId ?? viewId;
   const pickedTake =
     passageTakes.find(t => t.id === verseAudio.selectedTake?.id) ??
     // A passage take picked over the verse leads instead of its last take.
     (coveringTake ? null : passageTakes[passageTakes.length - 1] ?? null);
   const leadTake = passageTakes.find(t => t.id === leadId) ?? null;
-  // A pending delete's undo leads, then a passage tile tapped forward.
+  // A pending delete's undo leads, then a tile tapped forward.
   const shownCover =
     verseMode && !held && !overrideId
-      ? coverTakes.find(t => t.id === coverView) ??
+      ? coverTakes.find(t => t.id === viewId) ??
         (pickedTake || leadTake ? null : coveringTake)
       : null;
   const fan: FanTake[] = coverTakes.map(t => ({
     id: t.id,
     takeNumber: t.takeNumber,
-    official: t.id === verseAudio.ownCanonicalTakeId,
+    official: inUse(t),
     selected: t.isSelected,
     passage:
       t.startChapter === t.endChapter
@@ -398,7 +396,7 @@ export function useRecorder({
     ...passageTakes.map(t => ({
       id: t.id,
       takeNumber: t.takeNumber,
-      official: t.id === verseAudio.ownCanonicalTakeId,
+      official: inUse(t),
       // While the verses are the draft, no passage take is picked.
       selected: !verseDraft && t.id === pickedTake?.id,
       deleted: t.id === pendingId,
@@ -424,8 +422,8 @@ export function useRecorder({
   const frontTake =
     held || shownCover ? null : leadTake ?? (verseDraft ? null : pickedTake);
   const frontVerses = !held && !frontTake ? verseDraft : null;
-  // A passage take over the verse plays read-only on the card: the one picked
-  // when the verse has no take of its own, or a tile tapped forward.
+  // A passage take over the verse on the card: the one picked when the verse
+  // has no take of its own, or a tile tapped forward.
   const frontCover = shownCover;
   const playingCover =
     frontCover !== null && verseAudio.playingTakeId === frontCover.id;
@@ -483,12 +481,12 @@ export function useRecorder({
         ...(frontDeleted
           ? { official: false, onUndo: () => undoDelete() }
           : {
-              official: frontTake.id === verseAudio.ownCanonicalTakeId,
+              official: inUse(frontTake),
               // Someone else's official take isn't taken over unseen.
               onToggleOfficial:
                 session.stageLocked || othersOfficial
                   ? undefined
-                  : () => void verseAudio.setCanonical(frontTake.id),
+                  : () => void chooseTake(frontTake),
             }),
       }
     : frontVerses
@@ -532,7 +530,11 @@ export function useRecorder({
             : 0,
         onSeek: coverLength > 0 ? p => void scrubCover(p) : undefined,
         recording: false,
-        official: frontCover.isCanonical,
+        official: inUse(frontCover),
+        onToggleOfficial:
+          session.stageLocked || othersOfficial
+            ? undefined
+            : () => void chooseTake(frontCover),
       }
     : {
         takeNumber: 1,
@@ -616,7 +618,7 @@ export function useRecorder({
     }
     deletion.remove({ id, takeNumber: target.takeNumber });
     setFrontOverride(id);
-    setCoverView(null);
+    setViewId(null);
     AccessibilityInfo.announceForAccessibility(
       `Take ${target.takeNumber} deleted. Undo is on the take card.`,
     );
@@ -632,69 +634,67 @@ export function useRecorder({
     }
   }
 
+  // Tapping a tile only brings it forward to play.
   function selectTake(id: string) {
     if (id === pendingId) {
       undoDelete();
       return;
     }
     setFrontOverride(null);
-    const cover = coverTakes.find(t => t.id === id);
-    // A picked passage tile comes forward now; another only once it's picked.
-    setCoverView(
-      cover?.isSelected || session.stageLocked ? cover?.id ?? null : null,
-    );
-    if (session.stageLocked) {
-      setLockedFront(id);
-      return;
-    }
-    if (cover) {
-      if (cover.isSelected) return;
-      // Picking it deselects the verse takes it covers, here and beyond.
-      void confirmRecordOver(
-        pickOverVersesTitle(cover.takeNumber),
-        RECORD_OVER_VERSES_MESSAGE,
-        PICK_OVER_VERSES_CONFIRM,
-      ).then(ok => {
-        if (!ok) return;
-        setCoverView(id);
-        void verseAudio.selectTake(id);
-      });
-      return;
-    }
-    const target = passageTakes.find(t => t.id === id);
-    if (!target || target.isSelected) {
-      void verseAudio.selectTake(id);
-      return;
-    }
-    // Picking a verse take deselects the passage take over it, as recording does.
-    if (coveringTake) {
-      void confirmRecordOver(
-        pickOverPassageTitle(target.takeNumber, verse),
-        recordOverPassageMessage(coveringTake),
-        PICK_OVER_VERSES_CONFIRM,
-      ).then(ok => {
-        if (ok) void verseAudio.selectTake(id);
-      });
-      return;
-    }
-    if (!versesSelected) {
-      void verseAudio.selectTake(id);
-      return;
-    }
-    // Picking a passage take deselects the verses recorded on their own.
-    void confirmRecordOver(
-      pickOverVersesTitle(target.takeNumber),
-      RECORD_OVER_VERSES_MESSAGE,
-      PICK_OVER_VERSES_CONFIRM,
-    ).then(ok => {
-      if (ok) void verseAudio.selectTake(id);
-    });
+    // Tapping the tile in front again goes back to the take in use.
+    setViewId(id === viewId ? null : id);
   }
 
-  // A passage tile tapped forward leads on its verse until a take starts.
+  /** The take in use and official: the card's check shows it. */
+  function inUse(t: { isSelected: boolean; isCanonical: boolean }) {
+    return t.isSelected && t.isCanonical;
+  }
+
+  /**
+   * The card's check: use this take, picked and official. Picking over takes
+   * of the other unit deselects them, so it asks first.
+   */
+  const choosing = useRef(false);
+  async function chooseTake(t: (typeof verseAudio.takes)[number]) {
+    if (choosing.current) return;
+    choosing.current = true;
+    try {
+      await choose(t);
+    } finally {
+      choosing.current = false;
+    }
+  }
+  async function choose(t: (typeof verseAudio.takes)[number]) {
+    const ask = t.isSelected
+      ? null
+      : coverTakes.some(c => c.id === t.id) || versesSelected
+      ? // Picking a passage take deselects the verses recorded on their own.
+        ([
+          pickOverVersesTitle(t.takeNumber),
+          RECORD_OVER_VERSES_MESSAGE,
+        ] as const)
+      : coveringTake
+      ? // Picking a verse take deselects the passage take over it.
+        ([
+          pickOverPassageTitle(t.takeNumber, verse),
+          recordOverPassageMessage(coveringTake),
+        ] as const)
+      : null;
+    if (
+      ask &&
+      !(await confirmRecordOver(ask[0], ask[1], PICK_OVER_VERSES_CONFIRM))
+    ) {
+      return;
+    }
+    if (!t.isSelected) await verseAudio.selectTake(t.id);
+    await verseAudio.setCanonical(t.id);
+  }
+
+  // A tile tapped forward leads on its verse until a take starts or Record
+  // closes.
   useEffect(() => {
-    setCoverView(null);
-  }, [verse, held]);
+    setViewId(null);
+  }, [verse, held, shown]);
 
   // Closing the player or leaving Record hides the undo, so it commits.
   const { commit: commitDelete } = deletion;

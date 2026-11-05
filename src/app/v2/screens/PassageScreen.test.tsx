@@ -1558,7 +1558,7 @@ describe('PassageScreen', () => {
       );
     });
 
-    it('plays the passage take over a verse with no take of its own, read-only', async () => {
+    it('plays the passage take over a verse with no take of its own', async () => {
       mockSession = {
         ...mockSession,
         takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
@@ -1579,7 +1579,23 @@ describe('PassageScreen', () => {
         expect.objectContaining({ id: 't2' }),
         undefined,
       );
-      expect(screen.queryByTestId('passage-take-official', hidden)).toBeNull();
+    });
+
+    it('makes a picked passage take official from its check, without asking', async () => {
+      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
+
+      expect(alert).not.toHaveBeenCalled();
+      expect(mockSelectTake).not.toHaveBeenCalled();
+      expect(mockSetCanonical).toHaveBeenCalledWith('t2');
     });
 
     it('resumes the passage take over a verse where it was paused, and restarts it from the end', async () => {
@@ -1675,7 +1691,12 @@ describe('PassageScreen', () => {
 
         expect(screen.getByTestId('passage-fan-p1')).toBeTruthy();
         expect(screen.getByTestId('passage-fan-2')).toBeTruthy();
+        // Tapping only brings it forward; the check asks.
         fireEvent.press(screen.getByTestId('passage-fan-p1'));
+        expect(alert).not.toHaveBeenCalled();
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-take-official'));
+        });
         expect(alert).toHaveBeenCalledWith(
           'Use take 1 for the whole passage?',
           "The verses recorded on their own here won't be used anymore.",
@@ -1687,6 +1708,7 @@ describe('PassageScreen', () => {
           alert.mock.calls[0]![2]!.find(b => b.text === 'Use it')?.onPress?.();
         });
         expect(mockSelectTake).toHaveBeenCalledWith('t1');
+        expect(mockSetCanonical).toHaveBeenCalledWith('t1');
       });
 
       it("brings a picked passage take's tile forward to play it", async () => {
@@ -1753,6 +1775,10 @@ describe('PassageScreen', () => {
       render(<PassageScreen />);
       fireEvent.press(screen.getByTestId('passage-record'));
       fireEvent.press(screen.getByTestId('passage-fan-1'));
+      expect(alert).not.toHaveBeenCalled();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
 
       expect(alert).toHaveBeenCalledWith(
         'Use take 1 for v. 22?',
@@ -2099,6 +2125,10 @@ describe('PassageScreen', () => {
       render(<PassageScreen />);
       fireEvent.press(screen.getByTestId('passage-record'));
       fireEvent.press(screen.getByTestId('passage-fan-3'));
+      expect(alert).not.toHaveBeenCalled();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
 
       expect(alert).toHaveBeenCalledWith(
         'Use take 3 for the whole passage?',
@@ -2111,6 +2141,23 @@ describe('PassageScreen', () => {
         alert.mock.calls[0]![2]!.find(b => b.text === 'Use it')?.onPress?.();
       });
       expect(mockSelectTake).toHaveBeenCalledWith('t3');
+    });
+
+    it('goes back to the verses card when the tile in front is tapped again', () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(3), isSelected: false }, verseTake(1, 22)],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      const versesCard = () =>
+        screen.queryAllByText('1 of 2 verses recorded on their own', hidden);
+
+      expect(versesCard().length).toBeGreaterThan(0);
+      fireEvent.press(screen.getByTestId('passage-fan-3'));
+      expect(versesCard()).toHaveLength(0);
+      fireEvent.press(screen.getByTestId('passage-fan-3'));
+      expect(versesCard().length).toBeGreaterThan(0);
     });
 
     it('leads with a passage take that is the draft', () => {
@@ -2284,7 +2331,7 @@ describe('PassageScreen', () => {
     expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('only plays takes on a stage-locked chapter: no pick, official or delete', () => {
+  it('only plays takes on a stage-locked chapter: no pick, official or delete', async () => {
     const takes = [take(1), { ...take(2), isSelected: true }];
     mockSession = { ...mockSession, takes };
     const { unmount } = render(<PassageScreen />);
@@ -2292,10 +2339,18 @@ describe('PassageScreen', () => {
     expect(screen.getByLabelText('Take 1').props.accessibilityActions).toEqual([
       { name: 'delete', label: 'Delete' },
     ]);
-    fireEvent.press(screen.getByTestId('passage-take-official'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-take-official'));
+    });
     expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+    // A tap brings a take forward; its check picks it and makes it official.
     fireEvent.press(screen.getByTestId('passage-fan-1'));
+    expect(mockSelectTake).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-take-official'));
+    });
     expect(mockSelectTake).toHaveBeenCalledWith('t1');
+    expect(mockSetCanonical).toHaveBeenCalledWith('t1');
     unmount();
     jest.clearAllMocks();
 
