@@ -115,7 +115,7 @@ The token-level detail is in the
   verse (exactly, or by the longest run of at least 3 of its words that
   covers 60% of the quote, since notes can quote another translation) and
   shows as a Phrase chip. Notes that don't place follow in the note pager
-  and open from "N more notes", pinned at the script's bottom right above
+  and open from a notebook button ("+N"), pinned at the script's bottom right above
   the waveform (on a verse page, that verse's only). Note audio is
   missing (DES-2989), so the note screen has no waveform or Play yet.
 - **Q31 · How many translation notes a passage shows** *(product + API)*.

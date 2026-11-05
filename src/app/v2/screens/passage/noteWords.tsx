@@ -23,12 +23,11 @@ export interface ScriptNotes {
   dimmed?: boolean;
 }
 
-/** What a "more notes" label says, for the screen and for TalkBack. */
+/** The "more notes" button: "+34" beside its icon, spelled out for TalkBack. */
 export function moreNotesLabels(count: number) {
-  const noun = count === 1 ? 'note' : 'notes';
   return {
-    label: `${count} more ${noun}`,
-    spoken: `${count} more translation ${noun}`,
+    label: `+${count}`,
+    spoken: `${count} more translation ${count === 1 ? 'note' : 'notes'}`,
   };
 }
 
