@@ -23,6 +23,7 @@ import {
   RECORD_OVER_VERSES_MESSAGE,
   RECORD_OVER_VERSES_TITLE,
   PICK_OVER_VERSES_CONFIRM,
+  pickOverPassageTitle,
   RECORD_VERSE_BY_VERSE,
   recordedOnTheirOwn,
   pickOverVersesTitle,
@@ -350,6 +351,10 @@ export function useRecorder({
             t.endVerse === last.verseNumber),
     );
   // The new take keeps its tile and wave from Eject until it's saved.
+  // A step waits on a pending delete; Record would start on the old verse.
+  const [stepping, setStepping] = useState(false);
+  const steppingRef = useRef(false);
+  const steps = useRef(0);
   const held = capturing || verseAudio.state === 'saving';
   const pendingId = deletion.pending?.id ?? null;
   // Only while that take's undo is open; after that the selected take leads.
@@ -579,7 +584,22 @@ export function useRecorder({
       return;
     }
     const target = passageTakes.find(t => t.id === id);
-    if (!versesSelected || !target || target.isSelected) {
+    if (!target || target.isSelected) {
+      void verseAudio.selectTake(id);
+      return;
+    }
+    // Picking a verse take deselects the passage take over it, as recording does.
+    if (coveringTake) {
+      void confirmRecordOver(
+        pickOverPassageTitle(target.takeNumber, verse),
+        recordOverPassageMessage(coveringTake),
+        PICK_OVER_VERSES_CONFIRM,
+      ).then(ok => {
+        if (ok) void verseAudio.selectTake(id);
+      });
+      return;
+    }
+    if (!versesSelected) {
       void verseAudio.selectTake(id);
       return;
     }
@@ -636,6 +656,7 @@ export function useRecorder({
     ) {
       return;
     }
+    const stepsBefore = steps.current;
     if (
       coveringTake &&
       !(await confirmRecordOver(
@@ -658,7 +679,13 @@ export function useRecorder({
     // A new take counts toward the limit, so a pending delete goes first.
     await deletion.commit();
     // The player may have closed while the delete ran; don't record hidden.
-    if (!showingRef.current) return;
+    if (
+      !showingRef.current ||
+      steppingRef.current ||
+      steps.current !== stepsBefore
+    ) {
+      return;
+    }
     session.setElapsedMs(0);
     await latestAudio.current.start();
   }
@@ -731,11 +758,20 @@ export function useRecorder({
         verses: stepVerses,
         previous: step.previous,
         next: step.next,
-        locked: held,
+        locked: held || stepping,
         go: verseNumber => {
           justSaved.current = false;
+          steps.current += 1;
+          steppingRef.current = true;
+          setStepping(true);
           // A delete waiting on undo belongs to this verse, so it goes first.
-          void deletion.commit().then(() => step.request(verseNumber));
+          void deletion
+            .commit()
+            .then(() => step.request(verseNumber))
+            .finally(() => {
+              steppingRef.current = false;
+              setStepping(false);
+            });
         },
       }
     : null;
@@ -745,6 +781,7 @@ export function useRecorder({
     recordDisabled:
       !capturing &&
       (held ||
+        stepping ||
         observerOnly ||
         classicReason !== null ||
         atCap ||

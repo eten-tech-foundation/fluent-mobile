@@ -1582,6 +1582,98 @@ describe('PassageScreen', () => {
       });
       expect(mockStart).toHaveBeenCalledTimes(1);
     });
+
+    it('asks before picking a verse take over its passage take', async () => {
+      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      mockSession = {
+        ...mockSession,
+        takes: [
+          { ...take(2), isSelected: true, startVerse: 22, endVerse: 23 },
+          { ...take(1), granularity: 'verse', startVerse: 22, endVerse: 22 },
+        ],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      fireEvent.press(screen.getByTestId('passage-fan-1'));
+
+      expect(alert).toHaveBeenCalledWith(
+        'Use take 1 for v. 22?',
+        "Passage take 2 won't be used for v. 22–23 anymore, so the rest of those verses will need recording too.",
+        expect.any(Array),
+        expect.any(Object),
+      );
+      expect(mockSelectTake).not.toHaveBeenCalled();
+      await act(async () => {
+        alert.mock.calls[0]![2]!.find(b => b.text === 'Use it')?.onPress?.();
+      });
+      expect(mockSelectTake).toHaveBeenCalledWith('t1');
+    });
+
+    describe("doesn't record on the verse it's leaving", () => {
+      const verseTakes = [
+        { ...take(1), granularity: 'verse', startVerse: 22, endVerse: 22 },
+        {
+          ...take(2),
+          granularity: 'verse',
+          isSelected: true,
+          startVerse: 22,
+          endVerse: 22,
+        },
+      ];
+      const stepToNext = () =>
+        fireEvent(
+          screen.getByTestId('passage-verse-position'),
+          'accessibilityAction',
+          { nativeEvent: { actionName: 'increment' } },
+        );
+
+      it('when the step waits on a delete', async () => {
+        let finishDelete = () => {};
+        mockDeleteTake.mockImplementationOnce(
+          () => new Promise<void>(resolve => (finishDelete = resolve)),
+        );
+        mockSession = { ...mockSession, takes: verseTakes };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        fireEvent(
+          screen.getByLabelText(/Take 2, selected/),
+          'accessibilityAction',
+          { nativeEvent: { actionName: 'delete' } },
+        );
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-key-record'));
+        });
+        await act(async () => stepToNext());
+
+        expect(
+          screen.getByTestId('passage-key-record').props.accessibilityState,
+        ).toMatchObject({ disabled: true });
+        await act(async () => finishDelete());
+        expect(mockStart).not.toHaveBeenCalled();
+        expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+        expect(
+          screen.getByTestId('passage-key-record').props.accessibilityState,
+        ).toMatchObject({ disabled: false });
+      });
+
+      it('when the step lands while the mic is asked for', async () => {
+        let grantMic = (_ok: boolean) => {};
+        mockEnsureMic.mockImplementationOnce(
+          () => new Promise<boolean>(resolve => (grantMic = resolve)),
+        );
+        mockSession = { ...mockSession, takes: verseTakes };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-key-record'));
+        });
+        await act(async () => stepToNext());
+        expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+
+        await act(async () => grantMic(true));
+        expect(mockStart).not.toHaveBeenCalled();
+      });
+    });
   });
 
   it('opens classic drafting from the title sheet', () => {

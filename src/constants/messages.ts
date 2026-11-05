@@ -164,6 +164,8 @@ export const pickOverVersesTitle = (takeNumber: number) =>
 export const PICK_OVER_VERSES_CONFIRM = 'Use it';
 export const RECORD_OVER_VERSES_MESSAGE =
   "The verses recorded on their own here won't be used anymore.";
+export const pickOverPassageTitle = (takeNumber: number, verse: number) =>
+  `Use take ${takeNumber} for v. ${verse}?`;
 export const recordInPassageTake = (takeNumber: number) =>
   `This verse is in passage take ${takeNumber}.`;
 export const recordOverPassageTitle = (verse: number) =>
