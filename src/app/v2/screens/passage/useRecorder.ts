@@ -259,7 +259,8 @@ export function useRecorder({
   const [lockedFront, setLockedFront] = useState<string | null>(null);
   /** A paused or scrubbed spot in a take, for Play to start from. */
   const [parked, setParked] = useState<{ id: string; ms: number } | null>(null);
-  // Verse mode lists the verse's own takes; a passage take over it is a notice.
+  // Verse mode lists the verse's own takes; a passage take over it plays
+  // read-only on the card when the verse has none.
   const isPassageTake = (t: { id: string; granularity: string }) =>
     (verseMode
       ? t.granularity !== 'pericope'
@@ -394,6 +395,15 @@ export function useRecorder({
     : passageTakes.find(t => t.id === leadId) ??
       (verseDraft ? null : pickedTake);
   const frontVerses = !held && !frontTake ? verseDraft : null;
+  // A verse with no take of its own plays the passage take over it, read-only.
+  const frontCover = verseMode && !held && !frontTake ? coveringTake : null;
+  const playingCover =
+    frontCover !== null && verseAudio.playingTakeId === frontCover.id;
+  const coverLength = frontCover?.durationMs ?? 0;
+  const coverParkedMs =
+    parked !== null && frontCover !== null && parked.id === frontCover.id
+      ? parked.ms
+      : 0;
   const versesLength = frontVerses?.durationMs ?? 0;
   const playingVerses =
     frontVerses !== null && verseAudio.playingTakeId === frontVerses.id;
@@ -475,6 +485,22 @@ export function useRecorder({
             : undefined,
         recording: false,
         official: false,
+      }
+    : frontCover
+    ? {
+        takeNumber: frontCover.takeNumber,
+        label: `Passage take ${frontCover.takeNumber}`,
+        durationMs: frontCover.durationMs ?? null,
+        levels: [],
+        progress:
+          playingCover && verseAudio.durationMs > 0
+            ? verseAudio.positionMs / verseAudio.durationMs
+            : coverLength > 0
+            ? coverParkedMs / coverLength
+            : 0,
+        onSeek: coverLength > 0 ? p => void scrubCover(p) : undefined,
+        recording: false,
+        official: frontCover.isCanonical,
       }
     : {
         takeNumber: 1,
@@ -717,12 +743,27 @@ export function useRecorder({
     if (verseAudio.state === 'playing') {
       if (playingFront) {
         setParked({ id: frontTake.id, ms: verseAudio.positionMs });
+      } else if (playingCover) {
+        setParked({ id: frontCover.id, ms: verseAudio.positionMs });
       }
       await verseAudio.pausePlayback();
       return;
     }
     if (frontVerses) {
       await verseAudio.playStitched(frontVerses);
+      return;
+    }
+    if (frontCover) {
+      setParked(null);
+      const parkedHere = parked?.id === frontCover.id;
+      await verseAudio.playTake(
+        frontCover,
+        parkedHere
+          ? coverParkedMs >= coverLength
+            ? 0
+            : coverParkedMs
+          : undefined,
+      );
       return;
     }
     // The take in front, which may not be the session's selected take.
@@ -744,6 +785,16 @@ export function useRecorder({
       return;
     }
     setParked({ id: frontTake.id, ms });
+  }
+
+  async function scrubCover(p: number) {
+    if (!frontCover) return;
+    const ms = Math.round(p * coverLength);
+    if (playingCover && verseAudio.state === 'playing') {
+      await verseAudio.seek(ms, frontCover);
+      return;
+    }
+    setParked({ id: frontCover.id, ms });
   }
 
   const footer: RecordStatus = {
@@ -790,7 +841,9 @@ export function useRecorder({
     onRecord: () => void oneAtATime(record),
     playing: verseAudio.state === 'playing',
     playDisabled:
-      held || (frontTake === null && frontVerses === null) || frontDeleted,
+      held ||
+      (frontTake === null && frontVerses === null && frontCover === null) ||
+      frontDeleted,
     onPlay: () => void playTake(),
     finishDisabled: !capturing,
     onFinish: () => void oneAtATime(() => verseAudio.stop()),

@@ -75,6 +75,8 @@ const sessionDefaults = {
   takes: [] as MockTake[],
   allTakes: [] as Record<string, unknown>[],
   captureBibleTextId: 1022 as number | null,
+  playingTakeId: null as string | null,
+  positionMs: 0,
 };
 let mockSession = { ...sessionDefaults };
 const take = (n: number): MockTake => ({
@@ -142,7 +144,8 @@ jest.mock('../../../hooks/useRecordSession', () => {
           state: mockSession.state,
           takes: mockSession.takes,
           deleteTake: mockDeleteTake,
-          playingTakeId: null,
+          playingTakeId: mockSession.playingTakeId,
+          positionMs: mockSession.positionMs,
           selectedTake: mockSession.takes.find(t => t.isSelected) ?? null,
           start: mockStart,
           stop: mockStop,
@@ -1550,6 +1553,76 @@ describe('PassageScreen', () => {
 
       expect(alert.mock.calls[0]![1]).toBe(
         "Passage take 2 won't be used for 14:22–15:5 anymore, so the rest of those verses will need recording too.",
+      );
+    });
+
+    it('plays the passage take over a verse with no take of its own, read-only', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(
+        screen.getAllByText('This verse is in passage take 2.', hidden).length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.getByTestId('passage-key-play').props.accessibilityState,
+      ).toMatchObject({ disabled: false });
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 't2' }),
+        undefined,
+      );
+      expect(screen.queryByTestId('passage-take-official', hidden)).toBeNull();
+    });
+
+    it('resumes the passage take over a verse where it was paused, and restarts it from the end', async () => {
+      const cover = {
+        ...take(2),
+        isSelected: true,
+        startVerse: 22,
+        endVerse: 23,
+      };
+      mockSession = {
+        ...mockSession,
+        takes: [cover],
+        state: 'playing',
+        playingTakeId: 't2',
+        positionMs: 4000,
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPauseTake).toHaveBeenCalled();
+
+      mockSession = { ...mockSession, state: 'idle', playingTakeId: null };
+      screen.rerender(<PassageScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't2' }),
+        4000,
+      );
+
+      const playback = screen.getByLabelText('Passage take 2 playback');
+      for (let step = 0; step < 20; step += 1) {
+        fireEvent(playback, 'accessibilityAction', {
+          nativeEvent: { actionName: 'increment' },
+        });
+      }
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't2' }),
+        0,
       );
     });
 
