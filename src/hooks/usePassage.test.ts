@@ -212,6 +212,30 @@ describe('usePassage', () => {
     });
   });
 
+  it('shows loading, not the old passage, while the other unit loads', async () => {
+    const { result, rerender } = renderHook(() => usePassage(5, 22, 3));
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+
+    mockUnit = 'verse';
+    rerender({});
+
+    expect(result.current.passage.status).toBe('loading');
+    await waitFor(() =>
+      expect(result.current.passage).toMatchObject({ wholeChapter: true }),
+    );
+  });
+
+  it('is missing, not stuck loading, when the other unit fails to load', async () => {
+    const { result, rerender } = renderHook(() => usePassage(5, 22, 3));
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+
+    mockAssignment.mockRejectedValueOnce(new Error('db'));
+    mockUnit = 'verse';
+    rerender({});
+
+    await waitFor(() => expect(result.current.passage.status).toBe('missing'));
+  });
+
   it('counts a one-verse pericope take as a passage take', async () => {
     mockCoverages.mockResolvedValue([
       {

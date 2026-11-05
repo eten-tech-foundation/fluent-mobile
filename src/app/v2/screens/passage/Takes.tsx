@@ -26,11 +26,10 @@ export function takesLine(
   return passage.waitingToSend ? `${line} · Waiting to send` : line;
 }
 
-/** Verse mode counts this chapter's verses recorded; null until one is. */
-function versesSummary({ verses, assignment }: Ready) {
-  const mine = verses.filter(v => v.chapterNumber === assignment.chapterNumber);
-  const done = mine.filter(v => v.recorded !== null).length;
-  return done === 0 ? null : `${done} of ${mine.length} verses recorded`;
+/** Counts the passage's verses recorded; null until one is. */
+function versesSummary({ verses }: Ready) {
+  const done = verses.filter(v => v.recorded !== null).length;
+  return done === 0 ? null : `${done} of ${verses.length} verses recorded`;
 }
 
 function takesSummary(passage: Ready, takes: PassageTake[]) {

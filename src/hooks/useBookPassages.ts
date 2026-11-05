@@ -84,16 +84,23 @@ function recordedStatusOf(
 }
 
 const WHOLE_CHAPTER_KEY = 'chapter:';
+const LOADING: BookPassages = { status: 'loading' };
 
 function isWholeChapter(passage: BookPassage): boolean {
   return passage.key.startsWith(WHOLE_CHAPTER_KEY);
 }
 
-/** A chapter with no pericopes is one passage, tracked by verse counts. */
-export function wholeChapter(chapter: ProjectChapter): BookPassage {
+/**
+ * A chapter with no pericopes is one passage, tracked by verse counts.
+ * `localVerses` counts this phone's takes, which the stored count lags.
+ */
+export function wholeChapter(
+  chapter: ProjectChapter,
+  localVerses = 0,
+): BookPassage {
   const recordedVerses = isPastDraft(chapter.workflowStage)
     ? chapter.totalVerses
-    : chapter.completedVerses;
+    : Math.max(chapter.completedVerses, localVerses);
   return {
     key: `${WHOLE_CHAPTER_KEY}${chapter.id}`,
     title: null,
@@ -146,13 +153,21 @@ export async function loadChapterPassages(
   stageOf?: StageOf,
 ): Promise<BookPassage[]> {
   const assignment = await getChapterAssignmentById(chapter.id);
-  if (!assignment || pericopeSetId === null) return [wholeChapter(chapter)];
+  if (!assignment) return [wholeChapter(chapter)];
   const { bibleId, bookId, chapterNumber } = assignment;
   const [groups, coverages] = await Promise.all([
-    getPericopesForChapter(bookId, chapterNumber, pericopeSetId),
+    pericopeSetId === null
+      ? []
+      : getPericopesForChapter(bookId, chapterNumber, pericopeSetId),
     coveragesFor(bibleId, bookId),
   ]);
-  if (groups.length === 0) return [wholeChapter(chapter)];
+  if (groups.length === 0) {
+    const verses = Array.from({ length: chapter.totalVerses }, (_, i) => ({
+      chapterNumber,
+      verseNumber: i + 1,
+    }));
+    return [wholeChapter(chapter, unitRecordedCount(verses, coverages))];
+  }
 
   const units = buildBibleUnits({
     draftingUnit: 'pericope',
@@ -211,9 +226,10 @@ export function useBookPassages(
   projectUnitId: number,
 ): BookPassages {
   const { draftingUnit } = useDraftingUnit();
-  const [passages, setPassages] = useState<BookPassages>({
-    status: 'loading',
-  });
+  const [passages, setPassages] = useState<{
+    loaded: BookPassages;
+    unit: typeof draftingUnit;
+  }>({ loaded: LOADING, unit: draftingUnit });
 
   useEffect(() => {
     let cancelled = false;
@@ -249,15 +265,23 @@ export function useBookPassages(
       };
     })()
       .then(loaded => {
-        if (!cancelled) setPassages({ status: 'ready', ...loaded });
+        if (!cancelled) {
+          setPassages({
+            loaded: { status: 'ready', ...loaded },
+            unit: draftingUnit,
+          });
+        }
       })
       .catch(error => {
         log.error('Failed to load book passages', { error });
         if (!cancelled) {
           setPassages({
-            status: 'ready',
-            byChapter: new Map(chapters.map(c => [c.id, [wholeChapter(c)]])),
-            pericopes: false,
+            loaded: {
+              status: 'ready',
+              byChapter: new Map(chapters.map(c => [c.id, [wholeChapter(c)]])),
+              pericopes: false,
+            },
+            unit: draftingUnit,
           });
         }
       });
@@ -266,5 +290,6 @@ export function useBookPassages(
     };
   }, [chapters, projectId, projectUnitId, draftingUnit]);
 
-  return passages;
+  // Covers loaded under the other unit would open the wrong passage.
+  return passages.unit === draftingUnit ? passages.loaded : LOADING;
 }

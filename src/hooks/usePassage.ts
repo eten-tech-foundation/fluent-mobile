@@ -77,6 +77,8 @@ export type Passage =
 
 export type PassageDownload = 'idle' | 'downloading' | 'failed';
 
+const LOADING: Passage = { status: 'loading' };
+
 async function loadPassage(
   assignment: Assignment,
   anchorVerse: number,
@@ -227,7 +229,13 @@ export function usePassage(
   reload: () => void;
 } {
   const { draftingUnit } = useDraftingUnit();
-  const [passage, setPassage] = useState<Passage>({ status: 'loading' });
+  // Tagged with the unit it was loaded under, so a switch doesn't show the
+  // old passage.
+  const [loaded, setLoaded] = useState<{
+    passage: Passage;
+    unit: DraftingUnit;
+  }>({ passage: LOADING, unit: draftingUnit });
+  const passage = loaded.unit === draftingUnit ? loaded.passage : LOADING;
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [downloadState, setDownloadState] = useState<PassageDownload>('idle');
   const [epoch, setEpoch] = useState(0);
@@ -273,12 +281,12 @@ export function usePassage(
         if (cancelled) return;
         if (next.status === 'ready') showedReady.current = true;
         setAssignment(found);
-        setPassage(next);
+        setLoaded({ passage: next, unit: draftingUnit });
       })
       .catch(error => {
         log.error('Failed to load passage', { error });
         if (!cancelled && !showedReady.current) {
-          setPassage({ status: 'missing' });
+          setLoaded({ passage: { status: 'missing' }, unit: draftingUnit });
         }
       });
     return () => {
@@ -309,7 +317,12 @@ export function usePassage(
         loadPassage(assignment, anchorVerse, projectUnitId, draftingUnit),
       )
       .then(next => {
-        setPassage(next);
+        // A switch while it downloaded has loaded the other unit already.
+        setLoaded(current =>
+          current.unit === draftingUnit
+            ? { passage: next, unit: draftingUnit }
+            : current,
+        );
         setDownloadState(
           next.status === 'ready' && next.downloaded ? 'idle' : 'failed',
         );

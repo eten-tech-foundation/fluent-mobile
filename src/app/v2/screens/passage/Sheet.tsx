@@ -39,7 +39,10 @@ import { useDraftingUnit } from '../../../../hooks/useDraftingUnit';
 import { useHaptics } from '../../../../hooks/useHaptics';
 import type { HeaderSync } from '../../../../hooks/useHeaderSync';
 import type { usePassage } from '../../../../hooks/usePassage';
-import { verseStartMs } from '../../../../hooks/sourceAudioHelpers';
+import {
+  hasVerseStart,
+  verseStartMs,
+} from '../../../../hooks/sourceAudioHelpers';
 import { useSourceAudio } from '../../../../hooks/useSourceAudio';
 import type { CaptureControls } from '../../../../types/captureControls';
 import type { SourceAudioLoadState } from '../../../../types/sourceAudio';
@@ -73,15 +76,29 @@ const NO_TURN = (label: string): KeyAction => ({
 function verseTurn(
   steps: ReturnType<typeof useRecorder>['verse'],
   side: 'previous' | 'next',
+  /** The verse playing, which they step from until the place catches up. */
+  heard: number | null,
+  /** Plays a verse from its start, for one that's already the place. */
+  replay: (verse: number) => (() => void) | null,
 ): KeyAction {
   const label = side === 'previous' ? 'Previous' : 'Next';
   if (!steps) return NO_TURN(label);
-  const target = steps[side];
+  const at =
+    heard === null ? -1 : steps.verses.findIndex(v => v.verseNumber === heard);
+  const target =
+    at < 0
+      ? steps[side]
+      : steps.verses[side === 'previous' ? at - 1 : at + 1]?.verseNumber ??
+        null;
+  const replaying = heard !== null && target === steps.current;
+  const replayTarget = replaying && target !== null ? replay(target) : null;
   return {
     label: target === null ? label : `${label}: verse ${target}`,
-    disabled: target === null || steps.locked,
+    disabled: target === null || steps.locked || (replaying && !replayTarget),
     onPress: () => {
-      if (target !== null) steps.go(target);
+      if (target === null) return;
+      if (replaying) replayTarget?.();
+      else steps.go(target);
     },
   };
 }
@@ -397,6 +414,14 @@ export function Sheet({
   const reachedPlayAt = useRef(false);
   const { loadState, verseTimestamps, dblAudioBibleId } = source;
   const { pauseTakePlayback } = recorder;
+  const replayVerse = (verse: number) =>
+    hasVerseStart(verse, verseTimestamps, dblAudioBibleId)
+      ? () => {
+          void source.seek(
+            verseStartMs(verse, verseTimestamps, dblAudioBibleId),
+          );
+        }
+      : null;
   useEffect(() => {
     if (playAt === null) return;
     if (showRecord || !expanded || loadState === 'error') {
@@ -410,12 +435,14 @@ export function Sheet({
     reachedPlayAt.current = true;
     if (loadState !== 'ready') return;
     setPlayAt(null);
-    // Without verse timings it would play from the top of the chapter.
-    if (isPlaying || !timed) return;
+    // Without its timing it would play from the top of the chapter.
+    if (isPlaying || !hasVerseStart(playAt, verseTimestamps, dblAudioBibleId)) {
+      return;
+    }
     void (async () => {
       await pauseTakePlayback();
       // Paused partway, play would resume there rather than at the verse.
-      if (source.status === 'paused' && verseTimestamps?.length) {
+      if (source.status === 'paused') {
         await source.seek(
           verseStartMs(playAt, verseTimestamps, dblAudioBibleId),
         );
@@ -645,12 +672,12 @@ export function Sheet({
             previous={
               noteOpen
                 ? noteKey(noteIndex - 1, 'Previous')
-                : verseTurn(steps, 'previous')
+                : verseTurn(steps, 'previous', heardVerse, replayVerse)
             }
             next={
               noteOpen
                 ? noteKey(noteIndex + 1, 'Next')
-                : verseTurn(steps, 'next')
+                : verseTurn(steps, 'next', heardVerse, replayVerse)
             }
           />
         }

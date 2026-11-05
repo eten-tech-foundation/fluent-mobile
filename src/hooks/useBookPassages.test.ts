@@ -182,6 +182,34 @@ describe('useBookPassages', () => {
     ]);
   });
 
+  it("counts this phone's takes on a whole chapter ahead of the stored count", async () => {
+    mockUnit = 'verse';
+    const chapters = [chapter(1, 14, { completedVerses: 1 })];
+
+    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    if (result.current.status !== 'ready') return;
+    expect(result.current.byChapter.get(1)?.[0]).toMatchObject({
+      recordedVerses: 2,
+      recordedStatus: 'partial',
+    });
+  });
+
+  it('shows loading, not the old covers, while the other unit loads', async () => {
+    const chapters = [chapter(1, 14)];
+    const { result, rerender } = renderHook(() =>
+      useBookPassages(chapters, 9, 3),
+    );
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    mockUnit = 'verse';
+    rerender({});
+
+    expect(result.current.status).toBe('loading');
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+  });
+
   it("lists each chapter's passages with how much is recorded", async () => {
     mockPericopes.mockImplementation(async (_book: number, ch: number) =>
       ch === 14

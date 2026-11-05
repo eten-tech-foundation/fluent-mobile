@@ -11,6 +11,7 @@ import type { SourceAudioLoadState } from '../types/sourceAudio';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import {
   chapterSourceAudioCacheKey,
+  hasVerseStart,
   isCachedSourceAudioResponseValid,
   resolveSourceAudioUri,
   sourceAudioItemDurationMs,
@@ -276,8 +277,11 @@ export function useSourceAudio({
     const moved = navigatedVerseRef.current !== verse;
     navigatedVerseRef.current = verse;
     if (playingVerseRef.current === verse || !moved) return;
+    const timed = hasVerseStart(verse, verseTimestamps, dblAudioBibleId);
+    // The poll knows what's playing; a verse without a timing can't claim it.
+    if (verseTimestamps?.length && !timed) return;
     playingVerseRef.current = verse;
-    if (verseTimestamps?.length) {
+    if (timed) {
       const startMs = verseStartMs(verse, verseTimestamps, dblAudioBibleId);
       void playbackRef.current.seek(startMs);
     }

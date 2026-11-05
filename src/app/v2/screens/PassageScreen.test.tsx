@@ -1235,6 +1235,20 @@ describe('PassageScreen', () => {
         expect(lastSession()).toMatchObject({ selectedVerse: 23 });
       });
 
+      it('steps from the verse playing with Previous and Next', async () => {
+        mockSource = { ...mockSource, verseTimestamps: timings };
+        render(<PassageScreen />);
+        playThrough23();
+
+        expect(
+          screen.getByTestId('passage-key-next').props.accessibilityState,
+        ).toMatchObject({ disabled: true });
+        await act(async () => {
+          fireEvent.press(screen.getByLabelText('Previous: verse 22'));
+        });
+        expect(mockSeekSource).toHaveBeenCalledWith(0);
+      });
+
       it('claims no verse playing without verse timings', () => {
         render(<PassageScreen />);
         playThrough23();
@@ -1304,6 +1318,20 @@ describe('PassageScreen', () => {
       render(<PassageScreen />);
       await act(async () => {
         fireEvent.press(screen.getByTestId('passage-verse-row-22'));
+      });
+
+      expect(screen.getByTestId('passage-verse-pages')).toBeTruthy();
+      expect(mockPlaySource).not.toHaveBeenCalled();
+    });
+
+    it("doesn't play a tapped row's verse that has no timing", async () => {
+      mockSource = {
+        ...mockSource,
+        verseTimestamps: [{ verse: 22, startSeconds: 0 }],
+      };
+      render(<PassageScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-verse-row-23'));
       });
 
       expect(screen.getByTestId('passage-verse-pages')).toBeTruthy();

@@ -140,14 +140,20 @@ export function useRecorder({
       passage.verses.filter(v => v.chapterNumber === assignment.chapterNumber),
     [passage.verses, assignment.chapterNumber],
   );
-  const [verse, setVerse] = useState(
-    () =>
-      stepVerses.find(v => v.verseNumber === openVerse)?.verseNumber ??
-      // Before the text is in, a recovered take still opens on its verse.
-      (stepVerses.length === 0 ? openVerse : undefined) ??
-      stepVerses.find(v => v.recorded === null)?.verseNumber ??
-      anchorVerse,
-  );
+  const firstVerse = () =>
+    stepVerses.find(v => v.verseNumber === openVerse)?.verseNumber ??
+    // Before the text is in, a recovered take still opens on its verse.
+    (stepVerses.length === 0 ? openVerse : undefined) ??
+    stepVerses.find(v => v.recorded === null)?.verseNumber ??
+    anchorVerse;
+  const [verse, setVerse] = useState(firstVerse);
+  // Text arriving after open picks again, since there was nothing to step to.
+  const versesIn = stepVerses.length > 0;
+  const [pickedWithVerses, setPickedWithVerses] = useState(versesIn);
+  if (!pickedWithVerses && versesIn) {
+    setPickedWithVerses(true);
+    setVerse(firstVerse());
+  }
   const session = useRecordSession({
     chapterData: assignment,
     userId,
@@ -252,7 +258,7 @@ export function useRecorder({
   const [lockedFront, setLockedFront] = useState<string | null>(null);
   /** A paused or scrubbed spot in a take, for Play to start from. */
   const [parked, setParked] = useState<{ id: string; ms: number } | null>(null);
-  // Verse mode lists the verse's own takes; a passage take over it is read-only.
+  // Verse mode lists the verse's own takes; a passage take over it is a notice.
   const isPassageTake = (t: { id: string; granularity: string }) =>
     (verseMode
       ? t.granularity !== 'pericope'
