@@ -36,6 +36,8 @@ export interface WordProps {
   /** Square the side that touches the next word of a phrase on its line. */
   joinStart?: boolean;
   joinEnd?: boolean;
+  /** A note that can't open here: its outline goes fg/inactive, unfilled. */
+  dimmed?: boolean;
   testID?: string;
 }
 
@@ -45,7 +47,7 @@ export interface WordProps {
  */
 export function Word({
   word,
-  variant,
+  variant: requested,
   textStyle,
   boxStyle,
   maxFontSizeMultiplier,
@@ -54,8 +56,10 @@ export function Word({
   hiddenFromAccessibility = false,
   joinStart = false,
   joinEnd = false,
+  dimmed = false,
   testID,
 }: WordProps) {
+  const variant = dimmed && requested === 'phrase' ? 'note' : requested;
   const styles = useThemedStyles(t => ({
     box: {
       borderRadius: t.radius.xs,
@@ -71,6 +75,7 @@ export function Word({
       borderWidth: t.stroke[2],
       borderColor: t.roles.accentPrimary,
     },
+    dimmed: { borderColor: t.roles.fgInactive },
     // Touching words of a phrase drop the border between them, padding its
     // width back so the line doesn't re-wrap when the phrase is focused.
     collapseStart: {
@@ -92,6 +97,7 @@ export function Word({
     styles.box,
     variant === 'phrase' && styles.phrase,
     variant === 'note' && styles.note,
+    variant === 'note' && dimmed && styles.dimmed,
     joinStart && styles.joinStart,
     joinEnd && styles.joinEnd,
     variant !== 'plain' && joinStart && styles.collapseStart,

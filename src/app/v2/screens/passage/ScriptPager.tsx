@@ -1,4 +1,4 @@
-import React, { useMemo, useState, type RefObject } from 'react';
+import React, { useMemo, type RefObject } from 'react';
 import { Pressable, ScrollView, Text } from 'react-native';
 import Animated, {
   interpolate,
@@ -9,23 +9,19 @@ import type { usePassage } from '../../../../hooks/usePassage';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import { Notebook } from '../../../../components/ui/icons';
 import { RoundButton } from '../../../../components/ui/RoundButton';
-import { Word } from '../../../../components/ui/Word';
-import { verseKey, verseWords, type NoteChips } from './noteMatch';
+import { verseKey } from './noteMatch';
+import {
+  CHIP_DESCENT,
+  chipIds,
+  noteWords,
+  segments,
+  useChipJoins,
+  useChipStyle,
+  type ScriptNotes,
+} from './noteWords';
 import { type Ready } from './ready';
 
-/** The passage's translation notes, as the script shows them. */
-export interface ScriptNotes {
-  /** Phrases with a note, by verse. */
-  chips: NoteChips;
-  /** Each note's quote, by note index, for TalkBack. */
-  quotes: string[];
-  /** The note last opened: its phrase stays full blue; the rest rest quiet. */
-  current: number | null;
-  /** Notes whose phrase isn't in this text; they follow the placed ones. */
-  unplaced: number;
-  /** Opens a note by index, from where it was tapped. Unset, chips are inert. */
-  onOpen?: (note: number, from?: { x: number; y: number }) => void;
-}
+export type { ScriptNotes } from './noteWords';
 import { useScriptMetrics } from './scriptMetrics';
 import type { VerseSteps } from './useRecorder';
 import { VersePages } from './VersePages';
@@ -96,19 +92,7 @@ export function ScriptPager({
     },
   }));
 
-  // Chips are drawn only in the still, open player, at its size: a space/4
-  // shorter than the line (Figma Word), less their border. Android sits an
-  // inline view's bottom on the baseline, so they drop by the font's descent.
-  const chip = useMemo(
-    () => ({
-      text: {
-        fontSize: large.fontSize,
-        lineHeight: largeLine - theme.spacing.xs - 2 * theme.stroke[2],
-      },
-      box: { transform: [{ translateY: CHIP_DESCENT * large.fontSize }] },
-    }),
-    [large.fontSize, largeLine, theme],
-  );
+  const chip = useChipStyle();
   // Legacy shows whatever verses are on the phone; so does the script.
   const shown = useMemo(
     () => passage.verses.filter(v => v.text),
@@ -146,47 +130,16 @@ export function ScriptPager({
     );
     return { top: bottom - h, height: h };
   });
-  // A phrase's words square off where they meet on a line and stay round
-  // where it wraps. Each inline chip is one placeholder character in its
-  // line, so the lines say which words share one; only a change re-renders.
-  const chipOrder = useMemo(() => {
-    const ids: string[] = [];
-    for (const v of shown) {
-      const key = verseKey(v.chapterNumber, v.verseNumber);
-      // Verse numbers are inline views too.
-      ids.push(`v${key}`);
-      for (const seg of segments(v.text, notes?.chips.get(key))) {
-        if (seg.note !== null) {
-          seg.words.forEach((_, j) => ids.push(`${seg.note}-${j}`));
-        }
-      }
-    }
-    return ids;
-  }, [shown, notes?.chips]);
-  const [joined, setJoined] = useState<ReadonlySet<string>>(() => new Set());
-  const onLines = (lines: { text: string }[]) => {
-    if (!notes) return;
-    const lineOf = new Map<string, number>();
-    let at = 0;
-    lines.forEach((line, row) => {
-      const count = line.text.split(INLINE).length - 1;
-      for (let k = 0; k < count && at < chipOrder.length; k += 1) {
-        lineOf.set(chipOrder[at], row);
-        at += 1;
-      }
-    });
-    const next = new Set<string>();
-    for (const [id, row] of lineOf) {
-      if (id.startsWith('v')) continue;
-      const [note, word] = id.split('-').map(Number);
-      if (lineOf.get(`${note}-${word + 1}`) === row) next.add(id);
-    }
-    setJoined(prev =>
-      prev.size === next.size && [...next].every(k => prev.has(k))
-        ? prev
-        : next,
-    );
-  };
+  // Verse numbers are inline views too, so they hold places in the lines.
+  const chipOrder = useMemo(
+    () =>
+      shown.flatMap(v => {
+        const key = verseKey(v.chapterNumber, v.verseNumber);
+        return [`v${key}`, ...chipIds(segments(v.text, notes?.chips.get(key)))];
+      }),
+    [shown, notes?.chips],
+  );
+  const { joined, onLines } = useChipJoins(chipOrder, notes !== undefined);
   // A verse number is a superscript: its top meets the capitals as the
   // script grows. A nested span can't leave the baseline, so it's an inline
   // view, which Android sits bottom on the baseline.
@@ -248,45 +201,15 @@ export function ScriptPager({
                 {v.verseNumber}
               </Text>
             </Animated.View>{' '}
-            {segments(v.text, notes?.chips.get(key)).map((seg, i) =>
-              seg.note === null ? (
-                `${seg.text} `
-              ) : (
-                <React.Fragment key={`${key}-${i}`}>
-                  {/* Words of one phrase touch, so the chip reads as one
-                      band and still wraps between words. */}
-                  {seg.words.map((w, j) => (
-                    <Word
-                      key={j}
-                      word={w}
-                      variant={notes?.current === seg.note ? 'phrase' : 'note'}
-                      textStyle={chip.text}
-                      boxStyle={chip.box}
-                      maxFontSizeMultiplier={theme.fontScale.readingMax}
-                      onPress={
-                        notes?.onOpen
-                          ? e =>
-                              notes.onOpen?.(
-                                seg.note,
-                                e?.nativeEvent && {
-                                  x: e.nativeEvent.pageX,
-                                  y: e.nativeEvent.pageY,
-                                },
-                              )
-                          : undefined
-                      }
-                      accessibilityLabel={`Translation note: ${
-                        notes?.quotes[seg.note] ?? seg.text
-                      }`}
-                      hiddenFromAccessibility={j > 0}
-                      joinStart={joined.has(`${seg.note}-${j - 1}`)}
-                      joinEnd={joined.has(`${seg.note}-${j}`)}
-                      testID={`passage-note-chip-${seg.note}-${j}`}
-                    />
-                  ))}{' '}
-                </React.Fragment>
-              ),
-            )}
+            {noteWords({
+              segs: segments(v.text, notes?.chips.get(key)),
+              keyPrefix: key,
+              notes,
+              joined,
+              chip,
+              maxFontSizeMultiplier: theme.fontScale.readingMax,
+              testIDPrefix: 'passage-note-chip',
+            })}
           </Text>
         );
       }),
@@ -313,7 +236,7 @@ export function ScriptPager({
     <>
       <Animated.View style={[styles.pager, pagerStyle]} testID="passage-pager">
         {versePages && verseSteps ? (
-          <VersePages steps={verseSteps} playing={playingVerse} />
+          <VersePages steps={verseSteps} playing={playingVerse} notes={notes} />
         ) : null}
         <ScrollView
           style={versePages && verseSteps ? styles.hidden : undefined}
@@ -382,37 +305,5 @@ export function ScriptPager({
   );
 }
 
-/** Google Sans Flex's descent, as a share of its size. */
-const CHIP_DESCENT = 0.2;
 /** Its capitals' height, as a share of its size. */
 const CAP_HEIGHT = 0.72;
-
-/** How Android lays an inline view into a line of text. */
-const INLINE = '\uFFFC';
-
-type Segment =
-  | { note: null; text: string }
-  | { note: number; text: string; words: string[] };
-
-/** A verse's text split into plain runs and the phrases with a note. */
-function segments(
-  text: string,
-  spans: { start: number; end: number; note: number }[] | undefined,
-): Segment[] {
-  const words = verseWords(text);
-  if (!spans?.length) return [{ note: null, text: words.join(' ') }];
-  const out: Segment[] = [];
-  let at = 0;
-  for (const span of [...spans].sort((a, b) => a.start - b.start)) {
-    if (span.start > at) {
-      out.push({ note: null, text: words.slice(at, span.start).join(' ') });
-    }
-    const phrase = words.slice(span.start, span.end);
-    out.push({ note: span.note, text: phrase.join(' '), words: phrase });
-    at = span.end;
-  }
-  if (at < words.length) {
-    out.push({ note: null, text: words.slice(at).join(' ') });
-  }
-  return out;
-}

@@ -126,7 +126,7 @@ change. All from #873.
 | --- | --- | --- |
 | The player's reading size | Script and listening materials in `type/reading` (42/52), notes in `type/lead` (32/40) | All three in `type/lead` (32/40), so the player reads at one size and more fits on screen; `type/reading` stays for read-along elsewhere |
 | Verse numbers in the script | `type/label` (14) | `type/title` (18), a little larger at the new reading size, raised in the player so its top meets the capitals |
-| Word, Note style | Not a Word style | A phrase with a translation note at rest: `fg/primary` text in a `stroke/2` `accent/primary` outline, `radius/xs`; touching words of a phrase square their corners and drop the shared border |
+| Word, Note style | Not a Word style | A phrase with a translation note at rest: `fg/primary` text in a `stroke/2` `accent/primary` outline, `radius/xs`; touching words of a phrase square their corners and drop the shared border. In Record, where notes don't open, the outline is `fg/inactive` and the focused phrase drops its fill |
 | Word, Phrase style | `accent/primary` fill | Adds a `stroke/2` border in the fill's color, so Phrase and Note are one size and swap without reflow |
 | Word chips in running text | Separate boxes laid out with `space/4` gaps | Inline in the script's text, a `space/4` + border shorter than the line and dropped 0.2 em onto the baseline (Android sits an inline view's bottom on it) |
 | Round button, Flat | Pinned to Canvas | Canvas, or Accent on a blue (Accent) screen, matching its description ("Flat = black and blue screens") |

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   FlatList,
@@ -7,10 +7,21 @@ import {
   View,
 } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
+import { Notebook } from '../../../../components/ui/icons';
 import { INACTIVE_SIZE } from '../../../../components/ui/PageDots';
+import { RoundButton } from '../../../../components/ui/RoundButton';
 import { VerseChip } from '../../../../components/ui/VerseChip';
 import type { PassageVerse } from '../../../../hooks/usePassage';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
+import { verseKey } from './noteMatch';
+import {
+  chipIds,
+  noteWords,
+  segments,
+  useChipJoins,
+  useChipStyle,
+  type ScriptNotes,
+} from './noteWords';
 import { useScriptMetrics } from './scriptMetrics';
 import type { VerseSteps } from './useRecorder';
 
@@ -24,14 +35,16 @@ const MAX_DOTS = 12;
 export function VersePages({
   steps,
   playing = null,
+  notes,
 }: {
   steps: VerseSteps;
   /** The source's verse while it plays; it leads the place until it stops. */
   playing?: number | null;
+  /** Each verse's translation notes, as chips like the script's. */
+  notes?: ScriptNotes;
 }) {
-  const theme = useTheme();
   const reduceMotion = useReducedMotion();
-  const { large, largeLine, fadeLarge } = useScriptMetrics();
+  const { fadeLarge } = useScriptMetrics();
   const styles = useThemedStyles(t => ({
     pages: { flex: 1 },
     top: {
@@ -48,8 +61,6 @@ export function VersePages({
       backgroundColor: t.roles.fgInactive,
     },
     count: { ...t.type.meta, color: t.roles.fgSecondary },
-    // The open script's size, so a verse reads the same on its page.
-    reading: { ...large, lineHeight: largeLine, color: t.roles.fgPrimary },
   }));
   const [width, setWidth] = useState(0);
   const listRef = useRef<FlatList<PassageVerse>>(null);
@@ -170,6 +181,7 @@ export function VersePages({
             setSwiped({ verse: next.verseNumber, reached: false });
             steps.go(next.verseNumber);
           }}
+          extraData={notes}
           renderItem={({ item }) => (
             <ScrollView
               style={{ width }}
@@ -177,16 +189,82 @@ export function VersePages({
               showsVerticalScrollIndicator={false}
               testID={`passage-verse-page-${item.verseNumber}`}
             >
-              <Text
-                style={styles.reading}
-                maxFontSizeMultiplier={theme.fontScale.readingMax}
-              >
-                {item.text}
-              </Text>
+              <VersePage
+                verse={item}
+                notes={notes}
+                first={item === steps.verses[0]}
+              />
             </ScrollView>
           )}
         />
       ) : null}
     </View>
+  );
+}
+
+/** One verse at reading size, its noted phrases as chips like the script's. */
+function VersePage({
+  verse,
+  notes,
+  first,
+}: {
+  verse: PassageVerse;
+  notes: ScriptNotes | undefined;
+  /** Notes about no verse in particular go on the first page. */
+  first: boolean;
+}) {
+  const theme = useTheme();
+  const { large, largeLine } = useScriptMetrics();
+  const styles = useThemedStyles(t => ({
+    // The open script's size, so a verse reads the same on its page.
+    reading: { ...large, lineHeight: largeLine, color: t.roles.fgPrimary },
+    more: { alignSelf: 'flex-start', marginTop: t.spacing.lg },
+  }));
+  const chip = useChipStyle();
+  const key = verseKey(verse.chapterNumber, verse.verseNumber);
+  const segs = useMemo(
+    () => segments(verse.text, notes?.chips.get(key)),
+    [verse.text, key, notes?.chips],
+  );
+  // Its notes that quote another translation, so have no phrase to tap here.
+  const more = [
+    ...(notes?.unplacedAt.get(key) ?? []),
+    ...(first ? notes?.unplacedAt.get('') ?? [] : []),
+  ];
+  const order = useMemo(() => chipIds(segs), [segs]);
+  const { joined, onLines } = useChipJoins(order, notes !== undefined);
+  return (
+    <>
+      <Text
+        style={styles.reading}
+        maxFontSizeMultiplier={theme.fontScale.readingMax}
+        // Chips read as buttons, not words, so TalkBack gets the verse here.
+        accessibilityLabel={verse.text}
+        onTextLayout={e => onLines(e.nativeEvent.lines)}
+      >
+        {noteWords({
+          segs,
+          keyPrefix: `${verse.verseNumber}`,
+          notes,
+          joined,
+          chip,
+          maxFontSizeMultiplier: theme.fontScale.readingMax,
+          testIDPrefix: `passage-verse-note-${verse.verseNumber}`,
+        })}
+      </Text>
+      {notes?.onOpen && more.length > 0 ? (
+        <RoundButton
+          variant="flat"
+          icon={Notebook}
+          label={`${more.length} more ${more.length === 1 ? 'note' : 'notes'}`}
+          accessibilityLabel={`${more.length} more translation ${
+            more.length === 1 ? 'note' : 'notes'
+          }`}
+          onPress={() => notes.onOpen?.(more[0])}
+          style={styles.more}
+          testID={`passage-verse-more-notes-${verse.verseNumber}`}
+        />
+      ) : null}
+    </>
   );
 }

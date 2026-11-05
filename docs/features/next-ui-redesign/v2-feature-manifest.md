@@ -374,10 +374,6 @@ Folded in from Legacy, so Next blocks and warns the same way:
   freeze is the biggest schedule risk in the backlog.
 - #691 bootsplash major and #499 Prettier 3 / TypeScript 7 are already
   deferred.
-- Verse mode (Q31, #884): translation notes (#873) only show as chips in
-  the open script, and verse mode's open player shows verse pages instead,
-  so notes can't be reached in verse mode, the default unit. The verse pages
-  need the same chips, or a notes entry.
 - Verse mode (Q31, #884): in pericope mode the verses recorded on
   their own have no tile in the take fan, so once a passage take is picked
   there's no way back to them there. A tile with a verses mark, which

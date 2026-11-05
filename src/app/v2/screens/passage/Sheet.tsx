@@ -317,9 +317,11 @@ export function Sheet({
             chips: notes.chips,
             quotes: notes.notes.map(n => n.quote),
             unplaced: notes.notes.filter(n => n.span === null).length,
+            unplacedAt: unplacedByVerse(notes.notes),
             current: lastNote,
-            // Notes are Listen's; the chips stay but don't open in Record.
+            // Notes are Listen's; the chips stay, quiet, but don't open in Record.
             onOpen: showRecord ? undefined : openNote,
+            dimmed: showRecord,
           }
         : undefined,
     [atRest, notes, lastNote, showRecord, openNote],
@@ -704,6 +706,16 @@ export function Sheet({
 }
 
 const styles = StyleSheet.create({ sheet: { flex: 1 } });
+
+function unplacedByVerse(notes: { span: unknown; verse: string | null }[]) {
+  const at = new Map<string, number[]>();
+  notes.forEach((n, i) => {
+    if (n.span !== null) return;
+    const key = n.verse ?? '';
+    at.set(key, [...(at.get(key) ?? []), i]);
+  });
+  return at;
+}
 
 function indexOfNote(notes: { id: string }[], id: string | null) {
   const index = id === null ? -1 : notes.findIndex(n => n.id === id);

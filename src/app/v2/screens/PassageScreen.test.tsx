@@ -1609,6 +1609,79 @@ describe('PassageScreen', () => {
       expect(mockSelectTake).toHaveBeenCalledWith('t1');
     });
 
+    describe('translation notes', () => {
+      beforeEach(() => {
+        mockNotes = [
+          {
+            id: 'cup',
+            title: 'Mark 14:23',
+            quote: 'took a cup',
+            body: 'The cup held wine.',
+            verse: { chapterNumber: 14, verseNumber: 23 },
+          },
+        ];
+        jest.useFakeTimers();
+      });
+      const layOutPages = () =>
+        fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
+          nativeEvent: { layout: { width: 300, height: 600 } },
+        });
+
+      it('shows them as chips on the verse page and opens them in Listen', () => {
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-listen'));
+        settle();
+        layOutPages();
+
+        expect(screen.getByTestId('passage-verse-note-23-0-0')).toBeTruthy();
+        fireEvent.press(screen.getByLabelText('Translation note: took a cup'));
+        expect(screen.getByText('The cup held wine.')).toBeTruthy();
+      });
+
+      it("opens a verse's notes that have no phrase from its own page", () => {
+        mockNotes = [
+          ...mockNotes,
+          {
+            id: 'elsewhere',
+            title: 'Mark 14:22',
+            quote: 'a phrase from another translation',
+            body: 'This note quotes another translation.',
+            verse: { chapterNumber: 14, verseNumber: 22 },
+          },
+        ];
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-listen'));
+        settle();
+        layOutPages();
+
+        expect(screen.queryByTestId('passage-verse-more-notes-23')).toBeNull();
+        fireEvent.press(screen.getByTestId('passage-verse-more-notes-22'));
+        expect(
+          screen.getByText('This note quotes another translation.'),
+        ).toBeTruthy();
+      });
+
+      it("dims them in Record, where they don't open", () => {
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-listen'));
+        settle();
+        layOutPages();
+        const outline = () =>
+          StyleSheet.flatten(
+            screen.getByTestId('passage-verse-note-23-0-0', hidden).props.style,
+          ).borderColor;
+        const listening = outline();
+
+        fireEvent.press(screen.getByLabelText('Record mode'));
+        settle();
+
+        expect(outline()).not.toBe(listening);
+        expect(
+          screen.queryByLabelText('Translation note: took a cup'),
+        ).toBeNull();
+      });
+    });
+
     describe("doesn't record on the verse it's leaving", () => {
       const verseTakes = [
         { ...take(1), granularity: 'verse', startVerse: 22, endVerse: 22 },
