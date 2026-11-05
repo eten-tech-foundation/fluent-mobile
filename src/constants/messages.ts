@@ -159,8 +159,9 @@ export const RECORD_VERSE_BY_VERSE = 'Recorded verse by verse';
 export const recordedOnTheirOwn = (count: number, total: number) =>
   `${count} of ${total} verses recorded on their own`;
 export const RECORD_OVER_VERSES_TITLE = 'Record the whole passage?';
-export const pickOverVersesTitle = (takeNumber: number) =>
-  `Use take ${takeNumber} for the whole passage?`;
+/** Names its verses when the passage is wider than the page, e.g. "v. 1–7". */
+export const pickOverVersesTitle = (takeNumber: number, verses?: string) =>
+  `Use passage take ${takeNumber} for ${verses ?? 'the whole passage'}?`;
 export const PICK_OVER_VERSES_CONFIRM = 'Use it';
 export const RECORD_OVER_VERSES_MESSAGE =
   "The verses recorded on their own here won't be used anymore.";

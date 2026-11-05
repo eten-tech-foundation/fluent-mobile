@@ -1700,7 +1700,7 @@ describe('PassageScreen', () => {
           fireEvent.press(screen.getByTestId('passage-take-official'));
         });
         expect(alert).toHaveBeenCalledWith(
-          'Use take 1 for the whole passage?',
+          'Use passage take 1 for v. 22–23?',
           "The verses recorded on their own here won't be used anymore.",
           expect.any(Array),
           expect.any(Object),
@@ -2133,7 +2133,7 @@ describe('PassageScreen', () => {
       });
 
       expect(alert).toHaveBeenCalledWith(
-        'Use take 3 for the whole passage?',
+        'Use passage take 3 for the whole passage?',
         "The verses recorded on their own here won't be used anymore.",
         expect.any(Array),
         expect.any(Object),

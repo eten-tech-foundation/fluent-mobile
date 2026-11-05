@@ -681,7 +681,10 @@ export function useRecorder({
       : coverTakes.some(c => c.id === t.id) || versesSelected
       ? // Picking a passage take deselects the verses recorded on their own.
         ([
-          pickOverVersesTitle(t.takeNumber),
+          pickOverVersesTitle(
+            t.takeNumber,
+            verseMode ? coverRange(t) : undefined,
+          ),
           RECORD_OVER_VERSES_MESSAGE,
         ] as const)
       : coveringTake
