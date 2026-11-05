@@ -85,6 +85,8 @@ const take = (n: number): MockTake => ({
   granularity: 'pericope',
   isSelected: false,
   durationMs: 10000,
+  startChapter: 14,
+  endChapter: 14,
 });
 let mockPassage: Passage = { status: 'loading' };
 let mockDownloadState: PassageDownload = 'idle';
@@ -1624,6 +1626,89 @@ describe('PassageScreen', () => {
         expect.objectContaining({ id: 't2' }),
         0,
       );
+    });
+
+    describe('passage takes over the verse, as tiles', () => {
+      const passageTake = {
+        ...take(1),
+        startVerse: 22,
+        endVerse: 23,
+      };
+      const ownTake = {
+        ...take(2),
+        granularity: 'verse',
+        isSelected: true,
+        startVerse: 22,
+        endVerse: 22,
+      };
+
+      it('numbers the next take after a passage take that starts on the verse', () => {
+        mockSession = {
+          ...mockSession,
+          takes: [{ ...passageTake, isSelected: true }],
+        };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+
+        expect(
+          screen.getByLabelText('Passage take 1, v. 22–23, selected'),
+        ).toBeTruthy();
+        expect(screen.getByTestId('passage-fan-2')).toBeTruthy();
+      });
+
+      it('numbers the next take after a passage take that only covers the verse', () => {
+        mockSession = {
+          ...mockSession,
+          takes: [{ ...passageTake, isSelected: true, startVerse: 21 }],
+        };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+
+        expect(screen.getByTestId('passage-fan-2')).toBeTruthy();
+      });
+
+      it('shows a passage take beside the verse take that replaced it, and asks before picking it back', async () => {
+        const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+        mockSession = { ...mockSession, takes: [passageTake, ownTake] };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+
+        expect(screen.getByTestId('passage-fan-p1')).toBeTruthy();
+        expect(screen.getByTestId('passage-fan-2')).toBeTruthy();
+        fireEvent.press(screen.getByTestId('passage-fan-p1'));
+        expect(alert).toHaveBeenCalledWith(
+          'Use take 1 for the whole passage?',
+          "The verses recorded on their own here won't be used anymore.",
+          expect.any(Array),
+          expect.any(Object),
+        );
+        expect(mockSelectTake).not.toHaveBeenCalled();
+        await act(async () => {
+          alert.mock.calls[0]![2]!.find(b => b.text === 'Use it')?.onPress?.();
+        });
+        expect(mockSelectTake).toHaveBeenCalledWith('t1');
+      });
+
+      it("brings a picked passage take's tile forward to play it", async () => {
+        mockSession = {
+          ...mockSession,
+          takes: [
+            { ...passageTake, isSelected: true, startVerse: 21, endVerse: 23 },
+            { ...ownTake, isSelected: false },
+          ],
+        };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        fireEvent.press(screen.getByTestId('passage-fan-p1'));
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-key-play'));
+        });
+
+        expect(mockPlayTake).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 't1' }),
+          undefined,
+        );
+      });
     });
 
     it('asks before recording a verse over its passage take', async () => {

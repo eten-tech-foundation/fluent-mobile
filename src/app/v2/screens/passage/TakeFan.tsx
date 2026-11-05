@@ -47,6 +47,8 @@ export interface FanTake {
   placeholder?: boolean;
   /** Dropped in the bin, with the undo window still open. */
   deleted?: boolean;
+  /** A passage take over this verse, read-only here: its verses, "v. 1–7". */
+  passage?: string;
 }
 
 /** Where a tile sits `steps` from the front: its center x and scale. */
@@ -219,7 +221,13 @@ export function TakeFan({
       </Animated.View>
       {takes.map((take, i) => (
         <Tile
-          key={take.placeholder ? 'placeholder' : take.takeNumber}
+          key={
+            take.placeholder
+              ? 'placeholder'
+              : take.passage
+              ? `passage-${take.id}`
+              : take.takeNumber
+          }
           take={take}
           steps={i - front}
           front={i === front}
@@ -232,7 +240,8 @@ export function TakeFan({
             !take.recording &&
             !take.paused &&
             !take.placeholder &&
-            !take.deleted
+            !take.deleted &&
+            !take.passage
               ? () => onDelete(take.id)
               : undefined
           }
@@ -497,6 +506,14 @@ function Tile({
     number: { ...t.type.title, color: t.roles.fgSecondary },
     numberFront: { color: t.roles.fgPrimary },
     numberOnAccent: { color: t.roles.fgOnAccent },
+    // A passage tile's verses, under its number.
+    range: {
+      ...t.type.meta,
+      color: t.roles.fgSecondary,
+      position: 'absolute',
+      left: t.spacing.sm,
+      bottom: t.spacing.xs,
+    },
     numberDeleted: { color: t.roles.fgSecondary, opacity: t.opacity.disabled },
     badge: {
       position: 'absolute',
@@ -581,9 +598,11 @@ function Tile({
           // The empty slot is decoration, not a button that does nothing.
           importantForAccessibility={take.placeholder ? 'no' : 'auto'}
           accessibilityRole="button"
-          accessibilityLabel={`Take ${take.takeNumber}${
-            status ? `, ${status}` : ''
-          }`}
+          accessibilityLabel={`${
+            take.passage
+              ? `Passage take ${take.takeNumber}, ${take.passage}`
+              : `Take ${take.takeNumber}`
+          }${status ? `, ${status}` : ''}`}
           accessibilityHint={take.deleted ? 'Undoes the delete' : undefined}
           accessibilityActions={
             onDelete ? [{ name: 'delete', label: 'Delete' }] : undefined
@@ -592,7 +611,7 @@ function Tile({
             if (e.nativeEvent.actionName === 'delete') onDelete?.();
           }}
           style={styles.press}
-          testID={`passage-fan-${take.takeNumber}`}
+          testID={`passage-fan-${take.passage ? 'p' : ''}${take.takeNumber}`}
         >
           {take.placeholder && !front ? null : (
             <Text
@@ -606,6 +625,14 @@ function Tile({
               {take.takeNumber}
             </Text>
           )}
+          {take.passage ? (
+            <Text
+              style={[styles.range, take.official && styles.numberOnAccent]}
+              numberOfLines={1}
+            >
+              {take.passage}
+            </Text>
+          ) : null}
           {take.official && !take.deleted ? (
             <Animated.View entering={ZoomIn.springify()} style={styles.badge}>
               <CheckBold color={roles.accentPrimary} size={BADGE_ICON} />
