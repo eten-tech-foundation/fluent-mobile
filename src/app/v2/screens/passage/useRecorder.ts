@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Alert } from 'react-native';
+import { AccessibilityInfo } from 'react-native';
 import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_MAX_IN_PASSAGE_TAKES,
@@ -255,6 +255,13 @@ export function useRecorder({
   );
   /** A take just deleted shows in front, with its undo, until it's settled. */
   const [frontOverride, setFrontOverride] = useState<string | null>(null);
+  /** A confirm on screen, answered through the Dialog the sheet draws. */
+  const [asking, setAsking] = useState<{
+    title: string;
+    message: string;
+    confirm: string;
+    resolve: (ok: boolean) => void;
+  } | null>(null);
   /** The tile tapped forward to play. Tapping doesn't pick; the check does. */
   const [viewId, setViewId] = useState<string | null>(null);
   /** A paused or scrubbed spot in a take, for Play to start from. */
@@ -704,6 +711,14 @@ export function useRecorder({
     await verseAudio.setCanonical(t.id);
   }
 
+  // Leaving Record answers an open question with no.
+  useEffect(() => {
+    if (!shown && asking) {
+      asking.resolve(false);
+      setAsking(null);
+    }
+  }, [shown, asking]);
+
   // A tile tapped forward leads on its verse until a take starts or Record
   // closes.
   useEffect(() => {
@@ -794,20 +809,15 @@ export function useRecorder({
     confirm = RECORD_OVER_PASSAGE_CONFIRM,
   ) {
     return new Promise<boolean>(resolve => {
-      Alert.alert(
-        title,
-        message,
-        [
-          {
-            text: RECORD_OVER_PASSAGE_CANCEL,
-            style: 'cancel',
-            onPress: () => resolve(false),
-          },
-          { text: confirm, onPress: () => resolve(true) },
-        ],
-        { cancelable: true, onDismiss: () => resolve(false) },
-      );
+      setAsking(prev => {
+        prev?.resolve(false);
+        return { title, message, confirm, resolve };
+      });
     });
+  }
+  function answer(ok: boolean) {
+    asking?.resolve(ok);
+    setAsking(null);
   }
 
   async function playTake() {
@@ -941,6 +951,15 @@ export function useRecorder({
     cannotRecord: live || capturing ? null : cannotRecord,
     /** Legacy's Record-tab banners, for the hero and player. */
     notices,
+    /** A record or pick confirm waiting on an answer. */
+    confirm: asking && {
+      title: asking.title,
+      message: asking.message,
+      confirmLabel: asking.confirm,
+      cancelLabel: RECORD_OVER_PASSAGE_CANCEL,
+      onConfirm: () => answer(true),
+      onCancel: () => answer(false),
+    },
     /** Stops a take so Listen's source audio can start alone. */
     pauseTakePlayback: verseAudio.pausePlayback,
     discardCapture: verseAudio.discardCapture,

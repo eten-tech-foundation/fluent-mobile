@@ -1494,7 +1494,6 @@ describe('PassageScreen', () => {
     });
 
     it("doesn't record over a passage take when the confirm is cancelled", async () => {
-      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       mockSession = {
         ...mockSession,
         takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
@@ -1506,7 +1505,7 @@ describe('PassageScreen', () => {
       });
 
       await act(async () => {
-        alert.mock.calls[0]![2]!.find(b => b.text === 'Cancel')?.onPress?.();
+        fireEvent.press(screen.getByTestId('passage-confirm-cancel'));
       });
       expect(mockStart).not.toHaveBeenCalled();
     });
@@ -1533,7 +1532,6 @@ describe('PassageScreen', () => {
     });
 
     it('names both chapters of a passage take that crosses them', async () => {
-      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       mockSession = {
         ...mockSession,
         takes: [
@@ -1553,9 +1551,11 @@ describe('PassageScreen', () => {
         fireEvent.press(screen.getByTestId('passage-key-record'));
       });
 
-      expect(alert.mock.calls[0]![1]).toBe(
-        "Passage take 2 won't be used for 14:22–15:5 anymore, so the rest of those verses will need recording too.",
-      );
+      expect(
+        screen.getByText(
+          "Passage take 2 won't be used for 14:22–15:5 anymore, so the rest of those verses will need recording too.",
+        ),
+      ).toBeTruthy();
     });
 
     it('plays the passage take over a verse with no take of its own', async () => {
@@ -1582,7 +1582,6 @@ describe('PassageScreen', () => {
     });
 
     it('makes a picked passage take official from its check, without asking', async () => {
-      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       mockSession = {
         ...mockSession,
         takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
@@ -1593,7 +1592,7 @@ describe('PassageScreen', () => {
         fireEvent.press(screen.getByTestId('passage-take-official'));
       });
 
-      expect(alert).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('passage-confirm')).toBeNull();
       expect(mockSelectTake).not.toHaveBeenCalled();
       expect(mockSetCanonical).toHaveBeenCalledWith('t2');
     });
@@ -1686,7 +1685,6 @@ describe('PassageScreen', () => {
       });
 
       it('shows a passage take beside the verse take that replaced it, and asks before picking it back', async () => {
-        const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
         mockSession = { ...mockSession, takes: [passageTake, ownTake] };
         render(<PassageScreen />);
         fireEvent.press(screen.getByTestId('passage-record'));
@@ -1695,19 +1693,21 @@ describe('PassageScreen', () => {
         expect(screen.getByTestId('passage-fan-2')).toBeTruthy();
         // Tapping only brings it forward; the check asks.
         fireEvent.press(screen.getByTestId('passage-fan-p1'));
-        expect(alert).not.toHaveBeenCalled();
+        expect(screen.queryByTestId('passage-confirm')).toBeNull();
         await act(async () => {
           fireEvent.press(screen.getByTestId('passage-take-official'));
         });
-        expect(alert).toHaveBeenCalledWith(
-          'Use passage take 1 for v. 22–23?',
-          "The verses recorded on their own here won't be used anymore.",
-          expect.any(Array),
-          expect.any(Object),
-        );
+        expect(
+          screen.getByText('Use passage take 1 for v. 22–23?'),
+        ).toBeTruthy();
+        expect(
+          screen.getByText(
+            "The verses recorded on their own here won't be used anymore.",
+          ),
+        ).toBeTruthy();
         expect(mockSelectTake).not.toHaveBeenCalled();
         await act(async () => {
-          alert.mock.calls[0]![2]!.find(b => b.text === 'Use it')?.onPress?.();
+          fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
         });
         expect(mockSelectTake).toHaveBeenCalledWith('t1');
         expect(mockSetCanonical).toHaveBeenCalledWith('t1');
@@ -1736,7 +1736,6 @@ describe('PassageScreen', () => {
     });
 
     it('asks before recording a verse over its passage take', async () => {
-      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       mockSession = {
         ...mockSession,
         takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
@@ -1750,23 +1749,21 @@ describe('PassageScreen', () => {
       await act(async () => {
         fireEvent.press(screen.getByTestId('passage-key-record'));
       });
-      expect(alert).toHaveBeenCalledWith(
-        'Record v. 22 on its own?',
-        "Passage take 2 won't be used for v. 22–23 anymore, so the rest of those verses will need recording too.",
-        expect.any(Array),
-        expect.any(Object),
-      );
+      expect(screen.getByText('Record v. 22 on its own?')).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Passage take 2 won't be used for v. 22–23 anymore, so the rest of those verses will need recording too.",
+        ),
+      ).toBeTruthy();
       expect(mockStart).not.toHaveBeenCalled();
 
-      const buttons = alert.mock.calls[0]![2]!;
       await act(async () => {
-        buttons.find(b => b.text === 'Record')?.onPress?.();
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
       });
       expect(mockStart).toHaveBeenCalledTimes(1);
     });
 
     it('asks before picking a verse take over its passage take', async () => {
-      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       mockSession = {
         ...mockSession,
         takes: [
@@ -1777,20 +1774,20 @@ describe('PassageScreen', () => {
       render(<PassageScreen />);
       fireEvent.press(screen.getByTestId('passage-record'));
       fireEvent.press(screen.getByTestId('passage-fan-1'));
-      expect(alert).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('passage-confirm')).toBeNull();
       await act(async () => {
         fireEvent.press(screen.getByTestId('passage-take-official'));
       });
 
-      expect(alert).toHaveBeenCalledWith(
-        'Use take 1 for v. 22?',
-        "Passage take 2 won't be used for v. 22–23 anymore, so the rest of those verses will need recording too.",
-        expect.any(Array),
-        expect.any(Object),
-      );
+      expect(screen.getByText('Use take 1 for v. 22?')).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Passage take 2 won't be used for v. 22–23 anymore, so the rest of those verses will need recording too.",
+        ),
+      ).toBeTruthy();
       expect(mockSelectTake).not.toHaveBeenCalled();
       await act(async () => {
-        alert.mock.calls[0]![2]!.find(b => b.text === 'Use it')?.onPress?.();
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
       });
       expect(mockSelectTake).toHaveBeenCalledWith('t1');
     });
@@ -2080,7 +2077,6 @@ describe('PassageScreen', () => {
     });
 
     it('asks before a passage take replaces them', async () => {
-      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       mockSession = { ...mockSession, takes: [verseTake(1, 22)] };
       render(<PassageScreen />);
       fireEvent.press(screen.getByTestId('passage-record'));
@@ -2088,15 +2084,15 @@ describe('PassageScreen', () => {
         fireEvent.press(screen.getByTestId('passage-key-record'));
       });
 
-      expect(alert).toHaveBeenCalledWith(
-        'Record the whole passage?',
-        "The verses recorded on their own here won't be used anymore.",
-        expect.any(Array),
-        expect.any(Object),
-      );
+      expect(screen.getByText('Record the whole passage?')).toBeTruthy();
+      expect(
+        screen.getByText(
+          "The verses recorded on their own here won't be used anymore.",
+        ),
+      ).toBeTruthy();
       expect(mockStart).not.toHaveBeenCalled();
       await act(async () => {
-        alert.mock.calls[0]![2]!.find(b => b.text === 'Record')?.onPress?.();
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
       });
       expect(mockStart).toHaveBeenCalledTimes(1);
     });
@@ -2119,7 +2115,6 @@ describe('PassageScreen', () => {
     });
 
     it('asks before picking a passage take over them', async () => {
-      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       mockSession = {
         ...mockSession,
         takes: [{ ...take(3), isSelected: false }, verseTake(1, 22)],
@@ -2127,20 +2122,22 @@ describe('PassageScreen', () => {
       render(<PassageScreen />);
       fireEvent.press(screen.getByTestId('passage-record'));
       fireEvent.press(screen.getByTestId('passage-fan-3'));
-      expect(alert).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('passage-confirm')).toBeNull();
       await act(async () => {
         fireEvent.press(screen.getByTestId('passage-take-official'));
       });
 
-      expect(alert).toHaveBeenCalledWith(
-        'Use passage take 3 for the whole passage?',
-        "The verses recorded on their own here won't be used anymore.",
-        expect.any(Array),
-        expect.any(Object),
-      );
+      expect(
+        screen.getByText('Use passage take 3 for the whole passage?'),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          "The verses recorded on their own here won't be used anymore.",
+        ),
+      ).toBeTruthy();
       expect(mockSelectTake).not.toHaveBeenCalled();
       await act(async () => {
-        alert.mock.calls[0]![2]!.find(b => b.text === 'Use it')?.onPress?.();
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
       });
       expect(mockSelectTake).toHaveBeenCalledWith('t3');
     });
@@ -2429,16 +2426,22 @@ describe('PassageScreen', () => {
     });
   });
 
-  it('asks before closing the player on a take in progress', () => {
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  it('asks before closing the player on a take in progress', async () => {
     mockSession = { ...mockSession, state: 'recording', captureActive: true };
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
 
     fireEvent.press(screen.getByTestId('passage-close'));
-
-    expect(alert).toHaveBeenCalled();
+    expect(screen.getByTestId('passage-confirm')).toBeTruthy();
     expect(screen.getByLabelText('Close the player')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('passage-confirm-cancel'));
+    expect(mockDiscard).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('passage-close'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+    });
+    expect(mockDiscard).toHaveBeenCalledTimes(1);
   });
 
   it('leaves back presses to a screen pushed over the open player', () => {

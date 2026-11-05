@@ -6,7 +6,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  Alert,
   BackHandler,
   InteractionManager,
   ScrollView,
@@ -47,6 +46,7 @@ import { useSourceAudio } from '../../../../hooks/useSourceAudio';
 import type { CaptureControls } from '../../../../types/captureControls';
 import type { SourceAudioLoadState } from '../../../../types/sourceAudio';
 import { ColorModeScope, useTheme } from '../../../../theme/useTheme';
+import { Dialog, type DialogProps } from '../../../../components/ui/Dialog';
 import { Footer } from './Footer';
 import { NoteScreen } from './NoteScreen';
 import { PassageHero } from './PassageHero';
@@ -488,22 +488,36 @@ export function Sheet({
 
   // A take in progress asks first, like leaving a verse in the Record tab.
   const { discardCapture } = recorder;
+  const [leaving, setLeaving] = useState(false);
+  // Nothing to leave once the take ends on its own.
+  useEffect(() => {
+    if (!capturing) setLeaving(false);
+  }, [capturing]);
   const close = useCallback(() => {
     if (!capturing) {
       animateTo(false);
       return;
     }
-    Alert.alert(CAPTURE_LEAVE_TITLE, CAPTURE_LEAVE_MESSAGE, [
-      { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
-      {
-        text: CAPTURE_LEAVE_DISCARD,
-        style: 'destructive',
-        onPress: () => {
+    setLeaving(true);
+  }, [capturing, animateTo]);
+  const leaveDialog: Omit<DialogProps, 'visible'> | null = leaving
+    ? {
+        title: CAPTURE_LEAVE_TITLE,
+        message: CAPTURE_LEAVE_MESSAGE,
+        confirmLabel: CAPTURE_LEAVE_DISCARD,
+        cancelLabel: CAPTURE_LEAVE_RESUME,
+        onConfirm: () => {
+          setLeaving(false);
           void discardCapture().then(() => animateTo(false));
         },
-      },
-    ]);
-  }, [capturing, animateTo, discardCapture]);
+        onCancel: () => setLeaving(false),
+      }
+    : null;
+  // One question at a time, drawn as the Next dialog. The last one stays
+  // while it fades out.
+  const asked = leaveDialog ?? recorder.confirm;
+  const lastAsked = useRef(asked);
+  if (asked) lastAsked.current = asked;
 
   // A screen pushed over the open player gets back presses first.
   useEffect(() => {
@@ -684,6 +698,13 @@ export function Sheet({
           />
         }
       />
+      {lastAsked.current ? (
+        <Dialog
+          {...lastAsked.current}
+          visible={asked !== null}
+          testID="passage-confirm"
+        />
+      ) : null}
       {noteOpen ? (
         <ColorModeScope value="accent">
           <NoteScreen
