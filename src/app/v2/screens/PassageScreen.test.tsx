@@ -1581,6 +1581,57 @@ describe('PassageScreen', () => {
       );
     });
 
+    it('picks up a passage take where it was, on the next verse it covers', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(2), isSelected: true, startVerse: 22, endVerse: 23 }],
+        state: 'playing',
+        playingTakeId: 't2',
+        positionMs: 4000,
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent(
+          screen.getByTestId('passage-verse-position'),
+          'accessibilityAction',
+          { nativeEvent: { actionName: 'increment' } },
+        );
+      });
+      expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+
+      mockSession = { ...mockSession, state: 'idle', playingTakeId: null };
+      screen.rerender(<PassageScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't2' }),
+        4000,
+      );
+    });
+
+    it('names the passage take a swap replaces, not verses', async () => {
+      mockSession = {
+        ...mockSession,
+        takes: [
+          { ...take(1), startVerse: 22, endVerse: 23 },
+          { ...take(2), isSelected: true, startVerse: 22, endVerse: 23 },
+        ],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      fireEvent.press(screen.getByTestId('passage-fan-p1'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
+
+      expect(screen.getByText('Use passage take 1 for v. 22–23?')).toBeTruthy();
+      expect(
+        screen.getByText("Passage take 2 won't be used for v. 22–23 anymore."),
+      ).toBeTruthy();
+    });
+
     it('makes a picked passage take official from its check, without asking', async () => {
       mockSession = {
         ...mockSession,

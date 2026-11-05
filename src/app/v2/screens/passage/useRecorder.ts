@@ -12,6 +12,7 @@ import {
   RECORD_OVER_PASSAGE_CONFIRM,
   recordInPassageTake,
   recordOverPassageMessage,
+  swapPassageMessage,
   recordOverPassageTitle,
   RECORD_OBSERVER,
   RECORD_OTHERS_OFFICIAL,
@@ -683,9 +684,16 @@ export function useRecorder({
     }
   }
   async function choose(t: (typeof verseAudio.takes)[number]) {
+    const isCover = coverTakes.some(c => c.id === t.id);
     const ask = t.isSelected
       ? null
-      : coverTakes.some(c => c.id === t.id) || versesSelected
+      : isCover && coveringTake
+      ? // Swapping passage takes: the one picked over the verse goes.
+        ([
+          pickOverVersesTitle(t.takeNumber, coverRange(t)),
+          swapPassageMessage(coveringTake),
+        ] as const)
+      : isCover || versesSelected
       ? // Picking a passage take deselects the verses recorded on their own.
         ([
           pickOverVersesTitle(
@@ -893,6 +901,10 @@ export function useRecorder({
         locked: held || stepping,
         go: verseNumber => {
           justSaved.current = false;
+          // A passage take playing over the next verse too picks up there.
+          if (playingCover && verseAudio.state === 'playing') {
+            setParked({ id: frontCover.id, ms: verseAudio.positionMs });
+          }
           steps.current += 1;
           steppingRef.current = true;
           setStepping(true);

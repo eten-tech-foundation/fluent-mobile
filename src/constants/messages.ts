@@ -171,19 +171,26 @@ export const recordInPassageTake = (takeNumber: number) =>
   `This verse is in passage take ${takeNumber}.`;
 export const recordOverPassageTitle = (verse: number) =>
   `Record v. ${verse} on its own?`;
-export const recordOverPassageMessage = (take: {
+type RangedTake = {
   takeNumber: number;
   startChapter: number;
   startVerse: number;
   endChapter: number;
   endVerse: number;
-}) => {
-  const range =
-    take.startChapter === take.endChapter
-      ? `v. ${take.startVerse}–${take.endVerse}`
-      : `${take.startChapter}:${take.startVerse}–${take.endChapter}:${take.endVerse}`;
-  return `Passage take ${take.takeNumber} won't be used for ${range} anymore, so the rest of those verses will need recording too.`;
 };
+const takeRange = (take: RangedTake) =>
+  take.startChapter === take.endChapter
+    ? `v. ${take.startVerse}–${take.endVerse}`
+    : `${take.startChapter}:${take.startVerse}–${take.endChapter}:${take.endVerse}`;
+export const recordOverPassageMessage = (take: RangedTake) =>
+  `Passage take ${take.takeNumber} won't be used for ${takeRange(
+    take,
+  )} anymore, so the rest of those verses will need recording too.`;
+/** Swapping one passage take for another over a verse. */
+export const swapPassageMessage = (take: RangedTake) =>
+  `Passage take ${take.takeNumber} won't be used for ${takeRange(
+    take,
+  )} anymore.`;
 export const RECORD_OVER_PASSAGE_CANCEL = 'Cancel';
 export const RECORD_OVER_PASSAGE_CONFIRM = 'Record';
 /**
