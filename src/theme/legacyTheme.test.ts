@@ -131,6 +131,9 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
       textTransform: 'none',
     });
     expect(nextTheme.type.meta.textTransform).toBe('none');
+    // Room for Jakarta's descenders; Figma has 48 and 24.
+    expect(nextTheme.type.heading.lineHeight).toBe(54);
+    expect(nextTheme.type.overline.lineHeight).toBe(26);
     expect(nextTheme.typeTelugu.reading.lineHeight).toBe(64);
     expect(nextTheme.fontScale.readingMax).toBe(1.3);
     expect(nextTheme.radius.xs).toBe(4);
@@ -156,6 +159,7 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     expect(legacyTheme.type.title).not.toHaveProperty('fontFamily');
     expect(legacyTheme.type.meta.fontFamily).toBe('monospace');
     expect(legacyTheme.type.meta.textTransform).toBe('uppercase');
+    expect(legacyTheme.type.heading.lineHeight).toBe(48);
   });
 
   it('keeps the same role keys in Legacy so components never branch', () => {

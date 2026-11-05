@@ -77,8 +77,17 @@ export const nextFontFamilies: TypeFamilies = {
   meta: 'PlusJakartaSans',
 };
 
-/** Figma named type styles for Next (`Theme.type`). */
-export const nextTypeStyles = buildTypeStyles(nextFontFamilies, 'none');
+const figmaTypeStyles = buildTypeStyles(nextFontFamilies, 'none');
+
+/**
+ * Figma named type styles for Next (`Theme.type`). Jakarta draws taller than
+ * Figma's 48 and 24, so heading and overline get room for their descenders.
+ */
+export const nextTypeStyles = {
+  ...figmaTypeStyles,
+  heading: { ...figmaTypeStyles.heading, lineHeight: 54 },
+  overline: { ...figmaTypeStyles.overline, lineHeight: 26 },
+};
 
 /**
  * Partial `Theme.typography` overrides, read from the named styles.
