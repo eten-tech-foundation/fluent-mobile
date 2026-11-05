@@ -121,8 +121,10 @@ async function loadPassage(
   const expectedVerses = group
     ? group.verses.length
     : await getChapterAssignmentVerseCount(assignment.id);
+  // Others' chapters often store no count (0). Sync fetches a chapter's text
+  // whole, so any text means it's in, as the sync chrome reads it.
   const downloaded =
-    expectedVerses > 0 &&
+    unitVerses.length > 0 &&
     unitVerses.length >= expectedVerses &&
     unitVerses.every(v => textOf.get(`${v.chapterNumber}:${v.verseNumber}`));
 

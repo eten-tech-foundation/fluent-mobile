@@ -413,9 +413,20 @@ describe('usePassage', () => {
     expect(result.current.passage).toMatchObject({ downloaded: false });
   });
 
-  it('is not downloaded when the chapter count is unknown', async () => {
+  it("is downloaded on its text when the chapter's count is unknown", async () => {
     mockSetId.mockResolvedValue(null);
     mockVerseCount.mockResolvedValue(0);
+
+    const { result } = renderHook(() => usePassage(5, 1, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(result.current.passage).toMatchObject({ downloaded: true });
+  });
+
+  it('is not downloaded without text when the count is unknown', async () => {
+    mockSetId.mockResolvedValue(null);
+    mockVerseCount.mockResolvedValue(0);
+    mockTexts.mockResolvedValue([]);
 
     const { result } = renderHook(() => usePassage(5, 1, 3));
 
