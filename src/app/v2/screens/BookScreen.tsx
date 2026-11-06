@@ -107,6 +107,12 @@ export default function BookScreen() {
   } = useMilestoneChapters(projectUnitId, projectId);
   const sync = useHeaderSync({ onSyncComplete: reload });
   const scroll = useScrolled();
+  const listShown = chapters.length > 0 && !error && !removedFromProject;
+  const { reset: resetScroll } = scroll;
+  // The list comes back at its top after the error or empty state.
+  useEffect(() => {
+    if (!listShown) resetScroll();
+  }, [listShown, resetScroll]);
   const passages = useBookPassages(chapters, projectId, projectUnitId);
   const listRef = useRef<FlatList<ProjectChapter>>(null);
   const focusedRef = useRef(false);
@@ -292,7 +298,7 @@ export default function BookScreen() {
 
   // Soft on the light page, like the passage page's Flat one on the dark hero.
   const header = (
-    <ScreenHeader scrolled={scroll.scrolled} testID="book-header">
+    <ScreenHeader scrolled={listShown && scroll.scrolled} testID="book-header">
       <RoundButton
         icon={ArrowLeft}
         accessibilityLabel="Back"

@@ -166,6 +166,10 @@ const MARK: HomeBookSummary = {
 };
 
 describe('Next HomeScreen', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockSession = { ...sessionDefaults };
@@ -224,7 +228,6 @@ describe('Next HomeScreen', () => {
     });
 
     expect(stroke).toHaveAnimatedStyle({ opacity: 1 });
-    jest.useRealTimers();
   });
 
   it('asks to sign in again when the session expired', () => {

@@ -84,5 +84,6 @@ export function useScrolled() {
       setScrolled(e.nativeEvent.contentOffset.y > 0),
     [],
   );
-  return { scrolled, onScroll };
+  const reset = useCallback(() => setScrolled(false), []);
+  return { scrolled, onScroll, reset };
 }
