@@ -389,7 +389,7 @@ Folded in from Legacy, so Next blocks and warns the same way:
   body and label. Figma still shows Google Sans Flex and DM Mono, so the
   styles need the new families, with overline and meta no longer mono or
   uppercase. Jakarta draws taller, so heading's line height is 54 (not 48)
-  and overline's 26 (not 24), and the Word chip in notes is a space/8 shorter
+  and overline's 26 (not 24), and the Word chip in notes is a space/2 shorter
   than its line, not a space/4.
 
 ### Elsewhere on Project 4
