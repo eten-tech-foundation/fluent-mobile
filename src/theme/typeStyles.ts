@@ -1,8 +1,9 @@
 /**
  * Figma named type styles (Foundations · 03 Type), the one source for these
  * metrics. Each theme passes its own families.
- * Leave a family undefined unless it's linked natively with every weight: on
- * Android a named family without them drops 500/600 to regular.
+ * Leave a family undefined unless it's linked natively with every weight, or
+ * Android drops 500/600 to regular. Below API 28 it does anyway, since RN
+ * only picks regular or bold there.
  */
 function style(
   fontFamily: string | undefined,

@@ -26,14 +26,6 @@ ticket.
 The token-level detail is in the
 [theme audit](theme-figma-audit.md#still-open).
 
-- **Q1 · Font families** *(design)*. Figma's Google Sans Flex, DM Mono and
-  Noto Sans Telugu are placeholders. Code renders the named type styles in
-  the system sans and `monospace` until this is decided; then it's loading the
-  fonts and changing `nextFontFamilies` in `src/theme/nextFoundation.ts` (on
-  `jskager/feature/696-named-type-styles`; on `main` the only knob is
-  `nextTypography.fontFamily`).
-  Google Sans Flex would need static weight files, since RN on Android doesn't
-  drive variable font axes.
 - **Q2 · Gradients, strokes and `space/48`** *(design)*. `fade/reading` is
   encoded as `theme.fade.reading`; `gradient/accent` and `Fluent Gradient`
   aren't yet. `stroke/1` and `stroke/2` land with #693. `space/48` is the
@@ -211,6 +203,7 @@ Rows marked — were decided before this doc had IDs.
 
 | ID | Question | Answer | Date | Where |
 | --- | --- | --- | --- | --- |
+| Q1 | Font families | Plus Jakarta Sans for heading, title, overline and meta, and Atkinson Hyperlegible Next for reading, lead, body and label, bundled on Android with `expo-font` and set in `nextFontFamilies` (`src/theme/nextFoundation.ts`). Overline and meta aren't mono or uppercase. Telugu falls back to the system font, since neither family has Telugu glyphs. Below Android 9 (API 28) RN only picks regular or bold, so 500 and 600 render as regular there | 2026-11-06 | [#891](https://github.com/eten-tech-foundation/fluent-mobile/pull/891) |
 | Q3 | What Eject does | Finishes ("stamps") the take. Record starts a take, pauses it and resumes it, and Eject saves it, so the next Record starts a new take. A take recovered after a crash works the same way. Sending a chapter on isn't in the player (Q29). Having Eject send the chapter from any passage was considered and dropped | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q8 | Where Next screens branch on UI version | One signed-in shell: route files under `(app)` pick the Legacy or Next screen; v2 screens live in `src/app/v2/screens/`. Both share hooks and services, and the rules inside `RecordTab` / `DraftingScreen` move into shared hooks. A separate `/v2` route tree was dropped in the #727 review | 2026-10-21 | [v2-feature-manifest.md](v2-feature-manifest.md#v2-routes) |
 | Q15 | Pericope title fallback | The reference range, as built: without a title, the passage header, its cover and Home's Next up show "Mark 14:22–25" | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
