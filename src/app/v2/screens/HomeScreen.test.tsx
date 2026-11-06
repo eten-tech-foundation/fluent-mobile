@@ -1,6 +1,12 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import HomeScreen from './HomeScreen';
 import { hrefs } from '../../../navigation/hrefs';
 import type { NextUp } from '../../../hooks/useNextUp';
@@ -160,6 +166,10 @@ const MARK: HomeBookSummary = {
 };
 
 describe('Next HomeScreen', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockSession = { ...sessionDefaults };
@@ -200,6 +210,24 @@ describe('Next HomeScreen', () => {
     fireEvent.press(screen.getByTestId('home-sync'));
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+  });
+
+  it('keeps the header above My work and strokes it once the page scrolls', () => {
+    jest.useFakeTimers();
+    render(<HomeScreen />);
+    const scroll = screen.getByTestId('home-scroll');
+    expect(within(scroll).queryByTestId('home-sync')).toBeNull();
+    const stroke = screen.getByTestId('home-header-stroke');
+    expect(stroke).toHaveAnimatedStyle({ opacity: 0 });
+
+    fireEvent.scroll(scroll, {
+      nativeEvent: { contentOffset: { x: 0, y: 80 } },
+    });
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(stroke).toHaveAnimatedStyle({ opacity: 1 });
   });
 
   it('asks to sign in again when the session expired', () => {

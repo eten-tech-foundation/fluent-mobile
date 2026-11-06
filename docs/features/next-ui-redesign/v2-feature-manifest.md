@@ -382,6 +382,15 @@ Folded in from Legacy, so Next blocks and warns the same way:
 - Passage page, no issue yet: resources go under the hero, in a new card,
   where the FIA listening materials were (Q11), until those have audio.
 
+### Figma follow-ups
+
+- Screen header: Home, the book page and the translation note share a header
+  row with `space-12` above and below its buttons, and a `stroke/1`
+  `shadow/edge` line along its bottom that fades in once the content scrolls
+  under it. Home's header is pinned now instead of scrolling away. Figma's
+  Home, book page and note frames need the padding, the pinned header and a
+  scrolled state.
+
 ### Elsewhere on Project 4
 
 - fluent-web #422 (source audio in drafting, in progress) and the roadmap's
