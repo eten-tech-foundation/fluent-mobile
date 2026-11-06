@@ -10,6 +10,7 @@ import {
   SYNC_NOW_OFFLINE_MESSAGE,
 } from '../../components/ui/SyncActionControls';
 import { formatUnuploadablePendingMessage } from '../../constants/messages';
+import type { HeldRecording } from '../../db/repositories/heldRecordingsRepository';
 import SyncScreen from './SyncScreen';
 
 const mockGoBack = jest.fn();
@@ -44,6 +45,7 @@ let mockPendingUploads = {
   countsUnknown: false,
 };
 let mockSessionError: string | null = null;
+let mockHeldRecordings: HeldRecording[] = [];
 const mockPause = jest.fn();
 const mockCancel = jest.fn();
 const mockResumeUploads = jest.fn();
@@ -99,6 +101,27 @@ jest.mock('../../hooks/useSync', () => ({
 
 jest.mock('../../hooks/usePendingUploads', () => ({
   usePendingUploads: () => mockPendingUploads,
+}));
+
+jest.mock('../../hooks/usePlaybackEngine', () => ({
+  usePlaybackEngine: () => ({
+    status: 'idle',
+    positionMs: 0,
+    durationMs: 0,
+    load: jest.fn(),
+    play: jest.fn(async () => undefined),
+    resume: jest.fn(),
+    pause: jest.fn(),
+    seek: jest.fn(),
+    stop: jest.fn(),
+  }),
+}));
+
+jest.mock('../../hooks/useHeldRecordings', () => ({
+  useHeldRecordings: () => ({
+    recordings: mockHeldRecordings,
+    loading: false,
+  }),
 }));
 
 jest.mock('../../hooks/useUploadSessionState', () => ({
@@ -160,6 +183,7 @@ jest.mock('lucide-react-native', () => {
     Pause: MockIcon,
     Play: MockIcon,
     X: MockIcon,
+    CircleAlert: MockIcon,
   };
 });
 
@@ -205,6 +229,7 @@ describe('SyncScreen', () => {
       countsUnknown: false,
     };
     mockSessionError = null;
+    mockHeldRecordings = [];
     mockPause.mockResolvedValue(undefined);
     mockCancel.mockResolvedValue(undefined);
     mockResumeUploads.mockResolvedValue(undefined);
@@ -576,6 +601,83 @@ describe('SyncScreen', () => {
     render(<SyncScreen />);
 
     expect(screen.queryByTestId('sync-failed-error')).toBeNull();
+  });
+
+  it('shows held recordings grouped by project and chapter with playback rows (#855)', () => {
+    mockPageStatus = 'allComplete';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+    };
+    mockHeldRecordings = [
+      {
+        id: 'held-1',
+        projectId: 100,
+        projectName: 'Alpha',
+        bookId: 1,
+        bookName: 'Genesis',
+        chapterNumber: 1,
+        verseNumber: 5,
+        granularity: 'verse',
+        startChapter: null,
+        startVerse: null,
+        endChapter: null,
+        endVerse: null,
+        localFilePath: 'file:///mock-document/held-1.m4a',
+        durationMs: 2000,
+      },
+      {
+        id: 'held-2',
+        projectId: 100,
+        projectName: 'Alpha',
+        bookId: 1,
+        bookName: 'Genesis',
+        chapterNumber: 2,
+        verseNumber: 7,
+        granularity: 'verse',
+        startChapter: null,
+        startVerse: null,
+        endChapter: null,
+        endVerse: null,
+        localFilePath: 'file:///mock-document/held-2.m4a',
+        durationMs: 3000,
+      },
+    ];
+
+    render(<SyncScreen />);
+
+    expect(screen.getByTestId('sync-held-section')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'You were removed from Alpha. 2 recordings were not sent.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      /Contact your project manager if the removal seems wrong\./,
+    );
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      /These recordings stay on this device\./,
+    );
+    expect(screen.getByTestId('sync-held-chapter-100:1:1')).toBeTruthy();
+    expect(screen.getByTestId('sync-held-chapter-100:1:2')).toBeTruthy();
+    expect(screen.getByText('v. 5')).toBeTruthy();
+    expect(screen.getByText('v. 7')).toBeTruthy();
+    // Held work is not "all synced" and shows no upload-complete banner.
+    expect(screen.getByText('Online · recordings held')).toBeTruthy();
+    expect(screen.queryByText('Online · all synced')).toBeNull();
+    expect(screen.queryByText('All synced')).toBeNull();
+    expect(
+      screen.queryByText('All work has been uploaded to Fluent.'),
+    ).toBeNull();
+  });
+
+  it('does not render the held section when nothing is held', () => {
+    render(<SyncScreen />);
+
+    expect(screen.queryByTestId('sync-held-section')).toBeNull();
+    expect(screen.queryByTestId('sync-held-banner')).toBeNull();
   });
 
   it('shows failed upload detail while offline', () => {

@@ -1,10 +1,11 @@
 import { getPendingUploadChapters } from '../db/queries';
+import { reconcileHeldRecordings } from '../db/repositories/heldRecordingsRepository';
 import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   getConnectivitySnapshot,
   subscribeToConnectivity,
 } from './connectivity';
-import { emitUploadSessionEvent } from './syncEvents';
+import { emitUploadSessionEvent, onSyncComplete } from './syncEvents';
 import { getCredentials } from './keychain';
 import {
   getActiveUserId,
@@ -61,6 +62,13 @@ async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
   }
 }
 
+async function reconcileHeldBeforeUpload(): Promise<void> {
+  const activeUserId = Number(getActiveUserId());
+  await reconcileHeldRecordings(
+    Number.isFinite(activeUserId) && activeUserId > 0 ? activeUserId : null,
+  );
+}
+
 async function hasPendingStageAdvances(): Promise<boolean> {
   const activeUserId = getActiveUserId();
   const userId = Number(activeUserId);
@@ -94,6 +102,12 @@ export {
 /** Production singleton — worker registered by #100 via setChapterUploadWorker. */
 let chapterUploadWorker: ChapterUploadWorker | null = null;
 let singleton: UploadOrchestrator | null = null;
+/**
+ * #855: a metadata sync can restore project membership for held takes. Once
+ * it completes, evaluate pending work so those takes upload with no extra
+ * user action (the sync itself counts as "the next sync").
+ */
+let unsubSyncComplete: (() => void) | null = null;
 /** Survives stop/start (account switch) while Drafting stays focused. */
 let desiredDraftingHold = false;
 
@@ -151,6 +165,7 @@ export function startUploadOrchestrator(
     pushPendingClaimsBeforeUpload,
     pushPendingStageAdvancesAfterUpload,
     hasPendingStageAdvances,
+    reconcileHeldBeforeUpload,
     ...restOverrides,
   };
 
@@ -158,10 +173,14 @@ export function startUploadOrchestrator(
     initialDraftingHold: desiredDraftingHold,
   });
   singleton.start();
+  unsubSyncComplete?.();
+  unsubSyncComplete = onSyncComplete(() => notifyPendingUploads());
   return singleton;
 }
 
 export function stopUploadOrchestrator(): void {
+  unsubSyncComplete?.();
+  unsubSyncComplete = null;
   singleton?.stop();
   singleton = null;
 }

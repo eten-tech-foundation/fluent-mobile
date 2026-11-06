@@ -34,6 +34,11 @@ jest.mock('expo-router', () => ({
     back: jest.fn(),
     push: jest.fn(),
   }),
+  useFocusEffect: jest.fn(),
+}));
+
+jest.mock('../../hooks/useHeldRecordings', () => ({
+  useHeldRecordings: () => ({ recordings: [], loading: false }),
 }));
 
 jest.mock('../../hooks/useDownloadQueue', () => ({

@@ -42,6 +42,12 @@ const mockGetPendingRecordingDeletions = jest.fn();
 const mockClearRecordingDeletion = jest.fn();
 const mockRaiseVerseVersionToken = jest.fn();
 const mockDeleteVerseAudioTake = jest.fn();
+const mockReconcileHeldRecordings = jest.fn();
+
+jest.mock('../db/repositories/heldRecordingsRepository', () => ({
+  reconcileHeldRecordings: (...args: unknown[]) =>
+    mockReconcileHeldRecordings(...args),
+}));
 
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
@@ -170,10 +176,17 @@ describe('recordingSync', () => {
     mockClearRecordingDeletion.mockResolvedValue(undefined);
     mockRaiseVerseVersionToken.mockResolvedValue(undefined);
     mockDeleteVerseAudioTake.mockResolvedValue({ versionToken: 3 });
+    mockReconcileHeldRecordings.mockResolvedValue({ held: 0, released: 0 });
   });
 
   afterEach(() => {
     authToken.set(null);
+  });
+
+  it('reconciles held takes for the active account before uploading (#855)', async () => {
+    await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockReconcileHeldRecordings).toHaveBeenCalledWith(2);
   });
 
   it('uploads pending recordings via FluentAPI and marks uploaded with blob_key', async () => {

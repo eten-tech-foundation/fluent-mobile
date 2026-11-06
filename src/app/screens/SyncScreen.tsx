@@ -6,12 +6,14 @@ import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { usePendingUploads } from '../../hooks/usePendingUploads';
 import { useUploadSessionState } from '../../hooks/useUploadSessionState';
+import { useHeldRecordings } from '../../hooks/useHeldRecordings';
 import { SettingsToggleRow } from '../../components/ui/SettingsListRow';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
 import { StackScreenHeader } from '../../components/layout/StackScreenHeader';
 import { SyncStatusIndicator } from '../../components/ui/SyncStatusIndicator';
 import { CloudSyncStatusIcon } from '../../components/ui/CloudSyncStatusIcon';
+import { HeldRecordingsSection } from '../../components/ui/HeldRecordingsSection';
 import { SyncActionControls } from '../../components/ui/SyncActionControls';
 import {
   formatUnuploadablePendingMessage,
@@ -68,6 +70,9 @@ export default function SyncScreen() {
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
+
+  const { recordings: heldRecordings } = useHeldRecordings(refreshKey);
+  const heldCount = heldRecordings.length;
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {
@@ -209,6 +214,14 @@ export default function SyncScreen() {
     hasPendingUploads,
     hasFailedUploads,
   );
+  // Held takes never upload until membership returns (#855); do not claim
+  // "All synced" while they are still on the device.
+  const showSecondaryContent =
+    secondaryContent !== null &&
+    !(
+      heldCount > 0 &&
+      (status === 'allComplete' || status === 'uploadComplete')
+    );
 
   return (
     <ScreenContainer>
@@ -240,6 +253,7 @@ export default function SyncScreen() {
             hasUnuploadablePending,
             pendingChapterCount,
             countsUnknown,
+            heldCount,
           )}
           {pendingChapterCount === 0 &&
           (hasUnuploadablePending || hasPendingUploads) ? (
@@ -265,7 +279,10 @@ export default function SyncScreen() {
             </Text>
           ) : null}
         </View>
-        {secondaryContent ? (
+        {heldCount > 0 ? (
+          <HeldRecordingsSection recordings={heldRecordings} />
+        ) : null}
+        {showSecondaryContent ? (
           <View style={styles.uploadSection} testID="sync-upload-section">
             {secondaryContent}
           </View>
@@ -334,6 +351,7 @@ function renderStatusLine(
   hasUnuploadablePending: boolean,
   pendingChapterCount: number,
   countsUnknown: boolean,
+  heldCount: number,
 ) {
   // Paused wins over a lingering take-upload flag so the status line, the
   // progress card, and the controls all describe the same state (#600).
@@ -365,6 +383,21 @@ function renderStatusLine(
         <Text style={styles.statusTitle}>Couldn't check pending uploads</Text>
         <Text style={styles.statusSubtitle}>
           Pending work on this device could not be counted. Try again later.
+        </Text>
+      </>
+    );
+  }
+
+  if (heldCount > 0 && !hasPendingUploads) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>
+          {isOnline ? 'Online · recordings held' : 'Offline · recordings held'}
+        </Text>
+        <Text style={styles.statusSubtitle}>
+          {heldCount === 1
+            ? "1 recording wasn't uploaded because you were removed from its project."
+            : `${heldCount} recordings weren't uploaded because you were removed from their projects.`}
         </Text>
       </>
     );

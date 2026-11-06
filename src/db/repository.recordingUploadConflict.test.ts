@@ -140,7 +140,7 @@ function createRecordingConflictTestDb() {
     if (
       sql.includes('FROM recordings r') &&
       sql.includes('JOIN bible_texts bt') &&
-      sql.includes("sync_status NOT IN ('uploaded', 'conflicted')")
+      sql.includes("sync_status NOT IN ('uploaded', 'conflicted'")
     ) {
       // #701 PM rule: canonical is what syncs as the selected take. A
       // selected-only row is deferred while the same verse has a canonical

@@ -13,6 +13,7 @@ import {
   setRecordingSyncStatus,
   updateRecordingVersionToken,
 } from '../db/repository';
+import { reconcileHeldRecordings } from '../db/repositories/heldRecordingsRepository';
 import type {
   PendingRecording,
   PendingRecordingDeletion,
@@ -607,6 +608,13 @@ async function runUploadPass(
 
   const delay = options.delay ?? defaultDelay;
   const maxAttempts = options.maxAttempts ?? MAX_UPLOAD_ATTEMPTS;
+  // #855: takes whose owner is no longer a project member stay on the device
+  // (held) instead of being uploaded and failed. Releasing a held take when
+  // membership returns is what lets the next pass upload it automatically.
+  const activeUserId = Number(getActiveUserId());
+  await reconcileHeldRecordings(
+    Number.isFinite(activeUserId) && activeUserId > 0 ? activeUserId : null,
+  );
   await runDeletePass(token, {
     signal: options.signal,
     delay,
