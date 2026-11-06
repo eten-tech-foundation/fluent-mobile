@@ -153,7 +153,7 @@ describe('BookScreen', () => {
 
     expect(screen.getByText('Mark')).toBeTruthy();
     expect(screen.getByText('Chapter 14')).toBeTruthy();
-    expect(screen.getByText('1 of 2 recorded')).toBeTruthy();
+    expect(screen.queryByText('1 of 2 recorded')).toBeNull();
     expect(screen.getByText('Chapter 15')).toBeTruthy();
     expect(screen.getByText('1 of 3 pericopes recorded')).toBeTruthy();
     expect(
@@ -162,6 +162,8 @@ describe('BookScreen', () => {
     expect(
       screen.getByLabelText('Mark 14:26–31, Not recorded yet'),
     ).toBeTruthy();
+    expect(screen.queryByText('Mark 14:26–31')).toBeNull();
+    expect(screen.queryByText('Not recorded yet')).toBeNull();
   });
 
   it('shows the sync status and opens Sync, like Legacy drafting', () => {
@@ -289,10 +291,10 @@ describe('BookScreen', () => {
     render(<BookScreen />);
 
     expect(screen.getByTestId('book-chapter-1-meta').props.children).toBe(
-      "1 of 2 recorded · Community Check · Someone else's · Upload pending",
+      "Community Check · Someone else's · Upload pending",
     );
     expect(screen.getByTestId('book-chapter-2-meta').props.children).toBe(
-      '0 of 1 recorded · Draft · Yours · Sync conflict',
+      'Draft · Yours · Sync conflict',
     );
   });
 

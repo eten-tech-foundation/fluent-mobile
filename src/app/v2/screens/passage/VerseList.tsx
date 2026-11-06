@@ -82,7 +82,9 @@ export function VerseList({
               <Text style={styles.name} numberOfLines={1}>
                 {`Verse ${v.verseNumber}`}
               </Text>
-              <Text style={styles.meta}>{status}</Text>
+              {v.recorded === 'passage' ? (
+                <Text style={styles.meta}>{status}</Text>
+              ) : null}
             </View>
             <View
               accessible={false}

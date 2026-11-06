@@ -1,15 +1,16 @@
 /**
  * Figma named type styles (Foundations · 03 Type), the one source for these
- * metrics. Families are still TBD in Figma, so callers pass today's.
- * Leave `sans` undefined until real fonts are loaded: on Android a named but
- * unloaded family drops weights 500/600 to regular, while no family keeps them.
+ * metrics. Each theme passes its own families.
+ * Leave a family undefined unless it's linked natively with every weight, or
+ * Android drops 500/600 to regular. Below API 28 it does anyway, since RN
+ * only picks regular or bold there.
  */
 function style(
   fontFamily: string | undefined,
   fontSize: number,
   lineHeight: number,
   fontWeight: '400' | '500' | '600' | '700',
-  uppercase = false,
+  textTransform?: MetaCase,
 ) {
   return {
     ...(fontFamily ? { fontFamily } : {}),
@@ -17,11 +18,26 @@ function style(
     lineHeight,
     fontWeight,
     includeFontPadding: false,
-    ...(uppercase ? { textTransform: 'uppercase' as const } : {}),
+    ...(textTransform ? { textTransform } : {}),
   };
 }
 
-export function buildTypeStyles(sans: string | undefined, mono: string) {
+/** Legacy sets overline and meta in caps; Next doesn't. */
+type MetaCase = 'uppercase' | 'none';
+
+export type TypeFamilies = {
+  /** heading, title */
+  display: string | undefined;
+  /** reading, lead, body, label */
+  text: string | undefined;
+  /** overline, meta */
+  meta: string | undefined;
+};
+
+export function buildTypeStyles(
+  { display, text, meta }: TypeFamilies,
+  metaCase: MetaCase,
+) {
   return {
     /**
      * Scripture at Figma's read-along size. The Next player reads at `lead`
@@ -29,36 +45,37 @@ export function buildTypeStyles(sans: string | undefined, mono: string) {
      * `maxFontSizeMultiplier={theme.fontScale.readingMax}`; that doesn't cap
      * lineHeight, so see the recipe in figma-to-component.md.
      */
-    reading: style(sans, 42, 52, '400'),
+    reading: style(text, 42, 52, '400'),
     /** The word being spoken. */
-    readingStrong: style(sans, 42, 52, '700'),
+    readingStrong: style(text, 42, 52, '700'),
     /** Screen headings ("Chapter 14"). */
-    heading: style(sans, 42, 48, '700'),
+    heading: style(display, 42, 48, '700'),
     /**
      * Long-form reading in the player: the script, translation notes and
      * listening materials, so moving between them keeps one size.
      */
-    lead: style(sans, 32, 40, '400'),
+    lead: style(text, 32, 40, '400'),
     /** Passage reference, labels, verse numbers in the script. */
-    title: style(sans, 18, 24, '600'),
+    title: style(display, 18, 24, '600'),
     /** List titles and body copy. */
-    body: style(sans, 18, 24, '400'),
+    body: style(text, 18, 24, '400'),
     /** Verse numbers in chips. */
-    label: style(sans, 14, 20, '600'),
-    /** Passage title, eyebrows. 500 renders as 400 in `monospace` until DM Mono loads. */
-    overline: style(mono, 20, 24, '500', true),
+    label: style(text, 14, 20, '600'),
+    /** Passage title, eyebrows. In Legacy's `monospace`, 500 renders as 400. */
+    overline: style(meta, 20, 24, '500', metaCase),
     /** References and metadata under a title. */
-    meta: style(mono, 14, 20, '400', true),
+    meta: style(meta, 14, 20, '400', metaCase),
   };
 }
 
 export type TypeStyleName = keyof ReturnType<typeof buildTypeStyles>;
 
-/** Families every theme uses until real fonts are loaded (see `style`). */
-export const systemFontFamilies = {
-  sans: undefined,
-  mono: 'monospace',
-} as const;
+/** System families, kept by Legacy. */
+export const systemFontFamilies: TypeFamilies = {
+  display: undefined,
+  text: undefined,
+  meta: 'monospace',
+};
 
 /**
  * Figma's six `type/telugu/*` styles: same sizes, taller line heights so

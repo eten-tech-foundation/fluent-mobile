@@ -1,10 +1,11 @@
-import { buildTypeStyles, systemFontFamilies } from './typeStyles';
+import { buildTypeStyles, type TypeFamilies } from './typeStyles';
 
 /**
  * Next spacing / radius / type scale from Figma Foundations
  * (03 Typography · 04 Spacing · 05 Radius).
  *
- * Font family remains System — Figma marks family as TBD.
+ * Families are Plus Jakarta Sans and Atkinson Hyperlegible Next, linked in
+ * app.config.ts. Figma still shows placeholders.
  */
 
 /** Figma `space/*` steps (px). */
@@ -67,16 +68,26 @@ export const nextRadius = {
 } as const;
 
 /**
- * Font families for the named type styles. Figma's are placeholders (Google
- * Sans Flex, DM Mono). Sans stays unset so Android keeps numeric weights.
+ * Font families for the named type styles. Each name must match an
+ * `expo-font` Android family in app.config.ts, with every weight it uses.
  */
-export const nextFontFamilies = systemFontFamilies;
+export const nextFontFamilies: TypeFamilies = {
+  display: 'PlusJakartaSans',
+  text: 'AtkinsonHyperlegibleNext',
+  meta: 'PlusJakartaSans',
+};
 
-/** Figma named type styles for Next (`Theme.type`). */
-export const nextTypeStyles = buildTypeStyles(
-  nextFontFamilies.sans,
-  nextFontFamilies.mono,
-);
+const figmaTypeStyles = buildTypeStyles(nextFontFamilies, 'none');
+
+/**
+ * Figma named type styles for Next (`Theme.type`). Jakarta draws taller than
+ * Figma's 48 and 24, so heading and overline get room for their descenders.
+ */
+export const nextTypeStyles = {
+  ...figmaTypeStyles,
+  heading: { ...figmaTypeStyles.heading, lineHeight: 54 },
+  overline: { ...figmaTypeStyles.overline, lineHeight: 26 },
+};
 
 /**
  * Partial `Theme.typography` overrides, read from the named styles.

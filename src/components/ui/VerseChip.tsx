@@ -33,13 +33,7 @@ export function VerseChip({ verse, current, testID }: VerseChipProps) {
       backgroundColor: t.roles.surfaceInverseMuted,
     },
     current: { backgroundColor: t.roles.surfaceInverse },
-    label: {
-      color: t.roles.fgOnInverse,
-      fontSize: t.typography.sizes.sm,
-      lineHeight: t.typography.lineHeights.tight,
-      fontWeight: t.typography.weights.semibold,
-      includeFontPadding: false,
-    },
+    label: { ...t.type.label, color: t.roles.fgOnInverse },
   }));
 
   return (

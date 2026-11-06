@@ -123,16 +123,43 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
       includeFontPadding: false,
     });
     expect(nextTheme.type.readingStrong.fontWeight).toBe('700');
-    // No sans family until fonts load, so Android keeps 500/600 weights.
-    expect(nextTheme.type.title).not.toHaveProperty('fontFamily');
+    expect(nextTheme.type.title.fontFamily).toBe('PlusJakartaSans');
+    expect(nextTheme.type.body.fontFamily).toBe('AtkinsonHyperlegibleNext');
     expect(nextTheme.type.overline).toMatchObject({
-      fontFamily: 'monospace',
+      fontFamily: 'PlusJakartaSans',
       fontSize: 20,
-      textTransform: 'uppercase',
+      textTransform: 'none',
     });
+    expect(nextTheme.type.meta.textTransform).toBe('none');
+    // Room for Jakarta's descenders; Figma has 48 and 24.
+    expect(nextTheme.type.heading.lineHeight).toBe(54);
+    expect(nextTheme.type.overline.lineHeight).toBe(26);
     expect(nextTheme.typeTelugu.reading.lineHeight).toBe(64);
     expect(nextTheme.fontScale.readingMax).toBe(1.3);
     expect(nextTheme.radius.xs).toBe(4);
+  });
+
+  it('links every Next family and weight in the expo-font plugin', () => {
+    const { plugins = [] } = require('../../app.config').default;
+    const [, options] = plugins.find(
+      (p: unknown) => Array.isArray(p) && p[0] === 'expo-font',
+    );
+    const linked = new Set(
+      options.android.fonts.flatMap(
+        (f: { fontFamily: string; fontDefinitions: { weight: number }[] }) =>
+          f.fontDefinitions.map(d => `${f.fontFamily} ${d.weight}`),
+      ),
+    );
+    for (const style of Object.values(nextTheme.type)) {
+      expect(linked).toContain(`${style.fontFamily} ${style.fontWeight}`);
+    }
+  });
+
+  it('keeps Legacy on system fonts', () => {
+    expect(legacyTheme.type.title).not.toHaveProperty('fontFamily');
+    expect(legacyTheme.type.meta.fontFamily).toBe('monospace');
+    expect(legacyTheme.type.meta.textTransform).toBe('uppercase');
+    expect(legacyTheme.type.heading.lineHeight).toBe(48);
   });
 
   it('keeps the same role keys in Legacy so components never branch', () => {

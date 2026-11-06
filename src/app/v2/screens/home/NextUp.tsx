@@ -27,13 +27,16 @@ export function nextUpAction({ passage }: NextPassage): string {
 
 /**
  * e.g. "Draft · Gospels Phase 1 · Upload pending"; the cover already names
- * the chapter. A conflict or a take still on the phone shows as on Legacy's
- * My Work row.
+ * the chapter, so a milestone named for its book is left out. A conflict or a
+ * take still on the phone shows as on Legacy's My Work row.
  */
 export function nextUpStatusLine({ chapter }: NextPassage): string {
   return [
     chapterRole(chapter),
-    chapter.milestoneName,
+    chapter.milestoneName.trim().toLowerCase() ===
+    chapter.bookName.trim().toLowerCase()
+      ? null
+      : chapter.milestoneName,
     chapter.hasConflict
       ? 'Sync conflict'
       : chapter.syncState === 'deviceOnly'
@@ -51,8 +54,9 @@ function chapterRole(chapter: NextPassage['chapter']): string {
   return chapter.workflowStage === 'draft' ? 'Draft' : 'Not started';
 }
 
-function passageTitle({ passage }: NextPassage): string {
-  return passage.title ?? passage.reference;
+/** A pericope title; the reference alone is already on the cover. */
+function passageTitle({ passage }: NextPassage): string | undefined {
+  return passage.title ?? undefined;
 }
 
 /** The title, with the reference only when the title isn't already it. */
@@ -121,7 +125,10 @@ export function NextUp({
 
   if (nextUp.status === 'loading') return null;
   const { hero, after, checking } = nextUp;
-  const rail = (items: NextPassage[], label: (i: NextPassage) => string) => (
+  const rail = (
+    items: NextPassage[],
+    label: (i: NextPassage) => string | undefined,
+  ) => (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -172,12 +179,9 @@ export function NextUp({
             style={styles.cover}
           />
           <View style={styles.heroText}>
-            <Text style={styles.heroTitle} numberOfLines={2}>
-              {passageTitle(hero)}
-            </Text>
             {hero.passage.title ? (
-              <Text style={styles.meta} numberOfLines={1}>
-                {hero.passage.reference}
+              <Text style={styles.heroTitle} numberOfLines={2}>
+                {hero.passage.title}
               </Text>
             ) : null}
             <Text style={styles.meta} numberOfLines={2}>

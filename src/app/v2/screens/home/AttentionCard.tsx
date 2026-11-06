@@ -62,11 +62,7 @@ export function AttentionCard({
       borderRadius: t.radius.full,
       backgroundColor: t.roles.accentPrimary,
     },
-    eyebrow: {
-      ...t.type.meta,
-      color: t.roles.fgSecondary,
-      textTransform: 'uppercase',
-    },
+    eyebrow: { ...t.type.meta, color: t.roles.fgSecondary },
     body: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
     title: { ...t.type.body, color: t.roles.fgPrimary, flex: 1 },
     faces: { flexDirection: 'row' },

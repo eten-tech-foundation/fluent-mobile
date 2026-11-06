@@ -31,7 +31,7 @@ export function moreNotesLabels(count: number) {
   };
 }
 
-/** Google Sans Flex's descent, as a share of its size. */
+/** How far a chip drops to the baseline, as a share of its size. */
 export const CHIP_DESCENT = 0.2;
 
 /** How Android lays an inline view into a line of text. */
@@ -65,9 +65,10 @@ export function segments(
 }
 
 /**
- * Chips at the open player's size: a space/4 shorter than the line (Figma
- * Word), less their border, dropped by the descent since Android sits an
- * inline view's bottom on the baseline.
+ * Chips at the open player's size: a space/2 shorter than the line (Figma
+ * Word has a space/4, too tight for Atkinson's descenders), less their
+ * border, dropped by the descent since Android sits an inline view's bottom
+ * on the baseline.
  */
 export function useChipStyle() {
   const theme = useTheme();
@@ -76,7 +77,7 @@ export function useChipStyle() {
     () => ({
       text: {
         fontSize: large.fontSize,
-        lineHeight: largeLine - theme.spacing.xs - 2 * theme.stroke[2],
+        lineHeight: largeLine - theme.spacing.xxs - 2 * theme.stroke[2],
       },
       box: { transform: [{ translateY: CHIP_DESCENT * large.fontSize }] },
     }),

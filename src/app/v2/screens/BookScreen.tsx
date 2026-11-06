@@ -39,16 +39,11 @@ const OWNERSHIP: Record<ProjectChapter['ownershipState'], string> = {
 };
 
 /**
- * e.g. "2 of 3 recorded · Draft · Yours · Upload pending": what Legacy's
- * chapter row shows, the stage, whose it is, a take still on the phone or a
- * sync conflict.
+ * e.g. "Draft · Yours · Upload pending": the stage, whose it is, a take
+ * still on the phone or a sync conflict. The covers show what's recorded.
  */
-export function chapterMeta(
-  chapter: ProjectChapter,
-  recorded: string | null,
-): string {
+export function chapterMeta(chapter: ProjectChapter): string {
   return [
-    recorded,
     chapter.workflowStage ? getWorkflowStageLabel(chapter.workflowStage) : null,
     OWNERSHIP[chapter.ownershipState],
     chapter.hasConflict
@@ -254,11 +249,7 @@ export default function BookScreen() {
 
   const renderChapter: ListRenderItem<ProjectChapter> = ({ item }) => {
     const list: BookPassage[] = byChapter.get(item.id) ?? [];
-    const recorded = list.filter(p => p.recordedStatus === 'recorded').length;
-    const meta = chapterMeta(
-      item,
-      list.length > 0 ? `${recorded} of ${list.length} recorded` : null,
-    );
+    const meta = chapterMeta(item);
     return (
       <View style={styles.section} testID={`book-chapter-${item.id}`}>
         <View style={styles.sectionHead}>
@@ -277,7 +268,7 @@ export default function BookScreen() {
               key={passage.key}
               eyebrow={item.displayLabel}
               verses={passage.verses}
-              title={passage.title ?? passage.reference}
+              title={passage.title ?? undefined}
               reference={passage.reference}
               seed={passage.seed}
               groupSeed={passage.groupSeed}

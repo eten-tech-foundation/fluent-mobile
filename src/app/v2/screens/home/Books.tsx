@@ -81,7 +81,6 @@ export function Books({
     },
     book: { width: '47%', gap: t.spacing.xs },
     pressed: { opacity: PRESSED_OPACITY },
-    name: { ...t.type.label, color: t.roles.fgPrimary },
     meta: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
 
@@ -115,9 +114,6 @@ export function Books({
                 peerChecked={peerChecked(book)}
                 testID={`home-book-${book.key}-cover`}
               />
-              <Text style={styles.name} numberOfLines={1}>
-                {book.bookName}
-              </Text>
               <Text style={styles.meta} numberOfLines={1}>
                 {book.milestoneName}
               </Text>

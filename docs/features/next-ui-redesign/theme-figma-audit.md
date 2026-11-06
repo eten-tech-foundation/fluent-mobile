@@ -23,7 +23,7 @@ two-value role mismatch, typography that had drifted, and Foundations tokens
 elevation, motion, disabled opacity, icon sizes, strokes, `radius.xs` and
 `space/2` are on `Theme` in all three modes, and components reach them
 through `useTheme()`. The named type styles are on `Theme` too. Still open:
-the font family, gradients and `space/48`, plus the places code now departs
+gradients and `space/48`, plus the places code now departs
 from Figma (§6) that Figma needs to follow.
 
 ## What matches
@@ -49,24 +49,18 @@ from Figma (§6) that Figma needs to follow.
 | Hardware | `red/600` `#E11825` | `red[600]` | `red[600]` |
 | Accent | `red/300` `#FDA298` | `red[600]` | `red[300]` |
 
-### 2. Typography had drifted (styles encoded; family still open)
+### 2. Typography had drifted (resolved)
 
-- **Family.** Figma styles now use Google Sans Flex (sans), DM Mono (mono) and
-  Noto Sans Telugu, still labeled "Family is TBD … placeholders". Code uses
-  `System`, and the `nextFoundation.ts` comment still says "Inter placeholder".
-  Someone needs to confirm whether these three are the real families before
-  we load fonts. If they are, note that RN on Android doesn't drive variable
-  font axes, so Google Sans Flex needs static weight files (400/500/600/700)
-  registered as separate families through `expo-font`.
+- **Family (resolved).** Next uses Plus Jakarta Sans and Atkinson Hyperlegible
+  Next, loaded with `expo-font` (open-questions Q1, #891). Figma still shows
+  Google Sans Flex and DM Mono, noted in the v2 manifest's Figma follow-ups.
 - **Missing styles (resolved).** All 9 styles are on `Theme` as
   `theme.type.*` (`reading`, `readingStrong`, `heading`, `lead`, `title`,
   `body`, `label`, `overline`, `meta`), built in `src/theme/typeStyles.ts`,
-  with the Telugu line heights as `theme.typeTelugu.*`. Sans styles set no
-  family (a named but unloaded family drops 500/600 to regular on Android),
-  and mono uses `monospace`, which only renders 400 and 700 until DM Mono is
-  loaded.
+  with the Telugu line heights as `theme.typeTelugu.*`. Legacy sets no sans
+  family and uses `monospace` for overline and meta.
 - **Figma-side rules (resolved):** every style sets `includeFontPadding:
-  false`, overline and meta carry `textTransform: 'uppercase'`, and Reading's
+  false`, Legacy's overline and meta carry `textTransform: 'uppercase'`, and Reading's
   1.3× cap is `theme.fontScale.readingMax` (a `Text` prop, not a style).
 - **`overline` still overrides `typography.sizes.xl`** in Next, so Legacy-keyed
   text using `xl` becomes a 20px overline without being monospaced. New code
@@ -152,11 +146,6 @@ Built in code with no Figma frame yet. Each needs a frame to match or replace.
 
 ## Still open
 
-In dependency order:
-
-1. **Typography family.** The named styles are encoded; confirm the families
-   (Google Sans Flex / DM Mono / Noto Sans Telugu are placeholders), then load
-   them with `expo-font` and change `nextFontFamilies` in `nextFoundation.ts`.
-2. **Gradients.** `gradient/accent`, `Fluent Gradient`, plus `space/48`.
+1. **Gradients.** `gradient/accent`, `Fluent Gradient`, plus `space/48`.
    `fade/reading` is encoded like the elevation styles, built from roles
    (`src/theme/gradients.ts`).
