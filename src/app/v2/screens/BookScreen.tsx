@@ -12,6 +12,7 @@ import { ArrowLeft } from '../../../components/ui/icons';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { PassageCover } from '../../../components/ui/PassageCover';
 import { RoundButton } from '../../../components/ui/RoundButton';
+import { ScreenHeader, useScrolled } from '../../../components/ui/ScreenHeader';
 import { SyncStatusButton } from '../../../components/ui/SyncStatusButton';
 import { PROJECT_CHAPTERS_EMPTY_MESSAGE } from '../../../constants/messages';
 import {
@@ -100,6 +101,13 @@ export default function BookScreen() {
     reload,
   } = useMilestoneChapters(projectUnitId, projectId);
   const sync = useHeaderSync({ onSyncComplete: reload });
+  const scroll = useScrolled();
+  const listShown = chapters.length > 0 && !error && !removedFromProject;
+  const { reset: resetScroll } = scroll;
+  // The list comes back at its top after the error or empty state.
+  useEffect(() => {
+    if (!listShown) resetScroll();
+  }, [listShown, resetScroll]);
   const passages = useBookPassages(chapters, projectId, projectUnitId);
   const listRef = useRef<FlatList<ProjectChapter>>(null);
   const focusedRef = useRef(false);
@@ -156,15 +164,9 @@ export default function BookScreen() {
 
   const styles = useThemedStyles(t => ({
     screen: { flex: 1, backgroundColor: t.roles.bgDefault },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingHorizontal: t.spacing.xl,
-      paddingTop: t.spacing.sm,
-    },
     hero: {
       paddingHorizontal: t.spacing.xl,
-      paddingTop: t.spacing.lg,
+      paddingTop: t.spacing.sm,
       paddingBottom: t.spacing.md,
       gap: t.spacing.xs,
     },
@@ -287,7 +289,7 @@ export default function BookScreen() {
 
   // Soft on the light page, like the passage page's Flat one on the dark hero.
   const header = (
-    <View style={styles.header}>
+    <ScreenHeader scrolled={listShown && scroll.scrolled} testID="book-header">
       <RoundButton
         icon={ArrowLeft}
         accessibilityLabel="Back"
@@ -300,7 +302,7 @@ export default function BookScreen() {
         onPress={sync.openSync}
         testID="book-sync"
       />
-    </View>
+    </ScreenHeader>
   );
 
   let body: React.ReactNode;
@@ -339,6 +341,8 @@ export default function BookScreen() {
         ref={listRef}
         data={chapters}
         onScrollToIndexFailed={scrollToIndexFailed}
+        onScroll={scroll.onScroll}
+        testID="book-list"
         keyExtractor={item => String(item.id)}
         renderItem={renderChapter}
         refreshing={refreshing}

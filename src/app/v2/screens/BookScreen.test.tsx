@@ -93,6 +93,10 @@ function art(key: string, recordedVerses: number, totalVerses: number) {
 }
 
 describe('BookScreen', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockOpen = { kind: 'work' };
@@ -466,5 +470,48 @@ describe('BookScreen', () => {
     fireEvent.press(screen.getByLabelText('Back'));
 
     expect(mockBack).toHaveBeenCalled();
+  });
+
+  it('strokes the header once the passages scroll under it', () => {
+    jest.useFakeTimers();
+    render(<BookScreen />);
+    const stroke = screen.getByTestId('book-header-stroke');
+    expect(stroke).toHaveAnimatedStyle({ opacity: 0 });
+
+    fireEvent.scroll(screen.getByTestId('book-list'), {
+      nativeEvent: {
+        contentOffset: { x: 0, y: 120 },
+        contentSize: { width: 360, height: 2000 },
+        layoutMeasurement: { width: 360, height: 640 },
+      },
+    });
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(stroke).toHaveAnimatedStyle({ opacity: 1 });
+  });
+
+  it('drops the stroke when the list gives way to an error', () => {
+    jest.useFakeTimers();
+    render(<BookScreen />);
+    fireEvent.scroll(screen.getByTestId('book-list'), {
+      nativeEvent: {
+        contentOffset: { x: 0, y: 120 },
+        contentSize: { width: 360, height: 2000 },
+        layoutMeasurement: { width: 360, height: 640 },
+      },
+    });
+    mockLoadState = { loading: false, error: new Error('x'), removed: false };
+    screen.rerender(<BookScreen />);
+    mockLoadState = { loading: false, error: null, removed: false };
+    screen.rerender(<BookScreen />);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(screen.getByTestId('book-header-stroke')).toHaveAnimatedStyle({
+      opacity: 0,
+    });
   });
 });

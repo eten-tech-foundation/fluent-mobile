@@ -915,6 +915,46 @@ describe('PassageScreen', () => {
     expect(screen.getByLabelText('Note 2 of 2')).toBeTruthy();
   });
 
+  it('strokes the note header while that note is scrolled under it', () => {
+    mockNotes = [
+      {
+        id: 'cup',
+        title: 'Mark 14:23',
+        quote: 'took a cup',
+        body: 'The cup held wine.',
+        verse: { chapterNumber: 14, verseNumber: 23 },
+      },
+      {
+        id: 'elsewhere',
+        title: 'Mark 14:22',
+        quote: 'a phrase from another translation',
+        body: 'This note quotes another translation.',
+        verse: { chapterNumber: 14, verseNumber: 22 },
+      },
+    ];
+    jest.useFakeTimers();
+    render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-listen'));
+    settle();
+    fireEvent.press(screen.getByLabelText('Translation note: took a cup'));
+    settle();
+    const stroke = () => screen.getByTestId('passage-note-header-stroke');
+    expect(stroke()).toHaveAnimatedStyle({ opacity: 0 });
+
+    fireEvent.scroll(screen.getByTestId('passage-note-page-0'), {
+      nativeEvent: { contentOffset: { x: 0, y: 30 } },
+    });
+    settle();
+    expect(stroke()).toHaveAnimatedStyle({ opacity: 1 });
+
+    // The next note is still at its top.
+    fireEvent.press(
+      screen.getByLabelText('Next note: a phrase from another translation'),
+    );
+    settle();
+    expect(stroke()).toHaveAnimatedStyle({ opacity: 0 });
+  });
+
   it('keeps the notes it has when a reload fails', () => {
     mockNotes = [
       {

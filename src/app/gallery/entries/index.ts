@@ -9,6 +9,7 @@ import { KeyEntry } from './KeyEntry';
 import { LevelWaveEntry } from './LevelWaveEntry';
 import { PassageCoverEntry } from './PassageCoverEntry';
 import { RoundButtonEntry } from './RoundButtonEntry';
+import { ScreenHeaderEntry } from './ScreenHeaderEntry';
 import { SwitchEntry } from './SwitchEntry';
 import { TrackRowEntry } from './TrackRowEntry';
 import { TypeEntry } from './TypeEntry';
@@ -110,6 +111,14 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Avatar · Sync status button',
     modes: 'Hardware (Home)',
     Component: HomeHeaderEntry,
+  },
+  {
+    // No Figma component: the header row on Home, the book page and the
+    // note, with a soft stroke once the content scrolls under it.
+    id: 'screen-header',
+    name: 'Screen header',
+    modes: 'Hardware (Home, book page) · Accent (note)',
+    Component: ScreenHeaderEntry,
   },
   {
     // Figma: Gap / Banner https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-62

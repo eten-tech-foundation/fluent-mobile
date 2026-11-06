@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from '../../../../components/ui/icons';
 import { PageDots } from '../../../../components/ui/PageDots';
 import { RoundButton } from '../../../../components/ui/RoundButton';
+import { ScreenHeader } from '../../../../components/ui/ScreenHeader';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import type { PassageNote } from './noteMatch';
 
@@ -90,13 +91,6 @@ export function NoteScreen({
       overflow: 'hidden',
     },
     blue: { position: 'absolute', backgroundColor: t.roles.bgDefault },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: t.spacing.md,
-      paddingHorizontal: t.spacing.xl,
-      paddingVertical: t.spacing.md,
-    },
     title: { ...t.type.overline, color: t.roles.fgPrimary, flex: 1 },
     pager: { flex: 1 },
     page: { paddingHorizontal: t.spacing.xl },
@@ -122,6 +116,31 @@ export function NoteScreen({
     quote: { ...t.type.title, color: t.roles.fgPrimary, flex: 1 },
     count: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
+
+  // Notes scrolled off their top. Pages more than two away are rebuilt at
+  // their top, so they drop out.
+  const [scrolledNotes, setScrolledNotes] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  /** Records whether a note's page has scrolled under the header. */
+  const markScrolled = useCallback((id: string, scrolled: boolean) => {
+    setScrolledNotes(prev => {
+      if (prev.has(id) === scrolled) return prev;
+      const next = new Set(prev);
+      if (scrolled) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    const built = new Set(
+      notes.slice(Math.max(0, index - 2), index + 3).map(n => n.id),
+    );
+    setScrolledNotes(prev => {
+      const next = new Set([...prev].filter(id => built.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [index, notes]);
 
   // Mounts on the tapped note (a scroll before the pages are laid out is
   // dropped); after that Previous and Next turn pages the way a swipe does.
@@ -204,17 +223,26 @@ export function NoteScreen({
           blueStyle,
         ]}
       />
-      <Animated.View style={[styles.header, headerStyle]}>
-        <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
-          {note.quote}
-        </Text>
-        <RoundButton
-          variant="flat"
-          icon={X}
-          accessibilityLabel="Close the note"
-          onPress={onClose}
-          testID="passage-note-close"
-        />
+      <Animated.View style={headerStyle}>
+        <ScreenHeader
+          scrolled={scrolledNotes.has(note.id)}
+          testID="passage-note-header"
+        >
+          <Text
+            style={styles.title}
+            numberOfLines={1}
+            accessibilityRole="header"
+          >
+            {note.quote}
+          </Text>
+          <RoundButton
+            variant="flat"
+            icon={X}
+            accessibilityLabel="Close the note"
+            onPress={onClose}
+            testID="passage-note-close"
+          />
+        </ScreenHeader>
       </Animated.View>
       <Animated.View
         style={[styles.pager, bodyStyle]}
@@ -246,6 +274,10 @@ export function NoteScreen({
                 style={{ width }}
                 contentContainerStyle={styles.page}
                 showsVerticalScrollIndicator={false}
+                onScroll={e =>
+                  markScrolled(n.id, e.nativeEvent.contentOffset.y > 0)
+                }
+                testID={`passage-note-page-${i}`}
                 importantForAccessibility={
                   i === index ? 'auto' : 'no-hide-descendants'
                 }
