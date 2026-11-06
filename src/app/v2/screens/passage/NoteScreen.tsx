@@ -122,6 +122,7 @@ export function NoteScreen({
   const [scrolledNotes, setScrolledNotes] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  /** Records whether a note's page has scrolled under the header. */
   const markScrolled = useCallback((id: string, scrolled: boolean) => {
     setScrolledNotes(prev => {
       if (prev.has(id) === scrolled) return prev;
