@@ -11,6 +11,7 @@ import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import { findDownloadedRows, readDownloadedJson } from './offlineResources';
 import { reusePassageResource } from './passageResourceReuse';
+import { getActiveUserId } from './storage';
 
 const DEFAULT_TN_LANGUAGE_CODE = 'eng';
 
@@ -205,6 +206,13 @@ export async function loadTranslationNotesForUnit(
   // The account this load is for: a switch while the local lookups run must
   // not send (and keep, under this account) the request as the new one.
   const bearer = authToken.get() ?? undefined;
+  const userId = params.userId;
+  // A known account's notes come only from its own session: not from
+  // another account that is active by now, nor a token set later.
+  const remoteAllowed =
+    userId === null ||
+    userId === undefined ||
+    (bearer !== undefined && getActiveUserId() === String(userId));
   const refs = resolveTranslationNotesRefs(params);
   const localNotes: TranslationNoteItem[] = [];
   const missingRefs: ResourceVerseRef[] = [];
@@ -228,6 +236,10 @@ export async function loadTranslationNotesForUnit(
     return localNotes;
   }
 
+  if (!remoteAllowed) {
+    throw new Error('Translation Notes account is not the active session');
+  }
+
   const languageCode = params.languageCode?.trim() || DEFAULT_TN_LANGUAGE_CODE;
   const projectId = params.projectId;
   const fetchRef = async (ref: ResourceVerseRef) => {
@@ -242,7 +254,6 @@ export async function loadTranslationNotesForUnit(
     const items = Array.isArray(response?.items) ? response.items : [];
     return items.flatMap(item => parseTranslationNotesItem(item, ref));
   };
-  const userId = params.userId;
   const remote = await loadResourcesForVerseRange(missingRefs, ref =>
     userId === null || userId === undefined
       ? fetchRef(ref)

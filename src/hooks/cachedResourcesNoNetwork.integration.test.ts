@@ -9,6 +9,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { getDownloadedResourcesForChapter } from '../db/downloadQueueRepository';
 import { FluentAPI } from '../services/api';
+import { authToken } from '../services/authToken';
 import type { DownloadQueueItem } from '../types/download/types';
 import { resetFileSystemMock } from '../test/mocks/expo-file-system';
 import { useImagesMapsForUnit } from './useImagesMapsForUnit';
@@ -17,6 +18,10 @@ import { useTranslationQuestionsForUnit } from './useTranslationQuestionsForUnit
 
 jest.mock('../db/downloadQueueRepository', () => ({
   getDownloadedResourcesForChapter: jest.fn(),
+}));
+
+jest.mock('../services/storage', () => ({
+  getActiveUserId: () => '42',
 }));
 
 jest.mock('../services/api', () => ({
@@ -443,6 +448,7 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
     getTranslationNotes.mockResolvedValue({ items: [] });
     getTranslationQuestions.mockResolvedValue({ items: [] });
     getTranslationImages.mockResolvedValue({ items: [] });
+    authToken.set('token-42');
 
     const unit = {
       projectId: PROJECT_ID,
@@ -469,7 +475,7 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
       CHAPTER,
       VERSE,
       'eng',
-      undefined,
+      'token-42',
     );
     expect(getTranslationQuestions).toHaveBeenCalledWith(
       PROJECT_ID,

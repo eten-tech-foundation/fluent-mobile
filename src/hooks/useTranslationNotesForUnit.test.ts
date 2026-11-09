@@ -8,6 +8,10 @@ import {
 import { TRANSLATION_NOTES_LOAD_ERROR } from '../constants/messages';
 import { TranslationNoteItem } from '../types/resources/translationNotes';
 
+jest.mock('../services/storage', () => ({
+  getActiveUserId: () => '',
+}));
+
 jest.mock('../services/translationNotes', () => {
   const actual = jest.requireActual('../services/translationNotes');
   return {

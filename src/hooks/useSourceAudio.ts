@@ -16,6 +16,7 @@ import {
   persistSourceAudioChapterMeta,
   resolveLocalChapterSourceAudio,
 } from '../services/offlineSourceAudio';
+import { getActiveUserId } from '../services/storage';
 import { isApiError } from '../types/api/errors';
 import type { ApiSourceAudioResponse } from '../types/api/sourceAudio';
 import { logger } from '../utils/logger';
@@ -225,6 +226,10 @@ export function useSourceAudio({
     // The account this lookup is for: a switch during the local check must
     // not send (and keep, under this account) the request as the new one.
     const bearer = authToken.get() ?? undefined;
+    // A known account's audio comes only from its own session: not from
+    // another account that is active by now, nor a token set later.
+    const remoteAllowed =
+      owner === '' || (bearer !== undefined && getActiveUserId() === owner);
     setLoadState('loading');
     setUri(null);
     setVerseTimestamps(undefined);
@@ -250,6 +255,10 @@ export function useSourceAudio({
         if (isOnline === false) {
           setLoadState('empty');
           return;
+        }
+
+        if (!remoteAllowed) {
+          throw new Error('Source audio account is not the active session');
         }
 
         const fetchFromApi = async () => {

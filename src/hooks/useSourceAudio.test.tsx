@@ -5,8 +5,14 @@ import { clearPassageResourceReuse } from '../services/passageResourceReuse';
 import type { UseSourceAudioArgs } from './useSourceAudio';
 import { authToken } from '../services/authToken';
 
-/** As accountSession does on a switch: the new account's bearer goes live. */
-function switchAccount(token: string): void {
+let mockActiveUserId = '';
+jest.mock('../services/storage', () => ({
+  getActiveUserId: () => mockActiveUserId,
+}));
+
+/** As accountSession does on a switch: the account is active, its bearer live. */
+function switchAccount(userId: string, token: string | null): void {
+  mockActiveUserId = userId;
   authToken.set(token);
 }
 
@@ -92,7 +98,7 @@ describe('useSourceAudio', () => {
 
   beforeEach(() => {
     clearPassageResourceReuse();
-    authToken.set(null);
+    switchAccount('', null);
     jest.clearAllMocks();
     mockPlaybackPlay.mockResolvedValue(undefined);
     mockPlaybackStop.mockResolvedValue(undefined);
@@ -932,6 +938,10 @@ describe('useSourceAudio', () => {
   });
 
   describe('reopening the chapter', () => {
+    beforeEach(() => {
+      switchAccount('5', 'token-5');
+    });
+
     const response = (url: string, expiresAt?: number) => ({
       provider: 'aquifer',
       bible: { name: 'BSB', abbreviation: 'BSB' },
@@ -968,6 +978,7 @@ describe('useSourceAudio', () => {
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1);
       expect(persistSourceAudioMeta).toHaveBeenCalledTimes(1);
 
+      switchAccount('6', 'token-6');
       await openAndClose({ ...baseArgs(), userId: 6 });
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2);
     });
@@ -1023,6 +1034,10 @@ describe('useSourceAudio', () => {
   });
 
   describe('one mounted hook across accounts', () => {
+    beforeEach(() => {
+      switchAccount('5', 'token-5');
+    });
+
     const audio = (url: string) => ({
       provider: 'aquifer',
       bible: { name: 'BSB', abbreviation: 'BSB' },
@@ -1060,6 +1075,7 @@ describe('useSourceAudio', () => {
       expect(view.result.current.status).toBe('playing');
       mockPlaybackStop.mockClear();
 
+      switchAccount('6', 'token-6');
       view.rerender({ userId: 6 });
       await waitFor(() => expect(mockPlaybackStop).toHaveBeenCalled());
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
@@ -1077,6 +1093,7 @@ describe('useSourceAudio', () => {
         .mockResolvedValueOnce(audio('https://cdn/b.mp3'));
       const view = mount({ userId: 5 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
+      switchAccount('6', 'token-6');
       view.rerender({ userId: 6 });
       await waitFor(() =>
         expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2),
@@ -1098,6 +1115,7 @@ describe('useSourceAudio', () => {
       await waitFor(() =>
         expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1),
       );
+      switchAccount('6', 'token-6');
       view.rerender({ userId: 6 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       await act(async () => {
@@ -1218,6 +1236,7 @@ describe('useSourceAudio', () => {
       await playedUri(view.result);
       expect(view.result.current.isPlaying).toBe(true);
 
+      switchAccount('6', 'token-6');
       view.rerender({ userId: 6 });
       expect(seenByB.length).toBeGreaterThan(0);
       for (const out of seenByB) {
@@ -1238,7 +1257,7 @@ describe('useSourceAudio', () => {
           return audio(`https://cdn/${bearer}.mp3`);
         },
       );
-      switchAccount('token-a');
+      switchAccount('5', 'token-a');
       let missLocally!: (value: null) => void;
       resolveLocalSourceAudio.mockReturnValueOnce(
         new Promise(resolve => {
@@ -1251,7 +1270,7 @@ describe('useSourceAudio', () => {
       );
 
       // An account switch lands before React re-renders this hook for B.
-      switchAccount('token-b');
+      switchAccount('6', 'token-b');
       await act(async () => {
         missLocally(null);
       });
@@ -1259,15 +1278,71 @@ describe('useSourceAudio', () => {
 
       // Back on A: A's own lookup, under A's bearer.
       first.unmount();
-      switchAccount('token-a');
+      switchAccount('5', 'token-a');
       const again = mount({ userId: 5 });
       await waitFor(() => expect(again.result.current.loadState).toBe('ready'));
       expect(bearers).toEqual(['token-a']);
       expect(await playedUri(again.result)).toBe('https://cdn/token-a.mp3');
     });
+
+    it("never asks as B, or keeps B's audio, for A's chapter still mounted after the switch", async () => {
+      const bearers: (string | null)[] = [];
+      fetchChapterSourceAudio.mockImplementation(
+        async (_params, _request, token?: string) => {
+          const bearer = token ?? authToken.get();
+          bearers.push(bearer);
+          return audio(`https://cdn/${bearer}.mp3`);
+        },
+      );
+      // B is active before this hook's props have caught up.
+      switchAccount('6', 'token-b');
+      const stale = mount({ userId: 5 });
+      await waitFor(() => expect(stale.result.current.loadState).toBe('error'));
+      expect(bearers).toEqual([]);
+      expect(await playedUri(stale.result)).toBeUndefined();
+
+      stale.unmount();
+      switchAccount('5', 'token-a');
+      const again = mount({ userId: 5 });
+      await waitFor(() => expect(again.result.current.loadState).toBe('ready'));
+      expect(bearers).toEqual(['token-a']);
+      expect(await playedUri(again.result)).toBe('https://cdn/token-a.mp3');
+    });
+
+    it("never looks up with the next account's token when the load began without one", async () => {
+      const bearers: (string | null)[] = [];
+      fetchChapterSourceAudio.mockImplementation(
+        async (_params, _request, token?: string) => {
+          bearers.push(token ?? authToken.get());
+          return audio('https://cdn/b.mp3');
+        },
+      );
+      switchAccount('5', null);
+      let missLocally!: (value: null) => void;
+      resolveLocalSourceAudio.mockReturnValueOnce(
+        new Promise(resolve => {
+          missLocally = resolve;
+        }),
+      );
+      const view = mount({ userId: 5 });
+      await waitFor(() =>
+        expect(resolveLocalSourceAudio).toHaveBeenCalledTimes(1),
+      );
+
+      switchAccount('6', 'token-b');
+      await act(async () => {
+        missLocally(null);
+      });
+      await waitFor(() => expect(view.result.current.loadState).toBe('error'));
+      expect(bearers).toEqual([]);
+    });
   });
 
   describe('before the player wants it', () => {
+    beforeEach(() => {
+      switchAccount('5', 'token-5');
+    });
+
     const audio = (url: string) => ({
       provider: 'aquifer',
       bible: { name: 'BSB', abbreviation: 'BSB' },
@@ -1318,6 +1393,7 @@ describe('useSourceAudio', () => {
     it("asks for the account that's active when it's wanted, not the one that opened", async () => {
       fetchChapterSourceAudio.mockResolvedValue(audio('https://cdn/b.mp3'));
       const view = mount({ deferred: true });
+      switchAccount('6', 'token-6');
       view.rerender({ deferred: true, userId: 6 });
       view.rerender({ deferred: false, userId: 6 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
