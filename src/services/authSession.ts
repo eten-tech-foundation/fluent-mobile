@@ -2,6 +2,7 @@ import { ApiUser } from '../types/api/responses';
 import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
+import { clearDraftListingSnapshots } from './draftListingSnapshot';
 import {
   clearTempCredentials,
   getAllStoredUserIds,
@@ -109,6 +110,9 @@ export function signOut(): void {
   authToken.set(null);
   kvStorage.removeItemSync(KV_KEYS.ACTIVE_USER_ID);
   clearUserSession();
+  // Per-user chapter listing snapshots are keyed and gated by account, but
+  // there is no reason to keep another account's signed URLs in memory.
+  clearDraftListingSnapshots();
 }
 
 /** Clears the soft-reauth flag and notifies UI listeners (Home banner, Settings). */

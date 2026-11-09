@@ -473,10 +473,11 @@ export const FluentAPI = {
   getChapterVerseAudio: async (
     params: GetChapterVerseAudioParams,
     token?: string,
+    request?: { signal?: AbortSignal },
   ): Promise<VerseAudioListResponse> => {
     const raw = await authedRequest<unknown>(
       chapterVerseAudioPath(params),
-      undefined,
+      request?.signal ? { signal: request.signal } : undefined,
       token,
     );
     return parseVerseAudioListResponse(raw);
