@@ -469,6 +469,7 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
       CHAPTER,
       VERSE,
       'eng',
+      undefined,
     );
     expect(getTranslationQuestions).toHaveBeenCalledWith(
       PROJECT_ID,

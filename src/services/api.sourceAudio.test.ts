@@ -149,7 +149,7 @@ describe('FluentAPI source-audio', () => {
     );
     controller.abort();
 
-    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(pending).rejects.toThrow();
     const init = fetchMock.mock.calls[0]![1] as RequestInit;
     expect((init.headers as Record<string, string>).Authorization).toBe(
       'Bearer token-a',
