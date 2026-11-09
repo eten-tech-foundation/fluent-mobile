@@ -18,7 +18,8 @@ export type SyncPhaseField = (typeof SYNC_PHASE_FIELDS)[number];
 export type SyncPhaseFullFetchReason =
   | 'remap'
   | 'missing_chapter'
-  | 'no_cursor';
+  | 'no_cursor'
+  | 'periodic_reconcile';
 
 export type SyncPhaseCounts = {
   attempt?: number;
@@ -83,12 +84,16 @@ export function resolveBibleTextFullFetchReason(
   updatedAfter: string | undefined,
   remapPending: boolean,
   missingChapter: boolean,
+  periodicReconcile = false,
 ): SyncPhaseFullFetchReason | undefined {
   if (remapPending) {
     return 'remap';
   }
   if (missingChapter) {
     return 'missing_chapter';
+  }
+  if (periodicReconcile) {
+    return 'periodic_reconcile';
   }
   if (!updatedAfter) {
     return 'no_cursor';

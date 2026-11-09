@@ -26,6 +26,56 @@ import {
 } from '../utils/chapterOwnershipState';
 import { unitRecordedStatus } from '../utils/bibleTabUnits';
 
+/** Where the database's write counter stood; compare with `sameDatabaseWrites`. */
+export type DatabaseWriteMark = { connection: object; changes: number };
+
+let sameTurnWriteMark: Promise<DatabaseWriteMark | null> | null = null;
+
+/**
+ * Rows the app has written since the database opened (SQLite
+ * `total_changes()`). Every app write goes through this one connection and
+ * this read runs after the writes queued before it, so an unchanged mark
+ * means nothing at all was written in between. `null` when unreadable.
+ *
+ * Callers in the same synchronous turn (Home's lists on one focus) share one
+ * read: no write can be seen to finish within a turn, so it is the same answer.
+ */
+export function getDatabaseWriteMark(): Promise<DatabaseWriteMark | null> {
+  if (sameTurnWriteMark) return sameTurnWriteMark;
+  const mark = readDatabaseWriteMark();
+  sameTurnWriteMark = mark;
+  void Promise.resolve().then(() => {
+    if (sameTurnWriteMark === mark) sameTurnWriteMark = null;
+  });
+  return mark;
+}
+
+async function readDatabaseWriteMark(): Promise<DatabaseWriteMark | null> {
+  try {
+    const db = getDatabase();
+    const result = await db.execute('SELECT total_changes() AS changes');
+    const changes = Number(result.rows?.[0]?.changes);
+    return Number.isFinite(changes) ? { connection: db, changes } : null;
+  } catch (error) {
+    log.warn('Could not read the database write count', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+export function sameDatabaseWrites(
+  a: DatabaseWriteMark | null,
+  b: DatabaseWriteMark | null,
+): boolean {
+  return (
+    a !== null &&
+    b !== null &&
+    a.connection === b.connection &&
+    a.changes === b.changes
+  );
+}
+
 function parseConnectivityProfile(
   metadata: string | null,
 ): DBTypes.ConnectivityProfile | null {

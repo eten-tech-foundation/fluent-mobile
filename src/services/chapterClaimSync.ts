@@ -12,6 +12,7 @@ import {
 import { isApiError } from '../types/api/errors';
 import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
+import { isAuthError } from './authError';
 import type { NormalizedClaimChapterAssignmentResponse } from '../types/api/chapterClaim';
 
 const log = logger.create('ChapterClaimSync');
@@ -33,14 +34,20 @@ export function isClaimHeldByOtherError(error: unknown): boolean {
  * Pushes a chapter claim to the server (#268). On a winning claim, updates
  * local `assigned_user_id` for the active user. Race losers persist
  * `has_conflict` locally (#271 / #470).
+ *
+ * `token` must be the session of `userId` — the server assigns the chapter to
+ * the bearer, not to the queued user id (#886). Omit only when `userId` is the
+ * active session.
  */
 export async function syncChapterClaim(
   chapterAssignmentId: number,
   userId: number,
+  token?: string,
 ): Promise<NormalizedClaimChapterAssignmentResponse> {
   const response = await FluentAPI.claimChapterAssignment(
     chapterAssignmentId,
     userId,
+    token,
   );
   if (response.hasClaimConflict) {
     await setChapterAssignmentConflict(chapterAssignmentId, true);
@@ -57,6 +64,8 @@ export type SyncPendingChapterClaimsResult = {
   synced: number;
   conflicts: number;
   failed: number;
+  /** Rows left queued because Fluent was unreachable (#886); set by the drain wrapper. */
+  deferred?: number;
 };
 
 /**
@@ -66,10 +75,12 @@ export type SyncPendingChapterClaimsResult = {
  * `claim_rejected` instead of resolving it — conflict is persisted and the row
  * dropped by `reconcilePendingClaimsAfterAssignmentPull` after the pull. Leaves rows pending on
  * transient failure or malformed / non-finite assignee so the next sync
- * cycle retries (#470).
+ * cycle retries (#470). An expired session (`AuthError`) is rethrown so the
+ * caller can mark the account for re-auth instead of retrying with it (#886).
  */
 export async function syncPendingChapterClaims(
   userId: number,
+  token?: string,
 ): Promise<SyncPendingChapterClaimsResult> {
   const pending = await getPendingChapterClaims();
   let synced = 0;
@@ -85,6 +96,7 @@ export async function syncPendingChapterClaims(
       const response = await syncChapterClaim(
         row.chapterAssignmentId,
         row.userId,
+        token,
       );
       if (response.hasClaimConflict) {
         conflicts += 1;
@@ -106,6 +118,9 @@ export async function syncPendingChapterClaims(
         });
       }
     } catch (error) {
+      if (isAuthError(error)) {
+        throw error;
+      }
       if (isClaimHeldByOtherError(error)) {
         // Terminal for claim retries, but do NOT write has_conflict or drop the
         // row yet: the assignment pull that follows would clear a pre-pull flag.
