@@ -8,9 +8,12 @@ import {
 import { AuthError } from './authError';
 import {
   __resetFullSyncSingleFlightForTests,
+  __resetMetadataRefreshFreshnessForTests,
   BIBLE_TEXT_CURSOR_OVERLAP_MS,
   BIBLE_TEXT_FULL_RECONCILE_BUDGET,
   BIBLE_TEXT_FULL_RECONCILE_MAX_AGE_MS,
+  isMetadataSyncActive,
+  refreshChapterMetadataIfOnline,
   syncAllUsers,
   syncBibleTexts,
   syncBibleTextsForChapters,
@@ -163,6 +166,9 @@ jest.mock('./storage', () => ({
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
+  getCatalogueQuietSince: jest.fn(() => null),
+  setCatalogueQuietSince: jest.fn(),
+  clearCatalogueQuietSince: jest.fn(),
   // Test convenience only (#886): the real getter runs a one-time legacy
   // reconciliation (storage.test.ts); here it just follows the legacy mock.
   getUserBibleTextSyncedAt: jest.fn((userId: string) =>
@@ -244,6 +250,7 @@ jest.mock('../db/stageAdvanceQueueRepository', () => ({
   getPendingStageAdvances: () => mockGetPendingStageAdvances(),
 }));
 beforeEach(() => {
+  __resetMetadataRefreshFreshnessForTests();
   mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
   mockGetPendingChapterClaims.mockResolvedValue([
     { id: 1, userId: 9 },
@@ -3353,5 +3360,70 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
     const stageOrder = syncPendingStageAdvancesMock.mock.invocationCallOrder[0];
     expect(claimsOrder).toBeLessThan(assignmentOrder);
     expect(assignmentOrder).toBeLessThan(stageOrder);
+  });
+  it('isMetadataSyncActive reflects an in-flight full sync and a light refresh (#886)', async () => {
+    (getCredentials as jest.Mock).mockImplementation(
+      async (userId: string) => ({
+        token: `user-${userId}-token`,
+      }),
+    );
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: { displayMode: 'verse', suppressTooltip: true },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
+    expect(isMetadataSyncActive()).toBe(false);
+
+    const fullSync = syncAllUsers();
+    expect(isMetadataSyncActive()).toBe(true);
+    await fullSync;
+    expect(isMetadataSyncActive()).toBe(false);
+
+    let activeWhileReachingServer: boolean | null = null;
+    (getCredentials as jest.Mock).mockImplementationOnce(
+      async (userId: string) => {
+        activeWhileReachingServer = isMetadataSyncActive();
+        return { token: `user-${userId}-token` };
+      },
+    );
+    await refreshChapterMetadataIfOnline(2);
+    expect(activeWhileReachingServer).toBe(true);
+    expect(isMetadataSyncActive()).toBe(false);
+  });
+
+  it('a light refresh that stays offline is not a sync (#886)', async () => {
+    getConnectivitySnapshotMock.mockResolvedValueOnce({
+      isOnline: false,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'none',
+    });
+
+    await refreshChapterMetadataIfOnline(3);
+
+    expect(getConnectivitySnapshotMock).toHaveBeenCalled();
+    expect(syncEvents.emitSyncComplete).not.toHaveBeenCalled();
+    expect(getCredentials).not.toHaveBeenCalled();
+    expect(isMetadataSyncActive()).toBe(false);
+  });
+
+  it('a light refresh for an account no longer active is not a sync (#886)', async () => {
+    await refreshChapterMetadataIfOnline(4);
+
+    expect(getConnectivitySnapshotMock).toHaveBeenCalled();
+    expect(syncEvents.emitSyncComplete).not.toHaveBeenCalled();
+    expect(getCredentials).not.toHaveBeenCalled();
+    expect(isMetadataSyncActive()).toBe(false);
+  });
+
+  it('a light refresh that reaches the server ends in one sync complete (#886)', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+    (getActiveUserId as jest.Mock).mockReturnValue('5');
+    (getKnownUserIds as jest.Mock).mockReturnValue(['5']);
+
+    await refreshChapterMetadataIfOnline(5);
+
+    expect(getCredentials).toHaveBeenCalledWith('5');
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalledTimes(1);
   });
 });

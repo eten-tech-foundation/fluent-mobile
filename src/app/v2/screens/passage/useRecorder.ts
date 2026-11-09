@@ -31,7 +31,7 @@ import {
 } from '../../../../constants/messages';
 import { MAX_RECORDING_TAKES } from '../../../../constants/recordingTakes';
 import { chapterHasUnuploadableSelectedTakes } from '../../../../db/queries';
-import { useChapterConflictStatus } from '../../../../hooks/useChapterConflictStatus';
+import { isDevPreviewChapterConflictEnabled } from '../../../../config/devPreviewChapterConflict';
 import { passageSessionVerse } from '../../../../navigation/passageSessionVerse';
 import { useLiveLevels } from '../../../../hooks/useLiveLevels';
 import { usePendingDelete } from '../../../../hooks/usePendingDelete';
@@ -175,7 +175,9 @@ export function useRecorder({
     discardCapture: verseAudio.discardCapture,
     resetCapture: session.resetCapture,
   });
-  const { hasConflict } = useChapterConflictStatus(assignment.id);
+  // The passage's own assignment row, reloaded with it on focus and sync.
+  const hasConflict =
+    isDevPreviewChapterConflictEnabled() || assignment.hasConflict === true;
   const observerOnly = isObserverOnly(assignment, userId);
   const classicReason =
     !verseMode && session.pericopeUnavailable ? RECORD_NO_PERICOPE : null;

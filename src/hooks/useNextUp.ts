@@ -1,6 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { getMilestoneChapters } from '../db/queries';
+import {
+  getDatabaseWriteMark,
+  getMilestoneChapters,
+  sameDatabaseWrites,
+  type DatabaseWriteMark,
+} from '../db/queries';
 import { getProjectPericopeSetId } from '../db/repository';
 import { parseUserId } from '../utils/parseUserId';
 import type { MyWorkChapter } from '../types/db/types';
@@ -88,187 +93,237 @@ const LOADING: NextUp = { status: 'loading' };
  */
 export function useNextUp(chapters: MyWorkChapter[]): NextUp {
   const { draftingUnit } = useDraftingUnit();
-  // Tagged with the unit it was loaded under, so a switch doesn't show the old.
-  const [loaded, setLoaded] = useState<{ nextUp: NextUp; unit: DraftingUnit }>({
+  // Tagged with the unit it was loaded under, so a switch doesn't show the old,
+  // and with whether it saw any chapters: the empty pass before the first
+  // read lands must not stand in for the chapters once they arrive.
+  const [loaded, setLoaded] = useState<{
+    nextUp: NextUp;
+    unit: DraftingUnit;
+    fromNoChapters: boolean;
+  }>({
     nextUp: LOADING,
     unit: draftingUnit,
+    fromNoChapters: true,
   });
   const readyWithDrafts = useRef(false);
+  // The last load that read everything, for whom and at which write mark.
+  const published = useRef<{
+    chapters: MyWorkChapter[];
+    unit: DraftingUnit;
+    userId: number | null;
+    writes: DatabaseWriteMark;
+  } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      const hasDrafts = draftingChapters(chapters).length > 0;
-      // Chapters arrive after a first empty pass; don't show its empty state.
-      if (hasDrafts && !readyWithDrafts.current) {
-        setLoaded(prev =>
-          prev.nextUp.status === 'loading'
-            ? prev
-            : { nextUp: LOADING, unit: draftingUnit },
-        );
+      const userId = parseUserId();
+      // Taken before the reads: a write landing during them counts as unseen.
+      const writesBefore = getDatabaseWriteMark();
+      const last = published.current;
+      if (
+        last &&
+        last.chapters === chapters &&
+        last.unit === draftingUnit &&
+        last.userId === userId
+      ) {
+        // Back on Home with the same chapters: reload only after a write,
+        // e.g. a take recorded on the passage screen.
+        void writesBefore.then(writes => {
+          if (cancelled || sameDatabaseWrites(last.writes, writes)) return;
+          load();
+        });
+      } else {
+        load();
       }
-      const ready = (result: {
-        hero: NextPassage | null;
-        after: NextPassage[];
-      }) => {
-        readyWithDrafts.current = hasDrafts;
-        setLoaded({
-          nextUp: {
-            status: 'ready',
-            ...result,
-            checking: checkingPassages(chapters),
-          },
-          unit: draftingUnit,
-        });
-      };
-      // Verse by verse works through whole chapters, as Legacy does.
-      const byVerse = draftingUnit === 'verse';
-      const pericopeSets = new Map<number, Promise<number | null>>();
-      const coverages = new Map<number, CoveragesFor>();
-      const stageMaps = new Map<
-        number,
-        Promise<Map<string, MyWorkChapter['workflowStage']> | null>
-      >();
-      const passageLists = new Map<number, Promise<BookPassage[]>>();
-
-      const stagesFor = (projectUnitId: number) => {
-        const cached = stageMaps.get(projectUnitId);
-        if (cached) return cached;
-        const userId = parseUserId();
-        const pending =
-          userId === null
-            ? Promise.resolve(null)
-            : getMilestoneChapters(projectUnitId, userId)
-                .then(rows => {
-                  const stages = new Map<
-                    string,
-                    MyWorkChapter['workflowStage']
-                  >();
-                  for (const row of rows) {
-                    stages.set(
-                      `${row.bookName}:${row.chapterNumber}`,
-                      row.workflowStage,
-                    );
-                  }
-                  return stages;
-                })
-                .catch(error => {
-                  log.error('Failed to load milestone stages', { error });
-                  return null;
-                });
-        stageMaps.set(projectUnitId, pending);
-        return pending;
-      };
-
-      const coveragesOf = (chapter: MyWorkChapter) => {
-        const coveragesFor =
-          coverages.get(chapter.projectUnitId) ??
-          coverageLookup(chapter.projectUnitId);
-        coverages.set(chapter.projectUnitId, coveragesFor);
-        return coveragesFor;
-      };
-
-      const passagesOf = (chapter: MyWorkChapter) => {
-        const cached = passageLists.get(chapter.id);
-        if (cached) return cached;
-        const pericopeSetId =
-          pericopeSets.get(chapter.projectId) ??
-          (byVerse
-            ? Promise.resolve(null)
-            : getProjectPericopeSetId(chapter.projectId));
-        pericopeSets.set(chapter.projectId, pericopeSetId);
-        const coveragesFor = coveragesOf(chapter);
-        const passages = Promise.all([
-          pericopeSetId,
-          stagesFor(chapter.projectUnitId),
-        ])
-          .then(([setId, stages]) =>
-            loadChapterPassages(
-              chapter,
-              setId,
-              coveragesFor,
-              stages
-                ? chapterNumber =>
-                    stages.get(`${chapter.bookName}:${chapterNumber}`)
-                : undefined,
-            ),
-          )
-          .catch(error => {
-            log.error('Failed to load passages', { error });
-            return [wholeChapter(chapter)];
-          });
-        passageLists.set(chapter.id, passages);
-        return passages;
-      };
-      const entry = (chapter: MyWorkChapter, passage: BookPassage) => ({
-        key: `${chapter.id}:${passage.key}`,
-        chapter,
-        passage,
-      });
-
-      (async () => {
-        let hero: NextPassage | null = null;
-        const recordedHere = new Set<number>();
-        for (const chapter of draftingChapters(chapters)) {
-          if (chapter.completedVerses > 0) continue;
-          const ranges = await coveragesOf(chapter)(
-            chapter.bibleId,
-            chapter.bookId,
-          );
-          const here = ranges.some(
-            r =>
-              r.startChapter <= chapter.chapterNumber &&
-              r.endChapter >= chapter.chapterNumber,
-          );
-          if (here) recordedHere.add(chapter.id);
-        }
-        for (const chapter of startedChapters(chapters, recordedHere)) {
-          if (cancelled) return null;
-          const partial = (await passagesOf(chapter)).find(
-            p => p.recordedStatus === 'partial',
-          );
-          if (partial) {
-            hero = entry(chapter, partial);
-            break;
-          }
-        }
-
-        const after: NextPassage[] = [];
-        // A passage that crosses chapters is in both chapters' lists.
-        const seen = new Set<string>();
-        if (hero) {
-          seen.add(
-            `${hero.chapter.projectUnitId}:${hero.chapter.bookName}:${hero.passage.key}`,
-          );
-        }
-        for (const chapter of draftingChapters(chapters)) {
-          if (cancelled) return null;
-          if (hero && after.length >= AFTER_SIZE) break;
-          for (const passage of await passagesOf(chapter)) {
-            if (hero && after.length >= AFTER_SIZE) break;
-            if (passage.recordedStatus === 'recorded') continue;
-            const bookKey = `${chapter.projectUnitId}:${chapter.bookName}:${passage.key}`;
-            if (seen.has(bookKey)) continue;
-            seen.add(bookKey);
-            if (hero) after.push(entry(chapter, passage));
-            else hero = entry(chapter, passage);
-          }
-        }
-        return { hero, after };
-      })()
-        .then(result => {
-          if (!cancelled && result) ready(result);
-        })
-        .catch(error => {
-          log.error('Failed to load next up', { error });
-          if (!cancelled) ready({ hero: null, after: [] });
-        });
-
       return () => {
         cancelled = true;
       };
+
+      function load() {
+        let failed = false;
+        const noteFailure = () => {
+          failed = true;
+        };
+        const hasDrafts = draftingChapters(chapters).length > 0;
+        // Chapters arrive after a first empty pass; don't show its empty state.
+        if (hasDrafts && !readyWithDrafts.current) {
+          setLoaded(prev =>
+            prev.nextUp.status === 'loading'
+              ? prev
+              : { nextUp: LOADING, unit: draftingUnit, fromNoChapters: true },
+          );
+        }
+        const ready = (result: {
+          hero: NextPassage | null;
+          after: NextPassage[];
+        }) => {
+          readyWithDrafts.current = hasDrafts;
+          setLoaded({
+            nextUp: {
+              status: 'ready',
+              ...result,
+              checking: checkingPassages(chapters),
+            },
+            unit: draftingUnit,
+            fromNoChapters: chapters.length === 0,
+          });
+        };
+        // Verse by verse works through whole chapters, as Legacy does.
+        const byVerse = draftingUnit === 'verse';
+        const pericopeSets = new Map<number, Promise<number | null>>();
+        const coverages = new Map<number, CoveragesFor>();
+        const stageMaps = new Map<
+          number,
+          Promise<Map<string, MyWorkChapter['workflowStage']> | null>
+        >();
+        const passageLists = new Map<number, Promise<BookPassage[]>>();
+
+        const stagesFor = (projectUnitId: number) => {
+          const cached = stageMaps.get(projectUnitId);
+          if (cached) return cached;
+          const pending =
+            userId === null
+              ? Promise.resolve(null)
+              : getMilestoneChapters(projectUnitId, userId)
+                  .then(rows => {
+                    const stages = new Map<
+                      string,
+                      MyWorkChapter['workflowStage']
+                    >();
+                    for (const row of rows) {
+                      stages.set(
+                        `${row.bookName}:${row.chapterNumber}`,
+                        row.workflowStage,
+                      );
+                    }
+                    return stages;
+                  })
+                  .catch(error => {
+                    log.error('Failed to load milestone stages', { error });
+                    noteFailure();
+                    return null;
+                  });
+          stageMaps.set(projectUnitId, pending);
+          return pending;
+        };
+
+        const coveragesOf = (chapter: MyWorkChapter) => {
+          const coveragesFor =
+            coverages.get(chapter.projectUnitId) ??
+            coverageLookup(chapter.projectUnitId, noteFailure);
+          coverages.set(chapter.projectUnitId, coveragesFor);
+          return coveragesFor;
+        };
+
+        const passagesOf = (chapter: MyWorkChapter) => {
+          const cached = passageLists.get(chapter.id);
+          if (cached) return cached;
+          const pericopeSetId =
+            pericopeSets.get(chapter.projectId) ??
+            (byVerse
+              ? Promise.resolve(null)
+              : getProjectPericopeSetId(chapter.projectId));
+          pericopeSets.set(chapter.projectId, pericopeSetId);
+          const coveragesFor = coveragesOf(chapter);
+          const passages = Promise.all([
+            pericopeSetId,
+            stagesFor(chapter.projectUnitId),
+          ])
+            .then(([setId, stages]) =>
+              loadChapterPassages(
+                chapter,
+                setId,
+                coveragesFor,
+                stages
+                  ? chapterNumber =>
+                      stages.get(`${chapter.bookName}:${chapterNumber}`)
+                  : undefined,
+              ),
+            )
+            .catch(error => {
+              log.error('Failed to load passages', { error });
+              noteFailure();
+              return [wholeChapter(chapter)];
+            });
+          passageLists.set(chapter.id, passages);
+          return passages;
+        };
+        const entry = (chapter: MyWorkChapter, passage: BookPassage) => ({
+          key: `${chapter.id}:${passage.key}`,
+          chapter,
+          passage,
+        });
+
+        (async () => {
+          let hero: NextPassage | null = null;
+          const recordedHere = new Set<number>();
+          for (const chapter of draftingChapters(chapters)) {
+            if (chapter.completedVerses > 0) continue;
+            const ranges = await coveragesOf(chapter)(
+              chapter.bibleId,
+              chapter.bookId,
+            );
+            const here = ranges.some(
+              r =>
+                r.startChapter <= chapter.chapterNumber &&
+                r.endChapter >= chapter.chapterNumber,
+            );
+            if (here) recordedHere.add(chapter.id);
+          }
+          for (const chapter of startedChapters(chapters, recordedHere)) {
+            if (cancelled) return null;
+            const partial = (await passagesOf(chapter)).find(
+              p => p.recordedStatus === 'partial',
+            );
+            if (partial) {
+              hero = entry(chapter, partial);
+              break;
+            }
+          }
+
+          const after: NextPassage[] = [];
+          // A passage that crosses chapters is in both chapters' lists.
+          const seen = new Set<string>();
+          if (hero) {
+            seen.add(
+              `${hero.chapter.projectUnitId}:${hero.chapter.bookName}:${hero.passage.key}`,
+            );
+          }
+          for (const chapter of draftingChapters(chapters)) {
+            if (cancelled) return null;
+            if (hero && after.length >= AFTER_SIZE) break;
+            for (const passage of await passagesOf(chapter)) {
+              if (hero && after.length >= AFTER_SIZE) break;
+              if (passage.recordedStatus === 'recorded') continue;
+              const bookKey = `${chapter.projectUnitId}:${chapter.bookName}:${passage.key}`;
+              if (seen.has(bookKey)) continue;
+              seen.add(bookKey);
+              if (hero) after.push(entry(chapter, passage));
+              else hero = entry(chapter, passage);
+            }
+          }
+          return { hero, after, writes: await writesBefore };
+        })()
+          .then(result => {
+            if (cancelled || !result) return;
+            const { writes, ...passages } = result;
+            ready(passages);
+            published.current =
+              failed || !writes
+                ? null
+                : { chapters, unit: draftingUnit, userId, writes };
+          })
+          .catch(error => {
+            log.error('Failed to load next up', { error });
+            published.current = null;
+            if (!cancelled) ready({ hero: null, after: [] });
+          });
+      }
     }, [chapters, draftingUnit]),
   );
 
-  return loaded.unit === draftingUnit ? loaded.nextUp : LOADING;
+  if (loaded.unit !== draftingUnit) return LOADING;
+  if (loaded.fromNoChapters && chapters.length > 0) return LOADING;
+  return loaded.nextUp;
 }

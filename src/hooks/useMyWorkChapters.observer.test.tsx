@@ -8,15 +8,32 @@ import { parseUserId } from '../utils/parseUserId';
 import { useMyWorkChapters } from './useMyWorkChapters';
 import type { MyWorkChapter } from '../types/db/types';
 
+let capturedFocusCallback: (() => void | (() => void)) | null = null;
+
 jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void | (() => void)) => {
     const React = require('react');
+    capturedFocusCallback = callback;
     React.useEffect(() => callback(), [callback]);
   },
 }));
 
+let mockWrites = 0;
+const mockConnection = {};
 jest.mock('../db/queries', () => ({
   getMyWorkChapters: jest.fn(),
+  getDatabaseWriteMark: jest.fn(async () => ({
+    connection: mockConnection,
+    changes: mockWrites,
+  })),
+  sameDatabaseWrites: (
+    a: { connection: object; changes: number } | null,
+    b: { connection: object; changes: number } | null,
+  ) =>
+    a !== null &&
+    b !== null &&
+    a.connection === b.connection &&
+    a.changes === b.changes,
 }));
 
 jest.mock('../services/storage', () => ({
@@ -149,6 +166,8 @@ const openPeerChapter: MyWorkChapter = {
 describe('useMyWorkChapters Observer grants', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    capturedFocusCallback = null;
+    mockWrites = 0;
     mockParseUserId.mockReturnValue(7);
     mockGetActiveUserId.mockReturnValue('7');
     mockGetObserverProjectIds.mockReturnValue([100]);
@@ -170,6 +189,51 @@ describe('useMyWorkChapters Observer grants', () => {
     await waitFor(() => {
       expect(result.current.chapters).toEqual([observerChapter]);
     });
+  });
+
+  it('asks for the write mark first, then reads without waiting for it', async () => {
+    const queries = jest.requireMock('../db/queries') as {
+      getDatabaseWriteMark: jest.Mock;
+    };
+    const mark = deferred<{ connection: object; changes: number }>();
+    queries.getDatabaseWriteMark.mockReturnValueOnce(mark.promise);
+
+    const { result } = renderHook(() => useMyWorkChapters());
+
+    await waitFor(() => expect(mockGetMyWorkChapters).toHaveBeenCalled());
+    expect(
+      queries.getDatabaseWriteMark.mock.invocationCallOrder[0],
+    ).toBeLessThan(mockGetMyWorkChapters.mock.invocationCallOrder[0]);
+    expect(result.current.chapters).toEqual([]);
+
+    await act(async () =>
+      mark.resolve({ connection: mockConnection, changes: 0 }),
+    );
+    await waitFor(() =>
+      expect(result.current.chapters).toEqual([observerChapter]),
+    );
+  });
+
+  it('shows saved rows while the mount metadata refresh is out, and does not re-read when it lands (#886)', async () => {
+    const mountMetadata = deferred<void>();
+    mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(
+      mountMetadata.promise,
+    );
+
+    const { result } = renderHook(() => useMyWorkChapters());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.chapters).toEqual([observerChapter]);
+    expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledWith(7);
+    const shown = result.current.chapters;
+
+    await act(async () => {
+      mountMetadata.resolve();
+      await mountMetadata.promise;
+    });
+
+    expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
+    expect(result.current.chapters).toBe(shown);
   });
 
   it('passes empty grant IDs when snapshot is unknown/revoked', async () => {
@@ -349,5 +413,225 @@ describe('useMyWorkChapters Observer grants', () => {
     });
 
     expect(result.current.chapters).toEqual([]);
+  });
+
+  describe('on regaining focus', () => {
+    async function mounted() {
+      const hook = renderHook(() => useMyWorkChapters());
+      await waitFor(() =>
+        expect(hook.result.current.chapters).toEqual([observerChapter]),
+      );
+      return hook;
+    }
+
+    async function refocus() {
+      await act(async () => {
+        capturedFocusCallback?.();
+      });
+    }
+
+    it('skips the read when nothing was written, still refreshing metadata', async () => {
+      const { result } = await mounted();
+      const shown = result.current.chapters;
+
+      await refocus();
+
+      expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
+      expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledTimes(2);
+      expect(result.current.chapters).toBe(shown);
+    });
+
+    it('reads again after a write', async () => {
+      const { result } = await mounted();
+      mockGetMyWorkChapters.mockResolvedValueOnce([
+        observerChapter,
+        assignedChapter,
+      ]);
+
+      mockWrites = 1;
+      await refocus();
+
+      expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2);
+      expect(result.current.chapters).toEqual([
+        observerChapter,
+        assignedChapter,
+      ]);
+    });
+
+    it('drops Observer rows when the grant was revoked away from the screen', async () => {
+      const { result } = await mounted();
+      mockGetObserverProjectIds.mockReturnValue([]);
+      mockGetMyWorkChapters.mockResolvedValueOnce([]);
+
+      await refocus();
+
+      expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
+        grantProjectIds: [],
+        translatorProjectIds: [],
+      });
+      expect(result.current.chapters).toEqual([]);
+    });
+
+    it('loads rows for a grant gained while the last query was pending', async () => {
+      mockRefreshChapterMetadataIfOnline.mockReturnValue(new Promise(() => {}));
+      const gainedChapter: MyWorkChapter = {
+        ...observerChapter,
+        id: 21,
+        displayLabel: 'Acts 1',
+        projectId: 200,
+      };
+      const slow = deferred<MyWorkChapter[]>();
+      mockGetMyWorkChapters.mockReturnValueOnce(slow.promise);
+      const { result } = renderHook(() => useMyWorkChapters());
+      await waitFor(() =>
+        expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
+          grantProjectIds: [100],
+          translatorProjectIds: [],
+        }),
+      );
+
+      mockGetObserverProjectIds.mockReturnValue([100, 200]);
+      await act(async () => {
+        slow.resolve([observerChapter]);
+        await slow.promise;
+      });
+      expect(result.current.chapters).toEqual([observerChapter]);
+
+      mockGetMyWorkChapters.mockResolvedValueOnce([
+        observerChapter,
+        gainedChapter,
+      ]);
+      await refocus();
+
+      expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
+        grantProjectIds: [100, 200],
+        translatorProjectIds: [],
+      });
+      expect(result.current.chapters).toEqual([observerChapter, gainedChapter]);
+    });
+
+    it('reads again when Translator grants change', async () => {
+      await mounted();
+      mockGetTranslatorProjectIds.mockReturnValue([3]);
+
+      await refocus();
+
+      expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
+        grantProjectIds: [100],
+        translatorProjectIds: [3],
+      });
+    });
+
+    it("never keeps the previous account's rows after an account switch", async () => {
+      const { result } = await mounted();
+      mockParseUserId.mockReturnValue(8);
+      mockGetActiveUserId.mockReturnValue('8');
+      mockGetObserverProjectIds.mockReturnValue([]);
+      mockGetMyWorkChapters.mockResolvedValueOnce([]);
+
+      await refocus();
+
+      expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(8, {
+        grantProjectIds: [],
+        translatorProjectIds: [],
+      });
+      expect(result.current.chapters).toEqual([]);
+    });
+  });
+
+  describe('when the refresh key changes', () => {
+    async function mountedWithKey() {
+      const hook = renderHook(
+        ({ key }: { key: number }) => useMyWorkChapters(key),
+        { initialProps: { key: 0 } },
+      );
+      await waitFor(() =>
+        expect(hook.result.current.chapters).toEqual([observerChapter]),
+      );
+      return hook;
+    }
+
+    it('skips the read when nothing was written since the list was read', async () => {
+      const { result, rerender } = await mountedWithKey();
+      const shown = result.current.chapters;
+
+      rerender({ key: 1 });
+      await act(async () => {});
+
+      expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
+      expect(result.current.chapters).toBe(shown);
+    });
+
+    it('reads again after a write', async () => {
+      const { result, rerender } = await mountedWithKey();
+      mockGetMyWorkChapters.mockResolvedValueOnce([
+        observerChapter,
+        assignedChapter,
+      ]);
+
+      mockWrites = 1;
+      rerender({ key: 1 });
+
+      await waitFor(() =>
+        expect(result.current.chapters).toEqual([
+          observerChapter,
+          assignedChapter,
+        ]),
+      );
+    });
+
+    it('reads again when a write landed during the last read', async () => {
+      mockGetMyWorkChapters.mockImplementationOnce(async () => {
+        mockWrites = 1;
+        return [observerChapter];
+      });
+      const { rerender } = await mountedWithKey();
+
+      rerender({ key: 1 });
+
+      await waitFor(() =>
+        expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2),
+      );
+    });
+
+    it('reads again when grants changed without a write', async () => {
+      const { result, rerender } = await mountedWithKey();
+      mockGetObserverProjectIds.mockReturnValue([]);
+      mockGetMyWorkChapters.mockResolvedValueOnce([]);
+
+      rerender({ key: 1 });
+
+      await waitFor(() => expect(result.current.chapters).toEqual([]));
+      expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
+        grantProjectIds: [],
+        translatorProjectIds: [],
+      });
+    });
+
+    it('reads again for another account', async () => {
+      const { result, rerender } = await mountedWithKey();
+      mockParseUserId.mockReturnValue(8);
+      mockGetActiveUserId.mockReturnValue('8');
+      mockGetObserverProjectIds.mockReturnValue([]);
+      mockGetMyWorkChapters.mockResolvedValueOnce([]);
+
+      rerender({ key: 1 });
+
+      await waitFor(() => expect(result.current.chapters).toEqual([]));
+      expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(8, {
+        grantProjectIds: [],
+        translatorProjectIds: [],
+      });
+    });
+
+    it('leaves explicit refresh unconditional', async () => {
+      const { result } = await mountedWithKey();
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+
+      expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2);
+    });
   });
 });

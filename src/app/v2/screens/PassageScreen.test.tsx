@@ -240,11 +240,6 @@ jest.mock('../../../hooks/useDraftingUnit', () => ({
   useDraftingUnit: () => ({ draftingUnit: mockDraftingUnit }),
 }));
 
-let mockConflict = false;
-jest.mock('../../../hooks/useChapterConflictStatus', () => ({
-  useChapterConflictStatus: () => ({ hasConflict: mockConflict }),
-}));
-
 const mockUnuploadable = jest.fn(async () => false);
 jest.mock('../../../db/queries', () => ({
   chapterHasUnuploadableSelectedTakes: () => mockUnuploadable(),
@@ -427,7 +422,6 @@ describe('PassageScreen', () => {
     mockNotes = [];
     mockNotesFailed = false;
     mockDraftingUnit = 'pericope';
-    mockConflict = false;
     mockUnuploadable.mockResolvedValue(false);
     mockObserverGrant = false;
     mockTranslatorGrant = false;
@@ -2092,9 +2086,42 @@ describe('PassageScreen', () => {
     expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('warns about a sync conflict and takes that cannot upload', async () => {
-    mockConflict = true;
+  it("warns about a sync conflict from the passage's assignment row", async () => {
+    mockPassage = {
+      ...ready,
+      assignment: { ...ready.assignment, hasConflict: true },
+    };
     render(<PassageScreen />);
+    await act(async () => {});
+
+    expect(screen.getByTestId('passage-notices-conflict')).toBeTruthy();
+  });
+
+  it('shows no conflict warning when the assignment row has none', async () => {
+    mockPassage = {
+      ...ready,
+      assignment: { ...ready.assignment, hasConflict: false },
+    };
+    render(<PassageScreen />);
+    await act(async () => {});
+
+    expect(screen.queryByTestId('passage-notices-conflict')).toBeNull();
+  });
+
+  it('picks up a conflict when the passage reloads its assignment', async () => {
+    mockPassage = {
+      ...ready,
+      assignment: { ...ready.assignment, hasConflict: false },
+    };
+    const view = render(<PassageScreen />);
+    await act(async () => {});
+    expect(screen.queryByTestId('passage-notices-conflict')).toBeNull();
+
+    mockPassage = {
+      ...ready,
+      assignment: { ...ready.assignment, hasConflict: true },
+    };
+    view.rerender(<PassageScreen />);
     await act(async () => {});
 
     expect(screen.getByTestId('passage-notices-conflict')).toBeTruthy();

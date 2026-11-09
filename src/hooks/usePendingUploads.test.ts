@@ -18,7 +18,10 @@ jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),
 }));
 
+jest.mock('../utils/parseUserId', () => ({ parseUserId: jest.fn(() => 7) }));
 jest.mock('../db/queries', () => ({
+  getDatabaseWriteMark: jest.fn(() => Promise.resolve(null)),
+  sameDatabaseWrites: jest.fn(() => false),
   getPendingUploadCount: jest.fn(),
   getFailedUploadCount: jest.fn(),
   getFailedUploadErrorSummary: jest.fn(),
@@ -515,8 +518,12 @@ describe('refreshSyncStatusStore', () => {
       )
       .mockResolvedValueOnce(1);
 
-    await Promise.all([refreshSyncStatusStore(), refreshSyncStatusStore()]);
+    // A later turn: same-turn calls share one read and cannot race.
+    const slow = refreshSyncStatusStore();
+    await Promise.resolve();
+    await Promise.all([slow, refreshSyncStatusStore()]);
 
+    expect(mockGetPendingUploadCount).toHaveBeenCalledTimes(2);
     expect(getSyncStatusSnapshot().pendingCount).toBe(1);
   });
 

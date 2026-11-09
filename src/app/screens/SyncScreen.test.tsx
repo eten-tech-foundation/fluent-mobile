@@ -44,6 +44,7 @@ let mockPendingUploads = {
   countsUnknown: false,
 };
 let mockSessionError: string | null = null;
+let mockMetadataSyncActive = false;
 const mockPause = jest.fn();
 const mockCancel = jest.fn();
 const mockResumeUploads = jest.fn();
@@ -126,6 +127,10 @@ jest.mock('../../db/queries', () => ({
     mockHasPendingChapterClaimsForUser(...args),
 }));
 
+jest.mock('../../hooks/useMetadataSyncActive', () => ({
+  useMetadataSyncActive: () => mockMetadataSyncActive,
+}));
+
 jest.mock('../../services/storage', () => ({
   getActiveUserId: () => mockGetActiveUserId(),
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
@@ -189,6 +194,7 @@ describe('SyncScreen', () => {
     mockConnectivityPending = false;
     mockTransferConnectivityPending = false;
     mockIsSyncing = false;
+    mockMetadataSyncActive = false;
     mockDisplayText = 'Last synced: Just now';
     mockStateType = 'normal';
     mockPendingUploads = {
@@ -395,6 +401,35 @@ describe('SyncScreen', () => {
       expect(mockSyncNowFromHook).not.toHaveBeenCalled();
     },
   );
+
+  describe('truthful progress (#886)', () => {
+    it('shows Syncing… instead of all synced while a metadata pass started elsewhere is in flight', () => {
+      mockPageStatus = 'allComplete';
+      mockMetadataSyncActive = true;
+      mockPendingUploads = {
+        ...mockPendingUploads,
+        hasPendingUploads: false,
+        pendingCount: 0,
+        pendingChapterCount: 0,
+      };
+      render(<SyncScreen />);
+
+      expect(screen.getByText('Syncing…')).toBeTruthy();
+      expect(screen.getByTestId('sync-metadata-syncing')).toBeTruthy();
+      expect(screen.queryByText('Online · all synced')).toBeNull();
+    });
+
+    it('keeps the upload copy when takes are uploading during a metadata pass', () => {
+      mockPageStatus = 'syncing';
+      mockMetadataSyncActive = true;
+      render(<SyncScreen />);
+
+      expect(
+        screen.getByText('Uploading your recordings to Fluent.'),
+      ).toBeTruthy();
+      expect(screen.queryByTestId('sync-metadata-syncing')).toBeNull();
+    });
+  });
 
   it('keeps the upload section while pending and an upload session is active', () => {
     mockPageStatus = 'pending';

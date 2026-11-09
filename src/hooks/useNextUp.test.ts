@@ -1,19 +1,33 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import {
   draftingChapters,
   startedChapters,
   useNextUp,
   type NextUp,
 } from './useNextUp';
-import { loadChapterPassages, type BookPassage } from './useBookPassages';
-import { getMilestoneChapters } from '../db/queries';
+import {
+  coverageLookup,
+  loadChapterPassages,
+  type BookPassage,
+} from './useBookPassages';
+import {
+  getDatabaseWriteMark,
+  getMilestoneChapters,
+  sameDatabaseWrites,
+} from '../db/queries';
 import { getProjectPericopeSetId } from '../db/repository';
 import { parseUserId } from '../utils/parseUserId';
 import type { MyWorkChapter } from '../types/db/types';
 
+/** Coming back to the screen: runs the latest focus effect again. */
+let mockRefocus: (() => void) | null = null;
 jest.mock('expo-router', () => ({
-  useFocusEffect: (effect: () => void | (() => void)) =>
-    require('react').useEffect(effect, [effect]),
+  useFocusEffect: (effect: () => void | (() => void)) => {
+    const React = require('react');
+    const [focus, setFocus] = React.useState(0);
+    mockRefocus = () => setFocus((n: number) => n + 1);
+    React.useEffect(effect, [effect, focus]);
+  },
 }));
 
 jest.mock('../db/repository', () => ({
@@ -21,6 +35,8 @@ jest.mock('../db/repository', () => ({
 }));
 
 jest.mock('../db/queries', () => ({
+  getDatabaseWriteMark: jest.fn(() => Promise.resolve(null)),
+  sameDatabaseWrites: jest.fn(() => false),
   getMilestoneChapters: jest.fn(),
 }));
 
@@ -44,6 +60,8 @@ const mockSetId = getProjectPericopeSetId as jest.Mock;
 const mockLoad = loadChapterPassages as jest.Mock;
 const mockStages = getMilestoneChapters as jest.Mock;
 const mockUserId = parseUserId as jest.Mock;
+const mockWriteMark = getDatabaseWriteMark as jest.Mock;
+const mockSameWrites = sameDatabaseWrites as jest.Mock;
 
 function chapter(
   id: number,
@@ -330,6 +348,66 @@ describe('useNextUp', () => {
     await waitFor(() => expect(keys(result.current)).toEqual(['1a', []]));
   });
 
+  it.each([
+    ['a draft', chapter(1)],
+    ['a peer check', chapter(1, { workflowStage: 'peer_check' })],
+  ])(
+    'never shows the empty pass for even one render once %s arrives',
+    async (_label, arrived) => {
+      mockLoad.mockResolvedValue([passage('1a')]);
+      const renders: [number, NextUp['status']][] = [];
+      const { result, rerender } = renderHook(
+        ({ chapters }: { chapters: MyWorkChapter[] }) => {
+          const nextUp = useNextUp(chapters);
+          renders.push([chapters.length, nextUp.status]);
+          return nextUp;
+        },
+        { initialProps: { chapters: [] as MyWorkChapter[] } },
+      );
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      const before = renders.length;
+
+      rerender({ chapters: [arrived] });
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      expect(renders[before]).toEqual([1, 'loading']);
+    },
+  );
+
+  it.each([
+    [
+      'a whole multi-verse chapter as the only passage',
+      'none',
+      ['chapter:1', []],
+    ],
+    ['a fully recorded draft', 'recorded', [null, []]],
+  ] as const)(
+    'goes from loading straight to its final shape for %s',
+    async (_label, status, shape) => {
+      mockUnit = 'verse';
+      mockLoad.mockResolvedValue([passage('chapter:1', status)]);
+      const seen: string[] = [];
+      const { result, rerender } = renderHook(
+        ({ chapters }: { chapters: MyWorkChapter[] }) => {
+          const nextUp = useNextUp(chapters);
+          seen.push(JSON.stringify(keys(nextUp)) + nextUp.status);
+          return nextUp;
+        },
+        { initialProps: { chapters: [] as MyWorkChapter[] } },
+      );
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      const before = seen.length;
+
+      rerender({ chapters: [chapter(1, { totalVerses: 25 })] });
+      await waitFor(() => expect(keys(result.current)).toEqual(shape));
+
+      const shapes = seen.slice(before);
+      expect(new Set(shapes)).toEqual(
+        new Set([`[null,[]]loading`, `${JSON.stringify(shape)}ready`]),
+      );
+    },
+  );
+
   it('stays empty, without loading again, when every draft is recorded', async () => {
     mockLoad.mockResolvedValue([passage('1a', 'recorded')]);
     const { result, rerender } = renderHook(
@@ -359,5 +437,145 @@ describe('useNextUp', () => {
     const stageOf = mockLoad.mock.calls[0][3] as (n: number) => string;
     expect(stageOf(14)).toBe('draft');
     expect(stageOf(15)).toBe('submitted');
+  });
+
+  describe('coming back to Home', () => {
+    const connection = {};
+    let changes = 0;
+
+    beforeEach(() => {
+      changes = 0;
+      mockWriteMark.mockImplementation(() =>
+        Promise.resolve({ connection, changes }),
+      );
+      mockSameWrites.mockImplementation(
+        (a, b) =>
+          a !== null &&
+          b !== null &&
+          a.connection === b.connection &&
+          a.changes === b.changes,
+      );
+      mockLoad.mockResolvedValue([passage('1a')]);
+    });
+
+    async function readyOn(chapters: MyWorkChapter[]) {
+      const hook = renderHook(() => useNextUp(chapters));
+      await waitFor(() => expect(hook.result.current.status).toBe('ready'));
+      return hook;
+    }
+
+    async function refocus() {
+      await act(async () => {
+        mockRefocus?.();
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+      });
+    }
+
+    it('keeps what it shows, without reading, when nothing was written', async () => {
+      const { result } = await readyOn([chapter(1)]);
+      const shown = result.current;
+
+      await refocus();
+
+      expect(mockLoad).toHaveBeenCalledTimes(1);
+      expect(result.current).toBe(shown);
+    });
+
+    it('moves on after a take is recorded', async () => {
+      const { result } = await readyOn([chapter(1)]);
+      changes = 1;
+      mockLoad.mockResolvedValue([passage('1a', 'recorded'), passage('1b')]);
+
+      await refocus();
+
+      await waitFor(() => expect(keys(result.current)).toEqual(['1b', []]));
+      expect(mockLoad).toHaveBeenCalledTimes(2);
+    });
+
+    it('reads the new chapters when My Work hands it a new list', async () => {
+      const { result, rerender } = renderHook(
+        ({ chapters }: { chapters: MyWorkChapter[] }) => useNextUp(chapters),
+        { initialProps: { chapters: [chapter(1)] } },
+      );
+      await waitFor(() => expect(keys(result.current)).toEqual(['1a', []]));
+      mockLoad.mockResolvedValue([passage('2a')]);
+
+      rerender({ chapters: [chapter(2)] });
+
+      await waitFor(() => expect(keys(result.current)).toEqual(['2a', []]));
+      expect(mockLoad).toHaveBeenCalledTimes(2);
+    });
+
+    it('reads again for another account', async () => {
+      await readyOn([chapter(1)]);
+      mockUserId.mockReturnValue(5);
+
+      await refocus();
+
+      await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
+    });
+
+    it('reads again when the write count is unreadable', async () => {
+      await readyOn([chapter(1)]);
+      mockWriteMark.mockResolvedValue(null);
+
+      await refocus();
+
+      await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
+    });
+
+    it('reads again after its passages failed to load', async () => {
+      mockLoad.mockRejectedValueOnce(new Error('busy'));
+      await readyOn([chapter(1)]);
+
+      await refocus();
+
+      await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
+    });
+
+    it("reads again after a chapter's stages failed to load", async () => {
+      mockUserId.mockReturnValue(4);
+      mockStages.mockRejectedValueOnce(new Error('busy')).mockResolvedValue([]);
+      await readyOn([chapter(1)]);
+
+      await refocus();
+
+      await waitFor(() => expect(mockStages).toHaveBeenCalledTimes(2));
+    });
+
+    it('reads again after its recorded ranges failed to load', async () => {
+      (coverageLookup as jest.Mock).mockImplementationOnce(
+        (_unit: number, onError?: () => void) =>
+          jest.fn(async () => {
+            onError?.();
+            return [];
+          }),
+      );
+      await readyOn([chapter(1)]);
+
+      await refocus();
+
+      await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
+    });
+
+    it('reads again after a write that landed while it was loading', async () => {
+      let release!: () => void;
+      mockLoad.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            release = () => resolve([passage('1a')]);
+          }),
+      );
+      const chapters = [chapter(1)];
+      const { result } = renderHook(() => useNextUp(chapters));
+      await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(1));
+      changes = 1;
+      await act(async () => release());
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      await refocus();
+
+      await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
+    });
   });
 });

@@ -240,6 +240,29 @@ describe('deriveSyncStatus', () => {
       }),
     ).toBe('offline_pending');
   });
+
+  it('returns checking, not offline, while reachability is unknown', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: false,
+        connectivityPending: true,
+        isSyncing: false,
+        hasPendingUploads: true,
+        hasFailedUploads: true,
+      }),
+    ).toBe('checking');
+  });
+
+  it('ignores connectivityPending once online', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: true,
+        connectivityPending: true,
+        isSyncing: false,
+        hasPendingUploads: true,
+      }),
+    ).toBe('online_pending');
+  });
 });
 
 describe('formatSyncStatusLabel', () => {

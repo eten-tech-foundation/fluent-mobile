@@ -6,6 +6,7 @@ import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { usePendingUploads } from '../../hooks/usePendingUploads';
 import { useUploadSessionState } from '../../hooks/useUploadSessionState';
+import { useMetadataSyncActive } from '../../hooks/useMetadataSyncActive';
 import { SettingsToggleRow } from '../../components/ui/SettingsListRow';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { UploadProgressBar } from '../../components/ui/UploadProgressBar';
@@ -74,6 +75,10 @@ export default function SyncScreen() {
       setRefreshKey(key => key + 1);
     },
   });
+  // Metadata passes started elsewhere (login, Home focus, another screen's
+  // Sync Now) are still "syncing" for this card (#886).
+  const metadataSyncActive = useMetadataSyncActive();
+  const isMetadataSyncing = isSyncing || metadataSyncActive;
 
   // Keep Sync Now visible while claims (or any Sync metadata error) still need
   // a push — otherwise uploadComplete hides the only way to retry (#611 F-alt).
@@ -228,6 +233,7 @@ export default function SyncScreen() {
             hasPendingUploads={hasPendingUploads || countsUnknown}
             hasFailedUploads={hasFailedUploads}
             isUploading={isUploading}
+            isMetadataSyncing={isMetadataSyncing}
           />
 
           {renderStatusLine(
@@ -240,6 +246,7 @@ export default function SyncScreen() {
             hasUnuploadablePending,
             pendingChapterCount,
             countsUnknown,
+            isMetadataSyncing,
           )}
           {pendingChapterCount === 0 &&
           (hasUnuploadablePending || hasPendingUploads) ? (
@@ -334,6 +341,7 @@ function renderStatusLine(
   hasUnuploadablePending: boolean,
   pendingChapterCount: number,
   countsUnknown: boolean,
+  isMetadataSyncing = false,
 ) {
   // Paused wins over a lingering take-upload flag so the status line, the
   // progress card, and the controls all describe the same state (#600).
@@ -354,6 +362,19 @@ function renderStatusLine(
         <Text style={styles.statusTitle}>Syncing…</Text>
         <Text style={styles.statusSubtitle}>
           Uploading your recordings to Fluent.
+        </Text>
+      </>
+    );
+  }
+
+  // A metadata pass (projects, assignments, milestones) is work too: the
+  // card must not read "all synced" while it is still running (#886).
+  if (isMetadataSyncing) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>Syncing…</Text>
+        <Text style={styles.statusSubtitle} testID="sync-metadata-syncing">
+          Refreshing projects and assignments from Fluent.
         </Text>
       </>
     );
