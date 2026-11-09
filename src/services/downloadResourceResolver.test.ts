@@ -441,7 +441,7 @@ describe('queuedResourceResolver draft audio refresh', () => {
       const pending = queuedResourceResolver(
         draftItem({ userId: 7, ...three[0] }),
       );
-      await new Promise(resolve => setImmediate(resolve));
+      await new Promise<void>(resolve => setImmediate(resolve));
       expect(mockGetChapterVerseAudio).toHaveBeenCalledTimes(1);
 
       // Grants changed (or the account signed out) while the listing was out.
@@ -467,7 +467,7 @@ describe('queuedResourceResolver draft audio refresh', () => {
       const pending = queuedResourceResolver(
         draftItem({ userId: 7, ...three[0] }),
       );
-      await new Promise(resolve => setImmediate(resolve));
+      await new Promise<void>(resolve => setImmediate(resolve));
       clearDraftListingSnapshotsForUser('8');
       respond(listingWith(three));
       await pending;
