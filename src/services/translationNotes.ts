@@ -9,6 +9,7 @@ import {
 } from '../utils/loadResourcesForVerseRange';
 import { FluentAPI } from './api';
 import { findDownloadedRows, readDownloadedJson } from './offlineResources';
+import { reusePassageResource } from './passageResourceReuse';
 
 const DEFAULT_TN_LANGUAGE_CODE = 'eng';
 
@@ -31,6 +32,8 @@ export type LoadTranslationNotesParams = {
   userId?: number | null;
   /** False when offline, so we never call the API. */
   isOnline?: boolean;
+  /** Explicit retry: ask the API again instead of reusing a recent answer. */
+  refresh?: boolean;
 };
 
 type TipTapContentItem = {
@@ -223,7 +226,7 @@ export async function loadTranslationNotesForUnit(
 
   const languageCode = params.languageCode?.trim() || DEFAULT_TN_LANGUAGE_CODE;
   const projectId = params.projectId;
-  const remote = await loadResourcesForVerseRange(missingRefs, async ref => {
+  const fetchRef = async (ref: ResourceVerseRef) => {
     const response = await FluentAPI.getTranslationNotes(
       projectId,
       bookCode,
@@ -233,7 +236,18 @@ export async function loadTranslationNotesForUnit(
     );
     const items = Array.isArray(response?.items) ? response.items : [];
     return items.flatMap(item => parseTranslationNotesItem(item, ref));
-  });
+  };
+  const userId = params.userId;
+  const remote = await loadResourcesForVerseRange(missingRefs, ref =>
+    userId === null || userId === undefined
+      ? fetchRef(ref)
+      : reusePassageResource(
+          String(userId),
+          `notes:${projectId}:${bookCode}:${ref.chapterNumber}:${ref.verseNumber}:${languageCode}`,
+          () => fetchRef(ref),
+          { fresh: params.refresh },
+        ),
+  );
   mergeNotesById(localNotes, remote, seenIds);
   return localNotes;
 }

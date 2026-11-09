@@ -2,6 +2,7 @@ import { ApiUser } from '../types/api/responses';
 import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
+import { clearPassageResourceReuse } from './passageResourceReuse';
 import {
   clearTempCredentials,
   getAllStoredUserIds,
@@ -109,6 +110,7 @@ export function signOut(): void {
   authToken.set(null);
   kvStorage.removeItemSync(KV_KEYS.ACTIVE_USER_ID);
   clearUserSession();
+  clearPassageResourceReuse();
 }
 
 /** Clears the soft-reauth flag and notifies UI listeners (Home banner, Settings). */

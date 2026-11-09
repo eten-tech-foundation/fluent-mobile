@@ -20,6 +20,7 @@ export type TranslationNotesLoadState =
   | { status: 'error'; message: string };
 
 type TrackedLoadState = {
+  userId: number | null | undefined;
   projectId: number | null;
   bookCode: string;
   versesKey: string;
@@ -88,6 +89,7 @@ export function useTranslationNotesForUnit(
   const versesKey = useMemo(() => verseRefsKey(refs), [refs]);
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
+    userId,
     projectId,
     bookCode,
     versesKey,
@@ -96,68 +98,75 @@ export function useTranslationNotesForUnit(
   });
   const requestIdRef = useRef(0);
 
-  const load = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-    setTracked({
+  const load = useCallback(
+    async (refresh = false) => {
+      const requestId = ++requestIdRef.current;
+      setTracked({
+        userId,
+        projectId,
+        bookCode,
+        versesKey,
+        languageCode,
+        value: { status: 'loading' },
+      });
+      try {
+        const notes = await loadTranslationNotesForUnit({
+          projectId,
+          userId,
+          isOnline,
+          bookCode,
+          chapterNumber,
+          verseNumber,
+          verseRefs: refs,
+          languageCode,
+          refresh,
+        });
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        setTracked({
+          userId,
+          projectId,
+          bookCode,
+          versesKey,
+          languageCode,
+          value: { status: 'ready', notes },
+        });
+      } catch (error) {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        log.warn('Translation Notes load failed', {
+          projectId,
+          bookCode,
+          versesKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        setTracked({
+          userId,
+          projectId,
+          bookCode,
+          versesKey,
+          languageCode,
+          value: {
+            status: 'error',
+            message: TRANSLATION_NOTES_LOAD_ERROR,
+          },
+        });
+      }
+    },
+    [
       projectId,
+      userId,
+      isOnline,
       bookCode,
+      chapterNumber,
+      verseNumber,
+      refs,
       versesKey,
       languageCode,
-      value: { status: 'loading' },
-    });
-    try {
-      const notes = await loadTranslationNotesForUnit({
-        projectId,
-        userId,
-        isOnline,
-        bookCode,
-        chapterNumber,
-        verseNumber,
-        verseRefs: refs,
-        languageCode,
-      });
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-      setTracked({
-        projectId,
-        bookCode,
-        versesKey,
-        languageCode,
-        value: { status: 'ready', notes },
-      });
-    } catch (error) {
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-      log.warn('Translation Notes load failed', {
-        projectId,
-        bookCode,
-        versesKey,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      setTracked({
-        projectId,
-        bookCode,
-        versesKey,
-        languageCode,
-        value: {
-          status: 'error',
-          message: TRANSLATION_NOTES_LOAD_ERROR,
-        },
-      });
-    }
-  }, [
-    projectId,
-    userId,
-    isOnline,
-    bookCode,
-    chapterNumber,
-    verseNumber,
-    refs,
-    versesKey,
-    languageCode,
-  ]);
+    ],
+  );
 
   useEffect(() => {
     void load();
@@ -165,8 +174,10 @@ export function useTranslationNotesForUnit(
       requestIdRef.current += 1;
     };
   }, [load]);
+  const retry = useCallback(() => load(true), [load]);
 
   const state: TranslationNotesLoadState =
+    tracked.userId === userId &&
     tracked.projectId === projectId &&
     tracked.bookCode === bookCode &&
     tracked.versesKey === versesKey &&
@@ -176,7 +187,7 @@ export function useTranslationNotesForUnit(
 
   return {
     state,
-    retry: load,
+    retry,
   };
 }
 

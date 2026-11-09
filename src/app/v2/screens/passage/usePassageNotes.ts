@@ -48,12 +48,16 @@ export function usePassageNotes(
     [ready, verses],
   );
   // A reload (e.g. coming back online) keeps the notes it had meanwhile, and
-  // after a failed one, as long as they're in the same language.
-  const [kept, setKept] = useState({ languageCode, notes: NONE });
+  // after a failed one, as long as they're the same account's, in the same
+  // language.
+  const [kept, setKept] = useState({ userId, languageCode, notes: NONE });
   useEffect(() => {
-    if (settled) setKept({ languageCode, notes: settled });
-  }, [settled, languageCode]);
+    if (settled) setKept({ userId, languageCode, notes: settled });
+  }, [settled, userId, languageCode]);
   const notes =
-    settled ?? (kept.languageCode === languageCode ? kept.notes : NONE);
+    settled ??
+    (kept.userId === userId && kept.languageCode === languageCode
+      ? kept.notes
+      : NONE);
   return useMemo(() => ({ ...notes, failed, retry }), [notes, failed, retry]);
 }

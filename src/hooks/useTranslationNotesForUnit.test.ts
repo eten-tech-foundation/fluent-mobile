@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useTranslationNotesForUnit } from './useTranslationNotesForUnit';
+import type { TranslationNotesLoadState as TranslationNotesLoadStateForTest } from './useTranslationNotesForUnit';
 import {
   loadTranslationNotesForUnit,
   setTranslationNotesLoadFailureForTests,
@@ -62,6 +63,7 @@ describe('useTranslationNotesForUnit', () => {
       verseNumber: 1,
       verseRefs: [{ chapterNumber: 14, verseNumber: 1 }],
       languageCode: undefined,
+      refresh: false,
     });
   });
 
@@ -94,5 +96,44 @@ describe('useTranslationNotesForUnit', () => {
     await waitFor(() => {
       expect(result.current.state.status).toBe('ready');
     });
+    expect(mockLoad).toHaveBeenLastCalledWith(
+      expect.objectContaining({ refresh: true }),
+    );
+  });
+
+  it("never shows account A's notes to account B on the same mounted hook", async () => {
+    let answerB!: (notes: TranslationNoteItem[]) => void;
+    mockLoad.mockResolvedValueOnce(SAMPLE_NOTES).mockReturnValueOnce(
+      new Promise(resolve => {
+        answerB = resolve;
+      }),
+    );
+    const unit = {
+      projectId: 7,
+      bookCode: 'MRK',
+      chapterNumber: 14,
+      verseNumber: 1,
+    };
+    const seenByB: TranslationNotesLoadStateForTest[] = [];
+    const { result, rerender } = renderHook(
+      (props: { userId: number }) => {
+        const out = useTranslationNotesForUnit({ ...unit, ...props });
+        if (props.userId === 6) seenByB.push(out.state);
+        return out;
+      },
+      { initialProps: { userId: 5 } },
+    );
+    await waitFor(() => expect(result.current.state.status).toBe('ready'));
+
+    rerender({ userId: 6 });
+    expect(seenByB.length).toBeGreaterThan(0);
+    expect(seenByB.every(state => state.status === 'loading')).toBe(true);
+    const theirs: TranslationNoteItem[] = [
+      { id: 'b', title: 'B', body: 'for B' },
+    ];
+    await act(async () => {
+      answerB(theirs);
+    });
+    expect(result.current.state).toEqual({ status: 'ready', notes: theirs });
   });
 });

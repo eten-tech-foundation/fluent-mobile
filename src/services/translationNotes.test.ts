@@ -7,6 +7,7 @@ import {
 import { FluentAPI } from './api';
 import { ApiError } from './apiError';
 import { findDownloadedRows, readDownloadedJson } from './offlineResources';
+import { clearPassageResourceReuse } from './passageResourceReuse';
 import type { DownloadQueueItem } from '../types/download/types';
 
 jest.mock('./api', () => ({
@@ -88,6 +89,7 @@ describe('parseTranslationNotesItem', () => {
 
 describe('loadTranslationNotesForUnit', () => {
   beforeEach(() => {
+    clearPassageResourceReuse();
     // Default: nothing downloaded → the API path is exercised.
     mockFindRows.mockResolvedValue(null);
   });
@@ -447,6 +449,77 @@ describe('loadTranslationNotesForUnit', () => {
 
       expect(notes.map(n => n.id)).toEqual(['tn-api-local-v1-0']);
       expect(getTranslationNotes).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reopening the passage', () => {
+    const unit = {
+      projectId: 7,
+      userId: 42,
+      isOnline: true,
+      bookCode: 'MRK',
+      chapterNumber: 14,
+      verseNumber: 1,
+      verseRefs: [
+        { chapterNumber: 14, verseNumber: 1 },
+        { chapterNumber: 14, verseNumber: 2 },
+      ],
+    };
+
+    it("reuses each verse's answer, empty ones too, instead of asking again", async () => {
+      getTranslationNotes.mockImplementation(async (_p, _b, _c, verse) =>
+        verse === 2 ? { items: [sampleItem] } : { items: [] },
+      );
+      const first = await loadTranslationNotesForUnit(unit);
+      const second = await loadTranslationNotesForUnit(unit);
+      expect(second).toEqual(first);
+      expect(first).toHaveLength(1);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(2);
+    });
+
+    it('asks again for a verse that failed, an explicit refresh, or another account', async () => {
+      getTranslationNotes.mockImplementation(async (_p, _b, _c, verse) => {
+        if (verse === 2) throw new Error('502');
+        return { items: [] };
+      });
+      await loadTranslationNotesForUnit(unit);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(2);
+
+      getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
+      await expect(loadTranslationNotesForUnit(unit)).resolves.toHaveLength(1);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(3);
+      expect(getTranslationNotes).toHaveBeenLastCalledWith(
+        7,
+        'MRK',
+        14,
+        2,
+        'eng',
+      );
+
+      await loadTranslationNotesForUnit({ ...unit, refresh: true });
+      expect(getTranslationNotes).toHaveBeenCalledTimes(5);
+
+      await loadTranslationNotesForUnit({ ...unit, userId: 43 });
+      expect(getTranslationNotes).toHaveBeenCalledTimes(7);
+    });
+
+    it('asks again in another language', async () => {
+      getTranslationNotes.mockResolvedValue({ items: [] });
+      await loadTranslationNotesForUnit(unit);
+      await loadTranslationNotesForUnit({ ...unit, languageCode: 'spa' });
+      expect(getTranslationNotes).toHaveBeenCalledTimes(4);
+    });
+
+    it('still prefers a row downloaded since the first open', async () => {
+      getTranslationNotes.mockResolvedValue({ items: [] });
+      await loadTranslationNotesForUnit(unit);
+      mockFindRows.mockResolvedValue([
+        downloadedRow({ localFilePath: 'file:///downloads/tn.json' }),
+      ]);
+      mockReadJson.mockResolvedValue(sampleItem.content);
+      const notes = await loadTranslationNotesForUnit(unit);
+      expect(notes.length).toBeGreaterThan(0);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(2);
     });
   });
 });

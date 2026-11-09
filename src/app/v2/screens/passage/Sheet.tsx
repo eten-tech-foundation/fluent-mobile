@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import {
   BackHandler,
-  InteractionManager,
   ScrollView,
   StyleSheet,
   View,
@@ -206,14 +205,12 @@ export function Sheet({
   const [expanded, setExpanded] = useState(false);
   /** The player is open and still; phrases are only drawn then. */
   const [atRest, setAtRest] = useState(false);
-  /** Notes load once the screen has arrived, ready for the player. */
-  const [arrived, setArrived] = useState(false);
-  useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() =>
-      setArrived(true),
-    );
-    return () => task.cancel();
-  }, []);
+  /**
+   * The player has been opened. Notes and source audio only show in it, so
+   * neither loads before then; once opened they stay, so closing keeps
+   * playback and the notes.
+   */
+  const [playerOpened, setPlayerOpened] = useState(false);
   const [recordMode, setRecordMode] = useState(false);
   const [titleSheetOpen, setTitleSheetOpen] = useState(false);
   const [container, setContainer] = useState(0);
@@ -244,7 +241,7 @@ export function Sheet({
     onCaptureActiveChange,
     onRegisterCaptureControls,
   });
-  const notes = usePassageNotes(passage, userId, arrived || expanded);
+  const notes = usePassageNotes(passage, userId, playerOpened);
   // Notes that failed to load try again each time the player opens.
   const notesRef = useRef(notes);
   useEffect(() => {
@@ -343,6 +340,7 @@ export function Sheet({
     languageCode: passage.assignment.sourceLanguageCode,
     verse: steps?.current ?? anchorVerse,
     enabled: !showRecord,
+    deferred: !playerOpened,
     isOnline: hasResolved && isOnline,
     userId,
     onPlayingVerseChange: setPlayingVerse,
@@ -461,6 +459,7 @@ export function Sheet({
   const animateTo = useCallback(
     (open: boolean, velocity = 0) => {
       setExpanded(open);
+      if (open) setPlayerOpened(true);
       // Hundreds of phrases resizing with the script every frame is the
       // lag; they wait out the motion as plain text.
       setAtRest(false);

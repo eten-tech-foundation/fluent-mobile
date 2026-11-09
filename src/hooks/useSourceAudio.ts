@@ -1,5 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { FluentAPI } from '../services/api';
+import {
+  passageResourceEpoch,
+  reusePassageResource,
+  subscribePassageResourceClears,
+} from '../services/passageResourceReuse';
 import {
   persistSourceAudioChapterMeta,
   resolveLocalChapterSourceAudio,
@@ -30,6 +41,11 @@ export type UseSourceAudioArgs = {
   verse: number;
   enabled?: boolean;
   /**
+   * Not wanted yet: no local lookup or API call, and it reads as loading
+   * rather than missing.
+   */
+  deferred?: boolean;
+  /**
    * When false, never call the API — local download or empty (#579).
    * Pass `hasResolved && isOnline` from the shell (false until /health
    * resolves), matching the Resources tab.
@@ -56,6 +72,7 @@ export function useSourceAudio({
   languageCode,
   verse,
   enabled = true,
+  deferred = false,
   isOnline = true,
   userId,
   onPlayingVerseChange,
@@ -75,9 +92,21 @@ export function useSourceAudio({
   const [dblAudioBibleId, setDblAudioBibleId] = useState<string | undefined>();
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
+  const refreshNextRef = useRef(false);
+  const owner = accountKey(userId);
+  const epoch = useSyncExternalStore(subscribePassageResourceClears, () =>
+    passageResourceEpoch(owner),
+  );
+  // Whose audio this is: the account, its last clear (sign-out, grants
+  // changed) and the chapter. Anything loaded under another identity is
+  // neither shown nor playable, even for the render before the load effect.
+  const identity = `${owner}@${epoch}|${projectId}|${bookCode}|${chapter}|${bibleId}|${languageCode}`;
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const current = loadedFor === identity;
 
   const requestIdRef = useRef(0);
   const playGenerationRef = useRef(0);
+  /** Keyed by `identity`, so another account or a clear misses. */
   const responseCacheRef = useRef<Map<string, ApiSourceAudioResponse>>(
     new Map(),
   );
@@ -99,10 +128,10 @@ export function useSourceAudio({
   /** The verse the seek effect last saw while playing or paused. */
   const navigatedVerseRef = useRef(verse);
 
-  uriRef.current = uri;
+  uriRef.current = current ? uri : null;
   verseRef.current = verse;
-  timestampsRef.current = verseTimestamps;
-  dblIdRef.current = dblAudioBibleId;
+  timestampsRef.current = current ? verseTimestamps : undefined;
+  dblIdRef.current = current ? dblAudioBibleId : undefined;
   onPlayingVerseChangeRef.current = onPlayingVerseChange;
 
   const applyResponse = useCallback((data: ApiSourceAudioResponse) => {
@@ -136,11 +165,18 @@ export function useSourceAudio({
     const invalidatePendingFetch = () => {
       requestIdRef.current += 1;
     };
+    setLoadedFor(identity);
 
     if (!enabled) {
       invalidatePendingFetch();
       resetLoadChrome('empty');
       void stopAndClearPlaying();
+      return;
+    }
+
+    if (deferred) {
+      invalidatePendingFetch();
+      resetLoadChrome('loading');
       return;
     }
 
@@ -159,29 +195,31 @@ export function useSourceAudio({
       return;
     }
 
-    const cacheKey = chapterSourceAudioCacheKey({
+    const chapterKey = chapterSourceAudioCacheKey({
       projectId,
       bookCode,
       chapter,
       bibleId,
       languageCode,
     });
-
-    if (chapterKeyRef.current !== cacheKey) {
-      chapterKeyRef.current = cacheKey;
+    // A new identity (chapter, account or a clear) stops what was playing.
+    if (chapterKeyRef.current !== identity) {
+      chapterKeyRef.current = identity;
       void stopAndClearPlaying();
     }
 
-    const cached = responseCacheRef.current.get(cacheKey);
+    const cached = responseCacheRef.current.get(identity);
     if (cached) {
       if (isCachedSourceAudioResponseValid(cached)) {
         invalidatePendingFetch();
         applyResponse(cached);
         return;
       }
-      responseCacheRef.current.delete(cacheKey);
+      responseCacheRef.current.delete(identity);
     }
 
+    const fresh = refreshNextRef.current;
+    refreshNextRef.current = false;
     const requestId = ++requestIdRef.current;
     setLoadState('loading');
     setUri(null);
@@ -199,7 +237,7 @@ export function useSourceAudio({
         });
         if (requestId !== requestIdRef.current) return;
         if (local) {
-          responseCacheRef.current.set(cacheKey, local);
+          responseCacheRef.current.set(identity, local);
           applyResponse(local);
           return;
         }
@@ -210,17 +248,29 @@ export function useSourceAudio({
           return;
         }
 
-        const data = await fetchChapterSourceAudio({
-          projectId,
-          bookCode,
-          chapter,
-          languageCode,
-          bibleId,
-        });
+        const fetchFromApi = async () => {
+          const response = await fetchChapterSourceAudio({
+            projectId,
+            bookCode,
+            chapter,
+            languageCode,
+            bibleId,
+          });
+          void persistSourceAudioMeta(projectId, response);
+          return response;
+        };
+        const data =
+          owner === ''
+            ? await fetchFromApi()
+            : await reusePassageResource(
+                owner,
+                `source-audio:${chapterKey}`,
+                fetchFromApi,
+                { fresh, isValid: isCachedSourceAudioResponseValid },
+              );
         if (requestId !== requestIdRef.current) return;
-        responseCacheRef.current.set(cacheKey, data);
+        responseCacheRef.current.set(identity, data);
         applyResponse(data);
-        void persistSourceAudioMeta(projectId, data);
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         log.error('Failed to load source audio', {
@@ -239,10 +289,13 @@ export function useSourceAudio({
     bibleId,
     bookCode,
     chapter,
+    deferred,
     enabled,
     fetchChapterSourceAudio,
+    identity,
     isOnline,
     languageCode,
+    owner,
     persistSourceAudioMeta,
     projectId,
     resetLoadChrome,
@@ -419,19 +472,28 @@ export function useSourceAudio({
   }, [stopAndClearPlaying]);
 
   const retry = useCallback(() => {
-    if (projectId !== null && bookCode && languageCode) {
-      responseCacheRef.current.delete(
-        chapterSourceAudioCacheKey({
-          projectId,
-          bookCode,
-          chapter,
-          bibleId,
-          languageCode,
-        }),
-      );
-    }
+    responseCacheRef.current.delete(identity);
+    refreshNextRef.current = true;
     setRetryToken(t => t + 1);
-  }, [bibleId, bookCode, chapter, languageCode, projectId]);
+  }, [identity]);
+
+  if (!current) {
+    return {
+      loadState: 'loading' as SourceAudioLoadState,
+      status: 'idle' as const,
+      positionMs: 0,
+      durationMs: 0,
+      isPlaying: false,
+      isLoadingAudio: false,
+      play,
+      pause,
+      seek,
+      stop,
+      retry,
+      verseTimestamps: undefined,
+      dblAudioBibleId: undefined,
+    };
+  }
 
   return {
     loadState,
@@ -449,4 +511,9 @@ export function useSourceAudio({
     verseTimestamps,
     dblAudioBibleId,
   };
+}
+
+/** '' when there's no account: nothing is shared then. */
+function accountKey(userId: number | null | undefined): string {
+  return userId === null || userId === undefined ? '' : String(userId);
 }
