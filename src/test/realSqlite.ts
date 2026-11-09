@@ -90,7 +90,14 @@ function executeOn(
   const statement = raw.prepare(query);
   const coerced = coerceParams(params);
   const rows = coerced.length > 0 ? statement.all(...coerced) : statement.all();
-  return toQueryResult(rows);
+  const result = toQueryResult(rows);
+  if (/^\s*(?:UPDATE|INSERT|DELETE|REPLACE)\b/i.test(query)) {
+    const changes = raw.prepare('SELECT changes() AS count').all()[0] as
+      | { count?: number }
+      | undefined;
+    result.rowsAffected = Number(changes?.count ?? 0);
+  }
+  return result;
 }
 
 /**

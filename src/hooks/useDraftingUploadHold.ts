@@ -1,7 +1,29 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useNavigation } from 'expo-router';
-import { setDraftingUploadHold } from '../services/uploadOrchestrator';
+import {
+  getUploadSessionSnapshot,
+  setDraftingUploadHold,
+} from '../services/uploadOrchestrator';
+import { onUploadSessionEvent } from '../services/syncEvents';
+
+function readDraftingHold(): boolean {
+  try {
+    return getUploadSessionSnapshot().holdReason === 'drafting';
+  } catch {
+    return false;
+  }
+}
+
+/** Whether automatic uploads are waiting for drafting to end. */
+export function useUploadsHeldForDrafting(): boolean {
+  const [held, setHeld] = useState(readDraftingHold);
+  useEffect(() => {
+    setHeld(readDraftingHold());
+    return onUploadSessionEvent(() => setHeld(readDraftingHold()));
+  }, []);
+  return held;
+}
 
 /**
  * Owners currently asking for the hold. Passage can push Drafting, so one

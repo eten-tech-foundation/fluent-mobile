@@ -1575,9 +1575,9 @@ export type PendingUploadChapter = {
  * before the delete pass when this list is empty, so a chapter whose only
  * remaining work is `recording_deletions` must still appear here (#716).
  */
-export async function getPendingUploadChapters(): Promise<
-  PendingUploadChapter[]
-> {
+export async function getPendingUploadChapters(
+  onError?: () => void,
+): Promise<PendingUploadChapter[]> {
   const db = getDatabase();
   const userId = parseUserId();
   try {
@@ -1603,6 +1603,7 @@ export async function getPendingUploadChapters(): Promise<
     }));
   } catch (error) {
     log.error('Error fetching pending upload chapters', { error });
+    onError?.();
     return [];
   }
 }

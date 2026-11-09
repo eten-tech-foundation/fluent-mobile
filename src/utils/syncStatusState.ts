@@ -85,6 +85,14 @@ export const SYNC_STATUS_LABELS: Record<SyncStatus, string> = {
   offline_pending: 'Offline · upload pending. Open Sync page.',
 };
 
+export const SYNC_STATUS_HELD_FOR_DRAFTING =
+  'Online · uploads wait until you leave drafting';
+/** Visible word beside the header cloud while drafting holds uploads. */
+export const SYNC_STATUS_HELD_FOR_DRAFTING_SHORT = 'Waiting';
+/** Visible header subtitle while drafting holds uploads (Legacy drafting). */
+export const SYNC_STATUS_HELD_FOR_DRAFTING_CAPTION =
+  'Uploads wait until you leave drafting';
+
 /** Accessibility / status-line label with optional upload progress counts. */
 export function formatSyncStatusLabel(
   status: SyncStatus,
@@ -93,6 +101,8 @@ export function formatSyncStatusLabel(
     total?: number;
     failedCount?: number;
     failedErrorText?: string | null;
+    /** Automatic uploads wait while a drafting screen is open (#886). */
+    heldForDrafting?: boolean;
   },
 ): string {
   if (
@@ -121,6 +131,10 @@ export function formatSyncStatusLabel(
 
   if (status === 'online_failed' && options?.failedErrorText) {
     return `${SYNC_STATUS_LABELS[status]} ${options.failedErrorText}`;
+  }
+
+  if (status === 'online_pending' && options?.heldForDrafting) {
+    return `${SYNC_STATUS_HELD_FOR_DRAFTING}. Open Sync page.`;
   }
 
   return SYNC_STATUS_LABELS[status];

@@ -1234,6 +1234,7 @@ export async function getPendingRecordings(chapter?: {
        r.end_verse AS end_verse,
        r.is_canonical AS is_canonical,
        r.is_selected AS is_selected,
+       r.upload_intent_version AS upload_intent_version,
        bt.book_id AS book_id,
        bt.chapter_number AS chapter_number,
        ${uploadProjectUnitSql('r.project_unit_id')} AS project_unit_id
@@ -1307,6 +1308,7 @@ export async function getPendingRecordings(chapter?: {
       endVerse: toNullableInt(row.end_verse),
       isCanonical: Number(row.is_canonical) === 1,
       isSelected: Number(row.is_selected) === 1,
+      uploadIntentVersion: Number(row.upload_intent_version ?? 0),
     };
   });
 }
@@ -1314,15 +1316,26 @@ export async function getPendingRecordings(chapter?: {
 export async function setRecordingSyncStatus(
   id: string,
   status: DBTypes.RecordingSyncStatus,
-): Promise<void> {
+  expectedIntentVersion?: number,
+): Promise<boolean> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
-  await db.execute(
+  const result = await db.execute(
     `UPDATE recordings
      SET sync_status = ?, updated_at = ?
-     WHERE id = ?`,
-    [status, updatedAt, id],
+     WHERE id = ?${
+       expectedIntentVersion === undefined
+         ? ''
+         : ' AND upload_intent_version = ?'
+     }`,
+    [
+      status,
+      updatedAt,
+      id,
+      ...(expectedIntentVersion === undefined ? [] : [expectedIntentVersion]),
+    ],
   );
+  return (result.rowsAffected ?? 0) > 0;
 }
 
 export async function claimChapterAssignment(
@@ -1456,10 +1469,12 @@ export async function markRecordingUploaded(
   blobKey: string,
   versionToken: number,
   serverTakeId: number | null = null,
-): Promise<void> {
+  expectedIntentVersion?: number,
+  acceptedScope?: DBTypes.AcceptedRecordingScope,
+): Promise<boolean> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
-  await db.execute(
+  const result = await db.execute(
     `UPDATE recordings
      SET sync_status = 'uploaded',
          blob_key = ?,
@@ -1467,9 +1482,45 @@ export async function markRecordingUploaded(
          server_take_id = COALESCE(?, server_take_id),
          upload_error = NULL,
          updated_at = ?
-     WHERE id = ?`,
-    [blobKey, versionToken, serverTakeId, updatedAt, id],
+     WHERE id = ?${
+       expectedIntentVersion === undefined
+         ? ''
+         : ' AND upload_intent_version = ?'
+     }`,
+    [
+      blobKey,
+      versionToken,
+      serverTakeId,
+      updatedAt,
+      id,
+      ...(expectedIntentVersion === undefined ? [] : [expectedIntentVersion]),
+    ],
   );
+  const matched = (result.rowsAffected ?? 0) > 0;
+  if (!matched && expectedIntentVersion !== undefined && acceptedScope) {
+    // The bytes were accepted, but a later user action owns the sync marker.
+    await db.execute(
+      `UPDATE recordings
+       SET blob_key = COALESCE(blob_key, ?),
+           server_take_id = COALESCE(server_take_id, ?),
+           version_token = CASE WHEN version_token IS NULL OR version_token < ?
+             THEN ? ELSE version_token END
+       WHERE id = ? AND bible_text_id = ? AND project_unit_id IS ?
+         AND local_file_path = ? AND recorded_by_user_id IS ?`,
+      [
+        blobKey,
+        serverTakeId,
+        versionToken,
+        versionToken,
+        id,
+        acceptedScope.bibleTextId,
+        acceptedScope.projectUnitId,
+        acceptedScope.localFilePath,
+        acceptedScope.recordedByUserId,
+      ],
+    );
+  }
+  return matched;
 }
 
 export async function markRecordingConflicted(
@@ -1519,22 +1570,56 @@ export async function markRecordingAndChapterConflicted(
   bibleTextId: number,
   versionToken: number,
   serverTakeId: number | null = null,
-): Promise<void> {
+  expectedIntentVersion?: number,
+  acceptedScope?: DBTypes.AcceptedRecordingScope,
+): Promise<boolean> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
 
+  let matched = false;
   await db.transaction(async (tx: Transaction) => {
     // Mark recording as conflicted
-    await tx.execute(
+    const result = await tx.execute(
       `UPDATE recordings
        SET sync_status = 'conflicted',
            version_token = ?,
            server_take_id = COALESCE(?, server_take_id),
            upload_error = NULL,
            updated_at = ?
-       WHERE id = ?`,
-      [versionToken, serverTakeId, updatedAt, recordingId],
+       WHERE id = ?${
+         expectedIntentVersion === undefined
+           ? ''
+           : ' AND upload_intent_version = ?'
+       }`,
+      [
+        versionToken,
+        serverTakeId,
+        updatedAt,
+        recordingId,
+        ...(expectedIntentVersion === undefined ? [] : [expectedIntentVersion]),
+      ],
     );
+    matched = (result.rowsAffected ?? 0) > 0;
+    if (!matched && expectedIntentVersion !== undefined && acceptedScope) {
+      await tx.execute(
+        `UPDATE recordings SET server_take_id = COALESCE(server_take_id, ?),
+           version_token = CASE WHEN version_token IS NULL OR version_token < ?
+             THEN ? ELSE version_token END
+         WHERE id = ? AND bible_text_id = ? AND project_unit_id IS ?
+           AND local_file_path = ? AND recorded_by_user_id IS ?`,
+        [
+          serverTakeId,
+          versionToken,
+          versionToken,
+          recordingId,
+          acceptedScope.bibleTextId,
+          acceptedScope.projectUnitId,
+          acceptedScope.localFilePath,
+          acceptedScope.recordedByUserId,
+        ],
+      );
+    }
+    if (!matched) return;
 
     // Mark chapter as having conflict (for #260 UI indicator)
     await tx.execute(
@@ -1553,6 +1638,7 @@ export async function markRecordingAndChapterConflicted(
       [updatedAt, bibleTextId],
     );
   });
+  return matched;
 }
 
 /**
@@ -1625,17 +1711,31 @@ export async function markChapterHasConflictForVerse(
 export async function markRecordingFailed(
   id: string,
   uploadError: string,
-): Promise<void> {
+  expectedIntentVersion?: number,
+  serverTakeId?: number | null,
+): Promise<boolean> {
   const db = getDatabase();
   const updatedAt = new Date().toISOString();
-  await db.execute(
+  const result = await db.execute(
     `UPDATE recordings
      SET sync_status = 'failed',
          upload_error = ?,
+         server_take_id = COALESCE(?, server_take_id),
          updated_at = ?
-     WHERE id = ?`,
-    [uploadError, updatedAt, id],
+     WHERE id = ?${
+       expectedIntentVersion === undefined
+         ? ''
+         : ' AND upload_intent_version = ?'
+     }`,
+    [
+      uploadError,
+      serverTakeId ?? null,
+      updatedAt,
+      id,
+      ...(expectedIntentVersion === undefined ? [] : [expectedIntentVersion]),
+    ],
   );
+  return (result.rowsAffected ?? 0) > 0;
 }
 
 /** True when the user has project chapters locally but none have assignee/checker set. */
@@ -1865,6 +1965,7 @@ export {
   verseHasMultipleRecorders,
   deleteRecordingTake,
   selectRecordingTake,
+  reassertRecordingActivation,
   setCanonicalTake,
   getPendingRecordingDeletions,
   clearRecordingDeletion,

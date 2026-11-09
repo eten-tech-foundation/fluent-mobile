@@ -6,7 +6,11 @@ import {
   getUnuploadablePendingSummary,
 } from '../db/queries';
 import { onRecordingDataChanged } from './recordingDataEvents';
-import { onUploadSessionEvent, type UploadSessionEvent } from './syncEvents';
+import {
+  onUploadSessionEvent,
+  type UploadSessionEvent,
+  type UploadTakeProgress,
+} from './syncEvents';
 import { logger } from '../utils/logger';
 import { sanitizeUploadErrorForDisplay } from '../utils/sanitizeUploadError';
 
@@ -15,6 +19,8 @@ const log = logger.create('syncStatusStore');
 export interface UploadProgress {
   completed: number;
   total: number;
+  /** Take progress inside the chapter uploading now, when known (#886). */
+  currentChapter?: UploadTakeProgress | null;
 }
 
 /**
@@ -77,7 +83,17 @@ function snapshotEquals(a: SyncStatusSnapshot, b: SyncStatusSnapshot): boolean {
     a.countsUnknown === b.countsUnknown &&
     a.isUploading === b.isUploading &&
     a.uploadProgress?.completed === b.uploadProgress?.completed &&
-    a.uploadProgress?.total === b.uploadProgress?.total
+    a.uploadProgress?.total === b.uploadProgress?.total &&
+    a.uploadProgress?.currentChapter?.bookId ===
+      b.uploadProgress?.currentChapter?.bookId &&
+    a.uploadProgress?.currentChapter?.chapterNumber ===
+      b.uploadProgress?.currentChapter?.chapterNumber &&
+    a.uploadProgress?.currentChapter?.completedTakes ===
+      b.uploadProgress?.currentChapter?.completedTakes &&
+    a.uploadProgress?.currentChapter?.failedTakes ===
+      b.uploadProgress?.currentChapter?.failedTakes &&
+    a.uploadProgress?.currentChapter?.totalTakes ===
+      b.uploadProgress?.currentChapter?.totalTakes
   );
 }
 
@@ -133,6 +149,7 @@ function progressFromEvent(event: UploadSessionEvent): UploadProgress | null {
     return {
       completed: event.completedChapters,
       total: event.totalChapters,
+      ...(event.currentChapter ? { currentChapter: event.currentChapter } : {}),
     };
   }
   return null;

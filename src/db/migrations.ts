@@ -4,7 +4,10 @@ import type {
   Scalar,
   Transaction,
 } from '@op-engineering/op-sqlite';
-import { createTableQueries } from './schema';
+import {
+  createTableQueries,
+  RECORDING_UPLOAD_INTENT_TRIGGER_SQL,
+} from './schema';
 import { logger } from '../utils/logger';
 
 const log = logger.create('Migrations');
@@ -20,7 +23,7 @@ export type Migration = {
   up: (db: SqlExecutor) => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_VERSION = 24;
+export const CURRENT_SCHEMA_VERSION = 25;
 
 export async function getUserVersion(db: SqlExecutor): Promise<number> {
   const result = await db.execute('PRAGMA user_version');
@@ -747,6 +750,19 @@ export const migrations: Migration[] = [
     version: 24,
     name: 'bible_text_absences_table',
     up: applyBibleTextAbsencesTable,
+  },
+  {
+    version: 25,
+    name: 'recording_upload_intent_version',
+    up: async db => {
+      await addColumnIfMissing(
+        db,
+        'recordings',
+        'upload_intent_version',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(RECORDING_UPLOAD_INTENT_TRIGGER_SQL);
+    },
   },
 ];
 

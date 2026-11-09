@@ -29,6 +29,7 @@ import {
 } from '../../utils/transportPolicy';
 import { hrefs } from '../../navigation/hrefs';
 import { SyncPageStatus } from '../../types/sync/types';
+import type { UploadTakeProgress } from '../../services/syncEvents';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
@@ -83,6 +84,7 @@ export default function SyncScreen() {
     pageStatus,
     progressUploaded,
     progressTotal,
+    progressCurrentChapter,
     nextRetryAt,
     sessionError,
     isControlPending,
@@ -208,6 +210,7 @@ export default function SyncScreen() {
     pendingChapterCount,
     hasPendingUploads,
     hasFailedUploads,
+    progressCurrentChapter,
   );
 
   return (
@@ -370,6 +373,21 @@ function renderStatusLine(
     );
   }
 
+  // Automatic uploads wait while drafting is open; the work is saved and
+  // Sync Now still uploads immediately (#886). Offline keeps its own copy
+  // below: the hold is not why uploads are waiting then.
+  if (status === 'held' && isOnline && pendingChapterCount > 0) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>Upload waiting · drafting open</Text>
+        <Text style={styles.statusSubtitle} testID="sync-held-subtitle">
+          Saved on this device. Uploads start when you leave drafting, or tap
+          Sync Now.
+        </Text>
+      </>
+    );
+  }
+
   if (hasFailedUploads && isOnline && pendingChapterCount > 0) {
     return (
       <>
@@ -459,6 +477,7 @@ function renderSecondaryContent(
   pendingChapterCount: number,
   hasPendingUploads: boolean,
   hasFailedUploads: boolean,
+  currentChapter: UploadTakeProgress | null = null,
 ) {
   switch (status) {
     case 'syncing':
@@ -466,6 +485,7 @@ function renderSecondaryContent(
         <UploadProgressBar
           uploadedChapters={uploadedChapters}
           totalChapters={totalChapters}
+          currentChapter={currentChapter}
         />
       );
 
@@ -482,6 +502,7 @@ function renderSecondaryContent(
         </>
       );
 
+    case 'held':
     case 'pending':
       // Queued rows are not active transfers (including offline pending work).
       if (!isUploading || (!hasPendingUploads && !hasFailedUploads)) {
@@ -493,6 +514,7 @@ function renderSecondaryContent(
           totalChapters={
             totalChapters > 0 ? totalChapters : pendingChapterCount
           }
+          currentChapter={currentChapter}
         />
       );
 
