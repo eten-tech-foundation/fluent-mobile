@@ -71,6 +71,9 @@ async function getBookIdByCode(bookCode: string): Promise<number | null> {
   return row?.id ?? null;
 }
 
+/** 100 rows x 7 binds stays under SQLite's legacy 999-variable limit. */
+const PERICOPE_INSERT_CHUNK_ROWS = 100;
+
 /**
  * Upserts one book's worth of bundled or API-fetched pericope verses for
  * a given set (#447 / #587 write path). Verses are already normalized to
@@ -83,13 +86,16 @@ async function getBookIdByCode(bookCode: string): Promise<number | null> {
  * multiple-in-flight-branch version-collision risk. #438 / #587 sync
  * reads it back via getPericopeBookVersion() to decide whether a reseed
  * or If-None-Match revalidation is needed on the next run.
+ *
+ * Resolves `true` only once the book's rows are committed; callers must not
+ * record the book version when it resolves `false` (nothing was written).
  */
 export async function upsertPericopeSet(
   pericopeSetId: number,
   bookCode: string,
   verses: BundledPericopeVerse[],
-): Promise<void> {
-  if (!verses.length) return;
+): Promise<boolean> {
+  if (!verses.length) return false;
 
   const bookId = await getBookIdByCode(bookCode);
   if (bookId === null) {
@@ -97,7 +103,7 @@ export async function upsertPericopeSet(
       pericopeSetId,
       bookCode,
     });
-    return;
+    return false;
   }
 
   const db = getDatabase();
@@ -106,16 +112,18 @@ export async function upsertPericopeSet(
       'DELETE FROM pericope_verses WHERE pericope_set_id = ? AND book_id = ?',
       [pericopeSetId, bookId],
     );
-    for (const verse of verses) {
+    for (let i = 0; i < verses.length; i += PERICOPE_INSERT_CHUNK_ROWS) {
+      const chunk = verses.slice(i, i + PERICOPE_INSERT_CHUNK_ROWS);
+      // Rows apply in input order, so a repeated verse keeps its last value.
       await tx.execute(
         `INSERT INTO pericope_verses
          (pericope_set_id, book_id, chapter_number, verse_number, section, pericope_number, pericope_title)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
+         VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')}
          ON CONFLICT(pericope_set_id, book_id, chapter_number, verse_number) DO UPDATE SET
            section = excluded.section,
            pericope_number = excluded.pericope_number,
            pericope_title = excluded.pericope_title`,
-        [
+        chunk.flatMap(verse => [
           pericopeSetId,
           bookId,
           verse.chapterNumber,
@@ -123,7 +131,7 @@ export async function upsertPericopeSet(
           verse.section,
           verse.pericopeNumber,
           verse.pericopeTitle,
-        ],
+        ]),
       );
     }
   });
@@ -134,4 +142,5 @@ export async function upsertPericopeSet(
     bookId,
     verseCount: verses.length,
   });
+  return true;
 }

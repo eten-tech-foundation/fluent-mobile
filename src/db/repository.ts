@@ -2,7 +2,7 @@ import { getDatabase } from './db';
 import { chapterCompletedAfterPull } from '../utils/chapterCompletionSyncGuard';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
-import { Transaction } from '@op-engineering/op-sqlite';
+import { Scalar, Transaction } from '@op-engineering/op-sqlite';
 import { StageAdvanceStatus } from '@/utils/stageAdvancement';
 import { insertStageAdvanceQueueEntry } from './stageAdvanceQueueRepository';
 import { uploadProjectUnitSql } from './recordingsRepository';
@@ -22,18 +22,19 @@ async function insertLanguageTx(tx: Transaction, lang: DBTypes.Language) {
       lang.scriptDirection ?? 'ltr',
     ],
   );
+  const values = [
+    lang.langName,
+    lang.langNameLocalized ?? null,
+    lang.langCode ?? null,
+    lang.scriptDirection ?? 'ltr',
+  ];
   await tx.execute(
     `UPDATE languages SET
       lang_name = ?, lang_name_localized = ?,
       lang_code_iso_639_3 = ?, script_direction = ?
-    WHERE id = ?`,
-    [
-      lang.langName,
-      lang.langNameLocalized ?? null,
-      lang.langCode ?? null,
-      lang.scriptDirection ?? 'ltr',
-      lang.id,
-    ],
+    WHERE id = ? AND (lang_name IS NOT ? OR lang_name_localized IS NOT ?
+      OR lang_code_iso_639_3 IS NOT ? OR script_direction IS NOT ?)`,
+    [...values, lang.id, ...values],
   );
 }
 
@@ -44,8 +45,15 @@ async function insertBookTx(tx: Transaction, book: DBTypes.Book) {
     [book.id, book.code, book.eng_display_name],
   );
   await tx.execute(
-    `UPDATE books SET code = ?, eng_display_name = ? WHERE id = ?`,
-    [book.code, book.eng_display_name, book.id],
+    `UPDATE books SET code = ?, eng_display_name = ?
+    WHERE id = ? AND (code IS NOT ? OR eng_display_name IS NOT ?)`,
+    [
+      book.code,
+      book.eng_display_name,
+      book.id,
+      book.code,
+      book.eng_display_name,
+    ],
   );
 }
 
@@ -55,9 +63,11 @@ async function insertBibleTx(tx: Transaction, bible: DBTypes.Bible) {
     `INSERT OR IGNORE INTO bibles (id, language_id, name, abbreviation) VALUES (?, ?, ?, ?)`,
     [bible.id, bible.languageId, bible.name, bible.abbreviation],
   );
+  const values = [bible.languageId, bible.name, bible.abbreviation];
   await tx.execute(
-    `UPDATE bibles SET language_id = ?, name = ?, abbreviation = ? WHERE id = ?`,
-    [bible.languageId, bible.name, bible.abbreviation, bible.id],
+    `UPDATE bibles SET language_id = ?, name = ?, abbreviation = ?
+    WHERE id = ? AND (language_id IS NOT ? OR name IS NOT ? OR abbreviation IS NOT ?)`,
+    [...values, bible.id, ...values],
   );
 }
 
@@ -74,17 +84,17 @@ async function insertProjectUnitTx(
     `INSERT OR IGNORE INTO project_units (id, project_id, status, name) VALUES (?, ?, ?, ?)`,
     [unit.id, unit.projectId, 'not_started', name],
   );
-  await tx.execute(`UPDATE project_units SET project_id = ? WHERE id = ?`, [
-    unit.projectId,
-    unit.id,
-  ]);
+  await tx.execute(
+    `UPDATE project_units SET project_id = ? WHERE id = ? AND project_id IS NOT ?`,
+    [unit.projectId, unit.id, unit.projectId],
+  );
   if (suppliedName === undefined || suppliedName === null) {
     return;
   }
-  await tx.execute(`UPDATE project_units SET name = ? WHERE id = ?`, [
-    name,
-    unit.id,
-  ]);
+  await tx.execute(
+    `UPDATE project_units SET name = ? WHERE id = ? AND name IS NOT ?`,
+    [name, unit.id, name],
+  );
 }
 
 function buildStubEmail(userId: number): string {
@@ -323,6 +333,19 @@ function collectAssigneeIds(
   return [...ids];
 }
 
+/** A queued stage advance keeps the local peer checker and status. */
+const STAGE_ADVANCE_PENDING = `EXISTS (
+  SELECT 1 FROM stage_advance_queue saq
+  WHERE saq.chapter_assignment_id = chapter_assignments.id
+    AND saq.sync_status = 'pending'
+)`;
+const PEER_CHECKER_AFTER_PULL = `CASE WHEN ${STAGE_ADVANCE_PENDING}
+  THEN chapter_assignments.peer_checker_id ELSE excluded.peer_checker_id END`;
+const STATUS_AFTER_PULL = `CASE WHEN ${STAGE_ADVANCE_PENDING}
+  THEN chapter_assignments.status ELSE excluded.status END`;
+const TOTAL_VERSES_AFTER_PULL =
+  'MAX(chapter_assignments.total_verses, excluded.total_verses)';
+
 async function insertChapterAssignmentTx(
   tx: Transaction,
   assignment: DBTypes.ChapterAssignment,
@@ -336,6 +359,7 @@ async function insertChapterAssignmentTx(
     return;
   }
 
+  const hasConflictKnown = typeof assignment.hasConflict === 'boolean' ? 1 : 0;
   await tx.execute(
     `INSERT INTO chapter_assignments
     (id, project_unit_id, bible_id, book_id, chapter_number,
@@ -348,30 +372,28 @@ async function insertChapterAssignmentTx(
       book_id = excluded.book_id,
       chapter_number = excluded.chapter_number,
       assigned_user_id = excluded.assigned_user_id,
-      peer_checker_id = CASE
-        WHEN EXISTS (
-          SELECT 1 FROM stage_advance_queue saq
-          WHERE saq.chapter_assignment_id = chapter_assignments.id
-            AND saq.sync_status = 'pending'
-        ) THEN chapter_assignments.peer_checker_id
-        ELSE excluded.peer_checker_id
-      END,
-      status = CASE
-        WHEN EXISTS (
-          SELECT 1 FROM stage_advance_queue saq
-          WHERE saq.chapter_assignment_id = chapter_assignments.id
-            AND saq.sync_status = 'pending'
-        ) THEN chapter_assignments.status
-        ELSE excluded.status
-      END,
+      peer_checker_id = ${PEER_CHECKER_AFTER_PULL},
+      status = ${STATUS_AFTER_PULL},
       submitted_time = excluded.submitted_time,
       updated_at = excluded.updated_at,
-      total_verses = MAX(chapter_assignments.total_verses, excluded.total_verses),
+      total_verses = ${TOTAL_VERSES_AFTER_PULL},
       completed_verses = excluded.completed_verses,
       has_conflict = CASE
         WHEN ? = 1 THEN excluded.has_conflict
         ELSE chapter_assignments.has_conflict
-      END`,
+      END
+    WHERE project_unit_id IS NOT excluded.project_unit_id
+      OR bible_id IS NOT excluded.bible_id
+      OR book_id IS NOT excluded.book_id
+      OR chapter_number IS NOT excluded.chapter_number
+      OR assigned_user_id IS NOT excluded.assigned_user_id
+      OR peer_checker_id IS NOT ${PEER_CHECKER_AFTER_PULL}
+      OR status IS NOT ${STATUS_AFTER_PULL}
+      OR submitted_time IS NOT excluded.submitted_time
+      OR updated_at IS NOT excluded.updated_at
+      OR total_verses IS NOT ${TOTAL_VERSES_AFTER_PULL}
+      OR completed_verses IS NOT excluded.completed_verses
+      OR (? = 1 AND has_conflict IS NOT excluded.has_conflict)`,
     [
       assignment.chapterAssignmentId,
       assignment.projectUnitId,
@@ -386,7 +408,8 @@ async function insertChapterAssignmentTx(
       assignment.totalVerses ?? 0,
       assignment.completedVerses ?? 0,
       assignment.hasConflict === true ? 1 : 0,
-      typeof assignment.hasConflict === 'boolean' ? 1 : 0,
+      hasConflictKnown,
+      hasConflictKnown,
     ],
   );
 }
@@ -462,6 +485,66 @@ export async function insertBibles(data: DBTypes.Bible[]) {
   });
 }
 
+/** 100 rows x 5 binds stays under SQLite's legacy 999-variable limit. */
+const MASTER_DATA_CHUNK_ROWS = 100;
+
+/**
+ * Same stored result as `upsertRow` per row, in a few statements per chunk:
+ * absent rows go in one INSERT OR IGNORE, stored rows run `upsertRow` only
+ * when a value differs. Chunks with unusual or repeated ids use `upsertRow`.
+ */
+async function upsertCatalogueChunks<T extends { id: number }>(
+  tx: Transaction,
+  rows: T[],
+  table: 'languages' | 'bibles',
+  columns: readonly string[],
+  values: (row: T) => Scalar[],
+  upsertRow: (tx: Transaction, row: T) => Promise<void>,
+) {
+  for (let i = 0; i < rows.length; i += MASTER_DATA_CHUNK_ROWS) {
+    const chunk = rows.slice(i, i + MASTER_DATA_CHUNK_ROWS);
+    const ids = chunk.map(row => row.id);
+    if (
+      !ids.every(id => Number.isSafeInteger(id)) ||
+      new Set(ids).size !== ids.length
+    ) {
+      for (const row of chunk) {
+        await upsertRow(tx, row);
+      }
+      continue;
+    }
+
+    const stored = await tx.execute(
+      `SELECT id, ${columns.join(', ')} FROM ${table}
+       WHERE id IN (${ids.map(() => '?').join(', ')})`,
+      ids,
+    );
+    const storedById = new Map(
+      (stored.rows ?? []).map(row => [Number(row.id), row]),
+    );
+
+    const absent = chunk.filter(row => !storedById.has(row.id));
+    if (absent.length > 0) {
+      const placeholders = `(${['?', ...columns.map(() => '?')].join(', ')})`;
+      await tx.execute(
+        `INSERT OR IGNORE INTO ${table} (id, ${columns.join(', ')})
+         VALUES ${absent.map(() => placeholders).join(', ')}`,
+        absent.flatMap(row => [row.id, ...values(row)]),
+      );
+    }
+
+    for (const row of chunk) {
+      const current = storedById.get(row.id);
+      if (
+        current &&
+        values(row).some((value, c) => current[columns[c]] !== value)
+      ) {
+        await upsertRow(tx, row);
+      }
+    }
+  }
+}
+
 export async function insertMasterData(
   languages: DBTypes.Language[],
   books: DBTypes.Book[],
@@ -469,15 +552,35 @@ export async function insertMasterData(
 ) {
   const db = getDatabase();
   await db.transaction(async (tx: Transaction) => {
-    for (const lang of languages) {
-      await insertLanguageTx(tx, lang);
-    }
+    await upsertCatalogueChunks(
+      tx,
+      languages,
+      'languages',
+      [
+        'lang_name',
+        'lang_name_localized',
+        'lang_code_iso_639_3',
+        'script_direction',
+      ],
+      lang => [
+        lang.langName,
+        lang.langNameLocalized ?? null,
+        lang.langCode ?? null,
+        lang.scriptDirection ?? 'ltr',
+      ],
+      insertLanguageTx,
+    );
     for (const book of books) {
       await insertBookTx(tx, book);
     }
-    for (const bible of bibles) {
-      await insertBibleTx(tx, bible);
-    }
+    await upsertCatalogueChunks(
+      tx,
+      bibles.filter(bible => bible.name && bible.abbreviation),
+      'bibles',
+      ['language_id', 'name', 'abbreviation'],
+      bible => [bible.languageId, bible.name, bible.abbreviation],
+      insertBibleTx,
+    );
   });
 }
 
@@ -514,22 +617,24 @@ export async function insertProjects(data: DBTypes.Project[]) {
           project.pericopeSetId ?? null,
         ],
       );
+      const values = [
+        project.name,
+        sourceLangId,
+        targetLangId,
+        project.isActive ? 1 : 0,
+        project.status ?? 'not_assigned',
+        project.updatedAt ?? new Date().toISOString(),
+        metadataJson,
+        project.pericopeSetId ?? null,
+      ];
       await tx.execute(
         `UPDATE projects SET
           name = ?, source_language_id = ?, target_language_id = ?,
           is_active = ?, status = ?, updated_at = ?, metadata = ?, pericope_set_id = ?
-        WHERE id = ?`,
-        [
-          project.name,
-          sourceLangId,
-          targetLangId,
-          project.isActive ? 1 : 0,
-          project.status ?? 'not_assigned',
-          project.updatedAt ?? new Date().toISOString(),
-          metadataJson,
-          project.pericopeSetId ?? null,
-          project.id,
-        ],
+        WHERE id = ? AND (name IS NOT ? OR source_language_id IS NOT ?
+          OR target_language_id IS NOT ? OR is_active IS NOT ? OR status IS NOT ?
+          OR updated_at IS NOT ? OR metadata IS NOT ? OR pericope_set_id IS NOT ?)`,
+        [...values, project.id, ...values],
       );
     }
   });
@@ -863,15 +968,24 @@ export async function clearBibleTextAbsences(
   }
 }
 
+/** 100 verses x 6 binds stays under SQLite's legacy 999-variable limit. */
+const BIBLE_TEXT_CHUNK_VERSES = 100;
+
 export async function insertBibleTexts(data: DBTypes.BibleText[]) {
   const db = getDatabase();
 
   if (!data?.length) return;
 
+  const verses = data.flatMap(chapter => chapter.verses);
   try {
     await db.transaction(async (tx: Transaction) => {
-      for (const chapter of data) {
-        for (const verse of chapter.verses) {
+      for (let i = 0; i < verses.length; i += BIBLE_TEXT_CHUNK_VERSES) {
+        const chunk = verses.slice(i, i + BIBLE_TEXT_CHUNK_VERSES);
+        if (await isNewBibleTextChunk(tx, chunk)) {
+          await insertNewBibleTextChunk(tx, chunk);
+          continue;
+        }
+        for (const verse of chunk) {
           await upsertBibleTextVerse(tx, verse);
         }
       }
@@ -880,6 +994,66 @@ export async function insertBibleTexts(data: DBTypes.BibleText[]) {
     log.error('Error inserting bible texts:', { error });
     throw error;
   }
+}
+
+/**
+ * True only when every verse has a valid, unique server id and natural key
+ * and neither identity exists locally, so a plain insert cannot collide and
+ * no recording remap applies. Anything else takes the per-verse path.
+ */
+async function isNewBibleTextChunk(
+  tx: Transaction,
+  chunk: DBTypes.Verse[],
+): Promise<boolean> {
+  const ids = new Set<number>();
+  const keys = new Set<string>();
+  for (const verse of chunk) {
+    if (!Number.isFinite(verse.id) || verse.id <= 0) return false;
+    const key = `${verse.bible_id}:${verse.book_id}:${verse.chapter_number}:${verse.verse_number}`;
+    if (ids.has(verse.id) || keys.has(key)) return false;
+    ids.add(verse.id);
+    keys.add(key);
+  }
+
+  const byId = await tx.execute(
+    `SELECT id FROM bible_texts WHERE id IN (${chunk
+      .map(() => '?')
+      .join(', ')})`,
+    chunk.map(verse => verse.id),
+  );
+  if (byId.rows?.length) return false;
+
+  const byNatural = await tx.execute(
+    `SELECT id FROM bible_texts
+     WHERE (bible_id, book_id, chapter_number, verse_number) IN
+       (VALUES ${chunk.map(() => '(?, ?, ?, ?)').join(', ')})`,
+    chunk.flatMap(verse => [
+      verse.bible_id,
+      verse.book_id,
+      verse.chapter_number,
+      verse.verse_number,
+    ]),
+  );
+  return !byNatural.rows?.length;
+}
+
+async function insertNewBibleTextChunk(
+  tx: Transaction,
+  chunk: DBTypes.Verse[],
+): Promise<void> {
+  await tx.execute(
+    `INSERT INTO bible_texts
+      (id, bible_id, book_id, chapter_number, verse_number, text)
+     VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`,
+    chunk.flatMap(verse => [
+      verse.id,
+      verse.bible_id,
+      verse.book_id,
+      verse.chapter_number,
+      verse.verse_number,
+      verse.text,
+    ]),
+  );
 }
 
 /**
@@ -1114,17 +1288,20 @@ export async function insertUserProjects(userId: number, projectIds: number[]) {
 /**
  * Repopulates user_projects when empty — e.g. after the membership table was
  * added or when chapter assignments synced before project membership rows.
+ * Resolves to the user's membership count when nothing was written, or null
+ * after a backfill (count again).
  */
 export async function ensureUserProjectMembership(
   userId: number,
-): Promise<void> {
+): Promise<number | null> {
   const db = getDatabase();
   const countResult = await db.execute(
     'SELECT COUNT(*) as count FROM user_projects WHERE user_id = ?',
     [userId],
   );
-  if (Number(countResult.rows?.[0]?.count ?? 0) > 0) {
-    return;
+  const count = Number(countResult.rows?.[0]?.count ?? 0);
+  if (count > 0) {
+    return count;
   }
 
   const assignmentProjects = await db.execute(
@@ -1141,7 +1318,7 @@ export async function ensureUserProjectMembership(
     .filter(id => Number.isFinite(id) && id > 0);
 
   if (projectIds.length === 0) {
-    return;
+    return 0;
   }
 
   log.info('Backfilling user_projects from chapter assignments', {
@@ -1149,6 +1326,7 @@ export async function ensureUserProjectMembership(
     projectCount: projectIds.length,
   });
   await insertUserProjects(userId, projectIds);
+  return null;
 }
 
 export async function getLocalProjectIds(): Promise<number[]> {

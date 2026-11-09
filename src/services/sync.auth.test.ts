@@ -224,7 +224,7 @@ jest.mock('../db/repository', () => ({
   insertPericopeSets: jest.fn().mockResolvedValue(undefined),
   getProjectPericopeSetId: jest.fn().mockResolvedValue(null),
   getChaptersNeedingPericopeSync: jest.fn().mockResolvedValue([]),
-  upsertPericopeSet: jest.fn().mockResolvedValue(undefined),
+  upsertPericopeSet: jest.fn().mockResolvedValue(true),
   getBibleTextAbsencesForBible: jest.fn().mockResolvedValue([]),
   recordBibleTextAbsences: jest.fn().mockResolvedValue(undefined),
   clearBibleTextAbsences: jest.fn().mockResolvedValue(undefined),
