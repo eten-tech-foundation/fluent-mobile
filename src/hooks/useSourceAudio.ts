@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { FluentAPI } from '../services/api';
+import { authToken } from '../services/authToken';
 import {
   passageResourceEpoch,
   reusePassageResource,
@@ -221,6 +222,9 @@ export function useSourceAudio({
     const fresh = refreshNextRef.current;
     refreshNextRef.current = false;
     const requestId = ++requestIdRef.current;
+    // The account this lookup is for: a switch during the local check must
+    // not send (and keep, under this account) the request as the new one.
+    const bearer = authToken.get() ?? undefined;
     setLoadState('loading');
     setUri(null);
     setVerseTimestamps(undefined);
@@ -249,13 +253,11 @@ export function useSourceAudio({
         }
 
         const fetchFromApi = async () => {
-          const response = await fetchChapterSourceAudio({
-            projectId,
-            bookCode,
-            chapter,
-            languageCode,
-            bibleId,
-          });
+          const response = await fetchChapterSourceAudio(
+            { projectId, bookCode, chapter, languageCode, bibleId },
+            undefined,
+            bearer,
+          );
           void persistSourceAudioMeta(projectId, response);
           return response;
         };

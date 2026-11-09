@@ -8,6 +8,7 @@ import {
   type ResourceVerseRef,
 } from '../utils/loadResourcesForVerseRange';
 import { FluentAPI } from './api';
+import { authToken } from './authToken';
 import { findDownloadedRows, readDownloadedJson } from './offlineResources';
 import { reusePassageResource } from './passageResourceReuse';
 
@@ -201,6 +202,9 @@ export async function loadTranslationNotesForUnit(
     return [];
   }
 
+  // The account this load is for: a switch while the local lookups run must
+  // not send (and keep, under this account) the request as the new one.
+  const bearer = authToken.get() ?? undefined;
   const refs = resolveTranslationNotesRefs(params);
   const localNotes: TranslationNoteItem[] = [];
   const missingRefs: ResourceVerseRef[] = [];
@@ -233,6 +237,7 @@ export async function loadTranslationNotesForUnit(
       ref.chapterNumber,
       ref.verseNumber,
       languageCode,
+      bearer,
     );
     const items = Array.isArray(response?.items) ? response.items : [];
     return items.flatMap(item => parseTranslationNotesItem(item, ref));

@@ -9,6 +9,18 @@ import { ApiError } from './apiError';
 import { findDownloadedRows, readDownloadedJson } from './offlineResources';
 import { clearPassageResourceReuse } from './passageResourceReuse';
 import type { DownloadQueueItem } from '../types/download/types';
+import { authToken } from './authToken';
+
+let mockActiveUserId = '';
+jest.mock('./storage', () => ({
+  ...jest.requireActual('./storage'),
+  getActiveUserId: () => mockActiveUserId,
+}));
+
+function switchAccount(userId: string, token: string): void {
+  authToken.set(token);
+  mockActiveUserId = userId;
+}
 
 jest.mock('./api', () => ({
   FluentAPI: {
@@ -90,6 +102,8 @@ describe('parseTranslationNotesItem', () => {
 describe('loadTranslationNotesForUnit', () => {
   beforeEach(() => {
     clearPassageResourceReuse();
+    authToken.set(null);
+    mockActiveUserId = '';
     // Default: nothing downloaded → the API path is exercised.
     mockFindRows.mockResolvedValue(null);
   });
@@ -190,7 +204,14 @@ describe('loadTranslationNotesForUnit', () => {
       },
     ]);
 
-    expect(getTranslationNotes).toHaveBeenCalledWith(7, 'MRK', 14, 2, 'eng');
+    expect(getTranslationNotes).toHaveBeenCalledWith(
+      7,
+      'MRK',
+      14,
+      2,
+      'eng',
+      undefined,
+    );
   });
 
   it('fans out across verseNumbers and dedupes by id (#593)', async () => {
@@ -399,7 +420,14 @@ describe('loadTranslationNotesForUnit', () => {
 
       expect(mockFindRows).toHaveBeenCalledTimes(2);
       expect(getTranslationNotes).toHaveBeenCalledTimes(1);
-      expect(getTranslationNotes).toHaveBeenCalledWith(7, 'MRK', 14, 2, 'eng');
+      expect(getTranslationNotes).toHaveBeenCalledWith(
+        7,
+        'MRK',
+        14,
+        2,
+        'eng',
+        undefined,
+      );
       expect(notes.map(n => n.id)).toEqual([
         'tn-api-local-v1-0',
         'tn-api-222-0',
@@ -494,6 +522,7 @@ describe('loadTranslationNotesForUnit', () => {
         14,
         2,
         'eng',
+        undefined,
       );
 
       await loadTranslationNotesForUnit({ ...unit, refresh: true });
@@ -520,6 +549,44 @@ describe('loadTranslationNotesForUnit', () => {
       const notes = await loadTranslationNotesForUnit(unit);
       expect(notes.length).toBeGreaterThan(0);
       expect(getTranslationNotes).toHaveBeenCalledTimes(2);
+    });
+
+    it("never fetches A's notes with B's bearer when the switch lands during A's local lookup", async () => {
+      const verse = {
+        ...unit,
+        verseRefs: [{ chapterNumber: 14, verseNumber: 2 }],
+      };
+      const bearers: (string | null)[] = [];
+      // As httpClient.buildHeaders: an explicit token wins over the global one.
+      getTranslationNotes.mockImplementation(
+        async (_p, _b, _c, _v, _l, token) => {
+          const bearer = token ?? authToken.get();
+          bearers.push(bearer);
+          return {
+            items: [{ ...sampleItem, id: bearer === 'token-a' ? 1 : 2 }],
+          };
+        },
+      );
+      switchAccount('42', 'token-a');
+      let missLocally!: (rows: null) => void;
+      mockFindRows.mockReturnValueOnce(
+        new Promise(resolve => {
+          missLocally = resolve;
+        }),
+      );
+      const stale = loadTranslationNotesForUnit(verse);
+      await Promise.resolve();
+
+      // As accountSession switches: bearer first, then the active account.
+      switchAccount('43', 'token-b');
+      missLocally(null);
+      await stale.catch(() => undefined);
+      expect(bearers).not.toContain('token-b');
+
+      switchAccount('42', 'token-a');
+      const notes = await loadTranslationNotesForUnit(verse);
+      expect(bearers).toEqual(['token-a']);
+      expect(notes.every(note => note.id.startsWith('tn-api-1-'))).toBe(true);
     });
   });
 });

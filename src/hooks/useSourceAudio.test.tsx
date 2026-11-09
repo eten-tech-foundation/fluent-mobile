@@ -3,6 +3,18 @@ import { useSourceAudio } from './useSourceAudio';
 import { ApiError } from '../types/api/errors';
 import { clearPassageResourceReuse } from '../services/passageResourceReuse';
 import type { UseSourceAudioArgs } from './useSourceAudio';
+import { authToken } from '../services/authToken';
+
+let mockActiveUserId = '';
+jest.mock('../services/storage', () => ({
+  ...jest.requireActual('../services/storage'),
+  getActiveUserId: () => mockActiveUserId,
+}));
+
+function switchAccount(userId: string, token: string): void {
+  authToken.set(token);
+  mockActiveUserId = userId;
+}
 
 jest.mock('../services/offlineSourceAudio', () => ({
   resolveLocalChapterSourceAudio: jest.fn(async () => null),
@@ -86,6 +98,8 @@ describe('useSourceAudio', () => {
 
   beforeEach(() => {
     clearPassageResourceReuse();
+    authToken.set(null);
+    mockActiveUserId = '';
     jest.clearAllMocks();
     mockPlaybackPlay.mockResolvedValue(undefined);
     mockPlaybackStop.mockResolvedValue(undefined);
@@ -1219,6 +1233,45 @@ describe('useSourceAudio', () => {
         expect(out.durationMs).toBe(0);
       }
       expect(await playedUri(view.result)).toBeUndefined();
+    });
+
+    it("never looks up A's audio with B's bearer when the switch lands during A's local check", async () => {
+      const bearers: (string | null)[] = [];
+      // As httpClient.buildHeaders: an explicit token wins over the global one.
+      fetchChapterSourceAudio.mockImplementation(
+        async (_params, _request, token?: string) => {
+          const bearer = token ?? authToken.get();
+          bearers.push(bearer);
+          return audio(`https://cdn/${bearer}.mp3`);
+        },
+      );
+      switchAccount('5', 'token-a');
+      let missLocally!: (value: null) => void;
+      resolveLocalSourceAudio.mockReturnValueOnce(
+        new Promise(resolve => {
+          missLocally = resolve;
+        }),
+      );
+      const first = mount({ userId: 5 });
+      await waitFor(() =>
+        expect(resolveLocalSourceAudio).toHaveBeenCalledTimes(1),
+      );
+
+      // As accountSession switches: bearer and active account, before React
+      // re-renders this hook for B.
+      switchAccount('6', 'token-b');
+      await act(async () => {
+        missLocally(null);
+      });
+      expect(bearers).not.toContain('token-b');
+
+      // Back on A: A's own lookup, under A's bearer.
+      first.unmount();
+      switchAccount('5', 'token-a');
+      const again = mount({ userId: 5 });
+      await waitFor(() => expect(again.result.current.loadState).toBe('ready'));
+      expect(bearers).toEqual(['token-a']);
+      expect(await playedUri(again.result)).toBe('https://cdn/token-a.mp3');
     });
   });
 
