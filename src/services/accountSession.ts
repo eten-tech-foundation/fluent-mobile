@@ -1,6 +1,7 @@
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import { clearCredentials, getCredentials } from './keychain';
+import { clearDraftListingSnapshotsForUser } from './draftListingSnapshot';
 import { signOut, resolveReauthForUser } from './authSession';
 import {
   getActiveUserId,
@@ -51,6 +52,7 @@ export async function signOutCurrentDeviceAccount(): Promise<SignOutDeviceAccoun
 
   await clearCredentials(currentUserId);
   resolveReauthForUser(currentUserId);
+  clearDraftListingSnapshotsForUser(currentUserId);
   clearUserOrgGrantSnapshot(currentUserId);
 
   const remaining = getKnownUserIds().filter(id => id !== currentUserId);

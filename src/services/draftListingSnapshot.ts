@@ -24,6 +24,10 @@ import type { VerseAudioListResponse } from '../types/api/verseAudio';
  *   identity and size), so this is a freshness window, not a wrong-object
  *   risk.
  *
+ * - Cleared on sign-out (everything), when an account signs out on this
+ *   device and when an account's grants change (that account only). A
+ *   listing still in flight across a clear is not kept.
+ *
  * In-memory only: a cold start always re-lists.
  */
 export const DRAFT_LISTING_SNAPSHOT_TTL_MS = 60_000;
@@ -44,6 +48,17 @@ interface DraftListingSnapshot {
 }
 
 const snapshots = new Map<string, DraftListingSnapshot>();
+let clears = 0;
+let allClearedAt = 0;
+const userClearedAt = new Map<string, number>();
+
+/**
+ * Take this before requesting a listing and pass it to the seed: a listing
+ * requested before a clear (sign-out, grant change) is not stored after it.
+ */
+export function draftListingSnapshotEpoch(): number {
+  return clears;
+}
 
 function keyOf(chapter: DraftListingChapterKey, userId: string): string {
   return `${userId}:${chapter.projectUnitId}:${chapter.bibleId}:${chapter.bookId}:${chapter.chapterNumber}`;
@@ -52,15 +67,25 @@ function keyOf(chapter: DraftListingChapterKey, userId: string): string {
 /**
  * Store a listing fetched from the network for `userId`. `now` should be the
  * time the listing response arrived, not when the caller got around to
- * seeding. Expired entries are swept and the map is capped so chapters that
- * are never read again cannot accumulate.
+ * seeding. `requestedAt` is `draftListingSnapshotEpoch()` from before the
+ * request; a clear since then for this user drops the seed. Expired entries
+ * are swept and the map is capped so chapters that are never read again
+ * cannot accumulate.
  */
 export function seedDraftListingSnapshot(
   chapter: DraftListingChapterKey,
   userId: string,
   list: VerseAudioListResponse,
   now: number = Date.now(),
+  requestedAt?: number,
 ): void {
+  if (
+    requestedAt !== undefined &&
+    (allClearedAt > requestedAt ||
+      (userClearedAt.get(userId) ?? 0) > requestedAt)
+  ) {
+    return;
+  }
   for (const [key, entry] of snapshots) {
     const ageMs = now - entry.fetchedAt;
     if (ageMs < 0 || ageMs >= DRAFT_LISTING_SNAPSHOT_TTL_MS) {
@@ -109,5 +134,19 @@ export function invalidateDraftListingSnapshot(
 
 /** Drop every snapshot (sign-out in `authSession.signOut`; tests). */
 export function clearDraftListingSnapshots(): void {
+  clears += 1;
+  allClearedAt = clears;
   snapshots.clear();
+}
+
+/**
+ * Drop one account's snapshots (it signed out on this device, or its grants
+ * changed) so its queued files re-list under the server's current answer.
+ */
+export function clearDraftListingSnapshotsForUser(userId: string): void {
+  clears += 1;
+  userClearedAt.set(userId, clears);
+  for (const [key, entry] of snapshots) {
+    if (entry.userId === userId) snapshots.delete(key);
+  }
 }

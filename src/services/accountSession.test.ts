@@ -2,6 +2,11 @@ import {
   signOutCurrentDeviceAccount,
   switchToDeviceAccount,
 } from './accountSession';
+import {
+  clearDraftListingSnapshots,
+  readDraftListingSnapshot,
+  seedDraftListingSnapshot,
+} from './draftListingSnapshot';
 
 const mockSignOutApi = jest.fn();
 jest.mock('./api', () => ({
@@ -100,6 +105,26 @@ describe('accountSession', () => {
       expect(mockAuthTokenSet).toHaveBeenCalledWith('next-token');
       expect(mockSwitchActiveUser).toHaveBeenCalledWith('good-3');
       expect(mockSignOut).not.toHaveBeenCalled();
+    });
+
+    it("drops the signed-out account's draft listing snapshots, not the next account's", async () => {
+      const chapter = {
+        projectUnitId: 12,
+        bibleId: 1,
+        bookId: 41,
+        chapterNumber: 1,
+      };
+      const list = { items: [], hasConflict: false };
+      clearDraftListingSnapshots();
+      seedDraftListingSnapshot(chapter, 'active-1', list);
+      seedDraftListingSnapshot(chapter, 'good-3', list);
+      mockGetKnownUserIds.mockReturnValue(['active-1', 'good-3']);
+      mockGetCredentials.mockResolvedValueOnce({ token: 'next-token' });
+
+      await signOutCurrentDeviceAccount();
+
+      expect(readDraftListingSnapshot(chapter, 'active-1')).toBeNull();
+      expect(readDraftListingSnapshot(chapter, 'good-3')).not.toBeNull();
     });
 
     it('fully signs out when no remaining accounts have a token', async () => {

@@ -39,7 +39,10 @@ import {
   type DraftManifestIdentity,
 } from './draftDownloadManifest';
 import type { DraftAudioRefreshMeta } from './downloadResourceResolver';
-import { seedDraftListingSnapshot } from './draftListingSnapshot';
+import {
+  draftListingSnapshotEpoch,
+  seedDraftListingSnapshot,
+} from './draftListingSnapshot';
 import { getSharedDownloadQueueWorker } from './downloadQueueWorkerSingleton';
 import { deleteDownloadResourceFile, fileExists } from './downloadStorage';
 import { getTransferTransportSnapshot } from './connectivity';
@@ -899,6 +902,7 @@ export async function startDraftDownload(
     // Snapshot age is measured from the listing's own arrival, not from the
     // slower of the two requests (#886).
     let listingFetchedAt = Date.now();
+    const listingRequestedAt = draftListingSnapshotEpoch();
     const [list, translatedVerses] = await Promise.all([
       FluentAPI.getChapterVerseAudio(
         {
@@ -973,6 +977,7 @@ export async function startDraftDownload(
       String(request.userId),
       list,
       listingFetchedAt,
+      listingRequestedAt,
     );
 
     const units = resolvedAudio.map(audio => ({

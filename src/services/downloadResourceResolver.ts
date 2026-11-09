@@ -6,6 +6,7 @@ import {
 } from './draftAudioActiveTake';
 import { isDraftAudioResourceId } from './draftDownloadIds';
 import {
+  draftListingSnapshotEpoch,
   invalidateDraftListingSnapshot,
   readDraftListingSnapshot,
   seedDraftListingSnapshot,
@@ -92,6 +93,7 @@ async function resolveDraftAudioItem(
   const snapshotUserId = item.userId !== undefined ? String(item.userId) : null;
 
   const fetchListing = async (): Promise<VerseAudioListResponse> => {
+    const requestedAt = draftListingSnapshotEpoch();
     const fetched = await FluentAPI.getChapterVerseAudio(
       chapter,
       sessionToken,
@@ -108,7 +110,13 @@ async function resolveDraftAudioItem(
       );
     }
     if (snapshotUserId !== null) {
-      seedDraftListingSnapshot(chapter, snapshotUserId, fetched);
+      seedDraftListingSnapshot(
+        chapter,
+        snapshotUserId,
+        fetched,
+        Date.now(),
+        requestedAt,
+      );
     }
     return fetched;
   };

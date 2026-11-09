@@ -24,6 +24,8 @@ import { draftAudioResourceId } from './draftDownloadIds';
 import {
   DRAFT_LISTING_SNAPSHOT_TTL_MS,
   clearDraftListingSnapshots,
+  clearDraftListingSnapshotsForUser,
+  readDraftListingSnapshot,
   seedDraftListingSnapshot,
 } from './draftListingSnapshot';
 import type { DownloadQueueItem } from '../types/download/types';
@@ -406,6 +408,72 @@ describe('queuedResourceResolver draft audio refresh', () => {
       nowSpy.mockReturnValue(start + DRAFT_LISTING_SNAPSHOT_TTL_MS);
       await queuedResourceResolver(draftItem({ userId: 7, ...three[2] }));
       expect(mockGetChapterVerseAudio).toHaveBeenCalledTimes(2);
+    });
+
+    it("re-lists an account's queued files after its snapshot is cleared, keeping the other account's", async () => {
+      seedDraftListingSnapshot(CHAPTER, '7', listingWith(three));
+      seedDraftListingSnapshot(CHAPTER, '8', listingWith(three));
+      clearDraftListingSnapshotsForUser('7');
+      mockGetChapterVerseAudio.mockResolvedValue(listingWith(three));
+
+      const { url } = await queuedResourceResolver(
+        draftItem({ userId: 7, ...three[0] }),
+      );
+
+      expect(url).toBe('https://s3/1');
+      expect(mockGetChapterVerseAudio).toHaveBeenCalledTimes(1);
+      expect(mockGetChapterVerseAudio).toHaveBeenCalledWith(
+        CHAPTER,
+        'session-tok-7',
+        undefined,
+      );
+      expect(readDraftListingSnapshot(CHAPTER, '8')).not.toBeNull();
+    });
+
+    it('uses a listing that was in flight across a clear for that file, but does not keep it', async () => {
+      let respond: (list: VerseAudioListResponse) => void = () => {};
+      mockGetChapterVerseAudio.mockImplementationOnce(
+        () =>
+          new Promise<VerseAudioListResponse>(resolve => {
+            respond = resolve;
+          }),
+      );
+      const pending = queuedResourceResolver(
+        draftItem({ userId: 7, ...three[0] }),
+      );
+      await new Promise(resolve => setImmediate(resolve));
+      expect(mockGetChapterVerseAudio).toHaveBeenCalledTimes(1);
+
+      // Grants changed (or the account signed out) while the listing was out.
+      clearDraftListingSnapshotsForUser('7');
+      respond(listingWith(three));
+      await expect(pending).resolves.toMatchObject({ url: 'https://s3/1' });
+      expect(readDraftListingSnapshot(CHAPTER, '7')).toBeNull();
+
+      // The next file asks the server again instead of the stale listing.
+      mockGetChapterVerseAudio.mockResolvedValue(listingWith(three));
+      await queuedResourceResolver(draftItem({ userId: 7, ...three[1] }));
+      expect(mockGetChapterVerseAudio).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps an in-flight listing when only another account was cleared', async () => {
+      let respond: (list: VerseAudioListResponse) => void = () => {};
+      mockGetChapterVerseAudio.mockImplementationOnce(
+        () =>
+          new Promise<VerseAudioListResponse>(resolve => {
+            respond = resolve;
+          }),
+      );
+      const pending = queuedResourceResolver(
+        draftItem({ userId: 7, ...three[0] }),
+      );
+      await new Promise(resolve => setImmediate(resolve));
+      clearDraftListingSnapshotsForUser('8');
+      respond(listingWith(three));
+      await pending;
+
+      await queuedResourceResolver(draftItem({ userId: 7, ...three[1] }));
+      expect(mockGetChapterVerseAudio).toHaveBeenCalledTimes(1);
     });
 
     it("never serves one account from another account's snapshot", async () => {

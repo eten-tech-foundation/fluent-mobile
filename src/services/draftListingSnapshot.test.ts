@@ -2,6 +2,8 @@ import {
   DRAFT_LISTING_SNAPSHOT_MAX_ENTRIES,
   DRAFT_LISTING_SNAPSHOT_TTL_MS,
   clearDraftListingSnapshots,
+  clearDraftListingSnapshotsForUser,
+  draftListingSnapshotEpoch,
   invalidateDraftListingSnapshot,
   readDraftListingSnapshot,
   seedDraftListingSnapshot,
@@ -102,6 +104,41 @@ describe('draftListingSnapshot (#886)', () => {
     expect(
       readDraftListingSnapshot({ ...chapter, chapterNumber: 1 }, '7', base),
     ).not.toBeNull();
+  });
+
+  it("clears one account's snapshots and keeps the other's", () => {
+    seedDraftListingSnapshot(chapter, '7', list, 1_000);
+    seedDraftListingSnapshot(chapter, '8', list, 1_000);
+    clearDraftListingSnapshotsForUser('7');
+    expect(readDraftListingSnapshot(chapter, '7', 1_000)).toBeNull();
+    expect(readDraftListingSnapshot(chapter, '8', 1_000)).not.toBeNull();
+  });
+
+  it('does not keep a listing requested before that account was cleared', () => {
+    const requestedAt = draftListingSnapshotEpoch();
+    clearDraftListingSnapshotsForUser('7');
+    seedDraftListingSnapshot(chapter, '7', list, 1_000, requestedAt);
+    seedDraftListingSnapshot(chapter, '8', list, 1_000, requestedAt);
+    expect(readDraftListingSnapshot(chapter, '7', 1_000)).toBeNull();
+    // Another account's in-flight listing is unaffected.
+    expect(readDraftListingSnapshot(chapter, '8', 1_000)).not.toBeNull();
+
+    // A listing requested after the clear is kept again.
+    seedDraftListingSnapshot(
+      chapter,
+      '7',
+      list,
+      1_000,
+      draftListingSnapshotEpoch(),
+    );
+    expect(readDraftListingSnapshot(chapter, '7', 1_000)).not.toBeNull();
+  });
+
+  it('does not keep any listing requested before a full clear', () => {
+    const requestedAt = draftListingSnapshotEpoch();
+    clearDraftListingSnapshots();
+    seedDraftListingSnapshot(chapter, '8', list, 1_000, requestedAt);
+    expect(readDraftListingSnapshot(chapter, '8', 1_000)).toBeNull();
   });
 
   it('keeps the TTL well inside the signed-URL lifetime', () => {
