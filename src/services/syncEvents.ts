@@ -15,7 +15,18 @@ export function onSyncComplete(fn: SyncListener): () => void {
   };
 }
 
+/**
+ * What a start/complete listener would currently hold, for a screen that
+ * mounts mid-sync (first login mounts Home after the sync already started).
+ */
+let syncActive = false;
+
+export function isSyncActive(): boolean {
+  return syncActive;
+}
+
 export function emitSyncComplete(): void {
+  syncActive = false;
   completeListeners.forEach(fn => fn());
 }
 
@@ -28,6 +39,7 @@ export function onSyncStart(fn: SyncStartListener): () => void {
 }
 
 export function emitSyncStart(isFull = false): void {
+  syncActive = true;
   startListeners.forEach(fn => fn(isFull));
 }
 

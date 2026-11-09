@@ -142,7 +142,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    BootSplash.hide({ fade: true }).catch(e => {
+    // A fade opens a second splash window on the UI thread while the first
+    // screen is mounting, holding saved content back on every cold launch.
+    BootSplash.hide().catch(e => {
       log.error('BootSplash hide failed', { error: String(e) });
     });
   }, [isLoading]);

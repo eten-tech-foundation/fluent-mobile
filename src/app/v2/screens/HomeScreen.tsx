@@ -242,13 +242,15 @@ function HomeBody({
     body = (
       <>
         <ChangesRequested chapters={chapters} onOpen={openPassage} />
+        {/* Books come first: they are on screen as soon as they're read,
+            while Next up's height waits on passages it loads after them. */}
+        <Books books={books} onOpen={openBook} />
         <NextUp
           nextUp={nextUp}
           onOpen={({ chapter, passage }) =>
             void openPassage(chapter, passage.anchorVerse)
           }
         />
-        <Books books={books} onOpen={openBook} />
       </>
     );
   }
