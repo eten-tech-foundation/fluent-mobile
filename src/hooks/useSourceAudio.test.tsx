@@ -5,15 +5,9 @@ import { clearPassageResourceReuse } from '../services/passageResourceReuse';
 import type { UseSourceAudioArgs } from './useSourceAudio';
 import { authToken } from '../services/authToken';
 
-let mockActiveUserId = '';
-jest.mock('../services/storage', () => ({
-  ...jest.requireActual('../services/storage'),
-  getActiveUserId: () => mockActiveUserId,
-}));
-
-function switchAccount(userId: string, token: string): void {
+/** As accountSession does on a switch: the new account's bearer goes live. */
+function switchAccount(token: string): void {
   authToken.set(token);
-  mockActiveUserId = userId;
 }
 
 jest.mock('../services/offlineSourceAudio', () => ({
@@ -99,7 +93,6 @@ describe('useSourceAudio', () => {
   beforeEach(() => {
     clearPassageResourceReuse();
     authToken.set(null);
-    mockActiveUserId = '';
     jest.clearAllMocks();
     mockPlaybackPlay.mockResolvedValue(undefined);
     mockPlaybackStop.mockResolvedValue(undefined);
@@ -1245,7 +1238,7 @@ describe('useSourceAudio', () => {
           return audio(`https://cdn/${bearer}.mp3`);
         },
       );
-      switchAccount('5', 'token-a');
+      switchAccount('token-a');
       let missLocally!: (value: null) => void;
       resolveLocalSourceAudio.mockReturnValueOnce(
         new Promise(resolve => {
@@ -1257,9 +1250,8 @@ describe('useSourceAudio', () => {
         expect(resolveLocalSourceAudio).toHaveBeenCalledTimes(1),
       );
 
-      // As accountSession switches: bearer and active account, before React
-      // re-renders this hook for B.
-      switchAccount('6', 'token-b');
+      // An account switch lands before React re-renders this hook for B.
+      switchAccount('token-b');
       await act(async () => {
         missLocally(null);
       });
@@ -1267,7 +1259,7 @@ describe('useSourceAudio', () => {
 
       // Back on A: A's own lookup, under A's bearer.
       first.unmount();
-      switchAccount('5', 'token-a');
+      switchAccount('token-a');
       const again = mount({ userId: 5 });
       await waitFor(() => expect(again.result.current.loadState).toBe('ready'));
       expect(bearers).toEqual(['token-a']);

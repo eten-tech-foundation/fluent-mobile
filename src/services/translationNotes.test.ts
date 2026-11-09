@@ -11,15 +11,9 @@ import { clearPassageResourceReuse } from './passageResourceReuse';
 import type { DownloadQueueItem } from '../types/download/types';
 import { authToken } from './authToken';
 
-let mockActiveUserId = '';
-jest.mock('./storage', () => ({
-  ...jest.requireActual('./storage'),
-  getActiveUserId: () => mockActiveUserId,
-}));
-
-function switchAccount(userId: string, token: string): void {
+/** As accountSession does on a switch: the new account's bearer goes live. */
+function switchAccount(token: string): void {
   authToken.set(token);
-  mockActiveUserId = userId;
 }
 
 jest.mock('./api', () => ({
@@ -103,7 +97,6 @@ describe('loadTranslationNotesForUnit', () => {
   beforeEach(() => {
     clearPassageResourceReuse();
     authToken.set(null);
-    mockActiveUserId = '';
     // Default: nothing downloaded → the API path is exercised.
     mockFindRows.mockResolvedValue(null);
   });
@@ -567,7 +560,7 @@ describe('loadTranslationNotesForUnit', () => {
           };
         },
       );
-      switchAccount('42', 'token-a');
+      switchAccount('token-a');
       let missLocally!: (rows: null) => void;
       mockFindRows.mockReturnValueOnce(
         new Promise(resolve => {
@@ -577,13 +570,13 @@ describe('loadTranslationNotesForUnit', () => {
       const stale = loadTranslationNotesForUnit(verse);
       await Promise.resolve();
 
-      // As accountSession switches: bearer first, then the active account.
-      switchAccount('43', 'token-b');
+      // An account switch lands while A's local lookup is still out.
+      switchAccount('token-b');
       missLocally(null);
       await stale.catch(() => undefined);
       expect(bearers).not.toContain('token-b');
 
-      switchAccount('42', 'token-a');
+      switchAccount('token-a');
       const notes = await loadTranslationNotesForUnit(verse);
       expect(bearers).toEqual(['token-a']);
       expect(notes.every(note => note.id.startsWith('tn-api-1-'))).toBe(true);

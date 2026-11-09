@@ -92,4 +92,68 @@ describe('FluentAPI source-audio', () => {
       }),
     );
   });
+
+  it('getChapterSourceAudio sends a captured bearer, not the current one', async () => {
+    mockOkJson({
+      provider: 'aquifer',
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [],
+    });
+    authToken.set('token-b');
+
+    await FluentAPI.getChapterSourceAudio(
+      {
+        projectId: 42,
+        bookCode: 'MRK',
+        chapter: 1,
+        languageCode: 'eng',
+        bibleId: 9,
+      },
+      undefined,
+      'token-a',
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const init = fetchMock.mock.calls[0]![1] as RequestInit;
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      'Bearer token-a',
+    );
+  });
+
+  it('getChapterSourceAudio with a captured bearer still cancels on the caller signal', async () => {
+    fetchMock.mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            const error = new Error('aborted');
+            error.name = 'AbortError';
+            reject(error);
+          });
+        }),
+    );
+    authToken.set('token-b');
+    const controller = new AbortController();
+
+    const pending = FluentAPI.getChapterSourceAudio(
+      {
+        projectId: 42,
+        bookCode: 'MRK',
+        chapter: 1,
+        languageCode: 'eng',
+        bibleId: 9,
+      },
+      { signal: controller.signal },
+      'token-a',
+    );
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    const init = fetchMock.mock.calls[0]![1] as RequestInit;
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      'Bearer token-a',
+    );
+    expect(init.signal?.aborted).toBe(true);
+  });
 });
