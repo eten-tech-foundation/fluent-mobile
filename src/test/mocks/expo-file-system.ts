@@ -19,6 +19,7 @@ export const EncodingType = {
 
 export function resetFileSystemMock(): void {
   files.clear();
+  fileBytes.clear();
   directories.clear();
   directories.add(normalizeDir(documentDirectory));
   directories.add(normalizeDir(cacheDirectory));
@@ -130,6 +131,66 @@ export async function getFreeDiskStorageAsync(): Promise<number> {
 
 export async function getTotalDiskCapacityAsync(): Promise<number> {
   return MOCK_TOTAL_DISK_BYTES;
+}
+
+const fileBytes = new Map<string, Uint8Array>();
+let openHandles = 0;
+
+/** Raw bytes served by `File#open` handles (falls back to string content). */
+export function __setMockFileBytes(uri: string, bytes: Uint8Array): void {
+  fileBytes.set(resolveUri(uri), bytes);
+}
+
+export function __getOpenFileHandleCount(): number {
+  return openHandles;
+}
+
+export const FileMode = {
+  ReadOnly: 'r',
+  WriteOnly: 'w',
+  ReadWrite: 'rw',
+  Append: 'wa',
+  Truncate: 'wt',
+} as const;
+
+function mockFileData(uri: string): Uint8Array {
+  const path = resolveUri(uri);
+  const content = files.get(path);
+  const data =
+    fileBytes.get(path) ??
+    (content === undefined
+      ? undefined
+      : Uint8Array.from(content, ch => ch.charCodeAt(0) & 0xff));
+  if (!data) throw new Error(`File not found: ${path}`);
+  return data;
+}
+
+/** Subset of the SDK `File` class: whole-file bytes and read handles over mock content. */
+export class File {
+  constructor(readonly uri: string) {}
+
+  open(_mode?: string) {
+    const data = mockFileData(this.uri);
+    let offset = 0;
+    let open = true;
+    openHandles += 1;
+    return {
+      get offset() {
+        return offset;
+      },
+      size: data.length,
+      readBytes(length: number): Uint8Array {
+        if (!open) throw new Error('file handle is closed');
+        const out = data.slice(offset, offset + length);
+        offset += out.length;
+        return out;
+      },
+      close() {
+        if (open) openHandles -= 1;
+        open = false;
+      },
+    };
+  }
 }
 
 resetFileSystemMock();
