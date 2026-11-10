@@ -3,6 +3,7 @@ import {
   coverVerses,
   loadChapterPassages,
   useBookPassages,
+  wholeChapter,
 } from './useBookPassages';
 import { getProjectPericopeSetId } from '../db/repository';
 import {
@@ -72,6 +73,23 @@ describe('coverVerses', () => {
       '1:30–2:3',
     );
     expect(coverVerses(verses(1, 30, 31), 2)).toBe('1:30–31');
+  });
+});
+
+describe('wholeChapter', () => {
+  it('uses a verse span for the cover, not the chapter eyebrow', () => {
+    expect(wholeChapter(chapter(1, 2, { totalVerses: 6 })).verses).toBe('1–6');
+    expect(wholeChapter(chapter(1, 2, { totalVerses: 1 })).verses).toBe('1');
+  });
+
+  it('does not return displayLabel when the verse count is not loaded', () => {
+    const psalms2 = chapter(2, 2, {
+      displayLabel: 'Psalms 2',
+      bookName: 'Psalms',
+      totalVerses: 0,
+    });
+    expect(wholeChapter(psalms2).verses).toBe('');
+    expect(wholeChapter(psalms2).verses).not.toBe(psalms2.displayLabel);
   });
 });
 

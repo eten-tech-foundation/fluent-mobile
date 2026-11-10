@@ -75,6 +75,13 @@ export function coverVerses(
     : `${first.verseNumber}–${last.verseNumber}`;
 }
 
+/** Whole-chapter cover span: `1–N`, a single `1`, or empty until the count is known. */
+function wholeChapterCoverVerses(totalVerses: number): string {
+  if (totalVerses <= 0) return '';
+  if (totalVerses === 1) return '1';
+  return `1–${totalVerses}`;
+}
+
 function recordedStatusOf(
   recordedVerses: number,
   totalVerses: number,
@@ -105,10 +112,7 @@ export function wholeChapter(
     key: `${WHOLE_CHAPTER_KEY}${chapter.id}`,
     title: null,
     reference: chapter.displayLabel,
-    verses:
-      chapter.totalVerses > 0
-        ? `1–${chapter.totalVerses}`
-        : chapter.displayLabel,
+    verses: wholeChapterCoverVerses(chapter.totalVerses),
     anchorVerse: 1,
     recordedStatus: recordedStatusOf(recordedVerses, chapter.totalVerses),
     recordedVerses,

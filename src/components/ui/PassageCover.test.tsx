@@ -58,6 +58,34 @@ describe('PassageCover', () => {
     expect(screen.queryByText('Partly recorded')).toBeNull();
   });
 
+  it('sets the large label from the verse range, not a second copy of the eyebrow', () => {
+    render(
+      cover({
+        eyebrow: 'Psalms 1',
+        verses: '1–6',
+        title: undefined,
+        reference: 'Psalms 1:1–6',
+      }),
+    );
+    expect(screen.getByText('1–6')).toBeTruthy();
+    expect(screen.getAllByText('Psalms 1')).toHaveLength(1);
+  });
+
+  it('does not paint the book name as the range when verses are unknown', () => {
+    render(
+      cover({
+        eyebrow: 'Psalms 2',
+        verses: '',
+        title: undefined,
+        reference: 'Psalms 2',
+      }),
+    );
+    expect(screen.getAllByText('Psalms 2')).toHaveLength(1);
+    expect(
+      screen.getByRole('button', { name: 'Psalms 2, Not recorded yet' }),
+    ).toBeTruthy();
+  });
+
   it('shows no title under the cover without a pericope title', () => {
     render(cover({ title: undefined }));
     expect(screen.queryByText('Mark 14:22–25')).toBeNull();
