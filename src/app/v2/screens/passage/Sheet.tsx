@@ -571,7 +571,10 @@ export function Sheet({
 
   const measure = (set: (h: number) => void) => (e: LayoutChangeEvent) =>
     set(Math.round(e.nativeEvent.layout.height));
-  const title = passage.title ?? passage.reference;
+  const heading = passage.title?.trim() || null;
+  const title = heading ?? passage.reference;
+  const verseRange = heading ? passage.reference : null;
+  const sheetTitle = heading ? `${heading} · ${passage.reference}` : title;
 
   return (
     <View style={styles.sheet} onLayout={measure(setContainer)}>
@@ -580,6 +583,7 @@ export function Sheet({
           passage={passage}
           takes={recorder.takes}
           title={title}
+          verseRange={verseRange}
           downloadState={downloadState}
           progress={progress}
           expanded={expanded}
@@ -629,7 +633,7 @@ export function Sheet({
       <ColorModeScope value="hardware">
         <TitleSheet
           visible={titleSheetOpen}
-          title={title}
+          title={sheetTitle}
           chapterName={chapterName}
           milestoneName={milestoneName}
           onClose={() => setTitleSheetOpen(false)}

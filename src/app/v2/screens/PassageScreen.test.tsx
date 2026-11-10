@@ -389,10 +389,17 @@ function renderSettled() {
   settle();
 }
 
+const titledDetails = 'The Last Supper. Mark 14:22–25. Show details.';
+
 const titleCopies = () =>
   within(screen.getByTestId('passage-title')).getAllByText(
     'The Last Supper',
     hidden,
+  );
+
+const headerRange = () =>
+  within(screen.getByTestId('passage-title')).getByTestId(
+    'passage-header-range',
   );
 
 /** A 360-wide header, with the title at the given width. */
@@ -403,6 +410,14 @@ function layOutTitle(titleWidth: number) {
   fireEvent(titleCopies()[0], 'layout', {
     nativeEvent: { layout: { width: titleWidth, height: 16 } },
   });
+  const range = within(screen.getByTestId('passage-title')).queryByTestId(
+    'passage-header-range',
+  );
+  if (range) {
+    fireEvent(range, 'layout', {
+      nativeEvent: { layout: { width: 96, height: 16 } },
+    });
+  }
 }
 
 function tickerOffset(): number {
@@ -442,12 +457,10 @@ describe('PassageScreen', () => {
     renderSettled();
     expect(screen.queryByTestId('passage-book')).toBeNull();
 
-    fireEvent.press(
-      screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
-    );
+    fireEvent.press(screen.getByRole('button', { name: titledDetails }));
     expect(
       within(screen.getByTestId('passage-title-sheet')).getByRole('header', {
-        name: 'The Last Supper',
+        name: 'The Last Supper · Mark 14:22–25',
       }),
     ).toBeTruthy();
     fireEvent.press(
@@ -487,6 +500,13 @@ describe('PassageScreen', () => {
     renderSettled();
     layOutTitle(400);
 
+    expect(headerRange()).toHaveTextContent('Mark 14:22–25');
+    expect(
+      within(screen.getByTestId('passage-title')).getAllByText(
+        'Mark 14:22–25',
+        hidden,
+      ),
+    ).toHaveLength(1);
     expect(titleCopies()).toHaveLength(2);
     expect(
       within(screen.getByTestId('passage-title')).queryAllByText(
@@ -514,11 +534,59 @@ describe('PassageScreen', () => {
 
   it('leaves a title that fits where it is', () => {
     renderSettled();
-    layOutTitle(200);
+    layOutTitle(80);
     act(() => jest.advanceTimersByTime(3000));
 
     expect(titleCopies()).toHaveLength(1);
     expect(tickerOffset()).toBe(0);
+  });
+
+  it('shows a titled pericope as its title and verse range on the header', () => {
+    render(<PassageScreen />);
+
+    expect(screen.getByRole('button', { name: titledDetails })).toBeTruthy();
+    expect(headerRange()).toHaveTextContent('Mark 14:22–25');
+  });
+
+  it('shows only the verse range when the pericope has no title', () => {
+    mockPassage = { ...ready, title: null };
+    render(<PassageScreen />);
+
+    expect(
+      screen.getByRole('button', { name: 'Mark 14:22–25. Show details.' }),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId('passage-title')).queryByTestId(
+        'passage-header-range',
+      ),
+    ).toBeNull();
+    expect(
+      within(screen.getByTestId('passage-title')).getByText(
+        'Mark 14:22–25',
+        hidden,
+      ),
+    ).toBeTruthy();
+  });
+
+  it('keeps the same title and range in Record and Listen', () => {
+    renderSettled();
+    const header = () => within(screen.getByTestId('passage-title'));
+
+    expect(screen.getByRole('button', { name: titledDetails })).toBeTruthy();
+    expect(header().getByText('The Last Supper', hidden)).toBeTruthy();
+    expect(header().getByText('Mark 14:22–25', hidden)).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('passage-listen'));
+    settle();
+    expect(screen.getByRole('button', { name: titledDetails })).toBeTruthy();
+    expect(header().getByText('The Last Supper', hidden)).toBeTruthy();
+    expect(header().getByText('Mark 14:22–25', hidden)).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Record mode'));
+    settle();
+    expect(screen.getByRole('button', { name: titledDetails })).toBeTruthy();
+    expect(header().getByText('The Last Supper', hidden)).toBeTruthy();
+    expect(header().getByText('Mark 14:22–25', hidden)).toBeTruthy();
   });
 
   it('shows a finished chapter as peer checked, with no Record', () => {
@@ -545,14 +613,13 @@ describe('PassageScreen', () => {
 
     expect(titleCopies()).toHaveLength(1);
     expect(screen.queryByTestId('passage-title-ticker', hidden)).toBeNull();
+    expect(headerRange()).toHaveTextContent('Mark 14:22–25');
   });
 
   it('puts the script, its actions and takes in the hero, with no steps', () => {
     render(<PassageScreen />);
 
-    expect(
-      screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
-    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: titledDetails })).toBeTruthy();
     expect(screen.getAllByText('Mark 14:22–25', hidden).length).toBeGreaterThan(
       0,
     );
@@ -2056,9 +2123,7 @@ describe('PassageScreen', () => {
 
   it('opens classic drafting from the title sheet', () => {
     renderSettled();
-    fireEvent.press(
-      screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
-    );
+    fireEvent.press(screen.getByRole('button', { name: titledDetails }));
     settle();
     fireEvent.press(screen.getByTestId('passage-classic'));
 
@@ -2622,9 +2687,7 @@ describe('PassageScreen', () => {
     render(<PassageScreen />);
     await waitFor(() => expect(getRecordCaptureGate()).toBe(true));
 
-    fireEvent.press(
-      screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
-    );
+    fireEvent.press(screen.getByRole('button', { name: titledDetails }));
     fireEvent.press(
       screen.getByRole('button', {
         name: 'Mark 14 · Gospels Phase 1. Open book page.',
@@ -2680,7 +2743,7 @@ describe('PassageScreen', () => {
     fireEvent.press(screen.getByTestId('passage-record'));
 
     expect(
-      screen.getByRole('header', { name: 'The Last Supper' }),
+      screen.getByRole('header', { name: 'The Last Supper. Mark 14:22–25' }),
     ).toBeDisabled();
     fireEvent.press(screen.getByTestId('passage-title'));
     settle();

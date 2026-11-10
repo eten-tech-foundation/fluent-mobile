@@ -33,14 +33,15 @@ const TICKER_PAUSE_MS = 2000;
 const TICKER_SPEED = 30;
 
 /**
- * Back, the passage's title, the sync cloud and Close. The title sits
+ * Back, the passage heading, the sync cloud and Close. The heading sits
  * centered in the hero and slides to the left edge as the player arrives;
- * Back and the cloud fade out and Close fades in. A title too long for its
- * room runs as a ticker, and pressing it opens its sheet. Dragging the header
- * closes the player.
+ * Back and the cloud fade out and Close fades in. A heading too long for its
+ * room runs as a ticker; a verse range beside it stays put. Pressing opens
+ * its sheet. Dragging the header closes the player.
  */
 export function HeroHeader({
   title,
+  verseRange,
   top,
   progress,
   expanded,
@@ -51,7 +52,10 @@ export function HeroHeader({
   sync,
   onTitlePress,
 }: {
+  /** Pericope title, or the verse range when there is no title. */
   title: string;
+  /** Verse range pinned beside a title; omit when `title` is already the range. */
+  verseRange?: string | null;
   /** The status bar's height. */
   top: number;
   progress: SharedValue<number>;
@@ -71,6 +75,9 @@ export function HeroHeader({
   const focused = useIsFocused();
   const [width, setWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
+  const [rangeWidth, setRangeWidth] = useState(0);
+  const spoken = verseRange ? `${title}. ${verseRange}` : title;
+  const rangeExtra = verseRange ? rangeWidth + spacing.sm : 0;
   const styles = useThemedStyles(t => ({
     header: {
       position: 'absolute',
@@ -91,9 +98,16 @@ export function HeroHeader({
     },
     titlePress: { minHeight: ROUND_BUTTON, justifyContent: 'center' },
     pressed: { opacity: PRESSED_OPACITY },
-    clip: { flexGrow: 0 },
+    headingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: t.spacing.sm,
+      width: '100%',
+    },
+    clip: { flexGrow: 0, flexShrink: 1, minWidth: 0 },
     ticker: { flexDirection: 'row' },
     title: { ...t.type.overline, color: t.roles.fgPrimary },
+    range: { ...t.type.overline, color: t.roles.fgPrimary, flexShrink: 0 },
   }));
 
   const backStyle = useAnimatedStyle(() => ({
@@ -104,8 +118,11 @@ export function HeroHeader({
   }));
   // Clear of Back and Close either side while it's centered.
   const titleMax = Math.max(0, width - 2 * (ROUND_BUTTON + spacing.md));
-  const titleCenter = (width - Math.min(titleWidth, titleMax)) / 2;
-  const titleReady = width > 0 && titleWidth > 0;
+  const headingMax = Math.max(0, titleMax - rangeExtra);
+  const groupWidth = Math.min(titleWidth, headingMax) + rangeExtra;
+  const titleCenter = (width - Math.min(groupWidth, titleMax)) / 2;
+  const titleReady =
+    width > 0 && titleWidth > 0 && (!verseRange || rangeWidth > 0);
   const titleStyle = useAnimatedStyle(() => ({
     opacity: titleReady ? 1 : 0,
     transform: [
@@ -121,7 +138,7 @@ export function HeroHeader({
   }));
 
   // One pass moves a copy into the title's place, so the loop doesn't jump.
-  const ticks = !reduceMotion && titleMax > 0 && titleWidth > titleMax;
+  const ticks = !reduceMotion && headingMax > 0 && titleWidth > headingMax;
   const gap = 2 * spacing.xxl;
   const pass = titleWidth + gap;
   const offset = useSharedValue(0);
@@ -181,7 +198,14 @@ export function HeroHeader({
           />
         </Animated.View>
         <Animated.View
-          style={[styles.titleSlot, { maxWidth: titleMax }, titleStyle]}
+          style={[
+            styles.titleSlot,
+            {
+              maxWidth: titleMax,
+              width: titleReady ? Math.min(groupWidth, titleMax) : undefined,
+            },
+            titleStyle,
+          ]}
         >
           <Pressable
             onPress={onTitlePress}
@@ -189,7 +213,7 @@ export function HeroHeader({
             android_disableSound
             accessibilityRole={onTitlePress ? 'button' : 'header'}
             accessibilityLabel={
-              onTitlePress ? `${title}. Show details.` : title
+              onTitlePress ? `${spoken}. Show details.` : spoken
             }
             style={({ pressed }) => [
               styles.titlePress,
@@ -197,31 +221,46 @@ export function HeroHeader({
             ]}
             testID="passage-title"
           >
-            {reduceMotion ? (
-              titleText
-            ) : (
-              // Lays the title out at its full width; the ticker moves it.
-              // The press carries the title's label, so TalkBack skips this.
-              <ScrollView
-                horizontal
-                scrollEnabled={false}
-                showsHorizontalScrollIndicator={false}
-                importantForAccessibility="no-hide-descendants"
-                style={styles.clip}
-              >
-                <Animated.View
-                  style={[styles.ticker, tickerStyle]}
-                  testID="passage-title-ticker"
+            <View style={styles.headingRow}>
+              {reduceMotion ? (
+                <View style={styles.clip}>{titleText}</View>
+              ) : (
+                // Lays the title out at its full width; the ticker moves it.
+                // The press carries the title's label, so TalkBack skips this.
+                <ScrollView
+                  horizontal
+                  scrollEnabled={false}
+                  showsHorizontalScrollIndicator={false}
+                  importantForAccessibility="no-hide-descendants"
+                  style={styles.clip}
                 >
-                  {titleText}
-                  {ticks ? (
-                    <Text style={[styles.title, { marginLeft: gap }]}>
-                      {title}
-                    </Text>
-                  ) : null}
-                </Animated.View>
-              </ScrollView>
-            )}
+                  <Animated.View
+                    style={[styles.ticker, tickerStyle]}
+                    testID="passage-title-ticker"
+                  >
+                    {titleText}
+                    {ticks ? (
+                      <Text style={[styles.title, { marginLeft: gap }]}>
+                        {title}
+                      </Text>
+                    ) : null}
+                  </Animated.View>
+                </ScrollView>
+              )}
+              {verseRange ? (
+                <Text
+                  style={styles.range}
+                  numberOfLines={1}
+                  onLayout={e =>
+                    setRangeWidth(Math.round(e.nativeEvent.layout.width))
+                  }
+                  importantForAccessibility="no"
+                  testID="passage-header-range"
+                >
+                  {verseRange}
+                </Text>
+              ) : null}
+            </View>
           </Pressable>
         </Animated.View>
         <Animated.View

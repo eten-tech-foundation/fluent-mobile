@@ -39,6 +39,7 @@ export function PassageHero({
   passage,
   takes,
   title,
+  verseRange,
   downloadState,
   progress,
   expanded,
@@ -67,6 +68,8 @@ export function PassageHero({
   passage: Ready;
   takes: PassageTake[];
   title: string;
+  /** Verse range shown next to a pericope title; omit when `title` is the range. */
+  verseRange?: string | null;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
   progress: SharedValue<number>;
   expanded: boolean;
@@ -147,6 +150,7 @@ export function PassageHero({
         />
         <HeroHeader
           title={title}
+          verseRange={verseRange}
           top={layout.statusBar}
           progress={progress}
           expanded={expanded}

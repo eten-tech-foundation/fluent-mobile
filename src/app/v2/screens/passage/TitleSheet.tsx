@@ -4,10 +4,10 @@ import { ListRow } from '../../../../components/ui/ListRow';
 import { OPEN_CLASSIC_DRAFTING } from '../../../../constants/messages';
 
 /**
- * The title's sheet: the whole title, which the header may cut short, over a
- * row up to the passage's book page and one into classic drafting, for what
- * the player has no design for yet: verse mode, everyone's takes, resources
- * and Send.
+ * The title's sheet: the whole heading (title and range), which the header
+ * may cut short, over a row up to the passage's book page and one into classic
+ * drafting, for what the player has no design for yet: verse mode, everyone's
+ * takes, resources and Send.
  */
 export function TitleSheet({
   visible,
