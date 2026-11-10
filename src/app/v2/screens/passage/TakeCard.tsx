@@ -200,8 +200,9 @@ export function TakeCard({
   );
 
   const takeLabel = take.label ?? `Take ${take.takeNumber}`;
-  // Only as many bars as fit: the newest until Eject, the whole take
-  // squeezed to fit after. A bar per sample would grow without end.
+  // Only as many bars as fit: a short take stretches across the slot;
+  // the newest until Eject, the whole take squeezed after. A bar per
+  // sample would grow without end.
   const maxBars =
     waveWidth > 0
       ? Math.max(1, Math.floor((waveWidth - WAVE_LEAD) / BAR_SLOT))
@@ -235,6 +236,7 @@ export function TakeCard({
         pointerEvents={live ? 'auto' : 'none'}
         importantForAccessibility={live ? 'auto' : 'no-hide-descendants'}
         onLayout={e => setWaveWidth(Math.round(e.nativeEvent.layout.width))}
+        testID="passage-take-wave-slot"
       >
         <Animated.View style={[styles.clip, sweepStyle]}>
           <Waveform
@@ -250,6 +252,7 @@ export function TakeCard({
                 : `${takeLabel} playback`
             }
             onSeek={inProgress ? undefined : take.onSeek}
+            pinned={inProgress}
             style={waveWidth > 0 ? { width: waveWidth } : undefined}
             testID="passage-take-wave"
           />
