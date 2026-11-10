@@ -7,6 +7,7 @@ import {
   type SyncStatus,
 } from '../../utils/syncStatusState';
 import {
+  Cloud,
   CloudArrowDown,
   CloudArrowUp,
   CloudCheck,
@@ -25,6 +26,7 @@ const STATUS_ICONS: Record<SyncStatus, NextIcon> = {
   online_failed: CloudWarning,
   offline_synced: CloudSlash,
   offline_pending: CloudSlash,
+  checking: Cloud,
 };
 
 /** The status alone, for a cloud that doesn't open the Sync page. */
@@ -37,6 +39,7 @@ const STATUS_NAMES: Record<SyncStatus, string> = {
   online_failed: 'Upload failed',
   offline_synced: 'Offline · nothing pending',
   offline_pending: 'Offline · upload pending',
+  checking: 'Checking connection',
 };
 
 export interface SyncStatusButtonProps {

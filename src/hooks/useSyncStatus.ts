@@ -71,9 +71,16 @@ export function useSyncStatus({
       connectionType,
     });
 
+  // Unknown until both answers are in, unless /health already confirms
+  // offline. A down link reaches us as that answer; the transport snapshot
+  // alone can't tell down from not-yet-known.
+  const connectivityPending =
+    !hasResolved || (isOnline && !hasTransferResolved);
+
   return {
     status: deriveSyncStatus({
       isOnline: effectivelyOnline,
+      connectivityPending,
       isSyncing,
       hasPendingUploads: hasPendingUploads || countsUnknown,
       isUploading,

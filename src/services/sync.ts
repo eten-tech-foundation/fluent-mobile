@@ -47,8 +47,11 @@ import {
   SERVER_REACHABILITY_FRESH_MS,
 } from './connectivity';
 import {
+  getDatabaseWriteMark,
   getPendingChapterClaims,
   hasPendingChapterClaimsForUser,
+  sameDatabaseWrites,
+  type DatabaseWriteMark,
 } from '../db/queries';
 import {
   reconcilePendingClaimsAfterAssignmentPull,
@@ -85,6 +88,9 @@ import {
   getKnownUserIds,
   getUserLastSyncedAt,
   setUserLastSyncedAt,
+  clearCatalogueQuietSince,
+  getCatalogueQuietSince,
+  setCatalogueQuietSince,
   getUserBibleTextSyncedAt,
   setUserBibleTextSyncedAt,
   getBibleTextChapterSyncedAt,
@@ -2415,6 +2421,17 @@ export function __resetFullSyncSingleFlightForTests(): void {
   latestFullSync = null;
 }
 
+/**
+ * Whether any metadata pass (full sync, or a focus light refresh that got
+ * past its local checks to the server) is in flight right now. A snapshot,
+ * not an event: consumers that mount after `syncStart` (or that only see the
+ * light refresh's `syncComplete`) can still show the truth (#886). A light
+ * pass that stops at its local checks emits nothing, so it never counts.
+ */
+export function isMetadataSyncActive(): boolean {
+  return latestFullSync !== null || metadataRefreshesReachingServer.size > 0;
+}
+
 /** Avoid unhandled rejection if a later sync step throws before awaiting master. */
 async function settleMasterPromise(
   masterPromise: Promise<void> | undefined,
@@ -2643,6 +2660,8 @@ export async function syncAllData(
     isIncremental ? snapshotIncrementalUserIds() : new Set<string>(),
     async () => {
       log.info('Starting sync...', { isIncremental });
+      const activeAtStart = getActiveUserId();
+      if (activeAtStart) clearCatalogueQuietSince(activeAtStart);
       clearAllSyncErrors();
       emitSyncStart();
 
@@ -2924,6 +2943,83 @@ export async function syncAllData(
 }
 
 const inFlightMetadataRefresh = new Map<number, Promise<void>>();
+/** Light refreshes past their local checks and talking to the server. */
+const metadataRefreshesReachingServer = new Set<number>();
+
+/**
+ * Focus-triggered light refreshes fire from several hooks per screen and on
+ * every tab switch. A refresh that completed cleanly this recently is not
+ * repeated (#886). Explicit Sync Now is a full sync and ignores this.
+ * Entries are intentionally not cleared on sign-out: login runs a full sync,
+ * and a stale entry can only suppress one light pass for 10 s.
+ */
+export const METADATA_REFRESH_FRESH_MS = 10_000;
+/**
+ * How long a cold open may paint Home from SQLite after the last clean light
+ * refresh on this device. Login, account switch, re-auth, and Sync Now clear
+ * it. A waiting claim, stage advance, or assignee repair still refreshes
+ * immediately. Inside the window, assignments, grants, and stage changes made
+ * on the server are not seen until the next pull; this is a read cache only
+ * and never authorizes a mutation (the server still checks every write).
+ */
+export const CATALOGUE_REFRESH_QUIET_MS = 15 * 60 * 1000;
+const lastSuccessfulMetadataRefreshAt = new Map<number, number>();
+
+/**
+ * The user and database write mark of the last local check that found no
+ * claim, stage advance or assignee repair waiting. Those answers are a
+ * function of the rows and the user, so an unchanged mark means they hold.
+ */
+let quietLocalCheck: { userId: number; writes: DatabaseWriteMark } | null =
+  null;
+
+/** True when the last clean refresh is recent and nothing local still needs a pull. */
+async function savedCatalogueIsQuiet(userId: number): Promise<boolean> {
+  const userIdStr = String(userId);
+  const since = getCatalogueQuietSince(userIdStr);
+  if (since === null) return false;
+  const age = Date.now() - since;
+  if (age < 0) {
+    // The clock moved back; the stamp no longer measures elapsed time.
+    clearCatalogueQuietSince(userIdStr);
+    return false;
+  }
+  if (age >= CATALOGUE_REFRESH_QUIET_MS) return false;
+  let writes: DatabaseWriteMark | null = null;
+  try {
+    // Taken before the reads: a write landing during them counts as unseen.
+    writes = await getDatabaseWriteMark();
+    const last = quietLocalCheck;
+    if (
+      last &&
+      last.userId === userId &&
+      sameDatabaseWrites(last.writes, writes)
+    ) {
+      return true;
+    }
+    quietLocalCheck = null;
+    if (await hasPendingChapterClaimsForUser(userId)) return false;
+    if ((await getPendingStageAdvances()).some(row => row.userId === userId)) {
+      return false;
+    }
+    if (await userNeedsAssigneeRepair(userId)) return false;
+  } catch (error) {
+    quietLocalCheck = null;
+    log.warn('Catalogue quiet check failed; refreshing', {
+      userId,
+      error: getErrorMessage(error),
+    });
+    return false;
+  }
+  if (writes) quietLocalCheck = { userId, writes };
+  return true;
+}
+
+/** Test-only: forget light-refresh freshness between cases. */
+export function __resetMetadataRefreshFreshnessForTests(): void {
+  lastSuccessfulMetadataRefreshAt.clear();
+  quietLocalCheck = null;
+}
 
 /** Skip repeated full master-data pulls after a successful backfill this session. */
 let masterDataBackfilledThisSession = false;
@@ -3157,9 +3253,38 @@ export async function refreshChapterMetadataIfOnline(
   }
 
   const refreshPromise = (async () => {
+    let notifyComplete = true;
     try {
-      const { isOnline } = await getConnectivitySnapshot();
-      if (!isOnline) return;
+      // Several Home hooks focus at once. Skip the network when this user's
+      // last clean pass is only a few seconds old, but still look for a claim,
+      // stage advance, or assignee repair. Those must not wait out the window.
+      const lastOkAt = lastSuccessfulMetadataRefreshAt.get(userId);
+      const metadataAgeMs =
+        lastOkAt === undefined ? null : Date.now() - lastOkAt;
+      if (
+        metadataAgeMs !== null &&
+        metadataAgeMs >= 0 &&
+        metadataAgeMs < METADATA_REFRESH_FRESH_MS &&
+        (await savedCatalogueIsQuiet(userId))
+      ) {
+        lastSuccessfulMetadataRefreshAt.set(userId, Date.now());
+        notifyComplete = false;
+        return;
+      }
+
+      if (await savedCatalogueIsQuiet(userId)) {
+        lastSuccessfulMetadataRefreshAt.set(userId, Date.now());
+        notifyComplete = false;
+        return;
+      }
+
+      const { isOnline } = await getConnectivitySnapshot({
+        maxAgeMs: SERVER_REACHABILITY_FRESH_MS,
+      });
+      if (!isOnline) {
+        notifyComplete = false;
+        return;
+      }
 
       const userIdStr = String(userId);
 
@@ -3170,8 +3295,10 @@ export async function refreshChapterMetadataIfOnline(
             userId,
           },
         );
+        notifyComplete = false;
         return;
       }
+      metadataRefreshesReachingServer.add(userId);
 
       const creds = await getCredentials(userIdStr);
       if (!creds?.token) {
@@ -3182,7 +3309,10 @@ export async function refreshChapterMetadataIfOnline(
       const sessionToken = creds.token;
       // Push offline claims before assignment reconcile so list refresh does
       // not clear provisional "mine" ahead of the claim POST (#611 / #273).
-      await syncPendingChapterClaimsForUser(userId, sessionToken);
+      const claimsResult = await syncPendingChapterClaimsForUser(
+        userId,
+        sessionToken,
+      );
       // One-shot ISO backfill for devices that synced languages before
       // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
       // NULL/blank ISO only — wrong non-empty codes need #679 by-id seed below.
@@ -3213,23 +3343,44 @@ export async function refreshChapterMetadataIfOnline(
         seedFkParents: true,
         seedFkParentsBestEffort: true,
       });
-      await syncPendingStageAdvancesForUser(userId, sessionToken);
+      const stageResult = await syncPendingStageAdvancesForUser(
+        userId,
+        sessionToken,
+      );
       // Incomplete parent/milestone/assignment refresh must not latch cursor.
-      if (
-        syncedAt &&
+      const refreshComplete =
         !projectParentIncomplete &&
         !milestoneIncomplete &&
         !assignmentParentIncomplete &&
-        !assignmentSkipWarning
-      ) {
+        !assignmentSkipWarning;
+      if (syncedAt && refreshComplete) {
         setUserLastSyncedAt(userIdStr, syncedAt);
       }
+      // Only a clean pass arms the freshness window: soft-failed drains or an
+      // incomplete refresh must stay retryable on the next focus (#886).
+      const drainsClean =
+        claimsResult.failed === 0 &&
+        (claimsResult.deferred ?? 0) === 0 &&
+        stageResult.failed === 0 &&
+        stageResult.deferred === 0;
       // New chapters from this light refresh need set-level pericope hydrate
       // (#438 / #766). Warm All-synced sessions have no Sync Now; bible text
       // already has a DraftingScreen ensure — pericopes must not wait for login.
       // Pass the captured session token so unbundled set GETs keep #294 isolation.
       await syncPericopes(sessionToken, userIdStr);
+      if (refreshComplete && drainsClean) {
+        lastSuccessfulMetadataRefreshAt.set(userId, Date.now());
+        if (userIdStr === getActiveUserId()) {
+          setCatalogueQuietSince(userIdStr, Date.now());
+        }
+      } else {
+        // A skipped assignment or a failed drain must not leave an older
+        // quiet stamp in place, or the next focus skips the retry for the
+        // rest of the 15 minute window.
+        clearCatalogueQuietSince(userIdStr);
+      }
     } catch (error) {
+      clearCatalogueQuietSince(String(userId));
       if (isAuthError(error)) {
         await handleSyncAuthFailure(String(userId));
       }
@@ -3239,9 +3390,12 @@ export async function refreshChapterMetadataIfOnline(
       });
     } finally {
       inFlightMetadataRefresh.delete(userId);
+      metadataRefreshesReachingServer.delete(userId);
       // Home useSyncStatus resamples metadata sync_error_* on this event;
       // refresh clears (or sets) those keys without bumping refreshKey.
-      emitSyncComplete();
+      // A pass that never reached the server (quiet catalogue, offline, user
+      // switched) changed nothing, so it must not look like a sync.
+      if (notifyComplete) emitSyncComplete();
     }
   })();
 

@@ -6,10 +6,17 @@ export type SyncStatus =
   | 'online_needs_sync'
   | 'online_pending'
   | 'offline_synced'
-  | 'offline_pending';
+  | 'offline_pending'
+  /** Reachability not known yet: neither online nor offline is shown. */
+  | 'checking';
 
 export interface SyncStatusInputs {
   isOnline: boolean;
+  /**
+   * The first `/health` or link result hasn't arrived, so `isOnline: false`
+   * is not a confirmed offline.
+   */
+  connectivityPending?: boolean;
   isSyncing: boolean;
   hasPendingUploads: boolean;
   /** Recording upload worker is actively transferring. */
@@ -32,6 +39,7 @@ export interface SyncStatusInputs {
 
 export function deriveSyncStatus({
   isOnline,
+  connectivityPending = false,
   isSyncing,
   hasPendingUploads,
   isUploading = false,
@@ -41,6 +49,7 @@ export function deriveSyncStatus({
   needsTextSync = false,
 }: SyncStatusInputs): SyncStatus {
   if (!isOnline) {
+    if (connectivityPending) return 'checking';
     return hasPendingUploads || hasFailedUploads
       ? 'offline_pending'
       : 'offline_synced';
@@ -83,6 +92,7 @@ export const SYNC_STATUS_LABELS: Record<SyncStatus, string> = {
   online_pending: 'Online · upload pending. Open Sync page.',
   offline_synced: 'Offline · nothing pending. Open Sync page.',
   offline_pending: 'Offline · upload pending. Open Sync page.',
+  checking: 'Checking connection. Open Sync page.',
 };
 
 export const SYNC_STATUS_HELD_FOR_DRAFTING =

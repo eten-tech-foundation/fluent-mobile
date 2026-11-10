@@ -278,6 +278,8 @@ export interface ChapterAssignmentData {
   /** Project source language ISO-639-3 (Aquifer / source-audio query). */
   sourceLanguageCode?: string;
   hasConflict: boolean;
+  /** Verses the assignment says the chapter contains; 0 when unknown. */
+  totalVerses: number;
 }
 
 export interface ChapterAssignmentRow {
@@ -298,6 +300,7 @@ export interface ChapterAssignmentRow {
   bible_abbreviation?: string;
   source_language_code?: string;
   has_conflict?: number;
+  total_verses?: number | null;
 }
 
 export interface ChapterListItem {

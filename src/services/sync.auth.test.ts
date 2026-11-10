@@ -15,7 +15,10 @@ import {
 } from './keychain';
 import {
   __resetFullSyncSingleFlightForTests,
+  __resetMetadataRefreshFreshnessForTests,
   BIBLE_TEXT_CURSOR_OVERLAP_MS,
+  CATALOGUE_REFRESH_QUIET_MS,
+  METADATA_REFRESH_FRESH_MS,
   refreshChapterMetadataIfOnline,
   refreshPrepareOfflineReferencedParents,
   syncAllData,
@@ -35,6 +38,9 @@ import {
   getKnownUserIds,
   getUserLastSyncedAt,
   setUserLastSyncedAt,
+  clearCatalogueQuietSince,
+  getCatalogueQuietSince,
+  setCatalogueQuietSince,
   getUserBibleTextSyncedAt,
   setUserBibleTextSyncedAt,
   getLastAssignmentSyncAt,
@@ -150,6 +156,9 @@ jest.mock('./storage', () => ({
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
+  getCatalogueQuietSince: jest.fn(() => null),
+  setCatalogueQuietSince: jest.fn(),
+  clearCatalogueQuietSince: jest.fn(),
   // Test convenience only (#886): the real getter runs a one-time legacy
   // reconciliation (storage.test.ts); here it just follows the legacy mock.
   getUserBibleTextSyncedAt: jest.fn((userId: string) =>
@@ -504,16 +513,25 @@ jest.mock('../db/stageAdvanceQueueRepository', () => ({
 }));
 
 const mockHasPendingChapterClaimsForUser = jest.fn();
+const mockGetDatabaseWriteMark = jest.fn();
 jest.mock('../db/queries', () => ({
   hasPendingChapterClaimsForUser: (userId: number) =>
     mockHasPendingChapterClaimsForUser(userId),
+  getDatabaseWriteMark: () => mockGetDatabaseWriteMark(),
+  sameDatabaseWrites: (
+    a: { changes: number } | null,
+    b: { changes: number } | null,
+  ) => a !== null && b !== null && a.changes === b.changes,
 }));
 
 // #886: drains skip the reachability probe when their queue is empty.
 // Default both queues to "has work" so the existing token/ordering
 // assertions on the drain calls keep exercising the drain path; the empty-queue probe skip
-// cases below override these per test.
+// cases below override these per test. Light-refresh freshness is
+// per-process state, so clear it before every case.
 beforeEach(() => {
+  __resetMetadataRefreshFreshnessForTests();
+  mockGetDatabaseWriteMark.mockReset().mockResolvedValue(null);
   mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
   mockGetPendingStageAdvances.mockResolvedValue([
     { id: 1, userId: 1 },
@@ -993,7 +1011,8 @@ describe('refreshChapterMetadataIfOnline', () => {
       expect(getChaptersNeedingPericopeSync).toHaveBeenCalled();
       expect(setUserLastSyncedAt).not.toHaveBeenCalled();
 
-      // Retry with clean parents eventually advances cursor.
+      // Retry with clean parents eventually advances cursor. A partial FK
+      // skip must not arm the light-refresh freshness window (#886).
       jest.clearAllMocks();
       (
         jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
@@ -1047,9 +1066,20 @@ describe('refreshChapterMetadataIfOnline', () => {
       syncedAt: '2026-08-18T07:10:52.908Z',
       data: [],
     });
+    const realNow = Date.now;
+    let clockOffsetMs = 0;
+    const nowSpy = jest
+      .spyOn(Date, 'now')
+      .mockImplementation(() => realNow() + clockOffsetMs);
 
-    await refreshChapterMetadataIfOnline(2);
-    await refreshChapterMetadataIfOnline(2);
+    try {
+      await refreshChapterMetadataIfOnline(2);
+      // Past the light-refresh freshness window (#886).
+      clockOffsetMs = METADATA_REFRESH_FRESH_MS + 1;
+      await refreshChapterMetadataIfOnline(2);
+    } finally {
+      nowSpy.mockRestore();
+    }
 
     // Each refresh snapshots once for the gate, once for claims, once for stage advances.
     expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(6);
@@ -1282,7 +1312,7 @@ describe('refreshChapterMetadataIfOnline', () => {
     expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
   });
 
-  it('emits sync-complete after metadata refresh finishes (success, clear, or early exit)', async () => {
+  it('emits sync-complete after a refresh that reached the server, not after an offline exit', async () => {
     const emitSpy = jest
       .spyOn(syncEvents, 'emitSyncComplete')
       .mockImplementation(() => {});
@@ -1292,6 +1322,9 @@ describe('refreshChapterMetadataIfOnline', () => {
       expect(emitSpy).toHaveBeenCalledTimes(1);
 
       emitSpy.mockClear();
+      // The offline early exit is only reachable once the previous success
+      // has aged out of the freshness window (#886).
+      __resetMetadataRefreshFreshnessForTests();
       mockGetConnectivitySnapshot.mockResolvedValueOnce({
         isOnline: false,
         isWifi: false,
@@ -1299,10 +1332,317 @@ describe('refreshChapterMetadataIfOnline', () => {
         connectionType: 'none',
       });
       await refreshChapterMetadataIfOnline(2);
-      expect(emitSpy).toHaveBeenCalledTimes(1);
+      expect(emitSpy).not.toHaveBeenCalled();
     } finally {
       emitSpy.mockRestore();
     }
+  });
+
+  describe('light-refresh freshness (#886)', () => {
+    it('skips a repeat refresh inside the freshness window when the catalogue is still quiet', async () => {
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+      mockGetPendingStageAdvances.mockResolvedValue([]);
+      const emitSpy = jest
+        .spyOn(syncEvents, 'emitSyncComplete')
+        .mockImplementation(() => {});
+      try {
+        await refreshChapterMetadataIfOnline(2);
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+        const probesAfterFirst = mockGetConnectivitySnapshot.mock.calls.length;
+        emitSpy.mockClear();
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(Date.now());
+
+        await refreshChapterMetadataIfOnline(2);
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+        expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(
+          probesAfterFirst,
+        );
+        expect(emitSpy).not.toHaveBeenCalled();
+      } finally {
+        emitSpy.mockRestore();
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+      }
+    });
+
+    it('pulls again inside the freshness window when a claim is waiting', async () => {
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+      mockGetPendingStageAdvances.mockResolvedValue([]);
+
+      try {
+        await refreshChapterMetadataIfOnline(2);
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(Date.now());
+        mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+      } finally {
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+      }
+    });
+
+    it('clears an existing quiet stamp when an assignment row is skipped', async () => {
+      (getCatalogueQuietSince as jest.Mock).mockReturnValue(
+        Date.now() - 60_000,
+      );
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        syncedAt: '2026-02-01T00:00:00.000Z',
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 1,
+            bibleId: 167,
+            bookId: 40,
+            chapterNumber: 3,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+            updatedAt: '2026-02-01T00:00:00.000Z',
+          },
+        ],
+      });
+      insertChapterAssignmentSyncData.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [{ chapterAssignmentId: 11, reason: 'missing_book' }],
+      });
+
+      try {
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+        expect(setCatalogueQuietSince).not.toHaveBeenCalled();
+
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+        await refreshChapterMetadataIfOnline(2);
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+      } finally {
+        insertChapterAssignmentSyncData.mockResolvedValue({
+          insertedCount: 1,
+          skipped: [],
+        });
+        (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+          data: [],
+        });
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+      }
+    });
+
+    it('keeps freshness per user', async () => {
+      (getCredentials as jest.Mock).mockImplementation(
+        async (userId: string) => ({ token: `user-${userId}-token` }),
+      );
+
+      await refreshChapterMetadataIfOnline(2);
+      (getActiveUserId as jest.Mock).mockReturnValue('3');
+      await refreshChapterMetadataIfOnline(3);
+
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(3, 'user-3-token');
+    });
+
+    it('does not arm the window when the refresh fails, so the next focus retries', async () => {
+      (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+        new ApiError(502, 'upstream'),
+      );
+
+      await refreshChapterMetadataIfOnline(2);
+      await refreshChapterMetadataIfOnline(2);
+
+      // Three attempts per focus. The first failure must not arm freshness,
+      // or the second focus would not reach the server.
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(6);
+      expect(setCatalogueQuietSince).not.toHaveBeenCalled();
+      expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+    });
+
+    it('does not arm the window when a drain soft-fails, so the next focus retries', async () => {
+      syncPendingStageAdvances.mockRejectedValueOnce(new Error('503'));
+
+      await refreshChapterMetadataIfOnline(2);
+      await refreshChapterMetadataIfOnline(2);
+
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not arm the window when stage advances were deferred', async () => {
+      mockGetConnectivitySnapshot
+        .mockResolvedValueOnce({
+          isOnline: true,
+          isWifi: true,
+          isCellular: false,
+          connectionType: 'wifi',
+        })
+        .mockResolvedValueOnce({
+          isOnline: true,
+          isWifi: true,
+          isCellular: false,
+          connectionType: 'wifi',
+        })
+        .mockResolvedValueOnce({
+          isOnline: false,
+          isWifi: false,
+          isCellular: false,
+          connectionType: 'none',
+        });
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(syncPendingStageAdvances).not.toHaveBeenCalled();
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not arm the window when claims were deferred offline (#886)', async () => {
+      mockGetConnectivitySnapshot
+        .mockResolvedValueOnce({
+          isOnline: true,
+          isWifi: true,
+          isCellular: false,
+          connectionType: 'wifi',
+        })
+        .mockResolvedValueOnce({
+          isOnline: false,
+          isWifi: false,
+          isCellular: false,
+          connectionType: 'none',
+        });
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(syncPendingChapterClaims).not.toHaveBeenCalled();
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not arm the window when the refresh exits early offline', async () => {
+      mockGetConnectivitySnapshot.mockResolvedValueOnce({
+        isOnline: false,
+        isWifi: false,
+        isCellular: false,
+        connectionType: 'none',
+      });
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+    });
+
+    describe('15-minute catalogue window', () => {
+      const quietSince = getCatalogueQuietSince as jest.Mock;
+
+      beforeEach(() => {
+        mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+        mockGetPendingStageAdvances.mockResolvedValue([]);
+      });
+
+      afterEach(() => {
+        quietSince.mockReturnValue(null);
+      });
+
+      it('skips the pull inside the window after a clean refresh on this device', async () => {
+        quietSince.mockReturnValue(Date.now() - 60_000);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(mockGetConnectivitySnapshot).not.toHaveBeenCalled();
+        expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+        expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
+        expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+        expect(syncPendingChapterClaims).not.toHaveBeenCalled();
+      });
+
+      it('ignores a fresh server cursor when this device never armed the window', async () => {
+        (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+          new Date().toISOString(),
+        );
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      });
+
+      it('still pulls inside the window when a claim is waiting', async () => {
+        quietSince.mockReturnValue(Date.now());
+        mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      });
+
+      it('pulls once the window has passed', async () => {
+        quietSince.mockReturnValue(Date.now() - CATALOGUE_REFRESH_QUIET_MS);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      });
+
+      it('pulls and disarms when the clock moved back past the stamp', async () => {
+        quietSince.mockReturnValue(Date.now() + 60_000);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      });
+
+      it('arms the window only after a clean, complete refresh', async () => {
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(setCatalogueQuietSince).toHaveBeenCalledWith(
+          '2',
+          expect.any(Number),
+        );
+      });
+
+      it('does not arm the window when the refresh fails', async () => {
+        (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+          new ApiError(502, 'upstream'),
+        );
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+        expect(setCatalogueQuietSince).not.toHaveBeenCalled();
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+      });
+
+      it('Sync Now disarms the window for the active account', async () => {
+        await syncAllData(true).catch(() => undefined);
+
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+      });
+    });
+
+    it('a warm refresh with empty claim and stage queues issues exactly one reachability probe', async () => {
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+      mockGetPendingStageAdvances.mockResolvedValue([]);
+
+      await refreshChapterMetadataIfOnline(2);
+
+      // Without the empty-queue probe skip this was three: entry gate + claims drain + stage drain.
+      expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      expect(syncPendingChapterClaims).not.toHaveBeenCalled();
+      expect(syncPendingStageAdvances).not.toHaveBeenCalled();
+    });
+
+    it('passes the shared reachability freshness to the entry probe', async () => {
+      await refreshChapterMetadataIfOnline(2);
+
+      expect(mockGetConnectivitySnapshot).toHaveBeenNthCalledWith(1, {
+        maxAgeMs: expect.any(Number),
+      });
+    });
   });
 
   it("passes this user's stored token to sync calls without mutating global authToken", async () => {

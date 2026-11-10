@@ -220,6 +220,7 @@ export function setUserEmail(userId: string, email: string) {
 const reauthRequiredKey = (userId: string) => `${userId}:reauth_required`;
 
 export function setReauthRequired(userId: string): void {
+  clearCatalogueQuietSince(userId);
   kvStorage.setItemSync(reauthRequiredKey(userId), 'true');
   log.info('Reauth required flag set', { userId });
 }
@@ -252,7 +253,29 @@ export function getUserEmailSync(): string {
   return kvStorage.getItemSync(KV_KEYS.USER_EMAIL) ?? '';
 }
 
+const catalogueQuietSinceKey = (userId: string) =>
+  `${userId}:catalogue_quiet_since`;
+
+/**
+ * Device-clock ms when this account's catalogue last refreshed cleanly.
+ * Never derived from a server cursor; cleared on any session change.
+ */
+export function getCatalogueQuietSince(userId: string): number | null {
+  const raw = kvStorage.getItemSync(catalogueQuietSinceKey(userId));
+  const at = raw ? Number(raw) : NaN;
+  return Number.isSafeInteger(at) && at > 0 ? at : null;
+}
+
+export function setCatalogueQuietSince(userId: string, atMs: number): void {
+  kvStorage.setItemSync(catalogueQuietSinceKey(userId), String(atMs));
+}
+
+export function clearCatalogueQuietSince(userId: string): void {
+  kvStorage.removeItemSync(catalogueQuietSinceKey(userId));
+}
+
 export function setUserSync(userId: string, userEmail: string) {
+  clearCatalogueQuietSince(userId);
   kvStorage.setItemSync(KV_KEYS.USER_ID, userId);
   kvStorage.setItemSync(KV_KEYS.USER_EMAIL, userEmail);
   setActiveUserId(userId);
@@ -262,6 +285,7 @@ export function setUserSync(userId: string, userEmail: string) {
 }
 
 export function switchActiveUser(userId: string) {
+  clearCatalogueQuietSince(userId);
   setActiveUserId(userId);
   kvStorage.setItemSync(KV_KEYS.USER_ID, userId);
   kvStorage.setItemSync(KV_KEYS.USER_EMAIL, getUserEmail(userId));
