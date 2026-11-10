@@ -1,15 +1,24 @@
-import { getPendingUploadChapters } from '../db/queries';
+import {
+  getDatabaseWriteMark,
+  getPendingUploadChapters,
+  hasPendingChapterClaimsForUser,
+  sameDatabaseWrites,
+  type DatabaseWriteMark,
+} from '../db/queries';
 import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   getConnectivitySnapshot,
+  getRecentOnlineReachability,
   subscribeToConnectivity,
 } from './connectivity';
-import { emitUploadSessionEvent } from './syncEvents';
+import { emitAuthReauthRequired, emitUploadSessionEvent } from './syncEvents';
+import { AuthError } from './authError';
 import { getCredentials } from './keychain';
 import {
   getActiveUserId,
   getSyncPausedUntilMs,
   setSyncPausedUntilMs,
+  setReauthRequired,
 } from './storage';
 import {
   syncPendingChapterClaimsForUser,
@@ -20,6 +29,7 @@ import {
   subscribeToPreference,
 } from './userPreferences';
 import { logger } from '../utils/logger';
+import { UploadNetworkInterruptedError } from '../utils/networkError';
 import {
   createUploadOrchestrator,
   PAUSE_WINDOW_MS,
@@ -31,6 +41,29 @@ import {
 
 const log = logger.create('UploadOrchestrator');
 
+async function capturedQueueOwnerToken(
+  userId: number,
+  hasPending: () => Promise<boolean>,
+): Promise<string | null> {
+  let token: string | undefined;
+  try {
+    token = (await getCredentials(String(userId)))?.token;
+  } catch {
+    log.warn('Could not read queued owner credentials', { userId });
+  }
+  if (token) return token;
+  // An empty queue needs no authenticated request. Never drain a nonempty
+  // owner's queue with the mutable global bearer after an account switch.
+  if (!(await hasPending().catch(() => true))) return null;
+  const ownerId = String(userId);
+  setReauthRequired(ownerId);
+  if (getActiveUserId() === ownerId) emitAuthReauthRequired(ownerId);
+  throw new AuthError(
+    'Queued owner credentials are missing',
+    'OWNER_CREDENTIALS_MISSING',
+  );
+}
+
 async function pushPendingClaimsBeforeUpload(): Promise<void> {
   const activeUserId = getActiveUserId();
   const userId = Number(activeUserId);
@@ -40,7 +73,29 @@ async function pushPendingClaimsBeforeUpload(): Promise<void> {
     });
     return;
   }
-  await syncPendingChapterClaimsForUser(userId);
+  // Pass the active account's own token so the claim is attributed to the
+  // queued user even if the global auth token changes mid-session (#886).
+  const token = await capturedQueueOwnerToken(userId, () =>
+    hasPendingChapterClaimsForUser(userId),
+  );
+  if (!token) return;
+  const result = await syncPendingChapterClaimsForUser(userId, token);
+  // Offline at claim time is deferred work: the orchestrator takes its
+  // connectivity-pause path (resume on reconnect) rather than uploading past
+  // a claim that has not landed (#886).
+  if ((result.deferred ?? 0) > 0) {
+    throw new UploadNetworkInterruptedError(
+      `Chapter claim push deferred ${result.deferred} claim(s): offline`,
+    );
+  }
+  // Rows left failed resolve rather than throw. Throw so a drain-only session
+  // skips `complete` and schedules its bounded retry; a take session logs and
+  // uploads anyway, as before (#886).
+  if (result.failed > 0) {
+    throw new Error(
+      `Chapter claim push left ${result.failed} claim(s) pending`,
+    );
+  }
 }
 
 async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
@@ -52,14 +107,23 @@ async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
     });
     return;
   }
-  const creds = await getCredentials(String(userId));
-  const result = await syncPendingStageAdvancesForUser(userId, creds?.token);
-  // Pending rows come back as `failed` or offline `deferred` rather than
-  // throwing. Either one means the drain is not done: skip `complete` and
-  // schedule the bounded retry (#257, #886).
-  const stillPending = result.failed + (result.deferred ?? 0);
-  if (stillPending > 0) {
-    throw new Error(`Stage-advance drain left ${stillPending} row(s) pending`);
+  const token = await capturedQueueOwnerToken(userId, async () =>
+    (await getPendingStageAdvances()).some(row => row.userId === userId),
+  );
+  if (!token) return;
+  const result = await syncPendingStageAdvancesForUser(userId, token);
+  // Rows left pending resolve as `failed` rather than throwing. Throw so the
+  // session skips `complete` and schedules its bounded retry (#257).
+  if (result.failed > 0) {
+    throw new Error(`Stage-advance drain left ${result.failed} row(s) pending`);
+  }
+  // Offline at drain time is deferred work, not a failure: take the
+  // connectivity-pause path (resume on reconnect, retry budget untouched)
+  // instead of emitting `complete` over queued rows (#886).
+  if (result.deferred > 0) {
+    throw new UploadNetworkInterruptedError(
+      `Stage-advance drain deferred ${result.deferred} row(s): offline`,
+    );
   }
 }
 
@@ -81,12 +145,49 @@ async function hasPendingStageAdvances(): Promise<boolean> {
   }
 }
 
+async function hasPendingClaims(): Promise<boolean> {
+  const activeUserId = getActiveUserId();
+  const userId = Number(activeUserId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return false;
+  }
+  try {
+    return await hasPendingChapterClaimsForUser(userId);
+  } catch (error) {
+    log.warn(
+      'Could not check pending chapter claims; attempting push on reconnect',
+      {
+        error,
+      },
+    );
+    return true;
+  }
+}
+
+type QueueWriteMark = { userId: string | null; writes: DatabaseWriteMark };
+
+async function getQueueWriteMark(): Promise<QueueWriteMark | null> {
+  const userId = getActiveUserId();
+  const writes = await getDatabaseWriteMark();
+  return writes ? { userId, writes } : null;
+}
+
+function sameQueueWriteMark(a: object, b: object): boolean {
+  const first = a as QueueWriteMark;
+  const second = b as QueueWriteMark;
+  return (
+    first.userId === second.userId &&
+    sameDatabaseWrites(first.writes, second.writes)
+  );
+}
+
 export {
   createUploadOrchestrator,
   PAUSE_WINDOW_MS,
   SESSION_RETRY_MAX_ATTEMPTS,
   sessionRetryDelayMs,
   type ChapterUploadWorker,
+  type TakeProgressListener,
   type UploadOrchestrator,
   type UploadOrchestratorDeps,
   type UploadOrchestratorSnapshot,
@@ -138,8 +239,10 @@ export function startUploadOrchestrator(
     now: () => Date.now(),
     pauseWindowMs: PAUSE_WINDOW_MS,
     emit: emitUploadSessionEvent,
-    getSessionTransportSnapshot: async () => {
-      const snapshot = await getConnectivitySnapshot();
+    getSessionTransportSnapshot: async options => {
+      const snapshot =
+        (options?.allowRecent ? getRecentOnlineReachability() : null) ??
+        (await getConnectivitySnapshot());
       return {
         isOnline: snapshot.isOnline,
         isWifi: snapshot.isWifi,
@@ -153,6 +256,9 @@ export function startUploadOrchestrator(
     pushPendingClaimsBeforeUpload,
     pushPendingStageAdvancesAfterUpload,
     hasPendingStageAdvances,
+    hasPendingClaims,
+    getQueueWriteMark,
+    sameQueueWriteMark,
     ...restOverrides,
   };
 

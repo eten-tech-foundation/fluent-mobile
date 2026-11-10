@@ -19,11 +19,18 @@ type ConnectivityListener = (
 ) => void;
 const mockListeners = new Set<ConnectivityListener>();
 const mockDrain = jest.fn();
+const mockClaimsDrain = jest.fn();
 const mockGetPendingStageAdvances = jest.fn();
+const mockHasPendingChapterClaimsForUser = jest.fn();
 const mockEmit = jest.fn();
+const mockGetCredentials = jest.fn();
+const mockSetReauthRequired = jest.fn();
+const mockEmitReauth = jest.fn();
 
 jest.mock('../db/queries', () => ({
   getPendingUploadChapters: async () => [],
+  hasPendingChapterClaimsForUser: (userId: number) =>
+    mockHasPendingChapterClaimsForUser(userId),
 }));
 jest.mock('../db/stageAdvanceQueueRepository', () => ({
   getPendingStageAdvances: () => mockGetPendingStageAdvances(),
@@ -38,6 +45,7 @@ jest.mock('./connectivity', () => ({
     isWifi: true,
     connectionType: 'wifi',
   }),
+  getRecentOnlineReachability: () => null,
 }));
 jest.mock('./userPreferences', () => ({
   getUploadOverCellular: () => false,
@@ -47,20 +55,19 @@ jest.mock('./storage', () => ({
   getActiveUserId: () => '10',
   getSyncPausedUntilMs: () => null,
   setSyncPausedUntilMs: jest.fn(),
+  setReauthRequired: (id: string) => mockSetReauthRequired(id),
 }));
 jest.mock('./sync', () => ({
-  syncPendingChapterClaimsForUser: async () => ({
-    synced: 0,
-    conflicts: 0,
-    failed: 0,
-  }),
+  syncPendingChapterClaimsForUser: (...args: unknown[]) =>
+    mockClaimsDrain(...args),
   syncPendingStageAdvancesForUser: (...args: unknown[]) => mockDrain(...args),
 }));
 jest.mock('./keychain', () => ({
-  getCredentials: async () => ({ token: 'token-10' }),
+  getCredentials: (id: string) => mockGetCredentials(id),
 }));
 jest.mock('./syncEvents', () => ({
   emitUploadSessionEvent: (event: UploadSessionEvent) => mockEmit(event),
+  emitAuthReauthRequired: (id: string) => mockEmitReauth(id),
 }));
 jest.mock('../utils/logger', () => ({
   logger: {
@@ -115,8 +122,11 @@ beforeEach(() => {
   stopUploadOrchestrator();
   jest.clearAllMocks();
   mockListeners.clear();
+  mockGetCredentials.mockResolvedValue({ token: 'token-10' });
   timers = [];
   mockGetPendingStageAdvances.mockResolvedValue([{ id: 1, userId: 10 }]);
+  mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+  mockClaimsDrain.mockResolvedValue({ synced: 0, conflicts: 0, failed: 0 });
 });
 
 afterEach(() => {
@@ -124,6 +134,20 @@ afterEach(() => {
 });
 
 describe('stage drain result contract (#257)', () => {
+  it('fails closed before draining a claim with missing captured-owner credentials', async () => {
+    mockGetCredentials.mockResolvedValue(null);
+    mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+    connect();
+    await waitFor(() => mockSetReauthRequired.mock.calls.length > 0);
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('10');
+    expect(mockEmitReauth).toHaveBeenCalledWith('10');
+    expect(mockClaimsDrain).not.toHaveBeenCalled();
+    expect(mockDrain).not.toHaveBeenCalled();
+    expect(stubWorker.uploadChapter).not.toHaveBeenCalled();
+    expect(eventTypes()).not.toContain('complete');
+  });
+
   it('retries when the drain resolves with failed rows, then completes after a confirmed drain', async () => {
     mockDrain
       .mockResolvedValueOnce({ synced: 0, dropped: 0, failed: 1 })
@@ -196,6 +220,31 @@ describe('stage drain result contract (#257)', () => {
     expect(eventTypes()).not.toContain('complete');
   });
 
+  it('treats offline-deferred rows as a connectivity pause, not complete or a retry (#886)', async () => {
+    mockDrain.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      deferred: 1,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => mockDrain.mock.calls.length === 1);
+    await waitFor(() => eventTypes().includes('paused'));
+
+    expect(mockEmit).toHaveBeenCalledWith({
+      type: 'paused',
+      reason: 'connectivity',
+    });
+    // Connectivity pause, not a failed session: no `idle`, and the only timer
+    // is the transport recheck (same delay as the first retry, but it
+    // re-reads the connectivity snapshot instead of spending retry budget).
+    expect(eventTypes()).not.toContain('complete');
+    expect(eventTypes()).not.toContain('idle');
+    expect(armedTimers()).toHaveLength(1);
+  });
+
   it('does not retry or complete when the session is stopped during the drain', async () => {
     let finishDrain!: (value: {
       synced: number;
@@ -217,6 +266,127 @@ describe('stage drain result contract (#257)', () => {
     await settle();
 
     expect(armedTimers()).toHaveLength(0);
+    expect(eventTypes()).not.toContain('complete');
+  });
+});
+
+describe('claim push result contract (#886)', () => {
+  it('treats an offline-deferred claim push as a connectivity pause, not something to upload past', async () => {
+    mockClaimsDrain.mockResolvedValue({
+      synced: 0,
+      conflicts: 0,
+      failed: 0,
+      deferred: 1,
+    });
+    mockDrain.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => mockClaimsDrain.mock.calls.length === 1);
+    await waitFor(() => eventTypes().includes('paused'));
+
+    expect(mockClaimsDrain).toHaveBeenCalledWith(10, 'token-10');
+    expect(mockEmit).toHaveBeenCalledWith({
+      type: 'paused',
+      reason: 'connectivity',
+    });
+    expect(mockDrain).not.toHaveBeenCalled();
+    expect(eventTypes()).not.toContain('complete');
+    expect(eventTypes()).not.toContain('idle');
+  });
+
+  it('runs a claim-only session on reconnect when only a queued claim is pending', async () => {
+    mockGetPendingStageAdvances.mockResolvedValue([]);
+    mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+    mockDrain.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => eventTypes().includes('complete'));
+
+    expect(mockHasPendingChapterClaimsForUser).toHaveBeenCalledWith(10);
+    expect(mockClaimsDrain).toHaveBeenCalledWith(10, 'token-10');
+    expect(stubWorker.uploadChapter).not.toHaveBeenCalled();
+  });
+
+  it('runs the claim push on reconnect when the claim queue cannot be read', async () => {
+    mockGetPendingStageAdvances.mockResolvedValue([]);
+    mockHasPendingChapterClaimsForUser.mockRejectedValue(
+      new Error('db closed'),
+    );
+    mockDrain.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => eventTypes().includes('complete'));
+
+    expect(mockClaimsDrain).toHaveBeenCalledWith(10, 'token-10');
+  });
+
+  it('retries a drain-only session when the claim push leaves rows failed', async () => {
+    mockGetPendingStageAdvances.mockResolvedValue([]);
+    mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+    mockClaimsDrain.mockResolvedValue({ synced: 0, conflicts: 0, failed: 1 });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => mockClaimsDrain.mock.calls.length === 1);
+    await waitFor(() => armedTimers().length === 1);
+
+    expect(eventTypes()).not.toContain('complete');
+    expect(armedTimers().map(timer => timer.delay)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+  });
+
+  it('still drains queued stage advances when the claim push soft-fails, then retries', async () => {
+    mockGetPendingStageAdvances.mockResolvedValue([{ id: 1, userId: 10 }]);
+    mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+    mockClaimsDrain.mockResolvedValue({ synced: 0, conflicts: 0, failed: 1 });
+    mockDrain.mockResolvedValue({
+      synced: 1,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => mockDrain.mock.calls.length === 1);
+    await waitFor(() => armedTimers().length === 1);
+
+    expect(mockClaimsDrain).toHaveBeenCalledTimes(1);
+    expect(eventTypes()).not.toContain('complete');
+    expect(armedTimers().map(timer => timer.delay)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
+  });
+
+  it('stays idle on reconnect with no chapters, stage rows or claims', async () => {
+    mockGetPendingStageAdvances.mockResolvedValue([]);
+    mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => eventTypes().includes('idle'));
+    await settle();
+
+    expect(mockClaimsDrain).not.toHaveBeenCalled();
     expect(eventTypes()).not.toContain('complete');
   });
 });

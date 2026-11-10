@@ -10,6 +10,16 @@ export interface AuthCredentials {
   token: string;
 }
 
+let credentialsVersion = 0;
+
+/**
+ * Bumped before and after every account-credential write or clear, so a
+ * caller holding a token read at an older version knows it may be stale.
+ */
+export function getCredentialsVersion(): number {
+  return credentialsVersion;
+}
+
 function storageKey(userId: string): string {
   return `${SERVICE_PREFIX}.${userId}`;
 }
@@ -36,6 +46,7 @@ export async function saveCredentials(
   token: string,
   userId: string,
 ): Promise<void> {
+  credentialsVersion += 1;
   try {
     await SecureStore.setItemAsync(
       storageKey(userId),
@@ -45,6 +56,8 @@ export async function saveCredentials(
   } catch (error) {
     log.error('Failed to save credentials', { error });
     throw error;
+  } finally {
+    credentialsVersion += 1;
   }
 }
 
@@ -82,12 +95,15 @@ export async function clearTempCredentials(): Promise<void> {
 }
 
 export async function clearCredentials(userId: string): Promise<void> {
+  credentialsVersion += 1;
   try {
     await SecureStore.deleteItemAsync(storageKey(userId));
     log.info('Credentials cleared', { userId });
   } catch (error) {
     log.error('Failed to clear credentials', { error });
     throw error;
+  } finally {
+    credentialsVersion += 1;
   }
 }
 

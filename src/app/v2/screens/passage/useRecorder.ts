@@ -664,9 +664,17 @@ export function useRecorder({
       : `${t.startChapter}:${t.startVerse}–${t.endChapter}:${t.endVerse}`;
   }
 
-  /** The take in use and official: the card's check shows it. */
-  function inUse(t: { isSelected: boolean; isCanonical: boolean }) {
-    return t.isSelected && t.isCanonical;
+  /**
+   * The take in use and official: the card's check shows it. A failed upload
+   * (e.g. another take became active on the server) isn't official, so its
+   * toggle stays live for choosing it again.
+   */
+  function inUse(t: {
+    isSelected: boolean;
+    isCanonical: boolean;
+    syncStatus: string;
+  }) {
+    return t.isSelected && t.isCanonical && t.syncStatus !== 'failed';
   }
 
   /**
@@ -715,7 +723,10 @@ export function useRecorder({
     ) {
       return;
     }
-    if (!t.isSelected) await verseAudio.selectTake(t.id);
+    // Selecting a selected take whose upload failed starts a new attempt.
+    if (!t.isSelected || t.syncStatus === 'failed') {
+      await verseAudio.selectTake(t.id);
+    }
     await verseAudio.setCanonical(t.id);
   }
 
