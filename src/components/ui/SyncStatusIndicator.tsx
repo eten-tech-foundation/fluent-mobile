@@ -30,6 +30,7 @@ function resolveIconState(
 
   switch (status) {
     case 'pending':
+    case 'held':
       if (hasPendingUploads) {
         return {
           status: isOnline ? 'online_pending' : 'offline_pending',

@@ -1,6 +1,7 @@
 import {
   readDraftDownloadManifest,
   writeDraftDownloadManifest,
+  writeDraftDownloadPurgeTombstone,
 } from './draftDownloadManifest';
 import {
   resetFileSystemMock,
@@ -69,5 +70,59 @@ describe('draftDownloadManifest identity scoping', () => {
       role: 'observer',
     });
     expect(mismatched).toBeNull();
+  });
+  it('rejects late validation and scripture writes from a superseded or purged session', async () => {
+    const manifest = {
+      chapterAssignmentId: 9,
+      projectId: 1,
+      userId: 7,
+      role: 'observer' as const,
+      projectUnitId: 12,
+      bibleId: 1,
+      bookId: 41,
+      bookCode: 'MRK',
+      chapterNumber: 1,
+      units: [],
+      purgeGeneration: 0,
+      purged: false,
+      audioValidationId: 'old',
+      audioValidation: 'pending' as const,
+    };
+    await writeDraftDownloadManifest(manifest, { newSession: true });
+    await writeDraftDownloadManifest(
+      { ...manifest, audioValidationId: 'new' },
+      { newSession: true },
+    );
+    await writeDraftDownloadManifest({
+      ...manifest,
+      audioValidation: 'confirmed',
+    });
+    expect(await readDraftDownloadManifest(manifest)).toMatchObject({
+      audioValidationId: 'new',
+      audioValidation: 'pending',
+    });
+    const current = (await readDraftDownloadManifest(manifest))!;
+    await writeDraftDownloadManifest({
+      ...current,
+      audioValidation: 'confirmed',
+    });
+    await writeDraftDownloadManifest({
+      ...current,
+      sourceScriptureError: 'retry',
+    });
+    expect(await readDraftDownloadManifest(manifest)).toMatchObject({
+      audioValidation: 'confirmed',
+    });
+    await writeDraftDownloadPurgeTombstone(manifest, current);
+    await expect(
+      writeDraftDownloadManifest(current, { newSession: true }),
+    ).resolves.toBeNull();
+    await writeDraftDownloadManifest({
+      ...current,
+      audioValidation: 'confirmed',
+    });
+    expect(await readDraftDownloadManifest(manifest)).toMatchObject({
+      purged: true,
+    });
   });
 });

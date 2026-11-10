@@ -49,6 +49,28 @@ describe('DraftDownloadChip', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
+  it('labels an unchecked offline snapshot as ready but not confirmed current', () => {
+    const view = render(
+      <DraftDownloadChip
+        state={{
+          ...baseState,
+          status: 'ready',
+          freshness: 'pending',
+          phase: 'complete',
+          progress: 1,
+          readyAtMs: Date.now(),
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(view.getByTestId('draft-download-chip-ready')).toBeTruthy();
+    expect(
+      view.getByLabelText(
+        'Draft saved for offline; not yet checked for newer takes',
+      ),
+    ).toBeTruthy();
+  });
+
   it('renders progress ring state while downloading', () => {
     const view = render(
       <DraftDownloadChip

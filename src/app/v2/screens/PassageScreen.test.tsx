@@ -54,6 +54,8 @@ type MockTake = {
   takeNumber: number;
   granularity: string;
   isSelected: boolean;
+  isCanonical?: boolean;
+  syncStatus?: string;
   durationMs: number;
   startChapter?: number;
   startVerse?: number;
@@ -1703,6 +1705,40 @@ describe('PassageScreen', () => {
 
       expect(screen.queryByTestId('passage-confirm')).toBeNull();
       expect(mockSelectTake).not.toHaveBeenCalled();
+      expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+    });
+
+    it('lets the official take be chosen again after its upload failed', async () => {
+      const official = {
+        ...take(2),
+        isSelected: true,
+        isCanonical: true,
+        startVerse: 22,
+        endVerse: 23,
+      };
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...official, syncStatus: 'uploaded' }],
+      };
+      const { unmount } = render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      expect(
+        screen.getByTestId('passage-take-official').props.accessibilityState,
+      ).toMatchObject({ disabled: true });
+      unmount();
+
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...official, syncStatus: 'failed' }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
+
+      expect(screen.queryByTestId('passage-confirm')).toBeNull();
+      expect(mockSelectTake).toHaveBeenCalledWith('t2');
       expect(mockSetCanonical).toHaveBeenCalledWith('t2');
     });
 

@@ -452,6 +452,8 @@ export interface PendingRecording {
   /** Canonical or selected takes activate on the server; other takes do not (#716). */
   isCanonical: boolean;
   isSelected: boolean;
+  /** Incremented atomically when selection/canonical intent changes. */
+  uploadIntentVersion?: number;
 }
 
 /** A take deleted on device whose server copy is still to be removed (#716). */
@@ -506,3 +508,9 @@ export interface PericopeVerseRow {
   pericope_number: string;
   pericope_title: string | null;
 }
+
+/** Identity of the accepted bytes, independent of later selection intent. */
+export type AcceptedRecordingScope = Pick<
+  PendingRecording,
+  'bibleTextId' | 'projectUnitId' | 'localFilePath' | 'recordedByUserId'
+>;

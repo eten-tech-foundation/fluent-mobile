@@ -45,6 +45,13 @@ let mockPendingUploads = {
 };
 let mockSessionError: string | null = null;
 let mockMetadataSyncActive = false;
+let mockProgressCurrentChapter: {
+  bookId: number;
+  chapterNumber: number;
+  completedTakes: number;
+  failedTakes: number;
+  totalTakes: number;
+} | null = null;
 const mockPause = jest.fn();
 const mockCancel = jest.fn();
 const mockResumeUploads = jest.fn();
@@ -111,6 +118,7 @@ jest.mock('../../hooks/useUploadSessionState', () => ({
         : mockPageStatus,
     progressUploaded: 0,
     progressTotal: 3,
+    progressCurrentChapter: mockProgressCurrentChapter,
     nextRetryAt: undefined,
     sessionError: mockSessionError,
     isControlPending: false,
@@ -195,6 +203,7 @@ describe('SyncScreen', () => {
     mockTransferConnectivityPending = false;
     mockIsSyncing = false;
     mockMetadataSyncActive = false;
+    mockProgressCurrentChapter = null;
     mockDisplayText = 'Last synced: Just now';
     mockStateType = 'normal';
     mockPendingUploads = {
@@ -428,6 +437,34 @@ describe('SyncScreen', () => {
         screen.getByText('Uploading your recordings to Fluent.'),
       ).toBeTruthy();
       expect(screen.queryByTestId('sync-metadata-syncing')).toBeNull();
+    });
+
+    it('shows the held state with Sync Now while drafting holds automatic uploads', () => {
+      mockPageStatus = 'held';
+      render(<SyncScreen />);
+
+      expect(screen.getByText('Upload waiting · drafting open')).toBeTruthy();
+      expect(screen.getByTestId('sync-held-subtitle')).toBeTruthy();
+      expect(screen.queryByText('Online · upload pending')).toBeNull();
+      expect(screen.getByTestId('sync-action-sync-now')).toBeTruthy();
+      expect(screen.queryByTestId('sync-upload-section')).toBeNull();
+    });
+
+    it('shows per-take progress for the chapter uploading now', () => {
+      mockPageStatus = 'syncing';
+      mockProgressCurrentChapter = {
+        bookId: 1,
+        chapterNumber: 7,
+        completedTakes: 2,
+        failedTakes: 0,
+        totalTakes: 10,
+      };
+      render(<SyncScreen />);
+
+      expect(screen.getByText('0 of 3 chapters uploaded')).toBeTruthy();
+      expect(
+        screen.getByTestId('upload-progress-current-chapter'),
+      ).toHaveTextContent('Chapter 7: 2 of 10 takes uploaded');
     });
   });
 

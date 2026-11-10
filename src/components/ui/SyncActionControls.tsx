@@ -120,6 +120,8 @@ export function SyncActionControls({
       );
 
     case 'pending':
+    case 'held':
+      // Held work still offers Sync Now — explicit sync ignores the hold.
       return (
         <View
           style={styles.controlsColumn}

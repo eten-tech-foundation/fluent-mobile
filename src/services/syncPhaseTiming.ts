@@ -15,11 +15,15 @@ export const SYNC_PHASE_FIELDS = [
 
 export type SyncPhaseField = (typeof SYNC_PHASE_FIELDS)[number];
 
+const SYNC_PHASE_FULL_FETCH_REASONS = [
+  'remap',
+  'missing_chapter',
+  'no_cursor',
+  'periodic_reconcile',
+] as const;
+
 export type SyncPhaseFullFetchReason =
-  | 'remap'
-  | 'missing_chapter'
-  | 'no_cursor'
-  | 'periodic_reconcile';
+  (typeof SYNC_PHASE_FULL_FETCH_REASONS)[number];
 
 export type SyncPhaseCounts = {
   attempt?: number;
@@ -40,11 +44,7 @@ export const HTTP_PHASE = {
   parse: 'http.parse',
 } as const;
 
-const FULL_FETCH_REASONS = new Set<string>([
-  'remap',
-  'missing_chapter',
-  'no_cursor',
-]);
+const FULL_FETCH_REASONS = new Set<string>(SYNC_PHASE_FULL_FETCH_REASONS);
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

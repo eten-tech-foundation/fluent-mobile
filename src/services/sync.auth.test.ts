@@ -233,7 +233,7 @@ jest.mock('../db/repository', () => ({
   insertPericopeSets: jest.fn().mockResolvedValue(undefined),
   getProjectPericopeSetId: jest.fn().mockResolvedValue(null),
   getChaptersNeedingPericopeSync: jest.fn().mockResolvedValue([]),
-  upsertPericopeSet: jest.fn().mockResolvedValue(undefined),
+  upsertPericopeSet: jest.fn().mockResolvedValue(true),
   getBibleTextAbsencesForBible: jest.fn().mockResolvedValue([]),
   recordBibleTextAbsences: jest.fn().mockResolvedValue(undefined),
   clearBibleTextAbsences: jest.fn().mockResolvedValue(undefined),
@@ -2551,10 +2551,21 @@ describe('syncAllUsers auth handling', () => {
     expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
   });
 
-  it('runs full bible text sync when any user had a full assignment sync', async () => {
+  it('keeps the bible-text cursor when one account needs a full assignment pull', async () => {
+    const { getDatabase } = jest.requireMock('../db/db') as {
+      getDatabase: jest.Mock;
+    };
+    getDatabase.mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 12 }] }),
+    });
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-06-01T00:00:00.000Z');
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+    // User 2 has no local projects, so its assignment pull is unscoped.
+    // Verses are already stored, so the text pull must stay on the text cursor.
     userHasLocalProjects.mockImplementation(
       async (userId: number) => userId === 1,
     );
@@ -2571,14 +2582,119 @@ describe('syncAllUsers auth handling', () => {
       ],
     });
 
-    await syncAllUsers();
+    try {
+      await syncAllUsers();
 
-    expect(getChaptersToSync).toHaveBeenCalledWith([1, 2]);
-    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
-      1,
-      [{ bookId: 1, chapterNumber: 1 }],
-      undefined,
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+        2,
+        undefined,
+        undefined,
+        'user-2-token',
+      );
+      expect(getChaptersToSync).toHaveBeenCalledWith([1, 2]);
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        1,
+        [{ bookId: 1, chapterNumber: 1 }],
+        overlapped('2026-06-01T00:00:00.000Z'),
+      );
+    } finally {
+      (
+        jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+      ).mockReturnValue('2026-01-01T00:00:00.000Z');
+      getDatabase.mockReturnValue({
+        execute: jest.fn().mockResolvedValue({ rows: [{ count: 0 }] }),
+      });
+    }
+  });
+
+  it('still pulls bible text when an assignment row is skipped for a missing parent', async () => {
+    const { getDatabase } = jest.requireMock('../db/db') as {
+      getDatabase: jest.Mock;
+    };
+    getDatabase.mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 12 }] }),
+    });
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+    (getUserBibleTextSyncedAt as jest.Mock).mockImplementation(
+      (userId: string) =>
+        userId === '1'
+          ? '2026-01-01T00:00:00.000Z'
+          : '2026-01-02T00:00:00.000Z',
+    );
+    (FluentAPI.getChapterAssignments as jest.Mock).mockImplementation(
+      async (userId: number) => ({
+        syncedAt: '2026-02-01T00:00:00.000Z',
+        data:
+          userId === 1
+            ? [
+                {
+                  chapterAssignmentId: 11,
+                  projectUnitId: 22,
+                  projectId: 1,
+                  bibleId: 167,
+                  bookId: 40,
+                  chapterNumber: 3,
+                  chapterStatus: 'in_progress',
+                  totalVerses: 10,
+                  completedVerses: 2,
+                  updatedAt: '2026-02-01T00:00:00.000Z',
+                },
+              ]
+            : [],
+      }),
+    );
+    insertChapterAssignmentSyncData.mockResolvedValue({
+      insertedCount: 1,
+      skipped: [{ chapterAssignmentId: 11, reason: 'missing_book' }],
+    });
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-02-02T00:00:00.000Z',
+      data: [
+        {
+          bookId: 1,
+          chapterNumber: 1,
+          verses: [{ id: 1001, verseNumber: 1, text: 'edited' }],
+        },
+      ],
+    });
+
+    try {
+      await syncAllUsers();
+
+      expect(setUserLastSyncedAt).not.toHaveBeenCalledWith(
+        '1',
+        expect.anything(),
+      );
+      expect(setUserLastSyncedAt).toHaveBeenCalledWith(
+        '2',
+        '2026-02-01T00:00:00.000Z',
+      );
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        1,
+        [{ bookId: 1, chapterNumber: 1 }],
+        overlapped('2026-01-01T00:00:00.000Z'),
+      );
+      expect(setUserBibleTextSyncedAt).toHaveBeenCalledWith(
+        '1',
+        '2026-02-02T00:00:00.000Z',
+      );
+    } finally {
+      insertChapterAssignmentSyncData.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [],
+      });
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        data: [],
+      });
+      getDatabase.mockReturnValue({
+        execute: jest.fn().mockResolvedValue({ rows: [{ count: 0 }] }),
+      });
+    }
   });
 
   it('scopes catalogue bible-text selection to the union of known users', async () => {
