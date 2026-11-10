@@ -243,6 +243,18 @@ describe('deriveSyncStatus', () => {
 });
 
 describe('formatSyncStatusLabel', () => {
+  it('says pending uploads wait for drafting only while held', () => {
+    expect(
+      formatSyncStatusLabel('online_pending', { heldForDrafting: true }),
+    ).toBe('Online · uploads wait until you leave drafting. Open Sync page.');
+    expect(
+      formatSyncStatusLabel('online_failed', { heldForDrafting: true }),
+    ).toBe('Upload failed. Open Sync page to retry.');
+    expect(formatSyncStatusLabel('online_pending')).toBe(
+      'Online · upload pending. Open Sync page.',
+    );
+  });
+
   it('includes upload progress counts for online_uploading', () => {
     expect(
       formatSyncStatusLabel('online_uploading', {

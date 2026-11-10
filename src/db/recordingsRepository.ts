@@ -571,6 +571,8 @@ export async function setCanonicalTake(id: string): Promise<void> {
     // #701: designation alone is a change that must sync (replaces #279,
     // where canonical was sent only with the owning account's upload).
     // 'conflicted' / 'failed' are left for their own retry flows.
+    // The operation-version trigger prevents an older durable upload receipt
+    // from consuming this designation, including marker/receipt-clear crashes.
     await tx.execute(
       `UPDATE recordings
        SET is_canonical = 1,
@@ -716,6 +718,53 @@ export async function selectRecordingTake(id: string): Promise<void> {
   }
 }
 
+/**
+ * Explicit user decision to make an already-selected (or canonical) take
+ * the server's active take again after an activation upload ended
+ * unresolved. Starts a new upload intent generation so the worker captures a
+ * fresh precondition; `observedVersionToken` is the unit token seen during
+ * reconciliation, adopted here (never by automatic retries). Returns `false`
+ * when the take is missing, not selected/canonical, owned by another user,
+ * or not failed.
+ */
+export async function reassertRecordingActivation(
+  id: string,
+  observedVersionToken: number | null,
+): Promise<boolean> {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  const activeUserId = resolveRecordedByUserId();
+  const token =
+    observedVersionToken !== null &&
+    Number.isSafeInteger(observedVersionToken) &&
+    observedVersionToken > 0
+      ? observedVersionToken
+      : null;
+  const result = await db.execute(
+    `UPDATE recordings
+     SET upload_intent_version = upload_intent_version + 1,
+         sync_status = 'pending',
+         upload_error = NULL,
+         version_token = CASE
+           WHEN ? IS NULL THEN version_token
+           WHEN version_token IS NULL OR version_token < ? THEN ?
+           ELSE version_token
+         END,
+         updated_at = ?
+     WHERE id = ?
+       AND (is_selected = 1 OR is_canonical = 1)
+       AND sync_status = 'failed'
+       AND (recorded_by_user_id IS NULL OR recorded_by_user_id = ?)`,
+    [token, token, token, now, id, activeUserId],
+  );
+  const applied = (result.rowsAffected ?? 0) > 0;
+  if (applied) {
+    log.info('Recording activation reasserted by user', { id });
+    emitRecordingDataChanged();
+  }
+  return applied;
+}
+
 /** Server take deletes queued by `deleteRecordingTake` (#716), oldest first. */
 export async function getPendingRecordingDeletions(): Promise<
   PendingRecordingDeletion[]
@@ -766,7 +815,10 @@ export async function clearRecordingDeletion(id: string): Promise<void> {
  * (`recorded_by_user_id = NULL`) are treated as unowned and may be deleted
  * by any active user.
  */
-export async function deleteRecordingTake(id: string): Promise<void> {
+export async function deleteRecordingTake(
+  id: string,
+  options: { receiptServerTakeId?: number | null } = {},
+): Promise<boolean> {
   const db = getDatabase();
   const now = new Date().toISOString();
   let applied = false;
@@ -818,7 +870,20 @@ export async function deleteRecordingTake(id: string): Promise<void> {
       'r.project_unit_id',
     );
 
-    const serverTakeId = Number(row.server_take_id);
+    // A row whose accepted upload never got its local marker carries the
+    // server take id only in its durable receipt (#886); the caller passes
+    // it in so the server copy is not orphaned by a local delete.
+    let serverTakeId = Number(row.server_take_id);
+    if (!(Number.isInteger(serverTakeId) && serverTakeId > 0)) {
+      const receiptTakeId = options.receiptServerTakeId;
+      if (
+        typeof receiptTakeId === 'number' &&
+        Number.isInteger(receiptTakeId) &&
+        receiptTakeId > 0
+      ) {
+        serverTakeId = receiptTakeId;
+      }
+    }
     if (Number.isInteger(serverTakeId) && serverTakeId > 0) {
       // #716: the server copy is removed on the next sync. The recording id
       // doubles as the queue id since the row is deleted below. No unit
@@ -935,4 +1000,5 @@ export async function deleteRecordingTake(id: string): Promise<void> {
     // state everywhere immediately (#530 A.1/A.2).
     emitRecordingDataChanged();
   }
+  return applied;
 }

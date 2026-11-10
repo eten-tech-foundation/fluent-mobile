@@ -14,6 +14,7 @@ import {
   verseAudioUploadPath,
 } from './verseAudioFormData';
 import {
+  __setMockFileBytes,
   resetFileSystemMock,
   writeAsStringAsync,
 } from '../test/mocks/expo-file-system';
@@ -185,9 +186,10 @@ describe('verseAudioFormData helpers', () => {
   it('reads uri file parts into an Expo bytes-part before append', async () => {
     resetFileSystemMock();
     const uri = 'file:///mock-document/recordings/a.m4a';
-    // ASCII "hi" as base64 — Expo fetch rejects raw `{ uri }` FormData parts,
-    // and RN Blob rejects ArrayBufferView.
-    await writeAsStringAsync(uri, 'aGk=');
+    // Expo fetch rejects raw `{ uri }` FormData parts, and RN Blob rejects
+    // ArrayBufferView. Bytes outside ASCII prove no text round trip.
+    const raw = Uint8Array.from([0x00, 0x68, 0x69, 0xff, 0x80]);
+    __setMockFileBytes(uri, raw);
 
     const append = jest.fn();
     const g = globalThis as GlobalWithFormData;
@@ -211,6 +213,10 @@ describe('verseAudioFormData helpers', () => {
         }),
         'a.m4a',
       );
+      const part = append.mock.calls.find(call => call[0] === 'file')?.[1] as {
+        bytes: () => Uint8Array;
+      };
+      expect(Array.from(part.bytes())).toEqual(Array.from(raw));
       expect(append).not.toHaveBeenCalledWith(
         'durationSeconds',
         expect.anything(),

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIsFocused, useRouter } from 'expo-router';
 import { hrefs } from '../navigation/hrefs';
+import { useUploadsHeldForDrafting } from './useDraftingUploadHold';
 import { useGlobalSyncStatus } from './useGlobalSyncStatus';
 import { useSyncStatus } from './useSyncStatus';
 
@@ -34,6 +35,7 @@ export function useHeaderSync({
   }, [refresh]);
   const isSyncing = useGlobalSyncStatus(handleSyncComplete);
   const { status, failedErrorText } = useSyncStatus({ isSyncing, refreshKey });
+  const heldForDrafting = useUploadsHeldForDrafting();
   const lockRef = useRef(false);
   const focusedOnce = useRef(false);
 
@@ -59,5 +61,5 @@ export function useHeaderSync({
     });
   }, [guard, router]);
 
-  return { status, failedErrorText, openSync, refresh };
+  return { status, failedErrorText, heldForDrafting, openSync, refresh };
 }

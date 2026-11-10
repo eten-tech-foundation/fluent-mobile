@@ -169,6 +169,10 @@ function mockFileData(uri: string): Uint8Array {
 export class File {
   constructor(readonly uri: string) {}
 
+  async bytes(): Promise<Uint8Array> {
+    return mockFileData(this.uri).slice();
+  }
+
   open(_mode?: string) {
     const data = mockFileData(this.uri);
     let offset = 0;

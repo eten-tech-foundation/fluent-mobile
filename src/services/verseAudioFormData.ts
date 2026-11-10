@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import { File } from 'expo-file-system';
 
 import type {
   UploadVerseAudioParams,
@@ -16,31 +16,17 @@ function isVerseAudioFilePart(
   );
 }
 
-function base64ToUint8Array(base64: string): Uint8Array {
-  // Hermes / RN provide atob; typings on globalThis are incomplete here.
-  const decode = (
-    globalThis as typeof globalThis & { atob: (data: string) => string }
-  ).atob;
-  const binary = decode(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
 /**
  * Expo winter `fetch` (`convertFormDataAsync`) accepts Blob or
  * `{ bytes(), name?, type? }`. React Native BlobManager cannot build Blobs
  * from ArrayBufferView (`Creating blobs from 'ArrayBuffer' and
  * 'ArrayBufferView' are not supported`), and `{ uri }` parts are also
- * rejected — so uri uploads must use a bytes-part.
+ * rejected — so uri uploads must use a bytes-part. The bytes are read
+ * natively; a base64 string plus a JS decode loop cost time linear in the
+ * recording size on the JS thread.
  */
 async function uriToExpoFilePart(file: VerseAudioFilePart): Promise<Blob> {
-  const base64 = await FileSystem.readAsStringAsync(file.uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  const bytes = base64ToUint8Array(base64);
+  const bytes = await new File(file.uri).bytes();
   return {
     name: file.name,
     type: file.type,

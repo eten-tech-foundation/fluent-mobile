@@ -16,6 +16,8 @@ export function deriveSyncPageStatus(
   hasClaimsOrSyncRetryWork = false,
   /** Active download-queue work (queued/downloading/paused/failed). */
   hasDownloads = false,
+  /** Automatic uploads are held (drafting open); explicit Sync Now still runs (#886). */
+  holdReason: 'drafting' | null = null,
 ): SyncPageStatus {
   if (phase === 'syncing') {
     return 'syncing';
@@ -31,7 +33,12 @@ export function deriveSyncPageStatus(
     countsUnknown ||
     hasClaimsOrSyncRetryWork;
   if (hasUploadWorkRemaining) {
-    return 'pending';
+    // Only take-upload work is held; claims / metadata retries are not, and
+    // unuploadable takes never upload whatever the hold does. Offline or
+    // waiting-for-Wi-Fi is the truer reason uploads are not running, so the
+    // hold is only reported while the transport would otherwise allow them.
+    const heldWork = hasPendingUploads || hasFailedUploads;
+    return holdReason && heldWork && phase === 'idle' ? 'held' : 'pending';
   }
 
   if (hasDownloads) {

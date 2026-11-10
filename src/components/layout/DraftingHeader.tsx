@@ -1,5 +1,8 @@
 import React from 'react';
-import { SyncStatus } from '../../utils/syncStatusState';
+import {
+  SYNC_STATUS_HELD_FOR_DRAFTING_CAPTION,
+  SyncStatus,
+} from '../../utils/syncStatusState';
 import { PageHeaderSyncButton } from '../ui/PageHeaderSyncButton';
 import { AccountInitialsButton } from '../ui/AccountInitialsButton';
 import { theme } from '../../theme';
@@ -10,6 +13,7 @@ interface DraftingHeaderProps {
   onBack: () => void;
   syncStatus?: SyncStatus;
   failedErrorText?: string | null;
+  heldForDrafting?: boolean;
   onSyncPress?: () => void;
   showAccountIndicator?: boolean;
   accountFirstName?: string;
@@ -23,6 +27,7 @@ export function DraftingHeader({
   onBack,
   syncStatus,
   failedErrorText,
+  heldForDrafting,
   onSyncPress,
   showAccountIndicator = false,
   accountFirstName,
@@ -35,6 +40,11 @@ export function DraftingHeader({
       tone="plain"
       border="hairline"
       title={title}
+      subtitle={
+        syncStatus === 'online_pending' && heldForDrafting
+          ? SYNC_STATUS_HELD_FOR_DRAFTING_CAPTION
+          : undefined
+      }
       titleAlign="center"
       left={<HeaderBackButton onPress={onBack} testID="drafting-header-back" />}
       right={
@@ -43,6 +53,7 @@ export function DraftingHeader({
             <PageHeaderSyncButton
               syncStatus={syncStatus}
               failedErrorText={failedErrorText}
+              heldForDrafting={heldForDrafting}
               onPress={onSyncPress}
               cloudColor={theme.colors.foreground}
             />

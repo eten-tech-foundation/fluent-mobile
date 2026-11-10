@@ -74,6 +74,61 @@ describe('useUploadSessionState', () => {
     });
   });
 
+  it('derives held from the snapshot holdReason and exposes the current chapter (#886)', async () => {
+    mockGetUploadSessionSnapshot.mockReturnValue({
+      phase: 'idle',
+      completedChapters: 0,
+      totalChapters: 2,
+      pausedUntilMs: null,
+      currentChapter: null,
+      holdReason: 'drafting',
+    });
+
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: true,
+        hasFailedUploads: false,
+        uploadProgress: null,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.pageStatus).toBe('held');
+      expect(result.current.progressCurrentChapter).toBeNull();
+    });
+  });
+
+  it('prefers the live progress current chapter over the snapshot (#886)', async () => {
+    const snapshotChapter = {
+      bookId: 1,
+      chapterNumber: 1,
+      completedTakes: 1,
+      failedTakes: 0,
+      totalTakes: 4,
+    };
+    const liveChapter = { ...snapshotChapter, completedTakes: 3 };
+    mockGetUploadSessionSnapshot.mockReturnValue({
+      phase: 'syncing',
+      completedChapters: 0,
+      totalChapters: 1,
+      pausedUntilMs: null,
+      currentChapter: snapshotChapter,
+      holdReason: null,
+    });
+
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: true,
+        hasFailedUploads: false,
+        uploadProgress: { completed: 0, total: 1, currentChapter: liveChapter },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.progressCurrentChapter).toEqual(liveChapter);
+    });
+  });
+
   it('exposes nextRetryAt from pausedUntilMs', async () => {
     const until = Date.now() + 60_000;
     mockGetUploadSessionSnapshot.mockReturnValue({
