@@ -3277,6 +3277,47 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     ).toBeGreaterThan(projectPulls);
   });
 
+  it('Home metadata focus while syncUser is still awaiting joins that login (#939)', async () => {
+    const preloadedUser = { id: 2, email: 'user2@test.com' };
+    (getTempCredentials as jest.Mock).mockResolvedValue({
+      token: 'early-join-token',
+    });
+    (getCredentials as jest.Mock).mockResolvedValue({
+      token: 'early-join-token',
+    });
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+    let releaseInsertUser: () => void = () => undefined;
+    insertUser.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          releaseInsertUser = resolve;
+        }),
+    );
+
+    const pending = syncAllData(false, preloadedUser.email, preloadedUser);
+    await waitFor(() => {
+      expect(insertUser).toHaveBeenCalledTimes(1);
+    });
+
+    let sameSettled = false;
+    const same = refreshChapterMetadataIfOnline(2).then(() => {
+      sameSettled = true;
+    });
+    for (let i = 0; i < 10; i += 1) {
+      await Promise.resolve();
+    }
+    expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+    expect(sameSettled).toBe(false);
+    expect(syncEvents.emitSyncComplete).not.toHaveBeenCalled();
+
+    releaseInsertUser();
+    await pending;
+    await same;
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalledTimes(1);
+  });
+
   it('a failed first-chapter pass ends loading without claiming success (#886)', async () => {
     jest.useFakeTimers();
     const preloadedUser = { id: 2, email: 'user2@test.com' };

@@ -2653,9 +2653,14 @@ export async function syncAllData(
   preloadedUser?: ApiUser,
   options?: SyncAllDataOptions,
 ) {
-  // Login / add-account learns its account only once `syncUser` resolves it;
-  // this pass's own set then lets a light refresh for that user join it.
+  // Sign-in passes `preloadedUser`, and Next Home focuses a metadata refresh
+  // while `syncUser` is still awaiting. Seed the set now so that refresh joins
+  // this pass instead of emitting its own sync complete. A login with no
+  // preloaded user is added once `syncUser` resolves it.
   const loginUserIds = new Set<string>();
+  if (!isIncremental && preloadedUser?.id) {
+    loginUserIds.add(String(preloadedUser.id));
+  }
   return runFullSyncSingleFlight(
     'syncAllData',
     isIncremental ? 'incremental' : 'login',
