@@ -5,20 +5,37 @@ import { BottomSheetEntry } from './BottomSheetEntry';
 import { DialogEntry } from './DialogEntry';
 import { HardwarePanelEntry } from './HardwarePanelEntry';
 import { HomeHeaderEntry } from './HomeHeaderEntry';
+import { IconsEntry } from './IconsEntry';
 import { KeyEntry } from './KeyEntry';
 import { LevelWaveEntry } from './LevelWaveEntry';
 import { PassageCoverEntry } from './PassageCoverEntry';
+import { PassageNoticesEntry } from './PassageNoticesEntry';
 import { RoundButtonEntry } from './RoundButtonEntry';
 import { ScreenHeaderEntry } from './ScreenHeaderEntry';
 import { SwitchEntry } from './SwitchEntry';
+import { TakeFanEntry } from './TakeFanEntry';
 import { TrackRowEntry } from './TrackRowEntry';
 import { TypeEntry } from './TypeEntry';
 import { WaveformEntry } from './WaveformEntry';
 import { WordEntry } from './WordEntry';
 
+/** The gallery's sections, in the order it shows them. */
+export const gallerySections = [
+  'Foundations',
+  'Controls',
+  'Player',
+  'Cards and covers',
+  'Notices',
+  'Sheets and dialogs',
+  'Headers',
+] as const;
+
+export type GallerySection = (typeof gallerySections)[number];
+
 export interface GalleryEntry {
   id: string;
   name: string;
+  section: GallerySection;
   /** Foundations modes the component is designed for. */
   modes: string;
   /** Live demos only: real interactions, no static state grids. */
@@ -31,13 +48,23 @@ export const galleryEntries: GalleryEntry[] = [
     // Figma: Foundations · 03 Type (families still placeholders there)
     id: 'type',
     name: 'Type styles',
+    section: 'Foundations',
     modes: 'Hardware · Canvas · Accent',
     Component: TypeEntry,
+  },
+  {
+    // No Figma component: every icon in components/ui/icons.tsx.
+    id: 'icons',
+    name: 'Icons',
+    section: 'Foundations',
+    modes: 'Hardware · Canvas · Accent',
+    Component: IconsEntry,
   },
   {
     // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-34
     id: 'key',
     name: 'Key',
+    section: 'Controls',
     modes: 'Hardware',
     Component: KeyEntry,
   },
@@ -46,14 +73,35 @@ export const galleryEntries: GalleryEntry[] = [
     // Used as the Mode toggle: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-538
     id: 'switch',
     name: 'Switch · Mode toggle',
+    section: 'Controls',
     modes: 'Hardware',
     Component: SwitchEntry,
+  },
+  {
+    // Figma: Round button https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-64
+    // Figma: Progress ring https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2400-302
+    id: 'round-button',
+    name: 'Round button · Progress ring',
+    section: 'Controls',
+    modes:
+      'Soft in passage rows · Flat in the Canvas player and the Accent note',
+    Component: RoundButtonEntry,
+  },
+  {
+    // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2411-529
+    // Mode toggle 2409-538 and Speaker grill 2409-533 are drawn inside it.
+    id: 'hardware-panel',
+    name: 'Hardware panel · Player keys',
+    section: 'Controls',
+    modes: 'Hardware',
+    Component: HardwarePanelEntry,
   },
   {
     // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-505
     // Verse chip 2409-502 · Page dot 2409-508
     id: 'waveform',
     name: 'Waveform · Page dots',
+    section: 'Player',
     modes: 'Canvas (the player)',
     Component: WaveformEntry,
   },
@@ -62,6 +110,7 @@ export const galleryEntries: GalleryEntry[] = [
     // In the player: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2440-30858
     id: 'word',
     name: 'Word · Phrase chips',
+    section: 'Player',
     modes: 'Canvas (the player)',
     Component: WordEntry,
   },
@@ -70,85 +119,95 @@ export const galleryEntries: GalleryEntry[] = [
     // Long: Recorder take card 2555-910
     id: 'level-wave',
     name: 'Level wave · Short and Long',
+    section: 'Player',
     modes: 'Hardware (header) · Canvas (take card)',
     Component: LevelWaveEntry,
+  },
+  {
+    // Figma: Take fan https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2555-743
+    // Take card 2555-910 · deleted take card 2557-1257
+    id: 'take-fan',
+    name: 'Take fan · Take card',
+    section: 'Player',
+    modes: 'Canvas (Record)',
+    Component: TakeFanEntry,
+  },
+  {
+    // No Figma component: built from Foundations tokens for the book page.
+    id: 'passage-cover',
+    name: 'Passage cover',
+    section: 'Cards and covers',
+    modes: 'Hardware (book page)',
+    Component: PassageCoverEntry,
   },
   {
     // Figma passage rows (Round button 2326-64 in Progress ring 2400-302),
     // with the button only on the live row.
     id: 'track-row',
     name: 'Track row',
+    section: 'Cards and covers',
     modes: 'Hardware (passage page)',
     Component: TrackRowEntry,
   },
   {
-    // No Figma component: built from Foundations tokens for the book page.
-    id: 'passage-cover',
-    name: 'Passage cover',
-    modes: 'Hardware (book page)',
-    Component: PassageCoverEntry,
-  },
-  {
-    // Figma: Round button https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2326-64
-    // Figma: Progress ring https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2400-302
-    id: 'round-button',
-    name: 'Round button · Progress ring',
-    modes: 'Soft in passage rows · Flat in the Canvas player header',
-    Component: RoundButtonEntry,
-  },
-  {
-    // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2411-529
-    // Mode toggle 2409-538 and Speaker grill 2409-533 are drawn inside it.
-    id: 'hardware-panel',
-    name: 'Hardware panel',
-    modes: 'Hardware',
-    Component: HardwarePanelEntry,
-  },
-  {
-    // Figma: Gap / Avatar https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-70
-    // In the Home header with the sync Round button: 2646-52
-    id: 'home-header',
-    name: 'Avatar · Sync status button',
+    // No Figma component yet: modeled on desktop's Community notes card.
+    id: 'attention-card',
+    name: 'Attention card',
+    section: 'Cards and covers',
     modes: 'Hardware (Home)',
-    Component: HomeHeaderEntry,
-  },
-  {
-    // No Figma component: the header row on Home, the book page and the
-    // note, with a soft stroke once the content scrolls under it.
-    id: 'screen-header',
-    name: 'Screen header',
-    modes: 'Hardware (Home, book page) · Accent (note)',
-    Component: ScreenHeaderEntry,
+    Component: AttentionCardEntry,
   },
   {
     // Figma: Gap / Banner https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-62
     // On Home · Session expired: 2646-143
     id: 'banner',
     name: 'Banner',
+    section: 'Notices',
     modes: 'Hardware (Home)',
     Component: BannerEntry,
+  },
+  {
+    // No Figma component: Legacy's Record-tab banners in Next's type.
+    id: 'passage-notices',
+    name: 'Passage notices',
+    section: 'Notices',
+    modes: 'Canvas (the player footer and the passage hero)',
+    Component: PassageNoticesEntry,
   },
   {
     // Figma: Home · Accounts sheet https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2646-166
     // Gap / List row 2644-51
     id: 'bottom-sheet',
     name: 'Bottom sheet · List row',
+    section: 'Sheets and dialogs',
     modes: 'Hardware (Home)',
     Component: BottomSheetEntry,
-  },
-  {
-    // No Figma component yet: modeled on desktop's Community notes card.
-    id: 'attention-card',
-    name: 'Attention card',
-    modes: 'Hardware (Home)',
-    Component: AttentionCardEntry,
   },
   {
     // Figma: Gap / Dialog https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-72
     // As the send confirm: Send to Peer Check · Confirm 2648-616
     id: 'dialog',
     name: 'Dialog',
+    section: 'Sheets and dialogs',
     modes: 'Hardware',
     Component: DialogEntry,
+  },
+  {
+    // No Figma component: the header row on Home, the book page and the
+    // note, with a soft stroke once the content scrolls under it.
+    id: 'screen-header',
+    name: 'Screen header',
+    section: 'Headers',
+    modes: 'Hardware (Home, book page) · Accent (note)',
+    Component: ScreenHeaderEntry,
+  },
+  {
+    // Figma: Gap / Avatar https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-70
+    // In the Home header with the sync Round button: 2646-52
+    id: 'home-header',
+    name: 'Avatar · Sync status button',
+    section: 'Headers',
+    modes: 'Hardware (Home)',
+    Component: HomeHeaderEntry,
   },
 ];

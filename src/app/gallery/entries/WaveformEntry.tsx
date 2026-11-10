@@ -39,6 +39,9 @@ const VERSES: WaveformVerse[] = [
   },
 ];
 
+/** Verse mode when the source has no verse timings: the same bars, no chips. */
+const CHIPLESS: WaveformVerse[] = VERSES.map(v => ({ ...v, verse: null }));
+
 /** The script, then each listening material. */
 const PAGES = [
   'Mark 14:22–25',
@@ -55,7 +58,9 @@ const DURATION_MS = 20000;
 
 /**
  * The Listen player: Play runs the waveform through Mark 14:22–25, and
- * Previous and Next turn the pages under it, as swiping does.
+ * Previous and Next turn the pages under it, as swiping does. Below, a take's
+ * wave to scrub, and verse mode's chipless wave for a source with no verse
+ * timings.
  */
 export function WaveformEntry() {
   const [playing, setPlaying] = useState(false);
@@ -126,6 +131,7 @@ export function WaveformEntry() {
         </KeyDeck>
       </ColorModeScope>
       <TakeWave />
+      <ChiplessWave progress={progress} />
     </View>
   );
 }
@@ -158,6 +164,35 @@ function TakeWave() {
         accessibilityLabel="Take 2 playback"
         onSeek={setProgress}
         testID="gallery-waveform-take"
+      />
+    </View>
+  );
+}
+
+/** The player in verse mode without verse timings: Play runs it too. */
+function ChiplessWave({ progress }: { progress: number }) {
+  const styles = useThemedStyles(t => ({
+    take: {
+      backgroundColor: t.roles.bgDefault,
+      borderRadius: t.radius.sm,
+      paddingVertical: t.spacing.lg,
+      gap: t.spacing.sm,
+    },
+    label: {
+      ...t.type.meta,
+      color: t.roles.fgSecondary,
+      paddingHorizontal: t.spacing.lg,
+    },
+  }));
+
+  return (
+    <View style={styles.take}>
+      <Text style={styles.label}>Verse mode · no verse timings, no chips</Text>
+      <Waveform
+        verses={CHIPLESS}
+        progress={progress}
+        accessibilityLabel="Mark 14:22–25 playback, verse mode"
+        testID="gallery-waveform-chipless"
       />
     </View>
   );

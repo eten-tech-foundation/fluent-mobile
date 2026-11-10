@@ -1,37 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import {
-  EjectFill,
-  PauseFill,
-  PlayFill,
-  RecordFill,
-  SkipBackFill,
-  SkipForwardFill,
-} from '../../../components/ui/icons';
+  SafeAreaInsetsContext,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { setMicActive } from '../../../audio/micActivity';
-import { HardwarePanel } from '../../../components/ui/HardwarePanel';
-import { Key, type KeyIconProps } from '../../../components/ui/Key';
-import { useTheme, useThemedStyles } from '../../../theme/useTheme';
-
-const PlayIcon = PlayFill;
-const PauseIcon = PauseFill;
-const SkipBackIcon = SkipBackFill;
-const SkipForwardIcon = SkipForwardFill;
-const EjectIcon = EjectFill;
-/** Figma's Record key glyph is accent/record, not the key's gray. */
-function RecordIcon({ size }: KeyIconProps) {
-  const { roles } = useTheme();
-  return <RecordFill color={roles.accentRecord} size={size} />;
-}
+import { useThemedStyles } from '../../../theme/useTheme';
+import { PlayerKeys } from '../../v2/screens/passage/PlayerKeys';
 
 /** The script, then six listening materials. */
 const PAGE_COUNT = 7;
 
 /**
- * The panel on the Listen and Record screens: the Mode toggle swaps the keys
- * between Listen (Play · Previous · Next) and Record (Record · Play · Eject).
- * Record pauses and resumes one take, Eject finishes it, and a take in
- * progress locks the mode until then.
+ * The player's keys: the Mode toggle swaps them between Listen (Play ·
+ * Previous · Next) and Record (Record · Play · Eject). Record pauses and
+ * resumes one take, Eject finishes it, and a take in progress locks the mode
+ * until then.
  */
 export function HardwarePanelEntry() {
   const [recordMode, setRecordMode] = useState(false);
@@ -40,14 +24,11 @@ export function HardwarePanelEntry() {
   const [take, setTake] = useState<'none' | 'recording' | 'paused'>('none');
   const [takes, setTakes] = useState(0);
   const recording = take === 'recording';
+  // The player pads under the keys for the gesture bar; mid-gallery it shouldn't.
+  const insets = useSafeAreaInsets();
   const styles = useThemedStyles(t => ({
     demo: { gap: t.spacing.md },
-    status: {
-      color: t.roles.fgSecondary,
-      fontSize: t.typography.sizes.sm,
-      includeFontPadding: false,
-    },
-    key: { flex: 1 },
+    status: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
 
   // Like a real take: haptics stay silent until Eject finishes it.
@@ -64,14 +45,6 @@ export function HardwarePanelEntry() {
     setPlaying(false);
     setRecordMode(on);
   };
-  const toggleRecording = () => {
-    setPlaying(false);
-    setTake(t => (t === 'recording' ? 'paused' : 'recording'));
-  };
-  const finishTake = () => {
-    setTakes(n => n + 1);
-    setTake('none');
-  };
 
   const status = recordMode
     ? recording
@@ -86,79 +59,46 @@ export function HardwarePanelEntry() {
   return (
     <View style={styles.demo}>
       <Text style={styles.status}>{status}</Text>
-      <HardwarePanel
-        recordMode={recordMode}
-        onRecordModeChange={changeMode}
-        modeLocked={take !== 'none'}
-        safeAreaBottom={false}
-        testID="gallery-panel"
-      >
-        {recordMode ? (
-          <>
-            <Key
-              icon={RecordIcon}
-              accessibilityLabel={
-                recording
-                  ? 'Pause recording'
-                  : take === 'paused'
-                  ? 'Resume recording'
-                  : 'Record'
-              }
-              announceLatched={false}
-              active={recording}
-              onPress={toggleRecording}
-              style={styles.key}
-              testID="gallery-panel-record"
-            />
-            <Key
-              icon={playing ? PauseIcon : PlayIcon}
-              accessibilityLabel={playing ? 'Pause' : 'Play take'}
-              announceLatched={false}
-              active={playing}
-              disabled={take !== 'none' || takes === 0}
-              onPress={() => setPlaying(p => !p)}
-              style={styles.key}
-              testID="gallery-panel-play-take"
-            />
-            <Key
-              icon={EjectIcon}
-              accessibilityLabel="Finish take"
-              disabled={take === 'none'}
-              onPress={finishTake}
-              style={styles.key}
-              testID="gallery-panel-eject"
-            />
-          </>
-        ) : (
-          <>
-            <Key
-              icon={playing ? PauseIcon : PlayIcon}
-              accessibilityLabel={playing ? 'Pause' : 'Play'}
-              announceLatched={false}
-              active={playing}
-              onPress={() => setPlaying(p => !p)}
-              style={styles.key}
-              testID="gallery-panel-play"
-            />
-            <Key
-              icon={SkipBackIcon}
-              accessibilityLabel="Previous page"
-              disabled={page === 1}
-              onPress={() => setPage(p => p - 1)}
-              style={styles.key}
-              testID="gallery-panel-previous"
-            />
-            <Key
-              icon={SkipForwardIcon}
-              accessibilityLabel="Next page"
-              disabled={page === PAGE_COUNT}
-              onPress={() => setPage(p => p + 1)}
-              style={styles.key}
-              testID="gallery-panel-next"
-            />
-          </>
-        )}
-      </HardwarePanel>
+      <SafeAreaInsetsContext.Provider value={{ ...insets, bottom: 0 }}>
+        <PlayerKeys
+          recordMode={recordMode}
+          onRecordModeChange={changeMode}
+          modeLocked={inTake}
+          record={{
+            recording,
+            paused: take === 'paused',
+            recordDisabled: false,
+            onRecord: () => {
+              setPlaying(false);
+              setTake(t => (t === 'recording' ? 'paused' : 'recording'));
+            },
+            playing,
+            playDisabled: inTake || takes === 0,
+            onPlay: () => setPlaying(p => !p),
+            finishDisabled: !inTake,
+            onFinish: () => {
+              setTakes(n => n + 1);
+              setTake('none');
+            },
+          }}
+          listen={{
+            playing,
+            playDisabled: false,
+            playLabel: playing ? 'Pause' : 'Play',
+            onPlay: () => setPlaying(p => !p),
+          }}
+          previous={{
+            label: 'Previous page',
+            disabled: page === 1,
+            onPress: () => setPage(p => p - 1),
+          }}
+          next={{
+            label: 'Next page',
+            disabled: page === PAGE_COUNT,
+            onPress: () => setPage(p => p + 1),
+          }}
+        />
+      </SafeAreaInsetsContext.Provider>
     </View>
   );
 }

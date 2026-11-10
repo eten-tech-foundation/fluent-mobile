@@ -16,7 +16,7 @@ import {
   useTheme,
   useThemedStyles,
 } from '../../theme/useTheme';
-import { galleryEntries } from './entries';
+import { galleryEntries, gallerySections } from './entries';
 
 const MODE_OPTIONS: { label: string; value: ColorMode }[] = [
   { label: 'Canvas', value: 'canvas' },
@@ -123,6 +123,14 @@ function DemoStage() {
       padding: t.spacing.lg,
       gap: t.spacing.xxl,
     },
+    section: { gap: t.spacing.xl },
+    sectionName: {
+      ...t.type.overline,
+      color: t.roles.fgSecondary,
+      paddingBottom: t.spacing.sm,
+      borderBottomWidth: t.stroke[1],
+      borderBottomColor: t.roles.borderRim,
+    },
     entry: { gap: t.spacing.md },
     entryHeader: { gap: t.spacing.xs },
     entryName: {
@@ -140,13 +148,24 @@ function DemoStage() {
 
   return (
     <View style={styles.stage} testID="gallery-stage">
-      {galleryEntries.map(entry => (
-        <View key={entry.id} style={styles.entry}>
-          <View style={styles.entryHeader}>
-            <Text style={styles.entryName}>{entry.name}</Text>
-            <Text style={styles.entryMeta}>Designed for {entry.modes}</Text>
-          </View>
-          <entry.Component />
+      {gallerySections.map(section => (
+        <View key={section} style={styles.section}>
+          <Text style={styles.sectionName} accessibilityRole="header">
+            {section}
+          </Text>
+          {galleryEntries
+            .filter(entry => entry.section === section)
+            .map(entry => (
+              <View key={entry.id} style={styles.entry}>
+                <View style={styles.entryHeader}>
+                  <Text style={styles.entryName}>{entry.name}</Text>
+                  <Text style={styles.entryMeta}>
+                    Designed for {entry.modes}
+                  </Text>
+                </View>
+                <entry.Component />
+              </View>
+            ))}
         </View>
       ))}
     </View>

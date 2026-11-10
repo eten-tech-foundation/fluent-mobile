@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import {
   ArrowDown,
   ArrowRight,
   PlayFill,
-  RecordFill,
   Waveform,
-  type NextIconProps,
+  X,
 } from '../../../components/ui/icons';
 import { ProgressRing } from '../../../components/ui/ProgressRing';
 import { RoundButton } from '../../../components/ui/RoundButton';
-import {
-  ColorModeScope,
-  useTheme,
-  useThemedStyles,
-} from '../../../theme/useTheme';
+import { ScreenHeader } from '../../../components/ui/ScreenHeader';
+import { RECORD_OBSERVER } from '../../../constants/messages';
+import { ColorModeScope, useThemedStyles } from '../../../theme/useTheme';
+import { PassageNotices } from '../../v2/screens/passage/PassageNotices';
+import { RecordAction } from '../../v2/screens/passage/RecordAction';
 
 /**
  * Listening progress in whole steps, so a track lands exactly on complete.
@@ -165,31 +164,54 @@ function PlayerHeader() {
   );
 }
 
-function RecordIcon({ size }: NextIconProps) {
-  const theme = useTheme();
-  return <RecordFill color={theme.roles.accentRecord} size={size} />;
-}
+/** How long the demo's text download takes before Download goes away. */
+const DOWNLOAD_MS = 1500;
 
-/** Flat with a label: the passage hero's two actions (Canvas). */
+/**
+ * The passage hero's actions (Canvas): the labelled Listen, Record ringed in
+ * accent/record, and Download until the text is on the phone. Observing
+ * greys Record's ring and says why above the row, as the hero does.
+ */
 function HeroActions() {
   const [last, setLast] = useState<string | null>(null);
+  const [observing, setObserving] = useState(false);
+  const [download, setDownload] = useState<'none' | 'downloading' | 'done'>(
+    'none',
+  );
+  useEffect(() => {
+    if (download !== 'downloading') {
+      return;
+    }
+    const timer = setTimeout(() => setDownload('done'), DOWNLOAD_MS);
+    return () => clearTimeout(timer);
+  }, [download]);
   const styles = useThemedStyles(t => ({
     hero: {
-      gap: t.spacing.md,
+      gap: t.spacing.lg,
       padding: t.spacing.lg,
       borderRadius: t.radius.sm,
       backgroundColor: t.roles.bgDefault,
     },
-    row: { flexDirection: 'row', gap: t.spacing.md },
-    hint: {
-      color: t.roles.fgSecondary,
-      fontSize: t.typography.sizes.sm,
-      includeFontPadding: false,
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: t.spacing.md,
     },
+    primary: { paddingHorizontal: t.spacing.xl },
+    hint: { ...t.type.meta, color: t.roles.fgSecondary, textAlign: 'center' },
+    link: { ...t.type.label, color: t.roles.accentPrimary },
+    links: { flexDirection: 'row', gap: t.spacing.lg },
   }));
 
   return (
     <View style={styles.hero}>
+      <PassageNotices
+        notices={
+          observing ? [{ id: 'observer', message: RECORD_OBSERVER }] : []
+        }
+        testID="gallery-hero-notices"
+      />
       <View style={styles.row}>
         <RoundButton
           variant="flat"
@@ -197,20 +219,101 @@ function HeroActions() {
           label="Listen"
           accessibilityLabel="Listen"
           onPress={() => setLast('Listen')}
+          style={styles.primary}
           testID="gallery-hero-listen"
         />
-        <RoundButton
-          variant="flat"
-          icon={RecordIcon}
-          label="Record"
+        <RecordAction
           accessibilityLabel="Record"
           onPress={() => setLast('Record')}
+          blocked={observing}
           testID="gallery-hero-record"
         />
+        {download === 'done' ? null : (
+          <RoundButton
+            variant="flat"
+            icon={ArrowDown}
+            accessibilityLabel={
+              download === 'downloading'
+                ? 'Downloading the text'
+                : 'Download the text'
+            }
+            onPress={() => setDownload('downloading')}
+            disabled={download === 'downloading'}
+            testID="gallery-hero-download"
+          />
+        )}
       </View>
       <Text style={styles.hint}>
-        {last ? `Opens the player in ${last} mode` : 'Opens the player'}
+        {last ? `Opens the player in ${last}` : 'Opens the player'}
       </Text>
+      <View style={styles.links}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setObserving(o => !o)}
+        >
+          <Text style={styles.link}>
+            {observing ? 'Translate here' : 'Observe instead'}
+          </Text>
+        </Pressable>
+        {download === 'done' ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setDownload('none')}
+          >
+            <Text style={styles.link}>Remove the text</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+/** Flat on blue: the translation note's Close, in Accent colors. */
+function NoteHeader() {
+  const [closed, setClosed] = useState(false);
+  const styles = useThemedStyles(t => ({
+    note: {
+      borderRadius: t.radius.sm,
+      backgroundColor: t.roles.bgDefault,
+      paddingBottom: t.spacing.lg,
+    },
+    title: { ...t.type.overline, color: t.roles.fgPrimary, flex: 1 },
+    body: {
+      ...t.type.lead,
+      color: t.roles.fgPrimary,
+      paddingHorizontal: t.spacing.xl,
+    },
+    link: {
+      ...t.type.label,
+      color: t.roles.fgPrimary,
+      paddingHorizontal: t.spacing.xl,
+    },
+  }));
+
+  return (
+    <View style={styles.note}>
+      <ScreenHeader scrolled={false}>
+        <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
+          My blood of the covenant
+        </Text>
+        <RoundButton
+          variant="flat"
+          icon={X}
+          accessibilityLabel="Close the note"
+          onPress={() => setClosed(true)}
+          testID="gallery-note-close"
+        />
+      </ScreenHeader>
+      {closed ? (
+        <Pressable accessibilityRole="button" onPress={() => setClosed(false)}>
+          <Text style={styles.link}>Open the note again</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.body}>
+          Here, Jesus is using the possessive form to describe how his blood
+          initiates the covenant.
+        </Text>
+      )}
     </View>
   );
 }
@@ -241,10 +344,16 @@ export function RoundButtonEntry() {
       </View>
       <View style={styles.demo}>
         <Text style={styles.demoTitle}>
-          Passage actions (Flat with a label)
+          Passage actions (Flat with a label · Record action)
         </Text>
         <ColorModeScope value="canvas">
           <HeroActions />
+        </ColorModeScope>
+      </View>
+      <View style={styles.demo}>
+        <Text style={styles.demoTitle}>Translation note (Flat on Accent)</Text>
+        <ColorModeScope value="accent">
+          <NoteHeader />
         </ColorModeScope>
       </View>
     </View>
