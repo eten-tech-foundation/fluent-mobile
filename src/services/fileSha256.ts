@@ -276,7 +276,12 @@ export async function sha256File(
     return digest;
   }
   const hash = new Sha256();
-  const handle = new File(uri).open(FileMode.ReadOnly);
+  let handle: ReturnType<File['open']>;
+  try {
+    handle = new File(uri).open(FileMode.ReadOnly);
+  } catch {
+    throw new Error(MISSING_MESSAGE);
+  }
   try {
     let sliceStarted = Date.now();
     for (let position = 0; position < size; ) {
