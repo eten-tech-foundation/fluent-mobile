@@ -3547,6 +3547,76 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
     expect(claimsOrder).toBeLessThan(assignmentOrder);
     expect(assignmentOrder).toBeLessThan(stageOrder);
   });
+  it('light refresh joins an in-flight full sync that covers the user instead of racing it (#886)', async () => {
+    (getCredentials as jest.Mock).mockImplementation(
+      async (userId: string) => ({
+        token: `user-${userId}-token`,
+      }),
+    );
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: { displayMode: 'verse', suppressTooltip: true },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
+
+    const claimsDrainsFor = (userId: number) =>
+      syncPendingChapterClaimsMock.mock.calls.filter(([id]) => id === userId)
+        .length;
+
+    const fullSync = syncAllUsers();
+    // User 2 is covered by the in-flight full sync: the light refresh joins
+    // it instead of running a second claims drain / assignment pull.
+    await Promise.all([fullSync, refreshChapterMetadataIfOnline(2)]);
+    expect(claimsDrainsFor(2)).toBe(1);
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
+
+    // Once the full sync has settled, a light refresh runs on its own again.
+    await refreshChapterMetadataIfOnline(2);
+    expect(claimsDrainsFor(2)).toBe(2);
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(3);
+  });
+
+  it('light refresh for a user the in-flight full sync does not cover runs on its own (#886)', async () => {
+    (getKnownUserIds as jest.Mock).mockReturnValue(['1']);
+    (getActiveUserId as jest.Mock).mockReturnValue('1');
+    (getCredentials as jest.Mock).mockImplementation(
+      async (userId: string) => ({
+        token: `user-${userId}-token`,
+      }),
+    );
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: { displayMode: 'verse', suppressTooltip: true },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
+
+    const fullSync = syncAllUsers();
+    // The full sync covers user 1 only; a light refresh for user 2 (now
+    // active) must not be swallowed by it.
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    await Promise.all([fullSync, refreshChapterMetadataIfOnline(2)]);
+
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(1, 'user-1-token');
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+  });
+
+  it('light refresh resolves (does not reject) when the joined full sync fails (#886)', async () => {
+    (getCredentials as jest.Mock).mockImplementation(
+      async (userId: string) => ({
+        token: `user-${userId}-token`,
+      }),
+    );
+    (FluentAPI.getLanguages as jest.Mock).mockRejectedValue(
+      new Error('master data unavailable'),
+    );
+
+    const fullSync = syncAllUsers().catch(() => 'full-sync-failed');
+    const joined = refreshChapterMetadataIfOnline(2);
+
+    await expect(joined).resolves.toBeUndefined();
+    await expect(fullSync).resolves.toBe('full-sync-failed');
+  });
+
   it('isMetadataSyncActive reflects an in-flight full sync and a light refresh (#886)', async () => {
     (getCredentials as jest.Mock).mockImplementation(
       async (userId: string) => ({

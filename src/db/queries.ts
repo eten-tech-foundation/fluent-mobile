@@ -1143,6 +1143,37 @@ export async function getMyWorkChapters(
   }
 }
 
+/**
+ * The chapter My Work lists first for this user, by the same eligibility and
+ * order as Home, in every bible that carries it. Empty when nothing is listed
+ * or the read fails.
+ */
+export async function getFirstVisibleMyWorkChapterGroups(
+  userId: number,
+  options?: GetMyWorkChaptersOptions,
+): Promise<Map<number, Array<{ bookId: number; chapterNumber: number }>>> {
+  const chapters = await getMyWorkChapters(userId, options);
+  const groups = new Map<
+    number,
+    Array<{ bookId: number; chapterNumber: number }>
+  >();
+  const first = chapters[0];
+  if (!first) return groups;
+  for (const chapter of chapters) {
+    if (
+      chapter.bookId === first.bookId &&
+      chapter.chapterNumber === first.chapterNumber &&
+      chapter.bibleId > 0 &&
+      !groups.has(chapter.bibleId)
+    ) {
+      groups.set(chapter.bibleId, [
+        { bookId: chapter.bookId, chapterNumber: chapter.chapterNumber },
+      ]);
+    }
+  }
+  return groups;
+}
+
 type HomeBookChapterRow = {
   id: number;
   status: string;

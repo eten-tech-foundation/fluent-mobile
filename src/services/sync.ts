@@ -48,6 +48,7 @@ import {
 } from './connectivity';
 import {
   getDatabaseWriteMark,
+  getFirstVisibleMyWorkChapterGroups,
   getPendingChapterClaims,
   hasPendingChapterClaimsForUser,
   sameDatabaseWrites,
@@ -61,9 +62,11 @@ import {
 import { syncPendingStageAdvances } from './stageAdvanceSync';
 import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
+  getObserverProjectIds,
   persistOrgGrantsFromUserResponse,
   refreshUserOrgGrants,
 } from './userOrgGrants';
+import { getTranslatorProjectIds } from '../utils/myWorkDraftDownload';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import { runKvBatchSync } from './kvBatch';
 import {
@@ -430,6 +433,18 @@ export type SyncMasterDataOptions = {
   forceFull?: boolean;
 };
 
+/**
+ * Language parents one sync pass has already fetched and written, so the
+ * assignment seed does not fetch them again (#886). Created per pass by the
+ * caller (one account, one token); never module state, and it carries no
+ * freshness: the next pass starts empty and fetches again.
+ */
+export type ParentSeedLedger = { languageIds: Set<number> };
+
+function newParentSeedLedger(): ParentSeedLedger {
+  return { languageIds: new Set<number>() };
+}
+
 export type SyncProjectsOptions = {
   /**
    * Fetch real language parents via GET /languages/{id} before project insert
@@ -444,11 +459,14 @@ export type SyncProjectsOptions = {
    * omit this so seeding stays strict.
    */
   seedFkParentsBestEffort?: boolean;
+  /** Records the language parents this seed persisted. */
+  parentSeedLedger?: ParentSeedLedger;
 };
 
 type SeedFkParentsWorkOptions = {
   seedFkParents?: boolean;
   seedFkParentsBestEffort?: boolean;
+  parentSeedLedger?: ParentSeedLedger;
 };
 
 type FkParentSeedResult = {
@@ -523,7 +541,7 @@ function incompleteParentSeedReason(
 async function seedLanguageParentsForProjects(
   projects: Project[],
   sessionToken?: string,
-  options?: { bestEffort?: boolean },
+  options?: { bestEffort?: boolean; ledger?: ParentSeedLedger },
 ): Promise<FkParentSeedResult> {
   const languageIds = uniquePositiveIds(
     projects.flatMap(project => [
@@ -547,6 +565,11 @@ async function seedLanguageParentsForProjects(
   );
   if (values.length > 0) {
     await insertMasterData(values.map(mapApiLanguage), [], []);
+    // Only after the write: a language that failed to fetch or persist stays
+    // out, so the assignment seed still fetches it.
+    for (const language of values) {
+      options?.ledger?.languageIds.add(language.id);
+    }
   }
   return {
     failedIds,
@@ -557,7 +580,7 @@ async function seedLanguageParentsForProjects(
 async function seedAssignmentMasterParents(
   assignments: ChapterAssignment[],
   sessionToken?: string,
-  options?: { bestEffort?: boolean },
+  options?: { bestEffort?: boolean; ledger?: ParentSeedLedger },
 ): Promise<FkParentSeedResult> {
   const bibleIds = uniquePositiveIds(assignments.map(a => a.bibleId));
   const bookIds = uniquePositiveIds(assignments.map(a => a.bookId));
@@ -584,9 +607,10 @@ async function seedAssignmentMasterParents(
     ),
   ]);
 
+  const alreadySeeded = options?.ledger?.languageIds;
   const languageIds = uniquePositiveIds(
     biblesResult.values.map(bible => bible.languageId),
-  );
+  ).filter(id => !alreadySeeded?.has(id));
   const languagesResult =
     languageIds.length === 0
       ? { values: [], failedIds: [] as number[] }
@@ -596,9 +620,10 @@ async function seedAssignmentMasterParents(
           { bestEffort, kind: 'bible-language' },
         );
 
-  const fetchedLanguageIds = new Set(
-    languagesResult.values.map(language => language.id),
-  );
+  const fetchedLanguageIds = new Set([
+    ...(alreadySeeded ?? []),
+    ...languagesResult.values.map(language => language.id),
+  ]);
   // Bibles need a language FK. Keep ones whose language was fetched or already local.
   const localLanguageIds =
     bestEffort && biblesResult.values.length > 0
@@ -828,7 +853,7 @@ export async function syncProjects(
         const seed = await seedLanguageParentsForProjects(
           projects,
           sessionToken,
-          { bestEffort },
+          { bestEffort, ledger: options?.parentSeedLedger },
         );
         parentSeedIncomplete = seed.incompleteReason;
       }
@@ -1320,6 +1345,7 @@ async function syncUserChapterWork(
       if (options?.seedFkParents && mapped.length > 0) {
         const seed = await seedAssignmentMasterParents(mapped, sessionToken, {
           bestEffort,
+          ledger: options?.parentSeedLedger,
         });
         parentSeedIncomplete = seed.incompleteReason;
       }
@@ -1405,6 +1431,9 @@ async function syncChapterAssignmentsForUser(
           seedFkParents: true,
           ...(options.seedFkParentsBestEffort
             ? { seedFkParentsBestEffort: true }
+            : {}),
+          ...(options.parentSeedLedger
+            ? { parentSeedLedger: options.parentSeedLedger }
             : {}),
         }
       : undefined;
@@ -2202,12 +2231,16 @@ export async function syncPericopeSets(sessionToken?: string) {
 export async function syncPericopes(
   sessionToken?: string,
   failingUserId?: string,
+  options?: { bookIds?: ReadonlySet<number> },
 ) {
   return retrySyncStep(
     'Pericope sync',
     KV_KEYS.SYNC_ERROR_PERICOPES,
     async () => {
-      const chapters = await getChaptersNeedingPericopeSync();
+      const bookIds = options?.bookIds;
+      const chapters = (await getChaptersNeedingPericopeSync()).filter(
+        chapter => !bookIds || bookIds.has(chapter.bookId),
+      );
       if (chapters.length === 0) {
         log.info('No chapters need pericope sync');
         return;
@@ -2654,10 +2687,18 @@ export async function syncAllData(
   preloadedUser?: ApiUser,
   options?: SyncAllDataOptions,
 ) {
+  // Sign-in passes `preloadedUser`, and Next Home focuses a metadata refresh
+  // while `syncUser` is still awaiting. Seed the set now so that refresh joins
+  // this pass instead of emitting its own sync complete. A login with no
+  // preloaded user is added once `syncUser` resolves it.
+  const loginUserIds = new Set<string>();
+  if (!isIncremental && preloadedUser?.id) {
+    loginUserIds.add(String(preloadedUser.id));
+  }
   return runFullSyncSingleFlight(
     'syncAllData',
     isIncremental ? 'incremental' : 'login',
-    isIncremental ? snapshotIncrementalUserIds() : new Set<string>(),
+    isIncremental ? snapshotIncrementalUserIds() : loginUserIds,
     async () => {
       log.info('Starting sync...', { isIncremental });
       const activeAtStart = getActiveUserId();
@@ -2704,6 +2745,7 @@ export async function syncAllData(
             throw new AuthError('No session token for synced user.');
           }
           sessionToken = creds.token;
+          loginUserIds.add(userIdStr);
         }
 
         const localProjectIdsBefore = isIncremental
@@ -2771,23 +2813,63 @@ export async function syncAllData(
           // await the full world catalogue before Home unblocks.
           await syncPendingChapterClaimsForUser(userId, sessionToken);
           await syncPericopeSets(sessionToken);
-          await syncProjects(userId, sessionToken, { seedFkParents: true });
+          const parentSeedLedger = newParentSeedLedger();
+          await syncProjects(userId, sessionToken, {
+            seedFkParents: true,
+            parentSeedLedger,
+          });
           await syncRequiredMilestones(userId, sessionToken);
 
           const workResult = await syncUserChapterWork(userId, sessionToken, {
             seedFkParents: true,
+            parentSeedLedger,
           });
           assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
             workResult.partialSkipWarning,
           );
           await reconcilePendingClaimsAfterAssignmentPull(userId);
-          await syncPericopes();
           const myWorkChapterGroups = await getMyWorkChaptersToSync(userId);
-          noteBibleTextSyncedAt(
-            await syncBibleTexts(undefined, {
-              chapterGroups: myWorkChapterGroups,
-            }),
+          // Land pericopes and text for the chapter My Work lists first (same
+          // eligibility as Home), unblock, then the rest before Tier 2 (#886).
+          const firstChapterGroups = await getFirstVisibleMyWorkChapterGroups(
+            userId,
+            {
+              grantProjectIds: getObserverProjectIds(userIdStr),
+              translatorProjectIds: getTranslatorProjectIds(userIdStr),
+            },
           );
+          const remainingMyWork: BibleChapterGroup = new Map(
+            myWorkChapterGroups,
+          );
+          subtractBibleChapterGroups(remainingMyWork, firstChapterGroups);
+          const tier1ChapterGroups: BibleChapterGroup = new Map();
+          mergeBibleChapterGroups(tier1ChapterGroups, myWorkChapterGroups);
+          mergeBibleChapterGroups(tier1ChapterGroups, firstChapterGroups);
+          if (firstChapterGroups.size > 0) {
+            const firstBookIds = new Set<number>();
+            for (const chapters of firstChapterGroups.values()) {
+              for (const chapter of chapters) firstBookIds.add(chapter.bookId);
+            }
+            await syncPericopes(undefined, undefined, {
+              bookIds: firstBookIds,
+            });
+            noteBibleTextSyncedAt(
+              await syncBibleTexts(undefined, {
+                chapterGroups: firstChapterGroups,
+              }),
+            );
+            notifyTier1Complete();
+          }
+          await syncPericopes();
+          // A scoped pass over no chapters zeroes the bible count, so only an
+          // empty My Work takes it.
+          if (remainingMyWork.size > 0 || firstChapterGroups.size === 0) {
+            noteBibleTextSyncedAt(
+              await syncBibleTexts(undefined, {
+                chapterGroups: remainingMyWork,
+              }),
+            );
+          }
           notifyTier1Complete();
 
           // Full master after Tier 1; await before Tier 2 assignment catalogue.
@@ -2811,11 +2893,11 @@ export async function syncAllData(
           // Catalogue books from Tier 2 assignments need pericopes too (#670).
           // Already-current books skip via stored pericope book version.
           await syncPericopes();
-          // Skip My Work chapters already fetched in Tier 1; keep unscoped so
+          // Skip chapters already fetched in Tier 1; keep unscoped so
           // server-id remap can still clear after remaining + recording-linked.
           noteBibleTextSyncedAt(
             await syncBibleTexts(undefined, {
-              excludeChapterGroups: myWorkChapterGroups,
+              excludeChapterGroups: tier1ChapterGroups,
               eligibleUserIds: [userId],
             }),
           );
@@ -2824,11 +2906,16 @@ export async function syncAllData(
           // after Tier 1 so Home is not blocked on world languages/books/bibles.
           await syncPendingChapterClaimsForUser(userId, sessionToken);
           await syncPericopeSets(sessionToken);
-          await syncProjects(userId, sessionToken, { seedFkParents: true });
+          const parentSeedLedger = newParentSeedLedger();
+          await syncProjects(userId, sessionToken, {
+            seedFkParents: true,
+            parentSeedLedger,
+          });
           await syncRequiredMilestones(userId, sessionToken);
 
           const workResult = await syncUserChapterWork(userId, sessionToken, {
             seedFkParents: true,
+            parentSeedLedger,
           });
           assignmentPartialSkipWarning = applyChapterAssignmentSkipWarning(
             workResult.partialSkipWarning,
@@ -3252,6 +3339,18 @@ export async function refreshChapterMetadataIfOnline(
     return existing;
   }
 
+  // A full sync already covering this user is about to refresh the same
+  // cursors; a competing light pass would only race it (#886). Callers
+  // reload their SQLite view when the full sync settles.
+  const fullSync = latestFullSync;
+  if (fullSync && fullSync.userIds.has(String(userId))) {
+    log.info('Metadata refresh joined in-flight full sync', { userId });
+    return fullSync.promise.then(
+      () => undefined,
+      () => undefined,
+    );
+  }
+
   const refreshPromise = (async () => {
     let notifyComplete = true;
     try {
@@ -3323,10 +3422,12 @@ export async function refreshChapterMetadataIfOnline(
       // Prepare Offline manifests. Does not advance master cursors (#679).
       // Warm-only best-effort: one 404/502 parent lookup must not abort
       // milestones / assignments / pericopes (login Tier 1 stays strict).
+      const parentSeedLedger = newParentSeedLedger();
       const { parentSeedIncomplete: projectParentIncomplete } =
         await syncProjects(userId, sessionToken, {
           seedFkParents: true,
           seedFkParentsBestEffort: true,
+          parentSeedLedger,
         });
       const { milestoneIncomplete } = await syncMilestones(
         userId,
@@ -3342,6 +3443,7 @@ export async function refreshChapterMetadataIfOnline(
       } = await syncChapterAssignmentsForUser(userId, cursor, sessionToken, {
         seedFkParents: true,
         seedFkParentsBestEffort: true,
+        parentSeedLedger,
       });
       const stageResult = await syncPendingStageAdvancesForUser(
         userId,

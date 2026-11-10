@@ -149,7 +149,8 @@ describe('AuthSessionProvider', () => {
       expect(queryByTestId('auth-session-loading')).toBeNull();
       expect(getByTestId('auth-flag').props.children).toBe('no');
     });
-    expect(BootSplash.hide).toHaveBeenCalledWith({ fade: true });
+    expect(BootSplash.hide).toHaveBeenCalledTimes(1);
+    expect(BootSplash.hide).toHaveBeenCalledWith();
   });
 
   it('restores auth and starts upload orchestrator', async () => {
