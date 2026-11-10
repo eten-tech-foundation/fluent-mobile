@@ -714,8 +714,11 @@ export async function getChaptersToSync(userIds: number[]) {
     const rows = result.rows as unknown as DBTypes.ChapterRow[];
     return chapterRowsToBibleGroups(rows);
   } catch (error) {
+    // A failed required read must not look like "no chapters" — that path
+    // zeroes the bible count and clears the remap flag (#886). Callers
+    // run inside retrySyncStep / the login sync and decide.
     log.error('Error getting chapters to sync:', { error });
-    return new Map();
+    throw error;
   }
 }
 
@@ -741,8 +744,11 @@ export async function getMyWorkChaptersToSync(
     const rows = result.rows as unknown as DBTypes.ChapterRow[];
     return chapterRowsToBibleGroups(rows);
   } catch (error) {
+    // A failed required read must not look like "no chapters" — that path
+    // zeroes the bible count and clears the remap flag (#886). Callers
+    // run inside retrySyncStep / the login sync and decide.
     log.error('Error getting My Work chapters to sync:', { error });
-    return new Map();
+    throw error;
   }
 }
 
@@ -766,8 +772,11 @@ export async function getRecordingLinkedChaptersToSync(): Promise<BibleChapterGr
     const rows = result.rows as unknown as DBTypes.ChapterRow[];
     return chapterRowsToBibleGroups(rows);
   } catch (error) {
+    // A failed required read must not look like "no chapters" — that path
+    // zeroes the bible count and clears the remap flag (#886). Callers
+    // run inside retrySyncStep / the login sync and decide.
     log.error('Error getting recording-linked chapters to sync:', { error });
-    return new Map();
+    throw error;
   }
 }
 

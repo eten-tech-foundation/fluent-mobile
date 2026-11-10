@@ -206,12 +206,20 @@ async function uploadVerseAudioRequest(
   return parseVerseAudioResponse(raw);
 }
 
+/**
+ * The server assigns the chapter to the **bearer's** session user, so the
+ * token must belong to the account that queued the claim. Callers that drain
+ * another account's queue (multi-account sync) pass that account's captured
+ * token; `undefined` falls back to the active session (#886).
+ */
 async function claimChapterAssignmentRequest(
   chapterAssignmentId: number,
+  token?: string,
 ): Promise<NormalizedClaimChapterAssignmentResponse> {
   const api = await authedRequest<ClaimChapterAssignmentResponse>(
     `/chapter-assignments/${chapterAssignmentId}/claim`,
     { method: 'POST' },
+    token,
   );
 
   return normalizeClaimResponse(api);
@@ -501,8 +509,9 @@ export const FluentAPI = {
   claimChapterAssignment: (
     chapterAssignmentId: number,
     _userId: number,
+    token?: string,
   ): Promise<NormalizedClaimChapterAssignmentResponse> =>
-    claimChapterAssignmentRequest(chapterAssignmentId),
+    claimChapterAssignmentRequest(chapterAssignmentId, token),
 
   /**
    * Aquifer-backed Translation Notes for one verse (fluent-api #274).

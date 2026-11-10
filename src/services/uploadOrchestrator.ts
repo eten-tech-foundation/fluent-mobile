@@ -54,10 +54,12 @@ async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
   }
   const creds = await getCredentials(String(userId));
   const result = await syncPendingStageAdvancesForUser(userId, creds?.token);
-  // Rows left pending resolve as `failed` rather than throwing. Throw so the
-  // session skips `complete` and schedules its bounded retry (#257).
-  if (result.failed > 0) {
-    throw new Error(`Stage-advance drain left ${result.failed} row(s) pending`);
+  // Pending rows come back as `failed` or offline `deferred` rather than
+  // throwing. Either one means the drain is not done: skip `complete` and
+  // schedule the bounded retry (#257, #886).
+  const stillPending = result.failed + (result.deferred ?? 0);
+  if (stillPending > 0) {
+    throw new Error(`Stage-advance drain left ${stillPending} row(s) pending`);
   }
 }
 

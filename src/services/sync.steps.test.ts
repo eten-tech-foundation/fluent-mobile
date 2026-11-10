@@ -8,6 +8,9 @@ import {
 import { AuthError } from './authError';
 import {
   __resetFullSyncSingleFlightForTests,
+  BIBLE_TEXT_CURSOR_OVERLAP_MS,
+  BIBLE_TEXT_FULL_RECONCILE_BUDGET,
+  BIBLE_TEXT_FULL_RECONCILE_MAX_AGE_MS,
   syncAllUsers,
   syncBibleTexts,
   syncBibleTextsForChapters,
@@ -16,6 +19,10 @@ import {
   syncPendingChapterClaimsForUser,
   syncProjects,
 } from './sync';
+
+/** Incremental text requests rewind the chapter cursor (#886). */
+const overlapped = (iso: string): string =>
+  new Date(Date.parse(iso) - BIBLE_TEXT_CURSOR_OVERLAP_MS).toISOString();
 import { getCredentials } from './keychain';
 import {
   clearSyncError,
@@ -61,6 +68,7 @@ import {
 
 jest.mock('./connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
+  SERVER_REACHABILITY_FRESH_MS: 5_000,
 }));
 
 jest.mock('./chapterClaimSync', () => ({
@@ -155,6 +163,16 @@ jest.mock('./storage', () => ({
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
+  // Test convenience only (#886): the real getter runs a one-time legacy
+  // reconciliation (storage.test.ts); here it just follows the legacy mock.
+  getUserBibleTextSyncedAt: jest.fn((userId: string) =>
+    jest.requireMock('./storage').getUserLastSyncedAt(userId),
+  ),
+  setUserBibleTextSyncedAt: jest.fn(),
+  getBibleTextChapterSyncedAt: jest.fn(() => '2026-01-01T00:00:00.000Z'),
+  setBibleTextChapterSyncedAt: jest.fn(),
+  getBibleTextChapterFullReconcileAt: jest.fn(() => null),
+  setBibleTextChapterFullReconcileAt: jest.fn(),
   setUserSync: jest.fn(),
   setSyncCount: jest.fn(),
   setLastSyncedAt: jest.fn(),
@@ -210,6 +228,34 @@ jest.mock('../db/db', () => ({
     execute: jest.fn().mockResolvedValue({ rows: [{ count: 0 }] }),
   })),
 }));
+
+// #886: drains skip the reachability probe when their queue is empty.
+// Default both queues to "has work" so existing drain-call assertions keep
+// exercising the drain path; empty-queue probe-skip cases override per test.
+const mockHasPendingChapterClaimsForUser = jest.fn();
+const mockGetPendingChapterClaims = jest.fn();
+jest.mock('../db/queries', () => ({
+  hasPendingChapterClaimsForUser: (userId: number) =>
+    mockHasPendingChapterClaimsForUser(userId),
+  getPendingChapterClaims: () => mockGetPendingChapterClaims(),
+}));
+const mockGetPendingStageAdvances = jest.fn();
+jest.mock('../db/stageAdvanceQueueRepository', () => ({
+  getPendingStageAdvances: () => mockGetPendingStageAdvances(),
+}));
+beforeEach(() => {
+  mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+  mockGetPendingChapterClaims.mockResolvedValue([
+    { id: 1, userId: 9 },
+    { id: 2, userId: 9 },
+    { id: 3, userId: 4 },
+  ]);
+  mockGetPendingStageAdvances.mockResolvedValue([
+    { id: 1, userId: 1 },
+    { id: 2, userId: 2 },
+    { id: 3, userId: 9 },
+  ]);
+});
 
 const insertMasterDataMock = jest.mocked(insertMasterData);
 const insertProjectsMock = jest.mocked(insertProjects);
@@ -1374,13 +1420,13 @@ describe('sync step orchestration', () => {
         failed: 0,
       });
 
-      expect(syncPendingChapterClaimsMock).toHaveBeenCalledWith(9);
+      expect(syncPendingChapterClaimsMock).toHaveBeenCalledWith(9, undefined);
       expect(clearSyncErrorMock).toHaveBeenCalledWith(
         'sync_error_chapter_claims',
       );
     });
 
-    it('skips syncing pending offline claims when offline', async () => {
+    it('reports offline pending claims as deferred instead of a clean empty drain (#886)', async () => {
       getConnectivitySnapshotMock.mockResolvedValue({
         isOnline: false,
         isWifi: false,
@@ -1392,9 +1438,24 @@ describe('sync step orchestration', () => {
         synced: 0,
         conflicts: 0,
         failed: 0,
+        deferred: 2,
       });
 
       expect(syncPendingChapterClaimsMock).not.toHaveBeenCalled();
+    });
+
+    it('assumes one deferred claim when the offline count cannot be read (#886)', async () => {
+      getConnectivitySnapshotMock.mockResolvedValue({
+        isOnline: false,
+        isWifi: false,
+        isCellular: false,
+        connectionType: 'none',
+      });
+      mockGetPendingChapterClaims.mockRejectedValueOnce(new Error('db closed'));
+
+      await expect(syncPendingChapterClaimsForUser(9)).resolves.toMatchObject({
+        deferred: 1,
+      });
     });
 
     it('does not persist transport failures when pending claim sync fails', async () => {
@@ -1814,7 +1875,9 @@ describe('sync step orchestration', () => {
         new ApiError(404, 'Bible texts not found'),
       );
 
-      await expect(syncBibleTexts()).resolves.toBeUndefined();
+      await expect(syncBibleTexts()).resolves.toEqual({
+        coverageIncomplete: true,
+      });
 
       expect(FluentAPI.getBibleTexts).toHaveBeenCalledTimes(1);
       expect(insertBibleTextsMock).not.toHaveBeenCalled();
@@ -1835,9 +1898,9 @@ describe('sync step orchestration', () => {
       );
       (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
 
-      await expect(
-        syncBibleTexts('2026-01-01T00:00:00.000Z'),
-      ).resolves.toBeUndefined();
+      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).resolves.toEqual(
+        { coverageIncomplete: true },
+      );
 
       expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
         10,
@@ -1894,7 +1957,9 @@ describe('sync step orchestration', () => {
         ],
       });
 
-      await expect(syncBibleTexts()).resolves.toBeUndefined();
+      await expect(syncBibleTexts()).resolves.toEqual({
+        coverageIncomplete: true,
+      });
 
       expect(clearBibleTextAbsencesMock).toHaveBeenCalledWith([
         { bibleId: 10, bookId: 1, chapterNumber: 1 },
@@ -1928,9 +1993,9 @@ describe('sync step orchestration', () => {
         },
       );
 
-      await expect(
-        syncBibleTexts('2026-01-01T00:00:00.000Z'),
-      ).resolves.toBeUndefined();
+      await expect(syncBibleTexts('2026-01-01T00:00:00.000Z')).resolves.toEqual(
+        { coverageIncomplete: true },
+      );
 
       expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
         10,
@@ -2143,7 +2208,9 @@ describe('sync step orchestration', () => {
       });
 
       try {
-        await expect(syncBibleTexts()).resolves.toBeUndefined();
+        await expect(syncBibleTexts()).resolves.toEqual({
+          coverageIncomplete: true,
+        });
 
         expect(insertBibleTextsMock).toHaveBeenCalledWith([]);
         expect(recordBibleTextAbsencesMock).toHaveBeenCalledWith([
@@ -2189,7 +2256,7 @@ describe('sync step orchestration', () => {
       expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
         10,
         [{ bookId: 1, chapterNumber: 1 }],
-        '2026-01-01T00:00:00.000Z',
+        overlapped('2026-01-01T00:00:00.000Z'),
       );
       expect(insertBibleTextsMock).toHaveBeenCalledWith([]);
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_bible_texts');
@@ -2216,7 +2283,7 @@ describe('sync step orchestration', () => {
       expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
         10,
         [{ bookId: 1, chapterNumber: 1 }],
-        '2026-01-01T00:00:00.000Z',
+        overlapped('2026-01-01T00:00:00.000Z'),
       );
       expect(insertBibleTextsMock).not.toHaveBeenCalled();
       expect(setSyncErrorMock).toHaveBeenCalledWith(
@@ -2585,7 +2652,7 @@ describe('sync step orchestration', () => {
       expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
         10,
         [{ bookId: 1, chapterNumber: 1 }],
-        '2026-01-01T00:00:00.000Z',
+        overlapped('2026-01-01T00:00:00.000Z'),
       );
     });
 
@@ -2641,9 +2708,511 @@ describe('sync step orchestration', () => {
         2,
         10,
         [{ bookId: 1, chapterNumber: 1 }],
-        '2026-01-01T00:00:00.000Z',
+        overlapped('2026-01-01T00:00:00.000Z'),
       );
       expect(recordBibleTextAbsencesMock).not.toHaveBeenCalled();
+    });
+
+    describe('syncBibleTexts cursor result (#886)', () => {
+      const presentDb = () =>
+        (getDatabase as jest.Mock).mockReturnValue({
+          execute: jest.fn(async () => ({ rows: [{ count: 8 }] })),
+        });
+      const verses = (chapterNumber: number) => [
+        { id: chapterNumber * 100, verseNumber: 1, text: 'verse' },
+      ];
+
+      describe('client-only watermark recovery against the existing backend', () => {
+        const NOW = Date.parse('2026-02-01T00:00:00.000Z');
+        const CURSOR = '2026-01-10T00:00:00.000Z';
+        type Row = {
+          chapterNumber: number;
+          id: number;
+          updatedAt: string;
+        };
+        const fullAt = new Map<string, number>();
+        let serverRows: Row[] = [];
+        let serverFailsIncremental = false;
+
+        // fluent-api main: strict `updatedAt > updatedAfter`, `syncedAt`
+        // taken after the query, and a repository error with a cursor is
+        // answered as a successful empty payload.
+        const fakeBulkTexts = async (
+          _bibleId: number,
+          requested: Array<{ bookId: number; chapterNumber: number }>,
+          updatedAfter?: string,
+        ) => {
+          if (updatedAfter && serverFailsIncremental) {
+            return { syncedAt: new Date(NOW).toISOString(), data: [] };
+          }
+          const after = updatedAfter ? Date.parse(updatedAfter) : -Infinity;
+          const data = requested
+            .map(chapter => ({
+              bookId: chapter.bookId,
+              chapterNumber: chapter.chapterNumber,
+              verses: serverRows
+                .filter(
+                  row =>
+                    row.chapterNumber === chapter.chapterNumber &&
+                    Date.parse(row.updatedAt) > after,
+                )
+                .map(row => ({ id: row.id, verseNumber: 1, text: 'v' })),
+            }))
+            .filter(chapter => chapter.verses.length > 0);
+          return { syncedAt: new Date(NOW).toISOString(), data };
+        };
+        const insertedVerseIds = () =>
+          insertBibleTextsMock.mock.calls.flatMap(([books]) =>
+            (books as Array<{ verses: Array<{ id: number }> }>).flatMap(book =>
+              book.verses.map(verse => verse.id),
+            ),
+          );
+        const chapters = (count: number) =>
+          Array.from({ length: count }, (_, i) => ({
+            bookId: 1,
+            chapterNumber: i + 1,
+          }));
+
+        let nowSpy: jest.SpyInstance;
+        beforeEach(() => {
+          presentDb();
+          fullAt.clear();
+          serverRows = [];
+          serverFailsIncremental = false;
+          insertBibleTextsMock.mockClear();
+          nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW);
+          const storage = jest.requireMock('./storage');
+          storage.getBibleTextChapterSyncedAt.mockImplementation(() => CURSOR);
+          storage.getBibleTextChapterFullReconcileAt.mockImplementation(
+            (bibleId: number, bookId: number, chapter: number) =>
+              fullAt.get(`${bibleId}:${bookId}:${chapter}`) ?? null,
+          );
+          storage.setBibleTextChapterFullReconcileAt.mockImplementation(
+            (bibleId: number, bookId: number, chapter: number, ms: number) =>
+              fullAt.set(`${bibleId}:${bookId}:${chapter}`, ms),
+          );
+          (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+            fakeBulkTexts,
+          );
+        });
+        afterEach(() => {
+          nowSpy.mockRestore();
+          const storage = jest.requireMock('./storage');
+          storage.getBibleTextChapterSyncedAt.mockImplementation(
+            () => '2026-01-01T00:00:00.000Z',
+          );
+          storage.getBibleTextChapterFullReconcileAt.mockImplementation(
+            () => null,
+          );
+          storage.setBibleTextChapterFullReconcileAt.mockReset();
+          storage.setBibleTextChapterSyncedAt.mockReset();
+        });
+
+        it('recovers a row committed after the cursor but stamped inside the overlap', async () => {
+          getChaptersToSyncMock.mockResolvedValue(new Map([[10, chapters(1)]]));
+          fullAt.set('10:1:1', NOW - 60_000);
+          // Stamped 2 minutes before the cursor the client already holds.
+          serverRows = [
+            {
+              chapterNumber: 1,
+              id: 501,
+              updatedAt: new Date(Date.parse(CURSOR) - 120_000).toISOString(),
+            },
+          ];
+
+          await syncBibleTexts(CURSOR);
+
+          expect(insertedVerseIds()).toEqual([501]);
+        });
+
+        it('a gap beyond the overlap waits for the scheduled full reconcile (residual limit)', async () => {
+          getChaptersToSyncMock.mockResolvedValue(new Map([[10, chapters(2)]]));
+          // Chapter 1 reconciled yesterday; chapter 2 eight days ago.
+          fullAt.set('10:1:1', NOW - 24 * 3600_000);
+          fullAt.set('10:1:2', NOW - 8 * 24 * 3600_000);
+          const twoHoursBefore = new Date(
+            Date.parse(CURSOR) - 2 * 3600_000,
+          ).toISOString();
+          serverRows = [
+            { chapterNumber: 1, id: 601, updatedAt: twoHoursBefore },
+            { chapterNumber: 2, id: 602, updatedAt: twoHoursBefore },
+          ];
+
+          await syncBibleTexts(CURSOR);
+
+          expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+            10,
+            [{ bookId: 1, chapterNumber: 2 }],
+            undefined,
+          );
+          expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+            10,
+            [{ bookId: 1, chapterNumber: 1 }],
+            overlapped(CURSOR),
+          );
+          // Chapter 1's late row stays missing until its own reconcile is due.
+          expect(insertedVerseIds()).toEqual([602]);
+          expect(fullAt.get('10:1:2')).toBe(NOW);
+          expect(fullAt.get('10:1:1')).toBe(NOW - 24 * 3600_000);
+        });
+
+        it(`full-reconciles at most ${BIBLE_TEXT_FULL_RECONCILE_BUDGET} chapters per pass`, async () => {
+          getChaptersToSyncMock.mockResolvedValue(
+            new Map([[10, chapters(BIBLE_TEXT_FULL_RECONCILE_BUDGET + 5)]]),
+          );
+          for (
+            let ch = 1;
+            ch <= BIBLE_TEXT_FULL_RECONCILE_BUDGET + 5;
+            ch += 1
+          ) {
+            fullAt.set(`10:1:${ch}`, NOW - 30 * 24 * 3600_000);
+            serverRows.push({
+              chapterNumber: ch,
+              id: 800 + ch,
+              updatedAt: '2025-06-01T00:00:00.000Z',
+            });
+          }
+
+          await syncBibleTexts(CURSOR);
+
+          const calls = (FluentAPI.getBibleTexts as jest.Mock).mock.calls;
+          const full = calls.filter(call => call[2] === undefined);
+          const incremental = calls.filter(call => call[2] !== undefined);
+          expect(full).toHaveLength(1);
+          expect(full[0][1]).toHaveLength(BIBLE_TEXT_FULL_RECONCILE_BUDGET);
+          expect(incremental).toHaveLength(1);
+          expect(incremental[0][1]).toHaveLength(5);
+        });
+
+        it(`drains a backlog ${BIBLE_TEXT_FULL_RECONCILE_BUDGET} chapters per pass, so N due chapters take ceil(N/${BIBLE_TEXT_FULL_RECONCILE_BUDGET}) passes`, async () => {
+          const due = BIBLE_TEXT_FULL_RECONCILE_BUDGET * 2 + 3;
+          getChaptersToSyncMock.mockResolvedValue(
+            new Map([[10, chapters(due)]]),
+          );
+          for (let ch = 1; ch <= due; ch += 1) {
+            fullAt.set(
+              `10:1:${ch}`,
+              NOW - BIBLE_TEXT_FULL_RECONCILE_MAX_AGE_MS,
+            );
+            serverRows.push({
+              chapterNumber: ch,
+              id: 1000 + ch,
+              updatedAt: '2025-06-01T00:00:00.000Z',
+            });
+          }
+          const fullFetched: number[][] = [];
+          for (let pass = 0; pass < 4; pass += 1) {
+            (FluentAPI.getBibleTexts as jest.Mock).mockClear();
+            await syncBibleTexts(CURSOR);
+            fullFetched.push(
+              (FluentAPI.getBibleTexts as jest.Mock).mock.calls
+                .filter(call => call[2] === undefined)
+                .flatMap(call =>
+                  (call[1] as Array<{ chapterNumber: number }>).map(
+                    c => c.chapterNumber,
+                  ),
+                ),
+            );
+          }
+
+          expect(fullFetched.map(chs => chs.length)).toEqual([
+            BIBLE_TEXT_FULL_RECONCILE_BUDGET,
+            BIBLE_TEXT_FULL_RECONCILE_BUDGET,
+            3,
+            0,
+          ]);
+          expect(new Set(fullFetched.flat()).size).toBe(due);
+          for (const ms of fullAt.values()) expect(ms).toBe(NOW);
+        });
+
+        it('first run after upgrade seeds staggered reconcile times instead of full-fetching every chapter', async () => {
+          getChaptersToSyncMock.mockResolvedValue(new Map([[10, chapters(3)]]));
+
+          await syncBibleTexts(CURSOR);
+
+          const calls = (FluentAPI.getBibleTexts as jest.Mock).mock.calls;
+          expect(calls.every(call => call[2] === overlapped(CURSOR))).toBe(
+            true,
+          );
+          expect(fullAt.size).toBe(3);
+          for (const ms of fullAt.values()) {
+            expect(ms).toBeLessThanOrEqual(NOW);
+            expect(ms).toBeGreaterThan(
+              NOW - BIBLE_TEXT_FULL_RECONCILE_MAX_AGE_MS,
+            );
+          }
+        });
+
+        it('upgrading from main full-fetches uncovered chapters once and staggers their next reconcile', async () => {
+          getChaptersToSyncMock.mockResolvedValue(new Map([[10, chapters(4)]]));
+          const storage = jest.requireMock('./storage');
+          storage.getBibleTextChapterSyncedAt.mockImplementation(() => null);
+          serverRows = [1, 2, 3, 4].map(ch => ({
+            chapterNumber: ch,
+            id: 900 + ch,
+            updatedAt: '2025-06-01T00:00:00.000Z',
+          }));
+
+          await syncBibleTexts(CURSOR);
+
+          const calls = (FluentAPI.getBibleTexts as jest.Mock).mock.calls;
+          expect(calls.every(call => call[2] === undefined)).toBe(true);
+          const stamps = [...fullAt.values()];
+          expect(stamps).toHaveLength(4);
+          expect(new Set(stamps).size).toBe(4);
+          for (const ms of stamps) {
+            expect(ms).toBeLessThanOrEqual(NOW);
+            expect(ms).toBeGreaterThan(
+              NOW - BIBLE_TEXT_FULL_RECONCILE_MAX_AGE_MS,
+            );
+          }
+        });
+
+        it('an error answered as an empty incremental never advances coverage; the next pass re-asks', async () => {
+          getChaptersToSyncMock.mockResolvedValue(new Map([[10, chapters(1)]]));
+          fullAt.set('10:1:1', NOW - 60_000);
+          serverRows = [
+            {
+              chapterNumber: 1,
+              id: 701,
+              updatedAt: '2026-01-20T00:00:00.000Z',
+            },
+          ];
+          serverFailsIncremental = true;
+          const storage = jest.requireMock('./storage');
+
+          await expect(syncBibleTexts(CURSOR)).resolves.toEqual({
+            coverageIncomplete: true,
+          });
+          expect(storage.setBibleTextChapterSyncedAt).not.toHaveBeenCalled();
+          expect(insertedVerseIds()).toEqual([]);
+
+          serverFailsIncremental = false;
+          await syncBibleTexts(CURSOR);
+          expect(insertedVerseIds()).toEqual([701]);
+          expect(storage.setBibleTextChapterSyncedAt).toHaveBeenCalledWith(
+            10,
+            1,
+            1,
+            new Date(NOW).toISOString(),
+          );
+        });
+      });
+
+      it('returns the earliest server syncedAt across usable responses', async () => {
+        presentDb();
+        getChaptersToSyncMock.mockResolvedValue(
+          new Map([
+            [10, [{ bookId: 1, chapterNumber: 1 }]],
+            [11, [{ bookId: 1, chapterNumber: 1 }]],
+          ]),
+        );
+        (FluentAPI.getBibleTexts as jest.Mock)
+          .mockResolvedValueOnce({
+            syncedAt: '2026-01-05T00:00:00.000Z',
+            data: [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+          })
+          .mockResolvedValueOnce({
+            syncedAt: '2026-01-04T00:00:00.000Z',
+            data: [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+          });
+
+        await expect(
+          syncBibleTexts('2026-01-01T00:00:00.000Z'),
+        ).resolves.toEqual({ syncedAt: '2026-01-04T00:00:00.000Z' });
+      });
+
+      it('holds shared coverage when one incremental group is empty', async () => {
+        presentDb();
+        getChaptersToSyncMock.mockResolvedValue(
+          new Map([
+            [10, [{ bookId: 1, chapterNumber: 1 }]],
+            [11, [{ bookId: 1, chapterNumber: 1 }]],
+          ]),
+        );
+        (FluentAPI.getBibleTexts as jest.Mock)
+          // Empty incremental — may be a masked repository error; not usable.
+          .mockResolvedValueOnce({
+            syncedAt: '2026-01-02T00:00:00.000Z',
+            data: [],
+          })
+          .mockResolvedValueOnce({
+            syncedAt: '2026-01-06T00:00:00.000Z',
+            data: [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+          });
+
+        await expect(
+          syncBibleTexts('2026-01-01T00:00:00.000Z'),
+        ).resolves.toEqual({ coverageIncomplete: true });
+      });
+
+      it('advances healthy chapter coverage while retrying an empty sibling from its earlier cursor', async () => {
+        presentDb();
+        const coverage = new Map([
+          [10, '2026-01-01T00:00:00.000Z'],
+          [11, '2026-01-01T00:00:00.000Z'],
+        ]);
+        const storage = jest.requireMock('./storage');
+        storage.getBibleTextChapterSyncedAt.mockImplementation(
+          (bibleId: number) => coverage.get(bibleId) ?? '',
+        );
+        storage.setBibleTextChapterSyncedAt.mockImplementation(
+          (bibleId: number, _book: number, _chapter: number, cursor: string) =>
+            coverage.set(bibleId, cursor),
+        );
+        getChaptersToSyncMock.mockResolvedValue(
+          new Map([
+            [10, [{ bookId: 1, chapterNumber: 1 }]],
+            [11, [{ bookId: 1, chapterNumber: 1 }]],
+          ]),
+        );
+        (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+          async (bibleId: number) => ({
+            syncedAt: '2026-01-06T00:00:00.000Z',
+            data:
+              bibleId === 10
+                ? []
+                : [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+          }),
+        );
+        try {
+          await expect(
+            syncBibleTexts('2026-01-01T00:00:00.000Z'),
+          ).resolves.toEqual({ coverageIncomplete: true });
+          expect(coverage.get(10)).toBe('2026-01-01T00:00:00.000Z');
+          expect(coverage.get(11)).toBe('2026-01-06T00:00:00.000Z');
+          (FluentAPI.getBibleTexts as jest.Mock).mockClear();
+          await syncBibleTexts('2026-01-01T00:00:00.000Z');
+          expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+            10,
+            expect.any(Array),
+            overlapped('2026-01-01T00:00:00.000Z'),
+          );
+          expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+            11,
+            expect.any(Array),
+            overlapped('2026-01-06T00:00:00.000Z'),
+          );
+        } finally {
+          storage.getBibleTextChapterSyncedAt.mockImplementation(
+            () => '2026-01-01T00:00:00.000Z',
+          );
+          storage.setBibleTextChapterSyncedAt.mockReset();
+        }
+      });
+
+      it('full-fetches restored cached chapters without durable coverage evidence', async () => {
+        presentDb();
+        const storage = jest.requireMock('./storage');
+        storage.getBibleTextChapterSyncedAt.mockReturnValue('');
+        getChaptersToSyncMock.mockResolvedValue(
+          new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+        );
+        (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+          syncedAt: '2026-01-06T00:00:00.000Z',
+          data: [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+        });
+        try {
+          await syncBibleTexts('2026-01-05T00:00:00.000Z');
+          expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+            10,
+            expect.any(Array),
+            undefined,
+          );
+        } finally {
+          storage.getBibleTextChapterSyncedAt.mockImplementation(
+            () => '2026-01-01T00:00:00.000Z',
+          );
+        }
+      });
+
+      it('returns no cursor when every incremental response was empty', async () => {
+        presentDb();
+        getChaptersToSyncMock.mockResolvedValue(
+          new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+        );
+        (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+          syncedAt: '2026-01-02T00:00:00.000Z',
+          data: [],
+        });
+
+        await expect(
+          syncBibleTexts('2026-01-01T00:00:00.000Z'),
+        ).resolves.toEqual({ coverageIncomplete: true });
+      });
+
+      it('counts an empty full-fetch response as usable (absence is server state)', async () => {
+        // No local verses: the chapter is recorded absent, not a regression.
+        (getDatabase as jest.Mock).mockReturnValue({
+          execute: jest.fn(async () => ({ rows: [{ count: 0 }] })),
+        });
+        getChaptersToSyncMock.mockResolvedValue(
+          new Map([[10, [{ bookId: 1, chapterNumber: 1 }]]]),
+        );
+        (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+          syncedAt: '2026-01-02T00:00:00.000Z',
+          data: [],
+        });
+
+        await expect(syncBibleTexts()).resolves.toEqual({
+          syncedAt: '2026-01-02T00:00:00.000Z',
+        });
+      });
+
+      it('returns no cursor when a usable response lacks server syncedAt', async () => {
+        presentDb();
+        getChaptersToSyncMock.mockResolvedValue(
+          new Map([
+            [10, [{ bookId: 1, chapterNumber: 1 }]],
+            [11, [{ bookId: 1, chapterNumber: 1 }]],
+          ]),
+        );
+        (FluentAPI.getBibleTexts as jest.Mock)
+          .mockResolvedValueOnce({
+            syncedAt: '2026-01-05T00:00:00.000Z',
+            data: [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+          })
+          .mockResolvedValueOnce({
+            data: [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+          });
+
+        await expect(syncBibleTexts()).resolves.toEqual({
+          coverageIncomplete: true,
+        });
+      });
+
+      it('does not carry a cursor from a failed attempt into the retry', async () => {
+        jest.useFakeTimers();
+        presentDb();
+        getChaptersToSyncMock.mockResolvedValue(
+          new Map([
+            [10, [{ bookId: 1, chapterNumber: 1 }]],
+            [11, [{ bookId: 1, chapterNumber: 1 }]],
+          ]),
+        );
+        (FluentAPI.getBibleTexts as jest.Mock)
+          .mockResolvedValueOnce({
+            syncedAt: '2026-01-01T00:00:00.000Z',
+            data: [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+          })
+          .mockRejectedValueOnce(new Error('transient'))
+          .mockResolvedValueOnce({
+            syncedAt: '2026-01-09T00:00:00.000Z',
+            data: [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+          })
+          .mockResolvedValueOnce({
+            syncedAt: '2026-01-08T00:00:00.000Z',
+            data: [{ bookId: 1, chapterNumber: 1, verses: verses(1) }],
+          });
+
+        const pending = syncBibleTexts();
+        await jest.runAllTimersAsync();
+
+        await expect(pending).resolves.toEqual({
+          syncedAt: '2026-01-08T00:00:00.000Z',
+        });
+        jest.useRealTimers();
+      });
     });
 
     it('records chunks already committed before a retry without changing order', async () => {
