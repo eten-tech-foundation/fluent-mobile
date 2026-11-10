@@ -23,6 +23,7 @@ import { useNextUp } from '../../../hooks/useNextUp';
 import { useAuthSession } from '../../../navigation/AuthSessionProvider';
 import { resolveChapterOpen } from '../../../navigation/chapterOpen';
 import { hrefs } from '../../../navigation/hrefs';
+import { refreshChapterMetadataIfOnline } from '../../../services/sync';
 import { useTheme, useThemedStyles } from '../../../theme/useTheme';
 import type { HomeBookSummary, MyWorkChapter } from '../../../types/db/types';
 import {
@@ -98,11 +99,16 @@ function HomeBody({
   const pullToRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
+      // Stay on Home never blurs, so focus refresh does not re-run. Pull is
+      // the tab-switch replacement: metadata first, then the local lists.
+      if (account.activeUserId) {
+        await refreshChapterMetadataIfOnline(Number(account.activeUserId));
+      }
       await Promise.all([refresh(), refreshBooks()]);
     } finally {
       setRefreshing(false);
     }
-  }, [refresh, refreshBooks]);
+  }, [account.activeUserId, refresh, refreshBooks]);
 
   const styles = useThemedStyles(t => ({
     screen: { flex: 1, backgroundColor: t.roles.bgDefault },

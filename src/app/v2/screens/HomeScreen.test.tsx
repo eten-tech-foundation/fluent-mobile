@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react-native';
 import HomeScreen from './HomeScreen';
 import { hrefs } from '../../../navigation/hrefs';
+import { refreshChapterMetadataIfOnline } from '../../../services/sync';
 import type { NextUp } from '../../../hooks/useNextUp';
 import type { HomeBookSummary, MyWorkChapter } from '../../../types/db/types';
 import type { SyncStatus } from '../../../utils/syncStatusState';
@@ -127,6 +128,15 @@ jest.mock('../../../hooks/useHomeBooks', () => ({
   }),
 }));
 
+jest.mock('../../../services/sync', () => ({
+  refreshChapterMetadataIfOnline: jest.fn(),
+}));
+
+const mockRefreshMetadata =
+  refreshChapterMetadataIfOnline as jest.MockedFunction<
+    typeof refreshChapterMetadataIfOnline
+  >;
+
 function chapter(id: number, bookName: string, chapterNumber: number) {
   return {
     id,
@@ -181,6 +191,7 @@ describe('Next HomeScreen', () => {
     mockChangesPreview = false;
     mockOpen = { kind: 'work' };
     mockActiveUserId = '7';
+    mockRefreshMetadata.mockResolvedValue(undefined);
   });
 
   it('shows the account, the sync status and a chapter summary', () => {
@@ -300,8 +311,14 @@ describe('Next HomeScreen', () => {
     );
   });
 
-  it('re-reads the chapters and books on pull to refresh, spinning until both land', async () => {
+  it('refreshes membership metadata before re-reading lists, spinning until that finishes', async () => {
+    let finishMetadata!: () => void;
     let finishBooks!: () => void;
+    mockRefreshMetadata.mockReturnValue(
+      new Promise<void>(resolve => {
+        finishMetadata = resolve;
+      }),
+    );
     mockRefresh.mockResolvedValue(undefined);
     mockRefreshBooks.mockReturnValue(
       new Promise<void>(resolve => {
@@ -315,6 +332,15 @@ describe('Next HomeScreen', () => {
     act(() => {
       void refreshControl().onRefresh();
     });
+    expect(mockRefreshMetadata).toHaveBeenCalledTimes(1);
+    expect(mockRefreshMetadata).toHaveBeenCalledWith(7);
+    expect(mockRefresh).not.toHaveBeenCalled();
+    expect(mockRefreshBooks).not.toHaveBeenCalled();
+    expect(refreshControl().refreshing).toBe(true);
+
+    await act(async () => {
+      finishMetadata();
+    });
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(mockRefreshBooks).toHaveBeenCalledTimes(1);
     expect(refreshControl().refreshing).toBe(true);
@@ -323,6 +349,67 @@ describe('Next HomeScreen', () => {
       finishBooks();
     });
     expect(refreshControl().refreshing).toBe(false);
+  });
+
+  it('drops a book after a mocked membership removal on pull to refresh', async () => {
+    mockRefreshMetadata.mockImplementation(async () => {
+      mockChapters = [];
+      mockBooks = [];
+    });
+    mockRefresh.mockResolvedValue(undefined);
+    mockRefreshBooks.mockResolvedValue(undefined);
+    const { rerender } = render(<HomeScreen />);
+    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
+
+    await act(async () => {
+      await screen
+        .UNSAFE_getByType(ScrollView)
+        .props.refreshControl.props.onRefresh();
+    });
+    rerender(<HomeScreen />);
+
+    expect(screen.getByTestId('home-empty')).toBeTruthy();
+    expect(screen.queryByRole('header', { name: 'Books' })).toBeNull();
+  });
+
+  it('shows a newly assigned Draft milestone after pull to refresh', async () => {
+    mockChapters = [];
+    mockBooks = [];
+    const luke = chapter(30, 'Luke', 1);
+    const lukeBook: HomeBookSummary = {
+      ...MARK,
+      key: '3:42',
+      bookId: 42,
+      bookName: 'Luke',
+      firstChapterId: 30,
+      mine: 1,
+      withOthers: 0,
+      open: 0,
+      totalChapters: 1,
+      recordedChapters: 0,
+    };
+    mockRefreshMetadata.mockImplementation(async () => {
+      mockChapters = [luke];
+      mockBooks = [lukeBook];
+    });
+    mockRefresh.mockResolvedValue(undefined);
+    mockRefreshBooks.mockResolvedValue(undefined);
+    const { rerender } = render(<HomeScreen />);
+    expect(screen.getByTestId('home-empty')).toBeTruthy();
+
+    await act(async () => {
+      await screen
+        .UNSAFE_getByType(ScrollView)
+        .props.refreshControl.props.onRefresh();
+    });
+    rerender(<HomeScreen />);
+
+    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', {
+        name: 'Luke, Gospels Phase 1 · 1 yours, Not recorded yet. Open book page.',
+      }),
+    ).toBeTruthy();
   });
 
   describe('Next up', () => {
