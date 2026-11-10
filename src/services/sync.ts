@@ -62,6 +62,7 @@ import {
   refreshUserOrgGrants,
 } from './userOrgGrants';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
+import { runKvBatchSync } from './kvBatch';
 import {
   flattenApiPericopeSetGroups,
   loadBundledPericopeSet,
@@ -749,12 +750,16 @@ export async function syncMasterData(
         biblesCursor: Boolean(biblesCursor),
       });
 
-      const languages = await FluentAPI.getLanguages(
-        languagesCursor,
-        sessionToken,
-      );
-      const books = await FluentAPI.getBooks(booksCursor, sessionToken);
-      const bibles = await FluentAPI.getBibles(biblesCursor, sessionToken);
+      // The three collections are independent reads; fetch them concurrently
+      // and keep the single FK-ordered write transaction below (#886).
+      // Promise.all fails fast on the first error; the other two requests
+      // finish in the background and their payloads are discarded, which is
+      // what the sequential version did on retry as well.
+      const [languages, books, bibles] = await Promise.all([
+        FluentAPI.getLanguages(languagesCursor, sessionToken),
+        FluentAPI.getBooks(booksCursor, sessionToken),
+        FluentAPI.getBibles(biblesCursor, sessionToken),
+      ]);
 
       log.info('Master data fetched', {
         languagesCount: languages?.length,
@@ -863,16 +868,19 @@ export async function syncProjects(
         );
       }
 
-      if (!(isConfirmedShape && projects.length === 0)) {
-        await ensureUserProjectMembership(userId);
+      const ensuredCount =
+        isConfirmedShape && projects.length === 0
+          ? null
+          : await ensureUserProjectMembership(userId);
+      let totalProjectsCount = ensuredCount;
+      if (typeof totalProjectsCount !== 'number') {
+        const result = await getDatabase().execute(
+          'SELECT COUNT(*) as count FROM user_projects WHERE user_id = ?',
+          [userId],
+        );
+        totalProjectsCount = Number(result.rows?.[0]?.count || 0);
       }
-      const db = getDatabase();
-      const result = await db.execute(
-        'SELECT COUNT(*) as count FROM user_projects WHERE user_id = ?',
-        [userId],
-      );
-      const totalProjectsCount = result.rows?.[0]?.count || 0;
-      setSyncCount(KV_KEYS.SYNC_COUNT_PROJECTS, Number(totalProjectsCount));
+      setSyncCount(KV_KEYS.SYNC_COUNT_PROJECTS, totalProjectsCount);
 
       log.info('Projects synced', {
         fetched: projects.length,
@@ -2123,38 +2131,40 @@ export async function syncBibleTexts(
 
       // One response without a server timestamp means we cannot bound what
       // this pass covered; keep the old cursor rather than invent one from
-      // the device clock (#886).
-      for (const chapter of chapterCoverageUpdates) {
-        setBibleTextChapterSyncedAt(
-          chapter.bibleId,
-          chapter.bookId,
-          chapter.chapterNumber,
-          chapter.syncedAt,
-        );
-        if (chapter.fullFetch) {
-          // A first full fetch (upgrade, new chapter) lands many chapters at
-          // once; stagger their next reconcile so they do not fall due together.
-          const firstFull =
-            getBibleTextChapterFullReconcileAt(
-              chapter.bibleId,
-              chapter.bookId,
-              chapter.chapterNumber,
-            ) === null;
-          setBibleTextChapterFullReconcileAt(
+      // the device clock (#886). One KV commit for the pass, not two per chapter.
+      runKvBatchSync(() => {
+        for (const chapter of chapterCoverageUpdates) {
+          setBibleTextChapterSyncedAt(
             chapter.bibleId,
             chapter.bookId,
             chapter.chapterNumber,
-            firstFull
-              ? reconcileNowMs -
-                  chapterReconcileOffsetMs(
-                    chapter.bibleId,
-                    chapter.bookId,
-                    chapter.chapterNumber,
-                  )
-              : reconcileNowMs,
+            chapter.syncedAt,
           );
+          if (chapter.fullFetch) {
+            // A first full fetch (upgrade, new chapter) lands many chapters at
+            // once; stagger their next reconcile so they do not fall due together.
+            const firstFull =
+              getBibleTextChapterFullReconcileAt(
+                chapter.bibleId,
+                chapter.bookId,
+                chapter.chapterNumber,
+              ) === null;
+            setBibleTextChapterFullReconcileAt(
+              chapter.bibleId,
+              chapter.bookId,
+              chapter.chapterNumber,
+              firstFull
+                ? reconcileNowMs -
+                    chapterReconcileOffsetMs(
+                      chapter.bibleId,
+                      chapter.bookId,
+                      chapter.chapterNumber,
+                    )
+                : reconcileNowMs,
+            );
+          }
         }
-      }
+      });
       if (responsesMissingSyncedAt > 0 || emptyIncrementalResponses > 0) {
         return { coverageIncomplete: true };
       }
@@ -2252,9 +2262,10 @@ export async function syncPericopes(
 
             const verses = loadBundledPericopeSet(pericopeSetId, bookCode);
             if (verses) {
-              await upsertPericopeSet(pericopeSetId, bookCode, verses);
-              setPericopeBookVersion(pericopeSetId, bookCode, bundledVersion);
-              pericopeBookCounts.reseeded += 1;
+              if (await upsertPericopeSet(pericopeSetId, bookCode, verses)) {
+                setPericopeBookVersion(pericopeSetId, bookCode, bundledVersion);
+                pericopeBookCounts.reseeded += 1;
+              }
               continue;
             }
 
@@ -2288,7 +2299,9 @@ export async function syncPericopes(
           const groups = Array.isArray(result.data) ? result.data : [];
           const verses = flattenApiPericopeSetGroups(groups);
           if (verses.length > 0) {
-            await upsertPericopeSet(pericopeSetId, bookCode, verses);
+            if (!(await upsertPericopeSet(pericopeSetId, bookCode, verses))) {
+              continue;
+            }
             pericopeBookCounts.fetched += 1;
           }
           if (result.etag) {
