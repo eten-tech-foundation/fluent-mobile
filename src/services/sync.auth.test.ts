@@ -1339,7 +1339,9 @@ describe('refreshChapterMetadataIfOnline', () => {
   });
 
   describe('light-refresh freshness (#886)', () => {
-    it('skips a repeat refresh inside the freshness window without probing or emitting', async () => {
+    it('skips a repeat refresh inside the freshness window when the catalogue is still quiet', async () => {
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+      mockGetPendingStageAdvances.mockResolvedValue([]);
       const emitSpy = jest
         .spyOn(syncEvents, 'emitSyncComplete')
         .mockImplementation(() => {});
@@ -1348,6 +1350,7 @@ describe('refreshChapterMetadataIfOnline', () => {
         expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
         const probesAfterFirst = mockGetConnectivitySnapshot.mock.calls.length;
         emitSpy.mockClear();
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(Date.now());
 
         await refreshChapterMetadataIfOnline(2);
         await refreshChapterMetadataIfOnline(2);
@@ -1359,6 +1362,74 @@ describe('refreshChapterMetadataIfOnline', () => {
         expect(emitSpy).not.toHaveBeenCalled();
       } finally {
         emitSpy.mockRestore();
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+      }
+    });
+
+    it('pulls again inside the freshness window when a claim is waiting', async () => {
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+      mockGetPendingStageAdvances.mockResolvedValue([]);
+
+      try {
+        await refreshChapterMetadataIfOnline(2);
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(Date.now());
+        mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+      } finally {
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+      }
+    });
+
+    it('clears an existing quiet stamp when an assignment row is skipped', async () => {
+      (getCatalogueQuietSince as jest.Mock).mockReturnValue(
+        Date.now() - 60_000,
+      );
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        syncedAt: '2026-02-01T00:00:00.000Z',
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 1,
+            bibleId: 167,
+            bookId: 40,
+            chapterNumber: 3,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+            updatedAt: '2026-02-01T00:00:00.000Z',
+          },
+        ],
+      });
+      insertChapterAssignmentSyncData.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [{ chapterAssignmentId: 11, reason: 'missing_book' }],
+      });
+
+      try {
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+        expect(setCatalogueQuietSince).not.toHaveBeenCalled();
+
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+        await refreshChapterMetadataIfOnline(2);
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+      } finally {
+        insertChapterAssignmentSyncData.mockResolvedValue({
+          insertedCount: 1,
+          skipped: [],
+        });
+        (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+          data: [],
+        });
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
       }
     });
 
@@ -1376,14 +1447,18 @@ describe('refreshChapterMetadataIfOnline', () => {
     });
 
     it('does not arm the window when the refresh fails, so the next focus retries', async () => {
-      (FluentAPI.getUserProjects as jest.Mock).mockRejectedValueOnce(
+      (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
         new ApiError(502, 'upstream'),
       );
 
       await refreshChapterMetadataIfOnline(2);
       await refreshChapterMetadataIfOnline(2);
 
-      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(2);
+      // Three attempts per focus. The first failure must not arm freshness,
+      // or the second focus would not reach the server.
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(6);
+      expect(setCatalogueQuietSince).not.toHaveBeenCalled();
+      expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
     });
 
     it('does not arm the window when a drain soft-fails, so the next focus retries', async () => {
@@ -1538,6 +1613,7 @@ describe('refreshChapterMetadataIfOnline', () => {
 
         expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
         expect(setCatalogueQuietSince).not.toHaveBeenCalled();
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
       });
 
       it('Sync Now disarms the window for the active account', async () => {

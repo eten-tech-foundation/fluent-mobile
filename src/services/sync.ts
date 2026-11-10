@@ -3235,19 +3235,26 @@ export async function refreshChapterMetadataIfOnline(
     return existing;
   }
 
-  const lastOkAt = lastSuccessfulMetadataRefreshAt.get(userId);
-  const metadataAgeMs = lastOkAt === undefined ? null : Date.now() - lastOkAt;
-  if (
-    metadataAgeMs !== null &&
-    metadataAgeMs >= 0 &&
-    metadataAgeMs < METADATA_REFRESH_FRESH_MS
-  ) {
-    return;
-  }
-
   const refreshPromise = (async () => {
     let notifyComplete = true;
     try {
+      // Several Home hooks focus at once. Skip the network when this user's
+      // last clean pass is only a few seconds old, but still look for a claim,
+      // stage advance, or assignee repair. Those must not wait out the window.
+      const lastOkAt = lastSuccessfulMetadataRefreshAt.get(userId);
+      const metadataAgeMs =
+        lastOkAt === undefined ? null : Date.now() - lastOkAt;
+      if (
+        metadataAgeMs !== null &&
+        metadataAgeMs >= 0 &&
+        metadataAgeMs < METADATA_REFRESH_FRESH_MS &&
+        (await savedCatalogueIsQuiet(userId))
+      ) {
+        lastSuccessfulMetadataRefreshAt.set(userId, Date.now());
+        notifyComplete = false;
+        return;
+      }
+
       if (await savedCatalogueIsQuiet(userId)) {
         lastSuccessfulMetadataRefreshAt.set(userId, Date.now());
         notifyComplete = false;
@@ -3349,8 +3356,14 @@ export async function refreshChapterMetadataIfOnline(
         if (userIdStr === getActiveUserId()) {
           setCatalogueQuietSince(userIdStr, Date.now());
         }
+      } else {
+        // A skipped assignment or a failed drain must not leave an older
+        // quiet stamp in place, or the next focus skips the retry for the
+        // rest of the 15 minute window.
+        clearCatalogueQuietSince(userIdStr);
       }
     } catch (error) {
+      clearCatalogueQuietSince(String(userId));
       if (isAuthError(error)) {
         await handleSyncAuthFailure(String(userId));
       }

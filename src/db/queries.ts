@@ -1524,7 +1524,6 @@ export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendi
   }
 }
 
-/** Selected recordings whose last upload attempt failed. */
 /** `onError` runs when the read failed and the 0 is not an answer. */
 export async function getFailedUploadCount(
   onError?: () => void,
