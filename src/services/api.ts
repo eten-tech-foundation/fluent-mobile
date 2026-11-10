@@ -549,6 +549,7 @@ export const FluentAPI = {
     chapter: number,
     verse: number,
     languageCode: string,
+    token?: string,
   ): Promise<ApiTranslationNotesResponse> =>
     authedRequest<ApiTranslationNotesResponse>(
       translationResourcesVersePath(
@@ -559,6 +560,8 @@ export const FluentAPI = {
         verse,
         languageCode,
       ),
+      undefined,
+      token,
     ),
 
   /**
@@ -683,10 +686,12 @@ export const FluentAPI = {
   getChapterSourceAudio: (
     params: GetChapterSourceAudioParams,
     request?: { signal?: AbortSignal },
+    token?: string,
   ): Promise<ApiSourceAudioResponse> =>
     authedRequest<ApiSourceAudioResponse>(
       chapterSourceAudioPath(params),
       request?.signal ? { signal: request.signal } : undefined,
+      token,
     ),
 };
 

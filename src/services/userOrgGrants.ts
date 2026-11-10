@@ -13,6 +13,7 @@ import {
   kvStorage,
   setReauthRequired,
 } from './storage';
+import { clearPassageResourceReuse } from './passageResourceReuse';
 
 const log = logger.create('UserOrgGrants');
 
@@ -118,6 +119,7 @@ function writeSnapshot(userId: string, snapshot: UserOrgGrantsSnapshot): void {
   if (!userId) return;
   const serialized = JSON.stringify(snapshot);
   if (kvStorage.getItemSync(grantSnapshotKey(userId)) !== serialized) {
+    clearPassageResourceReuse(userId);
     clearDraftListingSnapshotsForUser(userId);
   }
   kvStorage.setItemSync(grantSnapshotKey(userId), serialized);

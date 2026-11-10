@@ -96,6 +96,7 @@ let mockReduceMotion = false;
 let mockFocused = true;
 let mockNotes: TranslationNoteItem[] = [];
 let mockNotesFailed = false;
+const mockNotesFor = jest.fn((_args: { projectId: number | null }) => {});
 const baseParams = {
   chapterId: '5',
   anchorVerse: '22',
@@ -276,12 +277,15 @@ jest.mock('../../../hooks/useConnectivity', () => ({
 }));
 
 jest.mock('../../../hooks/useTranslationNotesForUnit', () => ({
-  useTranslationNotesForUnit: () => ({
-    state: mockNotesFailed
-      ? { status: 'error', message: 'Notes failed' }
-      : { status: 'ready', notes: mockNotes },
-    retry: jest.fn(),
-  }),
+  useTranslationNotesForUnit: (args: { projectId: number | null }) => {
+    mockNotesFor(args);
+    return {
+      state: mockNotesFailed
+        ? { status: 'error', message: 'Notes failed' }
+        : { status: 'ready', notes: mockNotes },
+      retry: jest.fn(),
+    };
+  },
 }));
 
 jest.mock('../../../hooks/usePassage', () => ({
@@ -909,6 +913,43 @@ describe('PassageScreen', () => {
       nativeEvent: { contentOffset: { x: 1080, y: 0 } },
     });
     expect(screen.getByLabelText('Note 2 of 2')).toBeTruthy();
+  });
+
+  describe('before the player opens', () => {
+    const lastNotesProject = () =>
+      mockNotesFor.mock.calls.at(-1)?.[0].projectId;
+    const lastSource = () =>
+      mockUseSourceAudio.mock.calls.at(-1)?.[0] as {
+        deferred?: boolean;
+        enabled?: boolean;
+      };
+
+    it('asks for no notes or source audio while the passage is only read', () => {
+      renderSettled();
+      expect(lastNotesProject()).toBeNull();
+      expect(lastSource().deferred).toBe(true);
+    });
+
+    it('wants both from Listen, and keeps them after the player closes', () => {
+      renderSettled();
+      fireEvent.press(screen.getByTestId('passage-listen'));
+      settle();
+      expect(lastNotesProject()).toBe(9);
+      expect(lastSource()).toMatchObject({ deferred: false, enabled: true });
+
+      fireEvent.press(screen.getByTestId('passage-close'));
+      settle();
+      expect(lastNotesProject()).toBe(9);
+      expect(lastSource().deferred).toBe(false);
+    });
+
+    it('wants the notes from Record, and the source audio once Listen shows', () => {
+      renderSettled();
+      fireEvent.press(screen.getByTestId('passage-record'));
+      settle();
+      expect(lastNotesProject()).toBe(9);
+      expect(lastSource()).toMatchObject({ deferred: false, enabled: false });
+    });
   });
 
   it('strokes the note header while that note is scrolled under it', () => {
