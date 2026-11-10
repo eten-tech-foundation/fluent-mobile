@@ -402,8 +402,10 @@ export function useRecorder({
       id: t.id,
       takeNumber: t.takeNumber,
       official: inUse(t),
+      // Cover tiles copy is_selected. Passage tiles must too, or the first
+      // saved take stays unselected while the last tile looks picked (#942).
       // While the verses are the draft, no passage take is picked.
-      selected: !verseDraft && t.id === pickedTake?.id,
+      selected: !verseDraft && t.isSelected,
       deleted: t.id === pendingId,
     })),
   );

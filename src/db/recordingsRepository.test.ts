@@ -639,6 +639,42 @@ describe('recordingsRepository multi-take', () => {
     expect(latest?.recordedByUserId).toBe(1);
   });
 
+  it('selects the first pericope take on an empty passage without making it canonical (#942)', async () => {
+    await addRecordingTake({
+      bibleTextId: 103,
+      localFilePath: 'file:///p1.m4a',
+      id: 'peri-1',
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    });
+
+    const first = __getRecordingRows().find(r => r.id === 'peri-1');
+    expect(first?.is_selected).toBe(1);
+    expect(first?.is_canonical).toBe(0);
+
+    await addRecordingTake({
+      bibleTextId: 103,
+      localFilePath: 'file:///p2.m4a',
+      id: 'peri-2',
+      granularity: 'pericope',
+      startChapter: 1,
+      startVerse: 3,
+      endChapter: 1,
+      endVerse: 7,
+    });
+
+    const rows = __getRecordingRows().filter(
+      r => r.id === 'peri-1' || r.id === 'peri-2',
+    );
+    expect(rows.filter(r => r.is_selected === 1).map(r => r.id)).toEqual([
+      'peri-2',
+    ]);
+    expect(rows.every(r => r.is_canonical === 0)).toBe(true);
+  });
+
   it('persists projectUnitId and filters takes by unit (#613)', async () => {
     await addRecordingTake({
       bibleTextId: 10,

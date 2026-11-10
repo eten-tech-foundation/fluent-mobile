@@ -2274,6 +2274,18 @@ describe('PassageScreen', () => {
       expect(versesCard().length).toBeGreaterThan(0);
     });
 
+    it('does not mark an unselected passage take as selected while verses are the draft', () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(3), isSelected: false }, verseTake(1, 22)],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(screen.getByLabelText('Take 3')).toBeTruthy();
+      expect(screen.queryByLabelText('Take 3, selected')).toBeNull();
+    });
+
     it('leads with a passage take that is the draft', () => {
       mockSession = {
         ...mockSession,
@@ -2371,7 +2383,10 @@ describe('PassageScreen', () => {
   it('deletes a take only once the undo window closes', async () => {
     jest.useFakeTimers();
     try {
-      mockSession = { ...mockSession, takes: [take(1), take(2)] };
+      mockSession = {
+        ...mockSession,
+        takes: [take(1), { ...take(2), isSelected: true }],
+      };
       render(<PassageScreen />);
       fireEvent.press(screen.getByTestId('passage-record'));
       const remove = () =>
@@ -2400,7 +2415,10 @@ describe('PassageScreen', () => {
   });
 
   it('deletes a pending take before recording another', async () => {
-    mockSession = { ...mockSession, takes: [take(1), take(2)] };
+    mockSession = {
+      ...mockSession,
+      takes: [take(1), { ...take(2), isSelected: true }],
+    };
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
     fireEvent(
@@ -2426,7 +2444,10 @@ describe('PassageScreen', () => {
     mockDeleteTake.mockImplementationOnce(
       () => new Promise<void>(resolve => (finish = resolve)),
     );
-    mockSession = { ...mockSession, takes: [take(1), take(2)] };
+    mockSession = {
+      ...mockSession,
+      takes: [take(1), { ...take(2), isSelected: true }],
+    };
     render(<PassageScreen />);
     fireEvent.press(screen.getByTestId('passage-record'));
     fireEvent(
@@ -2485,6 +2506,35 @@ describe('PassageScreen', () => {
       expect.objectContaining({ id: 't1' }),
       undefined,
     );
+  });
+
+  describe('first saved passage take (#942)', () => {
+    it('shows the first take as selected without the official badge', () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(1), isSelected: true }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(screen.getByLabelText('Take 1, selected')).toBeTruthy();
+      expect(screen.queryByLabelText(/Take 1, official/)).toBeNull();
+    });
+
+    it('keeps exactly one selected take after a second save, still not official', () => {
+      mockSession = {
+        ...mockSession,
+        takes: [take(1), { ...take(2), isSelected: true }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+
+      expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();
+      expect(screen.getByLabelText('Take 1')).toBeTruthy();
+      expect(screen.queryByLabelText('Take 1, selected')).toBeNull();
+      expect(screen.queryByLabelText('Take 2, official, selected')).toBeNull();
+      expect(screen.queryByLabelText('Take 1, official')).toBeNull();
+    });
   });
 
   describe('Eject', () => {
