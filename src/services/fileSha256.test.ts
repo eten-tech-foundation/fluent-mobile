@@ -7,8 +7,10 @@ const { File } = ExpoFileSystem;
 const mockFiles = ExpoFileSystem as typeof ExpoFileSystem & {
   __setMockFileBytes(uri: string, bytes: Uint8Array): void;
   __getOpenFileHandleCount(): number;
+  resetFileSystemMock(): void;
 };
-const { __setMockFileBytes, __getOpenFileHandleCount } = mockFiles;
+const { __setMockFileBytes, __getOpenFileHandleCount, resetFileSystemMock } =
+  mockFiles;
 
 const { createHash, randomBytes } = require('node:crypto') as {
   createHash: (name: string) => {
@@ -68,8 +70,19 @@ describe('Sha256', () => {
 describe('sha256File', () => {
   const uri = 'file:///mock-document/take.m4a';
 
+  beforeEach(() => {
+    resetFileSystemMock();
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it('reports a missing file the same way when the caller passes a size', async () => {
+    await expect(sha256File(uri, { size: 10 })).rejects.toThrow(
+      'Audio file is missing',
+    );
+    expect(__getOpenFileHandleCount()).toBe(0);
   });
 
   it.each([

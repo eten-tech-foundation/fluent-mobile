@@ -1,7 +1,8 @@
-// Production wiring (#257): `pushPendingStageAdvancesAfterUpload` must turn the
-// drain's resolved `{ failed > 0 }` result into a session failure so the bounded
-// retry runs and `complete` (which refreshes My Work) only follows a confirmed
-// drain. The drain itself is mocked at its production result contract.
+// Production wiring (#257, #886): `pushPendingStageAdvancesAfterUpload` must turn
+// a drain that resolved with `{ failed > 0 }` or offline `{ deferred > 0 }` into
+// a session failure so the bounded retry runs and `complete` (which refreshes
+// My Work) only follows a confirmed drain. The drain itself is mocked at its
+// production result contract.
 import type { UploadSessionEvent } from './syncEvents';
 import {
   SESSION_RETRY_MAX_ATTEMPTS,
@@ -168,6 +169,25 @@ describe('stage drain result contract (#257)', () => {
     await waitFor(() => eventTypes().includes('complete'));
     expect(mockDrain).toHaveBeenCalledTimes(2);
     expect(eventTypes().filter(type => type === 'complete')).toHaveLength(1);
+  });
+
+  it('retries when the drain defers offline rows, and does not emit complete', async () => {
+    mockDrain.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      deferred: 2,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => mockDrain.mock.calls.length === 1);
+    await waitFor(() => armedTimers().length === 1);
+
+    expect(eventTypes()).not.toContain('complete');
+    expect(armedTimers().map(timer => timer.delay)).toEqual([
+      sessionRetryDelayMs(1),
+    ]);
   });
 
   it('emits complete on the first pass when the drain confirms every row', async () => {

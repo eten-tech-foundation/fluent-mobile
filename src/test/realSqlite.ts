@@ -135,6 +135,8 @@ export function createRealSqliteDb(): DB {
 
   return {
     execute,
+    executeSync: (query: string, params?: Scalar[]): QueryResult =>
+      executeOn(raw, query, params),
     transaction,
     close: async () => {
       raw.close();
