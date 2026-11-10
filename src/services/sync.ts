@@ -2529,10 +2529,14 @@ export async function syncAllUsers(): Promise<void> {
             // once the pending-row upsert freeze is gone. Rows with pending
             // takes stay queued until those uploads finish (#257).
             await syncRequiredStageAdvances(userIdNum, token);
+            // A skipped row withholds the assignment cursor so that row is
+            // fetched again. It must not drop this account out of the text
+            // pull: chapters already stored still need verse edits, and a
+            // chapter from the skipped row full-fetches once it inserts.
             if (!partialSkipWarning && syncedAt) {
               usersPendingCursorUpdate.push({ userId, syncedAt });
             }
-            if (!partialSkipWarning) usersCoveredForText.push(userId);
+            usersCoveredForText.push(userId);
           } catch (error) {
             if (isAuthError(error)) {
               if (userId === currentActiveUserId) {
