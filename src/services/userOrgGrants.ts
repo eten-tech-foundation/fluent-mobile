@@ -2,6 +2,7 @@ import type { ApiOrgGrant, ApiUser } from '../types/api/responses';
 import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
 import { isAuthError } from './authError';
+import { clearDraftListingSnapshotsForUser } from './draftListingSnapshot';
 import { getCredentials } from './keychain';
 import { emitAuthReauthRequired } from './syncEvents';
 import {
@@ -119,6 +120,7 @@ function writeSnapshot(userId: string, snapshot: UserOrgGrantsSnapshot): void {
   const serialized = JSON.stringify(snapshot);
   if (kvStorage.getItemSync(grantSnapshotKey(userId)) !== serialized) {
     clearPassageResourceReuse(userId);
+    clearDraftListingSnapshotsForUser(userId);
   }
   kvStorage.setItemSync(grantSnapshotKey(userId), serialized);
 }

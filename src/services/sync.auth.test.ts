@@ -15,12 +15,21 @@ import {
 } from './keychain';
 import {
   __resetFullSyncSingleFlightForTests,
+  __resetMetadataRefreshFreshnessForTests,
+  BIBLE_TEXT_CURSOR_OVERLAP_MS,
+  CATALOGUE_REFRESH_QUIET_MS,
+  METADATA_REFRESH_FRESH_MS,
   refreshChapterMetadataIfOnline,
   refreshPrepareOfflineReferencedParents,
   syncAllData,
   syncAllUsers,
+  syncPendingChapterClaimsForUser,
   syncPendingStageAdvancesForUser,
 } from './sync';
+
+/** Incremental text requests rewind the chapter cursor (#886). */
+const overlapped = (iso: string): string =>
+  new Date(Date.parse(iso) - BIBLE_TEXT_CURSOR_OVERLAP_MS).toISOString();
 import * as sync from './sync';
 import * as syncEvents from './syncEvents';
 import { getConnectivitySnapshot } from './connectivity';
@@ -29,10 +38,16 @@ import {
   getKnownUserIds,
   getUserLastSyncedAt,
   setUserLastSyncedAt,
+  clearCatalogueQuietSince,
+  getCatalogueQuietSince,
+  setCatalogueQuietSince,
+  getUserBibleTextSyncedAt,
+  setUserBibleTextSyncedAt,
   getLastAssignmentSyncAt,
   getLastSyncedAt,
   getUserIdSync,
   setSyncError,
+  clearSyncError,
   setSyncCount,
   setReauthRequired,
   registerKnownUser,
@@ -102,6 +117,7 @@ jest.mock('./userOrgGrants', () => ({
 
 jest.mock('./connectivity', () => ({
   getConnectivitySnapshot: jest.fn(),
+  SERVER_REACHABILITY_FRESH_MS: 5_000,
 }));
 
 jest.mock('./keychain', () => ({
@@ -140,6 +156,19 @@ jest.mock('./storage', () => ({
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
+  getCatalogueQuietSince: jest.fn(() => null),
+  setCatalogueQuietSince: jest.fn(),
+  clearCatalogueQuietSince: jest.fn(),
+  // Test convenience only (#886): the real getter runs a one-time legacy
+  // reconciliation (storage.test.ts); here it just follows the legacy mock.
+  getUserBibleTextSyncedAt: jest.fn((userId: string) =>
+    jest.requireMock('./storage').getUserLastSyncedAt(userId),
+  ),
+  setUserBibleTextSyncedAt: jest.fn(),
+  getBibleTextChapterSyncedAt: jest.fn(() => '2026-01-01T00:00:00.000Z'),
+  setBibleTextChapterSyncedAt: jest.fn(),
+  getBibleTextChapterFullReconcileAt: jest.fn(() => null),
+  setBibleTextChapterFullReconcileAt: jest.fn(),
   setUserSync: jest.fn(),
   registerKnownUser: jest.fn(),
   setSyncCount: jest.fn(),
@@ -204,7 +233,7 @@ jest.mock('../db/repository', () => ({
   insertPericopeSets: jest.fn().mockResolvedValue(undefined),
   getProjectPericopeSetId: jest.fn().mockResolvedValue(null),
   getChaptersNeedingPericopeSync: jest.fn().mockResolvedValue([]),
-  upsertPericopeSet: jest.fn().mockResolvedValue(undefined),
+  upsertPericopeSet: jest.fn().mockResolvedValue(true),
   getBibleTextAbsencesForBible: jest.fn().mockResolvedValue([]),
   recordBibleTextAbsences: jest.fn().mockResolvedValue(undefined),
   clearBibleTextAbsences: jest.fn().mockResolvedValue(undefined),
@@ -265,6 +294,9 @@ const { reconcileUserProjects, reconcileUserChapterWork } = jest.requireMock(
 describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-01-01T00:00:00.000Z');
     mockGetConnectivitySnapshot.mockResolvedValue({
       isOnline: true,
       isWifi: true,
@@ -311,7 +343,10 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
 
     await refreshChapterMetadataIfOnline(2);
 
-    expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+    expect(syncPendingChapterClaims).toHaveBeenCalledWith(
+      2,
+      expect.any(String),
+    );
     expect(syncPendingStageAdvances).toHaveBeenCalledWith(
       2,
       expect.any(String),
@@ -336,6 +371,98 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
 
     expect(setReauthRequired).toHaveBeenCalledWith('2');
     expect(syncEvents.emitAuthReauthRequired).toHaveBeenCalledWith('2');
+  });
+
+  it('reports offline stage rows as deferred instead of a clean empty drain (#886)', async () => {
+    mockGetConnectivitySnapshot.mockResolvedValueOnce({
+      isOnline: false,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'none',
+    });
+    mockGetPendingStageAdvances.mockResolvedValueOnce([
+      { id: 1, userId: 2 },
+      { id: 2, userId: 2 },
+      { id: 3, userId: 9 },
+    ]);
+
+    await expect(syncPendingStageAdvancesForUser(2, 'token')).resolves.toEqual({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      deferred: 2,
+    });
+    expect(syncPendingStageAdvances).not.toHaveBeenCalled();
+  });
+
+  it('skips the reachability probe and the drain when no stage advances are pending (#886)', async () => {
+    mockGetPendingStageAdvances.mockResolvedValueOnce([{ id: 3, userId: 9 }]);
+
+    await expect(syncPendingStageAdvancesForUser(2, 'token')).resolves.toEqual({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+    });
+    expect(mockGetConnectivitySnapshot).not.toHaveBeenCalled();
+    expect(syncPendingStageAdvances).not.toHaveBeenCalled();
+  });
+
+  it('still probes and drains when the stage-advance count cannot be read (#886)', async () => {
+    mockGetPendingStageAdvances.mockRejectedValueOnce(new Error('db closed'));
+
+    await syncPendingStageAdvancesForUser(2, 'token');
+
+    expect(mockGetConnectivitySnapshot).toHaveBeenCalledWith({
+      maxAgeMs: expect.any(Number),
+    });
+    expect(syncPendingStageAdvances).toHaveBeenCalledWith(2, 'token');
+  });
+
+  it('skips the reachability probe and the drain when no chapter claims are pending (#886)', async () => {
+    mockHasPendingChapterClaimsForUser.mockResolvedValueOnce(false);
+
+    await expect(syncPendingChapterClaimsForUser(2, 'token')).resolves.toEqual({
+      synced: 0,
+      conflicts: 0,
+      failed: 0,
+    });
+    expect(mockHasPendingChapterClaimsForUser).toHaveBeenCalledWith(2);
+    expect(mockGetConnectivitySnapshot).not.toHaveBeenCalled();
+    expect(syncPendingChapterClaims).not.toHaveBeenCalled();
+    // An online drain of an empty queue used to clear this key through
+    // retrySyncStep; the skip must not leave a stale claims error behind.
+    expect(clearSyncError).toHaveBeenCalledWith('sync_error_chapter_claims');
+  });
+
+  it('still probes and drains claims when the pending check cannot be read (#886)', async () => {
+    mockHasPendingChapterClaimsForUser.mockRejectedValueOnce(
+      new Error('db closed'),
+    );
+
+    await syncPendingChapterClaimsForUser(2, 'token');
+
+    expect(mockGetConnectivitySnapshot).toHaveBeenCalledWith({
+      maxAgeMs: expect.any(Number),
+    });
+    expect(syncPendingChapterClaims).toHaveBeenCalledWith(2, 'token');
+  });
+
+  it('assumes deferred work when the offline pending count cannot be read (#886)', async () => {
+    mockGetConnectivitySnapshot.mockResolvedValueOnce({
+      isOnline: false,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'none',
+    });
+    mockGetPendingStageAdvances.mockRejectedValueOnce(new Error('db closed'));
+
+    await expect(syncPendingStageAdvancesForUser(2, 'token')).resolves.toEqual({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      deferred: 1,
+    });
   });
 
   it('runs chapter-work reconciliation with empty lists when the response is validly empty', async () => {
@@ -380,9 +507,45 @@ jest.mock('../db/db', () => ({
   })),
 }));
 
+const mockGetPendingStageAdvances = jest.fn();
+jest.mock('../db/stageAdvanceQueueRepository', () => ({
+  getPendingStageAdvances: () => mockGetPendingStageAdvances(),
+}));
+
+const mockHasPendingChapterClaimsForUser = jest.fn();
+const mockGetDatabaseWriteMark = jest.fn();
+jest.mock('../db/queries', () => ({
+  hasPendingChapterClaimsForUser: (userId: number) =>
+    mockHasPendingChapterClaimsForUser(userId),
+  getDatabaseWriteMark: () => mockGetDatabaseWriteMark(),
+  sameDatabaseWrites: (
+    a: { changes: number } | null,
+    b: { changes: number } | null,
+  ) => a !== null && b !== null && a.changes === b.changes,
+}));
+
+// #886: drains skip the reachability probe when their queue is empty.
+// Default both queues to "has work" so the existing token/ordering
+// assertions on the drain calls keep exercising the drain path; the empty-queue probe skip
+// cases below override these per test. Light-refresh freshness is
+// per-process state, so clear it before every case.
+beforeEach(() => {
+  __resetMetadataRefreshFreshnessForTests();
+  mockGetDatabaseWriteMark.mockReset().mockResolvedValue(null);
+  mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+  mockGetPendingStageAdvances.mockResolvedValue([
+    { id: 1, userId: 1 },
+    { id: 2, userId: 2 },
+    { id: 3, userId: 3 },
+  ]);
+});
+
 describe('refreshChapterMetadataIfOnline', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-01-01T00:00:00.000Z');
 
     mockGetConnectivitySnapshot.mockResolvedValue({
       isOnline: true,
@@ -848,8 +1011,12 @@ describe('refreshChapterMetadataIfOnline', () => {
       expect(getChaptersNeedingPericopeSync).toHaveBeenCalled();
       expect(setUserLastSyncedAt).not.toHaveBeenCalled();
 
-      // Retry with clean parents eventually advances cursor.
+      // Retry with clean parents eventually advances cursor. A partial FK
+      // skip must not arm the light-refresh freshness window (#886).
       jest.clearAllMocks();
+      (
+        jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+      ).mockReturnValue('2026-01-01T00:00:00.000Z');
       mockGetConnectivitySnapshot.mockResolvedValue({
         isOnline: true,
         isWifi: true,
@@ -899,9 +1066,20 @@ describe('refreshChapterMetadataIfOnline', () => {
       syncedAt: '2026-08-18T07:10:52.908Z',
       data: [],
     });
+    const realNow = Date.now;
+    let clockOffsetMs = 0;
+    const nowSpy = jest
+      .spyOn(Date, 'now')
+      .mockImplementation(() => realNow() + clockOffsetMs);
 
-    await refreshChapterMetadataIfOnline(2);
-    await refreshChapterMetadataIfOnline(2);
+    try {
+      await refreshChapterMetadataIfOnline(2);
+      // Past the light-refresh freshness window (#886).
+      clockOffsetMs = METADATA_REFRESH_FRESH_MS + 1;
+      await refreshChapterMetadataIfOnline(2);
+    } finally {
+      nowSpy.mockRestore();
+    }
 
     // Each refresh snapshots once for the gate, once for claims, once for stage advances.
     expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(6);
@@ -1134,7 +1312,7 @@ describe('refreshChapterMetadataIfOnline', () => {
     expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
   });
 
-  it('emits sync-complete after metadata refresh finishes (success, clear, or early exit)', async () => {
+  it('emits sync-complete after a refresh that reached the server, not after an offline exit', async () => {
     const emitSpy = jest
       .spyOn(syncEvents, 'emitSyncComplete')
       .mockImplementation(() => {});
@@ -1144,6 +1322,9 @@ describe('refreshChapterMetadataIfOnline', () => {
       expect(emitSpy).toHaveBeenCalledTimes(1);
 
       emitSpy.mockClear();
+      // The offline early exit is only reachable once the previous success
+      // has aged out of the freshness window (#886).
+      __resetMetadataRefreshFreshnessForTests();
       mockGetConnectivitySnapshot.mockResolvedValueOnce({
         isOnline: false,
         isWifi: false,
@@ -1151,10 +1332,317 @@ describe('refreshChapterMetadataIfOnline', () => {
         connectionType: 'none',
       });
       await refreshChapterMetadataIfOnline(2);
-      expect(emitSpy).toHaveBeenCalledTimes(1);
+      expect(emitSpy).not.toHaveBeenCalled();
     } finally {
       emitSpy.mockRestore();
     }
+  });
+
+  describe('light-refresh freshness (#886)', () => {
+    it('skips a repeat refresh inside the freshness window when the catalogue is still quiet', async () => {
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+      mockGetPendingStageAdvances.mockResolvedValue([]);
+      const emitSpy = jest
+        .spyOn(syncEvents, 'emitSyncComplete')
+        .mockImplementation(() => {});
+      try {
+        await refreshChapterMetadataIfOnline(2);
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+        const probesAfterFirst = mockGetConnectivitySnapshot.mock.calls.length;
+        emitSpy.mockClear();
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(Date.now());
+
+        await refreshChapterMetadataIfOnline(2);
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+        expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(
+          probesAfterFirst,
+        );
+        expect(emitSpy).not.toHaveBeenCalled();
+      } finally {
+        emitSpy.mockRestore();
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+      }
+    });
+
+    it('pulls again inside the freshness window when a claim is waiting', async () => {
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+      mockGetPendingStageAdvances.mockResolvedValue([]);
+
+      try {
+        await refreshChapterMetadataIfOnline(2);
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(Date.now());
+        mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+      } finally {
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+      }
+    });
+
+    it('clears an existing quiet stamp when an assignment row is skipped', async () => {
+      (getCatalogueQuietSince as jest.Mock).mockReturnValue(
+        Date.now() - 60_000,
+      );
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        syncedAt: '2026-02-01T00:00:00.000Z',
+        data: [
+          {
+            chapterAssignmentId: 11,
+            projectUnitId: 22,
+            projectId: 1,
+            bibleId: 167,
+            bookId: 40,
+            chapterNumber: 3,
+            chapterStatus: 'in_progress',
+            totalVerses: 10,
+            completedVerses: 2,
+            updatedAt: '2026-02-01T00:00:00.000Z',
+          },
+        ],
+      });
+      insertChapterAssignmentSyncData.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [{ chapterAssignmentId: 11, reason: 'missing_book' }],
+      });
+
+      try {
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+        expect(setCatalogueQuietSince).not.toHaveBeenCalled();
+
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+        await refreshChapterMetadataIfOnline(2);
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+      } finally {
+        insertChapterAssignmentSyncData.mockResolvedValue({
+          insertedCount: 1,
+          skipped: [],
+        });
+        (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+          data: [],
+        });
+        (getCatalogueQuietSince as jest.Mock).mockReturnValue(null);
+      }
+    });
+
+    it('keeps freshness per user', async () => {
+      (getCredentials as jest.Mock).mockImplementation(
+        async (userId: string) => ({ token: `user-${userId}-token` }),
+      );
+
+      await refreshChapterMetadataIfOnline(2);
+      (getActiveUserId as jest.Mock).mockReturnValue('3');
+      await refreshChapterMetadataIfOnline(3);
+
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(3, 'user-3-token');
+    });
+
+    it('does not arm the window when the refresh fails, so the next focus retries', async () => {
+      (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+        new ApiError(502, 'upstream'),
+      );
+
+      await refreshChapterMetadataIfOnline(2);
+      await refreshChapterMetadataIfOnline(2);
+
+      // Three attempts per focus. The first failure must not arm freshness,
+      // or the second focus would not reach the server.
+      expect(FluentAPI.getUserProjects).toHaveBeenCalledTimes(6);
+      expect(setCatalogueQuietSince).not.toHaveBeenCalled();
+      expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+    });
+
+    it('does not arm the window when a drain soft-fails, so the next focus retries', async () => {
+      syncPendingStageAdvances.mockRejectedValueOnce(new Error('503'));
+
+      await refreshChapterMetadataIfOnline(2);
+      await refreshChapterMetadataIfOnline(2);
+
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not arm the window when stage advances were deferred', async () => {
+      mockGetConnectivitySnapshot
+        .mockResolvedValueOnce({
+          isOnline: true,
+          isWifi: true,
+          isCellular: false,
+          connectionType: 'wifi',
+        })
+        .mockResolvedValueOnce({
+          isOnline: true,
+          isWifi: true,
+          isCellular: false,
+          connectionType: 'wifi',
+        })
+        .mockResolvedValueOnce({
+          isOnline: false,
+          isWifi: false,
+          isCellular: false,
+          connectionType: 'none',
+        });
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(syncPendingStageAdvances).not.toHaveBeenCalled();
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not arm the window when claims were deferred offline (#886)', async () => {
+      mockGetConnectivitySnapshot
+        .mockResolvedValueOnce({
+          isOnline: true,
+          isWifi: true,
+          isCellular: false,
+          connectionType: 'wifi',
+        })
+        .mockResolvedValueOnce({
+          isOnline: false,
+          isWifi: false,
+          isCellular: false,
+          connectionType: 'none',
+        });
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(syncPendingChapterClaims).not.toHaveBeenCalled();
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not arm the window when the refresh exits early offline', async () => {
+      mockGetConnectivitySnapshot.mockResolvedValueOnce({
+        isOnline: false,
+        isWifi: false,
+        isCellular: false,
+        connectionType: 'none',
+      });
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+
+      await refreshChapterMetadataIfOnline(2);
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+    });
+
+    describe('15-minute catalogue window', () => {
+      const quietSince = getCatalogueQuietSince as jest.Mock;
+
+      beforeEach(() => {
+        mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+        mockGetPendingStageAdvances.mockResolvedValue([]);
+      });
+
+      afterEach(() => {
+        quietSince.mockReturnValue(null);
+      });
+
+      it('skips the pull inside the window after a clean refresh on this device', async () => {
+        quietSince.mockReturnValue(Date.now() - 60_000);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(mockGetConnectivitySnapshot).not.toHaveBeenCalled();
+        expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+        expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
+        expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+        expect(syncPendingChapterClaims).not.toHaveBeenCalled();
+      });
+
+      it('ignores a fresh server cursor when this device never armed the window', async () => {
+        (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+          new Date().toISOString(),
+        );
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      });
+
+      it('still pulls inside the window when a claim is waiting', async () => {
+        quietSince.mockReturnValue(Date.now());
+        mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      });
+
+      it('pulls once the window has passed', async () => {
+        quietSince.mockReturnValue(Date.now() - CATALOGUE_REFRESH_QUIET_MS);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      });
+
+      it('pulls and disarms when the clock moved back past the stamp', async () => {
+        quietSince.mockReturnValue(Date.now() + 60_000);
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+        expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      });
+
+      it('arms the window only after a clean, complete refresh', async () => {
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(setCatalogueQuietSince).toHaveBeenCalledWith(
+          '2',
+          expect.any(Number),
+        );
+      });
+
+      it('does not arm the window when the refresh fails', async () => {
+        (FluentAPI.getUserProjects as jest.Mock).mockRejectedValue(
+          new ApiError(502, 'upstream'),
+        );
+
+        await refreshChapterMetadataIfOnline(2);
+
+        expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+        expect(setCatalogueQuietSince).not.toHaveBeenCalled();
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+      });
+
+      it('Sync Now disarms the window for the active account', async () => {
+        await syncAllData(true).catch(() => undefined);
+
+        expect(clearCatalogueQuietSince).toHaveBeenCalledWith('2');
+      });
+    });
+
+    it('a warm refresh with empty claim and stage queues issues exactly one reachability probe', async () => {
+      mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+      mockGetPendingStageAdvances.mockResolvedValue([]);
+
+      await refreshChapterMetadataIfOnline(2);
+
+      // Without the empty-queue probe skip this was three: entry gate + claims drain + stage drain.
+      expect(mockGetConnectivitySnapshot).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledTimes(1);
+      expect(syncPendingChapterClaims).not.toHaveBeenCalled();
+      expect(syncPendingStageAdvances).not.toHaveBeenCalled();
+    });
+
+    it('passes the shared reachability freshness to the entry probe', async () => {
+      await refreshChapterMetadataIfOnline(2);
+
+      expect(mockGetConnectivitySnapshot).toHaveBeenNthCalledWith(1, {
+        maxAgeMs: expect.any(Number),
+      });
+    });
   });
 
   it("passes this user's stored token to sync calls without mutating global authToken", async () => {
@@ -1255,6 +1743,9 @@ describe('refreshChapterMetadataIfOnline', () => {
 describe('refreshPrepareOfflineReferencedParents', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-01-01T00:00:00.000Z');
     mockGetConnectivitySnapshot.mockResolvedValue({
       isOnline: true,
       isWifi: true,
@@ -1483,6 +1974,9 @@ describe('refreshPrepareOfflineReferencedParents', () => {
 describe('syncAllData auth handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-01-01T00:00:00.000Z');
     __resetFullSyncSingleFlightForTests();
     jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
@@ -1691,11 +2185,15 @@ describe('syncAllData auth handling', () => {
     );
   });
 
-  it('stores a per-user sync cursor after syncAllData succeeds', async () => {
+  it('stores the server assignment syncedAt as the per-user cursor after syncAllData succeeds', async () => {
     (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
     );
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-06-02T00:00:00.000Z',
+      data: [],
+    });
     // Capable remote displayMode available — sync must still never call settings (#777).
     (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
       settings: {
@@ -1708,9 +2206,27 @@ describe('syncAllData auth handling', () => {
 
     await syncAllData(true);
 
-    expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
+    // #886: cursor is the server's syncedAt, never the device clock.
+    expect(setUserLastSyncedAt).toHaveBeenCalledWith(
+      '2',
+      '2026-06-02T00:00:00.000Z',
+    );
     expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
     expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
+  });
+
+  it('does not advance the per-user assignment cursor when the server omits syncedAt (#886)', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'valid-token' });
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-06-01T00:00:00.000Z',
+    );
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+
+    await syncAllData(true);
+
+    expect(setUserLastSyncedAt).not.toHaveBeenCalled();
   });
 
   it('continues chapter assignment sync after pending claim soft-fail', async () => {
@@ -1769,6 +2285,9 @@ describe('sync phase timing instrumentation (#764)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-01-01T00:00:00.000Z');
     __resetFullSyncSingleFlightForTests();
     transport.mockReset();
     logger.setTransport(transport);
@@ -1874,6 +2393,9 @@ describe('sync phase timing instrumentation (#764)', () => {
 describe('syncAllUsers auth handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-01-01T00:00:00.000Z');
     __resetFullSyncSingleFlightForTests();
     jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
@@ -1894,6 +2416,10 @@ describe('syncAllUsers auth handling', () => {
     (getUserLastSyncedAt as jest.Mock).mockReturnValue(
       '2026-06-01T00:00:00.000Z',
     );
+    // Read-through default (#886); individual tests override per user.
+    (getUserBibleTextSyncedAt as jest.Mock).mockImplementation(
+      (userId: string) => (getUserLastSyncedAt as jest.Mock)(userId),
+    );
     (FluentAPI.getLanguages as jest.Mock).mockResolvedValue([]);
     (FluentAPI.getBooks as jest.Mock).mockResolvedValue([]);
     (FluentAPI.getBibles as jest.Mock).mockResolvedValue([]);
@@ -1912,6 +2438,10 @@ describe('syncAllUsers auth handling', () => {
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-06-02T00:00:00.000Z',
+      data: [],
+    });
     // Capable remote displayMode available — sync must still never call settings (#777).
     (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
       settings: {
@@ -1930,8 +2460,14 @@ describe('syncAllUsers auth handling', () => {
     expect(FluentAPI.getSelfSettings).not.toHaveBeenCalled();
     expect(FluentAPI.putSelfSettings).not.toHaveBeenCalled();
     expect(authToken.set).not.toHaveBeenCalled();
-    expect(setUserLastSyncedAt).toHaveBeenCalledWith('1', expect.any(String));
-    expect(setUserLastSyncedAt).toHaveBeenCalledWith('2', expect.any(String));
+    expect(setUserLastSyncedAt).toHaveBeenCalledWith(
+      '1',
+      '2026-06-02T00:00:00.000Z',
+    );
+    expect(setUserLastSyncedAt).toHaveBeenCalledWith(
+      '2',
+      '2026-06-02T00:00:00.000Z',
+    );
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
   });
 
@@ -1973,10 +2509,63 @@ describe('syncAllUsers auth handling', () => {
     expect(authToken.set).not.toHaveBeenCalled();
   });
 
-  it('runs full bible text sync when any user had a full assignment sync', async () => {
+  it('drains each account’s pending claims with that account’s own token (#886)', async () => {
     (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
       userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+
+    await syncAllUsers();
+
+    // The claim endpoint assigns to the bearer: user 1's queue must never be
+    // posted with the active user's (2) token.
+    expect(syncPendingChapterClaims).toHaveBeenCalledWith(1, 'user-1-token');
+    expect(syncPendingChapterClaims).toHaveBeenCalledWith(2, 'user-2-token');
+  });
+
+  it('marks a non-active account for reauth when its claim drain hits an expired session, without poisoning the active account (#886)', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-stale' } : { token: 'user-2-token' },
+    );
+    syncPendingChapterClaims.mockImplementation(async (userId: number) => {
+      if (userId === 1) {
+        throw new AuthError('Invalid or revoked session token');
+      }
+      return { synced: 0, conflicts: 0, failed: 0 };
+    });
+
+    try {
+      await syncAllUsers();
+    } finally {
+      syncPendingChapterClaims.mockReset();
+      syncPendingChapterClaims.mockResolvedValue({
+        synced: 0,
+        conflicts: 0,
+        failed: 0,
+      });
+    }
+
+    expect(setReauthRequired).toHaveBeenCalledWith('1');
+    expect(setReauthRequired).not.toHaveBeenCalledWith('2');
+    expect(syncEvents.emitAuthReauthRequired).not.toHaveBeenCalled();
+    // The active account still completes its own sync.
+    expect(FluentAPI.getUserProjects).toHaveBeenCalledWith(2, 'user-2-token');
+  });
+
+  it('keeps the bible-text cursor when one account needs a full assignment pull', async () => {
+    const { getDatabase } = jest.requireMock('../db/db') as {
+      getDatabase: jest.Mock;
+    };
+    getDatabase.mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 12 }] }),
+    });
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-06-01T00:00:00.000Z');
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    // User 2 has no local projects, so its assignment pull is unscoped.
+    // Verses are already stored, so the text pull must stay on the text cursor.
     userHasLocalProjects.mockImplementation(
       async (userId: number) => userId === 1,
     );
@@ -1993,14 +2582,119 @@ describe('syncAllUsers auth handling', () => {
       ],
     });
 
-    await syncAllUsers();
+    try {
+      await syncAllUsers();
 
-    expect(getChaptersToSync).toHaveBeenCalledWith([1, 2]);
-    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
-      1,
-      [{ bookId: 1, chapterNumber: 1 }],
-      undefined,
+      expect(FluentAPI.getChapterAssignments).toHaveBeenCalledWith(
+        2,
+        undefined,
+        undefined,
+        'user-2-token',
+      );
+      expect(getChaptersToSync).toHaveBeenCalledWith([1, 2]);
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        1,
+        [{ bookId: 1, chapterNumber: 1 }],
+        overlapped('2026-06-01T00:00:00.000Z'),
+      );
+    } finally {
+      (
+        jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+      ).mockReturnValue('2026-01-01T00:00:00.000Z');
+      getDatabase.mockReturnValue({
+        execute: jest.fn().mockResolvedValue({ rows: [{ count: 0 }] }),
+      });
+    }
+  });
+
+  it('still pulls bible text when an assignment row is skipped for a missing parent', async () => {
+    const { getDatabase } = jest.requireMock('../db/db') as {
+      getDatabase: jest.Mock;
+    };
+    getDatabase.mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 12 }] }),
+    });
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
     );
+    (getUserBibleTextSyncedAt as jest.Mock).mockImplementation(
+      (userId: string) =>
+        userId === '1'
+          ? '2026-01-01T00:00:00.000Z'
+          : '2026-01-02T00:00:00.000Z',
+    );
+    (FluentAPI.getChapterAssignments as jest.Mock).mockImplementation(
+      async (userId: number) => ({
+        syncedAt: '2026-02-01T00:00:00.000Z',
+        data:
+          userId === 1
+            ? [
+                {
+                  chapterAssignmentId: 11,
+                  projectUnitId: 22,
+                  projectId: 1,
+                  bibleId: 167,
+                  bookId: 40,
+                  chapterNumber: 3,
+                  chapterStatus: 'in_progress',
+                  totalVerses: 10,
+                  completedVerses: 2,
+                  updatedAt: '2026-02-01T00:00:00.000Z',
+                },
+              ]
+            : [],
+      }),
+    );
+    insertChapterAssignmentSyncData.mockResolvedValue({
+      insertedCount: 1,
+      skipped: [{ chapterAssignmentId: 11, reason: 'missing_book' }],
+    });
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-02-02T00:00:00.000Z',
+      data: [
+        {
+          bookId: 1,
+          chapterNumber: 1,
+          verses: [{ id: 1001, verseNumber: 1, text: 'edited' }],
+        },
+      ],
+    });
+
+    try {
+      await syncAllUsers();
+
+      expect(setUserLastSyncedAt).not.toHaveBeenCalledWith(
+        '1',
+        expect.anything(),
+      );
+      expect(setUserLastSyncedAt).toHaveBeenCalledWith(
+        '2',
+        '2026-02-01T00:00:00.000Z',
+      );
+      expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+        1,
+        [{ bookId: 1, chapterNumber: 1 }],
+        overlapped('2026-01-01T00:00:00.000Z'),
+      );
+      expect(setUserBibleTextSyncedAt).toHaveBeenCalledWith(
+        '1',
+        '2026-02-02T00:00:00.000Z',
+      );
+    } finally {
+      insertChapterAssignmentSyncData.mockResolvedValue({
+        insertedCount: 1,
+        skipped: [],
+      });
+      (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+        data: [],
+      });
+      getDatabase.mockReturnValue({
+        execute: jest.fn().mockResolvedValue({ rows: [{ count: 0 }] }),
+      });
+    }
   });
 
   it('scopes catalogue bible-text selection to the union of known users', async () => {
@@ -2122,6 +2816,9 @@ describe('syncAllUsers auth handling', () => {
     getChaptersToSync.mockResolvedValue(
       new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
     );
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-05-01T00:00:00.000Z');
     (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({ data: [] });
 
     await syncAllUsers();
@@ -2129,7 +2826,174 @@ describe('syncAllUsers auth handling', () => {
     expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
       1,
       [{ bookId: 1, chapterNumber: 1 }],
-      '2026-05-01T00:00:00.000Z',
+      overlapped('2026-05-01T00:00:00.000Z'),
+    );
+  });
+
+  it('uses the per-user bible-text cursor, not the assignment cursor, for the text pull (#886)', async () => {
+    // Edit-between-light-refresh-and-full-sync: the assignment cursor moved to
+    // Jan 3 on a light refresh while the last complete text pull was Jan 1.
+    // The text request must still ask for edits since Jan 1.
+    const { getDatabase } = jest.requireMock('../db/db') as {
+      getDatabase: jest.Mock;
+    };
+    getDatabase.mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 12 }] }),
+    });
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    (getUserLastSyncedAt as jest.Mock).mockReturnValue(
+      '2026-01-03T00:00:00.000Z',
+    );
+    (getUserBibleTextSyncedAt as jest.Mock).mockImplementation(
+      (userId: string) =>
+        userId === '1'
+          ? '2026-01-01T00:00:00.000Z'
+          : '2026-01-02T00:00:00.000Z',
+    );
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-01-04T00:00:00.000Z',
+      data: [
+        {
+          bookId: 1,
+          chapterNumber: 1,
+          verses: [{ id: 1001, verseNumber: 1, text: 'edited' }],
+        },
+      ],
+    });
+
+    await syncAllUsers();
+
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+      1,
+      [{ bookId: 1, chapterNumber: 1 }],
+      overlapped('2026-01-01T00:00:00.000Z'),
+    );
+    // Text cursor = server syncedAt from the bulk response, for every account
+    // the union pull served.
+    expect(setUserBibleTextSyncedAt).toHaveBeenCalledWith(
+      '1',
+      '2026-01-04T00:00:00.000Z',
+    );
+    expect(setUserBibleTextSyncedAt).toHaveBeenCalledWith(
+      '2',
+      '2026-01-04T00:00:00.000Z',
+    );
+  });
+
+  it('ignores a device clock ahead of the server when committing cursors (#886)', async () => {
+    const { getDatabase } = jest.requireMock('../db/db') as {
+      getDatabase: jest.Mock;
+    };
+    getDatabase.mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 12 }] }),
+    });
+    jest.useFakeTimers({ now: new Date('2027-06-01T00:00:00.000Z') });
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    (FluentAPI.getChapterAssignments as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-06-02T00:00:00.000Z',
+      data: [],
+    });
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-06-02T00:00:01.000Z',
+      data: [
+        {
+          bookId: 1,
+          chapterNumber: 1,
+          verses: [{ id: 1001, verseNumber: 1, text: 'v' }],
+        },
+      ],
+    });
+
+    try {
+      await syncAllUsers();
+    } finally {
+      jest.useRealTimers();
+    }
+
+    for (const call of (setUserLastSyncedAt as jest.Mock).mock.calls) {
+      expect(call[1]).toBe('2026-06-02T00:00:00.000Z');
+    }
+    expect(setUserLastSyncedAt).toHaveBeenCalled();
+    for (const call of (setUserBibleTextSyncedAt as jest.Mock).mock.calls) {
+      expect(call[1]).toBe('2026-06-02T00:00:01.000Z');
+    }
+    expect(setUserBibleTextSyncedAt).toHaveBeenCalled();
+  });
+
+  it('does not advance the bible-text cursor on an empty incremental response (#886)', async () => {
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-06-01T00:00:00.000Z');
+    // The server answers `{ syncedAt, data: [] }` both for "nothing changed"
+    // and for a repository error when a cursor is present — never latch it.
+    const { getDatabase } = jest.requireMock('../db/db') as {
+      getDatabase: jest.Mock;
+    };
+    getDatabase.mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 12 }] }),
+    });
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-06-02T00:00:01.000Z',
+      data: [],
+    });
+
+    await syncAllUsers();
+
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+      1,
+      [{ bookId: 1, chapterNumber: 1 }],
+      overlapped('2026-06-01T00:00:00.000Z'),
+    );
+    expect(setUserBibleTextSyncedAt).not.toHaveBeenCalled();
+  });
+
+  it('forces a full bible-text pull when any served account has no text cursor (#886)', async () => {
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    (getUserBibleTextSyncedAt as jest.Mock).mockImplementation(
+      (userId: string) => (userId === '1' ? '2026-06-01T00:00:00.000Z' : ''),
+    );
+    getChaptersToSync.mockResolvedValue(
+      new Map([[1, [{ bookId: 1, chapterNumber: 1 }]]]),
+    );
+    (FluentAPI.getBibleTexts as jest.Mock).mockResolvedValue({
+      syncedAt: '2026-06-02T00:00:01.000Z',
+      data: [
+        {
+          bookId: 1,
+          chapterNumber: 1,
+          verses: [{ id: 1001, verseNumber: 1, text: 'v' }],
+        },
+      ],
+    });
+
+    await syncAllUsers();
+
+    expect(FluentAPI.getBibleTexts).toHaveBeenCalledWith(
+      1,
+      [{ bookId: 1, chapterNumber: 1 }],
+      undefined,
+    );
+    expect(setUserBibleTextSyncedAt).toHaveBeenCalledWith(
+      '2',
+      '2026-06-02T00:00:01.000Z',
     );
   });
 
@@ -2147,7 +3011,52 @@ describe('syncAllUsers auth handling', () => {
     await expect(syncAllUsers()).rejects.toThrow('Bible text sync failed');
 
     expect(setUserLastSyncedAt).not.toHaveBeenCalled();
+    expect(setUserBibleTextSyncedAt).not.toHaveBeenCalled();
     expect(syncEvents.emitSyncComplete).toHaveBeenCalled();
+  });
+
+  it('does not commit a text cursor when one chunk keeps failing after others committed (#886)', async () => {
+    jest.useFakeTimers();
+    const { getDatabase } = jest.requireMock('../db/db') as {
+      getDatabase: jest.Mock;
+    };
+    getDatabase.mockReturnValue({
+      execute: jest.fn().mockResolvedValue({ rows: [{ count: 12 }] }),
+    });
+    (getCredentials as jest.Mock).mockImplementation(async (userId: string) =>
+      userId === '1' ? { token: 'user-1-token' } : { token: 'user-2-token' },
+    );
+    getChaptersToSync.mockResolvedValue(
+      new Map([
+        [1, [{ bookId: 1, chapterNumber: 1 }]],
+        [2, [{ bookId: 1, chapterNumber: 1 }]],
+      ]),
+    );
+    // Bible 1 always succeeds (and is written); bible 2 always fails.
+    (FluentAPI.getBibleTexts as jest.Mock).mockImplementation(
+      async (bibleId: number) => {
+        if (bibleId === 2) throw new Error('bible 2 chunk failed');
+        return {
+          syncedAt: '2026-06-02T00:00:01.000Z',
+          data: [
+            {
+              bookId: 1,
+              chapterNumber: 1,
+              verses: [{ id: 1001, verseNumber: 1, text: 'v' }],
+            },
+          ],
+        };
+      },
+    );
+
+    const pending = syncAllUsers();
+    pending.catch(() => undefined);
+    await jest.runAllTimersAsync();
+    jest.useRealTimers();
+    await expect(pending).rejects.toThrow('bible 2 chunk failed');
+
+    // Coverage is only complete when every chunk committed in one attempt.
+    expect(setUserBibleTextSyncedAt).not.toHaveBeenCalled();
   });
 
   it('starts pending claim sync without waiting for master data', async () => {
@@ -2170,7 +3079,10 @@ describe('syncAllUsers auth handling', () => {
     const pending = syncAllUsers();
 
     await waitFor(() => {
-      expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+      expect(syncPendingChapterClaims).toHaveBeenCalledWith(
+        2,
+        expect.any(String),
+      );
     });
     expect(syncPendingStageAdvances).not.toHaveBeenCalled();
     expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
@@ -2313,6 +3225,9 @@ describe('syncAllUsers auth handling', () => {
 describe('syncAllData progressive login (#670 / #679)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-01-01T00:00:00.000Z');
     __resetFullSyncSingleFlightForTests();
     jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
@@ -2329,6 +3244,9 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     (getLastSyncedAt as jest.Mock).mockReturnValue('');
     (getLastAssignmentSyncAt as jest.Mock).mockReturnValue('');
     (getUserLastSyncedAt as jest.Mock).mockReturnValue('');
+    (getUserBibleTextSyncedAt as jest.Mock).mockImplementation(
+      (userId: string) => (getUserLastSyncedAt as jest.Mock)(userId),
+    );
     (getMasterDataLastSyncedAt as jest.Mock).mockReturnValue('');
     (getMasterDataUpdatedAt as jest.Mock).mockReturnValue('');
     (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
@@ -3017,7 +3935,10 @@ describe('syncAllData progressive login (#670 / #679)', () => {
     const pending = syncAllData(true);
 
     await waitFor(() => {
-      expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+      expect(syncPendingChapterClaims).toHaveBeenCalledWith(
+        2,
+        expect.any(String),
+      );
       expect(FluentAPI.getLanguages).toHaveBeenCalledWith(
         cursor,
         'parallel-warm-token',
@@ -3140,6 +4061,9 @@ describe('refreshChapterMetadataIfOnline pericope hydration after metadata impor
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-01-01T00:00:00.000Z');
 
     mockGetConnectivitySnapshot.mockResolvedValue({
       isOnline: true,
@@ -3287,6 +4211,9 @@ describe('org grant hydration wiring (#452 prerequisite)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
+    ).mockReturnValue('2026-01-01T00:00:00.000Z');
     __resetFullSyncSingleFlightForTests();
     jest.spyOn(syncEvents, 'emitAuthReauthRequired');
     jest.spyOn(syncEvents, 'emitSyncStart').mockImplementation(() => {});
@@ -3409,7 +4336,10 @@ describe('org grant hydration wiring (#452 prerequisite)', () => {
     // Re-awaiting refresh before masterPromise would leave getLanguages uncalled here.
     await waitFor(() => {
       expect(mockRefreshUserOrgGrants).toHaveBeenCalledWith('2', 'valid-token');
-      expect(syncPendingChapterClaims).toHaveBeenCalledWith(2);
+      expect(syncPendingChapterClaims).toHaveBeenCalledWith(
+        2,
+        expect.any(String),
+      );
       expect(FluentAPI.getLanguages).toHaveBeenCalledWith(
         cursor,
         'valid-token',

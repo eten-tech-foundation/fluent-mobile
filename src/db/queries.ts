@@ -26,6 +26,56 @@ import {
 } from '../utils/chapterOwnershipState';
 import { unitRecordedStatus } from '../utils/bibleTabUnits';
 
+/** Where the database's write counter stood; compare with `sameDatabaseWrites`. */
+export type DatabaseWriteMark = { connection: object; changes: number };
+
+let sameTurnWriteMark: Promise<DatabaseWriteMark | null> | null = null;
+
+/**
+ * Rows the app has written since the database opened (SQLite
+ * `total_changes()`). Every app write goes through this one connection and
+ * this read runs after the writes queued before it, so an unchanged mark
+ * means nothing at all was written in between. `null` when unreadable.
+ *
+ * Callers in the same synchronous turn (Home's lists on one focus) share one
+ * read: no write can be seen to finish within a turn, so it is the same answer.
+ */
+export function getDatabaseWriteMark(): Promise<DatabaseWriteMark | null> {
+  if (sameTurnWriteMark) return sameTurnWriteMark;
+  const mark = readDatabaseWriteMark();
+  sameTurnWriteMark = mark;
+  void Promise.resolve().then(() => {
+    if (sameTurnWriteMark === mark) sameTurnWriteMark = null;
+  });
+  return mark;
+}
+
+async function readDatabaseWriteMark(): Promise<DatabaseWriteMark | null> {
+  try {
+    const db = getDatabase();
+    const result = await db.execute('SELECT total_changes() AS changes');
+    const changes = Number(result.rows?.[0]?.changes);
+    return Number.isFinite(changes) ? { connection: db, changes } : null;
+  } catch (error) {
+    log.warn('Could not read the database write count', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+export function sameDatabaseWrites(
+  a: DatabaseWriteMark | null,
+  b: DatabaseWriteMark | null,
+): boolean {
+  return (
+    a !== null &&
+    b !== null &&
+    a.connection === b.connection &&
+    a.changes === b.changes
+  );
+}
+
 function parseConnectivityProfile(
   metadata: string | null,
 ): DBTypes.ConnectivityProfile | null {
@@ -448,9 +498,48 @@ export async function getProjectUnits(projectId: number) {
   }
 }
 
-export async function getUserById(
-  userId: number,
-): Promise<DBTypes.User | null> {
+const sameTurnUserReads = new Map<
+  number,
+  { connection: object; read: Promise<DBTypes.User | null> }
+>();
+
+/**
+ * The local profile row for `userId`. The launch header and the account drawer
+ * both read it in one synchronous turn; those calls share one read, since no
+ * write can be seen to finish within a turn. It is per user and per
+ * connection, so another account or a replaced database never shares, and a
+ * later turn reads again (a failed read is retried then). Each caller gets its
+ * own copy.
+ */
+export function getUserById(userId: number): Promise<DBTypes.User | null> {
+  let connection: object | null = null;
+  try {
+    connection = getDatabase();
+  } catch {
+    // readUserById reports an unopened database.
+  }
+  const shared = sameTurnUserReads.get(userId);
+  if (shared && connection !== null && shared.connection === connection) {
+    return shared.read.then(copyUser);
+  }
+  const read = readUserById(userId);
+  if (connection !== null) {
+    const entry = { connection, read };
+    sameTurnUserReads.set(userId, entry);
+    void Promise.resolve().then(() => {
+      if (sameTurnUserReads.get(userId) === entry) {
+        sameTurnUserReads.delete(userId);
+      }
+    });
+  }
+  return read.then(copyUser);
+}
+
+function copyUser(user: DBTypes.User | null): DBTypes.User | null {
+  return user ? { ...user } : null;
+}
+
+async function readUserById(userId: number): Promise<DBTypes.User | null> {
   try {
     const db = getDatabase();
     const result = await db.execute(
@@ -496,6 +585,7 @@ export async function getChapterAssignmentById(
         ca.submitted_time,
         ca.updated_at,
         ca.has_conflict,
+        ca.total_verses,
         b.code as book_code,
         b.eng_display_name as book_name,
         bi.name as bible_name,
@@ -534,6 +624,7 @@ export async function getChapterAssignmentById(
       bibleAbbreviation: row.bible_abbreviation,
       sourceLanguageCode: row.source_language_code?.trim() || undefined,
       hasConflict: Number(row.has_conflict) === 1,
+      totalVerses: Number(row.total_verses) || 0,
     };
   } catch (error) {
     log.error('Error fetching chapter assignment by ID:', { error });
@@ -580,23 +671,6 @@ export async function getChapterRouteNames(id: number): Promise<{
   } catch (error) {
     log.error('Error fetching chapter route names', { error });
     return null;
-  }
-}
-
-/** Verses the chapter assignment says it contains. 0 when the count is unknown. */
-export async function getChapterAssignmentVerseCount(
-  id: number,
-): Promise<number> {
-  const db = getDatabase();
-  try {
-    const result = await db.execute(
-      `SELECT total_verses FROM chapter_assignments WHERE id = ?`,
-      [id],
-    );
-    return Number(result.rows?.[0]?.total_verses) || 0;
-  } catch (error) {
-    log.error('Error fetching chapter verse count', { error, id });
-    throw error;
   }
 }
 
@@ -1450,8 +1524,10 @@ export async function getUnuploadablePendingSummary(): Promise<UnuploadablePendi
   }
 }
 
-/** Selected recordings whose last upload attempt failed. */
-export async function getFailedUploadCount(): Promise<number> {
+/** `onError` runs when the read failed and the 0 is not an answer. */
+export async function getFailedUploadCount(
+  onError?: () => void,
+): Promise<number> {
   const db = getDatabase();
   const userId = parseUserId();
   try {
@@ -1465,6 +1541,7 @@ export async function getFailedUploadCount(): Promise<number> {
     return Number(result.rows?.[0]?.count) || 0;
   } catch (error) {
     log.error('Error fetching failed upload count', { error });
+    onError?.();
     return 0;
   }
 }
@@ -1480,7 +1557,9 @@ export type FailedUploadErrorSummary = {
  * When several distinct messages exist, `extraDistinctCount` is the number of
  * other distinct errors (caller appends “(+N more)” after sanitization).
  */
-export async function getFailedUploadErrorSummary(): Promise<FailedUploadErrorSummary | null> {
+export async function getFailedUploadErrorSummary(
+  onError?: () => void,
+): Promise<FailedUploadErrorSummary | null> {
   const db = getDatabase();
   const userId = parseUserId();
   try {
@@ -1510,6 +1589,7 @@ export async function getFailedUploadErrorSummary(): Promise<FailedUploadErrorSu
     };
   } catch (error) {
     log.error('Error fetching failed upload error summary', { error });
+    onError?.();
     return null;
   }
 }
@@ -1525,9 +1605,9 @@ export type PendingUploadChapter = {
  * before the delete pass when this list is empty, so a chapter whose only
  * remaining work is `recording_deletions` must still appear here (#716).
  */
-export async function getPendingUploadChapters(): Promise<
-  PendingUploadChapter[]
-> {
+export async function getPendingUploadChapters(
+  onError?: () => void,
+): Promise<PendingUploadChapter[]> {
   const db = getDatabase();
   const userId = parseUserId();
   try {
@@ -1553,6 +1633,7 @@ export async function getPendingUploadChapters(): Promise<
     }));
   } catch (error) {
     log.error('Error fetching pending upload chapters', { error });
+    onError?.();
     return [];
   }
 }
@@ -1806,11 +1887,15 @@ export async function getPericopesForChapter(
   }
 }
 
-/** Selected take ranges for Bible-tab recorded/partial status (#408). */
+/**
+ * Selected take ranges for Bible-tab recorded/partial status (#408). An
+ * unreadable answer is `[]`; `onError` tells a caller it was not a real one.
+ */
 export async function getSelectedTakeCoverages(
   bibleId: number,
   bookId: number,
   projectUnitId?: number | null,
+  onError?: () => void,
 ): Promise<
   {
     granularity: string;
@@ -1863,6 +1948,7 @@ export async function getSelectedTakeCoverages(
     });
   } catch (error) {
     log.error('Error fetching selected take coverages', { error });
+    onError?.();
     return [];
   }
 }

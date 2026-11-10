@@ -67,6 +67,125 @@ describe('deriveSyncPageStatus', () => {
     },
   );
 
+  describe('drafting hold (#886)', () => {
+    it('reports held instead of pending while take uploads wait on the hold', () => {
+      expect(
+        deriveSyncPageStatus(
+          'idle',
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          'drafting',
+        ),
+      ).toBe('held');
+      expect(
+        deriveSyncPageStatus(
+          'idle',
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          'drafting',
+        ),
+      ).toBe('held');
+    });
+
+    it.each(['waiting_wifi', 'offline'] as const)(
+      'reports pending, not held, when the transport is the reason uploads wait (phase=%s)',
+      phase => {
+        expect(
+          deriveSyncPageStatus(
+            phase,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            'drafting',
+          ),
+        ).toBe('pending');
+      },
+    );
+
+    it('does not report held when only unuploadable takes remain', () => {
+      expect(
+        deriveSyncPageStatus(
+          'idle',
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          'drafting',
+        ),
+      ).toBe('pending');
+    });
+
+    it('never overrides syncing or paused', () => {
+      expect(
+        deriveSyncPageStatus(
+          'syncing',
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          'drafting',
+        ),
+      ).toBe('syncing');
+      expect(
+        deriveSyncPageStatus(
+          'paused',
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          'drafting',
+        ),
+      ).toBe('paused');
+    });
+
+    it('does not report held when only claims / metadata retry work remains', () => {
+      expect(
+        deriveSyncPageStatus(
+          'idle',
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          'drafting',
+        ),
+      ).toBe('pending');
+    });
+
+    it('does not report held when nothing is pending', () => {
+      expect(
+        deriveSyncPageStatus(
+          'idle',
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          'drafting',
+        ),
+      ).toBe('allComplete');
+    });
+  });
+
   it('preserves syncing and paused over download-queue signal', () => {
     expect(
       deriveSyncPageStatus('syncing', false, false, false, false, false, true),

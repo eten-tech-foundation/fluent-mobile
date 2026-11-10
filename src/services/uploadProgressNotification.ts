@@ -36,6 +36,7 @@ export function commandForUploadSessionEvent(
     case 'idle':
       return 'clear';
     case 'waiting_wifi':
+    case 'hold':
       return 'noop';
   }
 }

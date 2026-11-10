@@ -18,6 +18,8 @@ jest.mock('./downloadStorage', () => ({
 }));
 
 jest.mock('./draftDownloadManifest', () => ({
+  runDraftDownloadPublication: jest.requireActual('./draftDownloadManifest')
+    .runDraftDownloadPublication,
   readDraftDownloadManifest: (...args: unknown[]) => mockReadManifest(...args),
   writeDraftDownloadPurgeTombstone: (...args: unknown[]) =>
     mockWriteTombstone(...args),

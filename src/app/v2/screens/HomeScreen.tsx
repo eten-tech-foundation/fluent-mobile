@@ -44,6 +44,7 @@ const SYNC_SUMMARY: Record<SyncStatus, string> = {
   online_failed: 'Upload failed',
   offline_synced: 'Offline',
   offline_pending: 'Offline · upload pending',
+  checking: 'Checking connection',
 };
 
 /**
@@ -211,12 +212,12 @@ function HomeBody({
   const chaptersLabel = `${chapters.length} ${
     chapters.length === 1 ? 'chapter' : 'chapters'
   }`;
-  // Both list hooks go back to loading on every refreshKey bump, so only the
-  // first load waits.
-  const listsLoading = loading || booksLoading;
-  if (!loadedOnce && !listsLoading) setLoadedOnce(true);
+  // `loading` is each list's first read; later reads keep the lists on screen.
+  const firstContentReady = !loading && !booksLoading;
+  if (!loadedOnce && firstContentReady) setLoadedOnce(true);
   const waitingForChapters =
-    (listsLoading && !loadedOnce) || (isSyncingChapters && !chapters.length);
+    (!firstContentReady && !loadedOnce) ||
+    (isSyncingChapters && chapters.length === 0 && books.length === 0);
 
   let body: React.ReactNode;
   if (showLoading) {

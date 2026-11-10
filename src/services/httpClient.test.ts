@@ -1,8 +1,13 @@
 import { ApiError } from '../types/api/errors';
 import { logger } from '../utils/logger';
+import { authToken } from './authToken';
 import {
+  authedConditionalGet,
+  authedMultipartRequest,
+  authedRequest,
   parseJsonResponse,
   publicRequest,
+  publicRequestWithResponse,
   summarizeApiErrorResponse,
 } from './httpClient';
 import {
@@ -70,6 +75,125 @@ describe('parseJsonResponse', () => {
   });
 });
 
+// Pinned expo/fetch (SDK 57): only `credentials: 'omit'` gives OkHttp
+// CookieJar.NO_COOKIES; unset and 'same-origin' become 'include', which routes
+// the request and its response through the WebView CookieManager.
+function usesWebViewCookieJar(init?: RequestInit): boolean {
+  return (init?.credentials ?? 'include') !== 'omit';
+}
+
+describe('Fluent API transport is cookie-less', () => {
+  const fetchMock = jest.fn();
+  const okJson = (body: unknown, status = 200) => ({
+    ok: status < 400,
+    status,
+    text: async () => (body === undefined ? '' : JSON.stringify(body)),
+    headers: { get: (name: string) => (name === 'ETag' ? '"v1"' : null) },
+  });
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(fetchMock as unknown as typeof fetch);
+    authToken.set('global-token');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    authToken.set(null);
+  });
+
+  function lastInit(): RequestInit {
+    return fetchMock.mock.calls[fetchMock.mock.calls.length - 1][1];
+  }
+
+  it('public requests keep their headers without the cookie jar', async () => {
+    fetchMock.mockResolvedValue(okJson({ ok: true }));
+
+    await publicRequest('/bibles/7/bulk-texts', {
+      method: 'POST',
+      headers: { 'x-client-type': 'mobile' },
+    });
+    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+    expect(lastInit().headers).toEqual({
+      'Content-Type': 'application/json',
+      Origin: 'http://localhost:9999',
+      'x-client-type': 'mobile',
+    });
+
+    await publicRequestWithResponse('/api/auth/sign-in/email', {
+      method: 'POST',
+    });
+    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+  });
+
+  it('authed requests carry only the captured bearer, never cookies', async () => {
+    fetchMock.mockResolvedValue(okJson({ data: [] }));
+
+    await authedRequest('/self/projects');
+    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+    expect(lastInit().headers).toMatchObject({
+      Authorization: 'Bearer global-token',
+    });
+
+    await authedRequest('/self/projects', undefined, 'captured-token');
+    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+    expect(lastInit().headers).toMatchObject({
+      Authorization: 'Bearer captured-token',
+    });
+  });
+
+  it('a caller cannot opt a request back into the cookie jar', async () => {
+    fetchMock.mockResolvedValue(okJson({ ok: true }));
+
+    await authedRequest('/self/settings', { credentials: 'include' });
+    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+
+    await publicRequest('/api/auth/forget-password', {
+      credentials: 'same-origin',
+    });
+    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+  });
+
+  it('conditional GETs keep 304 and ETag semantics without cookies', async () => {
+    fetchMock.mockResolvedValueOnce(okJson(undefined, 304));
+
+    await expect(
+      authedConditionalGet('/pericope-sets/1', undefined, 'captured-token'),
+    ).resolves.toEqual({ status: 304, etag: '"v1"' });
+    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+    expect(lastInit().headers).toMatchObject({
+      Authorization: 'Bearer captured-token',
+    });
+  });
+
+  it('multipart uploads stay cookie-less and leave Content-Type to the runtime', async () => {
+    fetchMock.mockResolvedValue(okJson({ id: 1 }));
+
+    await authedMultipartRequest(
+      '/verse-audio',
+      new FormData(),
+      undefined,
+      'owner-token',
+    );
+    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+    expect(lastInit().headers).toEqual({ Authorization: 'Bearer owner-token' });
+    expect(lastInit().method).toBe('POST');
+  });
+
+  it('401 still surfaces as AuthError on the cookie-less transport', async () => {
+    fetchMock.mockResolvedValue({
+      ...okJson({ message: 'Invalid or revoked session token' }, 401),
+    });
+
+    await expect(authedRequest('/self/projects')).rejects.toMatchObject({
+      name: 'AuthError',
+    });
+    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+  });
+});
+
 describe('publicRequest', () => {
   const fetchMock = jest.fn();
 
@@ -122,10 +246,31 @@ describe('publicRequest', () => {
     const requestPromise = publicRequest('/slow-endpoint', {
       signal: callerController.signal,
     });
-    const assertion = expect(requestPromise).rejects.toBeInstanceOf(ApiError);
+    // Caller cancellation is an AbortError, not a network/timeout ApiError —
+    // callers must not retry it or record it as a sync failure (#886).
+    const assertion = expect(requestPromise).rejects.toMatchObject({
+      name: 'AbortError',
+    });
 
     callerController.abort();
     await assertion;
+    await expect(requestPromise).rejects.not.toBeInstanceOf(ApiError);
+  });
+
+  it('rejects immediately with AbortError when the caller signal is already aborted', async () => {
+    const callerController = new AbortController();
+    callerController.abort();
+    fetchMock.mockImplementation((_url, init?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        if (init?.signal?.aborted) {
+          reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+        }
+      });
+    });
+
+    await expect(
+      publicRequest('/slow-endpoint', { signal: callerController.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
   });
 
   it('surfaces malformed JSON response bodies as network errors', async () => {

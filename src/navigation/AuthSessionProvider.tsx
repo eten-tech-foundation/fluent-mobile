@@ -30,7 +30,7 @@ import {
   stopDownloadQueueAutoResume,
 } from '../services/downloadQueueAutoResume';
 import {
-  refreshSyncStatusStore,
+  refreshSyncStatusStoreIfChanged,
   resetSyncStatusStore,
 } from '../services/syncStatusStore';
 import { registerRecordingUploadWorker } from '../services/recordingSync';
@@ -127,7 +127,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     } else {
       stopAutoResume = startDownloadQueueAutoResume();
     }
-    void refreshSyncStatusStore();
+    void refreshSyncStatusStoreIfChanged();
     return () => {
       stopUploadProgressNotification();
       stopUploadOrchestrator();

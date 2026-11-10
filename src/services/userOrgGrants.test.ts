@@ -3,6 +3,11 @@ import { FluentAPI } from './api';
 import { getCredentials } from './keychain';
 import { emitAuthReauthRequired } from './syncEvents';
 import {
+  clearDraftListingSnapshots,
+  readDraftListingSnapshot,
+  seedDraftListingSnapshot,
+} from './draftListingSnapshot';
+import {
   clearPassageResourceReuse,
   reusePassageResource,
 } from './passageResourceReuse';
@@ -250,6 +255,32 @@ describe('persist + read isolation', () => {
     await expect(reusePassageResource('2', 'k', async () => 'x')).resolves.toBe(
       'other',
     );
+  });
+
+  it("drops an account's draft listing snapshots when its grants change, not otherwise", () => {
+    const chapter = {
+      projectUnitId: 12,
+      bibleId: 1,
+      bookId: 41,
+      chapterNumber: 1,
+    };
+    const list = { items: [], hasConflict: false };
+    clearDraftListingSnapshots();
+    const user = {
+      id: 1,
+      email: 'one@example.com',
+      orgGrants: [observerGrant],
+    };
+    persistOrgGrantsFromUserResponse('1', user);
+    seedDraftListingSnapshot(chapter, '1', list);
+    seedDraftListingSnapshot(chapter, '2', list);
+
+    persistOrgGrantsFromUserResponse('1', user);
+    expect(readDraftListingSnapshot(chapter, '1')).not.toBeNull();
+
+    persistOrgGrantsFromUserResponse('1', { ...user, orgGrants: [] });
+    expect(readDraftListingSnapshot(chapter, '1')).toBeNull();
+    expect(readDraftListingSnapshot(chapter, '2')).not.toBeNull();
   });
 
   it('replaces prior grants including revocation to empty', () => {

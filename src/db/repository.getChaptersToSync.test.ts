@@ -1,5 +1,9 @@
 import { setDatabase } from './db';
-import { getChaptersToSync } from './repository';
+import {
+  getChaptersToSync,
+  getMyWorkChaptersToSync,
+  getRecordingLinkedChaptersToSync,
+} from './repository';
 
 type ChapterAssignmentSeed = {
   bible_id: number;
@@ -244,5 +248,20 @@ describe('getChaptersToSync', () => {
 
     expect(execute).not.toHaveBeenCalled();
     expect(groups.size).toBe(0);
+  });
+
+  it('rethrows a failed read instead of reporting "no chapters" (#886)', async () => {
+    const execute = jest.fn(async () => {
+      throw new Error('database is locked');
+    });
+    setDatabase({ execute, transaction: jest.fn() } as never);
+
+    await expect(getChaptersToSync([1])).rejects.toThrow('database is locked');
+    await expect(getMyWorkChaptersToSync(1)).rejects.toThrow(
+      'database is locked',
+    );
+    await expect(getRecordingLinkedChaptersToSync()).rejects.toThrow(
+      'database is locked',
+    );
   });
 });

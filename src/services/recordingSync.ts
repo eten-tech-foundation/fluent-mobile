@@ -27,13 +27,29 @@ import { isApiError } from '../types/api/errors';
 import { FluentAPI } from './api';
 import { isAuthError } from './authError';
 import { authToken } from './authToken';
-import { getCredentials } from './keychain';
+import { getCredentials, getCredentialsVersion } from './keychain';
 import { getActiveUserId, setReauthRequired } from './storage';
 import {
+  clearUploadReceipt,
+  persistUploadReceipt,
+  readUploadReceipt,
+  retainUploadReceiptUnbound,
+} from './uploadReceipts';
+import {
+  activationStateFromResponse,
   blobKeyFromVerseAudioResponse,
+  isPossiblyAppliedUploadFailure,
   outcomeFromVerseAudioFailure,
   takeIdFromVerseAudioResponse,
 } from './verseAudioContract';
+import type { VerseAudioResponse } from '../types/api/verseAudio';
+import { isSha256Hex, sha256File } from './fileSha256';
+import {
+  clearUploadOperation,
+  readUploadOperationOrUnreadable,
+  writeUploadOperation,
+  type UploadOperationState,
+} from './uploadOperationState';
 import {
   emitAuthReauthRequired,
   emitUploadSessionEvent,
@@ -42,6 +58,7 @@ import {
 import {
   setChapterUploadWorker,
   type ChapterUploadWorker,
+  type TakeProgressListener,
 } from './uploadOrchestrator';
 
 const log = logger.create('RecordingSync');
@@ -51,8 +68,40 @@ export const MAX_UPLOAD_ATTEMPTS = 3;
 export interface UploadResult {
   uploaded: number;
   conflicted: number;
+  /** Takes still pending after a terminal (non-network, non-auth) failure. */
   failed: number;
+  /**
+   * Takes whose local intent changed while this pass held them (a newer
+   * selection or re-record). Not failures: the row stays pending under its
+   * new generation, so the pass is not complete while any remain.
+   */
+  deferred: number;
+  /**
+   * Queued take deletes still pending after a terminal failure (#886).
+   * Callers must treat this like `failed`: the pass is not complete.
+   */
+  deletionsFailed: number;
 }
+
+/** Terminal outcome of one queued take delete (#886). */
+export type TakeDeletionOutcome =
+  | { kind: 'deleted'; versionToken: number | null }
+  | { kind: 'already_absent' }
+  | { kind: 'failed'; message: string };
+
+export type DeletePassResult = {
+  attempted: number;
+  deleted: number;
+  /** Rows left queued after a terminal failure, all owners. */
+  failed: number;
+  /**
+   * Subset of `failed` the active account is shown as pending (same owner
+   * rule as `getPendingUploadCount`). Only these fail an upload session; a
+   * stuck row from another account or an orphaned remap stays queued and is
+   * logged, instead of blocking the active user's `complete` forever.
+   */
+  failedForActiveUser: number;
+};
 
 export type RecordingSyncOptions = {
   signal?: AbortSignal;
@@ -61,6 +110,14 @@ export type RecordingSyncOptions = {
   /** Injectable backoff (tests). Default: attempt * 500ms. */
   delay?: (ms: number) => Promise<void>;
   maxAttempts?: number;
+  /**
+   * Called once before the first take (0 of N) and after every take with the
+   * pass totals so far (#886). Chapter-scoped passes use it to report
+   * per-take progress to the orchestrator without owning session events.
+   */
+  onTakeProgress?: TakeProgressListener;
+  /** Injectable clock for upload operation timestamps (tests). */
+  now?: () => number;
 };
 
 let inFlight: Promise<UploadResult> | null = null;
@@ -149,6 +206,8 @@ async function handleUploadAuthFailure(userId: string): Promise<void> {
 export type UploadTokenResolution = {
   token: string;
   userId: string | null;
+  /** `fallback`: the pass token, used when owner credentials are missing. */
+  source: 'owner' | 'fallback';
 };
 
 /**
@@ -158,21 +217,31 @@ export type UploadTokenResolution = {
 export async function resolveOwnerAuthToken(
   recordedByUserId: number | null,
   fallbackToken: string,
-  context: { id: string },
+  context: { id: string; kind?: 'take' | 'delete' },
 ): Promise<UploadTokenResolution> {
   if (recordedByUserId === null || !Number.isFinite(recordedByUserId)) {
-    return { token: fallbackToken, userId: getActiveUserId() || null };
+    return {
+      token: fallbackToken,
+      userId: getActiveUserId() || null,
+      source: 'fallback',
+    };
   }
   const userId = String(recordedByUserId);
   const creds = await getCredentials(userId);
   if (creds?.token) {
-    return { token: creds.token, userId };
+    return { token: creds.token, userId, source: 'owner' };
   }
+  // Falls back to the active pass token when owner credentials are missing (#854).
   log.warn('Owner credentials missing; using active pass token', {
     id: context.id,
+    kind: context.kind,
     recordedByUserId,
   });
-  return { token: fallbackToken, userId: getActiveUserId() || null };
+  return {
+    token: fallbackToken,
+    userId: getActiveUserId() || null,
+    source: 'fallback',
+  };
 }
 
 export async function resolveUploadTokenForRecording(
@@ -181,7 +250,47 @@ export async function resolveUploadTokenForRecording(
 ): Promise<UploadTokenResolution> {
   return resolveOwnerAuthToken(recording.recordedByUserId, fallbackToken, {
     id: recording.id,
+    kind: 'take',
   });
+}
+
+/**
+ * Owner tokens for one upload pass. A token is reused only while the keychain
+ * is unchanged (login, logout, account replacement). Owner-missing fallbacks
+ * are never cached, and `clear()` after any take that did not finish makes
+ * the next take re-read SecureStore (auth failures, reauth).
+ */
+function createPassOwnerTokens() {
+  const tokens = new Map<
+    string,
+    { resolution: UploadTokenResolution; version: number }
+  >();
+  return {
+    async resolve(
+      recording: PendingRecording,
+      fallbackToken: string,
+    ): Promise<UploadTokenResolution> {
+      const owner = recording.recordedByUserId;
+      const key =
+        owner !== null && Number.isFinite(owner) ? String(owner) : null;
+      const cached = key === null ? undefined : tokens.get(key);
+      if (cached && cached.version === getCredentialsVersion()) {
+        return cached.resolution;
+      }
+      const version = getCredentialsVersion();
+      const resolution = await resolveUploadTokenForRecording(
+        recording,
+        fallbackToken,
+      );
+      if (key !== null && resolution.source === 'owner') {
+        tokens.set(key, { resolution, version });
+      }
+      return resolution;
+    },
+    clear(): void {
+      tokens.clear();
+    },
+  };
 }
 
 /**
@@ -190,6 +299,193 @@ export async function resolveUploadTokenForRecording(
  */
 function shouldActivateTake(recording: PendingRecording): boolean {
   return recording.isCanonical || recording.isSelected;
+}
+
+export const ACTIVATION_OTHER_TAKE_ACTIVE_MESSAGE =
+  'Another take is active on the server. This recording is saved on this device; choose it again to make it active.';
+export const ACTIVATION_UNIT_EXISTS_MESSAGE =
+  'This verse already has audio on the server. This recording is saved on this device; choose it again to replace it.';
+export const ACTIVATION_UNIT_REMOVED_MESSAGE =
+  "This verse's audio was removed on the server. This recording is saved on this device; choose it again to upload it.";
+
+type ActivationReconciliation =
+  | { kind: 'confirmed'; unit: VerseAudioResponse; takeId: number }
+  | { kind: 'replay'; versionMoved: boolean }
+  | {
+      kind: 'unresolved';
+      reason: string;
+      serverTakeId: number | null;
+      observedVersionToken: number | null;
+    };
+
+/**
+ * After an activating PUT may have been applied (lost ack, timeout, 5xx,
+ * 409), read the unit and find this recording's take by content hash before
+ * deciding whether a replay is safe. Never adopts a newer server token:
+ * a replay always carries the operation's original precondition.
+ */
+async function reconcileActivation(
+  recording: PendingRecording,
+  operation: UploadOperationState,
+  token: string,
+  signal?: AbortSignal,
+): Promise<ActivationReconciliation> {
+  const projectUnitId = recording.projectUnitId as number;
+  let unit: VerseAudioResponse | null;
+  try {
+    unit = await FluentAPI.getVerseAudioUnit(
+      { projectUnitId, bibleTextId: recording.bibleTextId },
+      token,
+      signal ? { signal } : undefined,
+    );
+  } catch (error) {
+    if (!isApiError(error) || error.status !== 404) throw error;
+    unit = null;
+  }
+  throwIfAborted(signal);
+
+  if (!unit) {
+    // Nothing exists: a replay is the original first-take create. A unit that
+    // existed when the precondition was captured but is gone now was removed
+    // by someone else; re-creating it is a user decision.
+    return operation.baseVersionToken === null
+      ? { kind: 'replay', versionMoved: false }
+      : {
+          kind: 'unresolved',
+          reason: ACTIVATION_UNIT_REMOVED_MESSAGE,
+          serverTakeId: null,
+          observedVersionToken: null,
+        };
+  }
+
+  const localHash = (
+    await sha256File(recording.localFilePath, { signal })
+  ).toLowerCase();
+  throwIfAborted(signal);
+  const match = unit.takes.find(
+    take =>
+      isSha256Hex(take.contentHash) &&
+      take.contentHash.toLowerCase() === localHash,
+  );
+
+  if (match) {
+    if (unit.activeTakeId === match.id) {
+      return { kind: 'confirmed', unit, takeId: match.id };
+    }
+    // Bytes stored, not active, and nothing has moved since the
+    // precondition: the replay promotes this take or conflicts.
+    if (
+      operation.baseVersionToken !== null &&
+      unit.versionToken === operation.baseVersionToken
+    ) {
+      return { kind: 'replay', versionMoved: false };
+    }
+    return {
+      kind: 'unresolved',
+      reason: ACTIVATION_OTHER_TAKE_ACTIVE_MESSAGE,
+      serverTakeId: match.id,
+      observedVersionToken: unit.versionToken,
+    };
+  }
+
+  // Bytes absent. With a precondition the server keeps a newer selection and
+  // flags a conflict instead of overwriting it. Without one (no local token
+  // was known), the API would replace whatever is active: not automatic.
+  if (operation.baseVersionToken === null) {
+    return {
+      kind: 'unresolved',
+      reason: ACTIVATION_UNIT_EXISTS_MESSAGE,
+      serverTakeId: null,
+      observedVersionToken: unit.versionToken,
+    };
+  }
+  // fluent-api main answers a stale precondition with a conflict 200, so one
+  // replay surfaces the conflict. If the unit moved and that replay still did
+  // not land (e.g. repeated 409s), stop rather than cycle.
+  const versionMoved = unit.versionToken !== operation.baseVersionToken;
+  if (versionMoved && (operation.movedReplays ?? 0) >= 1) {
+    return {
+      kind: 'unresolved',
+      reason: ACTIVATION_OTHER_TAKE_ACTIVE_MESSAGE,
+      serverTakeId: null,
+      observedVersionToken: unit.versionToken,
+    };
+  }
+  return { kind: 'replay', versionMoved };
+}
+/**
+ * Apply a durable receipt (#886) to a recording that is still pending: the
+ * server already accepted these bytes, only the local marker is missing.
+ * Returns `null` when there is no receipt. With a receipt the PUT is never
+ * replayed: the marker either lands (`uploaded` / `conflicted`) or fails again
+ * (`failed`, receipt kept, row stays pending).
+ */
+async function reconcileFromUploadReceipt(
+  recording: PendingRecording,
+): Promise<'uploaded' | 'conflicted' | 'failed' | 'deferred' | null> {
+  const receipt = readUploadReceipt(recording.id);
+  if (!receipt) return null;
+  if (receipt.bibleTextId !== recording.bibleTextId) {
+    log.warn('Keeping superseded receipt unbound for a different verse', {
+      recordingId: recording.id,
+    });
+    retainUploadReceiptUnbound(recording.id);
+    return null;
+  }
+  const intentVersion = recording.uploadIntentVersion ?? 0;
+  const matchesIntent = receipt.uploadIntentVersion === intentVersion;
+  let applied: boolean | void;
+  try {
+    if (receipt.kind === 'conflicted') {
+      applied = await markRecordingAndChapterConflicted(
+        recording.id,
+        receipt.bibleTextId,
+        receipt.versionToken,
+        receipt.serverTakeId,
+        receipt.uploadIntentVersion,
+        receipt.acceptedScope,
+      );
+    } else {
+      applied = await markRecordingUploaded(
+        recording.id,
+        receipt.blobKey,
+        receipt.versionToken,
+        receipt.serverTakeId,
+        receipt.uploadIntentVersion,
+        receipt.acceptedScope,
+      );
+    }
+  } catch (error) {
+    log.error('Upload receipt reconciliation failed; keeping receipt', {
+      recordingId: recording.id,
+      kind: receipt.kind,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return 'failed';
+  }
+  // `false` means this generation does not own the sync marker. The scope
+  // fallback already copied the server take id onto the row when it could.
+  // Move the receipt off the live key so later passes do not re-apply it.
+  if (applied === false) {
+    retainUploadReceiptUnbound(recording.id);
+    // The pending row we are holding is a newer generation: upload that.
+    // If we thought this generation was current, the row changed under us;
+    // wait for the next read instead of PUTting a stale snapshot.
+    return matchesIntent ? 'deferred' : null;
+  }
+  clearUploadReceipt(recording.id);
+  if (!matchesIntent) {
+    // Reconcile accepted bytes only, then send the current operation rather
+    // than consuming its newer selection/canonical intent.
+    return null;
+  }
+  log.info('Recording marker reconciled from durable receipt (no re-upload)', {
+    recordingId: recording.id,
+    kind: receipt.kind,
+    versionToken: receipt.versionToken,
+    serverTakeId: receipt.serverTakeId,
+  });
+  return receipt.kind;
 }
 
 async function uploadOneRecording(
@@ -202,11 +498,24 @@ async function uploadOneRecording(
     token: string;
     /** User id that owns the upload token (for auth failure handling). */
     tokenUserId: string | null;
+    now: () => number;
   },
-): Promise<'uploaded' | 'conflicted' | 'failed'> {
+): Promise<TakeUploadOutcome> {
   const { signal, delay, maxAttempts, token, tokenUserId } = options;
 
   throwIfAborted(signal);
+
+  // Server already accepted these bytes on an earlier pass and only the local
+  // marker failed: finish locally instead of replaying the PUT (#886).
+  const reconciled = await reconcileFromUploadReceipt(recording);
+  if (reconciled) {
+    // Same post-marker abort check as the normal path.
+    throwIfAborted(signal);
+    if (reconciled !== 'deferred' && reconciled !== 'failed') {
+      clearUploadOperation(recording.id, recording.uploadIntentVersion ?? 0);
+    }
+    return reconciled;
+  }
 
   if (
     recording.projectUnitId === null ||
@@ -215,14 +524,28 @@ async function uploadOneRecording(
     const message =
       'Missing projectUnitId for recording (no matching chapter assignment)';
     log.error(message, { recordingId: recording.id });
-    await markRecordingFailed(recording.id, message);
+    if (
+      (await markRecordingFailed(
+        recording.id,
+        message,
+        recording.uploadIntentVersion ?? 0,
+      )) === false
+    )
+      return 'deferred';
     return 'failed';
   }
 
   if (!Number.isFinite(recording.bibleTextId) || recording.bibleTextId <= 0) {
     const message = 'Missing or invalid bibleTextId for recording';
     log.error(message, { recordingId: recording.id });
-    await markRecordingFailed(recording.id, message);
+    if (
+      (await markRecordingFailed(
+        recording.id,
+        message,
+        recording.uploadIntentVersion ?? 0,
+      )) === false
+    )
+      return 'deferred';
     return 'failed';
   }
 
@@ -259,18 +582,219 @@ async function uploadOneRecording(
         endChapter: recording.endChapter,
         endVerse: recording.endVerse,
       });
-      await markRecordingFailed(recording.id, message);
+      if (
+        (await markRecordingFailed(
+          recording.id,
+          message,
+          recording.uploadIntentVersion ?? 0,
+        )) === false
+      )
+        return 'deferred';
       return 'failed';
     }
     pericopeRange = { startChapter, startVerse, endChapter, endVerse };
   }
 
-  await setRecordingSyncStatus(recording.id, 'uploading');
+  if (
+    (await setRecordingSyncStatus(
+      recording.id,
+      'uploading',
+      recording.uploadIntentVersion ?? 0,
+    )) === false
+  )
+    return 'deferred';
+
+  const intentVersion = recording.uploadIntentVersion ?? 0;
+  const activate = shouldActivateTake(recording);
+  const projectUnitId = recording.projectUnitId;
+
+  // Activation precondition is captured once per intent generation and kept
+  // across attempts, restarts and scheduled passes (see uploadOperationState).
+  let operation: UploadOperationState | null = null;
+  if (activate) {
+    const stored = readUploadOperationOrUnreadable(recording.id, intentVersion);
+    if (stored === 'unreadable') {
+      // A dispatched operation may be stored; replacing it would replay the
+      // activation blind under a newer token. Leave it for a later pass.
+      const message = 'Could not read upload state on this device';
+      if (
+        (await markRecordingFailed(recording.id, message, intentVersion)) ===
+        false
+      )
+        return 'deferred';
+      return 'failed';
+    }
+    operation = stored;
+    if (!operation) {
+      const latest = await getLatestVersionToken(
+        recording.bibleTextId,
+        projectUnitId,
+      );
+      if (signal?.aborted) {
+        await setRecordingSyncStatus(recording.id, 'pending', intentVersion);
+        throwIfAborted(signal);
+      }
+      operation = {
+        recordingId: recording.id,
+        intentVersion,
+        baseVersionToken: latest ?? null,
+        phase: 'prepared',
+        updatedAt: options.now(),
+      };
+      if (!writeUploadOperation(operation)) {
+        const message = 'Could not save upload state on this device';
+        if (
+          (await markRecordingFailed(recording.id, message, intentVersion)) ===
+          false
+        )
+          return 'deferred';
+        return 'failed';
+      }
+    }
+  }
 
   let lastMessage = 'Upload failed';
   let didMarkUploaded = false;
   let didAcceptCleanResponse = false;
   let didMarkConflicted = false;
+  let receiptPersisted = false;
+  let putInFlight = false;
+
+  const acceptedScope = {
+    bibleTextId: recording.bibleTextId,
+    projectUnitId,
+    localFilePath: recording.localFilePath,
+    recordedByUserId: recording.recordedByUserId,
+  };
+
+  // Server state already reflects this recording: persist the receipt, then
+  // the generation-checked local marker (#886).
+  const commitConflicted = async (
+    versionToken: number,
+    serverTakeId: number | null,
+  ): Promise<TakeUploadOutcome> => {
+    // Set flag BEFORE transaction to prevent retries if transaction fails.
+    // Upload already succeeded on server; transaction failure should not retry.
+    didMarkConflicted = true;
+    receiptPersisted = persistUploadReceipt({
+      recordingId: recording.id,
+      uploadIntentVersion: intentVersion,
+      acceptedScope,
+      kind: 'conflicted',
+      bibleTextId: recording.bibleTextId,
+      versionToken,
+      serverTakeId,
+      acceptedAt: new Date().toISOString(),
+    });
+    const applied = await markRecordingAndChapterConflicted(
+      recording.id,
+      recording.bibleTextId,
+      versionToken,
+      serverTakeId,
+      intentVersion,
+      recording,
+    );
+    if (applied !== false) {
+      clearUploadReceipt(recording.id);
+      clearUploadOperation(recording.id, intentVersion);
+    }
+    if (applied === false) {
+      // A later selection owns the marker. Keep the take id, stop re-applying.
+      retainUploadReceiptUnbound(recording.id);
+      return 'deferred';
+    }
+    log.info('Recording uploaded with conflict', {
+      recordingId: recording.id,
+      versionToken,
+      recordedByUserId: recording.recordedByUserId,
+      serverTakeId,
+    });
+    throwIfAborted(signal);
+    return 'conflicted';
+  };
+
+  const commitUploaded = async (
+    unitResponse: VerseAudioResponse,
+    serverTakeId: number | null,
+  ): Promise<TakeUploadOutcome> => {
+    const blobKey = blobKeyFromVerseAudioResponse(unitResponse);
+    // Server acceptance is distinct from the following local acknowledgement.
+    // Persist the receipt to KV first so a failed SQLite marker can be
+    // reconciled later without replaying the PUT (#886).
+    didAcceptCleanResponse = true;
+    receiptPersisted = persistUploadReceipt({
+      recordingId: recording.id,
+      uploadIntentVersion: intentVersion,
+      acceptedScope,
+      kind: 'uploaded',
+      bibleTextId: recording.bibleTextId,
+      versionToken: unitResponse.versionToken,
+      serverTakeId,
+      blobKey,
+      acceptedAt: new Date().toISOString(),
+    });
+    const applied = await markRecordingUploaded(
+      recording.id,
+      blobKey,
+      unitResponse.versionToken,
+      serverTakeId,
+      intentVersion,
+      recording,
+    );
+    if (applied !== false) {
+      clearUploadReceipt(recording.id);
+      clearUploadOperation(recording.id, intentVersion);
+    }
+    didMarkUploaded = true;
+    if (applied === false) {
+      retainUploadReceiptUnbound(recording.id);
+      return 'deferred';
+    }
+    log.info('Recording uploaded', {
+      recordingId: recording.id,
+      blobKey,
+      versionToken: unitResponse.versionToken,
+      recordedByUserId: recording.recordedByUserId,
+    });
+    // Abort after a successful put still counts as uploaded (server has bytes).
+    throwIfAborted(signal);
+    return 'uploaded';
+  };
+
+  // The recording is kept locally. Later automatic passes only re-read the
+  // unit (they can confirm, never PUT); only
+  // `chooseLocalTakeAfterUnresolvedActivation` starts a new attempt.
+  const markActivationUnresolved = async (detail: {
+    reason: string;
+    serverTakeId: number | null;
+    observedVersionToken: number | null;
+  }): Promise<TakeUploadOutcome> => {
+    if (operation) {
+      operation = {
+        ...operation,
+        phase: 'unresolved',
+        serverTakeId: detail.serverTakeId,
+        observedVersionToken: detail.observedVersionToken,
+        reason: detail.reason,
+        updatedAt: options.now(),
+      };
+      writeUploadOperation(operation);
+    }
+    log.warn('Recording activation unresolved; not replaying', {
+      recordingId: recording.id,
+      serverTakeId: detail.serverTakeId,
+    });
+    if (
+      (await markRecordingFailed(
+        recording.id,
+        detail.reason,
+        intentVersion,
+        detail.serverTakeId,
+      )) === false
+    )
+      return 'deferred';
+    return 'failed';
+  };
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     throwIfAborted(signal);
@@ -278,19 +802,74 @@ async function uploadOneRecording(
     try {
       await assertLocalFileExists(recording.localFilePath);
 
-      const activate = shouldActivateTake(recording);
+      if (operation && operation.phase !== 'prepared') {
+        const decision = await reconcileActivation(
+          recording,
+          operation,
+          token,
+          signal,
+        );
+        if (decision.kind === 'confirmed') {
+          return decision.unit.conflictStatus === 'conflict'
+            ? await commitConflicted(
+                decision.unit.versionToken,
+                decision.takeId,
+              )
+            : await commitUploaded(decision.unit, decision.takeId);
+        }
+        if (decision.kind === 'unresolved') {
+          return await markActivationUnresolved(decision);
+        }
+        // Once unresolved, only a new generation (explicit user choice) may
+        // send this activation again; a re-check can only confirm it.
+        if (operation.phase === 'unresolved') {
+          return await markActivationUnresolved({
+            reason: operation.reason ?? ACTIVATION_OTHER_TAKE_ACTIVE_MESSAGE,
+            serverTakeId: operation.serverTakeId ?? null,
+            observedVersionToken: operation.observedVersionToken ?? null,
+          });
+        }
+        if (decision.versionMoved) {
+          operation = {
+            ...operation,
+            movedReplays: (operation.movedReplays ?? 0) + 1,
+          };
+        }
+      }
+
       const durationSeconds =
         recording.durationMs !== null && Number.isFinite(recording.durationMs)
           ? recording.durationMs / 1000
           : undefined;
 
-      const baseVersionToken = await getLatestVersionToken(
-        recording.bibleTextId,
-        recording.projectUnitId,
-      );
+      const baseVersionToken = operation
+        ? operation.baseVersionToken ?? undefined
+        : await getLatestVersionToken(recording.bibleTextId, projectUnitId);
       // Cancellation can arrive while local preflight is awaiting the DB.
       throwIfAborted(signal);
 
+      if (operation) {
+        operation = {
+          ...operation,
+          phase: 'dispatched',
+          updatedAt: options.now(),
+        };
+        // Without this marker a lost ack after a restart would replay blind.
+        if (!writeUploadOperation(operation)) {
+          const message = 'Could not save upload state on this device';
+          if (
+            (await markRecordingFailed(
+              recording.id,
+              message,
+              intentVersion,
+            )) === false
+          )
+            return 'deferred';
+          return 'failed';
+        }
+      }
+
+      putInFlight = true;
       const response = await FluentAPI.uploadVerseAudio(
         {
           projectUnitId: recording.projectUnitId,
@@ -308,62 +887,93 @@ async function uploadOneRecording(
           activate,
         },
         token,
+        // Pause/cancel aborts the in-flight PUT instead of waiting for the
+        // 30 s transport timeout (#886). The row is reset to pending in
+        // the catch below; the operation stays dispatched, so the next
+        // attempt reads the unit back before any re-PUT.
+        ...(signal ? [{ signal }] : []),
       );
+      putInFlight = false;
 
-      const serverTakeId = takeIdFromVerseAudioResponse(response, activate);
+      let serverTakeId = takeIdFromVerseAudioResponse(response, activate);
+
+      if (activate) {
+        const activation = activationStateFromResponse(response);
+        if (activation === 'conflicted') {
+          return await commitConflicted(response.versionToken, serverTakeId);
+        }
+        // A 200 that stored the bytes but left another take active (stale
+        // precondition on bytes the server already had) is not a selection.
+        if (activation === 'stored_not_active') {
+          return await markActivationUnresolved({
+            reason: ACTIVATION_OTHER_TAKE_ACTIVE_MESSAGE,
+            serverTakeId,
+            observedVersionToken: response.versionToken,
+          });
+        }
+        // No `takeId` (pre-#465 API): the 200 alone does not show which take
+        // is active, so confirm by content before reporting a selection.
+        if (activation === 'unverified') {
+          const activeTake = response.takes.find(
+            take => take.id === response.activeTakeId,
+          );
+          const localHash = (
+            await sha256File(recording.localFilePath, { signal })
+          ).toLowerCase();
+          if (
+            !activeTake ||
+            !isSha256Hex(activeTake.contentHash) ||
+            activeTake.contentHash.toLowerCase() !== localHash
+          ) {
+            return await markActivationUnresolved({
+              reason: ACTIVATION_OTHER_TAKE_ACTIVE_MESSAGE,
+              serverTakeId: null,
+              observedVersionToken: response.versionToken,
+            });
+          }
+          serverTakeId = activeTake.id;
+        }
+      }
 
       // A stored-only take never changes the active selection, so a unit
       // already in conflict says nothing about this take.
-      if (activate && response.conflictStatus === 'conflict') {
-        // Set flag BEFORE transaction to prevent retries if transaction fails.
-        // Upload already succeeded on server; transaction failure should not retry.
-        didMarkConflicted = true;
-        await markRecordingAndChapterConflicted(
-          recording.id,
-          recording.bibleTextId,
-          response.versionToken,
-          serverTakeId,
-        );
-        log.info('Recording uploaded with conflict', {
-          recordingId: recording.id,
-          versionToken: response.versionToken,
-          recordedByUserId: recording.recordedByUserId,
-          serverTakeId,
-        });
-        throwIfAborted(signal);
-        return 'conflicted';
-      }
-
-      const blobKey = blobKeyFromVerseAudioResponse(response);
-      // Server acceptance is distinct from the following local acknowledgement.
-      didAcceptCleanResponse = true;
-      await markRecordingUploaded(
-        recording.id,
-        blobKey,
-        response.versionToken,
-        serverTakeId,
-      );
-      didMarkUploaded = true;
-      log.info('Recording uploaded', {
-        recordingId: recording.id,
-        blobKey,
-        versionToken: response.versionToken,
-        recordedByUserId: recording.recordedByUserId,
-      });
-      // Abort after a successful put still counts as uploaded (server has bytes).
-      throwIfAborted(signal);
-      return 'uploaded';
+      return await commitUploaded(response, serverTakeId);
     } catch (error) {
+      // A rejected PUT that the server cannot have applied needs no
+      // reconciliation before the next attempt.
+      if (
+        putInFlight &&
+        operation?.phase === 'dispatched' &&
+        !isAbortError(error) &&
+        !isPossiblyAppliedUploadFailure(error)
+      ) {
+        operation = {
+          ...operation,
+          phase: 'prepared',
+          updatedAt: options.now(),
+        };
+        writeUploadOperation(operation);
+      }
+      putInFlight = false;
+
       if (isAbortError(error) || signal?.aborted) {
         if (!didMarkUploaded && !didMarkConflicted) {
-          await setRecordingSyncStatus(recording.id, 'pending');
+          await setRecordingSyncStatus(
+            recording.id,
+            'pending',
+            recording.uploadIntentVersion ?? 0,
+          );
         }
         throwIfAborted(signal);
         throw error;
       }
 
       if (isAuthError(error)) {
-        await setRecordingSyncStatus(recording.id, 'pending');
+        await setRecordingSyncStatus(
+          recording.id,
+          'pending',
+          recording.uploadIntentVersion ?? 0,
+        );
         if (tokenUserId) {
           await handleUploadAuthFailure(tokenUserId);
         }
@@ -376,7 +986,9 @@ async function uploadOneRecording(
       }
 
       // Accepted responses must not be resent because local persistence failed.
-      // Leave local state for later reconciliation instead of replaying this PUT.
+      // With a durable receipt the next pass reconciles the marker locally;
+      // without one (receipt write failed) the next pass replays the PUT and
+      // relies on the server's content-hash dedupe (#886).
       if (didAcceptCleanResponse || didMarkConflicted) {
         const message =
           error instanceof Error
@@ -385,6 +997,7 @@ async function uploadOneRecording(
         log.error('DB transaction failed after accepted upload response', {
           recordingId: recording.id,
           error: message,
+          receiptPersisted,
         });
         return 'failed';
       }
@@ -394,15 +1007,28 @@ async function uploadOneRecording(
         (error as Error & { terminal?: boolean }).terminal === true;
       if (terminalMissing) {
         lastMessage = error.message;
-        await markRecordingFailed(recording.id, lastMessage);
+        if (
+          (await markRecordingFailed(
+            recording.id,
+            lastMessage,
+            recording.uploadIntentVersion ?? 0,
+          )) === false
+        )
+          return 'deferred';
         return 'failed';
       }
 
       const outcome = outcomeFromVerseAudioFailure(error);
       lastMessage = outcome.message;
 
-      // Save currentVersionToken from 409 before retry to avoid stale token loop
-      if (outcome.kind === 'retryable' && outcome.currentVersionToken) {
+      // Stored-only uploads: save currentVersionToken from 409 before retry
+      // to avoid a stale token loop. An activation never adopts it: the
+      // next attempt reconciles under the operation's original precondition.
+      if (
+        !operation &&
+        outcome.kind === 'retryable' &&
+        outcome.currentVersionToken
+      ) {
         try {
           await updateRecordingVersionToken(
             recording.id,
@@ -429,7 +1055,11 @@ async function uploadOneRecording(
             attempt,
             message: lastMessage,
           });
-          await setRecordingSyncStatus(recording.id, 'pending');
+          await setRecordingSyncStatus(
+            recording.id,
+            'pending',
+            recording.uploadIntentVersion ?? 0,
+          );
           throw new UploadNetworkInterruptedError(lastMessage);
         }
 
@@ -439,7 +1069,14 @@ async function uploadOneRecording(
           message: lastMessage,
           retryable: outcome.retryable,
         });
-        await markRecordingFailed(recording.id, lastMessage);
+        if (
+          (await markRecordingFailed(
+            recording.id,
+            lastMessage,
+            recording.uploadIntentVersion ?? 0,
+          )) === false
+        )
+          return 'deferred';
         return 'failed';
       }
 
@@ -451,15 +1088,32 @@ async function uploadOneRecording(
       });
       await delay(attempt * 500);
       if (signal?.aborted) {
-        await setRecordingSyncStatus(recording.id, 'pending');
+        await setRecordingSyncStatus(
+          recording.id,
+          'pending',
+          recording.uploadIntentVersion ?? 0,
+        );
         throwIfAborted(signal);
       }
     }
   }
 
-  await markRecordingFailed(recording.id, lastMessage);
+  if (
+    (await markRecordingFailed(
+      recording.id,
+      lastMessage,
+      recording.uploadIntentVersion ?? 0,
+    )) === false
+  )
+    return 'deferred';
   return 'failed';
 }
+
+/**
+ * Per-take result of one upload attempt sequence. `deferred`: the row's
+ * intent generation moved while this pass held it, so nothing was marked.
+ */
+type TakeUploadOutcome = 'deferred' | 'uploaded' | 'conflicted' | 'failed';
 
 /** Distinct chapter in a pending pass. Orchestrator sessions key the same way. */
 function chapterKey(recording: PendingRecording): string {
@@ -475,7 +1129,7 @@ async function deleteOneRecordingTake(
     token: string;
     tokenUserId: string | null;
   },
-): Promise<'deleted' | 'failed'> {
+): Promise<TakeDeletionOutcome> {
   const { signal, delay, maxAttempts, token, tokenUserId } = options;
   let lastMessage = 'Delete take failed';
 
@@ -489,6 +1143,12 @@ async function deleteOneRecordingTake(
           takeId: deletion.serverTakeId,
         },
         token,
+        // Cancelled deletes stay queued; a DELETE the server already applied
+        // resolves as 404 → already_absent on the next pass (#886). That
+        // path skips raiseVerseVersionToken, so the next activating upload
+        // may cost one 409 before the existing conflict retry resyncs the
+        // token.
+        ...(signal ? [{ signal }] : []),
       );
       await clearRecordingDeletion(deletion.id);
       // Deleting the active take promotes another one and bumps the token;
@@ -504,7 +1164,7 @@ async function deleteOneRecordingTake(
         deletionId: deletion.id,
         serverTakeId: deletion.serverTakeId,
       });
-      return 'deleted';
+      return { kind: 'deleted', versionToken };
     } catch (error) {
       if (isAbortError(error) || signal?.aborted) {
         throwIfAborted(signal);
@@ -517,7 +1177,7 @@ async function deleteOneRecordingTake(
           deletionId: deletion.id,
           serverTakeId: deletion.serverTakeId,
         });
-        return 'deleted';
+        return { kind: 'already_absent' };
       }
 
       if (isAuthError(error)) {
@@ -551,7 +1211,7 @@ async function deleteOneRecordingTake(
           attempt,
           message: lastMessage,
         });
-        return 'failed';
+        return { kind: 'failed', message: lastMessage };
       }
 
       log.warn('Recording take delete retrying', {
@@ -564,9 +1224,15 @@ async function deleteOneRecordingTake(
     }
   }
 
-  return 'failed';
+  return { kind: 'failed', message: lastMessage };
 }
 
+/**
+ * Drain every queued take delete (all owners). A terminal failure leaves the
+ * row queued and is counted — callers must not report the pass complete
+ * while `failed > 0` (#886). Network interruption and auth failures still
+ * throw, as for takes.
+ */
 async function runDeletePass(
   token: string,
   options: {
@@ -574,11 +1240,22 @@ async function runDeletePass(
     delay: (ms: number) => Promise<void>;
     maxAttempts: number;
   },
-): Promise<void> {
+): Promise<DeletePassResult> {
   const pending = await getPendingRecordingDeletions();
+  const result: DeletePassResult = {
+    attempted: pending.length,
+    deleted: 0,
+    failed: 0,
+    failedForActiveUser: 0,
+  };
   if (pending.length === 0) {
-    return;
+    return result;
   }
+  const activeUserId = Number(getActiveUserId());
+  const ownedByActiveUser = (deletion: PendingRecordingDeletion): boolean =>
+    Number.isFinite(activeUserId) && activeUserId > 0
+      ? deletion.recordedByUserId === activeUserId
+      : deletion.recordedByUserId === null;
 
   log.info('Starting recording delete pass', { count: pending.length });
 
@@ -587,15 +1264,53 @@ async function runDeletePass(
     const { token: deleteToken, userId: tokenUserId } =
       await resolveOwnerAuthToken(deletion.recordedByUserId, token, {
         id: deletion.id,
+        kind: 'delete',
       });
-    await deleteOneRecordingTake(deletion, {
+    const outcome = await deleteOneRecordingTake(deletion, {
       signal: options.signal,
       delay: options.delay,
       maxAttempts: options.maxAttempts,
       token: deleteToken,
       tokenUserId,
     });
+    if (outcome.kind === 'failed') {
+      result.failed += 1;
+      if (ownedByActiveUser(deletion)) {
+        result.failedForActiveUser += 1;
+      }
+    } else {
+      result.deleted += 1;
+    }
   }
+
+  if (result.failed > 0) {
+    log.warn('Recording delete pass left rows pending', {
+      failed: result.failed,
+      failedForActiveUser: result.failedForActiveUser,
+      deleted: result.deleted,
+    });
+  }
+  return result;
+}
+
+/**
+ * Session-level delete drain for the orchestrator (#886): runs once per
+ * upload session before the first chapter, so chapter passes no longer
+ * re-scan every account's deletes. Unscoped manual passes still drain inline.
+ */
+export async function drainPendingRecordingDeletions(
+  token: string,
+  options: RecordingSyncOptions = {},
+): Promise<DeletePassResult> {
+  if (!token) {
+    throw new Error('Auth token is required for take delete drain');
+  }
+  getApiBaseUrl();
+  return runDeletePass(token, {
+    signal: options.signal,
+    delay: options.delay ?? defaultDelay,
+    maxAttempts: options.maxAttempts ?? MAX_UPLOAD_ATTEMPTS,
+  });
 }
 
 async function runUploadPass(
@@ -607,11 +1322,17 @@ async function runUploadPass(
 
   const delay = options.delay ?? defaultDelay;
   const maxAttempts = options.maxAttempts ?? MAX_UPLOAD_ATTEMPTS;
-  await runDeletePass(token, {
-    signal: options.signal,
-    delay,
-    maxAttempts,
-  });
+  // Chapter-scoped passes run inside an orchestrator session, which drains
+  // deletes once up front via `drainPendingDeletions` (#886). Only
+  // unscoped passes (manual retry) drain inline.
+  const deletePass: DeletePassResult =
+    options.chapter === undefined
+      ? await runDeletePass(token, {
+          signal: options.signal,
+          delay,
+          maxAttempts,
+        })
+      : { attempted: 0, deleted: 0, failed: 0, failedForActiveUser: 0 };
   const pending = await getPendingRecordings(options.chapter);
 
   log.info('Starting recording upload pass', {
@@ -642,33 +1363,56 @@ async function runUploadPass(
   let completedChapters = 0;
   emitPassEvent({ type: 'start', totalChapters });
 
+  const now = options.now ?? Date.now;
   let uploaded = 0;
   let conflicted = 0;
   let failed = 0;
+  let deferred = 0;
+  const reportTakeProgress = (): void => {
+    options.onTakeProgress?.({
+      completedTakes: uploaded + conflicted,
+      failedTakes: failed,
+      totalTakes: pending.length,
+    });
+  };
+  if (pending.length > 0) {
+    reportTakeProgress();
+  }
 
+  const uploadTokens = createPassOwnerTokens();
   try {
     for (const recording of pending) {
       throwIfAborted(options.signal);
       const { token: uploadToken, userId: tokenUserId } =
-        await resolveUploadTokenForRecording(recording, token);
+        await uploadTokens.resolve(recording, token);
       const result = await uploadOneRecording(recording, {
         signal: options.signal,
         delay,
         maxAttempts,
         token: uploadToken,
         tokenUserId,
+        now,
       });
       if (result === 'uploaded') {
         uploaded += 1;
       } else if (result === 'conflicted') {
         conflicted += 1;
+      } else if (result === 'deferred') {
+        deferred += 1;
       } else {
         failed += 1;
       }
+      if (result !== 'uploaded' && result !== 'conflicted') {
+        uploadTokens.clear();
+      }
+      reportTakeProgress();
 
       // Chapter workers never own session progress (#600 / #682). Failed takes
       // stay pending — do not count the chapter complete on a failed result.
-      if (orchestratorOwnsSession || result === 'failed') {
+      if (
+        orchestratorOwnsSession ||
+        (result !== 'uploaded' && result !== 'conflicted')
+      ) {
         continue;
       }
       const key = chapterKey(recording);
@@ -684,13 +1428,23 @@ async function runUploadPass(
       }
     }
 
-    emitPassEvent({ type: 'complete' });
-    log.info('Recording upload pass complete', {
+    const deletionsFailed = deletePass.failed;
+    // `complete` means nothing is left for this pass. Terminal failures keep
+    // rows pending, so finish with `idle`: the status store and notification
+    // reset, but no success signal is sent (Home only refreshes on `complete`).
+    emitPassEvent({
+      type:
+        failed > 0 || deferred > 0 || deletionsFailed > 0 ? 'idle' : 'complete',
+    });
+    log.info('Recording upload pass finished', {
       uploaded,
       conflicted,
       failed,
+      deferred,
+      deletionsFailed,
+      deletionsDone: deletePass.deleted,
     });
-    return { uploaded, conflicted, failed };
+    return { uploaded, conflicted, failed, deferred, deletionsFailed };
   } catch (error) {
     if (isAbortError(error) || options.signal?.aborted) {
       emitPassEvent({ type: 'cancelled' });
@@ -730,7 +1484,9 @@ export async function syncPendingRecordings(
 /**
  * Direct chapter upload helper (tests / ad-hoc callers). Production wires
  * `createChapterUploadWorker` via `registerRecordingUploadWorker` (#150).
- * Same failed-count contract as the registered worker.
+ * Same failed-count contract as the registered worker. Like the worker's
+ * chapter passes it does not drain take deletes — the orchestrator does that
+ * once per session (#886).
  */
 export async function uploadChapterRecordings(
   chapter: PendingUploadChapter,
@@ -742,8 +1498,23 @@ export async function uploadChapterRecordings(
     throw new Error('No auth token available for chapter upload');
   }
   const result = await syncPendingRecordings(resolved, { chapter, signal });
+  throwIfChapterPassIncomplete(result);
+}
+
+/**
+ * Chapter passes report failure to the orchestrator by throwing so it does
+ * not emit `complete` / clear its retry budget while rows stay pending.
+ * Conflicts are successful server accepts. (Deletes are drained once per
+ * session by `drainPendingDeletions`, not per chapter — #886.)
+ */
+function throwIfChapterPassIncomplete(result: UploadResult): void {
   if (result.failed > 0) {
     throw new Error(`Chapter upload failed for ${result.failed} recording(s)`);
+  }
+  if (result.deferred > 0) {
+    throw new Error(
+      `Chapter upload deferred ${result.deferred} recording(s) after a local change`,
+    );
   }
 }
 
@@ -751,20 +1522,29 @@ export function createChapterUploadWorker(
   getToken: () => string | null = () => authToken.get(),
 ): ChapterUploadWorker {
   return {
-    uploadChapter: async (chapter, signal) => {
+    uploadChapter: async (chapter, signal, onTakeProgress) => {
       const token = getToken();
       if (!token) {
         throw new Error('No auth token available for chapter upload');
       }
-      // Chapter-scoped passes stay silent (#682). Propagate hard failures so
+      // Chapter-scoped passes stay silent (#682) apart from the per-take
+      // callback the orchestrator owns (#886). Propagate hard failures so
       // the orchestrator can retry instead of emitting complete while work
       // still needs attention. Conflicts are successful server accepts.
-      const result = await syncPendingRecordings(token, { chapter, signal });
-      if (result.failed > 0) {
-        throw new Error(
-          `Chapter upload failed for ${result.failed} recording(s)`,
-        );
+      const result = await syncPendingRecordings(token, {
+        chapter,
+        signal,
+        onTakeProgress,
+      });
+      throwIfChapterPassIncomplete(result);
+    },
+    drainPendingDeletions: async signal => {
+      const token = getToken();
+      if (!token) {
+        throw new Error('No auth token available for take delete drain');
       }
+      const result = await drainPendingRecordingDeletions(token, { signal });
+      return { failed: result.failedForActiveUser };
     },
   };
 }

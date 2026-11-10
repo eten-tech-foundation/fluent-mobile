@@ -54,6 +54,8 @@ type MockTake = {
   takeNumber: number;
   granularity: string;
   isSelected: boolean;
+  isCanonical?: boolean;
+  syncStatus?: string;
   durationMs: number;
   startChapter?: number;
   startVerse?: number;
@@ -241,11 +243,6 @@ jest.mock('../../../hooks/useDraftingUnit', () => ({
   useDraftingUnit: () => ({ draftingUnit: mockDraftingUnit }),
 }));
 
-let mockConflict = false;
-jest.mock('../../../hooks/useChapterConflictStatus', () => ({
-  useChapterConflictStatus: () => ({ hasConflict: mockConflict }),
-}));
-
 const mockUnuploadable = jest.fn(async () => false);
 jest.mock('../../../db/queries', () => ({
   chapterHasUnuploadableSelectedTakes: () => mockUnuploadable(),
@@ -431,7 +428,6 @@ describe('PassageScreen', () => {
     mockNotes = [];
     mockNotesFailed = false;
     mockDraftingUnit = 'pericope';
-    mockConflict = false;
     mockUnuploadable.mockResolvedValue(false);
     mockObserverGrant = false;
     mockTranslatorGrant = false;
@@ -1753,6 +1749,40 @@ describe('PassageScreen', () => {
       expect(mockSetCanonical).toHaveBeenCalledWith('t2');
     });
 
+    it('lets the official take be chosen again after its upload failed', async () => {
+      const official = {
+        ...take(2),
+        isSelected: true,
+        isCanonical: true,
+        startVerse: 22,
+        endVerse: 23,
+      };
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...official, syncStatus: 'uploaded' }],
+      };
+      const { unmount } = render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      expect(
+        screen.getByTestId('passage-take-official').props.accessibilityState,
+      ).toMatchObject({ disabled: true });
+      unmount();
+
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...official, syncStatus: 'failed' }],
+      };
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-take-official'));
+      });
+
+      expect(screen.queryByTestId('passage-confirm')).toBeNull();
+      expect(mockSelectTake).toHaveBeenCalledWith('t2');
+      expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+    });
+
     it('resumes the passage take over a verse where it was paused, and restarts it from the end', async () => {
       const cover = {
         ...take(2),
@@ -2133,9 +2163,42 @@ describe('PassageScreen', () => {
     expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('warns about a sync conflict and takes that cannot upload', async () => {
-    mockConflict = true;
+  it("warns about a sync conflict from the passage's assignment row", async () => {
+    mockPassage = {
+      ...ready,
+      assignment: { ...ready.assignment, hasConflict: true },
+    };
     render(<PassageScreen />);
+    await act(async () => {});
+
+    expect(screen.getByTestId('passage-notices-conflict')).toBeTruthy();
+  });
+
+  it('shows no conflict warning when the assignment row has none', async () => {
+    mockPassage = {
+      ...ready,
+      assignment: { ...ready.assignment, hasConflict: false },
+    };
+    render(<PassageScreen />);
+    await act(async () => {});
+
+    expect(screen.queryByTestId('passage-notices-conflict')).toBeNull();
+  });
+
+  it('picks up a conflict when the passage reloads its assignment', async () => {
+    mockPassage = {
+      ...ready,
+      assignment: { ...ready.assignment, hasConflict: false },
+    };
+    const view = render(<PassageScreen />);
+    await act(async () => {});
+    expect(screen.queryByTestId('passage-notices-conflict')).toBeNull();
+
+    mockPassage = {
+      ...ready,
+      assignment: { ...ready.assignment, hasConflict: true },
+    };
+    view.rerender(<PassageScreen />);
     await act(async () => {});
 
     expect(screen.getByTestId('passage-notices-conflict')).toBeTruthy();
