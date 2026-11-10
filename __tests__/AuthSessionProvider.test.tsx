@@ -61,7 +61,7 @@ jest.mock('../src/services/recordingSync', () => ({
 const mockRefreshSyncStatusStore = jest.fn(() => Promise.resolve());
 const mockResetSyncStatusStore = jest.fn();
 jest.mock('../src/services/syncStatusStore', () => ({
-  refreshSyncStatusStore: () => mockRefreshSyncStatusStore(),
+  refreshSyncStatusStoreIfChanged: () => mockRefreshSyncStatusStore(),
   resetSyncStatusStore: () => mockResetSyncStatusStore(),
 }));
 

@@ -8,9 +8,11 @@ import {
 import { AuthError } from './authError';
 import {
   __resetFullSyncSingleFlightForTests,
+  __resetMetadataRefreshFreshnessForTests,
   BIBLE_TEXT_CURSOR_OVERLAP_MS,
   BIBLE_TEXT_FULL_RECONCILE_BUDGET,
   BIBLE_TEXT_FULL_RECONCILE_MAX_AGE_MS,
+  isMetadataSyncActive,
   refreshChapterMetadataIfOnline,
   syncAllUsers,
   syncBibleTexts,
@@ -40,6 +42,7 @@ import {
   setMasterDataLastSyncedAt,
   getMasterDataUpdatedAt,
   setMasterDataUpdatedAt,
+  setReauthRequired,
 } from './storage';
 import * as syncEvents from './syncEvents';
 import { getDatabase } from '../db/db';
@@ -137,6 +140,18 @@ jest.mock('./keychain', () => ({
   clearTempCredentials: jest.fn(),
 }));
 
+let mockKvBatchDepth = 0;
+jest.mock('./kvBatch', () => ({
+  runKvBatchSync: jest.fn((fn: () => void) => {
+    mockKvBatchDepth += 1;
+    try {
+      fn();
+    } finally {
+      mockKvBatchDepth -= 1;
+    }
+  }),
+}));
+
 jest.mock('./storage', () => ({
   KV_KEYS: {
     SYNC_COUNT_PROJECTS: 'sync_count_projects',
@@ -164,6 +179,9 @@ jest.mock('./storage', () => ({
   getKnownUserIds: jest.fn(),
   getUserLastSyncedAt: jest.fn(),
   setUserLastSyncedAt: jest.fn(),
+  getCatalogueQuietSince: jest.fn(() => null),
+  setCatalogueQuietSince: jest.fn(),
+  clearCatalogueQuietSince: jest.fn(),
   // Test convenience only (#886): the real getter runs a one-time legacy
   // reconciliation (storage.test.ts); here it just follows the legacy mock.
   getUserBibleTextSyncedAt: jest.fn((userId: string) =>
@@ -221,7 +239,7 @@ jest.mock('../db/repository', () => ({
   insertPericopeSets: jest.fn().mockResolvedValue(undefined),
   getProjectPericopeSetId: jest.fn().mockResolvedValue(null),
   getChaptersNeedingPericopeSync: jest.fn().mockResolvedValue([]),
-  upsertPericopeSet: jest.fn().mockResolvedValue(undefined),
+  upsertPericopeSet: jest.fn().mockResolvedValue(true),
 }));
 
 jest.mock('../db/db', () => ({
@@ -245,6 +263,7 @@ jest.mock('../db/stageAdvanceQueueRepository', () => ({
   getPendingStageAdvances: () => mockGetPendingStageAdvances(),
 }));
 beforeEach(() => {
+  __resetMetadataRefreshFreshnessForTests();
   mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
   mockGetPendingChapterClaims.mockResolvedValue([
     { id: 1, userId: 9 },
@@ -377,6 +396,102 @@ describe('sync step orchestration', () => {
       );
       expect(setMasterDataLastSyncedAtMock).not.toHaveBeenCalled();
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_master_data');
+    });
+
+    it('issues the three collection requests concurrently and still writes in FK order (#886)', async () => {
+      // Each request blocks until released; all three must be in flight
+      // before any one of them resolves.
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const releases: Array<() => void> = [];
+      const gated = <T>(value: T) =>
+        jest.fn().mockImplementation(
+          () =>
+            new Promise<T>(resolve => {
+              inFlight += 1;
+              maxInFlight = Math.max(maxInFlight, inFlight);
+              releases.push(() => {
+                inFlight -= 1;
+                resolve(value);
+              });
+            }),
+        );
+      (FluentAPI.getLanguages as jest.Mock).mockImplementation(
+        gated([{ id: 1, langName: 'English', langCode: 'eng' }]),
+      );
+      (FluentAPI.getBooks as jest.Mock).mockImplementation(
+        gated([{ id: 1, name: 'Genesis' }]),
+      );
+      (FluentAPI.getBibles as jest.Mock).mockImplementation(
+        gated([{ id: 10, name: 'Source' }]),
+      );
+
+      const pending = syncMasterData('session-tok');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(releases).toHaveLength(3);
+      expect(maxInFlight).toBe(3);
+      expect(insertMasterDataMock).not.toHaveBeenCalled();
+
+      // Release out of order: the write must not start until all three
+      // arrive, and its argument order (languages, books, bibles) is fixed.
+      releases[2]();
+      releases[0]();
+      for (let tick = 0; tick < 10; tick += 1) {
+        await Promise.resolve();
+      }
+      expect(insertMasterDataMock).not.toHaveBeenCalled();
+      releases[1]();
+      await pending;
+
+      expect(insertMasterDataMock).toHaveBeenCalledTimes(1);
+      expect(insertMasterDataMock).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: 1, langCode: 'eng' })],
+        [{ id: 1, name: 'Genesis' }],
+        [{ id: 10, name: 'Source' }],
+      );
+    });
+
+    it('handles one AuthError once while the sibling requests are still pending (#886)', async () => {
+      (getActiveUserId as jest.Mock).mockReturnValue('1');
+      let releaseBooks: (() => void) | undefined;
+      let releaseBibles: (() => void) | undefined;
+      (FluentAPI.getLanguages as jest.Mock).mockRejectedValue(
+        new AuthError('User not authenticated'),
+      );
+      (FluentAPI.getBooks as jest.Mock).mockImplementation(
+        () =>
+          new Promise(resolve => {
+            releaseBooks = () => resolve([{ id: 1, name: 'Genesis' }]);
+          }),
+      );
+      (FluentAPI.getBibles as jest.Mock).mockImplementation(
+        () =>
+          new Promise((_resolve, reject) => {
+            releaseBibles = () => reject(new AuthError('late sibling 401'));
+          }),
+      );
+
+      await expect(syncMasterData('session-tok')).rejects.toBeInstanceOf(
+        AuthError,
+      );
+
+      // Auth failure handled exactly once, no retry, nothing written.
+      expect(setReauthRequired).toHaveBeenCalledTimes(1);
+      expect(setSyncErrorMock).toHaveBeenCalledTimes(1);
+      expect(FluentAPI.getLanguages).toHaveBeenCalledTimes(1);
+      expect(insertMasterDataMock).not.toHaveBeenCalled();
+      expect(setMasterDataUpdatedAtMock).not.toHaveBeenCalled();
+
+      // Late siblings settle (one resolves, one rejects) without a second
+      // auth handling pass or an unhandled rejection.
+      releaseBooks?.();
+      releaseBibles?.();
+      for (let tick = 0; tick < 10; tick += 1) {
+        await Promise.resolve();
+      }
+      expect(setReauthRequired).toHaveBeenCalledTimes(1);
+      expect(setSyncErrorMock).toHaveBeenCalledTimes(1);
     });
 
     it('passes each collection cursor as updatedAfter for incremental sync', async () => {
@@ -841,6 +956,46 @@ describe('sync step orchestration', () => {
       expect(ensureUserProjectMembershipMock).toHaveBeenCalledWith(2);
       expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_projects', 1);
       expect(clearSyncErrorMock).toHaveBeenCalledWith('sync_error_projects');
+    });
+
+    it('uses the membership count the guard just read', async () => {
+      const execute = jest.fn().mockResolvedValue({ rows: [{ count: 9 }] });
+      (getDatabase as jest.Mock).mockReturnValue({ execute });
+      ensureUserProjectMembershipMock.mockResolvedValueOnce(3);
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [{ id: 7, name: 'Alpha', sourceLanguageId: 1 }],
+      });
+
+      await syncProjects(2);
+
+      expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_projects', 3);
+      expect(
+        execute.mock.calls.filter(([sql]) =>
+          String(sql).includes('FROM user_projects WHERE user_id = ?'),
+        ),
+      ).toHaveLength(0);
+    });
+
+    it('counts again after the guard backfills membership', async () => {
+      mockDbCount(4);
+      ensureUserProjectMembershipMock.mockResolvedValueOnce(null);
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({
+        data: [{ id: 7, name: 'Alpha', sourceLanguageId: 1 }],
+      });
+
+      await syncProjects(2);
+
+      expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_projects', 4);
+    });
+
+    it('counts membership when the confirmed project list is empty', async () => {
+      mockDbCount(0);
+      (FluentAPI.getUserProjects as jest.Mock).mockResolvedValue({ data: [] });
+
+      await syncProjects(2);
+
+      expect(ensureUserProjectMembershipMock).not.toHaveBeenCalled();
+      expect(setSyncCountMock).toHaveBeenCalledWith('sync_count_projects', 0);
     });
 
     it('clears local milestones before membership when the project list is empty', async () => {
@@ -2969,6 +3124,43 @@ describe('sync step orchestration', () => {
           }
         });
 
+        it('writes the pass coverage in one KV batch, after the verses (#886)', async () => {
+          getChaptersToSyncMock.mockResolvedValue(new Map([[10, chapters(4)]]));
+          const storage = jest.requireMock('./storage');
+          storage.getBibleTextChapterSyncedAt.mockImplementation(() => null);
+          serverRows = [1, 2, 3, 4].map(ch => ({
+            chapterNumber: ch,
+            id: 900 + ch,
+            updatedAt: '2025-06-01T00:00:00.000Z',
+          }));
+          const { runKvBatchSync } = jest.requireMock('./kvBatch') as {
+            runKvBatchSync: jest.Mock;
+          };
+          runKvBatchSync.mockClear();
+          const depths: number[] = [];
+          storage.setBibleTextChapterSyncedAt.mockImplementation(() => {
+            depths.push(mockKvBatchDepth);
+          });
+          storage.setBibleTextChapterFullReconcileAt.mockImplementation(() => {
+            depths.push(mockKvBatchDepth);
+          });
+
+          await syncBibleTexts(CURSOR);
+
+          expect(runKvBatchSync).toHaveBeenCalledTimes(1);
+          expect(depths).toHaveLength(8);
+          expect(depths.every(depth => depth === 1)).toBe(true);
+          expect(storage.setBibleTextChapterSyncedAt.mock.calls).toEqual(
+            [1, 2, 3, 4].map(ch => [10, 1, ch, new Date(NOW).toISOString()]),
+          );
+          const versesDone = Math.max(
+            ...insertBibleTextsMock.mock.invocationCallOrder,
+          );
+          expect(runKvBatchSync.mock.invocationCallOrder[0]).toBeGreaterThan(
+            versesDone,
+          );
+        });
+
         it('an error answered as an empty incremental never advances coverage; the next pass re-asks', async () => {
           getChaptersToSyncMock.mockResolvedValue(new Map([[10, chapters(1)]]));
           fullAt.set('10:1:1', NOW - 60_000);
@@ -3355,7 +3547,6 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
     expect(claimsOrder).toBeLessThan(assignmentOrder);
     expect(assignmentOrder).toBeLessThan(stageOrder);
   });
-
   it('light refresh joins an in-flight full sync that covers the user instead of racing it (#886)', async () => {
     (getCredentials as jest.Mock).mockImplementation(
       async (userId: string) => ({
@@ -3424,5 +3615,71 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
 
     await expect(joined).resolves.toBeUndefined();
     await expect(fullSync).resolves.toBe('full-sync-failed');
+  });
+
+  it('isMetadataSyncActive reflects an in-flight full sync and a light refresh (#886)', async () => {
+    (getCredentials as jest.Mock).mockImplementation(
+      async (userId: string) => ({
+        token: `user-${userId}-token`,
+      }),
+    );
+    (FluentAPI.getSelfSettings as jest.Mock).mockResolvedValue({
+      settings: { displayMode: 'verse', suppressTooltip: true },
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      settingsCapabilities: { partialMerge: true, displayMode: true },
+    });
+    expect(isMetadataSyncActive()).toBe(false);
+
+    const fullSync = syncAllUsers();
+    expect(isMetadataSyncActive()).toBe(true);
+    await fullSync;
+    expect(isMetadataSyncActive()).toBe(false);
+
+    let activeWhileReachingServer: boolean | null = null;
+    (getCredentials as jest.Mock).mockImplementationOnce(
+      async (userId: string) => {
+        activeWhileReachingServer = isMetadataSyncActive();
+        return { token: `user-${userId}-token` };
+      },
+    );
+    await refreshChapterMetadataIfOnline(2);
+    expect(activeWhileReachingServer).toBe(true);
+    expect(isMetadataSyncActive()).toBe(false);
+  });
+
+  it('a light refresh that stays offline is not a sync (#886)', async () => {
+    getConnectivitySnapshotMock.mockResolvedValueOnce({
+      isOnline: false,
+      isWifi: false,
+      isCellular: false,
+      connectionType: 'none',
+    });
+
+    await refreshChapterMetadataIfOnline(3);
+
+    expect(getConnectivitySnapshotMock).toHaveBeenCalled();
+    expect(syncEvents.emitSyncComplete).not.toHaveBeenCalled();
+    expect(getCredentials).not.toHaveBeenCalled();
+    expect(isMetadataSyncActive()).toBe(false);
+  });
+
+  it('a light refresh for an account no longer active is not a sync (#886)', async () => {
+    await refreshChapterMetadataIfOnline(4);
+
+    expect(getConnectivitySnapshotMock).toHaveBeenCalled();
+    expect(syncEvents.emitSyncComplete).not.toHaveBeenCalled();
+    expect(getCredentials).not.toHaveBeenCalled();
+    expect(isMetadataSyncActive()).toBe(false);
+  });
+
+  it('a light refresh that reaches the server ends in one sync complete (#886)', async () => {
+    (getCredentials as jest.Mock).mockResolvedValue({ token: 'user-2-token' });
+    (getActiveUserId as jest.Mock).mockReturnValue('5');
+    (getKnownUserIds as jest.Mock).mockReturnValue(['5']);
+
+    await refreshChapterMetadataIfOnline(5);
+
+    expect(getCredentials).toHaveBeenCalledWith('5');
+    expect(syncEvents.emitSyncComplete).toHaveBeenCalledTimes(1);
   });
 });

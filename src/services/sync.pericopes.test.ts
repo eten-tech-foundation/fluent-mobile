@@ -50,7 +50,7 @@ jest.mock('./storage', () => ({
 jest.mock('../db/repository', () => ({
   getChaptersNeedingPericopeSync: jest.fn(),
   getProjectPericopeSetId: jest.fn(),
-  upsertPericopeSet: jest.fn().mockResolvedValue(undefined),
+  upsertPericopeSet: jest.fn().mockResolvedValue(true),
 }));
 
 jest.mock('./connectivity', () => ({
@@ -73,6 +73,7 @@ describe('syncPericopes', () => {
     ]);
     jest.mocked(getProjectPericopeSetId).mockResolvedValue(1);
     jest.mocked(getPericopeBookVersion).mockReturnValue('');
+    jest.mocked(upsertPericopeSet).mockResolvedValue(true);
   });
 
   it('seeds from the bundled asset when the set is bundled', async () => {
@@ -133,6 +134,42 @@ describe('syncPericopes', () => {
       ]),
     );
     expect(setPericopeBookVersion).toHaveBeenCalledWith(99, 'MRK', '"etag-99"');
+  });
+
+  it('does not mark a book current when nothing was written (#886)', async () => {
+    jest.mocked(upsertPericopeSet).mockResolvedValue(false);
+    jest.mocked(getBundledPericopeSetVersion).mockReturnValue('bundled-v1');
+    jest.mocked(loadBundledPericopeSet).mockReturnValue([
+      {
+        chapterNumber: 1,
+        verseNumber: 1,
+        section: 1,
+        pericopeNumber: '1',
+        pericopeTitle: null,
+      },
+    ]);
+
+    await syncPericopes();
+
+    jest.mocked(getProjectPericopeSetId).mockResolvedValue(99);
+    jest.mocked(getBundledPericopeSetVersion).mockReturnValue(null);
+    jest.mocked(FluentAPI.getPericopeSet).mockResolvedValue({
+      status: 200,
+      etag: '"etag-99"',
+      data: [
+        {
+          bookCode: 'MRK',
+          pericopeNumber: '1',
+          pericopeTitle: 'Title',
+          verses: [{ chapterNumber: 1, verseNumber: 1 }],
+        },
+      ],
+    });
+
+    await syncPericopes();
+
+    expect(upsertPericopeSet).toHaveBeenCalledTimes(2);
+    expect(setPericopeBookVersion).not.toHaveBeenCalled();
   });
 
   it('skips upsert on 304 and refreshes the stored ETag', async () => {

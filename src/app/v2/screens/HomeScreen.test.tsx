@@ -205,6 +205,30 @@ describe('Next HomeScreen', () => {
     ).toBeTruthy();
   });
 
+  it('says checking, not offline, before reachability is known', () => {
+    mockSession = { ...sessionDefaults, syncStatus: 'checking' };
+    render(<HomeScreen />);
+
+    expect(screen.getByTestId('home-summary').props.children).toBe(
+      '2 chapters',
+    );
+    expect(
+      screen.getByLabelText('Checking connection. Open Sync page.'),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Offline/)).toBeNull();
+    // Saved content is not held back while it checks.
+    expect(screen.getByTestId('home-books')).toBeTruthy();
+  });
+
+  it('still shows a confirmed offline', () => {
+    mockSession = { ...sessionDefaults, syncStatus: 'offline_pending' };
+    render(<HomeScreen />);
+
+    expect(
+      screen.getByLabelText('Offline · upload pending. Open Sync page.'),
+    ).toBeTruthy();
+  });
+
   it('opens accounts from the avatar and the Sync page from the cloud', () => {
     render(<HomeScreen />);
     expect(screen.queryByTestId('accounts-sheet')).toBeNull();
@@ -344,8 +368,18 @@ describe('Next HomeScreen', () => {
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
+  it('keeps the books on screen through a sync when none of the chapters are mine', () => {
+    mockChapters = [];
+    mockSession = { ...sessionDefaults, isSyncingChapters: true };
+    render(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
+    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
+  });
+
   it('waits on chapters while a sync is still bringing them in', () => {
     mockChapters = [];
+    mockBooks = [];
     mockSession = { ...sessionDefaults, isSyncingChapters: true };
     render(<HomeScreen />);
 

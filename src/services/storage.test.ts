@@ -46,6 +46,8 @@ import {
   clearReauthRequired,
   isReauthRequired,
   isReauthRequiredForActiveUser,
+  getCatalogueQuietSince,
+  setCatalogueQuietSince,
 } from './storage';
 
 describe('storage (KV wrapper)', () => {
@@ -355,6 +357,26 @@ describe('storage (KV wrapper)', () => {
       setUserLastSyncedAt('7', '2026-01-03T00:00:00.000Z');
       expect(getUserLastSyncedAt('7')).toBe('2026-01-03T00:00:00.000Z');
       expect(getUserBibleTextSyncedAt('7')).toBe('2026-01-02T00:00:00.000Z');
+    });
+  });
+
+  describe('catalogue quiet window stamp', () => {
+    it('is per account and rejects malformed values', () => {
+      setCatalogueQuietSince('7', 1_700_000_000_000);
+      expect(getCatalogueQuietSince('7')).toBe(1_700_000_000_000);
+      expect(getCatalogueQuietSince('8')).toBeNull();
+      mockKv.set('7:catalogue_quiet_since', 'not-a-number');
+      expect(getCatalogueQuietSince('7')).toBeNull();
+    });
+
+    it.each([
+      ['sign-in', () => setUserSync('7', 'a@example.com')],
+      ['account switch', () => switchActiveUser('7')],
+      ['re-auth required', () => setReauthRequired('7')],
+    ])('is cleared by %s', (_label, change) => {
+      setCatalogueQuietSince('7', Date.now());
+      change();
+      expect(getCatalogueQuietSince('7')).toBeNull();
     });
   });
 });

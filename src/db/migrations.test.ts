@@ -45,6 +45,16 @@ function createFakeDb(initialVersion = 0) {
   let userVersion = initialVersion;
   const tables = new Map<string, FakeTable>();
   const indexes = new Set<string>();
+  // Mid-version fixtures omit unrelated tables. Migration 25 now touches
+  // recordings, which already exists on every real install at these versions.
+  if (initialVersion >= 10) {
+    tables.set('recordings', {
+      columns: new Set(['id', 'bible_text_id', 'is_selected']),
+      rows: [],
+      foreignKeys: new Map(),
+      defaults: new Map(),
+    });
+  }
 
   const ensureChapterAssignmentsOldShape = () => {
     if (tables.has('chapter_assignments')) {
@@ -1446,7 +1456,7 @@ describe('recording server take id + delete queue migration (#716)', () => {
     expect(await columnExists(db, 'recordings', 'server_take_id')).toBe(true);
     expect(db._tables.has('recording_deletions')).toBe(true);
     await expect(getUserVersion(db)).resolves.toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(24);
+    expect(CURRENT_SCHEMA_VERSION).toBe(25);
   });
 });
 

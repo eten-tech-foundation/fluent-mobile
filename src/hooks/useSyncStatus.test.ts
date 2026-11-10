@@ -408,3 +408,173 @@ describe('useSyncStatus metadata / reauth retry work', () => {
     }
   });
 });
+
+describe('useSyncStatus before reachability is known', () => {
+  type Connectivity = ReturnType<typeof useConnectivity>;
+  const unresolved: Connectivity = {
+    isOnline: true,
+    isLinkOnline: false,
+    isWifi: true,
+    isCellular: false,
+    connectionType: 'wifi',
+    hasResolved: false,
+    hasTransferResolved: false,
+    connectivityPending: true,
+    transferConnectivityPending: true,
+  };
+  const resolved = (patch: Partial<Connectivity>): Connectivity => ({
+    ...unresolved,
+    hasResolved: true,
+    hasTransferResolved: true,
+    connectivityPending: false,
+    transferConnectivityPending: false,
+    ...patch,
+  });
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockKv.clear();
+    mockGetSyncError.mockReturnValue(undefined);
+    mockUseReauthRequired.mockReturnValue({
+      reauthRequired: false,
+      refreshReauthRequired: jest.fn(),
+    });
+    mockUsePendingUploads.mockReturnValue({
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      failedCount: 0,
+      unuploadableCount: 0,
+      hasPendingUploads: false,
+      hasFailedUploads: false,
+      hasUnuploadablePending: false,
+      countsUnknown: false,
+      failedErrorText: null,
+      isUploading: false,
+      uploadProgress: null,
+    });
+    mockUseLocalSyncHealth.mockReturnValue({
+      needsDownloadSync: false,
+      missingTextChapters: 0,
+      checking: false,
+    });
+    mockOnlineWifi();
+  });
+
+  it('shows checking, not offline, then online once /health answers', () => {
+    mockUseConnectivity.mockReturnValue(unresolved);
+    const { result, rerender } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+    expect(result.current.status).toBe('checking');
+    // Still not online for anything that gates on it.
+    expect(result.current.isOnline).toBe(false);
+
+    mockUseConnectivity.mockReturnValue(resolved({ isLinkOnline: true }));
+    rerender({});
+    expect(result.current.status).toBe('online_synced');
+    expect(result.current.isOnline).toBe(true);
+  });
+
+  it('shows checking, then offline once /health fails', () => {
+    mockUseConnectivity.mockReturnValue(unresolved);
+    const { result, rerender } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+    expect(result.current.status).toBe('checking');
+
+    mockUseConnectivity.mockReturnValue(
+      resolved({ isOnline: false, isLinkOnline: true }),
+    );
+    rerender({});
+    expect(result.current.status).toBe('offline_synced');
+  });
+
+  it('keeps checking while /health said online but the link is unknown', () => {
+    mockUseConnectivity.mockReturnValue({
+      ...unresolved,
+      hasResolved: true,
+      connectivityPending: false,
+    });
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+    expect(result.current.status).toBe('checking');
+    expect(result.current.isOnline).toBe(false);
+  });
+
+  it('is offline as soon as /health fails, before the link answers', () => {
+    mockUseConnectivity.mockReturnValue({
+      ...unresolved,
+      isOnline: false,
+      hasResolved: true,
+      connectivityPending: false,
+    });
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+    expect(result.current.status).toBe('offline_synced');
+  });
+
+  it('keeps checking when only the transport snapshot says no link', () => {
+    // NetInfo's first `unknown` state reads as no link; that isn't offline.
+    mockUseConnectivity.mockReturnValue({
+      ...unresolved,
+      isLinkOnline: false,
+      hasTransferResolved: true,
+      transferConnectivityPending: false,
+    });
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+    expect(result.current.status).toBe('checking');
+  });
+
+  it('is offline with pending uploads once a down link is reported', () => {
+    mockUseConnectivity.mockReturnValue(
+      resolved({ isOnline: false, isLinkOnline: false }),
+    );
+    mockUsePendingUploads.mockReturnValue({
+      pendingCount: 2,
+      pendingChapterCount: 1,
+      failedCount: 0,
+      unuploadableCount: 0,
+      hasPendingUploads: true,
+      hasFailedUploads: false,
+      hasUnuploadablePending: false,
+      countsUnknown: false,
+      failedErrorText: null,
+      isUploading: false,
+      uploadProgress: null,
+    });
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+    expect(result.current.status).toBe('offline_pending');
+  });
+
+  it('shows pending uploads once reachability resolves', () => {
+    mockUseConnectivity.mockReturnValue(unresolved);
+    mockUsePendingUploads.mockReturnValue({
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      failedCount: 0,
+      unuploadableCount: 0,
+      hasPendingUploads: false,
+      hasFailedUploads: false,
+      hasUnuploadablePending: false,
+      countsUnknown: true,
+      failedErrorText: null,
+      isUploading: false,
+      uploadProgress: null,
+    });
+    const { result, rerender } = renderHook(() =>
+      useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+    );
+    expect(result.current.status).toBe('checking');
+
+    mockUseConnectivity.mockReturnValue(resolved({ isLinkOnline: true }));
+    rerender({});
+    // Unknown counts still never read as all synced.
+    expect(result.current.status).toBe('online_pending');
+  });
+});

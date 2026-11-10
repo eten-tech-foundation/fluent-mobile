@@ -191,6 +191,7 @@ async function signInRequest(
 async function uploadVerseAudioRequest(
   params: UploadVerseAudioParams,
   token?: string,
+  request?: { signal?: AbortSignal },
 ): Promise<VerseAudioResponse> {
   const formData = await buildVerseAudioFormData(params);
   const path =
@@ -200,7 +201,7 @@ async function uploadVerseAudioRequest(
   const raw = await authedMultipartRequest<unknown>(
     path,
     formData,
-    { method: 'PUT' },
+    { method: 'PUT', ...(request?.signal ? { signal: request.signal } : {}) },
     token,
   );
   return parseVerseAudioResponse(raw);
@@ -448,7 +449,27 @@ export const FluentAPI = {
   uploadVerseAudio: (
     params: UploadVerseAudioParams,
     token?: string,
-  ): Promise<VerseAudioResponse> => uploadVerseAudioRequest(params, token),
+    request?: { signal?: AbortSignal },
+  ): Promise<VerseAudioResponse> =>
+    uploadVerseAudioRequest(params, token, request),
+
+  /**
+   * One unit with its takes, active take and version token.
+   * `GET /verse-audio/{projectUnitId}/{bibleTextId}`; 404 when the unit has
+   * no recording. Range uploads are keyed by their start `bibleTextId`.
+   */
+  getVerseAudioUnit: async (
+    params: { projectUnitId: number; bibleTextId: number },
+    token?: string,
+    request?: { signal?: AbortSignal },
+  ): Promise<VerseAudioResponse> => {
+    const raw = await authedRequest<unknown>(
+      verseAudioUploadPath(params.projectUnitId, params.bibleTextId),
+      request?.signal ? { signal: request.signal } : undefined,
+      token,
+    );
+    return parseVerseAudioResponse(raw);
+  },
 
   /**
    * Delete one take by id (fluent-api#465 / #716).
@@ -461,6 +482,7 @@ export const FluentAPI = {
       takeId: number;
     },
     token?: string,
+    request?: { signal?: AbortSignal },
   ): Promise<{ versionToken: number | null }> =>
     authedRequest<unknown>(
       verseAudioTakeDeletePath(
@@ -468,7 +490,10 @@ export const FluentAPI = {
         params.bibleTextId,
         params.takeId,
       ),
-      { method: 'DELETE' },
+      {
+        method: 'DELETE',
+        ...(request?.signal ? { signal: request.signal } : {}),
+      },
       token,
     ).then(versionTokenFromVerseAudioBody),
 
@@ -481,10 +506,11 @@ export const FluentAPI = {
   getChapterVerseAudio: async (
     params: GetChapterVerseAudioParams,
     token?: string,
+    request?: { signal?: AbortSignal },
   ): Promise<VerseAudioListResponse> => {
     const raw = await authedRequest<unknown>(
       chapterVerseAudioPath(params),
-      undefined,
+      request?.signal ? { signal: request.signal } : undefined,
       token,
     );
     return parseVerseAudioListResponse(raw);
@@ -523,6 +549,7 @@ export const FluentAPI = {
     chapter: number,
     verse: number,
     languageCode: string,
+    token?: string,
   ): Promise<ApiTranslationNotesResponse> =>
     authedRequest<ApiTranslationNotesResponse>(
       translationResourcesVersePath(
@@ -533,6 +560,8 @@ export const FluentAPI = {
         verse,
         languageCode,
       ),
+      undefined,
+      token,
     ),
 
   /**
@@ -657,10 +686,12 @@ export const FluentAPI = {
   getChapterSourceAudio: (
     params: GetChapterSourceAudioParams,
     request?: { signal?: AbortSignal },
+    token?: string,
   ): Promise<ApiSourceAudioResponse> =>
     authedRequest<ApiSourceAudioResponse>(
       chapterSourceAudioPath(params),
       request?.signal ? { signal: request.signal } : undefined,
+      token,
     ),
 };
 
