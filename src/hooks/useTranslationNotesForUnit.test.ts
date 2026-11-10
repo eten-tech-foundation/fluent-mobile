@@ -5,6 +5,7 @@ import {
   loadTranslationNotesForUnit,
   setTranslationNotesLoadFailureForTests,
 } from '../services/translationNotes';
+import { clearPassageResourceReuse } from '../services/passageResourceReuse';
 import { TRANSLATION_NOTES_LOAD_ERROR } from '../constants/messages';
 import { TranslationNoteItem } from '../types/resources/translationNotes';
 
@@ -139,5 +140,43 @@ describe('useTranslationNotesForUnit', () => {
       answerB(theirs);
     });
     expect(result.current.state).toEqual({ status: 'ready', notes: theirs });
+  });
+
+  it('drops a response that arrives after a grant clear and loads again', async () => {
+    const pending: Array<(notes: TranslationNoteItem[]) => void> = [];
+    mockLoad.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          pending.push(resolve);
+        }),
+    );
+    const { result } = renderHook(() =>
+      useTranslationNotesForUnit({
+        projectId: 7,
+        userId: 5,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 1,
+      }),
+    );
+    await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      clearPassageResourceReuse('5');
+    });
+    await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      pending[0]?.(SAMPLE_NOTES);
+    });
+    expect(result.current.state.status).toBe('loading');
+
+    const fresh: TranslationNoteItem[] = [
+      { id: 'fresh', title: 'Fresh', body: 'after clear' },
+    ];
+    await act(async () => {
+      pending[1]?.(fresh);
+    });
+    expect(result.current.state).toEqual({ status: 'ready', notes: fresh });
   });
 });

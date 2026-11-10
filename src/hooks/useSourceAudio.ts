@@ -261,15 +261,12 @@ export function useSourceAudio({
           throw new Error('Source audio account is not the active session');
         }
 
-        const fetchFromApi = async () => {
-          const response = await fetchChapterSourceAudio(
+        const fetchFromApi = async () =>
+          fetchChapterSourceAudio(
             { projectId, bookCode, chapter, languageCode, bibleId },
             undefined,
             bearer,
           );
-          void persistSourceAudioMeta(projectId, response);
-          return response;
-        };
         const data =
           owner === ''
             ? await fetchFromApi()
@@ -280,6 +277,7 @@ export function useSourceAudio({
                 { fresh, isValid: isCachedSourceAudioResponseValid },
               );
         if (requestId !== requestIdRef.current) return;
+        void persistSourceAudioMeta(projectId, data);
         responseCacheRef.current.set(identity, data);
         applyResponse(data);
       } catch (error) {

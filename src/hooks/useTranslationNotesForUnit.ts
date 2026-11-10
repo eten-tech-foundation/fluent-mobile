@@ -1,9 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { TRANSLATION_NOTES_LOAD_ERROR } from '../constants/messages';
 import {
   loadTranslationNotesForUnit,
   type LoadTranslationNotesParams,
 } from '../services/translationNotes';
+import {
+  passageResourceEpoch,
+  subscribePassageResourceClears,
+} from '../services/passageResourceReuse';
 import { TranslationNoteItem } from '../types/resources/translationNotes';
 import {
   verseRefsFromChapter,
@@ -25,6 +36,7 @@ type TrackedLoadState = {
   bookCode: string;
   versesKey: string;
   languageCode: string | undefined;
+  epoch: string;
   value: TranslationNotesLoadState;
 };
 
@@ -87,6 +99,10 @@ export function useTranslationNotesForUnit(
     ],
   );
   const versesKey = useMemo(() => verseRefsKey(refs), [refs]);
+  const owner = userId === null || userId === undefined ? '' : String(userId);
+  const epoch = useSyncExternalStore(subscribePassageResourceClears, () =>
+    passageResourceEpoch(owner),
+  );
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
     userId,
@@ -94,6 +110,7 @@ export function useTranslationNotesForUnit(
     bookCode,
     versesKey,
     languageCode,
+    epoch,
     value: { status: 'loading' },
   });
   const requestIdRef = useRef(0);
@@ -107,6 +124,7 @@ export function useTranslationNotesForUnit(
         bookCode,
         versesKey,
         languageCode,
+        epoch,
         value: { status: 'loading' },
       });
       try {
@@ -130,6 +148,7 @@ export function useTranslationNotesForUnit(
           bookCode,
           versesKey,
           languageCode,
+          epoch,
           value: { status: 'ready', notes },
         });
       } catch (error) {
@@ -148,6 +167,7 @@ export function useTranslationNotesForUnit(
           bookCode,
           versesKey,
           languageCode,
+          epoch,
           value: {
             status: 'error',
             message: TRANSLATION_NOTES_LOAD_ERROR,
@@ -165,6 +185,7 @@ export function useTranslationNotesForUnit(
       refs,
       versesKey,
       languageCode,
+      epoch,
     ],
   );
 
@@ -181,7 +202,8 @@ export function useTranslationNotesForUnit(
     tracked.projectId === projectId &&
     tracked.bookCode === bookCode &&
     tracked.versesKey === versesKey &&
-    tracked.languageCode === languageCode
+    tracked.languageCode === languageCode &&
+    tracked.epoch === epoch
       ? tracked.value
       : { status: 'loading' };
 

@@ -276,6 +276,67 @@ describe('useSourceAudio', () => {
     expect(persistSourceAudioMeta).toHaveBeenCalledWith(1, data);
   });
 
+  it('does not persist chapter metadata for a response that lost the race', async () => {
+    const stale = {
+      provider: 'aquifer' as const,
+      bible: { name: 'BSB', abbreviation: 'BSB' },
+      bookCode: 'MRK',
+      chapter: 1,
+      items: [
+        {
+          format: 'mp3' as const,
+          url: 'https://cdn.example/stale.mp3',
+          scope: 'chapter' as const,
+        },
+      ],
+    };
+    let releaseStale: (value: unknown) => void = () => undefined;
+    fetchChapterSourceAudio.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          releaseStale = resolve;
+        }),
+    );
+    switchAccount('5', 'token-5');
+    const { rerender } = renderHook(
+      (props: UseSourceAudioArgs) => useSourceAudio(props),
+      { initialProps: { ...baseArgs(), userId: 5 } },
+    );
+    await waitFor(() =>
+      expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1),
+    );
+    const finishStale = releaseStale;
+
+    switchAccount('6', 'token-6');
+    fetchChapterSourceAudio.mockResolvedValue({
+      ...stale,
+      items: [
+        {
+          format: 'mp3' as const,
+          url: 'https://cdn.example/current.mp3',
+          scope: 'chapter' as const,
+        },
+      ],
+    });
+    rerender({ ...baseArgs(), userId: 6 });
+    await waitFor(() =>
+      expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2),
+    );
+
+    await act(async () => {
+      finishStale(stale);
+    });
+
+    expect(persistSourceAudioMeta).not.toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({ url: 'https://cdn.example/stale.mp3' }),
+        ],
+      }),
+    );
+  });
+
   it('sets error on API failure and retry refetches', async () => {
     fetchChapterSourceAudio
       .mockRejectedValueOnce(new ApiError(502, 'upstream'))
@@ -976,7 +1037,10 @@ describe('useSourceAudio', () => {
       await openAndClose({ ...baseArgs(), userId: 5 });
       await openAndClose({ ...baseArgs(), userId: 5 });
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1);
-      expect(persistSourceAudioMeta).toHaveBeenCalledTimes(1);
+      // The second open reuses the lookup, and still writes the sidecar.
+      // The write lives with the opener that kept the response, so a discarded
+      // first request cannot be the only one that would have written it.
+      expect(persistSourceAudioMeta).toHaveBeenCalledTimes(2);
 
       switchAccount('6', 'token-6');
       await openAndClose({ ...baseArgs(), userId: 6 });

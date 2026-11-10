@@ -1,5 +1,6 @@
-import { renderHook } from '@testing-library/react-native';
+import { act, renderHook } from '@testing-library/react-native';
 import type { TranslationNotesLoadState } from '../../../../hooks/useTranslationNotesForUnit';
+import { clearPassageResourceReuse } from '../../../../services/passageResourceReuse';
 import { usePassageNotes } from './usePassageNotes';
 import type { Ready } from './ready';
 
@@ -48,6 +49,21 @@ describe('usePassageNotes', () => {
     expect(result.current.notes).toEqual([{ id: 'a' }]);
 
     rerender({ userId: 6 });
+    expect(result.current.notes).toEqual([]);
+  });
+
+  it('does not keep notes from before a grant clear when the reload fails', () => {
+    mockState = {
+      status: 'ready',
+      notes: [{ id: 'a', title: 'A', body: 'for A' }],
+    };
+    const { result } = renderHook(() => usePassageNotes(passage, 5, true));
+    expect(result.current.notes).toEqual([{ id: 'a' }]);
+
+    mockState = { status: 'error', message: 'nope' };
+    act(() => {
+      clearPassageResourceReuse('5');
+    });
     expect(result.current.notes).toEqual([]);
   });
 });
