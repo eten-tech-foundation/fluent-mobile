@@ -17,6 +17,7 @@ const STATUSES: SyncStatus[] = [
   'online_failed',
   'offline_synced',
   'offline_pending',
+  'checking',
 ];
 const FAILED_ERROR = 'Server busy.';
 

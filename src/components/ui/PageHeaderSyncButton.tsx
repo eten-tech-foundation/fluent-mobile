@@ -12,6 +12,8 @@ interface PageHeaderSyncButtonProps {
   cloudColor?: string;
   /** Sanitized recordings.upload_error when status is online_failed. */
   failedErrorText?: string | null;
+  /** Pending uploads are waiting for drafting to end; changes the spoken label. */
+  heldForDrafting?: boolean;
 }
 
 export function PageHeaderSyncButton({
@@ -20,6 +22,7 @@ export function PageHeaderSyncButton({
   onPressIn,
   cloudColor,
   failedErrorText,
+  heldForDrafting,
 }: PageHeaderSyncButtonProps) {
   return (
     <TouchableOpacity
@@ -28,6 +31,7 @@ export function PageHeaderSyncButton({
       style={styles.syncSlot}
       accessibilityLabel={formatSyncStatusLabel(syncStatus, {
         failedErrorText,
+        heldForDrafting,
       })}
       accessibilityRole="button"
       hitSlop={touchHitSlop}

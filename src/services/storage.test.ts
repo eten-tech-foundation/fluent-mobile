@@ -25,21 +25,29 @@ import {
   getKnownUserIds,
   getMasterDataLastSyncedAt,
   getMasterDataUpdatedAt,
+  getUserBibleTextSyncedAt,
   getUserEmail,
   getUserEmailSync,
+  getUserLastSyncedAt,
   KV_KEYS,
+  getBibleTextChapterSyncedAt,
+  setBibleTextChapterSyncedAt,
   MAX_DEVICE_ACCOUNTS,
   registerKnownUser,
   setActiveUserId,
   setMasterDataLastSyncedAt,
   setMasterDataUpdatedAt,
+  setUserBibleTextSyncedAt,
   setUserEmail,
+  setUserLastSyncedAt,
   setUserSync,
   switchActiveUser,
   setReauthRequired,
   clearReauthRequired,
   isReauthRequired,
   isReauthRequiredForActiveUser,
+  getCatalogueQuietSince,
+  setCatalogueQuietSince,
 } from './storage';
 
 describe('storage (KV wrapper)', () => {
@@ -297,6 +305,78 @@ describe('storage (KV wrapper)', () => {
       expect(mockKv.has(KV_KEYS.LAST_MASTER_DATA_BIBLES_UPDATED_AT)).toBe(
         false,
       );
+    });
+  });
+
+  describe('per-user sync cursors (#886)', () => {
+    it('requires full recovery instead of deriving text coverage from legacy shared markers', () => {
+      setUserLastSyncedAt('7', '2026-03-01T00:00:00.000Z');
+      mockKv.set(KV_KEYS.LAST_SYNCED_AT, '2026-04-01T00:00:00.000Z');
+      expect(getUserBibleTextSyncedAt('7')).toBe('');
+      expect(mockKv.has('7:bible_text_synced_at')).toBe(false);
+      // Another account's later full sync cannot move this account's watermark.
+      mockKv.set(KV_KEYS.LAST_SYNCED_AT, '2026-06-01T00:00:00.000Z');
+      expect(getUserBibleTextSyncedAt('7')).toBe('');
+    });
+
+    it('tracks committed coverage by exact shared text chapter', () => {
+      setUserBibleTextSyncedAt('7', '2026-06-01T00:00:00.000Z');
+      expect(getBibleTextChapterSyncedAt(1, 40, 1)).toBe('');
+      setBibleTextChapterSyncedAt(1, 40, 1, '2026-01-01T00:00:00.000Z');
+      expect(getBibleTextChapterSyncedAt(1, 40, 1)).toBe(
+        '2026-01-01T00:00:00.000Z',
+      );
+      expect(getBibleTextChapterSyncedAt(1, 40, 2)).toBe('');
+      expect(getBibleTextChapterSyncedAt(2, 40, 1)).toBe('');
+      expect(() => setBibleTextChapterSyncedAt(1, 40, 1, 'invalid')).toThrow();
+    });
+
+    it('returns empty (full fetch) and persists nothing when legacy evidence is incomplete or unparseable', () => {
+      setUserLastSyncedAt('7', '2026-03-01T00:00:00.000Z');
+      expect(getUserBibleTextSyncedAt('7')).toBe('');
+      expect(mockKv.has('7:bible_text_synced_at')).toBe(false);
+
+      mockKv.set(KV_KEYS.LAST_SYNCED_AT, 'not-a-date');
+      expect(getUserBibleTextSyncedAt('7')).toBe('');
+      expect(mockKv.has('7:bible_text_synced_at')).toBe(false);
+
+      mockKv.set(KV_KEYS.LAST_SYNCED_AT, '2026-02-01T00:00:00.000Z');
+      setUserLastSyncedAt('8', '');
+      expect(getUserBibleTextSyncedAt('8')).toBe('');
+      expect(mockKv.has('8:bible_text_synced_at')).toBe(false);
+    });
+
+    it('keeps the assignment and bible-text cursors independent once split', () => {
+      setUserLastSyncedAt('7', '2026-01-01T00:00:00.000Z');
+      setUserBibleTextSyncedAt('7', '2026-01-02T00:00:00.000Z');
+
+      expect(mockKv.has('7:bible_text_synced_at')).toBe(true);
+      expect(getUserBibleTextSyncedAt('7')).toBe('2026-01-02T00:00:00.000Z');
+
+      // An assignment-only refresh must not move the text watermark.
+      setUserLastSyncedAt('7', '2026-01-03T00:00:00.000Z');
+      expect(getUserLastSyncedAt('7')).toBe('2026-01-03T00:00:00.000Z');
+      expect(getUserBibleTextSyncedAt('7')).toBe('2026-01-02T00:00:00.000Z');
+    });
+  });
+
+  describe('catalogue quiet window stamp', () => {
+    it('is per account and rejects malformed values', () => {
+      setCatalogueQuietSince('7', 1_700_000_000_000);
+      expect(getCatalogueQuietSince('7')).toBe(1_700_000_000_000);
+      expect(getCatalogueQuietSince('8')).toBeNull();
+      mockKv.set('7:catalogue_quiet_since', 'not-a-number');
+      expect(getCatalogueQuietSince('7')).toBeNull();
+    });
+
+    it.each([
+      ['sign-in', () => setUserSync('7', 'a@example.com')],
+      ['account switch', () => switchActiveUser('7')],
+      ['re-auth required', () => setReauthRequired('7')],
+    ])('is cleared by %s', (_label, change) => {
+      setCatalogueQuietSince('7', Date.now());
+      change();
+      expect(getCatalogueQuietSince('7')).toBeNull();
     });
   });
 });

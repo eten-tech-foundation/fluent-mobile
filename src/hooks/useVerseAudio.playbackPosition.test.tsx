@@ -37,6 +37,9 @@ jest.mock('../services/pausedTakes', () => ({
   upsertPausedTake: jest.fn(),
 }));
 
+jest.mock('../services/recordingTakeDeletion', () => ({
+  deleteRecordingTakeWithUploadState: jest.fn(),
+}));
 jest.mock('../services/uploadOrchestrator', () => ({
   notifyPendingUploads: jest.fn(),
 }));
