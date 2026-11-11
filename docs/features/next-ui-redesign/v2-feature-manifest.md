@@ -229,6 +229,11 @@ Things the Figma designs add that v1 doesn't do.
   outside their tests now (the book page uses Passage cover, and the take
   card draws with `Waveform`). Their gallery entries are gone; deleting the
   components and their tests is a follow-up.
+- **One waveform:** `Waveform` covers playback and live recording, so it
+  stays the only one and `LevelWave` goes. Smaller places, like a button
+  showing playback or the mic level once you leave the player, get a compact
+  size on `Waveform` that scales the row and bar heights together. Add it
+  with the first button that needs it, not before.
 - **Coverage script:** `npm run api:coverage` reports 28 operations called;
   the real number is 24, because it ignores the HTTP method and matches paths
   in comments.
@@ -392,6 +397,9 @@ Folded in from Legacy, so Next blocks and warns the same way:
   no Send yet, while Figma's Dialog frame is the send confirm (2648-616). The
   Recorder take card (2555-910) draws a Level wave Long, but the built card
   draws the take with `Waveform`.
+- Waveform: Figma has two, the Wave bar (2409-505) and the Level wave with
+  its Progress dot (2409-509). Code keeps only `Waveform`, so the Progress
+  dot and the take card's Level wave should become a compact Wave bar.
 
 - Screen header: Home, the book page and the translation note share a header
   row with `space-12` above and below its buttons, and a `stroke/1`
