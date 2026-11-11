@@ -86,6 +86,86 @@ describe('FluentAPI auth', () => {
     expect(response.token).toBe(fullToken);
   });
 
+  it('sign-in, user lookup, sign-out and forgot-password never use the WebView cookie jar', async () => {
+    // Pinned expo/fetch: anything but 'omit' routes through the WebView CookieManager.
+    const usesWebViewCookieJar = (init?: RequestInit) =>
+      (init?.credentials ?? 'include') !== 'omit';
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({ token: 'short', user: { email: 't@fluent.local' } }),
+        headers: {
+          get: (name: string) =>
+            name.toLowerCase() === 'set-auth-token' ? 'header-token' : null,
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify({ id: 241, email: 't@fluent.local' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify({ success: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify({ status: true }),
+      });
+
+    const signedIn = await FluentAPI.signIn('t@fluent.local', 't@123456');
+    expect(signedIn.token).toBe('header-token');
+    await FluentAPI.getUserByEmail('t@fluent.local', signedIn.token);
+    authToken.set(signedIn.token);
+    await FluentAPI.signOut();
+    await FluentAPI.forgotPassword('t@fluent.local');
+
+    const calls = fetchMock.mock.calls as [string, RequestInit][];
+    expect(calls.map(([url]) => new URL(url).pathname)).toEqual([
+      '/api/auth/sign-in/email',
+      '/users/email/t%40fluent.local',
+      '/api/auth/sign-out',
+      '/api/auth/forget-password',
+    ]);
+    expect(calls.map(([, init]) => usesWebViewCookieJar(init))).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
+    expect(calls[0][1].headers).toMatchObject({
+      'x-client-type': 'mobile',
+      'User-Agent': 'fluent-mobile',
+      Origin: 'http://localhost:9999',
+    });
+    expect(calls[0][1].headers).not.toHaveProperty('Authorization');
+    expect(calls[1][1].headers).toMatchObject({
+      Authorization: 'Bearer header-token',
+    });
+    expect(calls[2][1].headers).toMatchObject({
+      Authorization: 'Bearer header-token',
+      'x-client-type': 'mobile',
+      'User-Agent': 'fluent-mobile',
+    });
+  });
+
+  it('signIn falls back to the body token when no set-auth-token header is exposed', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          token: 'body-token',
+          user: { email: 't@fluent.local' },
+        }),
+      headers: { get: () => null },
+    });
+
+    await expect(
+      FluentAPI.signIn('t@fluent.local', 't@123456'),
+    ).resolves.toMatchObject({ token: 'body-token' });
+    expect(fetchMock.mock.calls[0][1].credentials).toBe('omit');
+  });
+
   it('signIn throws a stable error when the failure body is not JSON', async () => {
     fetchMock.mockResolvedValue({
       ok: false,

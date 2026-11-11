@@ -30,7 +30,7 @@ import {
   stopDownloadQueueAutoResume,
 } from '../services/downloadQueueAutoResume';
 import {
-  refreshSyncStatusStore,
+  refreshSyncStatusStoreIfChanged,
   resetSyncStatusStore,
 } from '../services/syncStatusStore';
 import { registerRecordingUploadWorker } from '../services/recordingSync';
@@ -127,7 +127,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     } else {
       stopAutoResume = startDownloadQueueAutoResume();
     }
-    void refreshSyncStatusStore();
+    void refreshSyncStatusStoreIfChanged();
     return () => {
       stopUploadProgressNotification();
       stopUploadOrchestrator();
@@ -142,7 +142,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    BootSplash.hide({ fade: true }).catch(e => {
+    // A fade opens a second splash window on the UI thread while the first
+    // screen is mounting, holding saved content back on every cold launch.
+    BootSplash.hide().catch(e => {
       log.error('BootSplash hide failed', { error: String(e) });
     });
   }, [isLoading]);

@@ -56,6 +56,32 @@ export function takeIdFromVerseAudioResponse(
 }
 
 /**
+ * What an activating PUT's 200 says about the requested activation.
+ * - `activated`: the returned take is the unit's active take.
+ * - `conflicted`: the unit is in conflict (existing conflict handling).
+ * - `stored_not_active`: the bytes are stored as `takeId`, but another take
+ *   stayed active (e.g. a stale precondition on duplicate bytes is a 200
+ *   no-op). Not a successful activation.
+ * - `unverified`: no `takeId` (pre-#465 API), so activation cannot be
+ *   distinguished from storage; callers keep the legacy treatment.
+ */
+export type ActivationResponseState =
+  | 'activated'
+  | 'conflicted'
+  | 'stored_not_active'
+  | 'unverified';
+
+export function activationStateFromResponse(
+  response: VerseAudioResponse,
+): ActivationResponseState {
+  if (response.conflictStatus === 'conflict') return 'conflicted';
+  if (!isFiniteNumber(response.takeId)) return 'unverified';
+  return response.activeTakeId === response.takeId
+    ? 'activated'
+    : 'stored_not_active';
+}
+
+/**
  * Unit version token from a take delete response (#716). Only `versionToken`
  * is used. A missing or non-numeric token is null, so a partial body does not
  * fail the delete. A null unit `downloadUrl` is valid on the strict parser
@@ -113,6 +139,20 @@ export function outcomeFromVerseAudioFailure(
   const message =
     error instanceof Error ? error.message : 'Verse audio upload failed';
   return { kind: 'retryable', message, retryable: true };
+}
+
+/**
+ * True when a failed PUT may still have been applied by the server, so the
+ * worker must reconcile (GET + content hash) before sending it again:
+ * transport loss, timeouts, any 5xx, 409, and non-HTTP errors (including a
+ * malformed 200). Other 4xx and 429 are rejected before any write.
+ */
+export function isPossiblyAppliedUploadFailure(error: unknown): boolean {
+  if (!isApiError(error)) return true;
+  if (error.status === 0 || error.status === 408 || error.status === 409) {
+    return true;
+  }
+  return error.status >= 500;
 }
 
 function isFiniteNumber(value: unknown): value is number {

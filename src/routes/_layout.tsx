@@ -20,10 +20,13 @@ import {
 } from '../navigation/AuthSessionProvider';
 import { E2eDevMenuGuard } from '../navigation/E2eDevMenuGuard';
 import { useUploadSyncNotificationTap } from '../navigation/useUploadSyncNotificationTap';
+import { useLaunchEntry } from '../navigation/useLaunchEntry';
 import {
   classifyRouteGroups,
   getAuthGateDecision,
 } from '../navigation/authGate';
+
+const LAUNCH_ENTRY_OPTIONS = { animation: 'none' } as const;
 
 function UploadSyncNotificationTap() {
   useUploadSyncNotificationTap();
@@ -34,6 +37,8 @@ function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuthSession();
   const segments = useSegments();
   const { inAuthGroup, inAppGroup } = classifyRouteGroups(segments);
+  const launchEntry = useLaunchEntry(inAuthGroup || inAppGroup);
+  const groupOptions = launchEntry ? LAUNCH_ENTRY_OPTIONS : undefined;
   const decision = getAuthGateDecision({
     isLoading,
     isAuthenticated,
@@ -52,10 +57,10 @@ function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isAuthenticated}>
-        <Stack.Screen name="(app)" />
+        <Stack.Screen name="(app)" options={groupOptions} />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>
-        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(auth)" options={groupOptions} />
       </Stack.Protected>
       <Stack.Protected guard={isComponentGalleryEnabled()}>
         <Stack.Screen name="gallery" />

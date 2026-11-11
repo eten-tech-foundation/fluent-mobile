@@ -99,6 +99,17 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
+/**
+ * Caller cancellation surfaces as a real `AbortError`, never as a network /
+ * timeout `ApiError`: a cancelled request must not be retried, must not be
+ * counted as a transport failure and must not latch a sync error (#886).
+ */
+export function createRequestAbortError(): Error {
+  const error = new Error('Request aborted');
+  error.name = 'AbortError';
+  return error;
+}
+
 async function executeRequest<T>(
   endpoint: string,
   options: RequestInit,
@@ -129,6 +140,9 @@ async function executeRequest<T>(
     try {
       res = await fetch(`${apiBaseUrl}${endpoint}`, {
         ...requestOptions,
+        // Auth is bearer-only; any other value makes expo/fetch run the
+        // WebView CookieManager (init + flush) on every request.
+        credentials: 'omit',
         signal: controller.signal,
       });
     } finally {
@@ -161,6 +175,12 @@ async function executeRequest<T>(
   } catch (error) {
     if (error instanceof AuthError || error instanceof ApiError) {
       throw error;
+    }
+
+    // Caller cancellation wins over the timeout classification: both abort
+    // the same controller, only the caller's signal tells them apart.
+    if (callerSignal?.aborted) {
+      throw createRequestAbortError();
     }
 
     if (isAbortError(error)) {

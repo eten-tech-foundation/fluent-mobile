@@ -39,7 +39,10 @@ import {
 } from '../../services/sync';
 import { emitSyncComplete, emitSyncStart } from '../../services/syncEvents';
 import { hrefs } from '../../navigation/hrefs';
-import { useDraftingUploadHold } from '../../hooks/useDraftingUploadHold';
+import {
+  useDraftingUploadHold,
+  useUploadsHeldForDrafting,
+} from '../../hooks/useDraftingUploadHold';
 import { useRecordCaptureLeaveGuard } from '../../hooks/useRecordCaptureLeaveGuard';
 import {
   parseRequiredNumber,
@@ -152,6 +155,7 @@ export default function DraftingScreen() {
   // Bible, Resources, and Record share this screen, so a tab change does not
   // release the hold. Passage uses the same hook on its own route.
   useDraftingUploadHold();
+  const heldForDrafting = useUploadsHeldForDrafting();
 
   const goBack = useCallback(() => {
     router.back();
@@ -188,6 +192,7 @@ export default function DraftingScreen() {
       onBack={goBack}
       syncStatus={syncStatus}
       failedErrorText={failedErrorText}
+      heldForDrafting={heldForDrafting}
       onSyncPress={handleSyncPress}
       showAccountIndicator={activeAccount.hasMultipleAccounts}
       accountFirstName={activeAccount.firstName}

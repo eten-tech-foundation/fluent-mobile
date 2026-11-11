@@ -44,6 +44,10 @@ jest.mock('./storage', () => ({
   },
 }));
 
+import {
+  readDraftListingSnapshot,
+  seedDraftListingSnapshot,
+} from './draftListingSnapshot';
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import {
@@ -312,5 +316,20 @@ describe('signOut', () => {
       KV_KEYS.ACTIVE_USER_ID,
     );
     expect(clearUserSession).toHaveBeenCalled();
+  });
+
+  it('drops in-memory chapter listing snapshots (#886)', () => {
+    const chapter = {
+      projectUnitId: 12,
+      bibleId: 1,
+      bookId: 41,
+      chapterNumber: 1,
+    };
+    seedDraftListingSnapshot(chapter, '7', { items: [], hasConflict: false });
+    expect(readDraftListingSnapshot(chapter, '7')).not.toBeNull();
+
+    signOut();
+
+    expect(readDraftListingSnapshot(chapter, '7')).toBeNull();
   });
 });

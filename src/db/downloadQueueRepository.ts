@@ -312,6 +312,26 @@ export async function markDownloadItemCompleted(
   }
 }
 
+/**
+ * Clean-restart reset (#886): the partial bytes were rejected (Range
+ * ignored, size/identity mismatch, expired URL body), so drop resume state
+ * and progress and return the row to `queued`. `local_file_path` is kept so
+ * the restart writes to the same destination.
+ */
+export async function clearDownloadItemResumeState(id: string): Promise<void> {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  const result = await db.execute(
+    `UPDATE download_queue
+     SET status = 'queued', progress = 0, resume_data = NULL, updated_at = ?
+     WHERE id = ? AND status <> 'cancelled'`,
+    [now, id],
+  );
+  if ((result.rowsAffected ?? 0) > 0) {
+    emitDownloadQueueChanged();
+  }
+}
+
 export async function markDownloadItemFailed(id: string): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();

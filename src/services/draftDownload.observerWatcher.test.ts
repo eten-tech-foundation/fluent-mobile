@@ -49,6 +49,8 @@ jest.mock('./downloadQueueWorkerSingleton', () => ({
 }));
 
 jest.mock('./draftDownloadManifest', () => ({
+  runDraftDownloadPublication: jest.requireActual('./draftDownloadManifest')
+    .runDraftDownloadPublication,
   writeDraftDownloadManifest: (...args: unknown[]) =>
     mockWriteManifest(...args),
   readDraftDownloadManifest: (...args: unknown[]) => mockReadManifest(...args),

@@ -34,6 +34,7 @@ jest.mock('../db/queries', () => ({
 }));
 
 import { ApiError } from '../types/api/errors';
+import { AuthError } from './authError';
 import {
   isClaimHeldByOtherError,
   reconcilePendingClaimsAfterAssignmentPull,
@@ -58,9 +59,14 @@ describe('syncChapterClaim', () => {
 
   it('calls API and writes local assignment on a winning claim', async () => {
     await expect(syncChapterClaim(3, 9)).resolves.toEqual(winningResponse);
-    expect(mockFluentClaim).toHaveBeenCalledWith(3, 9);
+    expect(mockFluentClaim).toHaveBeenCalledWith(3, 9, undefined);
     expect(mockClaimChapterAssignment).toHaveBeenCalledWith(3, 9);
     expect(mockSetChapterAssignmentConflict).not.toHaveBeenCalled();
+  });
+
+  it('forwards the owner token so the claim is attributed to the queued user (#886)', async () => {
+    await syncChapterClaim(3, 9, 'owner-9-token');
+    expect(mockFluentClaim).toHaveBeenCalledWith(3, 9, 'owner-9-token');
   });
 
   it('persists has_conflict locally when the API reports a claim conflict', async () => {
@@ -150,6 +156,41 @@ describe('syncPendingChapterClaims', () => {
     });
     expect(mockSetChapterAssignmentConflict).toHaveBeenCalledWith(11, true);
     expect(mockResolveChapterClaimQueueEntry).toHaveBeenCalledWith(2);
+  });
+
+  it('uses the owner token for every row it drains (#886)', async () => {
+    mockGetPendingChapterClaims.mockResolvedValue([
+      { id: 1, chapterAssignmentId: 10, userId: 9, claimedAt: 'x' },
+      { id: 2, chapterAssignmentId: 11, userId: 9, claimedAt: 'x' },
+    ]);
+    mockFluentClaim.mockResolvedValue({
+      chapterAssignmentId: 10,
+      assignedUserId: 9,
+      status: 'draft',
+      hasClaimConflict: false,
+    });
+
+    await syncPendingChapterClaims(9, 'owner-9-token');
+
+    expect(mockFluentClaim).toHaveBeenNthCalledWith(1, 10, 9, 'owner-9-token');
+    expect(mockFluentClaim).toHaveBeenNthCalledWith(2, 11, 9, 'owner-9-token');
+  });
+
+  it('rethrows an expired owner session instead of counting it as a transient failure (#886)', async () => {
+    mockGetPendingChapterClaims.mockResolvedValue([
+      { id: 1, chapterAssignmentId: 10, userId: 9, claimedAt: 'x' },
+      { id: 2, chapterAssignmentId: 11, userId: 9, claimedAt: 'x' },
+    ]);
+    mockFluentClaim.mockRejectedValue(new AuthError('Session expired'));
+
+    await expect(syncPendingChapterClaims(9, 'stale-token')).rejects.toThrow(
+      AuthError,
+    );
+    // Stops at the first auth failure — no further rows are attempted with
+    // the dead session, and nothing is resolved or rejected locally.
+    expect(mockFluentClaim).toHaveBeenCalledTimes(1);
+    expect(mockResolveChapterClaimQueueEntry).not.toHaveBeenCalled();
+    expect(mockMarkChapterClaimQueueEntryRejected).not.toHaveBeenCalled();
   });
 
   it('leaves the queue row pending on transient API failure', async () => {

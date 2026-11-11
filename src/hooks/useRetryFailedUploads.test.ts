@@ -43,6 +43,8 @@ describe('useRetryFailedUploads', () => {
       uploaded: number;
       conflicted: number;
       failed: number;
+      deferred: number;
+      deletionsFailed: number;
     }) => void;
     mockSyncPendingRecordings.mockImplementation(
       () =>
@@ -57,6 +59,8 @@ describe('useRetryFailedUploads', () => {
       uploaded: number;
       conflicted: number;
       failed: number;
+      deferred: number;
+      deletionsFailed: number;
     } | null>;
     act(() => {
       pending = result.current.retryFailedUploads();
@@ -67,7 +71,13 @@ describe('useRetryFailedUploads', () => {
     });
 
     await act(async () => {
-      resolveUpload({ uploaded: 2, conflicted: 0, failed: 0 });
+      resolveUpload({
+        uploaded: 2,
+        conflicted: 0,
+        failed: 0,
+        deferred: 0,
+        deletionsFailed: 0,
+      });
       await pending!;
     });
 
@@ -77,6 +87,8 @@ describe('useRetryFailedUploads', () => {
       uploaded: 2,
       conflicted: 0,
       failed: 0,
+      deferred: 0,
+      deletionsFailed: 0,
     });
     expect(result.current.lastError).toBeNull();
   });

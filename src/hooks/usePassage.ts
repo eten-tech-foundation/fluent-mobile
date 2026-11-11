@@ -4,7 +4,6 @@ import {
   getBibleTextId,
   getBibleTexts,
   getChapterAssignmentById,
-  getChapterAssignmentVerseCount,
   getPericopeForVerse,
   getSelectedTakeCoverages,
   hasPendingStageAdvance,
@@ -118,9 +117,7 @@ async function loadPassage(
       chapterNumber: t.chapterNumber,
       verseNumber: t.verseNumber,
     }));
-  const expectedVerses = group
-    ? group.verses.length
-    : await getChapterAssignmentVerseCount(assignment.id);
+  const expectedVerses = group ? group.verses.length : assignment.totalVerses;
   // Others' chapters often store no count (0). Sync fetches a chapter's text
   // whole, so any text means it's in, as the sync chrome reads it.
   const downloaded =

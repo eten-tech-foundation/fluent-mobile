@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { logger } from '../utils/logger';
 import { downloadResourcePath, ensureDownloadsDir } from './downloadStorage';
 import {
+  clearDownloadItemResumeState,
   markDownloadItemCancelled,
   markDownloadItemCompleted,
   markDownloadItemFailed,
@@ -10,6 +11,12 @@ import {
 } from '../db/downloadQueueRepository';
 import type { DownloadQueueItem } from '../types/download/types';
 import { markDownloadItemDownloading } from '../db/downloadQueueRepository';
+import {
+  validateDownloadResult,
+  type DownloadValidationOutcome,
+} from './downloadResultValidation';
+import { isSha256Hex, sha256File } from './fileSha256';
+import { DRAFT_DOWNLOAD_RESOURCE_NAME } from './draftDownloadIds';
 
 const log = logger.create('DownloadQueueWorker');
 
@@ -35,6 +42,8 @@ export type DownloadPauseReason = 'user' | 'transport';
 
 export type ResourceResolver = (
   item: DownloadQueueItem,
+  /** Aborted by worker pause/cancel/drop while the resolver is in flight (#886). */
+  options?: { signal?: AbortSignal; forceRefresh?: boolean },
 ) => Promise<{ url: string; ext: string }>;
 
 /** Returns true when Wi-Fi / cellular policy allows a transfer (#546 / #619). */
@@ -42,6 +51,9 @@ export type TransportAllowsFn = () => Promise<boolean>;
 
 type ActiveDownload = {
   itemId: string;
+  /** Queue row as shifted — re-queued verbatim (minus resume state) on a clean restart. */
+  item: DownloadQueueItem;
+  destPath: string;
   resumable: FileSystem.DownloadResumable;
   /** Set when pauseAsync succeeds — reused on cancel to avoid double-pause. */
   savedPauseState?: string;
@@ -96,10 +108,49 @@ type ResolvingDownload = {
    * an item but not yet assigned `this.active` (awaiting transport/resolver).
    */
   cancelled: boolean;
+  /**
+   * Aborts the resolver's HTTP work (URL refresh) on pause/cancel/drop so the
+   * worker does not wait for the 30 s transport timeout to acknowledge
+   * (#886). `cancelled` says *why*; a pause leaves it false and re-queues.
+   */
+  abort: AbortController;
 };
+
+/**
+ * How many clean restarts (delete partial bytes, re-resolve URL, download
+ * from scratch) one item gets per worker session before it is marked failed.
+ * One covers the common cases — expired signed URL, Range ignored once — and
+ * bounds the loop a persistently wrong object would otherwise cause.
+ */
+export const MAX_DOWNLOAD_RESTARTS_PER_ITEM = 1;
+
+type TransferEvidence = {
+  resumed: boolean;
+  resumeOffset?: number;
+  result: FileSystem.FileSystemDownloadResult;
+};
+
+/**
+ * `bytesTotal` is only an exact byte count for draft takes (server computes
+ * `sizeBytes` from the uploaded body). Source Bible / Aquifer sizes come from
+ * upstream catalogue metadata (advisory, `0` when unknown) and must not be
+ * enforced against the CDN response.
+ */
+function exactExpectedBytes(item: DownloadQueueItem): number | undefined {
+  if (item.resourceName !== DRAFT_DOWNLOAD_RESOURCE_NAME) return undefined;
+  return typeof item.bytesTotal === 'number' && item.bytesTotal > 0
+    ? item.bytesTotal
+    : undefined;
+}
 
 export class DownloadQueueWorker {
   private state: WorkerSessionState = 'idle';
+  /**
+   * Clean restarts already spent per item id in this session. The
+   * worker is an app-lifetime singleton, so the budget is reset whenever a
+   * new session starts and cleared for an item once it completes.
+   */
+  private restarts = new Map<string, number>();
   private pauseReason: DownloadPauseReason | null = null;
   private active: ActiveDownload | null = null;
   /** Item shifted from the queue before `active` exists (resolver/transport gap). */
@@ -132,6 +183,7 @@ export class DownloadQueueWorker {
     }
     this.queue = [...items];
     this.pauseReason = null;
+    this.restarts.clear();
     this.state = 'downloading';
     await this.processNext();
   }
@@ -180,6 +232,7 @@ export class DownloadQueueWorker {
     if (this.resolving && drop.has(this.resolving.itemId)) {
       // Synchronous — processNext continuations observe this across awaits.
       this.resolving.cancelled = true;
+      this.resolving.abort.abort();
     }
 
     const active = this.active;
@@ -248,6 +301,8 @@ export class DownloadQueueWorker {
       // Waiting between items, or still resolving (transport/resolver await).
       this.pauseReason = reason;
       this.state = 'paused';
+      // Stop an in-flight URL refresh now; processNext re-queues the item.
+      this.resolving?.abort.abort();
       return;
     }
     const previousState = this.state;
@@ -298,6 +353,15 @@ export class DownloadQueueWorker {
 
     // Paused with no in-flight resumable (blocked before the next queued item).
     if (!this.active) {
+      // A URL refresh aborted by pause() may still be unwinding. Its catch
+      // re-queues the item and drives processNext once it sees state is
+      // 'downloading' again; starting a second pass here would race it and
+      // could leave the re-queued item behind in an idle worker (#886).
+      // Resolvers must settle (honour the signal or stay bounded — the draft
+      // listing has the 30 s HTTP timeout, sourceUrl items resolve inline).
+      if (this.resolving) {
+        return;
+      }
       await this.processNext();
       return;
     }
@@ -306,6 +370,14 @@ export class DownloadQueueWorker {
     const { itemId, resumable } = activeAtStart;
     try {
       await markDownloadItemDownloading(itemId);
+      const resumeOffset = await this.localFileSize(activeAtStart.destPath);
+      if (
+        activeAtStart.cancelled ||
+        this.active !== activeAtStart ||
+        this.state !== 'downloading'
+      ) {
+        return;
+      }
       const result = await resumable.resumeAsync();
 
       // A concurrent cancel() may have run while resumeAsync() was in
@@ -317,7 +389,11 @@ export class DownloadQueueWorker {
       }
 
       if (result) {
-        await this.handleItemComplete(itemId, result.uri);
+        await this.handleItemComplete(itemId, result.uri, undefined, {
+          resumed: true,
+          resumeOffset,
+          result,
+        });
       }
     } catch (error) {
       log.error('Failed to resume download', { error, itemId });
@@ -354,6 +430,7 @@ export class DownloadQueueWorker {
     }
     if (resolvingClaim) {
       resolvingClaim.cancelled = true;
+      resolvingClaim.abort.abort();
     }
 
     this.state = 'cancelled';
@@ -512,7 +589,11 @@ export class DownloadQueueWorker {
     // Claim immediately so dropItems/enqueueAdditional see this id before
     // transport/resolver awaits assign `this.active`. Track by object identity
     // so a cancelled claim cannot clear/cancel a newer claim for the same id.
-    const claim: ResolvingDownload = { itemId: next.id, cancelled: false };
+    const claim: ResolvingDownload = {
+      itemId: next.id,
+      cancelled: false,
+      abort: new AbortController(),
+    };
     this.resolving = claim;
 
     if (!(await this.transportAllows())) {
@@ -551,7 +632,10 @@ export class DownloadQueueWorker {
     let activeAtStart: ActiveDownload | undefined;
     try {
       const saved = parseDownloadState(next.resumeData);
-      const { url, ext } = await this.resolver(next);
+      const { url, ext } = await this.resolver(next, {
+        signal: claim.abort.signal,
+        ...(this.restarts.has(next.id) ? { forceRefresh: true } : {}),
+      });
 
       const afterResolve = await this.abandonResolvingItem(next, claim);
       if (afterResolve !== 'continue') {
@@ -575,7 +659,9 @@ export class DownloadQueueWorker {
       const resumable = FileSystem.createDownloadResumable(
         url,
         destPath,
-        saved?.options ?? {},
+        // md5 of the final file lets us check an S3 single-part ETag /
+        // Content-MD5 when the server exposes one.
+        saved?.options ?? { md5: true },
         progress => {
           const { totalBytesWritten, totalBytesExpectedToWrite } = progress;
           if (totalBytesExpectedToWrite > 0) {
@@ -600,6 +686,8 @@ export class DownloadQueueWorker {
 
       activeAtStart = {
         itemId: next.id,
+        item: next,
+        destPath,
         resumable,
         cancelled: this.isResolvingCancelled(claim),
       };
@@ -617,6 +705,19 @@ export class DownloadQueueWorker {
         return;
       }
       const shouldResume = Boolean(saved?.resumeData);
+      // Offset Expo will request (`Range: bytes=<file length>-`); validated
+      // against the 206 Content-Range so a server that ignored Range, or an
+      // object that changed size, cannot publish a corrupt file.
+      const resumeOffset = shouldResume
+        ? await this.localFileSize(destPath)
+        : undefined;
+      if (
+        activeAtStart.cancelled ||
+        this.active !== activeAtStart ||
+        this.state !== 'downloading'
+      ) {
+        return;
+      }
       const result = shouldResume
         ? await resumable.resumeAsync()
         : await resumable.downloadAsync();
@@ -630,16 +731,40 @@ export class DownloadQueueWorker {
       // A finished transfer should complete even if pause() raced — otherwise
       // pauseAsync failure can leave a stuck downloading+active state.
       if (result) {
-        await this.handleItemComplete(next.id, result.uri, claim);
+        await this.handleItemComplete(next.id, result.uri, claim, {
+          resumed: shouldResume,
+          resumeOffset,
+          result,
+        });
       }
     } catch (error) {
-      log.error('Failed to download item', { error, itemId: next.id });
       const wasCancelled =
         activeAtStart?.cancelled === true || this.isResolvingCancelled(claim);
+      const pausedDuringResolve =
+        !wasCancelled && !activeAtStart && claim.abort.signal.aborted;
+      if (pausedDuringResolve) {
+        log.info('Download URL refresh aborted by pause; item re-queued', {
+          itemId: next.id,
+        });
+      } else {
+        log.error('Failed to download item', { error, itemId: next.id });
+      }
       if (wasCancelled) {
         this.clearResolving(claim);
         // dropItems on active already advances; resolving-only cancel must.
         if (!activeAtStart && this.state === 'downloading') {
+          await this.processNext();
+        }
+        return;
+      }
+      // pause() aborted the resolver (not a cancel): the item is still wanted,
+      // re-queue it instead of marking it failed (#886).
+      if (pausedDuringResolve) {
+        this.queue.unshift(next);
+        this.clearResolving(claim);
+        // resume() may already have run and deferred to this claim; keep the
+        // queue moving if nothing else owns it.
+        if (this.state === 'downloading' && !this.active && !this.resolving) {
           await this.processNext();
         }
         return;
@@ -724,10 +849,109 @@ export class DownloadQueueWorker {
     }
   }
 
+  private async localFileSize(uri: string): Promise<number | undefined> {
+    try {
+      const info = await FileSystem.getInfoAsync(uri);
+      return info.exists ? info.size : undefined;
+    } catch (error) {
+      log.warn('Could not stat download destination', { error, uri });
+      return undefined;
+    }
+  }
+
+  /**
+   * Handle a rejected transfer result. `restart`: delete the
+   * untrustworthy bytes, clear persisted resume state and put the item back
+   * at the head of the queue so the next pass re-resolves a fresh URL and
+   * downloads from scratch — bounded by MAX_DOWNLOAD_RESTARTS_PER_ITEM, beyond
+   * which the item is marked failed. `fail`: delete the bytes and mark failed
+   * without spending a restart.
+   *
+   * Re-checks cancellation after every await: cancel()/dropItems() may have
+   * marked the row cancelled or purged it meanwhile, in which case nothing
+   * may be written, re-queued or advanced here (those paths already advance
+   * the queue).
+   */
+  private async restartOrFail(
+    active: ActiveDownload,
+    outcome: Extract<DownloadValidationOutcome, { ok: false }>,
+    claim?: ResolvingDownload,
+  ): Promise<void> {
+    const { itemId, destPath: uri, item } = active;
+    const spent = this.restarts.get(itemId) ?? 0;
+    const canRestart =
+      outcome.action === 'restart' && spent < MAX_DOWNLOAD_RESTARTS_PER_ITEM;
+    log.warn('Download result rejected', {
+      itemId,
+      reason: `${outcome.action}: ${outcome.reason}`,
+      restartsSpent: spent,
+      willRestart: canRestart,
+    });
+    try {
+      await FileSystem.deleteAsync(uri, { idempotent: true });
+    } catch (error) {
+      log.warn('Failed to delete rejected download bytes', { error, itemId });
+    }
+    if (this.isSuperseded(active, claim)) return;
+
+    if (canRestart) {
+      this.restarts.set(itemId, spent + 1);
+      try {
+        await clearDownloadItemResumeState(itemId);
+      } catch (error) {
+        log.error('Failed to clear resume state before restart', {
+          error,
+          itemId,
+        });
+      }
+      if (this.isSuperseded(active, claim)) return;
+      this.queue.unshift({
+        ...item,
+        resumeData: undefined,
+        progress: 0,
+        status: 'queued',
+      });
+    } else {
+      try {
+        await markDownloadItemFailed(itemId);
+      } catch (error) {
+        log.error('Failed to mark rejected download as failed', {
+          error,
+          itemId,
+        });
+      }
+      if (this.isSuperseded(active, claim)) return;
+    }
+    this.active = null;
+    if (claim) {
+      this.clearResolving(claim);
+    }
+    await this.processNext();
+  }
+
+  /**
+   * True when cancel()/dropItems() took over this transfer while we were
+   * awaiting: the active slot was cancelled or replaced, or the resolving
+   * claim was cancelled. Callers must then return without touching queue,
+   * DB or `processNext`.
+   */
+  private isSuperseded(
+    active: ActiveDownload,
+    claim?: ResolvingDownload,
+  ): boolean {
+    if (active.cancelled || this.active !== active) return true;
+    if (claim && this.isResolvingCancelled(claim)) {
+      this.clearResolving(claim);
+      return true;
+    }
+    return false;
+  }
+
   private async handleItemComplete(
     itemId: string,
     uri: string,
     claim?: ResolvingDownload,
+    evidence?: TransferEvidence,
   ): Promise<void> {
     if (this.active?.itemId === itemId && this.active.cancelled === true) {
       return;
@@ -739,7 +963,7 @@ export class DownloadQueueWorker {
       }
       return;
     }
-    const info = await FileSystem.getInfoAsync(uri);
+    const fileSize = await this.localFileSize(uri);
     if (this.active?.itemId === itemId && this.active.cancelled === true) {
       // dropItems/cancel on active already advances the queue.
       return;
@@ -751,11 +975,94 @@ export class DownloadQueueWorker {
       }
       return;
     }
-    await markDownloadItemCompleted(
-      itemId,
-      uri,
-      info.exists ? info.size : undefined,
-    );
+
+    const active = this.active?.itemId === itemId ? this.active : undefined;
+    let finalBytes = fileSize;
+    if (evidence && active) {
+      const outcome = validateDownloadResult({
+        status: evidence.result.status,
+        headers: evidence.result.headers,
+        resumed: evidence.resumed,
+        resumeOffset: evidence.resumeOffset,
+        expectedTotalBytes: exactExpectedBytes(active.item),
+        fileSize,
+        fileMd5: evidence.result.md5,
+        kind: active.item.kind,
+      });
+      if (!outcome.ok) {
+        await this.restartOrFail(active, outcome, claim);
+        return;
+      }
+      finalBytes = outcome.finalBytes;
+    } else if (fileSize === undefined || fileSize === 0) {
+      // Inline text write produced nothing — never publish an empty file.
+      // There is no network transfer to restart; mark failed so the user can
+      // retry instead of consuming the empty file.
+      log.warn('Download result rejected', {
+        itemId,
+        reason: 'fail: empty local write',
+      });
+      try {
+        await markDownloadItemFailed(itemId);
+      } catch (error) {
+        log.error('Failed to mark empty download as failed', { error, itemId });
+      }
+      if (claim) {
+        this.clearResolving(claim);
+      }
+      if (this.state === 'downloading') {
+        await this.processNext();
+      }
+      return;
+    }
+
+    if (active) {
+      let expectedHash: unknown;
+      try {
+        const metadata = JSON.parse(
+          active.item.serializedContent ?? '{}',
+        ) as Record<string, unknown>;
+        expectedHash = metadata.expectedContentHash;
+      } catch {
+        // Non-draft/legacy queue entries need not carry a digest.
+      }
+      if (isSha256Hex(expectedHash)) {
+        try {
+          const actualHash = await sha256File(uri, {
+            size: finalBytes,
+            shouldAbort: () => this.isSuperseded(active, claim),
+          });
+          if (this.isSuperseded(active, claim)) return;
+          if (actualHash !== expectedHash.toLowerCase()) {
+            await this.restartOrFail(
+              active,
+              {
+                ok: false,
+                action: 'restart',
+                reason: 'audio content hash mismatch',
+              },
+              claim,
+            );
+            return;
+          }
+        } catch {
+          if (this.isSuperseded(active, claim)) return;
+          await this.restartOrFail(
+            active,
+            {
+              ok: false,
+              action: 'fail',
+              reason: 'audio content hash could not be verified',
+            },
+            claim,
+          );
+          return;
+        }
+      }
+    }
+    if (active && this.isSuperseded(active, claim)) return;
+    await markDownloadItemCompleted(itemId, uri, finalBytes);
+    this.restarts.delete(itemId);
     this.active = null;
     if (claim) {
       this.clearResolving(claim);

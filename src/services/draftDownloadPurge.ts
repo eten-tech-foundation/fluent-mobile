@@ -6,6 +6,7 @@ import {
 import { deleteDownloadResourceFile } from './downloadStorage';
 import {
   readDraftDownloadManifest,
+  runDraftDownloadPublication,
   writeDraftDownloadPurgeTombstone,
   type DraftManifestIdentity,
 } from './draftDownloadManifest';
@@ -56,60 +57,62 @@ export async function purgeDraftDownloadsOnStageExit(
     role: input.role,
   };
 
-  const previous = await readDraftDownloadManifest(identity);
-  // Tombstone first so async scripture/audio writers cannot recreate cache.
-  await writeDraftDownloadPurgeTombstone(identity, previous);
+  return runDraftDownloadPublication(identity, async () => {
+    const previous = await readDraftDownloadManifest(identity);
+    // Tombstone first so async scripture/audio writers cannot recreate cache.
+    await writeDraftDownloadPurgeTombstone(identity, previous);
 
-  const rows = await getDownloadQueueItemsByResourcePrefix(
-    input.projectId,
-    input.userId,
-    'draft-',
-  );
-  const targets = rows.filter(item =>
-    isDraftChapterResourceId(
-      item.resourceId ?? item.id,
-      input.chapterAssignmentId,
-    ),
-  );
+    const rows = await getDownloadQueueItemsByResourcePrefix(
+      input.projectId,
+      input.userId,
+      'draft-',
+    );
+    const targets = rows.filter(item =>
+      isDraftChapterResourceId(
+        item.resourceId ?? item.id,
+        input.chapterAssignmentId,
+      ),
+    );
 
-  const worker = getSharedDownloadQueueWorker();
-  await worker.dropItems(targets.map(item => item.id));
+    const worker = getSharedDownloadQueueWorker();
+    await worker.dropItems(targets.map(item => item.id));
 
-  let deletedCount = 0;
-  const failedIds: string[] = [];
+    let deletedCount = 0;
+    const failedIds: string[] = [];
 
-  for (const item of targets) {
-    if (item.localFilePath && item.projectId !== undefined) {
+    for (const item of targets) {
+      if (item.localFilePath && item.projectId !== undefined) {
+        try {
+          await deleteDownloadResourceFile(item.projectId, item.localFilePath);
+        } catch (error) {
+          log.warn('Failed to delete draft download file; retaining row', {
+            error,
+            id: item.id,
+          });
+          await markDownloadItemCancelled(item.id, item.resumeData);
+          failedIds.push(item.id);
+          continue;
+        }
+      }
+
       try {
-        await deleteDownloadResourceFile(item.projectId, item.localFilePath);
+        await deleteDownloadItem(item.id);
+        deletedCount += 1;
       } catch (error) {
-        log.warn('Failed to delete draft download file; retaining row', {
-          error,
-          id: item.id,
-        });
-        await markDownloadItemCancelled(item.id, item.resumeData);
+        log.warn('Failed to delete draft queue row', { error, id: item.id });
         failedIds.push(item.id);
-        continue;
       }
     }
 
-    try {
-      await deleteDownloadItem(item.id);
-      deletedCount += 1;
-    } catch (error) {
-      log.warn('Failed to delete draft queue row', { error, id: item.id });
-      failedIds.push(item.id);
-    }
-  }
+    log.info('Purged draft downloads on stage exit', {
+      chapterAssignmentId: input.chapterAssignmentId,
+      userId: input.userId,
+      role: input.role,
+      leftStage: input.leftStage,
+      deletedCount,
+      failedCount: failedIds.length,
+    });
 
-  log.info('Purged draft downloads on stage exit', {
-    chapterAssignmentId: input.chapterAssignmentId,
-    userId: input.userId,
-    role: input.role,
-    leftStage: input.leftStage,
-    deletedCount,
-    failedCount: failedIds.length,
+    return { deletedCount, failedIds };
   });
-
-  return { deletedCount, failedIds };
 }

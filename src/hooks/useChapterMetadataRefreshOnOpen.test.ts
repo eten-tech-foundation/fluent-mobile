@@ -17,9 +17,12 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+// No readable write count, so every focus rereads as before.
 jest.mock('../db/queries', () => ({
   getMyWorkChapters: jest.fn(),
   getMilestoneChapters: jest.fn(),
+  getDatabaseWriteMark: jest.fn(async () => null),
+  sameDatabaseWrites: () => false,
 }));
 
 jest.mock('../db/repository', () => ({
@@ -86,27 +89,46 @@ describe('chapter metadata refresh on list open', () => {
     mockIsUserProjectMember.mockResolvedValue(true);
   });
 
-  it('loads My Work from cache immediately and refreshes it after metadata sync', async () => {
+  it('loads My Work from cache once, leaving the metadata refresh to the refresh key', async () => {
     const metadataRefresh = deferred<void>();
     mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(
       metadataRefresh.promise,
     );
 
-    renderHook(() => useMyWorkChapters());
+    const { result, rerender } = renderHook(
+      ({ key }: { key: number }) => useMyWorkChapters(key),
+      { initialProps: { key: 0 } },
+    );
 
     await waitFor(() => {
-      expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
+      expect(result.current.loading).toBe(false);
     });
     expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledWith(7);
-
     await act(async () => {
       metadataRefresh.resolve();
       await metadataRefresh.promise;
     });
+    expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
 
+    rerender({ key: 1 });
     await waitFor(() => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2);
     });
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('re-reads My Work at once when the list regains focus', async () => {
+    const { result } = renderHook(() => useMyWorkChapters());
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      capturedFocusCallback?.();
+    });
+
+    expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2);
+    expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledTimes(2);
   });
 
   it('loads View Project from cache immediately and refreshes it after metadata sync when still a member', async () => {
