@@ -3,8 +3,9 @@ import { Pressable, Text, View } from 'react-native';
 import { Avatar } from '../../../components/ui/Avatar';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
 import { ListRow } from '../../../components/ui/ListRow';
-import { Switch } from '../../../components/ui/Switch';
 import { Check, Gear, SignOut, UserPlus } from '../../../components/ui/icons';
+import { ACCOUNT_SIGN_OUT_LABEL } from '../../../constants/messages';
+import { MAX_DEVICE_ACCOUNTS } from '../../../services/storage';
 import { useTheme, useThemedStyles } from '../../../theme/useTheme';
 
 const ACCOUNTS = [
@@ -19,16 +20,15 @@ const ACCOUNTS = [
 ];
 
 /**
- * The Accounts sheet's rows plus a Switch row like the Sync sheet's. Tap
- * an account to switch, add one up to the limit (the row then disables),
- * and flip the switch. Close from the scrim, Back, or a drag down.
+ * The Accounts sheet's rows. Tap an account to switch, add one up to the
+ * limit (the row then disables), and close from the scrim, Back, or a drag
+ * down.
  */
 export function BottomSheetEntry() {
   const { controlSizes, roles } = useTheme();
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(2);
   const [activeId, setActiveId] = useState('1');
-  const [cellular, setCellular] = useState(false);
   const styles = useThemedStyles(t => ({
     link: { ...t.type.label, color: t.roles.accentPrimary },
   }));
@@ -58,26 +58,18 @@ export function BottomSheetEntry() {
               ) : null
             }
             selected={a.id === activeId}
+            accessibilityLabel={
+              a.id === activeId ? `${a.name}, signed in` : `Switch to ${a.name}`
+            }
             onPress={() => setActiveId(a.id)}
           />
         ))}
         <ListRow
           icon={UserPlus}
           title="Add account"
-          subtitle={`${count} of ${ACCOUNTS.length} on this device`}
-          disabled={count >= ACCOUNTS.length}
+          subtitle={`${count} of ${MAX_DEVICE_ACCOUNTS} on this device`}
+          disabled={count >= MAX_DEVICE_ACCOUNTS}
           onPress={() => setCount(c => c + 1)}
-        />
-        <ListRow
-          title="Upload over cellular"
-          subtitle={cellular ? 'On' : 'Off · Wi-Fi only'}
-          trailing={
-            <Switch
-              value={cellular}
-              onValueChange={setCellular}
-              accessibilityLabel="Upload over cellular"
-            />
-          }
         />
         <ListRow
           icon={Gear}
@@ -86,8 +78,18 @@ export function BottomSheetEntry() {
           onPress={() => setOpen(false)}
         />
         <ListRow
+          title="Privacy Policy"
+          trailing="chevron"
+          onPress={() => setOpen(false)}
+        />
+        <ListRow
+          title="Terms of Use"
+          trailing="chevron"
+          onPress={() => setOpen(false)}
+        />
+        <ListRow
           icon={SignOut}
-          title="Log out"
+          title={ACCOUNT_SIGN_OUT_LABEL}
           subtitle={active?.name}
           onPress={() => {
             setCount(1);
