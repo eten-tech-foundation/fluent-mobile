@@ -102,17 +102,35 @@ export default function BookScreen() {
   } = useMilestoneChapters(projectUnitId, projectId);
   const sync = useHeaderSync({ onSyncComplete: reload });
   const scroll = useScrolled();
-  const listShown = chapters.length > 0 && !error && !removedFromProject;
   const { reset: resetScroll } = scroll;
-  // The list comes back at its top after the error or empty state.
-  useEffect(() => {
-    if (!listShown) resetScroll();
-  }, [listShown, resetScroll]);
   const passages = useBookPassages(chapters, projectId, projectUnitId);
   const listRef = useRef<FlatList<ProjectChapter>>(null);
   const focusedRef = useRef(false);
   const retriesRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keepListRef = useRef(false);
+  const lastByChapter = useRef(new Map<number, BookPassage[]>());
+  const chaptersReady = chapters.length > 0 && !error && !removedFromProject;
+  // Passages settle 'ready' and empty before the chapters arrive; wait until
+  // this book's covers are in the map so the first paint is not a bare list.
+  const coversReady =
+    passages.status === 'ready' &&
+    chapters.every(c => passages.byChapter.has(c.id));
+  if (passages.status === 'ready') {
+    lastByChapter.current = passages.byChapter;
+  }
+  if (!chaptersReady) {
+    keepListRef.current = false;
+    lastByChapter.current = new Map();
+  } else if (coversReady) {
+    keepListRef.current = true;
+  }
+  // Stay mounted after the first complete paint so returning from a passage
+  // keeps the scroll position; do not paint the list until that first paint.
+  const listShown = chaptersReady && (coversReady || keepListRef.current);
+  useEffect(() => {
+    if (!listShown) resetScroll();
+  }, [listShown, resetScroll]);
   const focusIndex =
     focusChapterId === undefined
       ? -1
@@ -202,9 +220,7 @@ export default function BookScreen() {
   const singleBook = books.size === 1 ? chapters[0]?.bookName : undefined;
   const title = singleBook ?? milestoneName;
   const byChapter =
-    passages.status === 'ready'
-      ? passages.byChapter
-      : new Map<number, BookPassage[]>();
+    passages.status === 'ready' ? passages.byChapter : lastByChapter.current;
   // A passage that crosses chapters shows under both; count it once. Pericope
   // numbers restart in each book, so the key alone isn't unique.
   const all = Array.from(
@@ -306,8 +322,6 @@ export default function BookScreen() {
   );
 
   let body: React.ReactNode;
-  // The hook reloads on every focus; keep the list mounted so coming back
-  // from a passage keeps the scroll position.
   if (loading && chapters.length === 0) {
     body = <LoadingSpinner />;
   } else if (error || removedFromProject) {
@@ -335,6 +349,8 @@ export default function BookScreen() {
         <Text style={styles.message}>{PROJECT_CHAPTERS_EMPTY_MESSAGE}</Text>
       </View>
     );
+  } else if (!listShown) {
+    body = <LoadingSpinner />;
   } else {
     body = (
       <FlatList
