@@ -1,5 +1,11 @@
-import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { ArrowRight } from '../../../../components/ui/icons';
 import {
   PassageCover,
@@ -79,6 +85,17 @@ export function NextUp({
   onOpen: (item: NextPassage) => void;
 }) {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  // Off-screen covers draw their art the frame after the first, so the long
+  // checking rail doesn't hold up Home's arrival.
+  const coversOnScreen = Math.ceil(width / (TILE_WIDTH + theme.spacing.lg));
+  const [allArt, setAllArt] = useState(false);
+  const ready = nextUp.status === 'ready';
+  useEffect(() => {
+    if (!ready || allArt) return;
+    const frame = requestAnimationFrame(() => setAllArt(true));
+    return () => cancelAnimationFrame(frame);
+  }, [ready, allArt]);
   const styles = useThemedStyles(t => ({
     title: {
       ...t.type.title,
@@ -134,9 +151,10 @@ export function NextUp({
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.rail}
     >
-      {items.map(item => (
+      {items.map((item, index) => (
         <PassageCover
           key={item.key}
+          artDeferred={!allArt && index >= coversOnScreen}
           eyebrow={item.chapter.displayLabel}
           verses={item.passage.verses}
           title={label(item)}

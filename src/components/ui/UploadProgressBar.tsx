@@ -1,18 +1,39 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
+import type { UploadTakeProgress } from '../../services/syncEvents';
 
 interface UploadProgressBarProps {
   uploadedChapters: number;
   totalChapters: number;
   frozen?: boolean;
+  /** Take progress inside the chapter uploading now (#886). */
+  currentChapter?: UploadTakeProgress | null;
+}
+
+/** "Chapter 3: 2 of 10 takes uploaded" (+ " · 1 failed" when any failed). */
+export function formatCurrentChapterTakes(current: UploadTakeProgress): string {
+  const failed =
+    current.failedTakes > 0 ? ` · ${current.failedTakes} failed` : '';
+  return `Chapter ${current.chapterNumber}: ${current.completedTakes} of ${current.totalTakes} takes uploaded${failed}`;
 }
 
 export function UploadProgressBar({
   uploadedChapters,
   totalChapters,
   frozen = false,
+  currentChapter = null,
 }: UploadProgressBarProps) {
-  const ratio = totalChapters > 0 ? uploadedChapters / totalChapters : 0;
+  // Fractional credit for the chapter in flight so a long chapter moves the
+  // bar before it completes (#886). Chapter counts stay the headline and
+  // only uploaded takes count — a failed take keeps its chapter pending.
+  const takeFraction =
+    currentChapter && currentChapter.totalTakes > 0
+      ? Math.min(1, currentChapter.completedTakes / currentChapter.totalTakes)
+      : 0;
+  const ratio =
+    totalChapters > 0
+      ? Math.min(1, (uploadedChapters + takeFraction) / totalChapters)
+      : 0;
   const percent = Math.round(ratio * 100);
 
   return (
@@ -35,6 +56,11 @@ export function UploadProgressBar({
       <Text style={styles.chapterCount}>
         {uploadedChapters} of {totalChapters} chapters uploaded
       </Text>
+      {currentChapter ? (
+        <Text style={styles.takeCount} testID="upload-progress-current-chapter">
+          {formatCurrentChapterTakes(currentChapter)}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -75,6 +101,11 @@ const styles = StyleSheet.create({
   },
   chapterCount: {
     marginTop: theme.spacing.sm,
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.mutedForeground,
+  },
+  takeCount: {
+    marginTop: theme.spacing.xs,
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.mutedForeground,
   },

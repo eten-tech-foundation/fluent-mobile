@@ -25,10 +25,41 @@ jest.mock('./useSyncStatus', () => ({
   useSyncStatus: (opts: { refreshKey?: number }) => mockUseSyncStatus(opts),
 }));
 
+let mockHoldReason: 'drafting' | null = null;
+jest.mock('../services/uploadOrchestrator', () => ({
+  getUploadSessionSnapshot: () => ({ holdReason: mockHoldReason }),
+  setDraftingUploadHold: jest.fn(),
+}));
+
+const mockSessionListeners = new Set<() => void>();
+jest.mock('../services/syncEvents', () => ({
+  onUploadSessionEvent: (listener: () => void) => {
+    mockSessionListeners.add(listener);
+    return () => mockSessionListeners.delete(listener);
+  },
+}));
+
 describe('useHeaderSync', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFocused = true;
+    mockHoldReason = null;
+  });
+
+  it('follows the drafting upload hold from session events', () => {
+    const { result, unmount } = renderHook(() => useHeaderSync());
+    expect(result.current.heldForDrafting).toBe(false);
+
+    mockHoldReason = 'drafting';
+    act(() => mockSessionListeners.forEach(listener => listener()));
+    expect(result.current.heldForDrafting).toBe(true);
+
+    mockHoldReason = null;
+    act(() => mockSessionListeners.forEach(listener => listener()));
+    expect(result.current.heldForDrafting).toBe(false);
+
+    unmount();
+    expect(mockSessionListeners.size).toBe(0);
   });
 
   it('opens Sync once until the screen is focused again', () => {

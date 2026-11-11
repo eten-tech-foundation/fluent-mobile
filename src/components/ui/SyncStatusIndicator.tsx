@@ -12,9 +12,11 @@ function resolveIconState(
   hasPendingUploads: boolean,
   hasFailedUploads: boolean,
   isUploading: boolean,
+  isMetadataSyncing = false,
 ): { status: SyncStatus; animated: boolean } {
-  if (isUploading || status === 'syncing') {
+  if (isUploading || status === 'syncing' || isMetadataSyncing) {
     // Lovable Sync page uses the spinning cloud-sync glyph for online-syncing.
+    // A metadata pass is syncing too (#886).
     return { status: 'online_syncing', animated: true };
   }
 
@@ -28,6 +30,7 @@ function resolveIconState(
 
   switch (status) {
     case 'pending':
+    case 'held':
       if (hasPendingUploads) {
         return {
           status: isOnline ? 'online_pending' : 'offline_pending',
@@ -51,6 +54,8 @@ interface SyncStatusIndicatorProps {
   hasPendingUploads?: boolean;
   hasFailedUploads?: boolean;
   isUploading?: boolean;
+  /** A metadata pass is in flight (#886). */
+  isMetadataSyncing?: boolean;
 }
 
 export function SyncStatusIndicator({
@@ -59,6 +64,7 @@ export function SyncStatusIndicator({
   hasPendingUploads = false,
   hasFailedUploads = false,
   isUploading = false,
+  isMetadataSyncing = false,
 }: SyncStatusIndicatorProps) {
   const theme = useTheme();
   const styles = useStyles();
@@ -68,6 +74,7 @@ export function SyncStatusIndicator({
     hasPendingUploads,
     hasFailedUploads,
     isUploading,
+    isMetadataSyncing,
   );
 
   return (

@@ -56,14 +56,29 @@ JSON matching `verseAudioResponseSchema`: `id`, `projectUnitId`, `bibleTextId`, 
 | `400` / `413` / other `4xx` (except below) | `{ message }` | `failed` + `upload_error`; **no retry** |
 | `401` | `{ message }` | `AuthError` — clear session |
 | `403` / `404` | `{ message }` (forbidden often masked as 404) | terminal `failed` |
-| `409` | CAS / version conflict (may include `currentVersionToken`) | retryable — see `verseAudioContract.ts` |
+| `409` | CAS / version conflict (may include `currentVersionToken`) | activation: reconcile (below); stored-only: retry with `currentVersionToken` |
 | `503` | `{ message: "Audio storage is unavailable" }` (R2 unset or bucket unreachable at boot) | **terminal `failed`** — `verseAudioContract.ts` (`retryable: false`; do not backoff-loop) |
 | `5xx` (other) | `{ message }` | retry with backoff |
 | Network / timeout | `ApiError` status `0` | retry with backoff |
 
+### Activation retries (#886)
+
+An activating `PUT` is not idempotent across a lost response, and the API has no operation id. The worker keeps a per-generation operation in KV (`upload_op:{recordingId}`) with the `baseVersionToken` captured once for that `upload_intent_version`. The token is `null` when none was known locally; the client never invents `0`.
+
+- **200:** `takeId === activeTakeId` → uploaded. `takeId` stored but another take active (main's stale-duplicate no-op) → **needs attention**, never success. `conflictStatus: 'conflict'` → conflicted. HTTP 200 alone is never success.
+- **200 without `takeId`** (APIs before `takeId` was returned): uploaded only when the active take's `contentHash` is a SHA-256 hex equal to the local file's hash. A missing active take, a legacy (prefixed) hash or a mismatch → needs attention. Legacy hashes are never treated as verified.
+- **Lost response, timeout, 5xx (including the terminal `503`) or 409:** the next attempt calls `GET /verse-audio/{projectUnitId}/{bibleTextId}` (range units by start `bibleTextId`) and matches the local file's SHA-256 against `takes[].contentHash`:
+  - matched take active → uploaded;
+  - matched take not active and `versionToken` unchanged → replay with the original token;
+  - matched take not active and the version moved → needs attention.
+  - No matching take: with a token, replay once with the original token (main answers a stale token with a conflict 200, keeping both takes); if the version moved and that replay still did not land, needs attention. Without a token, the unit existing → needs attention.
+- A 409 `currentVersionToken` is adopted only for stored-only (`activate=false`) uploads, never for activations.
+- **Needs attention** is `failed` with an explanatory `upload_error`, shown on the Sync page (the drafting headers' warning cloud opens it). Automatic passes and Sync Now only re-check it with a `GET`; they never `PUT` or adopt a newer token. Choosing the take again starts a new generation whose precondition is raised to the observed server token: Legacy re-taps the selected take's check; Next taps the official toggle, which stays live while the in-use take's upload has failed. That is the only path that may replace another device's selection.
+- This is not exactly-once activation. That needs server idempotency (operation id, or a conditional activate that reports `activated: false`).
+
 ### Also on fluent-api `main` (related, not required for the upload worker)
 
-- `GET /verse-audio/{projectUnitId}/{bibleTextId}` — metadata + signed `downloadUrl`
+- `GET /verse-audio/{projectUnitId}/{bibleTextId}` — metadata + signed `downloadUrl`; also the activation reconcile read above
 - `GET /verse-audio?projectUnitId=&bookId=&chapterNumber=` — chapter list
 - `POST /verse-audio/{projectUnitId}/{bibleTextId}/resolve` — conflict resolve
 - `DELETE /verse-audio/{projectUnitId}/{bibleTextId}`

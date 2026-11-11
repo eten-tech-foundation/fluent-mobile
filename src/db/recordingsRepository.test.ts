@@ -1244,7 +1244,7 @@ describe('recordingsRepository multi-take', () => {
       projectUnitId: 473,
     });
 
-    await deleteRecordingTake('u473-new');
+    await expect(deleteRecordingTake('u473-new')).resolves.toBe(true);
 
     const rows = __getRecordingRows();
     // Promote the highest remaining take in unit 473 — not unit 12's higher
@@ -1252,6 +1252,10 @@ describe('recordingsRepository multi-take', () => {
     expect(rows.find(r => r.id === 'u473-old')?.is_selected).toBe(1);
     expect(rows.find(r => r.id === 'u12-2')?.is_selected).toBe(1);
     expect(rows.find(r => r.id === 'u12-1')?.is_selected).toBe(0);
+  });
+
+  it('reports false when the delete does not apply', async () => {
+    await expect(deleteRecordingTake('missing-row')).resolves.toBe(false);
   });
 
   it('attributes new takes to the active user', async () => {
@@ -1800,6 +1804,29 @@ describe('server take delete queue (#716)', () => {
     await deleteRecordingTake('q-local');
 
     await expect(getPendingRecordingDeletions()).resolves.toEqual([]);
+  });
+
+  it('queues a server delete from the durable upload receipt when the marker never landed (#886)', async () => {
+    await addRecordingTake({
+      bibleTextId: 10,
+      localFilePath: 'file:///a.m4a',
+      id: 'q-receipt',
+      projectUnitId: 12,
+    });
+    // Row is still pending (server_take_id null) but the server accepted it.
+    await expect(
+      deleteRecordingTake('q-receipt', { receiptServerTakeId: 77 }),
+    ).resolves.toBe(true);
+
+    await expect(getPendingRecordingDeletions()).resolves.toEqual([
+      {
+        id: 'q-receipt',
+        projectUnitId: 12,
+        bibleTextId: 10,
+        serverTakeId: 77,
+        recordedByUserId: 1,
+      },
+    ]);
   });
 
   it('does not queue a delete for a take owned by another user', async () => {

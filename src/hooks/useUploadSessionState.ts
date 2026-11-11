@@ -8,7 +8,10 @@ import {
   type UploadOrchestratorSnapshot,
 } from '../services/uploadOrchestrator';
 import type { UploadPhase } from '../services/uploadOrchestratorCore';
-import { onUploadSessionEvent } from '../services/syncEvents';
+import {
+  onUploadSessionEvent,
+  type UploadTakeProgress,
+} from '../services/syncEvents';
 import { deriveSyncPageStatus } from '../utils/deriveSyncPageStatus';
 import type { SyncPageStatus } from '../types/sync/types';
 
@@ -17,6 +20,8 @@ const IDLE_SNAPSHOT: UploadOrchestratorSnapshot = {
   completedChapters: 0,
   totalChapters: 0,
   pausedUntilMs: null,
+  currentChapter: null,
+  holdReason: null,
 };
 
 function readSnapshot(): UploadOrchestratorSnapshot {
@@ -43,6 +48,8 @@ export interface UseUploadSessionStateResult {
   pageStatus: SyncPageStatus;
   progressUploaded: number;
   progressTotal: number;
+  /** Take progress for the chapter uploading now, else null (#886). */
+  progressCurrentChapter: UploadTakeProgress | null;
   nextRetryAt: Date | undefined;
   sessionError: string | null;
   isControlPending: boolean;
@@ -98,11 +105,14 @@ export function useUploadSessionState({
     countsUnknown,
     hasClaimsOrSyncRetryWork,
     hasDownloads,
+    snapshot.holdReason,
   );
 
   const progressUploaded =
     uploadProgress?.completed ?? snapshot.completedChapters;
   const progressTotal = uploadProgress?.total ?? snapshot.totalChapters;
+  const progressCurrentChapter =
+    uploadProgress?.currentChapter ?? snapshot.currentChapter;
 
   const nextRetryAt =
     snapshot.pausedUntilMs !== null
@@ -179,6 +189,7 @@ export function useUploadSessionState({
     pageStatus,
     progressUploaded,
     progressTotal,
+    progressCurrentChapter,
     nextRetryAt,
     sessionError,
     isControlPending,

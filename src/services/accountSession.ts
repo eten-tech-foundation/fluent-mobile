@@ -1,6 +1,7 @@
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import { clearCredentials, getCredentials } from './keychain';
+import { clearDraftListingSnapshotsForUser } from './draftListingSnapshot';
 import { signOut, resolveReauthForUser } from './authSession';
 import {
   getActiveUserId,
@@ -9,6 +10,7 @@ import {
   KV_KEYS,
   switchActiveUser,
 } from './storage';
+import { clearPassageResourceReuse } from './passageResourceReuse';
 import { clearUserOrgGrantSnapshot } from './userOrgGrants';
 import { logger } from '../utils/logger';
 
@@ -51,7 +53,9 @@ export async function signOutCurrentDeviceAccount(): Promise<SignOutDeviceAccoun
 
   await clearCredentials(currentUserId);
   resolveReauthForUser(currentUserId);
+  clearDraftListingSnapshotsForUser(currentUserId);
   clearUserOrgGrantSnapshot(currentUserId);
+  clearPassageResourceReuse(currentUserId);
 
   const remaining = getKnownUserIds().filter(id => id !== currentUserId);
   kvStorage.setItemSync(KV_KEYS.KNOWN_USER_IDS, remaining.join(','));

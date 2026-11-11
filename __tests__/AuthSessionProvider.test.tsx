@@ -61,7 +61,7 @@ jest.mock('../src/services/recordingSync', () => ({
 const mockRefreshSyncStatusStore = jest.fn(() => Promise.resolve());
 const mockResetSyncStatusStore = jest.fn();
 jest.mock('../src/services/syncStatusStore', () => ({
-  refreshSyncStatusStore: () => mockRefreshSyncStatusStore(),
+  refreshSyncStatusStoreIfChanged: () => mockRefreshSyncStatusStore(),
   resetSyncStatusStore: () => mockResetSyncStatusStore(),
 }));
 
@@ -149,7 +149,8 @@ describe('AuthSessionProvider', () => {
       expect(queryByTestId('auth-session-loading')).toBeNull();
       expect(getByTestId('auth-flag').props.children).toBe('no');
     });
-    expect(BootSplash.hide).toHaveBeenCalledWith({ fade: true });
+    expect(BootSplash.hide).toHaveBeenCalledTimes(1);
+    expect(BootSplash.hide).toHaveBeenCalledWith();
   });
 
   it('restores auth and starts upload orchestrator', async () => {

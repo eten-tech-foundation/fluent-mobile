@@ -4,7 +4,6 @@ import {
   getBibleTextId,
   getBibleTexts,
   getChapterAssignmentById,
-  getChapterAssignmentVerseCount,
   getPericopeForVerse,
   getSelectedTakeCoverages,
   hasPendingStageAdvance,
@@ -25,7 +24,6 @@ jest.mock('../db/queries', () => ({
   getBibleTextId: jest.fn(),
   getBibleTexts: jest.fn(),
   getChapterAssignmentById: jest.fn(),
-  getChapterAssignmentVerseCount: jest.fn(),
   getPericopeForVerse: jest.fn(),
   getSelectedTakeCoverages: jest.fn(),
   hasPendingStageAdvance: jest.fn(),
@@ -65,7 +63,6 @@ const mockCoverages = getSelectedTakeCoverages as jest.Mock;
 const mockTextId = getBibleTextId as jest.Mock;
 const mockTakes = getTakesForVerse as jest.Mock;
 const mockSync = syncBibleTexts as jest.Mock;
-const mockVerseCount = getChapterAssignmentVerseCount as jest.Mock;
 const mockPending = hasPendingStageAdvance as jest.Mock;
 const mockEnsureIso = ensureSourceLanguageIso as jest.Mock;
 
@@ -92,21 +89,24 @@ function take(overrides: Record<string, unknown>) {
   };
 }
 
+const baseAssignment = {
+  id: 5,
+  projectId: 9,
+  bibleId: 1,
+  bookId: 41,
+  chapterNumber: 14,
+  bookName: 'Mark',
+  sourceLanguageCode: 'eng',
+  totalVerses: 0,
+};
+
 describe('usePassage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUnit = 'pericope';
     mockOnline = false;
     mockEnsureIso.mockResolvedValue(false);
-    mockAssignment.mockResolvedValue({
-      id: 5,
-      projectId: 9,
-      bibleId: 1,
-      bookId: 41,
-      chapterNumber: 14,
-      bookName: 'Mark',
-      sourceLanguageCode: 'eng',
-    });
+    mockAssignment.mockResolvedValue(baseAssignment);
     mockSetId.mockResolvedValue(7);
     mockPericope.mockResolvedValue({
       pericopeNumber: '2',
@@ -128,7 +128,6 @@ describe('usePassage', () => {
       },
     ]);
     mockTextId.mockResolvedValue(1022);
-    mockVerseCount.mockResolvedValue(0);
     mockPending.mockResolvedValue(false);
     mockTakes.mockResolvedValue([
       take({ id: 'a', takeNumber: 1 }),
@@ -415,7 +414,10 @@ describe('usePassage', () => {
 
   it("is downloaded on its text when the chapter's count is unknown", async () => {
     mockSetId.mockResolvedValue(null);
-    mockVerseCount.mockResolvedValue(0);
+    mockAssignment.mockResolvedValue({
+      ...baseAssignment,
+      totalVerses: 0,
+    });
 
     const { result } = renderHook(() => usePassage(5, 1, 3));
 
@@ -425,7 +427,10 @@ describe('usePassage', () => {
 
   it('is not downloaded without text when the count is unknown', async () => {
     mockSetId.mockResolvedValue(null);
-    mockVerseCount.mockResolvedValue(0);
+    mockAssignment.mockResolvedValue({
+      ...baseAssignment,
+      totalVerses: 0,
+    });
     mockTexts.mockResolvedValue([]);
 
     const { result } = renderHook(() => usePassage(5, 1, 3));
@@ -436,9 +441,34 @@ describe('usePassage', () => {
 
   it('is downloaded when every verse the chapter contains has text', async () => {
     mockSetId.mockResolvedValue(null);
-    mockVerseCount.mockResolvedValue(verseTexts.length);
+    mockAssignment.mockResolvedValue({
+      ...baseAssignment,
+      totalVerses: verseTexts.length,
+    });
 
     const { result } = renderHook(() => usePassage(5, 1, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(result.current.passage).toMatchObject({ downloaded: true });
+  });
+
+  it('is not downloaded while the chapter has more verses than text', async () => {
+    mockSetId.mockResolvedValue(null);
+    mockAssignment.mockResolvedValue({
+      ...baseAssignment,
+      totalVerses: verseTexts.length + 1,
+    });
+
+    const { result } = renderHook(() => usePassage(5, 1, 3));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(result.current.passage).toMatchObject({ downloaded: false });
+  });
+
+  it("judges a pericope on its own verses, not the chapter's count", async () => {
+    mockAssignment.mockResolvedValue({ ...baseAssignment, totalVerses: 99 });
+
+    const { result } = renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({ downloaded: true });
