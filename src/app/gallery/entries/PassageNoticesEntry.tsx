@@ -5,7 +5,7 @@ import {
   RECORD_NO_PERICOPE,
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../../constants/messages';
-import { useThemedStyles } from '../../../theme/useTheme';
+import { ColorModeScope, useThemedStyles } from '../../../theme/useTheme';
 import { PassageNotices } from '../../v2/screens/passage/PassageNotices';
 import type { RecordNotice } from '../../v2/screens/passage/useRecorder';
 
@@ -35,14 +35,7 @@ export function PassageNoticesEntry() {
   const [opened, setOpened] = useState(false);
   const styles = useThemedStyles(t => ({
     demo: { gap: t.spacing.md },
-    footer: {
-      backgroundColor: t.roles.bgDefault,
-      borderRadius: t.radius.sm,
-      padding: t.spacing.lg,
-      minHeight: t.spacing.xxl * 2,
-      justifyContent: 'center',
-    },
-    empty: { ...t.type.meta, color: t.roles.fgSecondary, textAlign: 'center' },
+    status: { ...t.type.meta, color: t.roles.fgSecondary },
     links: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.lg },
     link: { ...t.type.label, color: t.roles.accentPrimary },
     off: { color: t.roles.fgSecondary },
@@ -57,19 +50,11 @@ export function PassageNoticesEntry() {
 
   return (
     <View style={styles.demo}>
-      <View style={styles.footer}>
-        {notices.length > 0 ? (
-          <PassageNotices
-            notices={notices}
-            onOpenClassic={() => setOpened(true)}
-            testID="gallery-notices"
-          />
-        ) : (
-          <Text style={styles.empty}>Nothing to say about this chapter</Text>
-        )}
-      </View>
+      <ColorModeScope value="canvas">
+        <Footer notices={notices} onOpenClassic={() => setOpened(true)} />
+      </ColorModeScope>
       {opened ? (
-        <Text style={styles.empty}>Opens the chapter in classic drafting</Text>
+        <Text style={styles.status}>Opens the chapter in classic drafting</Text>
       ) : null}
       <View style={styles.links}>
         {SITUATIONS.map(({ label, notice }) => (
@@ -85,6 +70,39 @@ export function PassageNoticesEntry() {
           </Pressable>
         ))}
       </View>
+    </View>
+  );
+}
+
+/** The player footer the notices sit in, read inside its Canvas scope. */
+function Footer({
+  notices,
+  onOpenClassic,
+}: {
+  notices: RecordNotice[];
+  onOpenClassic: () => void;
+}) {
+  const styles = useThemedStyles(t => ({
+    footer: {
+      backgroundColor: t.roles.bgDefault,
+      borderRadius: t.radius.sm,
+      padding: t.spacing.lg,
+      minHeight: t.spacing.xxl * 2,
+      justifyContent: 'center',
+    },
+    empty: { ...t.type.meta, color: t.roles.fgSecondary, textAlign: 'center' },
+  }));
+  return (
+    <View style={styles.footer}>
+      {notices.length > 0 ? (
+        <PassageNotices
+          notices={notices}
+          onOpenClassic={onOpenClassic}
+          testID="gallery-notices"
+        />
+      ) : (
+        <Text style={styles.empty}>Nothing to say about this chapter</Text>
+      )}
     </View>
   );
 }

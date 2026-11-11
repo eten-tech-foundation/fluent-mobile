@@ -98,8 +98,10 @@ export function WaveformEntry() {
 
   return (
     <View style={styles.demo}>
-      {/* Follows the gallery's Mode switcher; the real player is Canvas. */}
-      <Player progress={progress} />
+      {/* Pinned to Canvas, like the player; the keys are Hardware. */}
+      <ColorModeScope value="canvas">
+        <Player progress={progress} />
+      </ColorModeScope>
       <ColorModeScope value="hardware">
         <KeyDeck>
           <Key
@@ -133,8 +135,10 @@ export function WaveformEntry() {
           />
         </KeyDeck>
       </ColorModeScope>
-      <TakeWave />
-      <ChiplessWave progress={progress} />
+      <ColorModeScope value="canvas">
+        <TakeWave />
+        <ChiplessWave progress={progress} />
+      </ColorModeScope>
     </View>
   );
 }

@@ -75,6 +75,15 @@ function inUse(takes: Take[], officialId: string | null) {
  * passage take over this verse sits in the fan too, and can't be deleted.
  */
 export function TakeFanEntry() {
+  return (
+    <ColorModeScope value="canvas">
+      <Recorder />
+    </ColorModeScope>
+  );
+}
+
+/** The recorder, read inside its Canvas scope like the player. */
+function Recorder() {
   const [takes, setTakes] = useState<Take[]>(() => [
     recorded(1, 6),
     recorded(2, 8),
@@ -104,6 +113,7 @@ export function TakeFanEntry() {
     script: {
       height: TAKE_FAN_BIN_ROOM,
       justifyContent: 'center',
+      gap: t.spacing.xs,
       paddingHorizontal: t.spacing.xl,
     },
     hint: { ...t.type.meta, color: t.roles.fgSecondary, textAlign: 'center' },
@@ -303,9 +313,11 @@ export function TakeFanEntry() {
 
   return (
     <View style={styles.demo}>
-      {/* Follows the gallery's Mode switcher; the real player is Canvas. */}
       <View style={styles.stage}>
         <View style={styles.script}>
+          <Text style={styles.hint}>
+            {`${takes.length} of ${MAX_RECORDING_TAKES} takes on v. ${VERSE}`}
+          </Text>
           <Text style={styles.hint}>
             Hold a take and drag it up here to the bin
           </Text>
@@ -369,9 +381,6 @@ export function TakeFanEntry() {
           />
         </KeyDeck>
       </ColorModeScope>
-      <Text style={styles.hint}>
-        {`${takes.length} of ${MAX_RECORDING_TAKES} takes on v. ${VERSE}`}
-      </Text>
     </View>
   );
 }

@@ -39,77 +39,22 @@ const NOTES = [
 export function NoteEntry() {
   const [index, setIndex] = useState(0);
   const [open, setOpen] = useState(true);
-  const note = NOTES[index];
   const previous = NOTES[index - 1];
   const next = NOTES[index + 1];
   const styles = useThemedStyles(t => ({
     demo: { gap: t.spacing.lg },
-    note: { backgroundColor: t.roles.bgDefault, borderRadius: t.radius.sm },
-    title: { ...t.type.overline, color: t.roles.fgPrimary, flex: 1 },
-    body: {
-      ...t.type.lead,
-      color: t.roles.fgPrimary,
-      paddingHorizontal: t.spacing.xl,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: t.spacing.md,
-      paddingHorizontal: t.spacing.lg + t.spacing.xl,
-      paddingTop: t.spacing.lg,
-      paddingBottom: t.spacing.xxl + t.spacing.lg,
-    },
-    quote: { ...t.type.title, color: t.roles.fgPrimary, flex: 1 },
-    link: {
-      ...t.type.label,
-      color: t.roles.fgPrimary,
-      padding: t.spacing.xl,
-    },
     key: { flex: 1 },
   }));
 
   return (
     <View style={styles.demo}>
       <ColorModeScope value="accent">
-        <View style={styles.note}>
-          {open ? (
-            <>
-              <ScreenHeader scrolled={false}>
-                <Text
-                  style={styles.title}
-                  numberOfLines={1}
-                  accessibilityRole="header"
-                >
-                  {note.quote}
-                </Text>
-                <RoundButton
-                  variant="flat"
-                  icon={X}
-                  accessibilityLabel="Close the note"
-                  onPress={() => setOpen(false)}
-                  testID="gallery-note-close"
-                />
-              </ScreenHeader>
-              <Text style={styles.body}>{note.body}</Text>
-              <View style={styles.row}>
-                <Text style={styles.quote} numberOfLines={1}>
-                  “{note.quote}”
-                </Text>
-                <PageDots
-                  count={NOTES.length}
-                  index={index}
-                  accessibilityLabel={`Note ${index + 1} of ${NOTES.length}`}
-                  testID="gallery-note-dots"
-                />
-              </View>
-            </>
-          ) : (
-            <Pressable accessibilityRole="button" onPress={() => setOpen(true)}>
-              <Text style={styles.link}>Open the note again</Text>
-            </Pressable>
-          )}
-        </View>
+        <NoteCard
+          index={index}
+          open={open}
+          onClose={() => setOpen(false)}
+          onOpen={() => setOpen(true)}
+        />
       </ColorModeScope>
       <ColorModeScope value="hardware">
         <KeyDeck>
@@ -140,6 +85,86 @@ export function NoteEntry() {
           />
         </KeyDeck>
       </ColorModeScope>
+    </View>
+  );
+}
+
+/** The note itself, read inside its Accent scope. */
+function NoteCard({
+  index,
+  open,
+  onClose,
+  onOpen,
+}: {
+  index: number;
+  open: boolean;
+  onClose: () => void;
+  onOpen: () => void;
+}) {
+  const note = NOTES[index];
+  const styles = useThemedStyles(t => ({
+    note: { backgroundColor: t.roles.bgDefault, borderRadius: t.radius.sm },
+    title: { ...t.type.overline, color: t.roles.fgPrimary, flex: 1 },
+    body: {
+      ...t.type.lead,
+      color: t.roles.fgPrimary,
+      paddingHorizontal: t.spacing.xl,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: t.spacing.md,
+      paddingHorizontal: t.spacing.lg + t.spacing.xl,
+      paddingTop: t.spacing.lg,
+      paddingBottom: t.spacing.xxl + t.spacing.lg,
+    },
+    quote: { ...t.type.title, color: t.roles.fgPrimary, flex: 1 },
+    link: {
+      ...t.type.label,
+      color: t.roles.fgPrimary,
+      padding: t.spacing.xl,
+    },
+  }));
+
+  return (
+    <View style={styles.note}>
+      {open ? (
+        <>
+          <ScreenHeader scrolled={false}>
+            <Text
+              style={styles.title}
+              numberOfLines={1}
+              accessibilityRole="header"
+            >
+              {note.quote}
+            </Text>
+            <RoundButton
+              variant="flat"
+              icon={X}
+              accessibilityLabel="Close the note"
+              onPress={onClose}
+              testID="gallery-note-close"
+            />
+          </ScreenHeader>
+          <Text style={styles.body}>{note.body}</Text>
+          <View style={styles.row}>
+            <Text style={styles.quote} numberOfLines={1}>
+              “{note.quote}”
+            </Text>
+            <PageDots
+              count={NOTES.length}
+              index={index}
+              accessibilityLabel={`Note ${index + 1} of ${NOTES.length}`}
+              testID="gallery-note-dots"
+            />
+          </View>
+        </>
+      ) : (
+        <Pressable accessibilityRole="button" onPress={onOpen}>
+          <Text style={styles.link}>Open the note again</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
