@@ -5,21 +5,21 @@ import {
   resetStartupTraceForTests,
 } from './startupTrace';
 
+let mockTraceEnabled = false;
+jest.mock('../config/startupTrace', () => ({
+  isStartupTraceEnabled: () => mockTraceEnabled,
+}));
+
 describe('startupTrace', () => {
-  const original = process.env.EXPO_PUBLIC_STARTUP_TRACE;
   let logSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    mockTraceEnabled = false;
     logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
     logSpy.mockRestore();
-    if (original === undefined) {
-      delete process.env.EXPO_PUBLIC_STARTUP_TRACE;
-    } else {
-      process.env.EXPO_PUBLIC_STARTUP_TRACE = original;
-    }
     resetStartupTraceForTests();
   });
 
@@ -57,14 +57,13 @@ describe('startupTrace', () => {
   });
 
   it('is silent unless EXPO_PUBLIC_STARTUP_TRACE is on', () => {
-    delete process.env.EXPO_PUBLIC_STARTUP_TRACE;
     resetStartupTraceForTests();
     markStartup('db_open');
     expect(logSpy).not.toHaveBeenCalled();
   });
 
   it('logs one line per mark when the flag is on', () => {
-    process.env.EXPO_PUBLIC_STARTUP_TRACE = '1';
+    mockTraceEnabled = true;
     let now = 0;
     resetStartupTraceForTests({ monotonic: () => now, wall: () => 42 });
     now = 123.45;
