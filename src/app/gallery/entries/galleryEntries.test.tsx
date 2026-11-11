@@ -46,6 +46,14 @@ describe('galleryEntries', () => {
     }
   });
 
+  it('pins every entry designed only for Hardware', () => {
+    const hardwareOnly = galleryEntries.filter(
+      e => e.modes.startsWith('Hardware') && !/Canvas|Accent/.test(e.modes),
+    );
+    expect(hardwareOnly.length).toBeGreaterThan(0);
+    for (const e of hardwareOnly) expect(e.pin).toBe('hardware');
+  });
+
   it('shows every Next icon in the Icons entry', () => {
     renderNext(<IconsEntry />);
     for (const name of Object.keys(icons)) {

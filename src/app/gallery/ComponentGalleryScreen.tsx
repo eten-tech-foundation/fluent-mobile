@@ -163,11 +163,32 @@ function DemoStage() {
                     Designed for {entry.modes}
                   </Text>
                 </View>
-                <entry.Component />
+                {entry.pin ? (
+                  <ColorModeScope value={entry.pin}>
+                    <PinnedStage>
+                      <entry.Component />
+                    </PinnedStage>
+                  </ColorModeScope>
+                ) : (
+                  <entry.Component />
+                )}
               </View>
             ))}
         </View>
       ))}
     </View>
   );
+}
+
+/** A pinned entry on its own mode's background, whatever the Mode switcher says. */
+function PinnedStage({ children }: { children: React.ReactNode }) {
+  const styles = useThemedStyles(t => ({
+    stage: {
+      backgroundColor: t.roles.bgDefault,
+      borderRadius: t.radius.sm,
+      marginHorizontal: -t.spacing.lg,
+      padding: t.spacing.lg,
+    },
+  }));
+  return <View style={styles.stage}>{children}</View>;
 }

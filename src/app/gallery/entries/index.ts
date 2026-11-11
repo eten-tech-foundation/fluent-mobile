@@ -1,4 +1,5 @@
 import type React from 'react';
+import type { ColorMode } from '../../../theme';
 import { AttentionCardEntry } from './AttentionCardEntry';
 import { BannerEntry } from './BannerEntry';
 import { BottomSheetEntry } from './BottomSheetEntry';
@@ -37,6 +38,12 @@ export interface GalleryEntry {
   section: GallerySection;
   /** Foundations modes the component is designed for. */
   modes: string;
+  /**
+   * Renders the demo in this mode, whatever the Mode switcher says. Set it
+   * for a component designed for one mode; leave it off for one built for all
+   * three, so the switcher can show each.
+   */
+  pin?: ColorMode;
   /** Live demos only: real interactions, no static state grids. */
   Component: React.ComponentType;
 }
@@ -65,6 +72,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Key',
     section: 'Controls',
     modes: 'Hardware',
+    pin: 'hardware',
     Component: KeyEntry,
   },
   {
@@ -74,6 +82,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Switch · Mode toggle',
     section: 'Controls',
     modes: 'Hardware',
+    pin: 'hardware',
     Component: SwitchEntry,
   },
   {
@@ -83,6 +92,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Round button · Progress ring',
     section: 'Controls',
     modes: 'Soft on Hardware screens · Flat on the Canvas hero and player',
+    pin: 'hardware',
     Component: RoundButtonEntry,
   },
   {
@@ -92,6 +102,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Hardware panel · Player keys',
     section: 'Controls',
     modes: 'Hardware',
+    pin: 'hardware',
     Component: HardwarePanelEntry,
   },
   {
@@ -136,6 +147,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Passage cover',
     section: 'Cards and covers',
     modes: 'Hardware (book page)',
+    pin: 'hardware',
     Component: PassageCoverEntry,
   },
   {
@@ -144,6 +156,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Attention card',
     section: 'Cards and covers',
     modes: 'Hardware (Home)',
+    pin: 'hardware',
     Component: AttentionCardEntry,
   },
   {
@@ -153,6 +166,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Banner',
     section: 'Notices',
     modes: 'Hardware (Home)',
+    pin: 'hardware',
     Component: BannerEntry,
   },
   {
@@ -170,6 +184,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Bottom sheet · List row',
     section: 'Sheets and dialogs',
     modes: 'Hardware (Home)',
+    pin: 'hardware',
     Component: BottomSheetEntry,
   },
   {
@@ -179,6 +194,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Dialog',
     section: 'Sheets and dialogs',
     modes: 'Hardware',
+    pin: 'hardware',
     Component: DialogEntry,
   },
   {
@@ -188,6 +204,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Screen header',
     section: 'Headers',
     modes: 'Hardware (Home, book page) · Accent (note)',
+    pin: 'hardware',
     Component: ScreenHeaderEntry,
   },
   {
@@ -197,6 +214,7 @@ export const galleryEntries: GalleryEntry[] = [
     name: 'Avatar · Sync status button',
     section: 'Headers',
     modes: 'Hardware (Home)',
+    pin: 'hardware',
     Component: HomeHeaderEntry,
   },
 ];
