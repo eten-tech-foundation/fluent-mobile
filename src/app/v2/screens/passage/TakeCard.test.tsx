@@ -3,7 +3,13 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { mockPreferenceStore } from '../../../../test/mocks/preferenceStore';
-import { BAR_MAX, BAR_MIN, TakeCard, type FrontTake } from './TakeCard';
+import {
+  BAR_MAX,
+  BAR_MIN,
+  barsInTakeWave,
+  TakeCard,
+  type FrontTake,
+} from './TakeCard';
 
 jest.mock('../../../../services/storage', () => ({
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
@@ -18,9 +24,9 @@ jest.mock('react-native-reanimated', () => ({
 
 const hidden = { includeHiddenElements: true };
 const SLOT = 300;
-const WAVE_LEAD = 32;
-const BAR_SLOT = 6;
-const SLOT_BARS = Math.max(1, Math.floor((SLOT - WAVE_LEAD) / BAR_SLOT));
+const SPACING = { md: 12, xs: 4 };
+/** Verse 1 at 300pt. A three-digit chip leaves room for one bar fewer. */
+const SLOT_BARS = barsInTakeWave(SLOT, 1, SPACING);
 
 function levelHeight(level: number) {
   return BAR_MIN + level * (BAR_MAX - BAR_MIN);
@@ -38,21 +44,27 @@ function recordingTake(over: Partial<FrontTake> = {}): FrontTake {
   };
 }
 
-function Card({ take }: { take: FrontTake }) {
+function Card({
+  take,
+  firstVerse = 1,
+}: {
+  take: FrontTake;
+  firstVerse?: number;
+}) {
   const mode = useSharedValue(1);
   return (
     <TakeCard
       take={take}
       blockedReason={null}
-      firstVerse={1}
+      firstVerse={firstVerse}
       mode={mode}
       shown
     />
   );
 }
 
-function renderTake(take: FrontTake) {
-  const result = render(<Card take={take} />);
+function renderTake(take: FrontTake, firstVerse = 1) {
+  const result = render(<Card take={take} firstVerse={firstVerse} />);
   fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
     nativeEvent: { layout: { width: SLOT, height: 52 } },
   });
@@ -162,6 +174,13 @@ describe('TakeCard live waveform', () => {
     expect(barHeight(0)).toBe(levelHeight(0.1));
     expect(barHeight(SLOT_BARS - 1)).toBe(levelHeight(0.1));
     expect(screen.getByLabelText('Take 2, recording, 0:01')).toBeTruthy();
+  });
+
+  it('drops a bar when the verse chip is three digits wide', () => {
+    renderTake(recordingTake(), 176);
+
+    expect(barCount()).toBe(barsInTakeWave(SLOT, 176, SPACING));
+    expect(barCount()).toBe(SLOT_BARS - 1);
   });
 
   it('still fills the width when motion is reduced', () => {
