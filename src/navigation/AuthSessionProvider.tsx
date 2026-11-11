@@ -10,6 +10,7 @@ import React, {
 import { ActivityIndicator, Text, View } from 'react-native';
 import BootSplash from 'react-native-bootsplash';
 import { logger } from '../utils/logger';
+import { markStartup } from '../utils/startupTrace';
 import { initializeDatabase } from '../db/index';
 import { syncAllData } from '../services/sync';
 import {
@@ -89,10 +90,14 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       try {
         await initializeDatabase();
         const removed = await clearOrphanedPausedTakes();
+        markStartup('paused_takes_cleared', { removed });
         if (removed > 0) {
           log.info('Cleared orphaned paused takes on launch', { removed });
         }
         const session = await restoreSession();
+        markStartup('session_restored', {
+          authenticated: session.authenticated,
+        });
         setIsAuthenticated(session.authenticated);
       } catch (e: unknown) {
         log.error('initApp failed:', { error: String(e) });
@@ -144,9 +149,12 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
     // A fade opens a second splash window on the UI thread while the first
     // screen is mounting, holding saved content back on every cold launch.
-    BootSplash.hide().catch(e => {
-      log.error('BootSplash hide failed', { error: String(e) });
-    });
+    markStartup('splash_hide_requested');
+    BootSplash.hide()
+      .then(() => markStartup('splash_hidden'))
+      .catch(e => {
+        log.error('BootSplash hide failed', { error: String(e) });
+      });
   }, [isLoading]);
 
   const runPostLoginSync = useCallback(

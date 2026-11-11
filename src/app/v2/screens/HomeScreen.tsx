@@ -29,6 +29,7 @@ import {
   getAccountDisplayName,
   getAccountInitials,
 } from '../../../utils/accountDisplay';
+import { markStartup } from '../../../utils/startupTrace';
 import type { SyncStatus } from '../../../utils/syncStatusState';
 import { AccountsSheet } from './home/AccountsSheet';
 import { Books } from './home/Books';
@@ -74,6 +75,11 @@ function HomeBody({
   const router = useRouter();
   const isFocused = useIsFocused();
   const syncPushLockRef = useRef(false);
+  const mountMarkedRef = useRef(false);
+  if (!mountMarkedRef.current) {
+    mountMarkedRef.current = true;
+    markStartup('home_mount');
+  }
   const [accountsOpen, setAccountsOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -220,7 +226,9 @@ function HomeBody({
     (isSyncingChapters && chapters.length === 0 && books.length === 0);
 
   let body: React.ReactNode;
+  let bodyKind: 'loading' | 'empty' | 'content';
   if (showLoading) {
+    bodyKind = 'loading';
     body = (
       <View style={styles.centered} testID="home-loading">
         <ActivityIndicator size="large" color={theme.roles.accentPrimary} />
@@ -228,18 +236,21 @@ function HomeBody({
       </View>
     );
   } else if (waitingForChapters) {
+    bodyKind = 'loading';
     body = (
       <View style={styles.centered} testID="home-chapters-loading">
         <ActivityIndicator size="large" color={theme.roles.accentPrimary} />
       </View>
     );
   } else if (chapters.length === 0 && books.length === 0) {
+    bodyKind = 'empty';
     body = (
       <View style={styles.centered} testID="home-empty">
         <Text style={styles.message}>{HOME_EMPTY_MESSAGE}</Text>
       </View>
     );
   } else {
+    bodyKind = 'content';
     body = (
       <>
         <ChangesRequested chapters={chapters} onOpen={openPassage} />
@@ -314,7 +325,22 @@ function HomeBody({
             {waitingForChapters ? SYNC_SUMMARY[syncStatus] : chaptersLabel}
           </Text>
         </View>
-        {body}
+        <View
+          style={styles.content}
+          onLayout={
+            bodyKind === 'loading'
+              ? undefined
+              : () =>
+                  markStartup('first_content_commit', {
+                    kind: bodyKind,
+                    chapters: chapters.length,
+                    books: books.length,
+                    nextUpReady: nextUp.status === 'ready',
+                  })
+          }
+        >
+          {body}
+        </View>
       </ScrollView>
       <AccountsSheet visible={accountsOpen} onClose={closeAccounts} />
     </View>

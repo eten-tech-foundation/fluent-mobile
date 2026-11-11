@@ -12,6 +12,7 @@ import type { HomeBookSummary } from '../types/db/types';
 import { logger } from '../utils/logger';
 import { parseUserId } from '../utils/parseUserId';
 import { sameRows } from '../utils/sameRows';
+import { markStartup } from '../utils/startupTrace';
 
 const log = logger.create('useHomeBooks');
 
@@ -36,6 +37,7 @@ export function useHomeBooks(refreshKey = 0) {
 
   // Only a read that publishes (or fails) ends the first load.
   const setBooks = useCallback((next: HomeBookSummary[]) => {
+    markStartup('books_read', { count: next.length });
     setBookRows(prev => (sameRows(prev, next) ? prev : next));
     setLoading(false);
   }, []);

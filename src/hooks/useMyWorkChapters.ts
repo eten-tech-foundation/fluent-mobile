@@ -14,6 +14,7 @@ import { refreshChapterMetadataIfOnline } from '../services/sync';
 import { getTranslatorProjectIds } from '../utils/myWorkDraftDownload';
 import { logger } from '../utils/logger';
 import { sameRows } from '../utils/sameRows';
+import { markStartup } from '../utils/startupTrace';
 
 const log = logger.create('useMyWorkChapters');
 
@@ -87,6 +88,7 @@ export function useMyWorkChapters(refreshKey = 0) {
 
   // Only a read that publishes ends the first load; a superseded one doesn't.
   const setChapters = useCallback((next: MyWorkChapter[]) => {
+    markStartup('chapters_read', { count: next.length });
     setChapterRows(prev => (sameRows(prev, next) ? prev : next));
     setLoading(false);
   }, []);

@@ -10,6 +10,7 @@ import { getProjectPericopeSetId } from '../db/repository';
 import { parseUserId } from '../utils/parseUserId';
 import type { MyWorkChapter } from '../types/db/types';
 import { logger } from '../utils/logger';
+import { markStartup } from '../utils/startupTrace';
 import type { DraftingUnit } from '../services/draftingUnitPreference';
 import { useDraftingUnit } from './useDraftingUnit';
 import {
@@ -159,6 +160,14 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
           after: NextPassage[];
         }) => {
           readyWithDrafts.current = hasDrafts;
+          // The pass before chapters arrive is trivially ready; the one that
+          // read them is the launch milestone.
+          if (chapters.length > 0) {
+            markStartup('nextup_ready', {
+              hero: result.hero !== null,
+              after: result.after.length,
+            });
+          }
           setLoaded({
             nextUp: {
               status: 'ready',
