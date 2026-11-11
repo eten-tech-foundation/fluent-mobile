@@ -44,7 +44,7 @@ export interface GalleryEntry {
 /** One entry per Next component — see docs/guides/figma-to-component.md step 7. */
 export const galleryEntries: GalleryEntry[] = [
   {
-    // Figma: Foundations · 03 Type (families still placeholders there)
+    // Figma: Foundations · 03 Typography
     id: 'type',
     name: 'Type styles',
     section: 'Foundations',

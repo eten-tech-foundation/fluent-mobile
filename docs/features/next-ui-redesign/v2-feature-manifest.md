@@ -393,27 +393,25 @@ Folded in from Legacy, so Next blocks and warns the same way:
 
 ### Figma follow-ups
 
-- Gallery: the Dialog demo is the player's take-pick confirm, since Next has
-  no Send yet, while Figma's Dialog frame is the send confirm (2648-616). The
-  Recorder take card (2555-910) draws a Level wave Long, but the built card
-  draws the take with `Waveform`.
-- Waveform: Figma has two, the Wave bar (2409-505) and the Level wave with
-  its Progress dot (2409-509). Code keeps only `Waveform`, so the Progress
-  dot and the take card's Level wave should become a compact Wave bar.
+Foundations (`2308:6`) was synced with code on 11 Nov 2026: Jakarta and
+Atkinson type styles with code's line heights and case, `space/20` and
+`size/icon-20`, the screen header and Waveform patterns, Word Note and Note
+dimmed, and stale masters moved to 11 · Not in the app. What's left is on the
+screen pages:
 
-- Screen header: Home, the book page and the translation note share a header
-  row with `space-12` above and below its buttons, and a `stroke/1`
-  `shadow/edge` line along its bottom that fades in once the content scrolls
-  under it. Home's header is pinned now instead of scrolling away. Figma's
-  Home, book page and note frames need the padding, the pinned header and a
-  scrolled state.
-- Type (Foundations · 03 Type): Next uses Plus Jakarta Sans for heading,
-  title, overline and meta, and Atkinson Hyperlegible Next for reading, lead,
-  body and label. Figma still shows Google Sans Flex and DM Mono, so the
-  styles need the new families, with overline and meta no longer mono or
-  uppercase. Jakarta draws taller, so heading's line height is 54 (not 48)
-  and overline's 26 (not 24), and the Word chip in notes is a space/2 shorter
-  than its line, not a space/4.
+- Screen header: Figma's Home, book page and note frames need the header
+  padding (`space-20` sides, `space-12` above and below), the pinned header
+  and a scrolled state with the `stroke/1` `shadow/edge` line. The pattern is
+  in Foundations · 08.
+- Waveform: the screens still use the Level wave and Progress dot (96
+  instances). Code keeps only `Waveform`, so those should become a compact
+  Wave bar once one exists.
+- Passage row and Now playing: still on the screen pages (58 and 27
+  instances), though the app has Passage covers and no Now playing bar.
+- Gallery: the Dialog demo is the player's take-pick confirm, since Next has
+  no Send yet, while Figma's Dialog frame is the send confirm (2648-616).
+- Word: the Word chip in notes is a space/2 shorter than its line, not a
+  space/4.
 
 ### Elsewhere on Project 4
 

@@ -5,7 +5,7 @@ import { buildTypeStyles, type TypeFamilies } from './typeStyles';
  * (03 Typography · 04 Spacing · 05 Radius).
  *
  * Families are Plus Jakarta Sans and Atkinson Hyperlegible Next, linked in
- * app.config.ts. Figma still shows placeholders.
+ * app.config.ts, and set in the Figma text styles.
  */
 
 /** Figma `space/*` steps (px). */
