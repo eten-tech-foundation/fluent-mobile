@@ -8,19 +8,19 @@ import { setMicActive } from '../../../audio/micActivity';
 import { useThemedStyles } from '../../../theme/useTheme';
 import { PlayerKeys } from '../../v2/screens/passage/PlayerKeys';
 
-/** The script, then six listening materials. */
-const PAGE_COUNT = 7;
+/** Mark 14:22–25, stepped through in verse mode. */
+const VERSES = [22, 23, 24, 25];
 
 /**
  * The player's keys: the Mode toggle swaps them between Listen (Play ·
- * Previous · Next) and Record (Record · Play · Eject). Record pauses and
- * resumes one take, Eject finishes it, and a take in progress locks the mode
- * until then.
+ * Previous · Next, stepping verses) and Record (Record · Play · Eject).
+ * Record pauses and resumes one take, Eject finishes it, and a take in
+ * progress locks the mode until then.
  */
 export function HardwarePanelEntry() {
   const [recordMode, setRecordMode] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [page, setPage] = useState(1);
+  const [at, setAt] = useState(1);
   const [take, setTake] = useState<'none' | 'recording' | 'paused'>('none');
   const [takes, setTakes] = useState(0);
   const recording = take === 'recording';
@@ -54,7 +54,9 @@ export function HardwarePanelEntry() {
       : `Record · ${takes} ${takes === 1 ? 'take' : 'takes'}${
           playing ? ' · playing back' : ''
         }`
-    : `Listen · Page ${page} of ${PAGE_COUNT}${playing ? ' · Playing' : ''}`;
+    : `Listen · Mark 14:${VERSES[at]}${playing ? ' · Playing' : ''}`;
+  const previous = VERSES[at - 1];
+  const next = VERSES[at + 1];
 
   return (
     <View style={styles.demo}>
@@ -84,18 +86,21 @@ export function HardwarePanelEntry() {
           listen={{
             playing,
             playDisabled: false,
-            playLabel: playing ? 'Pause' : 'Play',
+            playLabel: playing ? 'Pause source audio' : 'Play source audio',
             onPlay: () => setPlaying(p => !p),
           }}
           previous={{
-            label: 'Previous page',
-            disabled: page === 1,
-            onPress: () => setPage(p => p - 1),
+            label:
+              previous === undefined
+                ? 'Previous'
+                : `Previous: verse ${previous}`,
+            disabled: previous === undefined,
+            onPress: () => setAt(a => a - 1),
           }}
           next={{
-            label: 'Next page',
-            disabled: page === PAGE_COUNT,
-            onPress: () => setPage(p => p + 1),
+            label: next === undefined ? 'Next' : `Next: verse ${next}`,
+            disabled: next === undefined,
+            onPress: () => setAt(a => a + 1),
           }}
         />
       </SafeAreaInsetsContext.Provider>

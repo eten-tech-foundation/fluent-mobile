@@ -3,7 +3,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { galleryEntries, gallerySections } from '.';
 import { IconsEntry } from './IconsEntry';
+import { NoteEntry } from './NoteEntry';
 import { TakeFanEntry } from './TakeFanEntry';
+import { WaveformEntry } from './WaveformEntry';
 import * as icons from '../../../components/ui/icons';
 import { UNDO_MS } from '../../../hooks/usePendingDelete';
 import { mockPreferenceStore } from '../../../test/mocks/preferenceStore';
@@ -17,6 +19,7 @@ jest.mock('../../../assets/icons/trash-open.svg', () => {
 
 jest.mock('../../../services/storage', () => ({
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
+  MAX_DEVICE_ACCOUNTS: 3,
 }));
 
 function renderNext(node: React.ReactElement) {
@@ -91,5 +94,33 @@ describe('TakeFanEntry', () => {
     });
     act(() => jest.advanceTimersByTime(UNDO_MS));
     expect(screen.getByText('1 of 5 takes on v. 23')).toBeTruthy();
+  });
+});
+
+describe('WaveformEntry', () => {
+  beforeEach(() => mockPreferenceStore());
+
+  it('steps verses with Previous and Next, off at the ends', () => {
+    renderNext(<WaveformEntry />);
+
+    expect(screen.getByLabelText('Previous')).toBeDisabled();
+    fireEvent.press(screen.getByLabelText('Next: verse 23'));
+    expect(screen.getByLabelText('Previous: verse 22')).toBeTruthy();
+    expect(screen.getByLabelText('Next: verse 24')).toBeTruthy();
+  });
+});
+
+describe('NoteEntry', () => {
+  beforeEach(() => mockPreferenceStore());
+
+  it('steps notes with the keys and closes from the header', () => {
+    renderNext(<NoteEntry />);
+
+    fireEvent.press(
+      screen.getByLabelText('Next note: My blood of the covenant,'),
+    );
+    expect(screen.getByLabelText('Note 2 of 3')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Close the note'));
+    expect(screen.getByText('Open the note again')).toBeTruthy();
   });
 });

@@ -43,7 +43,7 @@ interface Take {
   durationMs: number;
 }
 
-/** Syllable bursts with pauses between phrases, as in the Level wave demo. */
+/** Syllable bursts with pauses between phrases, like speech. */
 function level(tick: number) {
   const t = tick * (TICK_MS / 1000);
   if (Math.sin(t * 0.9) < -0.55) return 0;

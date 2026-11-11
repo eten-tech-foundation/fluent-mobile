@@ -7,14 +7,13 @@ import { HardwarePanelEntry } from './HardwarePanelEntry';
 import { HomeHeaderEntry } from './HomeHeaderEntry';
 import { IconsEntry } from './IconsEntry';
 import { KeyEntry } from './KeyEntry';
-import { LevelWaveEntry } from './LevelWaveEntry';
+import { NoteEntry } from './NoteEntry';
 import { PassageCoverEntry } from './PassageCoverEntry';
 import { PassageNoticesEntry } from './PassageNoticesEntry';
 import { RoundButtonEntry } from './RoundButtonEntry';
 import { ScreenHeaderEntry } from './ScreenHeaderEntry';
 import { SwitchEntry } from './SwitchEntry';
 import { TakeFanEntry } from './TakeFanEntry';
-import { TrackRowEntry } from './TrackRowEntry';
 import { TypeEntry } from './TypeEntry';
 import { WaveformEntry } from './WaveformEntry';
 import { WordEntry } from './WordEntry';
@@ -83,8 +82,7 @@ export const galleryEntries: GalleryEntry[] = [
     id: 'round-button',
     name: 'Round button · Progress ring',
     section: 'Controls',
-    modes:
-      'Soft in passage rows · Flat in the Canvas player and the Accent note',
+    modes: 'Soft on Hardware screens · Flat on the Canvas hero and player',
     Component: RoundButtonEntry,
   },
   {
@@ -98,9 +96,9 @@ export const galleryEntries: GalleryEntry[] = [
   },
   {
     // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-505
-    // Verse chip 2409-502 · Page dot 2409-508
+    // Verse chip 2409-502
     id: 'waveform',
-    name: 'Waveform · Page dots',
+    name: 'Waveform · Verse chips',
     section: 'Player',
     modes: 'Canvas (the player)',
     Component: WaveformEntry,
@@ -115,13 +113,13 @@ export const galleryEntries: GalleryEntry[] = [
     Component: WordEntry,
   },
   {
-    // Figma: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-509
-    // Long: Recorder take card 2555-910
-    id: 'level-wave',
-    name: 'Level wave · Short and Long',
+    // Figma: Understanding screen https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2440-31081
+    // Page dot https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2409-508
+    id: 'note',
+    name: 'Translation note · Page dots',
     section: 'Player',
-    modes: 'Hardware (header) · Canvas (take card)',
-    Component: LevelWaveEntry,
+    modes: 'Accent (the note) · Hardware (keys)',
+    Component: NoteEntry,
   },
   {
     // Figma: Take fan https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2555-743
@@ -139,15 +137,6 @@ export const galleryEntries: GalleryEntry[] = [
     section: 'Cards and covers',
     modes: 'Hardware (book page)',
     Component: PassageCoverEntry,
-  },
-  {
-    // Figma passage rows (Round button 2326-64 in Progress ring 2400-302),
-    // with the button only on the live row.
-    id: 'track-row',
-    name: 'Track row',
-    section: 'Cards and covers',
-    modes: 'Hardware (passage page)',
-    Component: TrackRowEntry,
   },
   {
     // No Figma component yet: modeled on desktop's Community notes card.
@@ -185,7 +174,7 @@ export const galleryEntries: GalleryEntry[] = [
   },
   {
     // Figma: Gap / Dialog https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-72
-    // As the send confirm: Send to Peer Check · Confirm 2648-616
+    // As the player's take confirm (the Figma frame is the send confirm 2648-616)
     id: 'dialog',
     name: 'Dialog',
     section: 'Sheets and dialogs',

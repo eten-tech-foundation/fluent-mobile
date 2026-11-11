@@ -215,9 +215,8 @@ transport demo latches Play and disables the skip keys at the first and last
 verse. Find that job on the Figma screen pages, not just the component page:
 where it's instanced, what content sits around it, which mode the screen is
 in. Don't invent a scenario. The Switch is the Listen / Record mode toggle,
-so its demo is that toggle; the Progress ring shows listening progress
-through a pericope's tracks, so its demo is the passage list for *The Last
-Supper*. Each entry covers:
+so its demo is that toggle; the Progress ring fills as each verse is
+recorded, so its demo is verse mode's verse list (`VerseList.tsx`). Each entry covers:
 
 - every state in the contract reachable through real use, including disabled
   and latched (the Mode toggle locks while a take is recording). If a state or

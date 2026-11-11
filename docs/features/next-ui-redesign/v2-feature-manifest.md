@@ -225,6 +225,10 @@ Things the Figma designs add that v1 doesn't do.
   `resolved`, but mobile only accepts `clean` or `conflict`
   (`src/services/verseAudioContract.ts:86-88`). Re-recording that verse would
   probably fail to sync. Not reproduced yet.
+- **Unused Next components:** `TrackRow` and `LevelWave` have no callers
+  outside their tests now (the book page uses Passage cover, and the take
+  card draws with `Waveform`). Their gallery entries are gone; deleting the
+  components and their tests is a follow-up.
 - **Coverage script:** `npm run api:coverage` reports 28 operations called;
   the real number is 24, because it ignores the HTTP method and matches paths
   in comments.
@@ -383,6 +387,11 @@ Folded in from Legacy, so Next blocks and warns the same way:
   where the FIA listening materials were (Q11), until those have audio.
 
 ### Figma follow-ups
+
+- Gallery: the Dialog demo is the player's take-pick confirm, since Next has
+  no Send yet, while Figma's Dialog frame is the send confirm (2648-616). The
+  Recorder take card (2555-910) draws a Level wave Long, but the built card
+  draws the take with `Waveform`.
 
 - Screen header: Home, the book page and the translation note share a header
   row with `space-12` above and below its buttons, and a `stroke/1`
