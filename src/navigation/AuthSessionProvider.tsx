@@ -87,24 +87,41 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const initApp = async () => {
+      let ready = false;
       try {
-        await initializeDatabase();
-        const removed = await clearOrphanedPausedTakes();
-        markStartup('paused_takes_cleared', { removed });
-        if (removed > 0) {
-          log.info('Cleared orphaned paused takes on launch', { removed });
-        }
-        const session = await restoreSession();
+        // The session lives in SecureStore and the KV store, not the
+        // database, so the two open together (#973).
+        const [, session] = await Promise.all([
+          initializeDatabase(),
+          restoreSession(),
+        ]);
         markStartup('session_restored', {
           authenticated: session.authenticated,
         });
         setIsAuthenticated(session.authenticated);
+        ready = true;
       } catch (e: unknown) {
         log.error('initApp failed:', { error: String(e) });
         setError((e as Error).message);
       } finally {
         setIsLoading(false);
       }
+      if (!ready) return;
+      // Housekeeping, off the path to the first screen. Launch recovery
+      // (`collectLaunchRecoveries`) skips orphans on its own, so order
+      // between the two doesn't matter.
+      clearOrphanedPausedTakes()
+        .then(removed => {
+          markStartup('paused_takes_cleared', { removed });
+          if (removed > 0) {
+            log.info('Cleared orphaned paused takes on launch', { removed });
+          }
+        })
+        .catch((e: unknown) => {
+          log.warn('Clearing orphaned paused takes failed', {
+            error: String(e),
+          });
+        });
     };
 
     void initApp();

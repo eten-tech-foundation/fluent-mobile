@@ -157,6 +157,65 @@ describe('AuthSessionProvider', () => {
     expect(mockHideSplash).not.toHaveBeenCalled();
   });
 
+  it('opens the database and restores the session together, then cleans up paused takes (#973)', async () => {
+    const { initializeDatabase } = jest.requireMock('../src/db/index') as {
+      initializeDatabase: jest.Mock;
+    };
+    const { clearOrphanedPausedTakes } = jest.requireMock(
+      '../src/services/pausedTakes',
+    ) as { clearOrphanedPausedTakes: jest.Mock };
+    let openDatabase!: () => void;
+    initializeDatabase.mockReturnValueOnce(
+      new Promise<void>(resolve => {
+        openDatabase = resolve;
+      }),
+    );
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+
+    const { getByTestId, queryByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    // The session is read without waiting for the database to open.
+    await waitFor(() => expect(mockRestoreSession).toHaveBeenCalledTimes(1));
+    expect(getByTestId('auth-session-loading')).toBeTruthy();
+    expect(clearOrphanedPausedTakes).not.toHaveBeenCalled();
+
+    await act(async () => {
+      openDatabase();
+    });
+    await waitFor(() => {
+      expect(queryByTestId('auth-session-loading')).toBeNull();
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    // Housekeeping runs after the first screen is let through.
+    await waitFor(() =>
+      expect(clearOrphanedPausedTakes).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it('skips paused-take cleanup when bootstrap fails', async () => {
+    const { initializeDatabase } = jest.requireMock('../src/db/index') as {
+      initializeDatabase: jest.Mock;
+    };
+    const { clearOrphanedPausedTakes } = jest.requireMock(
+      '../src/services/pausedTakes',
+    ) as { clearOrphanedPausedTakes: jest.Mock };
+    initializeDatabase.mockRejectedValueOnce(new Error('db boom'));
+
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => expect(getByTestId('auth-session-error')).toBeTruthy());
+    await act(async () => {});
+    expect(clearOrphanedPausedTakes).not.toHaveBeenCalled();
+  });
+
   it('restores auth and starts upload orchestrator', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
     const { getByTestId } = render(
