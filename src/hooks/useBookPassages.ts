@@ -128,13 +128,16 @@ type Coverages = ReturnType<typeof getSelectedTakeCoverages>;
 export type CoveragesFor = (bibleId: number, bookId: number) => Coverages;
 
 /** Selected-take coverage per book, read once for a project unit's chapters. */
-export function coverageLookup(projectUnitId: number): CoveragesFor {
+export function coverageLookup(
+  projectUnitId: number,
+  onError?: () => void,
+): CoveragesFor {
   const coverages = new Map<string, Coverages>();
   return (bibleId, bookId) => {
     const key = `${bibleId}:${bookId}`;
     let found = coverages.get(key);
     if (!found) {
-      found = getSelectedTakeCoverages(bibleId, bookId, projectUnitId);
+      found = getSelectedTakeCoverages(bibleId, bookId, projectUnitId, onError);
       coverages.set(key, found);
     }
     return found;
@@ -151,12 +154,20 @@ type StageOf = (chapterNumber: number) => WorkflowBadgeStage | null | undefined;
  * take this chapter's stage.
  */
 export async function loadChapterPassages(
-  chapter: ProjectChapter,
+  chapter: ProjectChapter & { bibleId?: number; bookId?: number },
   pericopeSetId: number | null,
   coveragesFor: CoveragesFor,
   stageOf?: StageOf,
 ): Promise<BookPassage[]> {
-  const assignment = await getChapterAssignmentById(chapter.id);
+  // A My Work chapter already carries its assignment row's bible and book.
+  const assignment =
+    (chapter.bibleId ?? 0) > 0 && (chapter.bookId ?? 0) > 0
+      ? {
+          bibleId: chapter.bibleId as number,
+          bookId: chapter.bookId as number,
+          chapterNumber: chapter.chapterNumber,
+        }
+      : await getChapterAssignmentById(chapter.id);
   if (!assignment) return [wholeChapter(chapter)];
   const { bibleId, bookId, chapterNumber } = assignment;
   const [groups, coverages] = await Promise.all([

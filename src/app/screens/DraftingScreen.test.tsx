@@ -106,6 +106,7 @@ jest.mock('../../hooks/useActiveAccountSummary', () => ({
 
 jest.mock('../../services/syncEvents', () => ({
   onSyncComplete: () => jest.fn(),
+  onUploadSessionEvent: () => jest.fn(),
   emitSyncStart: jest.fn(),
   emitSyncComplete: jest.fn(),
 }));

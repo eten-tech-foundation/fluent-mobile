@@ -111,6 +111,9 @@ jest.mock('../services/pausedTakes', () => ({
   upsertPausedTake: (marker: unknown) => mockUpsertPausedTake(marker),
 }));
 
+jest.mock('../services/recordingTakeDeletion', () => ({
+  deleteRecordingTakeWithUploadState: jest.fn(),
+}));
 jest.mock('../services/uploadOrchestrator', () => ({
   notifyPendingUploads: (...args: unknown[]) =>
     mockNotifyPendingUploads(...args),
@@ -389,6 +392,31 @@ describe('useVerseAudio', () => {
 
     expect(selectTake).toHaveBeenCalledWith('rec_1');
     expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-choosing a selected take whose upload failed is an explicit reactivation (#886)', async () => {
+    const reassertTake = jest.fn().mockResolvedValue(true);
+    loadTakes.mockResolvedValue([
+      makeTake({ isSelected: true, syncStatus: 'failed' }),
+      makeTake({ id: 'rec_2', isSelected: false, syncStatus: 'failed' }),
+    ]);
+    const { result } = renderHook(() =>
+      useVerseAudio({ ...verseAudioArgs(), reassertTake }),
+    );
+    await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+    await act(async () => {
+      await result.current.selectTake('rec_1');
+    });
+    expect(reassertTake).toHaveBeenCalledWith('rec_1');
+    expect(selectTake).not.toHaveBeenCalled();
+    expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await result.current.selectTake('rec_2');
+    });
+    expect(selectTake).toHaveBeenCalledWith('rec_2');
+    expect(reassertTake).toHaveBeenCalledTimes(1);
   });
 
   it('queues an upload pass after a canonical designation (#701)', async () => {

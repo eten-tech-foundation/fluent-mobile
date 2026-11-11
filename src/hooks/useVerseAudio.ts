@@ -2,7 +2,6 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   addRecordingTake,
-  deleteRecordingTake,
   getAllTakesForVerse,
   getTakesForVerse,
   selectRecordingTake,
@@ -28,6 +27,7 @@ import { usePlaybackEngine } from './usePlaybackEngine';
 import { useRecordingEngine } from './useRecordingEngine';
 import { getConnectivitySnapshot } from '../services/connectivity';
 import { notifyPendingUploads } from '../services/uploadOrchestrator';
+import { deleteRecordingTakeWithUploadState } from '../services/recordingTakeDeletion';
 import { onRecordingDataChanged } from '../services/recordingDataEvents';
 import { onUploadSessionEvent } from '../services/syncEvents';
 import { shouldEndPlaybackOnIdle } from './playbackStatusGuards';
@@ -92,6 +92,8 @@ export type VerseAudioPersistDeps = {
   countTakesAtView?: (view: VerseViewRef) => Promise<number>;
   deleteTake?: (id: string) => Promise<void>;
   selectTake?: (id: string) => Promise<void>;
+  /** Re-choosing a selected take whose upload failed (#886). */
+  reassertTake?: (id: string) => Promise<boolean>;
   designateCanonical?: (id: string) => Promise<void>;
 };
 
@@ -216,6 +218,13 @@ function toMarkerCapture(snapshot: CapturePersistSnapshot): PausedTakeCapture {
   };
 }
 
+function defaultReassertTake(id: string): Promise<boolean> {
+  // Lazy require keeps KV storage out of hook tests that inject their own.
+  const { chooseLocalTakeAfterUnresolvedActivation } =
+    require('../services/uploadOperationState') as typeof import('../services/uploadOperationState');
+  return chooseLocalTakeAfterUnresolvedActivation(id);
+}
+
 /**
  * Composes recorder (#95) + player (#96) + storage (#94) + multi-take (#98)
  * behind the pure {@link verseAudioReducer}. Permission/Alert UX stays in the screen.
@@ -236,8 +245,9 @@ export function useVerseAudio({
   loadAllTakes,
   checkMultipleRecorders,
   countTakesAtView: countTakesAtViewArg,
-  deleteTake: deleteTakeFn = deleteRecordingTake,
+  deleteTake: deleteTakeFn = deleteRecordingTakeWithUploadState,
   selectTake: selectTakeFn = selectRecordingTake,
+  reassertTake: reassertTakeFn = defaultReassertTake,
   designateCanonical: designateCanonicalFn = setCanonicalTake,
 }: UseVerseAudioArgs) {
   const countTakesAtView = useCallback(
@@ -1444,7 +1454,15 @@ export function useVerseAudio({
       try {
         clearStitchQueue();
         setPlayingTakeId(null);
-        await selectTakeFn(id);
+        const current = takes.find(take => take.id === id);
+        // Selecting is a no-op on an already-selected take; when its upload
+        // failed (e.g. another take became active on the server) the tap is
+        // the user's explicit choice to make this take active again.
+        if (current?.isSelected && current.syncStatus === 'failed') {
+          await reassertTakeFn(id);
+        } else {
+          await selectTakeFn(id);
+        }
         // Selection changes are syncable work now (#701) — queue an upload
         // pass when transport allows instead of waiting for the next sync.
         notifyPendingUploads();
@@ -1458,7 +1476,14 @@ export function useVerseAudio({
         dispatch({ type: 'ERROR', message });
       }
     },
-    [bibleTextId, clearStitchQueue, loadTakesFn, selectTakeFn],
+    [
+      bibleTextId,
+      clearStitchQueue,
+      loadTakesFn,
+      reassertTakeFn,
+      selectTakeFn,
+      takes,
+    ],
   );
 
   /** Designate canonical from All Takes (#279) — any account may call this. */

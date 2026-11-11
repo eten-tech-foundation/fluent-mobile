@@ -233,6 +233,7 @@ export function HeroHeader({
             variant="flat"
             status={sync.status}
             failedErrorText={sync.failedErrorText}
+            heldForDrafting={sync.heldForDrafting}
             onPress={sync.openSync}
             testID="passage-sync"
           />

@@ -1,8 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { onSyncStart, onSyncComplete } from '../services/syncEvents';
+import {
+  isSyncActive,
+  onSyncStart,
+  onSyncComplete,
+} from '../services/syncEvents';
 
 export function useGlobalSyncStatus(onComplete?: () => void) {
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(isSyncActive);
 
   const handleComplete = useCallback(() => {
     setIsSyncing(false);
@@ -12,6 +16,7 @@ export function useGlobalSyncStatus(onComplete?: () => void) {
   useEffect(() => {
     const unsubStart = onSyncStart(() => setIsSyncing(true));
     const unsubComplete = onSyncComplete(handleComplete);
+    setIsSyncing(isSyncActive());
     return () => {
       unsubStart();
       unsubComplete();

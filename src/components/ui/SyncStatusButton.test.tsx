@@ -66,4 +66,36 @@ describe('SyncStatusButton', () => {
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.getByLabelText('Upload failed. Server busy.')).toBeTruthy();
   });
+
+  it('says pending uploads wait while drafting holds them', () => {
+    render(
+      <SyncStatusButton
+        status="online_pending"
+        heldForDrafting
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Online · uploads wait until you leave drafting. Open Sync page.',
+      }),
+    ).toBeTruthy();
+    expect(iconName()).toBe('CloudArrowUp');
+    expect(screen.getByText('Waiting')).toBeTruthy();
+  });
+
+  it.each(['online_synced', 'online_uploading', 'offline_pending'] as const)(
+    'shows no visible word for %s even when drafting is open',
+    status => {
+      render(
+        <SyncStatusButton
+          status={status}
+          heldForDrafting
+          onPress={jest.fn()}
+        />,
+      );
+      expect(screen.queryByText('Waiting')).toBeNull();
+    },
+  );
 });

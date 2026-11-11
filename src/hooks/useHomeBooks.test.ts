@@ -16,8 +16,23 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+let mockWrites: number | null = 0;
+const mockConnection = {};
 jest.mock('../db/queries', () => ({
   getHomeBookSummaries: jest.fn(),
+  getDatabaseWriteMark: jest.fn(async () =>
+    mockWrites === null
+      ? null
+      : { connection: mockConnection, changes: mockWrites },
+  ),
+  sameDatabaseWrites: (
+    a: { connection: object; changes: number } | null,
+    b: { connection: object; changes: number } | null,
+  ) =>
+    a !== null &&
+    b !== null &&
+    a.connection === b.connection &&
+    a.changes === b.changes,
 }));
 
 jest.mock('../services/storage', () => ({
@@ -86,6 +101,7 @@ describe('useHomeBooks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     capturedFocusCallback = null;
+    mockWrites = 0;
     mockParseUserId.mockReturnValue(7);
     mockGetActiveUserId.mockReturnValue('7');
     mockGetHomeBookSummaries.mockResolvedValue([MARK]);
@@ -100,6 +116,37 @@ describe('useHomeBooks', () => {
     expect(mockGetHomeBookSummaries).toHaveBeenCalledWith(7);
   });
 
+  it('asks for the write mark first, then reads without waiting for it', async () => {
+    const queries = jest.requireMock('../db/queries') as {
+      getDatabaseWriteMark: jest.Mock;
+    };
+    let releaseMark!: () => void;
+    queries.getDatabaseWriteMark.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          releaseMark = () =>
+            resolve({ connection: mockConnection, changes: 0 });
+        }),
+    );
+
+    const { result } = renderHook(() => useHomeBooks());
+
+    await waitFor(() => expect(mockGetHomeBookSummaries).toHaveBeenCalled());
+    expect(
+      queries.getDatabaseWriteMark.mock.invocationCallOrder[0],
+    ).toBeLessThan(mockGetHomeBookSummaries.mock.invocationCallOrder[0]);
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => releaseMark());
+    await waitFor(() => expect(result.current.books).toEqual([MARK]));
+
+    // The mark it published is the one taken before the read.
+    const reads = mockGetHomeBookSummaries.mock.calls.length;
+    await act(async () => capturedFocusCallback?.());
+    await act(async () => capturedFocusCallback?.());
+    expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(reads);
+  });
+
   it('is empty without a user', async () => {
     mockParseUserId.mockReturnValue(null);
 
@@ -110,34 +157,145 @@ describe('useHomeBooks', () => {
     expect(mockGetHomeBookSummaries).not.toHaveBeenCalled();
   });
 
-  it('reads once on mount, and on focus once the metadata refresh lands', async () => {
+  it('reads once on mount, leaving the metadata refresh to the refresh key', async () => {
     const mountMetadata = deferred();
     mockRefresh.mockReturnValueOnce(mountMetadata.promise);
     const { result } = renderHook(() => useHomeBooks());
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(1);
     await act(async () => {
       mountMetadata.resolve();
       await mountMetadata.promise;
     });
+
+    expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(1);
+    expect(mockRefresh).toHaveBeenCalledWith(7);
+  });
+
+  describe('on regaining focus', () => {
+    async function mounted() {
+      const hook = renderHook(() => useHomeBooks());
+      await waitFor(() => expect(hook.result.current.loading).toBe(false));
+      return hook;
+    }
+
+    async function refocus() {
+      await act(async () => {
+        capturedFocusCallback?.();
+      });
+    }
+
+    it('skips the read when nothing was written, still refreshing metadata', async () => {
+      const { result } = await mounted();
+      const shown = result.current.books;
+
+      await refocus();
+      await refocus();
+
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(1);
+      expect(mockRefresh).toHaveBeenCalledTimes(3);
+      expect(result.current.books).toBe(shown);
+    });
+
+    it('reads again at once after a write', async () => {
+      const { result } = await mounted();
+      const recorded = { ...MARK, recordedChapters: 1 };
+      mockGetHomeBookSummaries.mockResolvedValueOnce([recorded]);
+
+      mockWrites = 3;
+      await refocus();
+
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2);
+      expect(result.current.books).toEqual([recorded]);
+    });
+
+    it('reads again after a write made while the screen was away', async () => {
+      await mounted();
+      await refocus();
+      mockWrites = 1;
+
+      await refocus();
+
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2);
+    });
+
+    it("reads the new account's books after an account change", async () => {
+      await mounted();
+
+      mockParseUserId.mockReturnValue(8);
+      await refocus();
+
+      expect(mockGetHomeBookSummaries).toHaveBeenLastCalledWith(8);
+    });
+
+    it('reads again for a write that landed while the last read ran', async () => {
+      mockGetHomeBookSummaries.mockImplementationOnce(async () => {
+        mockWrites = 1;
+        return [MARK];
+      });
+      await mounted();
+
+      await refocus();
+
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries after the last read failed', async () => {
+      const { rerender } = renderHook(
+        ({ key }: { key: number }) => useHomeBooks(key),
+        { initialProps: { key: 0 } },
+      );
+      await waitFor(() => expect(mockGetHomeBookSummaries).toHaveBeenCalled());
+      mockGetHomeBookSummaries.mockRejectedValueOnce(
+        new Error('disk I/O error'),
+      );
+      mockWrites = 1;
+      rerender({ key: 1 });
+      await waitFor(() =>
+        expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
+      );
+
+      await refocus();
+
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(3);
+    });
+
+    it('reads when the write count cannot be read', async () => {
+      await mounted();
+
+      mockWrites = null;
+      await refocus();
+
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2);
+    });
+
+    it('leaves explicit refresh unconditional', async () => {
+      const { result } = await mounted();
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('keeps the same books array when a reread finds nothing changed', async () => {
+    const { result, rerender } = renderHook(
+      ({ key }: { key: number }) => useHomeBooks(key),
+      { initialProps: { key: 0 } },
+    );
+    await waitFor(() => expect(result.current.books).toEqual([MARK]));
+    const shown = result.current.books;
+
+    mockGetHomeBookSummaries.mockResolvedValueOnce([{ ...MARK }]);
+    mockWrites = 1;
+    rerender({ key: 1 });
     await waitFor(() =>
       expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
     );
 
-    const metadata = deferred();
-    mockRefresh.mockReturnValueOnce(metadata.promise);
-    await act(async () => {
-      capturedFocusCallback?.();
-    });
-    expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      metadata.resolve();
-      await metadata.promise;
-    });
-    await waitFor(() =>
-      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(3),
-    );
+    expect(result.current.books).toBe(shown);
+    expect(result.current.loading).toBe(false);
   });
 
   it('keeps the newer books when an older read finishes last', async () => {
@@ -148,14 +306,12 @@ describe('useHomeBooks', () => {
           resolveOld = resolve;
         }),
     );
-    const metadata = deferred();
-    mockRefresh.mockReturnValueOnce(metadata.promise);
-    const { result } = renderHook(() => useHomeBooks());
+    const { result, rerender } = renderHook(
+      ({ key }: { key: number }) => useHomeBooks(key),
+      { initialProps: { key: 0 } },
+    );
 
-    await act(async () => {
-      metadata.resolve();
-      await metadata.promise;
-    });
+    rerender({ key: 1 });
     await waitFor(() => expect(result.current.books).toEqual([MARK]));
 
     await act(async () => {
@@ -172,26 +328,96 @@ describe('useHomeBooks', () => {
     await waitFor(() => expect(result.current.books).toEqual([MARK]));
 
     mockGetHomeBookSummaries.mockRejectedValueOnce(new Error('disk I/O error'));
+    mockWrites = 1;
     rerender({ key: 1 });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.books).toEqual([MARK]);
   });
 
-  it('reloads when the refresh key changes', async () => {
-    const { result, rerender } = renderHook(
-      ({ key }: { key: number }) => useHomeBooks(key),
-      { initialProps: { key: 0 } },
-    );
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    const before = mockGetHomeBookSummaries.mock.calls.length;
+  describe('when the refresh key changes', () => {
+    async function mountedWithKey() {
+      const hook = renderHook(({ key }: { key: number }) => useHomeBooks(key), {
+        initialProps: { key: 0 },
+      });
+      await waitFor(() => expect(hook.result.current.loading).toBe(false));
+      return hook;
+    }
 
-    rerender({ key: 1 });
+    it('reads again when the database was written', async () => {
+      const { rerender } = await mountedWithKey();
 
-    await waitFor(() =>
-      expect(mockGetHomeBookSummaries.mock.calls.length).toBeGreaterThan(
-        before,
-      ),
-    );
+      mockWrites = 1;
+      rerender({ key: 1 });
+
+      await waitFor(() =>
+        expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
+      );
+    });
+
+    it('skips the read when nothing was written since the books were read', async () => {
+      const { result, rerender } = await mountedWithKey();
+      const shown = result.current.books;
+
+      rerender({ key: 1 });
+      await act(async () => {});
+
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(1);
+      expect(result.current.books).toBe(shown);
+    });
+
+    it('reads again when a write landed during the last read', async () => {
+      mockGetHomeBookSummaries.mockImplementationOnce(async () => {
+        mockWrites = 1;
+        return [MARK];
+      });
+      const { rerender } = await mountedWithKey();
+
+      rerender({ key: 1 });
+
+      await waitFor(() =>
+        expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
+      );
+    });
+
+    it('reads again for another account', async () => {
+      const { rerender } = await mountedWithKey();
+
+      mockParseUserId.mockReturnValue(8);
+      rerender({ key: 1 });
+
+      await waitFor(() =>
+        expect(mockGetHomeBookSummaries).toHaveBeenLastCalledWith(8),
+      );
+    });
+
+    it('reads when the write count cannot be read', async () => {
+      const { rerender } = await mountedWithKey();
+
+      mockWrites = null;
+      rerender({ key: 1 });
+
+      await waitFor(() =>
+        expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
+      );
+    });
+
+    it('reads again while the first read is still out', async () => {
+      const first = deferred();
+      mockGetHomeBookSummaries.mockImplementationOnce(async () => {
+        await first.promise;
+        return [];
+      });
+      const { result, rerender } = renderHook(
+        ({ key }: { key: number }) => useHomeBooks(key),
+        { initialProps: { key: 0 } },
+      );
+
+      rerender({ key: 1 });
+
+      await waitFor(() => expect(result.current.books).toEqual([MARK]));
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2);
+      await act(async () => first.resolve());
+    });
   });
 });

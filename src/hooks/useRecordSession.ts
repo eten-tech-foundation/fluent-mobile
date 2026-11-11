@@ -67,9 +67,10 @@ export function useRecordSession({
   const [recordingUnit, setRecordingUnit] =
     useState<RecordingUnitCapture | null>(null);
 
+  // Only pericope drafting reads the set; outside it this stays null, resolved.
   const [pericopeSetId, setPericopeSetId] = useState<number | null>(null);
   const [pericopeSetResolved, setPericopeSetResolved] = useState(
-    chapterData.projectId === null,
+    chapterData.projectId === null || draftingUnit !== 'pericope',
   );
   const [activePericope, setActivePericope] =
     useState<PericopeGroupResult | null>(null);
@@ -79,7 +80,7 @@ export function useRecordSession({
   const pericopeRequestIdRef = useRef(0);
 
   useEffect(() => {
-    if (chapterData.projectId === null) {
+    if (chapterData.projectId === null || draftingUnit !== 'pericope') {
       setPericopeSetId(null);
       setPericopeSetResolved(true);
       return;
@@ -95,7 +96,7 @@ export function useRecordSession({
     return () => {
       cancelled = true;
     };
-  }, [chapterData.projectId]);
+  }, [chapterData.projectId, draftingUnit]);
 
   useEffect(() => {
     const requestId = ++pericopeRequestIdRef.current;

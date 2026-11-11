@@ -3,7 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { getPendingUploadCount } from '../db/queries';
 import {
   getSyncStatusSnapshot,
-  refreshSyncStatusStore,
+  refreshSyncStatusStoreIfChanged,
   subscribeToSyncStatusStore,
 } from '../services/syncStatusStore';
 import type { SyncStatusSnapshot } from '../services/syncStatusStore';
@@ -27,8 +27,10 @@ export function usePendingUploads(refreshKey = 0): SyncStatusSnapshot & {
     getSyncStatusSnapshot,
   );
 
+  // Store events re-read on every take and upload change; these mount, focus
+  // and refreshKey reads skip when nothing has been written since.
   const refresh = useCallback(() => {
-    void refreshSyncStatusStore();
+    void refreshSyncStatusStoreIfChanged();
   }, []);
 
   // Refresh when a screen regains focus (returning from Sync, tab switch).

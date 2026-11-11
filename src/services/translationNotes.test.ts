@@ -7,7 +7,20 @@ import {
 import { FluentAPI } from './api';
 import { ApiError } from './apiError';
 import { findDownloadedRows, readDownloadedJson } from './offlineResources';
+import { clearPassageResourceReuse } from './passageResourceReuse';
 import type { DownloadQueueItem } from '../types/download/types';
+import { authToken } from './authToken';
+
+let mockActiveUserId = '';
+jest.mock('./storage', () => ({
+  getActiveUserId: () => mockActiveUserId,
+}));
+
+/** As accountSession does on a switch: the account is active, its bearer live. */
+function switchAccount(userId: string, token: string | null): void {
+  mockActiveUserId = userId;
+  authToken.set(token);
+}
 
 jest.mock('./api', () => ({
   FluentAPI: {
@@ -88,6 +101,8 @@ describe('parseTranslationNotesItem', () => {
 
 describe('loadTranslationNotesForUnit', () => {
   beforeEach(() => {
+    clearPassageResourceReuse();
+    switchAccount('', null);
     // Default: nothing downloaded → the API path is exercised.
     mockFindRows.mockResolvedValue(null);
   });
@@ -188,7 +203,14 @@ describe('loadTranslationNotesForUnit', () => {
       },
     ]);
 
-    expect(getTranslationNotes).toHaveBeenCalledWith(7, 'MRK', 14, 2, 'eng');
+    expect(getTranslationNotes).toHaveBeenCalledWith(
+      7,
+      'MRK',
+      14,
+      2,
+      'eng',
+      undefined,
+    );
   });
 
   it('fans out across verseNumbers and dedupes by id (#593)', async () => {
@@ -228,6 +250,10 @@ describe('loadTranslationNotesForUnit', () => {
   });
 
   describe('download-first', () => {
+    beforeEach(() => {
+      switchAccount('42', 'token-42');
+    });
+
     it('uses downloaded rows and skips the API, even when online', async () => {
       mockFindRows.mockResolvedValue([
         downloadedRow({ localFilePath: 'file:///downloads/tn.json' }),
@@ -397,7 +423,14 @@ describe('loadTranslationNotesForUnit', () => {
 
       expect(mockFindRows).toHaveBeenCalledTimes(2);
       expect(getTranslationNotes).toHaveBeenCalledTimes(1);
-      expect(getTranslationNotes).toHaveBeenCalledWith(7, 'MRK', 14, 2, 'eng');
+      expect(getTranslationNotes).toHaveBeenCalledWith(
+        7,
+        'MRK',
+        14,
+        2,
+        'eng',
+        'token-42',
+      );
       expect(notes.map(n => n.id)).toEqual([
         'tn-api-local-v1-0',
         'tn-api-222-0',
@@ -447,6 +480,177 @@ describe('loadTranslationNotesForUnit', () => {
 
       expect(notes.map(n => n.id)).toEqual(['tn-api-local-v1-0']);
       expect(getTranslationNotes).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reopening the passage', () => {
+    beforeEach(() => {
+      switchAccount('42', 'token-42');
+    });
+
+    const unit = {
+      projectId: 7,
+      userId: 42,
+      isOnline: true,
+      bookCode: 'MRK',
+      chapterNumber: 14,
+      verseNumber: 1,
+      verseRefs: [
+        { chapterNumber: 14, verseNumber: 1 },
+        { chapterNumber: 14, verseNumber: 2 },
+      ],
+    };
+
+    it("reuses each verse's answer, empty ones too, instead of asking again", async () => {
+      getTranslationNotes.mockImplementation(async (_p, _b, _c, verse) =>
+        verse === 2 ? { items: [sampleItem] } : { items: [] },
+      );
+      const first = await loadTranslationNotesForUnit(unit);
+      const second = await loadTranslationNotesForUnit(unit);
+      expect(second).toEqual(first);
+      expect(first).toHaveLength(1);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(2);
+    });
+
+    it('asks again for a verse that failed, an explicit refresh, or another account', async () => {
+      getTranslationNotes.mockImplementation(async (_p, _b, _c, verse) => {
+        if (verse === 2) throw new Error('502');
+        return { items: [] };
+      });
+      await loadTranslationNotesForUnit(unit);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(2);
+
+      getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
+      await expect(loadTranslationNotesForUnit(unit)).resolves.toHaveLength(1);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(3);
+      expect(getTranslationNotes).toHaveBeenLastCalledWith(
+        7,
+        'MRK',
+        14,
+        2,
+        'eng',
+        'token-42',
+      );
+
+      await loadTranslationNotesForUnit({ ...unit, refresh: true });
+      expect(getTranslationNotes).toHaveBeenCalledTimes(5);
+
+      switchAccount('43', 'token-43');
+      await loadTranslationNotesForUnit({ ...unit, userId: 43 });
+      expect(getTranslationNotes).toHaveBeenCalledTimes(7);
+    });
+
+    it('asks again in another language', async () => {
+      getTranslationNotes.mockResolvedValue({ items: [] });
+      await loadTranslationNotesForUnit(unit);
+      await loadTranslationNotesForUnit({ ...unit, languageCode: 'spa' });
+      expect(getTranslationNotes).toHaveBeenCalledTimes(4);
+    });
+
+    it('still prefers a row downloaded since the first open', async () => {
+      getTranslationNotes.mockResolvedValue({ items: [] });
+      await loadTranslationNotesForUnit(unit);
+      mockFindRows.mockResolvedValue([
+        downloadedRow({ localFilePath: 'file:///downloads/tn.json' }),
+      ]);
+      mockReadJson.mockResolvedValue(sampleItem.content);
+      const notes = await loadTranslationNotesForUnit(unit);
+      expect(notes.length).toBeGreaterThan(0);
+      expect(getTranslationNotes).toHaveBeenCalledTimes(2);
+    });
+
+    it("never fetches A's notes with B's bearer when the switch lands during A's local lookup", async () => {
+      const verse = {
+        ...unit,
+        verseRefs: [{ chapterNumber: 14, verseNumber: 2 }],
+      };
+      const bearers: (string | null)[] = [];
+      // As httpClient.buildHeaders: an explicit token wins over the global one.
+      getTranslationNotes.mockImplementation(
+        async (_p, _b, _c, _v, _l, token) => {
+          const bearer = token ?? authToken.get();
+          bearers.push(bearer);
+          return {
+            items: [{ ...sampleItem, id: bearer === 'token-a' ? 1 : 2 }],
+          };
+        },
+      );
+      switchAccount('42', 'token-a');
+      let missLocally!: (rows: null) => void;
+      mockFindRows.mockReturnValueOnce(
+        new Promise(resolve => {
+          missLocally = resolve;
+        }),
+      );
+      const stale = loadTranslationNotesForUnit(verse);
+      await Promise.resolve();
+
+      // An account switch lands while A's local lookup is still out.
+      switchAccount('43', 'token-b');
+      missLocally(null);
+      await stale.catch(() => undefined);
+      expect(bearers).not.toContain('token-b');
+
+      switchAccount('42', 'token-a');
+      const notes = await loadTranslationNotesForUnit(verse);
+      expect(bearers).toEqual(['token-a']);
+      expect(notes.every(note => note.id.startsWith('tn-api-1-'))).toBe(true);
+    });
+
+    it("never asks as B, or keeps B's notes, for A's passage still mounted after the switch", async () => {
+      const verse = {
+        ...unit,
+        verseRefs: [{ chapterNumber: 14, verseNumber: 2 }],
+      };
+      const bearers: (string | null)[] = [];
+      getTranslationNotes.mockImplementation(
+        async (_p, _b, _c, _v, _l, token) => {
+          const bearer = token ?? authToken.get();
+          bearers.push(bearer);
+          return {
+            items: [{ ...sampleItem, id: bearer === 'token-a' ? 1 : 2 }],
+          };
+        },
+      );
+      // B is active before A's passage props have caught up.
+      switchAccount('43', 'token-b');
+      await expect(loadTranslationNotesForUnit(verse)).rejects.toThrow(
+        /not the active session/,
+      );
+      expect(bearers).toEqual([]);
+
+      switchAccount('42', 'token-a');
+      const notes = await loadTranslationNotesForUnit(verse);
+      expect(bearers).toEqual(['token-a']);
+      expect(notes.every(note => note.id.startsWith('tn-api-1-'))).toBe(true);
+    });
+
+    it("never sends a load begun without a token with the next account's token", async () => {
+      const verse = {
+        ...unit,
+        verseRefs: [{ chapterNumber: 14, verseNumber: 2 }],
+      };
+      const bearers: (string | null)[] = [];
+      getTranslationNotes.mockImplementation(
+        async (_p, _b, _c, _v, _l, token) => {
+          bearers.push(token ?? authToken.get());
+          return { items: [sampleItem] };
+        },
+      );
+      switchAccount('42', null);
+      let missLocally!: (rows: null) => void;
+      mockFindRows.mockReturnValueOnce(
+        new Promise(resolve => {
+          missLocally = resolve;
+        }),
+      );
+      const stale = loadTranslationNotesForUnit(verse);
+      await Promise.resolve();
+
+      switchAccount('43', 'token-b');
+      missLocally(null);
+      await expect(stale).rejects.toThrow(/not the active session/);
+      expect(bearers).toEqual([]);
     });
   });
 });

@@ -220,6 +220,7 @@ export function setUserEmail(userId: string, email: string) {
 const reauthRequiredKey = (userId: string) => `${userId}:reauth_required`;
 
 export function setReauthRequired(userId: string): void {
+  clearCatalogueQuietSince(userId);
   kvStorage.setItemSync(reauthRequiredKey(userId), 'true');
   log.info('Reauth required flag set', { userId });
 }
@@ -252,7 +253,29 @@ export function getUserEmailSync(): string {
   return kvStorage.getItemSync(KV_KEYS.USER_EMAIL) ?? '';
 }
 
+const catalogueQuietSinceKey = (userId: string) =>
+  `${userId}:catalogue_quiet_since`;
+
+/**
+ * Device-clock ms when this account's catalogue last refreshed cleanly.
+ * Never derived from a server cursor; cleared on any session change.
+ */
+export function getCatalogueQuietSince(userId: string): number | null {
+  const raw = kvStorage.getItemSync(catalogueQuietSinceKey(userId));
+  const at = raw ? Number(raw) : NaN;
+  return Number.isSafeInteger(at) && at > 0 ? at : null;
+}
+
+export function setCatalogueQuietSince(userId: string, atMs: number): void {
+  kvStorage.setItemSync(catalogueQuietSinceKey(userId), String(atMs));
+}
+
+export function clearCatalogueQuietSince(userId: string): void {
+  kvStorage.removeItemSync(catalogueQuietSinceKey(userId));
+}
+
 export function setUserSync(userId: string, userEmail: string) {
+  clearCatalogueQuietSince(userId);
   kvStorage.setItemSync(KV_KEYS.USER_ID, userId);
   kvStorage.setItemSync(KV_KEYS.USER_EMAIL, userEmail);
   setActiveUserId(userId);
@@ -262,6 +285,7 @@ export function setUserSync(userId: string, userEmail: string) {
 }
 
 export function switchActiveUser(userId: string) {
+  clearCatalogueQuietSince(userId);
   setActiveUserId(userId);
   kvStorage.setItemSync(KV_KEYS.USER_ID, userId);
   kvStorage.setItemSync(KV_KEYS.USER_EMAIL, getUserEmail(userId));
@@ -277,6 +301,12 @@ export function setLastAssignmentSyncAt(timestamp: string) {
   log.info('Last assignment sync timestamp updated', { timestamp });
 }
 
+/**
+ * Per-user **chapter-assignment** cursor (`updatedAfter` for assignment
+ * pulls). Historically this single key also fed the Bible-text cursor; that
+ * coupling let an assignment-only refresh skip text edits (#886). Bible text
+ * now has its own key (`getUserBibleTextSyncedAt`).
+ */
 export function getUserLastSyncedAt(userId: string): string {
   return kvStorage.getItemSync(`${userId}:last_synced_at`) ?? '';
 }
@@ -284,6 +314,111 @@ export function getUserLastSyncedAt(userId: string): string {
 export function setUserLastSyncedAt(userId: string, timestamp: string) {
   kvStorage.setItemSync(`${userId}:last_synced_at`, timestamp);
   log.info('Per-user last synced timestamp updated', { userId, timestamp });
+}
+
+const userBibleTextSyncedAtKey = (userId: string) =>
+  `${userId}:bible_text_synced_at`;
+
+function parseIsoMs(value: string): number | null {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** Legacy assignment/device markers cannot prove this account's text coverage. */
+function reconcileLegacyBibleTextCursor(userId: string): string {
+  log.info('Legacy bible-text coverage requires a full reconciliation', {
+    userId,
+  });
+  return '';
+}
+
+const bibleTextChapterCursorKey = (
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+) => `bible_text_coverage:${bibleId}:${bookId}:${chapterNumber}`;
+
+/** Text rows are shared between accounts; coverage belongs to the actual chapter. */
+export function getBibleTextChapterSyncedAt(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+): string {
+  const value = kvStorage.getItemSync(
+    bibleTextChapterCursorKey(bibleId, bookId, chapterNumber),
+  );
+  return typeof value === 'string' && parseIsoMs(value) !== null ? value : '';
+}
+
+const bibleTextFullReconcileKey = (
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+) => `bible_text_full_at:${bibleId}:${bookId}:${chapterNumber}`;
+
+/**
+ * Device epoch ms of this chapter's last committed full (cursor-less) text
+ * fetch, or `null` when none was recorded. Scheduling only, never a cursor.
+ */
+export function getBibleTextChapterFullReconcileAt(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+): number | null {
+  const value = kvStorage.getItemSync(
+    bibleTextFullReconcileKey(bibleId, bookId, chapterNumber),
+  );
+  const ms = typeof value === 'string' ? Number(value) : NaN;
+  return Number.isFinite(ms) ? ms : null;
+}
+
+export function setBibleTextChapterFullReconcileAt(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  epochMs: number,
+): void {
+  if (!Number.isFinite(epochMs)) return;
+  kvStorage.setItemSync(
+    bibleTextFullReconcileKey(bibleId, bookId, chapterNumber),
+    String(Math.trunc(epochMs)),
+  );
+}
+
+/** Call only after all associated verse/absence writes committed. */
+export function setBibleTextChapterSyncedAt(
+  bibleId: number,
+  bookId: number,
+  chapterNumber: number,
+  timestamp: string,
+): void {
+  if (parseIsoMs(timestamp) === null) {
+    throw new Error('Invalid bible-text coverage timestamp');
+  }
+  kvStorage.setItemSync(
+    bibleTextChapterCursorKey(bibleId, bookId, chapterNumber),
+    timestamp,
+  );
+}
+
+/**
+ * Per-user **Bible-text** cursor: the server `syncedAt` of the last complete
+ * text pull for this user's eligible chapters. Advanced only by Bible-text
+ * sync after its writes commit — never by assignment-only refreshes (#886).
+ *
+ * Installs without the key go through `reconcileLegacyBibleTextCursor` once;
+ * the legacy shared cursor is never copied as-is.
+ */
+export function getUserBibleTextSyncedAt(userId: string): string {
+  const own = kvStorage.getItemSync(userBibleTextSyncedAtKey(userId));
+  if (typeof own === 'string') return own;
+  return reconcileLegacyBibleTextCursor(userId);
+}
+
+export function setUserBibleTextSyncedAt(userId: string, timestamp: string) {
+  kvStorage.setItemSync(userBibleTextSyncedAtKey(userId), timestamp);
+  log.info('Per-user bible-text cursor updated', { userId, timestamp });
 }
 
 const prepareOfflineDismissedKey = (userId: string, projectId: number) =>

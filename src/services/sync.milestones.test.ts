@@ -110,6 +110,41 @@ describe('syncMilestones', () => {
     expect(clearSyncErrorMock).not.toHaveBeenCalled();
   });
 
+  it('reports incomplete (not healthy) when the request fails for good (#886)', async () => {
+    getUserMilestonesMock.mockRejectedValue(new ApiError(422, 'Unprocessable'));
+
+    await expect(syncMilestones(247, 'session-token')).resolves.toEqual({
+      milestoneIncomplete: expect.stringContaining('Unprocessable'),
+    });
+
+    expect(upsertProjectUnitsMock).not.toHaveBeenCalled();
+    expect(setSyncErrorMock).toHaveBeenCalledWith(
+      'sync_error_project_units',
+      expect.stringContaining('Unprocessable'),
+    );
+    expect(clearSyncErrorMock).not.toHaveBeenCalled();
+  });
+
+  it('reports incomplete for a transport blip without persisting a step error (#886)', async () => {
+    getUserMilestonesMock.mockRejectedValue(
+      new ApiError(0, 'Network request failed'),
+    );
+
+    await expect(syncMilestones(247, 'session-token')).resolves.toEqual({
+      milestoneIncomplete: expect.stringContaining('Network request failed'),
+    });
+    expect(setSyncErrorMock).not.toHaveBeenCalled();
+    expect(clearSyncErrorMock).not.toHaveBeenCalled();
+  });
+
+  it('reports incomplete for an invalid response shape (#886)', async () => {
+    getUserMilestonesMock.mockResolvedValue({ data: {} });
+
+    await expect(syncMilestones(247, 'session-token')).resolves.toEqual({
+      milestoneIncomplete: 'Invalid milestones response shape',
+    });
+  });
+
   it('soft-fails on 404 without storing a sync error', async () => {
     getUserMilestonesMock.mockRejectedValue(new ApiError(404, 'Not Found'));
 

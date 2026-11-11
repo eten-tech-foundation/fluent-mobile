@@ -15,6 +15,10 @@ import {
 import { TranslationNoteItem } from '../../../types/resources/translationNotes';
 import { useTranslationNotesForUnit } from '../../../hooks/useTranslationNotesForUnit';
 
+jest.mock('../../../services/storage', () => ({
+  getActiveUserId: () => '',
+}));
+
 jest.mock('../../../services/translationNotes', () => {
   const actual = jest.requireActual('../../../services/translationNotes');
   return {

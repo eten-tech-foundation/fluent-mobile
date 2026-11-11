@@ -100,7 +100,9 @@ export function DraftDownloadChip({
         accessibilityRole="button"
         accessibilityLabel={
           showReady
-            ? 'Draft download complete'
+            ? state.freshness === 'pending'
+              ? 'Draft saved for offline; not yet checked for newer takes'
+              : 'Draft download complete'
             : showProgress
             ? 'Draft download in progress'
             : 'Download draft for offline'

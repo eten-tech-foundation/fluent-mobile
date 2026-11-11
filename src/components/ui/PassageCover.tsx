@@ -1,5 +1,11 @@
 import React from 'react';
-import { Pressable, Text, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Pressable,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useThemedStyles } from '../../theme/useTheme';
 import { CoverFace } from './CoverFace';
 import type { CoverBadgeState } from './CoverStatusBadge';
@@ -79,6 +85,11 @@ export interface PassageCoverProps extends CoverArtProps {
   onPress?: () => void;
   /** Spoken reference, e.g. "Mark 14:22–25". */
   reference: string;
+  /**
+   * Holds the cover's square without drawing its art yet, for covers off
+   * screen in a long rail; the title still lays out.
+   */
+  artDeferred?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -96,6 +107,7 @@ export function PassageCover({
   title,
   onPress,
   reference,
+  artDeferred = false,
   style,
   testID,
   ...art
@@ -103,6 +115,11 @@ export function PassageCover({
   const styles = useThemedStyles(t => ({
     item: { gap: t.spacing.xs },
     pressed: { opacity: PRESSED_OPACITY },
+    deferredFace: {
+      aspectRatio: 1,
+      borderRadius: t.radius.sm,
+      backgroundColor: t.roles.surfaceSunken,
+    },
     title: { ...t.type.label, color: t.roles.fgPrimary },
   }));
   const statusLabel = STATUS_LABELS[passageStatus(art)];
@@ -119,12 +136,16 @@ export function PassageCover({
       style={({ pressed }) => [styles.item, pressed && styles.pressed, style]}
       testID={testID}
     >
-      <PassageCoverFace
-        eyebrow={eyebrow}
-        verses={verses}
-        testID={testID && `${testID}-face`}
-        {...art}
-      />
+      {artDeferred ? (
+        <View style={styles.deferredFace} testID={testID && `${testID}-face`} />
+      ) : (
+        <PassageCoverFace
+          eyebrow={eyebrow}
+          verses={verses}
+          testID={testID && `${testID}-face`}
+          {...art}
+        />
+      )}
       {title ? (
         <Text style={styles.title} numberOfLines={2}>
           {title}
