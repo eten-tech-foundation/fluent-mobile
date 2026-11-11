@@ -175,6 +175,15 @@ const MARK: HomeBookSummary = {
   pendingUploads: 0,
 };
 
+type Rendered = ReturnType<typeof screen.toJSON> | string;
+
+function testIdsInOrder(node: Rendered): string[] {
+  if (!node || typeof node === 'string') return [];
+  if (Array.isArray(node)) return node.flatMap(testIdsInOrder);
+  const own = typeof node.props.testID === 'string' ? [node.props.testID] : [];
+  return [...own, ...(node.children ?? []).flatMap(testIdsInOrder)];
+}
+
 describe('Next HomeScreen', () => {
   afterEach(() => {
     jest.useRealTimers();
@@ -204,6 +213,30 @@ describe('Next HomeScreen', () => {
     );
     expect(
       screen.getByLabelText('Online · all synced. Open Sync page.'),
+    ).toBeTruthy();
+  });
+
+  it('says checking, not offline, before reachability is known', () => {
+    mockSession = { ...sessionDefaults, syncStatus: 'checking' };
+    render(<HomeScreen />);
+
+    expect(screen.getByTestId('home-summary').props.children).toBe(
+      '2 chapters',
+    );
+    expect(
+      screen.getByLabelText('Checking connection. Open Sync page.'),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Offline/)).toBeNull();
+    // Saved content is not held back while it checks.
+    expect(screen.getByTestId('home-books')).toBeTruthy();
+  });
+
+  it('still shows a confirmed offline', () => {
+    mockSession = { ...sessionDefaults, syncStatus: 'offline_pending' };
+    render(<HomeScreen />);
+
+    expect(
+      screen.getByLabelText('Offline · upload pending. Open Sync page.'),
     ).toBeTruthy();
   });
 
@@ -286,6 +319,53 @@ describe('Next HomeScreen', () => {
     expect(screen.queryByText('Next up')).toBeNull();
   });
 
+  it('shows Books while Next up loads, and keeps them first when it lands', () => {
+    mockChapters = [chapter(1, 'Mark', 14)];
+    mockNextUp = { status: 'loading' };
+    render(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
+    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
+    expect(screen.queryByTestId('home-next-up')).toBeNull();
+    const booksBefore = screen.getByTestId('home-books');
+
+    mockNextUp = {
+      status: 'ready',
+      hero: {
+        key: '1:chapter:14',
+        chapter: mockChapters[0],
+        passage: {
+          key: 'chapter:14',
+          title: null,
+          reference: 'Mark 14',
+          verses: '1–72',
+          anchorVerse: 1,
+          recordedStatus: 'none',
+          recordedVerses: 0,
+          totalVerses: 72,
+          submitted: false,
+          peerChecked: false,
+          seed: 'Mark:chapter:14',
+          groupSeed: 'Mark:14',
+        },
+      },
+      after: [],
+      checking: [],
+    };
+    screen.rerender(<HomeScreen />);
+
+    expect(screen.getByTestId('home-next-up-hero')).toBeTruthy();
+    expect(screen.queryByText('Then')).toBeNull();
+    // Same Books instance, ahead of Next up in the scroll content.
+    const books = screen.getByTestId('home-books');
+    expect(books).toBe(booksBefore);
+    const order = testIdsInOrder(screen.toJSON());
+    expect(order.indexOf('home-books')).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf('home-books')).toBeLessThan(
+      order.indexOf('home-next-up'),
+    );
+  });
+
   it('keeps Next up and Books showing while they reload after a sync', () => {
     render(<HomeScreen />);
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
@@ -299,8 +379,18 @@ describe('Next HomeScreen', () => {
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
+  it('keeps the books on screen through a sync when none of the chapters are mine', () => {
+    mockChapters = [];
+    mockSession = { ...sessionDefaults, isSyncingChapters: true };
+    render(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
+    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
+  });
+
   it('waits on chapters while a sync is still bringing them in', () => {
     mockChapters = [];
+    mockBooks = [];
     mockSession = { ...sessionDefaults, isSyncingChapters: true };
     render(<HomeScreen />);
 

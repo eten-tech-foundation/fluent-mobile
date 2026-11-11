@@ -1,10 +1,32 @@
 import { useEffect, useState } from 'react';
-import { countChaptersMissingBibleText } from '../db/queries';
+import {
+  countChaptersMissingBibleText,
+  getDatabaseWriteMark,
+  sameDatabaseWrites,
+  type DatabaseWriteMark,
+} from '../db/queries';
 import { userNeedsAssigneeRepair } from '../db/repository';
 import { parseUserId } from '../utils/parseUserId';
 import { logger } from '../utils/logger';
 
 const log = logger.create('useLocalSyncHealth');
+
+/**
+ * The last check where both reads succeeded, with the user and database write
+ * mark it was read at. Every header shares it: both answers are a function of
+ * those rows and the user, so a remounting header need not read them again.
+ */
+let cleanCheck: {
+  userId: number;
+  writes: DatabaseWriteMark;
+  needsDownloadSync: boolean;
+  missingTextChapters: number;
+} | null = null;
+
+/** Test hook: forget the last check. */
+export function resetLocalSyncHealthForTests(): void {
+  cleanCheck = null;
+}
 
 /**
  * Detects when SQLite has project chapters but is missing assignee/checker
@@ -33,8 +55,25 @@ export function useLocalSyncHealth(refreshKey = 0) {
         return;
       }
 
+      // Taken before the reads: a write landing during them counts as unseen.
+      const writes = await getDatabaseWriteMark();
+      if (cancelled) return;
+      const last = cleanCheck;
+      if (
+        last &&
+        last.userId === userId &&
+        sameDatabaseWrites(last.writes, writes)
+      ) {
+        setNeedsDownloadSync(last.needsDownloadSync);
+        setMissingTextChapters(last.missingTextChapters);
+        setChecking(false);
+        return;
+      }
+
+      let needs: boolean | null = null;
+      let missing: number | null = null;
       try {
-        const needs = await userNeedsAssigneeRepair(userId);
+        needs = await userNeedsAssigneeRepair(userId);
         if (!cancelled) {
           setNeedsDownloadSync(needs);
         }
@@ -48,7 +87,7 @@ export function useLocalSyncHealth(refreshKey = 0) {
       // Separate from the assignee repair above: a text gap must not fail the
       // repair signal, and a repair failure must not hide a text gap.
       try {
-        const missing = await countChaptersMissingBibleText([userId]);
+        missing = await countChaptersMissingBibleText([userId]);
         if (!cancelled) {
           setMissingTextChapters(missing);
         }
@@ -62,6 +101,15 @@ export function useLocalSyncHealth(refreshKey = 0) {
           setChecking(false);
         }
       }
+      cleanCheck =
+        writes && needs !== null && missing !== null
+          ? {
+              userId,
+              writes,
+              needsDownloadSync: needs,
+              missingTextChapters: missing,
+            }
+          : null;
     };
 
     void check();

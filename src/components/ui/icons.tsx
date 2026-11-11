@@ -19,6 +19,8 @@ const CheckIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/Check').CheckIcon;
 const CircleIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/Circle').CircleIcon;
+const CloudIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/Cloud').CloudIcon;
 const CloudArrowDownIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/CloudArrowDown').CloudArrowDownIcon;
 const CloudArrowUpIcon: PhosphorIcon =
@@ -88,6 +90,7 @@ export const Check = weighted(CheckIcon, 'regular', 'Check');
 /** Bold, so the heard mark holds its own inside the 3pt Progress ring. */
 export const CheckBold = weighted(CheckIcon, 'bold', 'CheckBold');
 export const UndoBold = weighted(ArrowUUpLeftIcon, 'bold', 'UndoBold');
+export const Cloud = weighted(CloudIcon, 'regular', 'Cloud');
 export const CloudArrowDown = weighted(
   CloudArrowDownIcon,
   'regular',

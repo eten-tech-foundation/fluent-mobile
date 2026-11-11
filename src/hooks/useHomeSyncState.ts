@@ -293,16 +293,19 @@ export function useHomeSyncState({
     refreshOnFocus: true,
   });
 
+  // The lists read on mount by themselves. Homes remount per account
+  // (`key={userSwitchEpoch}`); the bump only covers a caller that doesn't.
+  const sawEpochRef = useRef(false);
   useEffect(() => {
     autoRepairSyncAttempted.current = false;
     refreshReauthRequired();
-    setRefreshKey(key => key + 1);
+    if (sawEpochRef.current) setRefreshKey(key => key + 1);
+    sawEpochRef.current = true;
   }, [userSwitchEpoch, refreshReauthRequired]);
 
-  const showLoading =
-    isNewUserLoading ||
-    postLoginSyncActive ||
-    ((isSyncingLocal || isSyncing) && refreshKey === 0);
+  // Full-screen loading only while a new account's first sync runs; any other
+  // sync keeps the saved lists on screen.
+  const showLoading = isNewUserLoading || postLoginSyncActive;
   const isSyncingChapters =
     isSyncing || isSyncingLocal || postLoginSyncActive || isNewUserLoading;
 

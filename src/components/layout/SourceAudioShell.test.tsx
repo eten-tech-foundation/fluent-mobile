@@ -64,6 +64,7 @@ const chapterData: ChapterAssignmentData = {
   bookCode: 'MRK',
   status: 'unassigned',
   hasConflict: false,
+  totalVerses: 0,
 };
 
 const verses = [

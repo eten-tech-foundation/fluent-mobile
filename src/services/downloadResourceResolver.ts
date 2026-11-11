@@ -5,10 +5,17 @@ import {
   resolveActiveTakeDownload,
 } from './draftAudioActiveTake';
 import { isDraftAudioResourceId } from './draftDownloadIds';
+import {
+  draftListingSnapshotEpoch,
+  invalidateDraftListingSnapshot,
+  readDraftListingSnapshot,
+  seedDraftListingSnapshot,
+} from './draftListingSnapshot';
 import type { ResourceResolver } from './downloadQueueWorker';
 import { getCredentials } from './keychain';
 import { getActiveUserId } from './storage';
 import { logger } from '../utils/logger';
+import type { VerseAudioListResponse } from '../types/api/verseAudio';
 
 const log = logger.create('DownloadResourceResolver');
 
@@ -29,6 +36,8 @@ export type DraftAudioRefreshMeta = {
  */
 async function resolveDraftAudioItem(
   item: DownloadQueueItem,
+  signal?: AbortSignal,
+  forceRefresh = false,
 ): Promise<{ url: string; ext: string }> {
   let meta: DraftAudioRefreshMeta;
   try {
@@ -74,40 +83,103 @@ async function resolveDraftAudioItem(
     }
   }
 
-  const list = await FluentAPI.getChapterVerseAudio(
-    {
-      projectUnitId: meta.projectUnitId,
-      bibleId: meta.bibleId,
-      bookId: meta.bookId,
-      chapterNumber: meta.chapterNumber,
-    },
-    sessionToken,
-  );
+  const chapter = {
+    projectUnitId: meta.projectUnitId,
+    bibleId: meta.bibleId,
+    bookId: meta.bookId,
+    chapterNumber: meta.chapterNumber,
+  };
+  // Snapshot is keyed per user; items without a userId never use it.
+  const snapshotUserId = item.userId !== undefined ? String(item.userId) : null;
 
-  if (item.userId !== undefined && getActiveUserId() !== String(item.userId)) {
-    throw new Error(
-      `Draft audio refresh aborted: account changed after list response`,
+  const fetchListing = async (): Promise<VerseAudioListResponse> => {
+    const requestedAt = draftListingSnapshotEpoch();
+    const fetched = await FluentAPI.getChapterVerseAudio(
+      chapter,
+      sessionToken,
+      // Worker pause/cancel aborts the listing request instead of letting it
+      // run to the transport timeout (#886).
+      signal ? { signal } : undefined,
     );
+    if (
+      item.userId !== undefined &&
+      getActiveUserId() !== String(item.userId)
+    ) {
+      throw new Error(
+        `Draft audio refresh aborted: account changed after list response`,
+      );
+    }
+    if (snapshotUserId !== null) {
+      seedDraftListingSnapshot(
+        chapter,
+        snapshotUserId,
+        fetched,
+        Date.now(),
+        requestedAt,
+      );
+    }
+    return fetched;
+  };
+
+  // One chapter listing serves the chapter's queued files while it is fresh
+  // (#886); see draftListingSnapshot.ts for the freshness rules.
+  if (forceRefresh && snapshotUserId !== null) {
+    invalidateDraftListingSnapshot(chapter, snapshotUserId);
+  }
+  const cached =
+    snapshotUserId !== null
+      ? readDraftListingSnapshot(chapter, snapshotUserId)
+      : null;
+  let list: VerseAudioListResponse;
+  let fromSnapshot: boolean;
+  if (cached) {
+    list = cached.list;
+    fromSnapshot = true;
+  } else {
+    list = await fetchListing();
+    fromSnapshot = false;
   }
 
-  const unit = list.items.find(entry => entry.bibleTextId === meta.bibleTextId);
-  if (!unit) {
-    throw new Error(
-      `Draft audio refresh: bibleTextId ${meta.bibleTextId} not in chapter listing`,
+  const matchExpected = (
+    candidate: VerseAudioListResponse,
+  ): ReturnType<typeof resolveActiveTakeDownload> | string => {
+    const unit = candidate.items.find(
+      entry => entry.bibleTextId === meta.bibleTextId,
     );
-  }
+    if (!unit) {
+      return `Draft audio refresh: bibleTextId ${meta.bibleTextId} not in chapter listing`;
+    }
+    let resolved: ReturnType<typeof resolveActiveTakeDownload>;
+    try {
+      resolved = resolveActiveTakeDownload(unit);
+    } catch (error) {
+      // No resolvable active take (null activeTakeId, missing take or URL):
+      // a stale snapshot in this state must still get its one revalidation.
+      return `Draft audio refresh: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+    }
+    if (resolved.take.id !== meta.expectedActiveTakeId) {
+      return `Draft audio refresh: activeTakeId ${resolved.take.id} != expected ${meta.expectedActiveTakeId}`;
+    }
+    if (resolved.take.contentHash !== meta.expectedContentHash) {
+      return `Draft audio refresh: contentHash mismatch for take ${resolved.take.id}`;
+    }
+    return resolved;
+  };
 
-  const resolved = resolveActiveTakeDownload(unit);
-  if (resolved.take.id !== meta.expectedActiveTakeId) {
-    throw new Error(
-      `Draft audio refresh: activeTakeId ${resolved.take.id} != expected ${meta.expectedActiveTakeId}`,
-    );
+  let outcome = matchExpected(list);
+  if (typeof outcome === 'string' && fromSnapshot && snapshotUserId !== null) {
+    // Bounded revalidation: a snapshot that disagrees with the item gets one
+    // fresh listing before the item is failed — never a listing per file.
+    invalidateDraftListingSnapshot(chapter, snapshotUserId);
+    list = await fetchListing();
+    outcome = matchExpected(list);
   }
-  if (resolved.take.contentHash !== meta.expectedContentHash) {
-    throw new Error(
-      `Draft audio refresh: contentHash mismatch for take ${resolved.take.id}`,
-    );
+  if (typeof outcome === 'string') {
+    throw new Error(outcome);
   }
+  const resolved = outcome;
 
   const ext = item.fileExt ?? contentTypeToAudioExt(resolved.take.contentType);
 
@@ -122,10 +194,11 @@ async function resolveDraftAudioItem(
 
 export const queuedResourceResolver: ResourceResolver = async (
   item: DownloadQueueItem,
+  options,
 ) => {
   const resourceId = item.resourceId ?? item.id;
   if (isDraftAudioResourceId(resourceId)) {
-    return resolveDraftAudioItem(item);
+    return resolveDraftAudioItem(item, options?.signal, options?.forceRefresh);
   }
 
   if (item.sourceUrl && item.fileExt) {

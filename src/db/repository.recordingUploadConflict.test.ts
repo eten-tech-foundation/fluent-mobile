@@ -223,7 +223,7 @@ function createRecordingConflictTestDb() {
         row.upload_error = null;
         row.updated_at = updatedAt;
       }
-      return { rows: [] };
+      return { rows: [], rowsAffected: row ? 1 : 0 };
     }
 
     if (sql.startsWith("UPDATE recordings SET sync_status = 'conflicted'")) {
@@ -241,7 +241,7 @@ function createRecordingConflictTestDb() {
         row.upload_error = null;
         row.updated_at = updatedAt;
       }
-      return { rows: [] };
+      return { rows: [], rowsAffected: row ? 1 : 0 };
     }
 
     if (

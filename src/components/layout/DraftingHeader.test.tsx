@@ -29,4 +29,32 @@ describe('DraftingHeader', () => {
       screen.getByLabelText('Online · all synced. Open Sync page.'),
     ).toBeTruthy();
   });
+
+  it('shows a visible subtitle while drafting holds pending uploads', () => {
+    const { rerender } = render(
+      <DraftingHeader
+        title="Genesis 1"
+        onBack={jest.fn()}
+        syncStatus="online_pending"
+        heldForDrafting
+        onSyncPress={jest.fn()}
+      />,
+    );
+    expect(
+      screen.getByText('Uploads wait until you leave drafting'),
+    ).toBeTruthy();
+
+    rerender(
+      <DraftingHeader
+        title="Genesis 1"
+        onBack={jest.fn()}
+        syncStatus="online_uploading"
+        heldForDrafting
+        onSyncPress={jest.fn()}
+      />,
+    );
+    expect(
+      screen.queryByText('Uploads wait until you leave drafting'),
+    ).toBeNull();
+  });
 });
