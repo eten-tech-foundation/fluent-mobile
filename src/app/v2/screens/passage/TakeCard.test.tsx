@@ -18,7 +18,7 @@ jest.mock('react-native-reanimated', () => ({
 
 const hidden = { includeHiddenElements: true };
 const SLOT = 300;
-const WAVE_LEAD = 48;
+const WAVE_LEAD = 32;
 const BAR_SLOT = 6;
 const SLOT_BARS = Math.max(1, Math.floor((SLOT - WAVE_LEAD) / BAR_SLOT));
 

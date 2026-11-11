@@ -140,7 +140,6 @@ export function Waveform({
       height: ROW_HEIGHT,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingLeft: t.spacing.lg,
       gap: t.spacing.md,
     },
     tight: { gap: t.spacing.xs },
@@ -158,7 +157,7 @@ export function Waveform({
     const barX: number[] = [];
     const verseStart: number[] = [];
     const verseSpan: { from: number; to: number }[] = [];
-    let x = spacing.lg;
+    let x = 0;
     for (const v of verses) {
       verseStart.push(barX.length);
       const from = x;

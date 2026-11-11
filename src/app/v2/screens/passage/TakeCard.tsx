@@ -27,7 +27,7 @@ const EDGE_MS = 150;
 const OFFICIAL_MS = 220;
 /** One Waveform bar and its gap (2 + space/4), and the verse chip before them. */
 const BAR_SLOT = 6;
-const WAVE_LEAD = 48;
+const WAVE_LEAD = 32;
 /** A take's wave sweeping in when it comes to the front. */
 const SWEEP_MS = 320;
 
@@ -252,7 +252,7 @@ export function TakeCard({
                 : `${takeLabel} playback`
             }
             onSeek={inProgress ? undefined : take.onSeek}
-            pinned={inProgress}
+            pinned
             style={waveWidth > 0 ? { width: waveWidth } : undefined}
             testID="passage-take-wave"
           />
