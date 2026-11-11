@@ -4,9 +4,16 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react-native';
-import { bookCounts, bookMeta, Books, bookStatus } from './Books';
+import {
+  bookCounts,
+  bookMeta,
+  Books,
+  bookStatus,
+  FIRST_FRAME_BOOKS,
+} from './Books';
 import { resolveTheme } from '../../../../theme';
 import { UiVersionOverride } from '../../../../theme/useTheme';
 import { measureFace, ringFill } from '../../../../test/coverBadge';
@@ -192,5 +199,43 @@ describe('Books', () => {
     render(<Books books={[]} onOpen={jest.fn()} />);
 
     expect(screen.queryByTestId('home-books')).toBeNull();
+  });
+
+  it('draws the first rows at once and the rest of a long list after them', async () => {
+    const books = Array.from({ length: FIRST_FRAME_BOOKS + 4 }, (_, i) =>
+      book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
+    );
+    render(<Books books={books} onOpen={jest.fn()} />);
+
+    expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
+    expect(screen.queryByText(`Book ${FIRST_FRAME_BOOKS}`)).toBeNull();
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('button')).toHaveLength(books.length),
+    );
+    expect(screen.getByText(`Book ${books.length - 1}`)).toBeTruthy();
+  });
+
+  it('defers the rest of a long list that arrives after an empty one', async () => {
+    const books = Array.from({ length: FIRST_FRAME_BOOKS + 4 }, (_, i) =>
+      book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
+    );
+    const { rerender } = render(<Books books={[]} onOpen={jest.fn()} />);
+    rerender(<Books books={books} onOpen={jest.fn()} />);
+
+    expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('button')).toHaveLength(books.length),
+    );
+  });
+
+  it('draws a short list whole in the first frame', () => {
+    const books = Array.from({ length: FIRST_FRAME_BOOKS }, (_, i) =>
+      book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
+    );
+    render(<Books books={books} onOpen={jest.fn()} />);
+
+    expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
   });
 });

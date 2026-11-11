@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import {
+  LOAD_BATCH,
   draftingChapters,
   startedChapters,
   useNextUp,
@@ -230,8 +231,42 @@ describe('useNextUp', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual(['1b', ['1c', '2a', '2b', '3a']]);
-    // The rail is full before the last chapter, so it isn't read.
-    expect(mockLoad).toHaveBeenCalledTimes(3);
+  });
+
+  it('reads the chapters the rail can need at once, not the whole list', async () => {
+    mockLoad.mockImplementation(async (c: MyWorkChapter) => [
+      passage(`${c.id}a`),
+    ]);
+
+    const chapters = Array.from({ length: LOAD_BATCH + 3 }, (_, i) =>
+      chapter(i + 1),
+    );
+    const { result } = renderHook(() => useNextUp(chapters));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(keys(result.current)).toEqual(['1a', ['2a', '3a', '4a', '5a']]);
+    // One batch fills the rail: the chapters past it aren't read.
+    expect(mockLoad).toHaveBeenCalledTimes(LOAD_BATCH);
+    expect(mockLoad.mock.calls.map(call => call[0].id)).toEqual([
+      1, 2, 3, 4, 5,
+    ]);
+  });
+
+  it('reads the next batch when the first leaves the rail short', async () => {
+    mockLoad.mockImplementation(async (c: MyWorkChapter) =>
+      c.id <= LOAD_BATCH
+        ? [passage(`${c.id}a`, 'recorded')]
+        : [passage(`${c.id}a`)],
+    );
+
+    const chapters = Array.from({ length: LOAD_BATCH + 2 }, (_, i) =>
+      chapter(i + 1),
+    );
+    const { result } = renderHook(() => useNextUp(chapters));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(keys(result.current)).toEqual(['6a', ['7a']]);
+    expect(mockLoad).toHaveBeenCalledTimes(LOAD_BATCH + 2);
   });
 
   it('leaves out peer checks and fully recorded drafts', async () => {
@@ -296,14 +331,17 @@ describe('useNextUp', () => {
       }),
     );
 
-    const chapters = [chapter(1), chapter(2)];
+    // Two batches' worth: the second must not be read after unmount.
+    const chapters = Array.from({ length: LOAD_BATCH + 1 }, (_, i) =>
+      chapter(i + 1),
+    );
     const { result, unmount } = renderHook(() => useNextUp(chapters));
-    await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(LOAD_BATCH));
     unmount();
     finish([passage('1a', 'recorded')]);
     await new Promise<void>(resolve => setImmediate(resolve));
 
-    expect(mockLoad).toHaveBeenCalledTimes(1);
+    expect(mockLoad).toHaveBeenCalledTimes(LOAD_BATCH);
     expect(result.current).toEqual({ status: 'loading' });
   });
 

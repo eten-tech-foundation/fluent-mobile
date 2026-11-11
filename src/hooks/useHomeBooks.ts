@@ -27,6 +27,9 @@ const log = logger.create('useHomeBooks');
 export function useHomeBooks(refreshKey = 0) {
   const [books, setBookRows] = useState<HomeBookSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  // True from a failed read until one succeeds, so Home can tell "no books"
+  // from "couldn't read the books" when there is nothing else to show.
+  const [error, setError] = useState(false);
   const loadGenerationRef = useRef(0);
   const focusedBeforeRef = useRef(false);
   const keyedBeforeRef = useRef(false);
@@ -39,6 +42,7 @@ export function useHomeBooks(refreshKey = 0) {
   const setBooks = useCallback((next: HomeBookSummary[]) => {
     markStartup('books_read', { count: next.length });
     setBookRows(prev => (sameRows(prev, next) ? prev : next));
+    setError(false);
     setLoading(false);
   }, []);
 
@@ -74,7 +78,8 @@ export function useHomeBooks(refreshKey = 0) {
         if (loadGenerationRef.current !== generation) return;
         log.error('Error loading home books', { error });
         publishedRef.current = null;
-        // Keep the books already on screen. An empty list is what "no books" looks like.
+        // Keep the books already on screen; `error` says they may be stale.
+        setError(true);
         setLoading(false);
       }
     },
@@ -113,5 +118,5 @@ export function useHomeBooks(refreshKey = 0) {
     }, [loadBooksIfChanged]),
   );
 
-  return { books, loading, refresh: loadBooks };
+  return { books, loading, error, refresh: loadBooks };
 }

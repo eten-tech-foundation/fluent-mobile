@@ -5,10 +5,12 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Text, TouchableOpacity } from 'react-native';
-import BootSplash from 'react-native-bootsplash';
 
-jest.mock('react-native-bootsplash', () => ({
-  hide: jest.fn().mockResolvedValue(undefined),
+const mockHideSplash = jest.fn();
+const mockHoldSplashForFirstPaint = jest.fn();
+jest.mock('../src/navigation/splashGate', () => ({
+  hideSplash: (...args: unknown[]) => mockHideSplash(...args),
+  holdSplashForFirstPaint: () => mockHoldSplashForFirstPaint(),
 }));
 
 jest.mock('../src/db/index', () => ({
@@ -144,13 +146,15 @@ describe('AuthSessionProvider', () => {
     );
 
     expect(getByTestId('auth-session-loading')).toBeTruthy();
+    expect(mockHoldSplashForFirstPaint).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(queryByTestId('auth-session-loading')).toBeNull();
       expect(getByTestId('auth-flag').props.children).toBe('no');
     });
-    expect(BootSplash.hide).toHaveBeenCalledTimes(1);
-    expect(BootSplash.hide).toHaveBeenCalledWith();
+    // The splash waits for the first screen's paint (bounded), not for this.
+    expect(mockHoldSplashForFirstPaint).toHaveBeenCalledTimes(1);
+    expect(mockHideSplash).not.toHaveBeenCalled();
   });
 
   it('restores auth and starts upload orchestrator', async () => {
@@ -304,8 +308,8 @@ describe('AuthSessionProvider', () => {
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockStopUploadProgressNotification).toHaveBeenCalled();
   });
-  
-    it('refreshes the sync-status store when a session starts', async () => {
+
+  it('refreshes the sync-status store when a session starts', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
     const { getByTestId } = render(
       <AuthSessionProvider>
@@ -381,5 +385,11 @@ describe('AuthSessionProvider', () => {
       expect(getByTestId('auth-session-error')).toBeTruthy();
     });
     expect(queryByTestId('auth-flag')).toBeNull();
+
+    // The error is the first screen: once laid out, it takes the splash down.
+    fireEvent(getByTestId('auth-session-error'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 100 } },
+    });
+    expect(mockHideSplash).toHaveBeenCalledWith('init-error');
   });
 });
