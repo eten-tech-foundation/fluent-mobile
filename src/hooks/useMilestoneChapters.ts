@@ -17,10 +17,17 @@ export function useMilestoneChapters(projectUnitId: number, projectId: number) {
   const [error, setError] = useState<unknown>(null);
   const requestIdRef = useRef(0);
   const refreshGenerationRef = useRef(0);
+  const membershipAllowsChaptersRef = useRef(false);
   const [removedFromProject, setRemovedFromProject] = useState(false);
 
   const loadChapters = useCallback(
     async (refreshGen?: number) => {
+      // Ungated reload/refresh/retry must not publish cache while this open
+      // is still waiting on membership, or after this open decided unassigned.
+      if (refreshGen === undefined && !membershipAllowsChaptersRef.current) {
+        return;
+      }
+
       const requestId = ++requestIdRef.current;
       try {
         setError(null);
@@ -63,7 +70,11 @@ export function useMilestoneChapters(projectUnitId: number, projectId: number) {
         setError(err);
         setChapters([]);
       } finally {
-        if (requestId === requestIdRef.current) {
+        if (
+          requestId === requestIdRef.current &&
+          (refreshGen === undefined ||
+            refreshGenerationRef.current === refreshGen)
+        ) {
           setLoading(false);
         }
       }
@@ -74,22 +85,33 @@ export function useMilestoneChapters(projectUnitId: number, projectId: number) {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      loadChapters();
-    }, [loadChapters]),
-  );
-
-  useFocusEffect(
-    useCallback(() => {
       const activeUserId = getActiveUserId();
-      if (!activeUserId) return;
+      // No session to refresh: read the cache only. Offline still has a
+      // session, so it waits for the local membership check below.
+      if (!activeUserId) {
+        membershipAllowsChaptersRef.current = true;
+        void loadChapters();
+        return;
+      }
 
+      membershipAllowsChaptersRef.current = false;
       refreshGenerationRef.current += 1;
       const generation = refreshGenerationRef.current;
 
-      refreshChapterMetadataIfOnline(Number(activeUserId))
-        .then(async () => {
-          if (refreshGenerationRef.current !== generation) return;
+      void (async () => {
+        try {
+          await refreshChapterMetadataIfOnline(Number(activeUserId));
+        } catch (err) {
+          log.error('Focus refresh failed', {
+            error: err,
+            projectUnitId,
+            projectId,
+          });
+        }
 
+        if (refreshGenerationRef.current !== generation) return;
+
+        try {
           const stillMember = await isUserProjectMember(
             Number(activeUserId),
             projectId,
@@ -97,20 +119,27 @@ export function useMilestoneChapters(projectUnitId: number, projectId: number) {
           if (refreshGenerationRef.current !== generation) return;
 
           if (!stillMember) {
+            membershipAllowsChaptersRef.current = false;
             setRemovedFromProject(true);
+            setChapters([]);
+            setLoading(false);
             return;
           }
 
+          membershipAllowsChaptersRef.current = true;
           setRemovedFromProject(false);
-          void loadChapters(generation);
-        })
-        .catch(err => {
-          log.error('Focus refresh failed', {
+          await loadChapters(generation);
+        } catch (err) {
+          if (refreshGenerationRef.current !== generation) return;
+          log.error('Focus membership check failed', {
             error: err,
             projectUnitId,
             projectId,
           });
-        });
+          setError(err);
+          setLoading(false);
+        }
+      })();
 
       return () => {
         refreshGenerationRef.current += 1;
@@ -119,6 +148,9 @@ export function useMilestoneChapters(projectUnitId: number, projectId: number) {
   );
 
   const refresh = useCallback(async () => {
+    if (!membershipAllowsChaptersRef.current) {
+      return;
+    }
     setRefreshing(true);
     try {
       await loadChapters();
@@ -128,6 +160,9 @@ export function useMilestoneChapters(projectUnitId: number, projectId: number) {
   }, [loadChapters]);
 
   const retry = useCallback(async () => {
+    if (!membershipAllowsChaptersRef.current) {
+      return;
+    }
     setLoading(true);
     await loadChapters();
   }, [loadChapters]);
