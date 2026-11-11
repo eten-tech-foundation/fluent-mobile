@@ -46,12 +46,21 @@ describe('galleryEntries', () => {
     }
   });
 
-  it('pins every entry designed only for Hardware', () => {
-    const hardwareOnly = galleryEntries.filter(
-      e => e.modes.startsWith('Hardware') && !/Canvas|Accent/.test(e.modes),
-    );
-    expect(hardwareOnly.length).toBeGreaterThan(0);
-    for (const e of hardwareOnly) expect(e.pin).toBe('hardware');
+  it('lets only the all-mode entries follow the Mode switcher', () => {
+    // Waveform, Word, Note, Take fan and Passage notices scope their own
+    // Canvas or Accent parts; every other entry is pinned to Hardware.
+    expect(galleryEntries.filter(e => !e.pin).map(e => e.id)).toEqual([
+      'type',
+      'icons',
+      'waveform',
+      'word',
+      'note',
+      'take-fan',
+      'passage-notices',
+    ]);
+    for (const e of galleryEntries.filter(e => e.pin)) {
+      expect(e.pin).toBe('hardware');
+    }
   });
 
   it('shows every Next icon in the Icons entry', () => {

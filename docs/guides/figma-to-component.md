@@ -150,7 +150,9 @@ Figma 07 · Tactile defines the state model. In code:
   the icon to `opacity/disabled`. Figma's Key / State=Disabled was updated to
   match on 2026-10-06. Don't use `fg/inactive` for it: in Canvas and Accent it's the same
   color as `surface/default`, so the glyph disappears. Check every disabled
-  or inactive state in all three modes with the gallery's Mode switcher.
+  or inactive state in all three modes, in a unit test or a temporary
+  `ColorModeScope` around the demo, since a pinned entry ignores the
+  gallery's Mode switcher.
 - Respect reduce motion: `useReducedMotion()` from Reanimated. Snap between
   states instead of animating; keep the haptic.
 - `boxShadow` (with `inset`) needs the New Architecture and parents with
@@ -231,6 +233,9 @@ recorded, so its demo is verse mode's verse list (`VerseList.tsx`). Each entry c
   component scales: the 72 × 72 Key keeps the same 12 → 8 lip, so the
   constants hold, but verify, don't assume.
 - long-text and Telugu samples for anything with text
+- the mode it's designed for: set `pin` on an entry built for one mode, and
+  wrap mixed-mode parts (Canvas player, Hardware keys) in `ColorModeScope`
+  inside the entry, with their styles read inside that scope
 
 Put the Figma link as a comment on the entry in `entries/index.ts`, not in
 the UI (it can't open on the phone).
@@ -447,9 +452,10 @@ The review screen for tapping and feeling components in isolation.
 - **Always Next:** the screen wraps itself in `UiVersionOverride` (from
   `src/theme/useTheme`), so it renders and vibrates as Next whatever the
   device's UI version is. Check Legacy in the real screens, not here.
-- **Controls:** **Mode** (Canvas · Hardware · Accent) puts the demo stage in
-  that Figma color-role mode through `ColorModeScope`; the header and
-  controls stay in Hardware. **Simulate recording** marks the mic active so
+- **Controls:** **Mode** (Canvas · Hardware · Accent) recolors only the
+  entries without `pin` (Type styles, Icons). Pinned entries render on their
+  own mode's background, and Canvas or Accent entries scope their own parts.
+  The header and controls stay in Hardware. **Simulate recording** marks the mic active so
   you can confirm haptics go quiet.
 - **Entries:** one file per component under `src/app/gallery/entries/`,
   registered in `entries/index.ts`. No auto-discovery, no Storybook.

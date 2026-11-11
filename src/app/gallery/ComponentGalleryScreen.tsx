@@ -71,7 +71,8 @@ function Gallery() {
     },
   }));
 
-  // Header and controls stay in Hardware; only the demo stage takes the mode.
+  // Header and controls stay in Hardware; only the demo stage takes the mode,
+  // and pinned entries override it.
   return (
     <ScreenContainer>
       <View style={styles.screen}>
@@ -90,7 +91,7 @@ function Gallery() {
           <View style={styles.card}>
             <SettingsSegmentedRow
               title="Mode"
-              subtitle="Figma color-role mode for the demos below."
+              subtitle="Color-role mode for the demos not pinned to one mode."
               options={MODE_OPTIONS}
               value={mode}
               onValueChange={setMode}
@@ -165,7 +166,7 @@ function DemoStage() {
                 </View>
                 {entry.pin ? (
                   <ColorModeScope value={entry.pin}>
-                    <PinnedStage>
+                    <PinnedStage testID={`gallery-pinned-${entry.id}`}>
                       <entry.Component />
                     </PinnedStage>
                   </ColorModeScope>
@@ -181,14 +182,25 @@ function DemoStage() {
 }
 
 /** A pinned entry on its own mode's background, whatever the Mode switcher says. */
-function PinnedStage({ children }: { children: React.ReactNode }) {
+function PinnedStage({
+  children,
+  testID,
+}: {
+  children: React.ReactNode;
+  testID: string;
+}) {
   const styles = useThemedStyles(t => ({
     stage: {
       backgroundColor: t.roles.bgDefault,
       borderRadius: t.radius.sm,
+      // Bleeds to DemoStage's edges; keep in step with its padding.
       marginHorizontal: -t.spacing.lg,
       padding: t.spacing.lg,
     },
   }));
-  return <View style={styles.stage}>{children}</View>;
+  return (
+    <View style={styles.stage} testID={testID}>
+      {children}
+    </View>
+  );
 }

@@ -39,9 +39,9 @@ export interface GalleryEntry {
   /** Foundations modes the component is designed for. */
   modes: string;
   /**
-   * Renders the demo in this mode, whatever the Mode switcher says. Set it
-   * for a component designed for one mode; leave it off for one built for all
-   * three, so the switcher can show each.
+   * Pins the entry's frame to this mode, whatever the Mode switcher says.
+   * Entries that mix modes, or whose body is Canvas or Accent, wrap their own
+   * parts in `ColorModeScope` and leave this off, as do Type styles and Icons.
    */
   pin?: ColorMode;
   /** Live demos only: real interactions, no static state grids. */
@@ -203,7 +203,7 @@ export const galleryEntries: GalleryEntry[] = [
     id: 'screen-header',
     name: 'Screen header',
     section: 'Headers',
-    modes: 'Hardware (Home, book page) · Accent (note)',
+    modes: 'Hardware (Home, book page) · Accent (note, in Translation note)',
     pin: 'hardware',
     Component: ScreenHeaderEntry,
   },
