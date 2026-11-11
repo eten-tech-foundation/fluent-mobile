@@ -405,6 +405,31 @@ describe('BookScreen', () => {
       });
     });
 
+    it('waits to scroll until the list is shown, even if the focused chapter already has covers', () => {
+      const loaded = mockPassages;
+      if (loaded.status !== 'ready') throw new Error('expected ready passages');
+      mockParams = { ...baseParams, focusChapterId: '2' };
+      mockPassages = {
+        status: 'ready',
+        byChapter: new Map([[2, loaded.byChapter.get(2) ?? []]]),
+        pericopes: true,
+      };
+      const { rerender } = render(<BookScreen />);
+      expect(screen.queryByTestId('book-list')).toBeNull();
+      expect(scrollToIndex).not.toHaveBeenCalled();
+
+      mockPassages = loaded;
+      rerender(<BookScreen />);
+
+      expect(screen.getByTestId('book-list')).toBeTruthy();
+      expect(scrollToIndex).toHaveBeenCalledTimes(1);
+      expect(scrollToIndex).toHaveBeenCalledWith({
+        index: 1,
+        viewPosition: 0,
+        animated: false,
+      });
+    });
+
     it('starts at the top without a chapter, with one it does not have, or at the first', () => {
       render(<BookScreen />);
       mockParams = { ...baseParams, focusChapterId: '99' };

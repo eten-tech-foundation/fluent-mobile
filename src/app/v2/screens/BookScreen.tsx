@@ -145,14 +145,15 @@ export default function BookScreen() {
   // Once; a later reload or focus refresh must not scroll the list back. The
   // first chapter stays put so the milestone header above it shows.
   useEffect(() => {
-    if (focusedRef.current || focusIndex < 1 || !focusReady) return;
+    if (focusedRef.current || focusIndex < 1 || !focusReady || !listShown)
+      return;
     focusedRef.current = true;
     listRef.current?.scrollToIndex({
       index: focusIndex,
       viewPosition: 0,
       animated: false,
     });
-  }, [focusIndex, focusReady]);
+  }, [focusIndex, focusReady, listShown]);
 
   useEffect(
     () => () => {
