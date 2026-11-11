@@ -63,6 +63,12 @@ describe('syncPhaseTiming', () => {
       ).toBe(true);
     });
 
+    it('keeps periodic_reconcile as a fullFetchReason', () => {
+      expect(
+        pickSyncPhaseCounts({ fullFetchReason: 'periodic_reconcile' }),
+      ).toEqual({ fullFetchReason: 'periodic_reconcile' });
+    });
+
     it('drops non-finite numbers and unknown fullFetchReason values', () => {
       expect(
         pickSyncPhaseCounts({

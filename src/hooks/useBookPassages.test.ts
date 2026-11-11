@@ -132,6 +132,73 @@ describe('loadChapterPassages', () => {
       }),
     ]);
   });
+
+  describe('with a My Work chapter that carries its bible and book', () => {
+    const coverages = [
+      { startChapter: 14, startVerse: 72, endChapter: 15, endVerse: 2 },
+    ];
+
+    it('uses them without reading the assignment, with the same passages', async () => {
+      const coveragesFor = jest.fn().mockResolvedValue(coverages);
+      const read = await loadChapterPassages(chapter(1, 14), 7, coveragesFor);
+      mockAssignment.mockClear();
+      coveragesFor.mockClear();
+      mockPericopes.mockClear();
+
+      const carried = await loadChapterPassages(
+        { ...chapter(1, 14), bibleId: 1, bookId: 41 },
+        7,
+        coveragesFor,
+      );
+
+      expect(mockAssignment).not.toHaveBeenCalled();
+      expect(carried).toEqual(read);
+      expect(coveragesFor).toHaveBeenCalledWith(1, 41);
+      expect(mockPericopes).toHaveBeenCalledWith(41, 14, 7);
+    });
+
+    it("scopes the pericopes and coverage by the chapter's own bible and book", async () => {
+      const coveragesFor = jest.fn().mockResolvedValue([]);
+
+      await loadChapterPassages(
+        { ...chapter(2, 3), bibleId: 8, bookId: 1 },
+        7,
+        coveragesFor,
+      );
+
+      expect(coveragesFor).toHaveBeenCalledWith(8, 1);
+      expect(mockPericopes).toHaveBeenCalledWith(1, 3, 7);
+      expect(mockAssignment).not.toHaveBeenCalled();
+    });
+
+    it('reads the assignment when a carried id is missing', async () => {
+      const coveragesFor = jest.fn().mockResolvedValue([]);
+
+      await loadChapterPassages(
+        { ...chapter(1, 14), bibleId: 0, bookId: 41 },
+        7,
+        coveragesFor,
+      );
+
+      expect(mockAssignment).toHaveBeenCalledWith(1);
+      expect(coveragesFor).toHaveBeenCalledWith(1, 41);
+    });
+
+    it('still shows a whole chapter when a read finds no assignment', async () => {
+      mockAssignment.mockResolvedValueOnce(null);
+
+      const passages = await loadChapterPassages(
+        { ...chapter(1, 14), bookId: 41 },
+        7,
+        jest.fn(),
+      );
+
+      expect(passages).toEqual([
+        expect.objectContaining({ recordedStatus: 'none', totalVerses: 20 }),
+      ]);
+      expect(mockPericopes).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('useBookPassages', () => {
@@ -402,7 +469,7 @@ describe('useBookPassages', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(mockCoverages).toHaveBeenCalledTimes(1);
-    expect(mockCoverages).toHaveBeenCalledWith(1, 41, 3);
+    expect(mockCoverages).toHaveBeenCalledWith(1, 41, 3, undefined);
   });
 
   it('treats a chapter without pericopes as one passage', async () => {

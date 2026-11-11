@@ -9,6 +9,7 @@ import {
 import type { DownloadQueueItem } from '../types/download/types';
 import type {
   DraftChapterLocalBundle,
+  DraftDownloadFreshness,
   DraftDownloadRequest,
   DraftDownloadState,
   DraftDownloadStatus,
@@ -32,18 +33,26 @@ import {
 } from './draftDownloadIds';
 import {
   readDraftDownloadManifest,
+  runDraftDownloadPublication,
   writeDraftDownloadManifest,
   type DraftDownloadManifest,
   type DraftManifestIdentity,
 } from './draftDownloadManifest';
 import type { DraftAudioRefreshMeta } from './downloadResourceResolver';
+import {
+  draftListingSnapshotEpoch,
+  seedDraftListingSnapshot,
+} from './draftListingSnapshot';
 import { getSharedDownloadQueueWorker } from './downloadQueueWorkerSingleton';
 import { deleteDownloadResourceFile, fileExists } from './downloadStorage';
 import { getTransferTransportSnapshot } from './connectivity';
 import { getCredentials } from './keychain';
 import { getActiveUserId } from './storage';
 import { getUploadOverCellular } from './userPreferences';
-import { onDownloadQueueChanged } from '../utils/downloadQueueEvents';
+import {
+  emitDownloadQueueChanged,
+  onDownloadQueueChanged,
+} from '../utils/downloadQueueEvents';
 import { logger } from '../utils/logger';
 import {
   transferInputFromLinkSnapshot,
@@ -84,6 +93,10 @@ export {
 } from './draftDownloadTiming';
 
 const readyAtBySession = new Map<string, number>();
+const validationFlights = new Map<string, Promise<void>>();
+const validationAttemptedAt = new Map<string, number>();
+const validationFailures = new Map<string, number>();
+let nextValidationId = 0;
 const scriptureWatchers = new Set<string>();
 const scriptureWatcherUnsubs = new Map<string, () => void>();
 
@@ -248,7 +261,120 @@ function deriveStatus(
     }
   }
 
+  if (manifest.audioValidation === 'stale') return 'failed';
   return 'ready';
+}
+
+function freshnessOf(
+  status: DraftDownloadStatus,
+  manifest: DraftDownloadManifest | null,
+): DraftDownloadFreshness | undefined {
+  if (status !== 'ready') return undefined;
+  return manifest?.audioValidation === 'confirmed' ? 'confirmed' : 'pending';
+}
+
+const VALIDATION_RETRY_BASE_MS = 5_000;
+const VALIDATION_RETRY_MAX_MS = 5 * 60_000;
+
+function validationRetryDelayMs(failures: number): number {
+  if (failures <= 0) return VALIDATION_RETRY_BASE_MS;
+  return Math.min(
+    VALIDATION_RETRY_MAX_MS,
+    VALIDATION_RETRY_BASE_MS * 2 ** Math.min(failures, 10),
+  );
+}
+
+/**
+ * One uncached listing per new completed bundle, never one listing per file.
+ * Starts in the background: readers never wait on the network, and a pending
+ * snapshot stays playable until the listing settles it as confirmed or stale.
+ */
+function revalidateCompletedDraft(
+  manifest: DraftDownloadManifest | null,
+  items: DownloadQueueItem[],
+): void {
+  // Missing `audioValidation` is an older snapshot: check it once, same as pending.
+  if (
+    !manifest ||
+    manifest.purged ||
+    (manifest.audioValidation !== 'pending' &&
+      manifest.audioValidation !== undefined)
+  )
+    return;
+  if (deriveStatus(items, manifest, manifest.role) !== 'ready') return;
+  const key = sessionKeyOf(manifest);
+  if (validationFlights.has(key)) return;
+  const lastAttempt = validationAttemptedAt.get(key);
+  const age = lastAttempt === undefined ? undefined : Date.now() - lastAttempt;
+  const failures = validationFailures.get(key) ?? 0;
+  if (age !== undefined && age >= 0 && age < validationRetryDelayMs(failures))
+    return;
+  const captured = manifest;
+  const flight = (async () => {
+    validationAttemptedAt.set(key, Date.now());
+    const transport = await getTransferTransportSnapshot();
+    if (
+      transportAllowsTransfer(
+        transferInputFromLinkSnapshot(transport, getUploadOverCellular()),
+      ) !== 'ok'
+    )
+      return;
+    const token = await captureSessionTokenForRequest(captured.userId);
+    if (!token) return;
+    try {
+      const list = await FluentAPI.getChapterVerseAudio(
+        {
+          projectUnitId: captured.projectUnitId,
+          bibleId: captured.bibleId,
+          bookId: captured.bookId,
+          chapterNumber: captured.chapterNumber,
+        },
+        token,
+      );
+      if (!isActiveRequestAccount(captured.userId)) return;
+      let matches = false;
+      try {
+        const fresh = list.items.map(resolveActiveTakeDownload);
+        matches =
+          fresh.length === captured.units.length &&
+          captured.units.every(unit =>
+            fresh.some(
+              item =>
+                item.bibleTextId === unit.bibleTextId &&
+                item.take.id === unit.activeTakeId &&
+                item.take.contentHash === unit.contentHash &&
+                item.conflictStatus === unit.conflictStatus,
+            ),
+          );
+      } catch {
+        // A newly unresolved active take is a changed chapter, not readiness.
+      }
+      const written = await writeDraftDownloadManifest(
+        {
+          ...captured,
+          audioValidation: matches ? 'confirmed' : 'stale',
+        },
+        { shouldWrite: () => isActiveRequestAccount(captured.userId) },
+      );
+      validationFailures.delete(key);
+      if (written) emitDownloadQueueChanged();
+    } catch (error) {
+      validationFailures.set(key, failures + 1);
+      throw error;
+    }
+  })()
+    .catch(error => {
+      log.warn('Final draft verification deferred', { error });
+    })
+    .finally(() => {
+      validationFlights.delete(key);
+    });
+  validationFlights.set(key, flight);
+}
+
+/** Test seam: settle any in-flight freshness check. */
+export async function awaitDraftFreshnessChecksForTests(): Promise<void> {
+  await Promise.all([...validationFlights.values()]);
 }
 
 function derivePhase(
@@ -580,6 +706,7 @@ export async function getDraftDownloadState(
   const manifest = await readDraftDownloadManifest(identityOf(request));
   const allItems = await loadChapterItems(request);
   const items = expectedItems(allItems, manifest, request.role);
+  revalidateCompletedDraft(manifest, items);
   const status = deriveStatus(items, manifest, request.role);
   const phase = derivePhase(
     items,
@@ -619,15 +746,24 @@ export async function getDraftDownloadState(
     chapterAssignmentId: request.chapterAssignmentId,
     role: request.role,
     status: uiStatus,
+    ...(uiStatus === 'ready'
+      ? { freshness: freshnessOf(status, manifest) }
+      : {}),
     phase,
     progress: uiStatus === 'idle' && status === 'ready' ? 1 : progress,
     readyAtMs,
-    errorMessage: manifest?.sourceScriptureError,
+    errorMessage:
+      manifest?.audioValidation === 'stale'
+        ? 'The chapter changed on the server. Tap to download the current version.'
+        : manifest?.sourceScriptureError,
   };
 }
 
 export function resetDraftDownloadReadyClocksForTests(): void {
   readyAtBySession.clear();
+  validationAttemptedAt.clear();
+  validationFailures.clear();
+  validationFlights.clear();
   for (const unsub of scriptureWatcherUnsubs.values()) {
     unsub();
   }
@@ -763,6 +899,10 @@ export async function startDraftDownload(
       };
     }
 
+    // Snapshot age is measured from the listing's own arrival, not from the
+    // slower of the two requests (#886).
+    let listingFetchedAt = Date.now();
+    const listingRequestedAt = draftListingSnapshotEpoch();
     const [list, translatedVerses] = await Promise.all([
       FluentAPI.getChapterVerseAudio(
         {
@@ -772,7 +912,10 @@ export async function startDraftDownload(
           chapterNumber: request.chapterNumber,
         },
         sessionToken,
-      ),
+      ).then(fetched => {
+        listingFetchedAt = Date.now();
+        return fetched;
+      }),
       FluentAPI.getTranslatedVerses(
         {
           projectUnitId: request.projectUnitId,
@@ -791,7 +934,7 @@ export async function startDraftDownload(
       };
     }
 
-    const resolvedAudio = [];
+    const resolvedAudio: ReturnType<typeof resolveActiveTakeDownload>[] = [];
     const unresolved: number[] = [];
     for (const item of list.items) {
       try {
@@ -821,6 +964,22 @@ export async function startDraftDownload(
       };
     }
 
+    // Every unit resolved: the manifest listing can serve the worker's
+    // per-file URL refreshes for this chapter while it is fresh (#886).
+    // Seeded only here so a listing with unresolvable units is never cached.
+    seedDraftListingSnapshot(
+      {
+        projectUnitId: request.projectUnitId,
+        bibleId: request.bibleId,
+        bookId: request.bookId,
+        chapterNumber: request.chapterNumber,
+      },
+      String(request.userId),
+      list,
+      listingFetchedAt,
+      listingRequestedAt,
+    );
+
     const units = resolvedAudio.map(audio => ({
       bibleTextId: audio.bibleTextId,
       verseNumber: audio.verseNumber,
@@ -835,83 +994,120 @@ export async function startDraftDownload(
       ),
     }));
 
-    // Drop draft text before stale cleanup so re-download replaces content
-    // (stable resource id + NULL sourceUrl would otherwise no-op the upsert).
-    const keepIds = new Set<string>(units.map(unit => unit.resourceId));
-    await removeStaleDraftRows(request, keepIds);
-    keepIds.add(draftTextResourceId(request.chapterAssignmentId));
+    return await runDraftDownloadPublication(
+      identityOf(request),
+      async (): Promise<StartDraftDownloadResult> => {
+        const latest = await readDraftDownloadManifest(identityOf(request));
+        const superseded = (): boolean =>
+          !isActiveRequestAccount(request.userId);
+        const stopped: StartDraftDownloadResult = {
+          ok: false,
+          reason: 'error',
+          message:
+            'Download was superseded by a chapter reset or account change',
+        };
+        if (
+          superseded() ||
+          (latest?.purgeGeneration ?? 0) !==
+            (existingManifest?.purgeGeneration ?? 0)
+        )
+          return stopped;
+        // Drop draft text before stale cleanup so re-download replaces content
+        // (stable resource id + NULL sourceUrl would otherwise no-op the upsert).
+        const keepIds = new Set<string>(units.map(unit => unit.resourceId));
+        await removeStaleDraftRows(request, keepIds);
+        if (superseded()) return stopped;
+        keepIds.add(draftTextResourceId(request.chapterAssignmentId));
 
-    const manifest: DraftDownloadManifest = {
-      chapterAssignmentId: request.chapterAssignmentId,
-      projectId: request.projectId,
-      userId: request.userId,
-      role: request.role,
-      projectUnitId: request.projectUnitId,
-      bibleId: request.bibleId,
-      bookId: request.bookId,
-      bookCode: request.bookCode,
-      chapterNumber: request.chapterNumber,
-      units,
-      purgeGeneration: existingManifest?.purgeGeneration ?? 0,
-      purged: false,
-      sourceScriptureError: undefined,
-    };
-    await writeDraftDownloadManifest(manifest);
+        validationAttemptedAt.delete(sessionKeyOf(request));
+        const manifest: DraftDownloadManifest = {
+          chapterAssignmentId: request.chapterAssignmentId,
+          projectId: request.projectId,
+          userId: request.userId,
+          role: request.role,
+          projectUnitId: request.projectUnitId,
+          bibleId: request.bibleId,
+          bookId: request.bookId,
+          bookCode: request.bookCode,
+          chapterNumber: request.chapterNumber,
+          units,
+          purgeGeneration: existingManifest?.purgeGeneration ?? 0,
+          purged: false,
+          sourceScriptureError: undefined,
+          audioValidationId: `${Date.now()}:${++nextValidationId}`,
+          audioValidation: 'pending',
+        };
+        const written = await writeDraftDownloadManifest(manifest, {
+          newSession: true,
+          shouldWrite: () => isActiveRequestAccount(request.userId),
+        });
+        if (written === null)
+          return {
+            ok: false,
+            reason: 'error',
+            message: 'Download was superseded by a chapter reset',
+          };
 
-    const inputs = buildAudioAndTextInputs(
-      request,
-      resolvedAudio,
-      translatedVerses,
+        const inputs = buildAudioAndTextInputs(
+          request,
+          resolvedAudio,
+          translatedVerses,
+        );
+
+        const existing = await loadChapterItems(request);
+        if (superseded()) return stopped;
+        const retryIds = existing
+          .filter(
+            item =>
+              keepIds.has(item.resourceId ?? item.id) &&
+              (item.status === 'failed' ||
+                item.status === 'cancelled' ||
+                item.status === 'paused'),
+          )
+          .map(item => item.id);
+        if (retryIds.length > 0) {
+          await requeueDownloadItems(retryIds);
+          if (superseded()) return stopped;
+        }
+
+        const enqueuedIds = await enqueueDownloadItems(inputs);
+        if (superseded()) return stopped;
+        const toRun = (await loadChapterItems(request)).filter(
+          item =>
+            keepIds.has(item.resourceId ?? item.id) &&
+            (item.status === 'queued' ||
+              item.status === 'failed' ||
+              item.status === 'downloading'),
+        );
+
+        if (superseded()) return stopped;
+        watchObserverScripture(request);
+
+        const worker = getSharedDownloadQueueWorker();
+        const workerState = worker.getState();
+        if (workerState === 'idle' || workerState === 'cancelled') {
+          if (toRun.length > 0) {
+            void worker.start(toRun);
+          }
+        } else if (workerState === 'downloading') {
+          worker.enqueueAdditional(toRun);
+        } else if (workerState === 'paused') {
+          // Append only — do not resume a user-paused PFO session.
+          worker.enqueueAdditional(toRun);
+        }
+
+        readyAtBySession.delete(sessionKeyOf(request));
+        log.info('Draft download started', {
+          chapterAssignmentId: request.chapterAssignmentId,
+          userId: request.userId,
+          role: request.role,
+          enqueuedCount: enqueuedIds.length,
+          audioCount: resolvedAudio.length,
+        });
+
+        return { ok: true, enqueuedIds };
+      },
     );
-
-    const existing = await loadChapterItems(request);
-    const retryIds = existing
-      .filter(
-        item =>
-          keepIds.has(item.resourceId ?? item.id) &&
-          (item.status === 'failed' ||
-            item.status === 'cancelled' ||
-            item.status === 'paused'),
-      )
-      .map(item => item.id);
-    if (retryIds.length > 0) {
-      await requeueDownloadItems(retryIds);
-    }
-
-    const enqueuedIds = await enqueueDownloadItems(inputs);
-    const toRun = (await loadChapterItems(request)).filter(
-      item =>
-        keepIds.has(item.resourceId ?? item.id) &&
-        (item.status === 'queued' ||
-          item.status === 'failed' ||
-          item.status === 'downloading'),
-    );
-
-    watchObserverScripture(request);
-
-    const worker = getSharedDownloadQueueWorker();
-    const workerState = worker.getState();
-    if (workerState === 'idle' || workerState === 'cancelled') {
-      if (toRun.length > 0) {
-        void worker.start(toRun);
-      }
-    } else if (workerState === 'downloading') {
-      worker.enqueueAdditional(toRun);
-    } else if (workerState === 'paused') {
-      // Append only — do not resume a user-paused PFO session.
-      worker.enqueueAdditional(toRun);
-    }
-
-    readyAtBySession.delete(sessionKeyOf(request));
-    log.info('Draft download started', {
-      chapterAssignmentId: request.chapterAssignmentId,
-      userId: request.userId,
-      role: request.role,
-      enqueuedCount: enqueuedIds.length,
-      audioCount: resolvedAudio.length,
-    });
-
-    return { ok: true, enqueuedIds };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Draft download failed';
@@ -989,6 +1185,7 @@ export async function getDraftChapterLocalBundle(
   const manifest = await readDraftDownloadManifest(identityOf(request));
   const allItems = await loadChapterItems(request);
   const items = expectedItems(allItems, manifest, request.role);
+  revalidateCompletedDraft(manifest, items);
   const status = deriveStatus(items, manifest, request.role);
 
   const textItem = items.find(
@@ -1022,6 +1219,7 @@ export async function getDraftChapterLocalBundle(
 
     let localPlaybackUri: string | null = null;
     if (
+      manifest?.audioValidation !== 'stale' &&
       item?.status === 'completed' &&
       item.localFilePath &&
       (await fileExists(item.localFilePath))
@@ -1051,6 +1249,7 @@ export async function getDraftChapterLocalBundle(
     chapterAssignmentId: request.chapterAssignmentId,
     role: request.role,
     status,
+    freshness: freshnessOf(status, manifest),
     hasConflict,
     units,
     sourceScripture,

@@ -15,7 +15,18 @@ export function onSyncComplete(fn: SyncListener): () => void {
   };
 }
 
+/**
+ * What a start/complete listener would currently hold, for a screen that
+ * mounts mid-sync (first login mounts Home after the sync already started).
+ */
+let syncActive = false;
+
+export function isSyncActive(): boolean {
+  return syncActive;
+}
+
 export function emitSyncComplete(): void {
+  syncActive = false;
   completeListeners.forEach(fn => fn());
 }
 
@@ -28,6 +39,7 @@ export function onSyncStart(fn: SyncStartListener): () => void {
 }
 
 export function emitSyncStart(isFull = false): void {
+  syncActive = true;
   startListeners.forEach(fn => fn(isFull));
 }
 
@@ -60,9 +72,35 @@ export function emitAuthReauthResolved(userId: string): void {
 }
 
 /** Recording-upload session events (distinct from metadata sync). */
+/**
+ * Take-level progress inside the chapter currently uploading (#886).
+ * Chapter counts stay the headline (#600); this only refines the current
+ * chapter so a long chapter shows movement before it completes.
+ */
+export type UploadTakeProgress = {
+  bookId: number;
+  chapterNumber: number;
+  /** Takes the server accepted (uploaded or conflict-accepted) this pass. */
+  completedTakes: number;
+  /** Takes that failed this pass and stay pending. */
+  failedTakes: number;
+  totalTakes: number;
+};
+
 export type UploadSessionEvent =
   | { type: 'start'; totalChapters: number }
-  | { type: 'progress'; completedChapters: number; totalChapters: number }
+  | {
+      type: 'progress';
+      completedChapters: number;
+      totalChapters: number;
+      /** Present while a chapter is mid-upload; absent at chapter boundaries. */
+      currentChapter?: UploadTakeProgress;
+    }
+  /**
+   * Automatic uploads are held (drafting is open in the foreground). Pending
+   * work waits for the hold to lift or an explicit Sync Now (#886).
+   */
+  | { type: 'hold'; held: boolean; reason: 'drafting' }
   | { type: 'paused'; reason: 'user' | 'connectivity' }
   | { type: 'cancelled' }
   | { type: 'complete' }

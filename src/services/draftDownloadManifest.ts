@@ -29,6 +29,9 @@ export type DraftDownloadManifest = {
   purged: boolean;
   /** Observer scripture snapshot failure — retryable via the same chip tap. */
   sourceScriptureError?: string;
+  /** New downloads require one fresh chapter listing before publishing ready. */
+  audioValidationId?: string;
+  audioValidation?: 'pending' | 'confirmed' | 'stale';
 };
 
 export type DraftManifestIdentity = {
@@ -58,13 +61,78 @@ function matchesIdentity(
   );
 }
 
+// Serialize writers of the same manifest so late scripture/freshness work
+// cannot overwrite a newer start or recreate a purged session.
+const manifestWrites = new Map<string, Promise<unknown>>();
+const draftPublications = new Map<string, Promise<unknown>>();
+
+/** Keep start's queue publication and stage-exit cleanup in one order. */
+export async function runDraftDownloadPublication<T>(
+  identity: DraftManifestIdentity,
+  task: () => Promise<T>,
+): Promise<T> {
+  // Audio/text queue rows are shared by roles even though manifest files are not.
+  const key = `${identity.projectId}:${identity.userId}:${identity.chapterAssignmentId}`;
+  const previous = draftPublications.get(key) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(task);
+  draftPublications.set(key, run);
+  try {
+    return await run;
+  } finally {
+    if (draftPublications.get(key) === run) draftPublications.delete(key);
+  }
+}
+
 export async function writeDraftDownloadManifest(
   manifest: DraftDownloadManifest,
-): Promise<string> {
-  await ensureDownloadsDir(manifest.projectId);
+  options?: { newSession?: boolean; shouldWrite?: () => boolean },
+): Promise<string | null> {
   const path = manifestPath(manifest);
-  await FileSystem.writeAsStringAsync(path, JSON.stringify(manifest));
-  return path;
+  const previousWrite = manifestWrites.get(path) ?? Promise.resolve();
+  const write = previousWrite
+    .catch(() => undefined)
+    .then(async () => {
+      const current = await readDraftDownloadManifest(manifest);
+      if (options?.newSession && current) {
+        if (
+          !manifest.purged &&
+          current.purgeGeneration !== manifest.purgeGeneration
+        )
+          return null;
+        if (manifest.purged) {
+          manifest = {
+            ...manifest,
+            purgeGeneration: Math.max(
+              manifest.purgeGeneration,
+              current.purgeGeneration + 1,
+            ),
+          };
+        }
+      }
+      if (!options?.newSession && current) {
+        if (
+          current.purgeGeneration !== manifest.purgeGeneration ||
+          current.audioValidationId !== manifest.audioValidationId ||
+          (current.purged && !manifest.purged)
+        )
+          return null;
+        // A writer that read pending state before validation finished must not
+        // restore pending state over the settled result.
+        if (current.audioValidation && current.audioValidation !== 'pending') {
+          manifest = { ...manifest, audioValidation: current.audioValidation };
+        }
+      }
+      await ensureDownloadsDir(manifest.projectId);
+      if (options?.shouldWrite && !options.shouldWrite()) return null;
+      await FileSystem.writeAsStringAsync(path, JSON.stringify(manifest));
+      return path;
+    });
+  manifestWrites.set(path, write);
+  try {
+    return await write;
+  } finally {
+    if (manifestWrites.get(path) === write) manifestWrites.delete(path);
+  }
 }
 
 /**
@@ -114,5 +182,5 @@ export async function writeDraftDownloadPurgeTombstone(
     purgeGeneration: (previous?.purgeGeneration ?? 0) + 1,
     purged: true,
   };
-  await writeDraftDownloadManifest(tombstone);
+  await writeDraftDownloadManifest(tombstone, { newSession: true });
 }

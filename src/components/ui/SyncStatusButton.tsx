@@ -2,9 +2,12 @@ import React from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import {
   formatSyncStatusLabel,
+  SYNC_STATUS_HELD_FOR_DRAFTING,
+  SYNC_STATUS_HELD_FOR_DRAFTING_SHORT,
   type SyncStatus,
 } from '../../utils/syncStatusState';
 import {
+  Cloud,
   CloudArrowDown,
   CloudArrowUp,
   CloudCheck,
@@ -23,6 +26,7 @@ const STATUS_ICONS: Record<SyncStatus, NextIcon> = {
   online_failed: CloudWarning,
   offline_synced: CloudSlash,
   offline_pending: CloudSlash,
+  checking: Cloud,
 };
 
 /** The status alone, for a cloud that doesn't open the Sync page. */
@@ -35,12 +39,15 @@ const STATUS_NAMES: Record<SyncStatus, string> = {
   online_failed: 'Upload failed',
   offline_synced: 'Offline · nothing pending',
   offline_pending: 'Offline · upload pending',
+  checking: 'Checking connection',
 };
 
 export interface SyncStatusButtonProps {
   status: SyncStatus;
   /** Sanitized upload error, spoken when the status is online_failed. */
   failedErrorText?: string | null;
+  /** Pending uploads are waiting for drafting to end: a visible word + label. */
+  heldForDrafting?: boolean;
   /** Opens the Sync page; the spoken status says so only when it's given. */
   onPress?: () => void;
   /** Flat on a dark hero, like its Back. */
@@ -56,19 +63,22 @@ export interface SyncStatusButtonProps {
 export function SyncStatusButton({
   status,
   failedErrorText,
+  heldForDrafting,
   onPress,
   variant,
   style,
   testID,
 }: SyncStatusButtonProps) {
+  const held = status === 'online_pending' && heldForDrafting;
   return (
     <RoundButton
       variant={variant}
       icon={STATUS_ICONS[status]}
+      label={held ? SYNC_STATUS_HELD_FOR_DRAFTING_SHORT : undefined}
       accessibilityLabel={
         onPress
-          ? formatSyncStatusLabel(status, { failedErrorText })
-          : statusName(status, failedErrorText)
+          ? formatSyncStatusLabel(status, { failedErrorText, heldForDrafting })
+          : statusName(status, failedErrorText, heldForDrafting)
       }
       onPress={onPress}
       style={style}
@@ -77,7 +87,14 @@ export function SyncStatusButton({
   );
 }
 
-function statusName(status: SyncStatus, failedErrorText?: string | null) {
+function statusName(
+  status: SyncStatus,
+  failedErrorText?: string | null,
+  heldForDrafting?: boolean,
+) {
+  if (status === 'online_pending' && heldForDrafting) {
+    return SYNC_STATUS_HELD_FOR_DRAFTING;
+  }
   const name = STATUS_NAMES[status];
   return status === 'online_failed' && failedErrorText
     ? `${name}. ${failedErrorText}`

@@ -234,6 +234,7 @@ const chapterData: ChapterAssignmentData = {
   bookCode: 'MRK',
   sourceLanguageCode: 'eng',
   hasConflict: false,
+  totalVerses: 0,
 };
 
 const verses = [
@@ -1605,6 +1606,39 @@ describe('RecordTab', () => {
     expect(screen.getByText('Send to Peer Check')).toBeTruthy();
     expect(screen.getByTestId('record-pericope-unavailable')).toBeTruthy();
     expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
+  });
+
+  it('does not read the pericope set while drafting verse by verse', async () => {
+    renderTab();
+
+    await waitForCaptureReady();
+    expect(getProjectPericopeSetId).not.toHaveBeenCalled();
+    expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    expect(screen.queryByText(PERICOPE_UNAVAILABLE_WARNING)).toBeNull();
+  });
+
+  it('reads the pericope set when switching to passages mid-session', async () => {
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+    const tree = () => (
+      <DraftingProvider verses={verses} initialVerse={3}>
+        <RecordTab chapterData={chapterData} userId={42} />
+      </DraftingProvider>
+    );
+    const { rerender } = render(tree());
+    await waitForCaptureReady();
+    expect(getProjectPericopeSetId).not.toHaveBeenCalled();
+
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    rerender(tree());
+
+    await waitFor(() => {
+      expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
+    });
+    expect(getProjectPericopeSetId).toHaveBeenCalledTimes(1);
+    expect(getProjectPericopeSetId).toHaveBeenCalledWith(chapterData.projectId);
   });
 
   describe('Complete stage recording lock', () => {

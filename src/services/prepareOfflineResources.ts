@@ -420,7 +420,8 @@ export async function fetchPrepareOfflineManifest(
       }),
     ]);
   } catch (error) {
-    // httpClient wraps AbortError as ApiError status 0 — normalize via signal.
+    // A caller abort surfaces as AbortError (#886); older paths may still
+    // report ApiError status 0 — normalize either form via the signal.
     if (signal?.aborted || isAbortLikeError(error)) {
       throw createAbortError();
     }

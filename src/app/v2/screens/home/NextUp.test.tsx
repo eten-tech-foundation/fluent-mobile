@@ -1,5 +1,10 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import {
   NEXT_UP_EMPTY_MESSAGE,
   NextUp,
@@ -177,6 +182,36 @@ describe('NextUp', () => {
     expect(screen.queryByText('Matthew 1:1–17')).toBeNull();
     fireEvent.press(screen.getByTestId('home-next-1:genealogy'));
     expect(onOpen).toHaveBeenCalledWith(next);
+  });
+
+  it('lays out every check at once, drawing the art off screen a frame later', async () => {
+    const checks = Array.from({ length: 12 }, (_, i) =>
+      item('chapter:1', { title: null }, {
+        ...MATTHEW_1,
+        id: i + 1,
+        workflowStage: 'peer_check',
+      } as MyWorkChapter),
+    );
+    render(
+      <NextUp
+        nextUp={{ status: 'ready', hero: null, after: [], checking: checks }}
+        onOpen={jest.fn()}
+      />,
+    );
+
+    const last = 'home-next-12:chapter:1';
+    expect(screen.getByTestId(last).props.accessibilityLabel).toMatch(
+      /Not recorded yet$/,
+    );
+    // Only the drawn face measures itself.
+    expect(
+      screen.getByTestId('home-next-1:chapter:1-face').props.onLayout,
+    ).toBeDefined();
+    expect(screen.getByTestId(`${last}-face`).props.onLayout).toBeUndefined();
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`${last}-face`).props.onLayout).toBeDefined(),
+    );
   });
 
   it('waits for the passages before showing anything', () => {

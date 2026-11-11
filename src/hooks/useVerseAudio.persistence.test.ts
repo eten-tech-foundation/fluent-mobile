@@ -8,6 +8,9 @@ jest.mock('../db/repository', () => ({ addRecordingTake: jest.fn() }));
 jest.mock('./useRecordingEngine', () => ({ useRecordingEngine: jest.fn() }));
 jest.mock('./usePlaybackEngine', () => ({ usePlaybackEngine: jest.fn() }));
 jest.mock('../audio/aacRemux', () => ({ getRemuxNativeModule: () => null }));
+jest.mock('../services/recordingTakeDeletion', () => ({
+  deleteRecordingTakeWithUploadState: jest.fn(),
+}));
 jest.mock('../services/uploadOrchestrator', () => ({
   notifyPendingUploads: jest.fn(),
 }));

@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useConnectivity } from '../../../../hooks/useConnectivity';
 import { useTranslationNotesForUnit } from '../../../../hooks/useTranslationNotesForUnit';
+import {
+  passageResourceEpoch,
+  subscribePassageResourceClears,
+} from '../../../../services/passageResourceReuse';
 import { matchNotes, type NoteChips, type PassageNote } from './noteMatch';
 import type { Ready } from './ready';
 
@@ -31,6 +35,10 @@ export function usePassageNotes(
     [verses],
   );
   const languageCode = assignment.sourceLanguageCode;
+  const owner = userId === null ? '' : String(userId);
+  const epoch = useSyncExternalStore(subscribePassageResourceClears, () =>
+    passageResourceEpoch(owner),
+  );
   const { state, retry } = useTranslationNotesForUnit({
     projectId: enabled ? assignment.projectId ?? null : null,
     userId,
@@ -47,13 +55,24 @@ export function usePassageNotes(
     () => (ready ? matchNotes(verses, ready) : null),
     [ready, verses],
   );
-  // A reload (e.g. coming back online) keeps the notes it had meanwhile, and
-  // after a failed one, as long as they're in the same language.
-  const [kept, setKept] = useState({ languageCode, notes: NONE });
+  // A reload keeps the notes it already had, including after a failed one,
+  // for this account and language. A grant clear bumps the epoch, and those
+  // notes are not carried across it.
+  const [kept, setKept] = useState({
+    userId,
+    languageCode,
+    epoch,
+    notes: NONE,
+  });
   useEffect(() => {
-    if (settled) setKept({ languageCode, notes: settled });
-  }, [settled, languageCode]);
+    if (settled) setKept({ userId, languageCode, epoch, notes: settled });
+  }, [settled, userId, languageCode, epoch]);
   const notes =
-    settled ?? (kept.languageCode === languageCode ? kept.notes : NONE);
+    settled ??
+    (kept.userId === userId &&
+    kept.languageCode === languageCode &&
+    kept.epoch === epoch
+      ? kept.notes
+      : NONE);
   return useMemo(() => ({ ...notes, failed, retry }), [notes, failed, retry]);
 }

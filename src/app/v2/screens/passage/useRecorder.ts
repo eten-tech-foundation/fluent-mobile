@@ -31,7 +31,7 @@ import {
 } from '../../../../constants/messages';
 import { MAX_RECORDING_TAKES } from '../../../../constants/recordingTakes';
 import { chapterHasUnuploadableSelectedTakes } from '../../../../db/queries';
-import { useChapterConflictStatus } from '../../../../hooks/useChapterConflictStatus';
+import { isDevPreviewChapterConflictEnabled } from '../../../../config/devPreviewChapterConflict';
 import { passageSessionVerse } from '../../../../navigation/passageSessionVerse';
 import { useLiveLevels } from '../../../../hooks/useLiveLevels';
 import { usePendingDelete } from '../../../../hooks/usePendingDelete';
@@ -175,7 +175,9 @@ export function useRecorder({
     discardCapture: verseAudio.discardCapture,
     resetCapture: session.resetCapture,
   });
-  const { hasConflict } = useChapterConflictStatus(assignment.id);
+  // The passage's own assignment row, reloaded with it on focus and sync.
+  const hasConflict =
+    isDevPreviewChapterConflictEnabled() || assignment.hasConflict === true;
   const observerOnly = isObserverOnly(assignment, userId);
   const classicReason =
     !verseMode && session.pericopeUnavailable ? RECORD_NO_PERICOPE : null;
@@ -666,9 +668,17 @@ export function useRecorder({
       : `${t.startChapter}:${t.startVerse}–${t.endChapter}:${t.endVerse}`;
   }
 
-  /** The take in use and official: the card's check shows it. */
-  function inUse(t: { isSelected: boolean; isCanonical: boolean }) {
-    return t.isSelected && t.isCanonical;
+  /**
+   * The take in use and official: the card's check shows it. A failed upload
+   * (e.g. another take became active on the server) isn't official, so its
+   * toggle stays live for choosing it again.
+   */
+  function inUse(t: {
+    isSelected: boolean;
+    isCanonical: boolean;
+    syncStatus: string;
+  }) {
+    return t.isSelected && t.isCanonical && t.syncStatus !== 'failed';
   }
 
   /**
@@ -717,7 +727,10 @@ export function useRecorder({
     ) {
       return;
     }
-    if (!t.isSelected) await verseAudio.selectTake(t.id);
+    // Selecting a selected take whose upload failed starts a new attempt.
+    if (!t.isSelected || t.syncStatus === 'failed') {
+      await verseAudio.selectTake(t.id);
+    }
     await verseAudio.setCanonical(t.id);
   }
 

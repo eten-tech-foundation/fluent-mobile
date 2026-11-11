@@ -34,10 +34,20 @@ export type DraftDownloadPhase =
   | 'source_scripture'
   | 'complete';
 
+/**
+ * `ready` means the local snapshot is complete and intact. `freshness` says
+ * whether that snapshot matched the server listing at validation time:
+ * `pending` snapshots are playable offline but have not been checked, and a
+ * later server change is not noticed until the next check.
+ */
+export type DraftDownloadFreshness = 'confirmed' | 'pending';
+
 export interface DraftDownloadState {
   chapterAssignmentId: number;
   role: DraftDownloadRole;
   status: DraftDownloadStatus;
+  /** Set only while `status` is `ready`. */
+  freshness?: DraftDownloadFreshness;
   phase: DraftDownloadPhase;
   /** 0–1 aggregate across this chapter's expected draft queue items. */
   progress: number;
@@ -82,6 +92,7 @@ export interface DraftChapterLocalBundle {
   chapterAssignmentId: number;
   role: DraftDownloadRole;
   status: DraftDownloadState['status'];
+  freshness?: DraftDownloadFreshness;
   hasConflict: boolean;
   units: DraftDownloadUnitAnchor[];
   /** Observer-only local snapshot for render bridge; null for peer / missing. */
