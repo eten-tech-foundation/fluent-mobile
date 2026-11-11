@@ -368,6 +368,84 @@ describe('Next HomeScreen', () => {
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
+  it('holds loading when the account changes until both lists resolve', () => {
+    render(<HomeScreen />);
+    expect(screen.getByTestId('home-books')).toBeTruthy();
+    expect(
+      screen.getByRole('button', {
+        name: 'Mark, Gospels Phase 1 · 2 yours · 1 with others · 13 open, 1 of 16 chapters recorded. Open book page.',
+      }),
+    ).toBeTruthy();
+
+    mockActiveUserId = '8';
+    mockChaptersLoading = true;
+    mockBooksLoading = true;
+    screen.rerender(<HomeScreen />);
+
+    expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
+    expect(screen.queryByTestId('home-books')).toBeNull();
+    expect(screen.queryByText('Mark')).toBeNull();
+
+    mockChaptersLoading = false;
+    mockBooksLoading = false;
+    mockChapters = [chapter(3, 'John', 1)];
+    mockBooks = [
+      {
+        ...MARK,
+        key: '3:43',
+        bookId: 43,
+        bookName: 'John',
+        firstChapterId: 31,
+      },
+    ];
+    screen.rerender(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
+    expect(screen.queryByText('Mark')).toBeNull();
+    expect(
+      screen.getByRole('button', {
+        name: 'John, Gospels Phase 1 · 2 yours · 1 with others · 13 open, 1 of 16 chapters recorded. Open book page.',
+      }),
+    ).toBeTruthy();
+  });
+
+  it('lands on empty once for an account with no work, not the previous books', () => {
+    render(<HomeScreen />);
+    expect(screen.getByTestId('home-books')).toBeTruthy();
+
+    mockActiveUserId = '8';
+    mockChaptersLoading = true;
+    mockBooksLoading = true;
+    screen.rerender(<HomeScreen />);
+    expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
+    expect(screen.queryByTestId('home-books')).toBeNull();
+
+    mockChapters = [];
+    mockBooks = [];
+    mockChaptersLoading = false;
+    mockBooksLoading = false;
+    screen.rerender(<HomeScreen />);
+
+    expect(screen.getByTestId('home-empty')).toBeTruthy();
+    expect(screen.queryByTestId('home-books')).toBeNull();
+    expect(screen.queryByText('Mark')).toBeNull();
+  });
+
+  it('does not flash loading when the new account is already idle', () => {
+    mockActiveUserId = null;
+    mockChapters = [];
+    mockBooks = [];
+    render(<HomeScreen />);
+    expect(screen.getByTestId('home-empty')).toBeTruthy();
+    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
+
+    mockActiveUserId = '8';
+    screen.rerender(<HomeScreen />);
+
+    expect(screen.getByTestId('home-empty')).toBeTruthy();
+    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
+  });
+
   it('keeps the books on screen through a sync when none of the chapters are mine', () => {
     mockChapters = [];
     mockSession = { ...sessionDefaults, isSyncingChapters: true };

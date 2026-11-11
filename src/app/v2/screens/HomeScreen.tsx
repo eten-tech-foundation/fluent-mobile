@@ -94,7 +94,7 @@ function HomeBody({
     refresh: refreshBooks,
   } = useHomeBooks(refreshKey);
   const nextUp = useNextUp(chapters);
-  const [loadedOnce, setLoadedOnce] = useState(false);
+  const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const pullToRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -212,10 +212,20 @@ function HomeBody({
   const chaptersLabel = `${chapters.length} ${
     chapters.length === 1 ? 'chapter' : 'chapters'
   }`;
+  const activeUserId = account.activeUserId;
   // `loading` is each list's first read; later reads keep the lists on screen.
+  // A new active user must wait again so the previous account never paints.
   const firstContentReady = !loading && !booksLoading;
-  if (!loadedOnce && firstContentReady) setLoadedOnce(true);
+  const loadedOnce = !!activeUserId && loadedForUserId === activeUserId;
+  const switchedUser =
+    loadedForUserId !== null && loadedForUserId !== activeUserId;
+  if (switchedUser) {
+    setLoadedForUserId(null);
+  } else if (firstContentReady && activeUserId && !loadedOnce) {
+    setLoadedForUserId(activeUserId);
+  }
   const waitingForChapters =
+    switchedUser ||
     (!firstContentReady && !loadedOnce) ||
     (isSyncingChapters && chapters.length === 0 && books.length === 0);
 
