@@ -2,13 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 
 /** The Level wave's sample rate. */
 const SAMPLE_MS = 100;
-/** Below this is room tone; speech mostly sits between it and 0 dBFS. */
-const FLOOR_DB = -55;
+/**
+ * Mic hiss and a quiet room sit well above -55 dBFS, and a straight map from
+ * there paints silence as tall bars. Only the top of the range counts, and
+ * squaring it keeps that quiet end thin while voice still fills the wave.
+ */
+const FLOOR_DB = -32;
 
 /** dBFS from the recorder to a 0–1 Level wave height. */
 export function levelFromDb(db: number | null): number {
   if (db === null || !Number.isFinite(db)) return 0;
-  return Math.min(1, Math.max(0, (db - FLOOR_DB) / -FLOOR_DB));
+  const linear = Math.min(1, Math.max(0, (db - FLOOR_DB) / -FLOOR_DB));
+  return linear * linear;
 }
 
 /**
