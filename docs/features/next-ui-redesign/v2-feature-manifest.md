@@ -396,8 +396,11 @@ Folded in from Legacy, so Next blocks and warns the same way:
 Foundations (`2308:6`) was synced with code on 11 Nov 2026: Jakarta and
 Atkinson type styles with code's line heights and case, `space/20` and
 `size/icon-20`, the screen header and Waveform patterns, Word Note and Note
-dimmed, and stale masters moved to 11 · Not in the app. What's left is on the
-screen pages:
+dimmed, and stale masters moved to 11 · Not in the app. A new **V2 · As
+built** page holds captures of every Next screen from the dev build (Home,
+Accounts sheet, book page, passage, player Listen and Record, translation
+note), so the design pages read as intent. Each design page carries a
+"Design intent" note. What's left on the design frames:
 
 - Screen header: Figma's Home, book page and note frames need the header
   padding (`space-20` sides, `space-12` above and below), the pinned header
