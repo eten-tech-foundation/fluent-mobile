@@ -101,16 +101,8 @@ export function useHomeBooks(refreshKey = 0) {
   const loadBooksIfChanged = useCallback(async () => {
     // See useMyWorkChapters: an earlier sync's read must not end `reading`.
     const generation = ++loadGenerationRef.current;
-    let writes: DatabaseWriteMark | null;
-    try {
-      writes = await getDatabaseWriteMark();
-    } catch (error) {
-      if (loadGenerationRef.current !== generation) return;
-      log.warn('Write mark unreadable; reading home books', { error });
-      // See useMyWorkChapters: read in place of whatever this replaced.
-      await readBooks();
-      return;
-    }
+    // `null` when the mark is unreadable; sameDatabaseWrites then reads in full.
+    const writes = await getDatabaseWriteMark();
     if (loadGenerationRef.current !== generation) return;
     // Whatever is on screen now, which may be newer than when focus came back.
     const read = publishedRef.current;

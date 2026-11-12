@@ -389,7 +389,7 @@ describe('useHomeBooks', () => {
     const queries = jest.requireMock('../db/queries') as {
       getDatabaseWriteMark: jest.Mock;
     };
-    queries.getDatabaseWriteMark.mockRejectedValueOnce(new Error('db down'));
+    queries.getDatabaseWriteMark.mockResolvedValueOnce(null);
     mockGetHomeBookSummaries.mockResolvedValueOnce([
       { ...MARK, bookName: 'Luke' },
     ]);
@@ -410,9 +410,7 @@ describe('useHomeBooks', () => {
     const queries = jest.requireMock('../db/queries') as {
       getDatabaseWriteMark: jest.Mock;
     };
-    queries.getDatabaseWriteMark
-      .mockRejectedValueOnce(new Error('db down'))
-      .mockRejectedValueOnce(new Error('db down'));
+    queries.getDatabaseWriteMark.mockResolvedValueOnce(null);
     mockGetHomeBookSummaries.mockRejectedValueOnce(new Error('db down'));
 
     rerender({ key: 1 });

@@ -197,17 +197,8 @@ export function useMyWorkChapters(refreshKey = 0) {
     // Taken before the mark's await so a read started for an earlier sync
     // can't publish, and end `reading`, while this check is pending.
     const generation = ++loadGenerationRef.current;
-    let writes: DatabaseWriteMark | null;
-    try {
-      writes = await getDatabaseWriteMark();
-    } catch (error) {
-      if (loadGenerationRef.current !== generation) return;
-      log.warn('Write mark unreadable; reading my work chapters', { error });
-      // This check replaced any read in flight, so it must read in its place;
-      // that read fails closed if the database is really down.
-      await loadChapters();
-      return;
-    }
+    // `null` when the mark is unreadable; sameDatabaseWrites then reads in full.
+    const writes = await getDatabaseWriteMark();
     if (loadGenerationRef.current !== generation) return;
     // Whatever is on screen now, which may be newer than when focus came back.
     const read = publishedRef.current;

@@ -688,7 +688,7 @@ describe('useMyWorkChapters Observer grants', () => {
       const queries = jest.requireMock('../db/queries') as {
         getDatabaseWriteMark: jest.Mock;
       };
-      queries.getDatabaseWriteMark.mockRejectedValueOnce(new Error('db down'));
+      queries.getDatabaseWriteMark.mockResolvedValueOnce(null);
       mockGetMyWorkChapters.mockResolvedValueOnce([assignedChapter]);
 
       rerender({ key: 1 });
@@ -705,9 +705,7 @@ describe('useMyWorkChapters Observer grants', () => {
       const queries = jest.requireMock('../db/queries') as {
         getDatabaseWriteMark: jest.Mock;
       };
-      queries.getDatabaseWriteMark
-        .mockRejectedValueOnce(new Error('db down'))
-        .mockRejectedValueOnce(new Error('db down'));
+      queries.getDatabaseWriteMark.mockResolvedValueOnce(null);
       mockGetMyWorkChapters.mockRejectedValueOnce(new Error('db down'));
 
       rerender({ key: 1 });
