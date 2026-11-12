@@ -326,6 +326,9 @@ function HomeBody({
           </Text>
         </View>
         <View
+          // A view lays out once per size; remounting on the first real body
+          // makes it report a layout even when that body is the same size.
+          key={bodyKind === 'loading' ? 'pending' : 'ready'}
           style={styles.content}
           onLayout={
             bodyKind === 'loading'
