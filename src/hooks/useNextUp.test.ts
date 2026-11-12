@@ -19,6 +19,10 @@ import {
 import { getProjectPericopeSetId } from '../db/repository';
 import { parseUserId } from '../utils/parseUserId';
 import type { MyWorkChapter } from '../types/db/types';
+import {
+  hasStartupMark,
+  resetStartupTraceForTests,
+} from '../utils/startupTrace';
 
 /** Coming back to the screen: runs the latest focus effect again. */
 let mockRefocus: (() => void) | null = null;
@@ -384,6 +388,21 @@ describe('useNextUp', () => {
 
     finish([passage('1a')]);
     await waitFor(() => expect(keys(result.current)).toEqual(['1a', []]));
+  });
+
+  it('marks Next up ready for the launch trace only once chapters are read', async () => {
+    resetStartupTraceForTests();
+    mockLoad.mockResolvedValue([passage('1a')]);
+    const { result, rerender } = renderHook(
+      ({ chapters }: { chapters: MyWorkChapter[] }) => useNextUp(chapters),
+      { initialProps: { chapters: [] } },
+    );
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(hasStartupMark('nextup_ready')).toBe(false);
+
+    rerender({ chapters: [chapter(1)] });
+    await waitFor(() => expect(keys(result.current)).toEqual(['1a', []]));
+    expect(hasStartupMark('nextup_ready')).toBe(true);
   });
 
   it.each([
