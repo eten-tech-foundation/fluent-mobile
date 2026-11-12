@@ -1,6 +1,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { getApiBaseUrl } from '../config/apiBaseUrl';
 import { logger } from '../utils/logger';
+import { markStartup } from '../utils/startupTrace';
 
 export const SERVER_REACHABILITY_TIMEOUT_MS = 5_000;
 
@@ -310,6 +311,7 @@ function emitTransport(
 
 function publish(snapshot: ServerReachabilitySnapshot): void {
   observed = { snapshot, at: Date.now() };
+  markStartup('health_resolved', { isOnline: snapshot.isOnline });
   for (const subscriber of [...reachabilitySubscribers]) {
     if (reachabilitySubscribers.has(subscriber)) {
       emitTo(subscriber, snapshot);

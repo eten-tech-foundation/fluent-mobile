@@ -1,6 +1,7 @@
 import { open, DB } from '@op-engineering/op-sqlite';
 import { runMigrations } from './migrations';
 import { logger } from '../utils/logger';
+import { markStartup } from '../utils/startupTrace';
 import { setDatabase, getDatabase } from './db';
 
 const log = logger.create('Database');
@@ -26,6 +27,7 @@ export async function initializeDatabase(): Promise<void> {
 
     log.info('Database opened successfully');
     setDatabase(db);
+    markStartup('db_open');
 
     await db.execute('PRAGMA foreign_keys = ON;');
     await db.execute('PRAGMA journal_mode = WAL;');
@@ -33,6 +35,7 @@ export async function initializeDatabase(): Promise<void> {
     await db.execute('PRAGMA busy_timeout = 5000;');
 
     await runMigrations(db);
+    markStartup('migrations_done');
 
     log.info('Database ready');
   } catch (error: unknown) {

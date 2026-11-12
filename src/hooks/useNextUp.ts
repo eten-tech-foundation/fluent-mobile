@@ -10,6 +10,7 @@ import { getProjectPericopeSetId } from '../db/repository';
 import { parseUserId } from '../utils/parseUserId';
 import type { MyWorkChapter } from '../types/db/types';
 import { logger } from '../utils/logger';
+import { markStartup } from '../utils/startupTrace';
 import type { DraftingUnit } from '../services/draftingUnitPreference';
 import { useDraftingUnit } from './useDraftingUnit';
 import {
@@ -23,6 +24,8 @@ import {
 const log = logger.create('useNextUp');
 
 export const AFTER_SIZE = 4;
+/** Chapters whose passages load at once: the hero's and the rail's. */
+export const LOAD_BATCH = 1 + AFTER_SIZE;
 
 export interface NextPassage {
   key: string;
@@ -159,6 +162,14 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
           after: NextPassage[];
         }) => {
           readyWithDrafts.current = hasDrafts;
+          // The pass before chapters arrive is trivially ready; the one that
+          // read them is the launch milestone.
+          if (chapters.length > 0) {
+            markStartup('nextup_ready', {
+              hero: result.hero !== null,
+              after: result.after.length,
+            });
+          }
           setLoaded({
             nextUp: {
               status: 'ready',
@@ -255,30 +266,55 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
           passage,
         });
 
+        // Reads the passages of `LOAD_BATCH` chapters from `from` at once, in
+        // list order. The rail needs at most the hero's chapter and
+        // AFTER_SIZE more, so a batch bounds what a cold start waits on
+        // without reading the whole list (#972). A failed read in a chapter
+        // the scan never reaches still counts as a failure: a full reload
+        // next focus is the safe side of that trade.
+        const loadBatch = (list: MyWorkChapter[], from: number) =>
+          Promise.all(
+            list.slice(from, from + LOAD_BATCH).map(async chapter => ({
+              chapter,
+              passages: await passagesOf(chapter),
+            })),
+          );
+
         (async () => {
           let hero: NextPassage | null = null;
           const recordedHere = new Set<number>();
-          for (const chapter of draftingChapters(chapters)) {
-            if (chapter.completedVerses > 0) continue;
-            const ranges = await coveragesOf(chapter)(
-              chapter.bibleId,
-              chapter.bookId,
-            );
-            const here = ranges.some(
-              r =>
-                r.startChapter <= chapter.chapterNumber &&
-                r.endChapter >= chapter.chapterNumber,
-            );
-            if (here) recordedHere.add(chapter.id);
-          }
-          for (const chapter of startedChapters(chapters, recordedHere)) {
+          const drafting = draftingChapters(chapters);
+          // Ranges are per book, so chapters in one book share a read.
+          await Promise.all(
+            drafting
+              .filter(chapter => chapter.completedVerses === 0)
+              .map(async chapter => {
+                const ranges = await coveragesOf(chapter)(
+                  chapter.bibleId,
+                  chapter.bookId,
+                );
+                const here = ranges.some(
+                  r =>
+                    r.startChapter <= chapter.chapterNumber &&
+                    r.endChapter >= chapter.chapterNumber,
+                );
+                if (here) recordedHere.add(chapter.id);
+              }),
+          );
+          if (cancelled) return null;
+
+          const started = startedChapters(chapters, recordedHere);
+          for (let i = 0; i < started.length && !hero; i += LOAD_BATCH) {
+            const batch = await loadBatch(started, i);
             if (cancelled) return null;
-            const partial = (await passagesOf(chapter)).find(
-              p => p.recordedStatus === 'partial',
-            );
-            if (partial) {
-              hero = entry(chapter, partial);
-              break;
+            for (const { chapter, passages } of batch) {
+              const partial = passages.find(
+                p => p.recordedStatus === 'partial',
+              );
+              if (partial) {
+                hero = entry(chapter, partial);
+                break;
+              }
             }
           }
 
@@ -290,17 +326,21 @@ export function useNextUp(chapters: MyWorkChapter[]): NextUp {
               `${hero.chapter.projectUnitId}:${hero.chapter.bookName}:${hero.passage.key}`,
             );
           }
-          for (const chapter of draftingChapters(chapters)) {
+          const railFull = () => hero !== null && after.length >= AFTER_SIZE;
+          for (let i = 0; i < drafting.length && !railFull(); i += LOAD_BATCH) {
+            const batch = await loadBatch(drafting, i);
             if (cancelled) return null;
-            if (hero && after.length >= AFTER_SIZE) break;
-            for (const passage of await passagesOf(chapter)) {
-              if (hero && after.length >= AFTER_SIZE) break;
-              if (passage.recordedStatus === 'recorded') continue;
-              const bookKey = `${chapter.projectUnitId}:${chapter.bookName}:${passage.key}`;
-              if (seen.has(bookKey)) continue;
-              seen.add(bookKey);
-              if (hero) after.push(entry(chapter, passage));
-              else hero = entry(chapter, passage);
+            for (const { chapter, passages } of batch) {
+              if (railFull()) break;
+              for (const passage of passages) {
+                if (railFull()) break;
+                if (passage.recordedStatus === 'recorded') continue;
+                const bookKey = `${chapter.projectUnitId}:${chapter.bookName}:${passage.key}`;
+                if (seen.has(bookKey)) continue;
+                seen.add(bookKey);
+                if (hero) after.push(entry(chapter, passage));
+                else hero = entry(chapter, passage);
+              }
             }
           }
           return { hero, after, writes: await writesBefore };

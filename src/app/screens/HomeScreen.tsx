@@ -13,6 +13,7 @@ import { ReauthBanner } from '../../components/ui/ReauthBanner';
 import { useHomeSyncState } from '../../hooks/useHomeSyncState';
 import { hrefs } from '../../navigation/hrefs';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
+import { hideSplash } from '../../navigation/splashGate';
 import { logger } from '../../utils/logger';
 
 const log = logger.create('HomeScreen');
@@ -55,6 +56,11 @@ export function HomeScreenBody({
   useEffect(() => {
     log.info('home showLoading flip', { showLoading });
   }, [showLoading]);
+
+  // Legacy keeps the old splash timing: down as soon as Home mounts.
+  useEffect(() => {
+    hideSplash('home:legacy');
+  }, []);
 
   useEffect(() => {
     if (isFocused) {
