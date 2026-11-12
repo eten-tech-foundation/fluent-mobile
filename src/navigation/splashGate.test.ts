@@ -118,4 +118,14 @@ describe('splashGate', () => {
 
     expect(mockHide).toHaveBeenCalledTimes(2);
   });
+
+  it("drops the last activity's fallback when re-armed, so it can't cut the new wait short", () => {
+    holdSplashForFirstPaint();
+    jest.advanceTimersByTime(SPLASH_FALLBACK_MS - 1);
+
+    armSplashGate();
+    jest.advanceTimersByTime(1);
+
+    expect(mockHide).not.toHaveBeenCalled();
+  });
 });
