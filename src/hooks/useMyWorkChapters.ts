@@ -202,13 +202,10 @@ export function useMyWorkChapters(refreshKey = 0) {
       writes = await getDatabaseWriteMark();
     } catch (error) {
       if (loadGenerationRef.current !== generation) return;
-      log.error('Error loading my work chapters', { error });
-      publishedRef.current = null;
-      setChapterRows(clearRows);
-      setError(true);
-      setLoading(false);
-      setReading(false);
-      markStartup('chapters_read', { count: 0, error: true });
+      log.warn('Write mark unreadable; reading my work chapters', { error });
+      // This check replaced any read in flight, so it must read in its place;
+      // that read fails closed if the database is really down.
+      await loadChapters();
       return;
     }
     if (loadGenerationRef.current !== generation) return;

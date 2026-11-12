@@ -106,12 +106,9 @@ export function useHomeBooks(refreshKey = 0) {
       writes = await getDatabaseWriteMark();
     } catch (error) {
       if (loadGenerationRef.current !== generation) return;
-      log.error('Error loading home books', { error });
-      // Unverified now, so the next check reads instead of keeping `error`.
-      publishedRef.current = null;
-      setError(true);
-      setLoading(false);
-      setReading(false);
+      log.warn('Write mark unreadable; reading home books', { error });
+      // See useMyWorkChapters: read in place of whatever this replaced.
+      await readBooks();
       return;
     }
     if (loadGenerationRef.current !== generation) return;

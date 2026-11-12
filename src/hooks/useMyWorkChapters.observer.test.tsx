@@ -683,17 +683,37 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(result.current.chapters).toEqual([assignedChapter]);
     });
 
-    it('clears reading when the write mark cannot be read', async () => {
+    it('reads in full when the check cannot read the write mark', async () => {
       const { result, rerender } = await mountedWithKey();
       const queries = jest.requireMock('../db/queries') as {
         getDatabaseWriteMark: jest.Mock;
       };
       queries.getDatabaseWriteMark.mockRejectedValueOnce(new Error('db down'));
+      mockGetMyWorkChapters.mockResolvedValueOnce([assignedChapter]);
 
       rerender({ key: 1 });
 
-      await waitFor(() => expect(result.current.reading).toBe(false));
-      expect(result.current.error).toBe(true);
+      await waitFor(() =>
+        expect(result.current.chapters).toEqual([assignedChapter]),
+      );
+      expect(result.current.error).toBe(false);
+      expect(result.current.reading).toBe(false);
+    });
+
+    it('fails closed when the database is down', async () => {
+      const { result, rerender } = await mountedWithKey();
+      const queries = jest.requireMock('../db/queries') as {
+        getDatabaseWriteMark: jest.Mock;
+      };
+      queries.getDatabaseWriteMark
+        .mockRejectedValueOnce(new Error('db down'))
+        .mockRejectedValueOnce(new Error('db down'));
+      mockGetMyWorkChapters.mockRejectedValueOnce(new Error('db down'));
+
+      rerender({ key: 1 });
+
+      await waitFor(() => expect(result.current.error).toBe(true));
+      expect(result.current.reading).toBe(false);
       expect(result.current.chapters).toEqual([]);
     });
 

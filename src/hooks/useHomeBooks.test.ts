@@ -380,7 +380,7 @@ describe('useHomeBooks', () => {
     expect(result.current.books[0]?.bookName).toBe('Luke');
   });
 
-  it('clears reading when the write mark cannot be read', async () => {
+  it('reads in full when the check cannot read the write mark', async () => {
     const { result, rerender } = renderHook(
       ({ key }: { key: number }) => useHomeBooks(key),
       { initialProps: { key: 0 } },
@@ -390,16 +390,36 @@ describe('useHomeBooks', () => {
       getDatabaseWriteMark: jest.Mock;
     };
     queries.getDatabaseWriteMark.mockRejectedValueOnce(new Error('db down'));
+    mockGetHomeBookSummaries.mockResolvedValueOnce([
+      { ...MARK, bookName: 'Luke' },
+    ]);
+
+    rerender({ key: 1 });
+
+    await waitFor(() => expect(result.current.books[0]?.bookName).toBe('Luke'));
+    expect(result.current.error).toBe(false);
+    expect(result.current.reading).toBe(false);
+  });
+
+  it('reports the error, keeping the books, when the database is down', async () => {
+    const { result, rerender } = renderHook(
+      ({ key }: { key: number }) => useHomeBooks(key),
+      { initialProps: { key: 0 } },
+    );
+    await waitFor(() => expect(result.current.reading).toBe(false));
+    const queries = jest.requireMock('../db/queries') as {
+      getDatabaseWriteMark: jest.Mock;
+    };
+    queries.getDatabaseWriteMark
+      .mockRejectedValueOnce(new Error('db down'))
+      .mockRejectedValueOnce(new Error('db down'));
+    mockGetHomeBookSummaries.mockRejectedValueOnce(new Error('db down'));
 
     rerender({ key: 1 });
 
     await waitFor(() => expect(result.current.error).toBe(true));
     expect(result.current.reading).toBe(false);
     expect(result.current.books).toEqual([MARK]);
-
-    // Nothing was written since, but the books were never re-verified.
-    rerender({ key: 2 });
-    await waitFor(() => expect(result.current.error).toBe(false));
   });
 
   it("stays reading when an earlier sync's read lands while the next sync's check is out", async () => {
