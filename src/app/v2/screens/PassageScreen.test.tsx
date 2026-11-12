@@ -46,6 +46,7 @@ const mockEnsureMic = jest.fn(async () => true);
 const mockPlayTake = jest.fn(async () => {});
 const mockPlayStitched = jest.fn(async (_row: unknown) => {});
 const mockPauseTake = jest.fn(async () => {});
+const mockStopPlayback = jest.fn(async () => {});
 const mockDeleteTake = jest.fn(async (_id: string) => {});
 const mockSelectTake = jest.fn();
 const mockSetCanonical = jest.fn();
@@ -158,6 +159,7 @@ jest.mock('../../../hooks/useRecordSession', () => {
           resume: mockResume,
           discardCapture: mockDiscard,
           pausePlayback: mockPauseTake,
+          stopPlayback: mockStopPlayback,
           playTake: mockPlayTake,
           playStitched: mockPlayStitched,
           seekStitched: jest.fn(),
@@ -770,6 +772,170 @@ describe('PassageScreen', () => {
     );
     expect(mockPlaySource).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  describe('when Passage loses its route with a take playing', () => {
+    const playing = () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(1), isSelected: true }],
+        state: 'playing',
+        playingTakeId: 't1',
+        positionMs: 4000,
+      };
+    };
+    const stopped = () => {
+      mockSession = { ...mockSession, state: 'recorded', playingTakeId: null };
+    };
+    function openRecord() {
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      // The collapsed first render paused the take, as Record was hidden.
+      mockPauseTake.mockClear();
+    }
+
+    it('stops review before Book is pushed over the open player', () => {
+      playing();
+      openRecord();
+
+      fireEvent.press(screen.getByTestId('passage-title'));
+      fireEvent.press(screen.getByTestId('passage-book'));
+
+      expect(mockStopPlayback).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      expect(mockStopPlayback.mock.invocationCallOrder[0]).toBeLessThan(
+        mockPush.mock.invocationCallOrder[0],
+      );
+      expect(mockPauseTake).not.toHaveBeenCalled();
+    });
+
+    it('stops review before going back to the book page it came from', () => {
+      mockParams = { ...baseParams, from: 'book' };
+      playing();
+      openRecord();
+
+      fireEvent.press(screen.getByTestId('passage-title'));
+      fireEvent.press(screen.getByTestId('passage-book'));
+
+      expect(mockStopPlayback).toHaveBeenCalled();
+      expect(mockBack).toHaveBeenCalledTimes(1);
+      expect(mockStopPlayback.mock.invocationCallOrder[0]).toBeLessThan(
+        mockBack.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('stops review on Back', () => {
+      playing();
+      render(<PassageScreen />);
+
+      fireEvent.press(screen.getByTestId('passage-back', hidden));
+
+      expect(mockStopPlayback).toHaveBeenCalled();
+      expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops review when covered while still mounted, and waits for Play on return', async () => {
+      playing();
+      openRecord();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      expect(mockStopPlayback).toHaveBeenCalledTimes(1);
+
+      stopped();
+      screen.rerender(<PassageScreen />);
+      // Covered again before coming back: stopping twice is harmless.
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+      expect(mockStopPlayback).toHaveBeenCalledTimes(2);
+      expect(mockPlayTake).not.toHaveBeenCalled();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenCalledTimes(1);
+      expect(mockPlayTake).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 't1' }),
+        4000,
+      );
+    });
+
+    it('keeps the spot a take was loading from when the route goes first', async () => {
+      playing();
+      openRecord();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPauseTake).toHaveBeenCalled();
+      stopped();
+      screen.rerender(<PassageScreen />);
+      let finishLoad = () => {};
+      mockPlayTake.mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            finishLoad = resolve;
+          }),
+      );
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't1' }),
+        4000,
+      );
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      expect(mockStopPlayback).toHaveBeenCalledTimes(1);
+      await act(async () => finishLoad());
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenCalledTimes(2);
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't1' }),
+        4000,
+      );
+    });
+
+    it('leaves a take saving alone', () => {
+      mockSession = { ...mockSession, state: 'saving', captureActive: false };
+      openRecord();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+
+      expect(mockStopPlayback).not.toHaveBeenCalled();
+    });
+
+    it('leaves a take being recorded to the capture guard', () => {
+      mockSession = { ...mockSession, state: 'recording', captureActive: true };
+      openRecord();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+
+      expect(mockStopPlayback).not.toHaveBeenCalled();
+      expect(mockDiscard).not.toHaveBeenCalled();
+      expect(mockStop).not.toHaveBeenCalled();
+    });
+
+    it('still pauses review when Record closes', async () => {
+      playing();
+      openRecord();
+
+      fireEvent.press(screen.getByTestId('passage-close'));
+
+      await waitFor(() => expect(mockPauseTake).toHaveBeenCalled());
+      expect(mockStopPlayback).not.toHaveBeenCalled();
+    });
   });
 
   it('keeps source audio off while a take capture is active', () => {
