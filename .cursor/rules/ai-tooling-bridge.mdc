@@ -13,7 +13,7 @@ alwaysApply: true
 
 - Skills: `.claude/skills/*/SKILL.md`
 - Commands / workflows: `.claude/commands/*.md` — **read these files** to run a command
-- Review agents: `.claude/agents/*.md` (invoke `code-reviewer` by path)
+- Review agents: prompts in `.claude/agents/*.md`. Cursor Task types live in `.cursor/agents/` and only point at those prompts. Run `correctness-reviewer`, then `code-reviewer`
 - PR template: `.cursor/templates/pr-template.md` (GitHub UI mirror `.github/PULL_REQUEST_TEMPLATE.md`) — **one format only**
 
 **Agent models:** repo agents under `.claude/agents/` use `model: inherit` (do not pin model aliases).

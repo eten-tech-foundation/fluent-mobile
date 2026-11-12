@@ -65,6 +65,8 @@ Source audio (architecture, not a device pass): [`src/components/layout/SourceAu
 | [`docs/guides/local-development-workflow.md`](guides/local-development-workflow.md) | Hosted dev + local Docker API paths |
 | [`docs/guides/recordings-sync-contract.md`](guides/recordings-sync-contract.md) | Verse audio upload contract (fluent-api `main` `/verse-audio` + R2; #102 / #547) — **not** Azure / open PR #224 |
 | [`.claude/commands/`](../.claude/commands/) | Canonical slash commands (`/start-issue`, `/create-pr`, …) |
+| [`.claude/agents/`](../.claude/agents/) | Review prompts. Claude spawns `correctness-reviewer`, then `code-reviewer` |
+| [`.cursor/agents/`](../.cursor/agents/) | Cursor Task shims. Each reads the matching file in `.claude/agents/` |
 | [`.cursor/commands/`](../.cursor/commands/) | Cursor `/` palette shims (point at `.claude/commands/`) |
 
 ## Setup

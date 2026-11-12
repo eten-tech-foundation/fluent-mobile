@@ -35,8 +35,9 @@ execute `.claude/commands/create-pr.md` at the end.
   and execute** that file; do not re-specify slug/type logic here.
 - PR body uses **`Refs #NNN`** (never `Closes` / `Fixes` / `Resolves`). Issues
   stay open for QA.
-- Delivery gate after commits: `/create-pr` (CI gates → one `code-reviewer` on
-  the final diff → push → draft PR → board **In PR Review** → watch CI;
+- Delivery gate after commits: `/create-pr` (CI gates → `correctness-reviewer`
+  then `code-reviewer` on the final diff → push → draft PR → board
+  **In PR Review** → watch CI;
   proportional re-review only — see create-pr step 3b). `/open-pr` is an alias.
 
 ## Dynamic context (already gathered for you)
@@ -175,8 +176,8 @@ When the gate fires:
 - Layer boundaries: no `fetch` in screens; no SQL in UI; reads via `queries.ts`
   ([architecture.mdc](../../.cursor/rules/architecture.mdc)).
 - New UI that must differ under Next uses `useTheme()` / `useThemedStyles()` from `src/theme/useTheme` (static `theme` from `src/theme` is Legacy-pinned). Android-only — no iOS config/CI/docs.
-- Keep the working tree ready for `/create-pr` (one `code-reviewer` pass on the
-  final working diff inside `/create-pr`).
+- Keep the working tree ready for `/create-pr` (`correctness-reviewer` then
+  `code-reviewer` on the final working diff inside `/create-pr`).
 
 ### 7. Chain into `/create-pr`
 
@@ -189,7 +190,7 @@ Ensure the PR body:
 - If `PARENT_EPIC` is set: prose `Part of #<PARENT_EPIC>` (do **not** use
   closing keywords on the epic)
 
-`/create-pr` owns: local CI gates, code-reviewer, push, `gh pr create --draft
+`/create-pr` owns: local CI gates, both reviewers, push, `gh pr create --draft
 --base main`, board → **In PR Review**, CI watch to green, never merge.
 
 ### 8. Report
@@ -200,7 +201,7 @@ Print:
 - Branch name
 - Plan: skipped | approved (one line)
 - PR URL
-- Local checks + code-reviewer verdict + **CI = green**
+- Local checks + both review verdicts + **CI = green**
 - Board: In Progress (Dev) then In PR Review, or WARN if a move failed
 
 Do **not** claim done while CI is red/pending or review findings remain unfixed

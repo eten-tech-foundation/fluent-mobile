@@ -8,7 +8,7 @@ Claude Code loads this file when it is present. The `@AGENTS.md` import above is
 
 - **Commands:** [`.claude/commands/`](.claude/commands/) — `/start-issue`, `/create-pr` (`/open-pr` alias), `/create-pr-branch`, `/generate-pr-description`, `/onboard`, `/dep-bump`, `/handle-dependabot`. Read these files directly; do not rely on Cursor slash-palette shims.
 - **Skills:** [`.claude/skills/*/SKILL.md`](.claude/skills/)
-- **Review / subagents:** [`.claude/agents/`](.claude/agents/) — invoke `code-reviewer` by path (`.claude/agents/code-reviewer.md`)
+- **Review / subagents:** [`.claude/agents/`](.claude/agents/) — spawn `correctness-reviewer`, then `code-reviewer` (`name` in each file's frontmatter)
 - **Hooks:** [`.claude/settings.json`](.claude/settings.json) (architecture-guard warn-only on Edit/Write)
 - **Optional topic rules:** [`.claude/rules/`](.claude/rules/) when present (Claude-native; optional `paths` frontmatter)
 - **Nested hot-path notes:** [`src/services/AGENTS.md`](src/services/AGENTS.md), [`src/db/AGENTS.md`](src/db/AGENTS.md)
