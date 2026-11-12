@@ -151,16 +151,23 @@ export function buildBibleUnits(args: {
     };
   });
 }
+export function unitRecordedCount(
+  unitVerses: BibleUnitVerse[],
+  coverages: RecordingVerseRange[],
+): number {
+  return unitVerses.filter(verse =>
+    coverages.some(range =>
+      rangeCoversVerse(range, verse.chapterNumber, verse.verseNumber),
+    ),
+  ).length;
+}
+
 export function unitRecordedStatus(
   unitVerses: BibleUnitVerse[],
   coverages: RecordingVerseRange[],
 ): BibleUnitRecordedStatus {
   if (unitVerses.length === 0) return 'none';
-  const coveredCount = unitVerses.filter(verse =>
-    coverages.some(range =>
-      rangeCoversVerse(range, verse.chapterNumber, verse.verseNumber),
-    ),
-  ).length;
+  const coveredCount = unitRecordedCount(unitVerses, coverages);
   if (coveredCount === 0) return 'none';
   if (coveredCount === unitVerses.length) return 'recorded';
   return 'partial';

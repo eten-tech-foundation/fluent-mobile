@@ -15,10 +15,15 @@ export const SYNC_PHASE_FIELDS = [
 
 export type SyncPhaseField = (typeof SYNC_PHASE_FIELDS)[number];
 
+const SYNC_PHASE_FULL_FETCH_REASONS = [
+  'remap',
+  'missing_chapter',
+  'no_cursor',
+  'periodic_reconcile',
+] as const;
+
 export type SyncPhaseFullFetchReason =
-  | 'remap'
-  | 'missing_chapter'
-  | 'no_cursor';
+  (typeof SYNC_PHASE_FULL_FETCH_REASONS)[number];
 
 export type SyncPhaseCounts = {
   attempt?: number;
@@ -39,11 +44,7 @@ export const HTTP_PHASE = {
   parse: 'http.parse',
 } as const;
 
-const FULL_FETCH_REASONS = new Set<string>([
-  'remap',
-  'missing_chapter',
-  'no_cursor',
-]);
+const FULL_FETCH_REASONS = new Set<string>(SYNC_PHASE_FULL_FETCH_REASONS);
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -83,12 +84,16 @@ export function resolveBibleTextFullFetchReason(
   updatedAfter: string | undefined,
   remapPending: boolean,
   missingChapter: boolean,
+  periodicReconcile = false,
 ): SyncPhaseFullFetchReason | undefined {
   if (remapPending) {
     return 'remap';
   }
   if (missingChapter) {
     return 'missing_chapter';
+  }
+  if (periodicReconcile) {
+    return 'periodic_reconcile';
   }
   if (!updatedAfter) {
     return 'no_cursor';
@@ -100,11 +105,17 @@ export function startPhase(name: string) {
   const startedAt = Date.now();
   return {
     end(counts?: Record<string, unknown>) {
-      log.info(SYNC_PHASE_LOG_MESSAGE, {
+      const payload = {
         phase: name,
         elapsedMs: Date.now() - startedAt,
         ...pickSyncPhaseCounts(counts),
-      });
+      };
+      // One line per request (network + parse) hides the step summaries.
+      if (name === HTTP_PHASE.network || name === HTTP_PHASE.parse) {
+        log.debug(SYNC_PHASE_LOG_MESSAGE, payload);
+        return;
+      }
+      log.info(SYNC_PHASE_LOG_MESSAGE, payload);
     },
   };
 }

@@ -1,9 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { FluentAPI } from '../services/api';
+import { authToken } from '../services/authToken';
+import {
+  passageResourceEpoch,
+  reusePassageResource,
+  subscribePassageResourceClears,
+} from '../services/passageResourceReuse';
 import {
   persistSourceAudioChapterMeta,
   resolveLocalChapterSourceAudio,
 } from '../services/offlineSourceAudio';
+import { getActiveUserId } from '../services/storage';
 import { isApiError } from '../types/api/errors';
 import type { ApiSourceAudioResponse } from '../types/api/sourceAudio';
 import { logger } from '../utils/logger';
@@ -11,6 +24,7 @@ import type { SourceAudioLoadState } from '../types/sourceAudio';
 import { usePlaybackEngine } from './usePlaybackEngine';
 import {
   chapterSourceAudioCacheKey,
+  hasVerseStart,
   isCachedSourceAudioResponseValid,
   resolveSourceAudioUri,
   sourceAudioItemDurationMs,
@@ -28,6 +42,11 @@ export type UseSourceAudioArgs = {
   languageCode: string | undefined;
   verse: number;
   enabled?: boolean;
+  /**
+   * Not wanted yet: no local lookup or API call, and it reads as loading
+   * rather than missing.
+   */
+  deferred?: boolean;
   /**
    * When false, never call the API — local download or empty (#579).
    * Pass `hasResolved && isOnline` from the shell (false until /health
@@ -55,6 +74,7 @@ export function useSourceAudio({
   languageCode,
   verse,
   enabled = true,
+  deferred = false,
   isOnline = true,
   userId,
   onPlayingVerseChange,
@@ -74,9 +94,21 @@ export function useSourceAudio({
   const [dblAudioBibleId, setDblAudioBibleId] = useState<string | undefined>();
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
+  const refreshNextRef = useRef(false);
+  const owner = accountKey(userId);
+  const epoch = useSyncExternalStore(subscribePassageResourceClears, () =>
+    passageResourceEpoch(owner),
+  );
+  // Whose audio this is: the account, its last clear (sign-out, grants
+  // changed) and the chapter. Anything loaded under another identity is
+  // neither shown nor playable, even for the render before the load effect.
+  const identity = `${owner}@${epoch}|${projectId}|${bookCode}|${chapter}|${bibleId}|${languageCode}`;
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const current = loadedFor === identity;
 
   const requestIdRef = useRef(0);
   const playGenerationRef = useRef(0);
+  /** Keyed by `identity`, so another account or a clear misses. */
   const responseCacheRef = useRef<Map<string, ApiSourceAudioResponse>>(
     new Map(),
   );
@@ -95,11 +127,13 @@ export function useSourceAudio({
    * User scrub (`seek`) clears this so play does not jump back to verse start.
    */
   const seekToVerseOnNextPlayRef = useRef(true);
+  /** The verse the seek effect last saw while playing or paused. */
+  const navigatedVerseRef = useRef(verse);
 
-  uriRef.current = uri;
+  uriRef.current = current ? uri : null;
   verseRef.current = verse;
-  timestampsRef.current = verseTimestamps;
-  dblIdRef.current = dblAudioBibleId;
+  timestampsRef.current = current ? verseTimestamps : undefined;
+  dblIdRef.current = current ? dblAudioBibleId : undefined;
   onPlayingVerseChangeRef.current = onPlayingVerseChange;
 
   const applyResponse = useCallback((data: ApiSourceAudioResponse) => {
@@ -133,11 +167,18 @@ export function useSourceAudio({
     const invalidatePendingFetch = () => {
       requestIdRef.current += 1;
     };
+    setLoadedFor(identity);
 
     if (!enabled) {
       invalidatePendingFetch();
       resetLoadChrome('empty');
       void stopAndClearPlaying();
+      return;
+    }
+
+    if (deferred) {
+      invalidatePendingFetch();
+      resetLoadChrome('loading');
       return;
     }
 
@@ -156,30 +197,39 @@ export function useSourceAudio({
       return;
     }
 
-    const cacheKey = chapterSourceAudioCacheKey({
+    const chapterKey = chapterSourceAudioCacheKey({
       projectId,
       bookCode,
       chapter,
       bibleId,
       languageCode,
     });
-
-    if (chapterKeyRef.current !== cacheKey) {
-      chapterKeyRef.current = cacheKey;
+    // A new identity (chapter, account or a clear) stops what was playing.
+    if (chapterKeyRef.current !== identity) {
+      chapterKeyRef.current = identity;
       void stopAndClearPlaying();
     }
 
-    const cached = responseCacheRef.current.get(cacheKey);
+    const cached = responseCacheRef.current.get(identity);
     if (cached) {
       if (isCachedSourceAudioResponseValid(cached)) {
         invalidatePendingFetch();
         applyResponse(cached);
         return;
       }
-      responseCacheRef.current.delete(cacheKey);
+      responseCacheRef.current.delete(identity);
     }
 
+    const fresh = refreshNextRef.current;
+    refreshNextRef.current = false;
     const requestId = ++requestIdRef.current;
+    // The account this lookup is for: a switch during the local check must
+    // not send (and keep, under this account) the request as the new one.
+    const bearer = authToken.get() ?? undefined;
+    // A known account's audio comes only from its own session: not from
+    // another account that is active by now, nor a token set later.
+    const remoteAllowed =
+      owner === '' || (bearer !== undefined && getActiveUserId() === owner);
     setLoadState('loading');
     setUri(null);
     setVerseTimestamps(undefined);
@@ -196,7 +246,7 @@ export function useSourceAudio({
         });
         if (requestId !== requestIdRef.current) return;
         if (local) {
-          responseCacheRef.current.set(cacheKey, local);
+          responseCacheRef.current.set(identity, local);
           applyResponse(local);
           return;
         }
@@ -207,17 +257,29 @@ export function useSourceAudio({
           return;
         }
 
-        const data = await fetchChapterSourceAudio({
-          projectId,
-          bookCode,
-          chapter,
-          languageCode,
-          bibleId,
-        });
+        if (!remoteAllowed) {
+          throw new Error('Source audio account is not the active session');
+        }
+
+        const fetchFromApi = async () =>
+          fetchChapterSourceAudio(
+            { projectId, bookCode, chapter, languageCode, bibleId },
+            undefined,
+            bearer,
+          );
+        const data =
+          owner === ''
+            ? await fetchFromApi()
+            : await reusePassageResource(
+                owner,
+                `source-audio:${chapterKey}`,
+                fetchFromApi,
+                { fresh, isValid: isCachedSourceAudioResponseValid },
+              );
         if (requestId !== requestIdRef.current) return;
-        responseCacheRef.current.set(cacheKey, data);
-        applyResponse(data);
         void persistSourceAudioMeta(projectId, data);
+        responseCacheRef.current.set(identity, data);
+        applyResponse(data);
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         log.error('Failed to load source audio', {
@@ -236,10 +298,13 @@ export function useSourceAudio({
     bibleId,
     bookCode,
     chapter,
+    deferred,
     enabled,
     fetchChapterSourceAudio,
+    identity,
     isOnline,
     languageCode,
+    owner,
     persistSourceAudioMeta,
     projectId,
     resetLoadChrome,
@@ -270,9 +335,15 @@ export function useSourceAudio({
       playingVerseRef.current = null;
       return;
     }
-    if (playingVerseRef.current === verse) return;
+    // A pause landing in another verse isn't navigation: keep its position.
+    const moved = navigatedVerseRef.current !== verse;
+    navigatedVerseRef.current = verse;
+    if (playingVerseRef.current === verse || !moved) return;
+    const timed = hasVerseStart(verse, verseTimestamps, dblAudioBibleId);
+    // The poll knows what's playing; a verse without a timing can't claim it.
+    if (verseTimestamps?.length && !timed) return;
     playingVerseRef.current = verse;
-    if (verseTimestamps?.length) {
+    if (timed) {
       const startMs = verseStartMs(verse, verseTimestamps, dblAudioBibleId);
       void playbackRef.current.seek(startMs);
     }
@@ -307,9 +378,12 @@ export function useSourceAudio({
   }, [uri, playback.status, verseTimestamps, dblAudioBibleId]);
 
   // Verse change while paused/idle: next play should open at that verse.
-  // Depend on verse only so a plain pause does not force a rewind on resume.
+  // Depend on verse only so a plain pause does not force a rewind on resume,
+  // nor a verse the playback itself reached.
   useEffect(() => {
-    seekToVerseOnNextPlayRef.current = true;
+    if (playingVerseRef.current !== verse) {
+      seekToVerseOnNextPlayRef.current = true;
+    }
   }, [verse]);
 
   // Natural end clears Bible-tab highlight.
@@ -407,19 +481,28 @@ export function useSourceAudio({
   }, [stopAndClearPlaying]);
 
   const retry = useCallback(() => {
-    if (projectId !== null && bookCode && languageCode) {
-      responseCacheRef.current.delete(
-        chapterSourceAudioCacheKey({
-          projectId,
-          bookCode,
-          chapter,
-          bibleId,
-          languageCode,
-        }),
-      );
-    }
+    responseCacheRef.current.delete(identity);
+    refreshNextRef.current = true;
     setRetryToken(t => t + 1);
-  }, [bibleId, bookCode, chapter, languageCode, projectId]);
+  }, [identity]);
+
+  if (!current) {
+    return {
+      loadState: 'loading' as SourceAudioLoadState,
+      status: 'idle' as const,
+      positionMs: 0,
+      durationMs: 0,
+      isPlaying: false,
+      isLoadingAudio: false,
+      play,
+      pause,
+      seek,
+      stop,
+      retry,
+      verseTimestamps: undefined,
+      dblAudioBibleId: undefined,
+    };
+  }
 
   return {
     loadState,
@@ -435,5 +518,11 @@ export function useSourceAudio({
     stop,
     retry,
     verseTimestamps,
+    dblAudioBibleId,
   };
+}
+
+/** '' when there's no account: nothing is shared then. */
+function accountKey(userId: number | null | undefined): string {
+  return userId === null || userId === undefined ? '' : String(userId);
 }

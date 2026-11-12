@@ -186,6 +186,7 @@ const idleAudio: VerseAudioApi = {
   playbackStatus: 'idle' as const,
   errorMessage: null,
   recoveredElapsedMs: 0,
+  getMetering: () => null,
   positionMs: 0,
   durationMs: 0,
   start: jest.fn(),
@@ -199,6 +200,7 @@ const idleAudio: VerseAudioApi = {
   seekStitched: jest.fn(),
   seek: jest.fn(),
   pausePlayback: jest.fn(),
+  stopPlayback: jest.fn(),
   selectTake: jest.fn(),
   deleteTake: jest.fn(),
   setCanonical: jest.fn(),
@@ -232,6 +234,7 @@ const chapterData: ChapterAssignmentData = {
   bookCode: 'MRK',
   sourceLanguageCode: 'eng',
   hasConflict: false,
+  totalVerses: 0,
 };
 
 const verses = [
@@ -251,6 +254,11 @@ type RenderTabOptions = {
   onRegisterCaptureControls?: (
     controls: import('../../types/captureControls').CaptureControls | null,
   ) => void;
+  onRegisterDraftPlayback?: (
+    controls:
+      | import('../../types/draftPlaybackControls').DraftPlaybackControls
+      | null,
+  ) => void;
 };
 
 function renderTab(
@@ -264,6 +272,7 @@ function renderTab(
         userId={options?.userId ?? 42}
         onCaptureActiveChange={onCaptureActiveChange}
         onRegisterCaptureControls={options?.onRegisterCaptureControls}
+        onRegisterDraftPlayback={options?.onRegisterDraftPlayback}
         onChapterClaimed={options?.onChapterClaimed}
       />
     </DraftingProvider>,
@@ -743,8 +752,9 @@ describe('RecordTab', () => {
     await waitFor(() => {
       expect(idleAudio.playTake).toHaveBeenCalledWith(take2);
     });
-    // Review scrub surface (#176) — only the loaded take's waveform is seekable.
-    expect(screen.getByLabelText('Draft waveform scrubber')).toBeTruthy();
+    // Before Complete, only the take currently loaded in the player is
+    // seekable; the other row keeps the existing pre-Complete behavior.
+    expect(screen.getAllByLabelText('Draft waveform scrubber')).toHaveLength(1);
   });
 
   it('keeps waveform progress visible while a take is paused mid-playback', () => {
@@ -812,7 +822,7 @@ describe('RecordTab', () => {
     fireEvent(scrubber, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
-    expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
   });
 
   it('scrubs the selected take before it has ever been played', () => {
@@ -836,7 +846,29 @@ describe('RecordTab', () => {
     fireEvent(scrubber, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
-    expect(idleAudio.seek).toHaveBeenCalledWith(6500);
+    expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
+  });
+
+  it('keeps unplayed, unselected My Takes rows non-scrubbable before Complete (#833 AC 5)', () => {
+    const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
+    const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: false });
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'recorded',
+      takes: [take1, take2],
+      selectedTake: null,
+      // Nothing played and nothing selected: pre-Complete scrubbing keeps
+      // its existing loaded/selected gate.
+      playingTakeId: null,
+      loadedTakeId: null,
+    });
+
+    renderTab();
+
+    expect(screen.queryAllByLabelText('Draft waveform scrubber')).toHaveLength(
+      0,
+    );
+    expect(idleAudio.seek).not.toHaveBeenCalled();
   });
 
   it('notifies captureActive during recording and clears after stop', async () => {
@@ -876,6 +908,23 @@ describe('RecordTab', () => {
   });
 
   // --- #49: leave prompt with Resume / Discard ------------------------------
+
+  it('registers draft playback stop so Drafting can halt audio on Back (#866)', () => {
+    const onRegisterDraftPlayback = jest.fn();
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'playing',
+    });
+    renderTab(undefined, { onRegisterDraftPlayback });
+    expect(onRegisterDraftPlayback).toHaveBeenCalledWith(
+      expect.objectContaining({ stopPlayback: expect.any(Function) }),
+    );
+    const registered = onRegisterDraftPlayback.mock.calls[0]?.[0] as {
+      stopPlayback: () => Promise<void>;
+    };
+    void registered.stopPlayback();
+    expect(idleAudio.stopPlayback).toHaveBeenCalled();
+  });
 
   describe('capture leave prompt (#49)', () => {
     const twoVerseChapterVerses = [
@@ -1183,6 +1232,71 @@ describe('RecordTab', () => {
       expect(headers[0]).toHaveTextContent('Maria Santos');
       expect(headers[1]).toHaveTextContent('John Doe');
       expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
+    });
+
+    it('scrubs an unplayed take recorded by someone else (#833)', () => {
+      const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
+      const sharedTake = makeOwnedTake({
+        id: 'rec_9',
+        takeNumber: 2,
+        recordedByUserId: 2,
+        ownerDisplayName: 'John Doe',
+        durationMs: 13000,
+        isSelected: false,
+      });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [ownTake],
+        // My own take is the selected one — scrubbing must never land on it.
+        selectedTake: ownTake,
+        hasMultipleRecorders: true,
+        allTakes: [sharedTake],
+        // Nothing has been played: the first scrub must load this row.
+        playingTakeId: null,
+        loadedTakeId: null,
+      });
+
+      renderTab();
+      fireEvent.press(screen.getByTestId('take-view-all'));
+
+      const scrubber = screen.getByLabelText('Draft waveform scrubber');
+      fireEvent(scrubber, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(scrubber, 'responderGrant', {
+        nativeEvent: { locationX: 50 },
+      });
+
+      expect(idleAudio.seek).toHaveBeenCalledWith(6500, sharedTake);
+      expect(idleAudio.seek).not.toHaveBeenCalledWith(6500, ownTake);
+    });
+
+    it('leaves an All Takes row alone while a different take is in the player (#833)', () => {
+      const sharedTake = makeOwnedTake({
+        id: 'rec_9',
+        recordedByUserId: 2,
+        ownerDisplayName: 'John Doe',
+        durationMs: 13000,
+      });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [],
+        selectedTake: null,
+        hasMultipleRecorders: true,
+        allTakes: [sharedTake],
+        // Another take is already in the player, so only that one scrubs.
+        playingTakeId: null,
+        loadedTakeId: 'rec_1',
+      });
+
+      renderTab();
+      fireEvent.press(screen.getByTestId('take-view-all'));
+
+      expect(screen.getAllByTestId('shared-take-row')).toHaveLength(1);
+      expect(screen.queryByLabelText('Draft waveform scrubber')).toBeNull();
+      expect(idleAudio.seek).not.toHaveBeenCalled();
     });
   });
 
@@ -1494,6 +1608,39 @@ describe('RecordTab', () => {
     expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
   });
 
+  it('does not read the pericope set while drafting verse by verse', async () => {
+    renderTab();
+
+    await waitForCaptureReady();
+    expect(getProjectPericopeSetId).not.toHaveBeenCalled();
+    expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
+    expect(screen.queryByText(PERICOPE_UNAVAILABLE_WARNING)).toBeNull();
+  });
+
+  it('reads the pericope set when switching to passages mid-session', async () => {
+    (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
+    const tree = () => (
+      <DraftingProvider verses={verses} initialVerse={3}>
+        <RecordTab chapterData={chapterData} userId={42} />
+      </DraftingProvider>
+    );
+    const { rerender } = render(tree());
+    await waitForCaptureReady();
+    expect(getProjectPericopeSetId).not.toHaveBeenCalled();
+
+    mockUseDraftingUnit.mockReturnValue({
+      draftingUnit: 'pericope',
+      setDraftingUnit: jest.fn(),
+    });
+    rerender(tree());
+
+    await waitFor(() => {
+      expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
+    });
+    expect(getProjectPericopeSetId).toHaveBeenCalledTimes(1);
+    expect(getProjectPericopeSetId).toHaveBeenCalledWith(chapterData.projectId);
+  });
+
   describe('Complete stage recording lock', () => {
     const completeChapter = {
       ...chapterData,
@@ -1611,6 +1758,54 @@ describe('RecordTab', () => {
       // ...but no canonical control is pressable.
       expect(screen.queryAllByTestId('shared-take-canonical')).toHaveLength(0);
       expect(idleAudio.setCanonical).not.toHaveBeenCalled();
+    });
+
+    it('scrubs an unplayed, unselected take at Complete (#833)', () => {
+      const loadedTake = makeTake({
+        id: 'rec_1',
+        durationMs: 13000,
+        isSelected: false,
+      });
+      const unplayedTake = makeTake({
+        id: 'rec_2',
+        takeNumber: 2,
+        durationMs: 13000,
+        isSelected: false,
+      });
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [loadedTake, unplayedTake],
+        // Select is hidden at Complete, so nothing can be selected there:
+        // every row must still scrub, each with itself as the target (AC 3).
+        selectedTake: null,
+        playingTakeId: null,
+        loadedTakeId: 'rec_1',
+      });
+
+      renderTab(undefined, { chapterData: completeChapter });
+
+      const scrubbers = screen.getAllByLabelText('Draft waveform scrubber');
+      expect(scrubbers).toHaveLength(2);
+      const [loadedScrubber, unplayedScrubber] = scrubbers;
+      fireEvent(loadedScrubber!, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(unplayedScrubber!, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(unplayedScrubber!, 'responderGrant', {
+        nativeEvent: { locationX: 50 },
+      });
+
+      // Explicit target — resolving through selectedTake (null) would no-op.
+      expect(idleAudio.seek).toHaveBeenCalledWith(6500, unplayedTake);
+      expect(idleAudio.seek).not.toHaveBeenCalledWith(6500, loadedTake);
+      // Complete-stage controls are unchanged (#684 lock still applies).
+      expect(screen.queryByTestId('record-take-select-rec_1')).toBeNull();
+      expect(screen.queryByTestId('record-delete-button-rec_1')).toBeNull();
+      expect(screen.queryByTestId('record-take-select-rec_2')).toBeNull();
+      expect(screen.queryByTestId('record-delete-button-rec_2')).toBeNull();
     });
   });
 
@@ -2090,6 +2285,44 @@ describe('RecordTab', () => {
         13000,
       );
       expect(idleAudio.seek).not.toHaveBeenCalled();
+    });
+
+    it('scrubs the stitched row at Complete as well (#833)', async () => {
+      mockPericopeVerses3to5();
+      mockUseVerseAudio.mockReturnValue({
+        ...idleAudio,
+        state: 'recorded',
+        takes: [
+          makeTake({ id: 'v3', startVerse: 3, endVerse: 3, durationMs: 13000 }),
+          makeTake({ id: 'v4', startVerse: 4, endVerse: 4, durationMs: 13000 }),
+        ],
+      });
+
+      renderTab(undefined, {
+        chapterData: { ...chapterData, status: 'complete' },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId(/^record-take-badge-/)).toHaveTextContent(
+          'Take 1 - Stitched - vv. 3-4',
+        );
+      });
+
+      const scrubber = screen.getByLabelText('Draft waveform scrubber');
+      fireEvent(scrubber, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
+      });
+      fireEvent(scrubber, 'responderGrant', {
+        nativeEvent: { locationX: 50 },
+      });
+
+      expect(idleAudio.seekStitched).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'stitched' }),
+        13000,
+      );
+      // The Complete lock still hides select/delete (#684 out of scope).
+      expect(screen.queryAllByTestId(/^record-take-select-/)).toHaveLength(0);
+      expect(screen.queryAllByTestId(/^record-delete-button-/)).toHaveLength(0);
     });
 
     it('shows continuous stitched progress against the row total duration (#544)', async () => {

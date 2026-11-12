@@ -37,52 +37,69 @@ describe('getMilestonesWithSummary', () => {
     mockExecute.mockReset();
   });
 
-  it('returns one row per unit across member projects with parent count', async () => {
+  function mockMilestoneQueries(options: {
+    bases: Array<{
+      id: number;
+      name: string;
+      project_id: number;
+      project_name: string;
+      target_language_name: string;
+      milestone_count: number;
+    }>;
+    recordings: Array<{
+      id: number;
+      recording_count: number;
+      pending_count: number;
+    }>;
+  }) {
     mockExecute.mockImplementation(async (sql: string) => {
-      if (
-        sql.includes('FROM project_units pu') &&
-        sql.includes('milestone_count')
-      ) {
-        return {
-          rows: [
-            {
-              id: 10,
-              name: 'Mark',
-              project_id: 1,
-              project_name: 'Baka NT',
-              target_language_name: 'Baka',
-              milestone_count: 2,
-              recording_count: 3,
-              pending_count: 1,
-            },
-            {
-              id: 11,
-              name: 'Genesis',
-              project_id: 1,
-              project_name: 'Baka NT',
-              target_language_name: 'Baka',
-              milestone_count: 2,
-              recording_count: 0,
-              pending_count: 0,
-            },
-            {
-              id: 20,
-              name: 'Luke',
-              project_id: 2,
-              project_name: 'French NT',
-              target_language_name: 'French',
-              milestone_count: 1,
-              recording_count: 4,
-              pending_count: 0,
-            },
-          ],
-        };
+      if (sql.includes('AS milestone_count')) {
+        return { rows: options.bases };
+      }
+      if (sql.includes('FROM recordings r')) {
+        return { rows: options.recordings };
       }
       throw new Error(`Unexpected SQL: ${sql}`);
+    });
+  }
+
+  it('merges one row per unit with parent count and recording sync state', async () => {
+    mockMilestoneQueries({
+      bases: [
+        {
+          id: 10,
+          name: 'Mark',
+          project_id: 1,
+          project_name: 'Baka NT',
+          target_language_name: 'Baka',
+          milestone_count: 2,
+        },
+        {
+          id: 11,
+          name: 'Genesis',
+          project_id: 1,
+          project_name: 'Baka NT',
+          target_language_name: 'Baka',
+          milestone_count: 2,
+        },
+        {
+          id: 20,
+          name: 'Luke',
+          project_id: 2,
+          project_name: 'French NT',
+          target_language_name: 'French',
+          milestone_count: 1,
+        },
+      ],
+      recordings: [
+        { id: 10, recording_count: 3, pending_count: 1 },
+        { id: 20, recording_count: 4, pending_count: 0 },
+      ],
     });
 
     const result = await getMilestonesWithSummary(247);
 
+    expect(mockExecute).toHaveBeenCalledTimes(2);
     expect(result).toHaveLength(3);
     expect(result[0]).toMatchObject({
       id: 10,
@@ -110,14 +127,64 @@ describe('getMilestonesWithSummary', () => {
     });
   });
 
-  it('scopes recording aggregates by project unit id', async () => {
-    mockExecute.mockResolvedValue({ rows: [] });
+  it('defaults recording counts when a unit has no rows', async () => {
+    mockMilestoneQueries({
+      bases: [
+        {
+          id: 11,
+          name: 'Genesis',
+          project_id: 1,
+          project_name: 'Baka NT',
+          target_language_name: 'Baka',
+          milestone_count: 2,
+        },
+      ],
+      recordings: [],
+    });
+
+    const result = await getMilestonesWithSummary(247);
+
+    expect(result[0]).toMatchObject({
+      id: 11,
+      milestoneCount: 2,
+      syncState: 'none',
+    });
+  });
+
+  it('recording query starts from recordings and groups by unit id', async () => {
+    mockMilestoneQueries({ bases: [], recordings: [] });
 
     await getMilestonesWithSummary(99);
 
-    const sql = String(mockExecute.mock.calls[0]?.[0]);
-    expect(sql).toContain('GROUP BY pu.id');
-    expect(sql).toContain('user_projects');
+    const baseSql = mockExecute.mock.calls.find(([sql]) =>
+      String(sql).includes('AS milestone_count'),
+    )?.[0] as string;
+    expect(baseSql).toContain('FROM project_units pu');
+    expect(baseSql).toContain('user_projects');
+    expect(baseSql).not.toContain('bible_texts');
+    expect(baseSql).not.toContain('recordings');
+
+    const recordingSql = mockExecute.mock.calls.find(([sql]) =>
+      String(sql).includes('FROM recordings r'),
+    )?.[0] as string;
+    expect(recordingSql).toContain('GROUP BY pu.id');
+    expect(recordingSql).toContain('INNER JOIN bible_texts bt_r');
+    expect(recordingSql).not.toContain('LEFT JOIN bible_texts');
+    expect(recordingSql).toContain('AND r.is_selected = 1');
+    expect(recordingSql).toContain(
+      'AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)',
+    );
+    expect(recordingSql).toContain('AND r.recorded_by_user_id = ?');
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.stringContaining('FROM recordings r'),
+      [99, 99],
+    );
+  });
+
+  it('returns [] on error', async () => {
+    mockExecute.mockRejectedValue(new Error('disk I/O error'));
+
+    await expect(getMilestonesWithSummary(1)).resolves.toEqual([]);
   });
 });
 

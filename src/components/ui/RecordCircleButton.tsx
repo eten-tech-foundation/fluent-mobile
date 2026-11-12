@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.4 },
 });
 
-const variantStyles = StyleSheet.create({
+const variantStyles: Record<RecordCircleVariant, ViewStyle> = {
   record: {
     backgroundColor: theme.colors.recordAccent,
     borderWidth: 4,
@@ -115,4 +115,4 @@ const variantStyles = StyleSheet.create({
     backgroundColor: theme.colors.cardBackground,
     opacity: 0.6,
   },
-});
+};

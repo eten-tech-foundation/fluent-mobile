@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react-native';
 import DraftingScreen from './DraftingScreen';
 import { hrefs } from '../../navigation/hrefs';
+import { syncBibleTexts } from '../../services/sync';
 import { setLastActiveTab } from '../../utils/draftingTabState';
 const mockBack = jest.fn();
 const mockPush = jest.fn();
@@ -33,17 +34,29 @@ let capturedRecordTabHandlers: {
   onRegisterCaptureControls?: (
     controls: import('../../types/captureControls').CaptureControls | null,
   ) => void;
+  onRegisterDraftPlayback?: (
+    controls:
+      | import('../../types/draftPlaybackControls').DraftPlaybackControls
+      | null,
+  ) => void;
 } | null = null;
 let capturedHeaderHandlers: {
   onSyncPress?: () => void;
   onAccountPress?: () => void;
 } | null = null;
 let capturedTabBarHandlers: {
+  activeTab?: 'bible' | 'resources' | 'record';
   onTabChange?: (tab: 'bible' | 'resources' | 'record') => void;
 } | null = null;
 
 const mockResume = jest.fn().mockResolvedValue(undefined);
 const mockDiscard = jest.fn().mockResolvedValue(undefined);
+/** Mirrors useRecordSession: controls only while recording or paused. */
+let mockRecordSession: { state: string; captureActive: boolean } = {
+  state: 'idle',
+  captureActive: false,
+};
+const mockStopPlayback = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../../services/uploadOrchestrator', () => ({
   setDraftingUploadHold: (...args: unknown[]) =>
@@ -93,11 +106,16 @@ jest.mock('../../hooks/useActiveAccountSummary', () => ({
 
 jest.mock('../../services/syncEvents', () => ({
   onSyncComplete: () => jest.fn(),
+  onUploadSessionEvent: () => jest.fn(),
+  emitSyncStart: jest.fn(),
+  emitSyncComplete: jest.fn(),
 }));
 
 jest.mock('../../services/sync', () => ({
   syncBibleTexts: jest.fn().mockResolvedValue(undefined),
   syncMasterData: jest.fn().mockResolvedValue(undefined),
+  ensureSourceLanguageIso: jest.fn().mockResolvedValue(false),
+  releaseSourceLanguageIsoEnsure: jest.fn(),
 }));
 
 jest.mock('../../utils/draftingTabState', () => ({
@@ -124,6 +142,7 @@ jest.mock('../../components/layout/DraftingTabBar', () => {
   const { View } = require('react-native');
   return {
     DraftingTabBar: (props: {
+      activeTab?: 'bible' | 'resources' | 'record';
       onTabChange?: (tab: 'bible' | 'resources' | 'record') => void;
     }) => {
       capturedTabBarHandlers = props;
@@ -158,18 +177,38 @@ jest.mock('../tabs/RecordTab', () => {
       onChapterClaimed,
       onCaptureActiveChange,
       onRegisterCaptureControls,
+      onRegisterDraftPlayback,
     }: {
       onChapterClaimed?: () => void;
       onCaptureActiveChange?: (active: boolean) => void;
       onRegisterCaptureControls?: (
         controls: import('../../types/captureControls').CaptureControls | null,
       ) => void;
+      onRegisterDraftPlayback?: (
+        controls:
+          | import('../../types/draftPlaybackControls').DraftPlaybackControls
+          | null,
+      ) => void;
     }) => {
       capturedOnChapterClaimed = onChapterClaimed;
       capturedRecordTabHandlers = {
         onCaptureActiveChange,
         onRegisterCaptureControls,
+        onRegisterDraftPlayback,
       };
+      const leaveBlocked =
+        mockRecordSession.captureActive || mockRecordSession.state === 'saving';
+      MockReact.useEffect(() => {
+        onCaptureActiveChange?.(leaveBlocked);
+        onRegisterCaptureControls?.(
+          mockRecordSession.captureActive
+            ? { resume: mockResume, discardCapture: mockDiscard }
+            : null,
+        );
+      }, [leaveBlocked, onCaptureActiveChange, onRegisterCaptureControls]);
+      onRegisterDraftPlayback?.({
+        stopPlayback: mockStopPlayback,
+      });
       return MockReact.createElement(
         View,
         null,
@@ -271,6 +310,7 @@ describe('DraftingScreen onChapterClaimed', () => {
     capturedRecordTabHandlers = null;
     capturedHeaderHandlers = null;
     capturedTabBarHandlers = null;
+    mockRecordSession = { state: 'idle', captureActive: false };
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockGetChapterAssignmentById
       .mockResolvedValueOnce(baseAssignment)
@@ -310,6 +350,27 @@ describe('DraftingScreen onChapterClaimed', () => {
     expect(mockGetBibleTexts).toHaveBeenCalledTimes(1);
     expect(mockGetRecordedVerseNumbers).toHaveBeenCalledTimes(2);
     expect(capturedOnChapterClaimed).toBeDefined();
+  });
+
+  it('fetches this chapter when its text is missing, ignoring a catalogue absence', async () => {
+    mockGetBibleTexts.mockReset();
+    mockGetBibleTexts.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        bibleId: 1,
+        bookId: 40,
+        chapterNumber: 14,
+        verseNumber: 1,
+        text: 'Verse one',
+      },
+    ]);
+
+    render(<DraftingScreen />);
+
+    await waitFor(() => {
+      expect(syncBibleTexts).toHaveBeenCalledWith(undefined, {
+        chapterGroups: new Map([[1, [{ bookId: 40, chapterNumber: 14 }]]]),
+      });
+    });
   });
 
   it('renders the shell source-audio bar slot above the tab bar', async () => {
@@ -493,6 +554,26 @@ describe('DraftingScreen onChapterClaimed', () => {
       });
     });
 
+    it('tab change while a take is saving stays on Record and shows the saving alert', async () => {
+      mockRecordSession = { state: 'saving', captureActive: false };
+      render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-activate')).toBeTruthy();
+      });
+
+      capturedTabBarHandlers?.onTabChange?.('bible');
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Saving take',
+        expect.any(String),
+        expect.arrayContaining([expect.objectContaining({ text: 'OK' })]),
+      );
+      expect(lastAlertButtons().some(b => b.text === 'Discard')).toBe(false);
+      expect(setLastActiveTab).not.toHaveBeenCalled();
+      expect(capturedTabBarHandlers?.activeTab).toBe('record');
+    });
+
     it('inactive capture leaves navigation unguarded', async () => {
       render(<DraftingScreen />);
       await waitFor(() => {
@@ -509,6 +590,44 @@ describe('DraftingScreen onChapterClaimed', () => {
       expect(Alert.alert).not.toHaveBeenCalled();
       expect(setLastActiveTab).toHaveBeenCalledWith(5, 'bible');
       expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+    });
+  });
+
+  describe('draft playback halt on leave (#866)', () => {
+    function lastBeforeRemove(): BeforeRemoveListener {
+      const calls = mockAddListener.mock.calls.filter(
+        call => call[0] === 'beforeRemove',
+      );
+      expect(calls.length).toBeGreaterThan(0);
+      return calls[calls.length - 1][1];
+    }
+
+    async function renderDrafting() {
+      render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
+      });
+    }
+
+    it('stops draft playback on header or system Back', async () => {
+      await renderDrafting();
+      lastBeforeRemove()({ preventDefault: jest.fn() });
+      expect(mockStopPlayback).toHaveBeenCalled();
+    });
+
+    it('stops draft playback when opening Sync (beforeRemove may not fire)', async () => {
+      await renderDrafting();
+      capturedHeaderHandlers?.onSyncPress?.();
+      expect(mockStopPlayback).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+    });
+
+    it('does not stop draft playback when switching to Bible or Resources', async () => {
+      await renderDrafting();
+      mockStopPlayback.mockClear();
+      capturedTabBarHandlers?.onTabChange?.('bible');
+      capturedTabBarHandlers?.onTabChange?.('resources');
+      expect(mockStopPlayback).not.toHaveBeenCalled();
     });
   });
 

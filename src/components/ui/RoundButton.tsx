@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Pressable,
+  Text,
   View,
   type GestureResponderEvent,
   type StyleProp,
@@ -17,19 +18,28 @@ import {
 } from '../../theme/useTheme';
 
 /** Figma Round button: 48pt circle, which is also the minimum touch target. */
-const BUTTON_SIZE = 48;
+export const BUTTON_SIZE = 48;
 
 export type RoundButtonIconProps = { color: string; size: number };
 
 export interface RoundButtonProps {
   icon: React.ComponentType<RoundButtonIconProps>;
   accessibilityLabel: string;
+  /**
+   * Omit for a circle that only shows a status: TalkBack reads its label
+   * without calling it a button.
+   */
   onPress?: (event: GestureResponderEvent) => void;
   /**
    * Figma `Style`. Soft is tactile, for light screens; Flat is for dark and
-   * blue screens and always uses Canvas colors.
+   * blue screens: Accent colors on blue, Canvas colors anywhere else.
    */
   variant?: 'soft' | 'flat';
+  /**
+   * Text after the icon. The circle stretches into a pill at the same height,
+   * for actions that need a word, like Listen and Record.
+   */
+  label?: string;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -42,7 +52,10 @@ export interface RoundButtonProps {
 export function RoundButton({ variant = 'soft', ...props }: RoundButtonProps) {
   const mode = useColorMode();
   return (
-    <ColorModeScope value={variant === 'flat' ? 'canvas' : mode}>
+    // Flat is for the dark and blue screens: Canvas, or Accent on blue.
+    <ColorModeScope
+      value={variant === 'flat' && mode !== 'accent' ? 'canvas' : mode}
+    >
       <RoundButtonBody variant={variant} {...props} />
     </ColorModeScope>
   );
@@ -53,6 +66,7 @@ function RoundButtonBody({
   accessibilityLabel,
   onPress,
   variant,
+  label,
   disabled = false,
   style,
   testID,
@@ -64,6 +78,11 @@ function RoundButtonBody({
       width: BUTTON_SIZE,
       height: BUTTON_SIZE,
       borderRadius: t.radius.full,
+    },
+    pill: {
+      width: undefined,
+      minWidth: BUTTON_SIZE,
+      paddingHorizontal: t.spacing.lg,
     },
     face: {
       position: 'absolute',
@@ -87,17 +106,20 @@ function RoundButtonBody({
       position: 'absolute',
       top: -t.spacing.xxs,
       left: -t.spacing.xxs,
-      width: BUTTON_SIZE + t.spacing.xxs * 2,
-      height: BUTTON_SIZE + t.spacing.xxs * 2,
+      right: -t.spacing.xxs,
+      bottom: -t.spacing.xxs,
       borderRadius: t.radius.full,
       borderWidth: t.stroke[1],
       borderColor: t.roles.borderRim,
     },
     content: {
       flex: 1,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: t.spacing.sm,
     },
+    label: { ...t.type.title, color: t.roles.fgPrimary },
     disabled: { opacity: t.opacity.disabled },
   }));
 
@@ -113,24 +135,14 @@ function RoundButtonBody({
     transform: [{ translateY: nudge * progress.value }],
   }));
 
-  const interactive = !disabled && !!onPress;
-
-  return (
-    <Pressable
-      onPressIn={() => {
-        onPressIn();
-        haptics.press();
-      }}
-      onPressOut={onPressOut}
-      onPress={onPress}
-      disabled={!interactive}
-      android_disableSound
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled }}
-      style={[styles.button, style, disabled && styles.disabled]}
-      testID={testID}
-    >
+  const rootStyle = [
+    styles.button,
+    label ? styles.pill : null,
+    style,
+    disabled && styles.disabled,
+  ];
+  const body = (
+    <>
       {soft ? (
         <View
           style={styles.rim}
@@ -150,7 +162,46 @@ function RoundButtonBody({
       />
       <Animated.View style={[styles.content, iconStyle]}>
         <Icon color={theme.roles.fgPrimary} size={theme.controlSizes.icon24} />
+        {label ? (
+          <Text style={styles.label} numberOfLines={1}>
+            {label}
+          </Text>
+        ) : null}
       </Animated.View>
+    </>
+  );
+
+  // Pressable reports itself disabled and tappable even with no onPress.
+  if (!onPress) {
+    return (
+      <View
+        accessible
+        accessibilityLabel={accessibilityLabel}
+        style={rootStyle}
+        testID={testID}
+      >
+        {body}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPressIn={() => {
+        onPressIn();
+        haptics.press();
+      }}
+      onPressOut={onPressOut}
+      onPress={onPress}
+      disabled={disabled}
+      android_disableSound
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      style={rootStyle}
+      testID={testID}
+    >
+      {body}
     </Pressable>
   );
 }

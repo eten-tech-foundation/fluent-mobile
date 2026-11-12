@@ -15,6 +15,21 @@ function resolveAppVersion(): string {
 
 const appVersion = resolveAppVersion();
 
+// One Android XML family per typeface, so `fontFamily` + `fontWeight` picks the file.
+function googleFontFamily(
+  pkg: string,
+  fontFamily: string,
+  weights: Record<number, string>,
+) {
+  return {
+    fontFamily,
+    fontDefinitions: Object.entries(weights).map(([weight, style]) => ({
+      path: `./node_modules/@expo-google-fonts/${pkg}/${weight}${style}/${fontFamily}_${weight}${style}.ttf`,
+      weight: Number(weight),
+    })),
+  };
+}
+
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const usesCleartextTraffic = buildProfile !== 'production';
 // Expo Updates only for production. Preview / nightly / development ship
@@ -113,6 +128,27 @@ const config: ExpoConfig = {
     ],
     'expo-secure-store',
     'expo-asset',
+    [
+      'expo-font',
+      {
+        // Next UI type styles (src/theme/nextFoundation.ts). Legacy stays on system fonts.
+        android: {
+          fonts: [
+            googleFontFamily('plus-jakarta-sans', 'PlusJakartaSans', {
+              400: 'Regular',
+              500: 'Medium',
+              600: 'SemiBold',
+              700: 'Bold',
+            }),
+            googleFontFamily(
+              'atkinson-hyperlegible-next',
+              'AtkinsonHyperlegibleNext',
+              { 400: 'Regular', 600: 'SemiBold', 700: 'Bold' },
+            ),
+          ],
+        },
+      },
+    ],
     'expo-image',
     [
       'expo-audio',

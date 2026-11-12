@@ -24,13 +24,14 @@ Update these when tracker policy, board rules, Expo-deps policy, or CI workflows
 
 ## Cursor rules + cross-tool entrypoints
 
-Keep `.cursor/rules/*.mdc` in sync with onboarding — short pointers only; avoid duplicating full onboarding content.
+Shared canon: [AGENTS.md](../../AGENTS.md). Keep `.cursor/rules/*.mdc` as short Cursor adapters — avoid duplicating full onboarding or delivery gates.
 
-Cross-tool agents (Claude Code, Copilot, etc.) must still find the same contracts via:
+Tool entrypoints:
 
-- [CLAUDE.md](../../CLAUDE.md)
-- [AGENTS.md](../../AGENTS.md)
-- [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md)
+- [AGENTS.md](../../AGENTS.md) — all tools
+- [CLAUDE.md](../../CLAUDE.md) — Claude Code (`@AGENTS.md`)
+- [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md) — Copilot
+- Optional Claude topic rules: [`.claude/rules/`](../../.claude/rules/)
 
 ## README
 
@@ -62,7 +63,7 @@ Warn-only Cursor `sessionStart` hook: [`.cursor/hooks.json`](../hooks.json) + [`
 
 Architecture guard (`fetch(` / `getDatabase(` / `executeSql` in `src/app/` and `src/components/`): [`.cursor/hooks/architecture-guard.mjs`](../hooks/architecture-guard.mjs) + [`scripts/architecture-guard.mjs`](../../scripts/architecture-guard.mjs). Agent hook is **warn-only** (never denies tools); `npm run architecture-guard` (`--ci`) **fails** in Lint & Format CI. String SQL without those calls is covered by ESLint UI bans (#366).
 
-Canonical slash commands live in [`.claude/commands/`](../../.claude/commands/); Cursor `/` files are thin shims. Do not duplicate command lists without updating onboarding + `commands.mdc`.
+Canonical slash commands live in [`.claude/commands/`](../../.claude/commands/); Cursor `/` files are palette shims only (not required for CLI). Do not duplicate command lists without updating onboarding + `commands.mdc` + `AGENTS.md` gate list.
 
 ## Style
 

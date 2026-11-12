@@ -1,3 +1,27 @@
+/** Keep a later user operation pending when an earlier upload acknowledges. */
+export const RECORDING_UPLOAD_INTENT_TRIGGER_SQL = `
+  CREATE TRIGGER IF NOT EXISTS recordings_upload_intent_changed
+  AFTER UPDATE OF is_selected, is_canonical, bible_text_id, project_unit_id,
+    recorded_by_user_id, local_file_path, granularity,
+    start_chapter, start_verse, end_chapter, end_verse ON recordings
+  WHEN OLD.is_selected IS NOT NEW.is_selected
+    OR OLD.is_canonical IS NOT NEW.is_canonical
+    OR OLD.bible_text_id IS NOT NEW.bible_text_id
+    OR OLD.project_unit_id IS NOT NEW.project_unit_id
+    OR OLD.recorded_by_user_id IS NOT NEW.recorded_by_user_id
+    OR OLD.local_file_path IS NOT NEW.local_file_path
+    OR OLD.granularity IS NOT NEW.granularity
+    OR OLD.start_chapter IS NOT NEW.start_chapter
+    OR OLD.start_verse IS NOT NEW.start_verse
+    OR OLD.end_chapter IS NOT NEW.end_chapter
+    OR OLD.end_verse IS NOT NEW.end_verse
+  BEGIN
+    UPDATE recordings
+    SET upload_intent_version = OLD.upload_intent_version + 1
+    WHERE id = NEW.id;
+  END;
+`;
+
 export const createTableQueries: string[] = [
   `CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY,
@@ -87,6 +111,20 @@ export const createTableQueries: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_bt_chapter ON bible_texts(bible_id, book_id, chapter_number);`,
 
   /**
+   * Chapters the API has no text for (an NT-only bible asked for an OT
+   * chapter). Catalogues legitimately request these, so they are recorded as
+   * known-absent rather than failing the text sync. A row is dropped as soon
+   * as the chapter does return verses.
+   */
+  `CREATE TABLE IF NOT EXISTS bible_text_absences (
+      bible_id       INTEGER NOT NULL,
+      book_id        INTEGER NOT NULL,
+      chapter_number INTEGER NOT NULL,
+      recorded_at    TEXT NOT NULL,
+      PRIMARY KEY (bible_id, book_id, chapter_number)
+    )`,
+
+  /**
    * Recordings link to a verse via `bible_text_id` (canonical; see #98 / #99).
    * Do not join recordings on `chapter_assignment_id` — that column is not used.
    * `recorded_by_user_id` attributes the take to the active account (#105).
@@ -111,6 +149,7 @@ export const createTableQueries: string[] = [
       end_chapter           INTEGER NOT NULL DEFAULT 0,
       end_verse             INTEGER NOT NULL DEFAULT 0,
       sync_status           TEXT NOT NULL DEFAULT 'pending',
+      upload_intent_version INTEGER NOT NULL DEFAULT 0,
       version_token         INTEGER,
       server_take_id        INTEGER,
       upload_error          TEXT,

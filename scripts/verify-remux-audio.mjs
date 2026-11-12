@@ -270,5 +270,5 @@ const isMain =
   path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
 
 if (isMain) {
-  process.exit(verifyRemuxAudio(resolveInputPath()));
+  process.exitCode = verifyRemuxAudio(resolveInputPath());
 }

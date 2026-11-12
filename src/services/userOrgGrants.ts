@@ -2,6 +2,7 @@ import type { ApiOrgGrant, ApiUser } from '../types/api/responses';
 import { logger } from '../utils/logger';
 import { FluentAPI } from './api';
 import { isAuthError } from './authError';
+import { clearDraftListingSnapshotsForUser } from './draftListingSnapshot';
 import { getCredentials } from './keychain';
 import { emitAuthReauthRequired } from './syncEvents';
 import {
@@ -12,6 +13,7 @@ import {
   kvStorage,
   setReauthRequired,
 } from './storage';
+import { clearPassageResourceReuse } from './passageResourceReuse';
 
 const log = logger.create('UserOrgGrants');
 
@@ -115,7 +117,12 @@ export function parseOrgGrantsFromUser(
 
 function writeSnapshot(userId: string, snapshot: UserOrgGrantsSnapshot): void {
   if (!userId) return;
-  kvStorage.setItemSync(grantSnapshotKey(userId), JSON.stringify(snapshot));
+  const serialized = JSON.stringify(snapshot);
+  if (kvStorage.getItemSync(grantSnapshotKey(userId)) !== serialized) {
+    clearPassageResourceReuse(userId);
+    clearDraftListingSnapshotsForUser(userId);
+  }
+  kvStorage.setItemSync(grantSnapshotKey(userId), serialized);
 }
 
 function readStoredSnapshot(userId: string): UserOrgGrantsSnapshot {

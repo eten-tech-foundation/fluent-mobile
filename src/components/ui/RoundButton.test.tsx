@@ -6,6 +6,7 @@ import { setUiVersion } from '../../services/userPreferences';
 import { legacyTheme, resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
+import { ColorModeScope } from '../../theme/useTheme';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -76,6 +77,34 @@ describe('RoundButton', () => {
     ).toMatchObject({ opacity: legacyTheme.opacity.disabled });
   });
 
+  it("isn't a button without onPress", () => {
+    render(<RoundButton icon={ColorIcon} accessibilityLabel="All synced" />);
+
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByLabelText('All synced')).not.toBeDisabled();
+  });
+
+  it('stretches into a pill with its label beside the icon', () => {
+    const onPress = jest.fn();
+    render(
+      <RoundButton
+        variant="flat"
+        icon={ColorIcon}
+        label="Listen"
+        accessibilityLabel="Listen"
+        onPress={onPress}
+        testID="b"
+      />,
+    );
+
+    expect(screen.getByText('Listen')).toBeTruthy();
+    expect(
+      StyleSheet.flatten(screen.getByTestId('b').props.style),
+    ).toMatchObject({ width: undefined, minWidth: 48 });
+    fireEvent.press(screen.getByLabelText('Listen'));
+    expect(onPress).toHaveBeenCalled();
+  });
+
   it('shows the rim on Soft only', () => {
     const { rerender } = renderWithPreferences(
       <RoundButton icon={ColorIcon} accessibilityLabel="Download" testID="b" />,
@@ -93,7 +122,7 @@ describe('RoundButton', () => {
     expect(screen.queryByTestId('b-rim')).toBeNull();
   });
 
-  it('pins Flat to Canvas colors in Next, whatever the surrounding mode', () => {
+  it('pins Flat to Canvas colors in Next, except on Accent', () => {
     act(() => {
       setUiVersion('next');
     });
@@ -104,9 +133,21 @@ describe('RoundButton', () => {
         variant="flat"
       />,
     );
-
     expect(screen.getByTestId('round-icon')).toHaveTextContent(
       resolveTheme('next', 'canvas').roles.fgPrimary,
+    );
+
+    screen.rerender(
+      <ColorModeScope value="accent">
+        <RoundButton
+          icon={ColorIcon}
+          accessibilityLabel="Download"
+          variant="flat"
+        />
+      </ColorModeScope>,
+    );
+    expect(screen.getByTestId('round-icon')).toHaveTextContent(
+      resolveTheme('next', 'accent').roles.fgPrimary,
     );
   });
 

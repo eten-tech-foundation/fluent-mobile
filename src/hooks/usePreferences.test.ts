@@ -59,14 +59,14 @@ describe('usePreferences', () => {
   it('persists and updates uiVersion', () => {
     const { result } = renderHook(() => usePreferences());
 
-    expect(result.current.uiVersion).toBe('legacy');
+    expect(result.current.uiVersion).toBe('next');
 
     act(() => {
-      result.current.setUiVersion('next');
+      result.current.setUiVersion('legacy');
     });
 
-    expect(mockSetItemSync).toHaveBeenCalledWith('pref_ui_version', 'next');
-    expect(result.current.uiVersion).toBe('next');
+    expect(mockSetItemSync).toHaveBeenCalledWith('pref_ui_version', 'legacy');
+    expect(result.current.uiVersion).toBe('legacy');
   });
 
   it('reload refreshes preferences from storage', () => {

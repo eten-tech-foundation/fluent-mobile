@@ -1,33 +1,26 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
-import { Key, type KeyIconProps } from '../../../components/ui/Key';
+import {
+  PauseFill,
+  PlayFill,
+  SkipBackFill,
+  SkipForwardFill,
+} from '../../../components/ui/icons';
+import { Key } from '../../../components/ui/Key';
 import { KeyDeck } from '../../../components/ui/KeyDeck';
 import { useThemedStyles } from '../../../theme/useTheme';
 
-/** Figma keys use filled Phosphor glyphs; fill the Lucide equivalents to match. */
-function filled(Icon: LucideIcon) {
-  return function FilledIcon({ color, size }: KeyIconProps) {
-    return <Icon color={color} fill={color} size={size} />;
-  };
-}
-
-const PlayIcon = filled(Play);
-const PauseIcon = filled(Pause);
-const SkipBackIcon = filled(SkipBack);
-const SkipForwardIcon = filled(SkipForward);
-
-const VERSE_COUNT = 5;
+/** Mark 14:22–25, stepped through in verse mode. */
+const VERSES = [22, 23, 24, 25];
 
 /**
- * Transport demo in the Hardware panel's key deck (Play · Previous · Next):
- * Play latches while playing, and the skip keys disable at the first / last
- * verse, so every Key state shows up through real use.
+ * Listen's keys in verse mode (Play · Previous · Next): Play latches while
+ * playing, and Previous and Next step verses, off at the first and last, so
+ * every Key state shows up through real use.
  */
 export function KeyEntry() {
   const [playing, setPlaying] = useState(false);
-  const [verse, setVerse] = useState(1);
+  const [at, setAt] = useState(1);
   const styles = useThemedStyles(t => ({
     demos: { gap: t.spacing.lg },
     demo: { gap: t.spacing.sm },
@@ -43,8 +36,9 @@ export function KeyEntry() {
       includeFontPadding: false,
     },
     transportKey: { flex: 1 },
-    compactKey: { width: 72, height: 72 },
   }));
+  const previous = VERSES[at - 1];
+  const next = VERSES[at + 1];
 
   const togglePlay = () => setPlaying(p => !p);
 
@@ -54,8 +48,10 @@ export function KeyEntry() {
         <Text style={styles.demoTitle}>Transport</Text>
         <KeyDeck>
           <Key
-            icon={playing ? PauseIcon : PlayIcon}
-            accessibilityLabel={playing ? 'Pause' : 'Play'}
+            icon={playing ? PauseFill : PlayFill}
+            accessibilityLabel={
+              playing ? 'Pause source audio' : 'Play source audio'
+            }
             announceLatched={false}
             active={playing}
             onPress={togglePlay}
@@ -63,38 +59,31 @@ export function KeyEntry() {
             testID="gallery-key-play"
           />
           <Key
-            icon={SkipBackIcon}
-            accessibilityLabel="Previous verse"
-            onPress={() => setVerse(v => v - 1)}
-            disabled={verse === 1}
+            icon={SkipBackFill}
+            accessibilityLabel={
+              previous === undefined
+                ? 'Previous'
+                : `Previous: verse ${previous}`
+            }
+            onPress={() => setAt(a => a - 1)}
+            disabled={previous === undefined}
             style={styles.transportKey}
             testID="gallery-key-back"
           />
           <Key
-            icon={SkipForwardIcon}
-            accessibilityLabel="Next verse"
-            onPress={() => setVerse(v => v + 1)}
-            disabled={verse === VERSE_COUNT}
+            icon={SkipForwardFill}
+            accessibilityLabel={
+              next === undefined ? 'Next' : `Next: verse ${next}`
+            }
+            onPress={() => setAt(a => a + 1)}
+            disabled={next === undefined}
             style={styles.transportKey}
             testID="gallery-key-forward"
           />
         </KeyDeck>
         <Text style={styles.status}>
-          Verse {verse} of {VERSE_COUNT} · {playing ? 'Playing' : 'Paused'}
+          Mark 14:{VERSES[at]} · {playing ? 'Playing' : 'Paused'}
         </Text>
-      </View>
-
-      <View style={styles.demo}>
-        <Text style={styles.demoTitle}>Now playing (72 × 72)</Text>
-        <Key
-          icon={playing ? PauseIcon : PlayIcon}
-          accessibilityLabel={playing ? 'Pause' : 'Play'}
-          announceLatched={false}
-          active={playing}
-          onPress={togglePlay}
-          style={styles.compactKey}
-          testID="gallery-key-now-playing"
-        />
       </View>
     </View>
   );

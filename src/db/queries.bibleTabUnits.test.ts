@@ -163,12 +163,14 @@ describe('getSelectedTakeCoverages', () => {
     );
     expect(coverages).toEqual([
       {
+        granularity: 'verse',
         startChapter: 14,
         startVerse: 3,
         endChapter: 14,
         endVerse: 3,
       },
       {
+        granularity: 'pericope',
         startChapter: 14,
         startVerse: 1,
         endChapter: 14,

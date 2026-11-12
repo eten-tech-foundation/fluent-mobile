@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import {
   Alert,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -33,10 +32,8 @@ import {
   touchHitSlop,
 } from '../../theme';
 import { useDraftingContext } from '../context/DraftingContext';
-import { useVerseAudio } from '../../hooks/useVerseAudio';
-import type { VerseAudioState } from '../../hooks/verseAudioReducer';
-import { resolveRecordingUnit } from '../../hooks/resolveRecordingUnit';
-import { recordingUnitCapturesEqual } from '../../utils/recordingRange';
+import { useRecordSession } from '../../hooks/useRecordSession';
+import { useVerseStep } from '../../hooks/useVerseStep';
 import {
   formatTakeSubtitle,
   formatTakeVerseSpan,
@@ -45,12 +42,8 @@ import {
   buildCrossGranularityRows,
   type StitchedTakeRow,
 } from '../../utils/crossGranularityRows';
-import type { RecordingUnitCapture } from '../../utils/recordingRange';
 import { useDraftingUnit } from '../../hooks/useDraftingUnit';
-import { useGlobalSyncStatus } from '../../hooks/useGlobalSyncStatus';
-import { requestMicPermission } from '../../audio/micPermission';
 import { logger } from '../../utils/logger';
-import { recordSourceTextHint } from '../../utils/recordSourceTextHint';
 import { PlaybackProgressBar } from '../../components/ui/PlaybackProgressBar';
 import { DraftTakeRow } from '../../components/ui/DraftTakeRow';
 import { SharedTakeRow } from '../../components/ui/SharedTakeRow';
@@ -64,10 +57,6 @@ import {
 import { WarningBanner } from '../../components/ui/WarningBanner';
 import { StageAdvanceConfirmSheet } from '../../components/ui/StageAdvanceConfirmSheet';
 import {
-  CAPTURE_LEAVE_DISCARD,
-  CAPTURE_LEAVE_MESSAGE,
-  CAPTURE_LEAVE_RESUME,
-  CAPTURE_LEAVE_TITLE,
   PERICOPE_UNAVAILABLE_WARNING,
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_SOURCE_TEXT_OPEN_SYNC,
@@ -75,27 +64,22 @@ import {
   RECORD_TAKEN_CHAPTER_WARNING,
 } from '../../constants/messages';
 import type { CaptureControls } from '../../types/captureControls';
+import type { DraftPlaybackControls } from '../../types/draftPlaybackControls';
 import type { PericopeGroupResult } from '../../db/queries';
 import { ChapterAssignmentData } from '../../types/db/types';
-import { getProjectPericopeSetId } from '../../db/repository';
 import { type VerseRunItem } from '../../components/ui/VerseRun';
 import { parseRequiredString } from '../../navigation/routeParams';
 import { hrefs } from '../../navigation/hrefs';
 import { useChapterConflictStatus } from '../../hooks/useChapterConflictStatus';
-import { isChapterTakenByOther } from '../../utils/chapterTakenStatus';
 import type { Recording, RecordingWithOwner } from '../../types/db/types';
 import {
   getStageAdvanceVisibility,
-  isBlockedFromPeerCheckCapture,
-  isRecordingLockedByStage,
   resolvePeerCheckerAssignmentOnAdvance,
   stageAdvanceConfirmBody,
 } from '../../utils/stageAdvancement';
 import { confirmStageAdvancement } from '../../services/stageAdvance';
 import {
-  getBibleTextId,
   getBibleTexts,
-  getPericopeForVerse,
   getPericopesForChapter,
   chapterHasUnuploadableSelectedTakes,
   isChapterFullyRecordedVerseMode,
@@ -151,6 +135,8 @@ type RecordTabProps = {
    * switch — not just the verse chevrons handled here.
    */
   onRegisterCaptureControls?: (controls: CaptureControls | null) => void;
+  /** Always registered while mounted so Drafting can stop review audio on Back. */
+  onRegisterDraftPlayback?: (controls: DraftPlaybackControls | null) => void;
   onChapterClaimed?: () => void;
 };
 
@@ -169,6 +155,7 @@ export function RecordTab({
   userId,
   onCaptureActiveChange,
   onRegisterCaptureControls,
+  onRegisterDraftPlayback,
   onChapterClaimed,
 }: RecordTabProps) {
   const router = useRouter();
@@ -176,188 +163,59 @@ export function RecordTab({
   const chapterName = parseRequiredString(rawParams.chapterName, 'chapterName');
   const { verses, selectedVerse, setSelectedVerse, refreshRecordedVerses } =
     useDraftingContext();
-  const [bibleTextId, setBibleTextId] = useState<number | null>(null);
-  /** Verse `selectedVerse` that `bibleTextId` was resolved for (null while stale). */
-  const [bibleTextVerse, setBibleTextVerse] = useState<number | null>(null);
+  const { draftingUnit } = useDraftingUnit();
+  const {
+    verseAudio,
+    effectiveUnit,
+    pericopeSetId,
+    pericopeSetResolved,
+    activePericope,
+    activePericopeResolved,
+    pericopeUnavailable,
+    captureBibleTextId,
+    activeRecordingUnit,
+    elapsedMs,
+    setElapsedMs,
+    isSyncing,
+    recordDisabled,
+    syncingMessage,
+    ensureMic,
+    resetCapture,
+    stageLocked,
+    captureDisabled,
+    isTaken,
+    drafterCaptureBlocked: peerCheckCaptureBlocked,
+  } = useRecordSession({
+    chapterData,
+    userId,
+    selectedVerse,
+    versesLength: verses.length,
+    draftingUnit,
+    onChapterClaimed,
+    onCaptureActiveChange,
+    onRegisterCaptureControls,
+    onTakesChanged: refreshRecordedVerses,
+  });
   const [sourceExpanded, setSourceExpanded] = useState(false);
-  const [elapsedMs, setElapsedMs] = useState(0);
   const [takeView, setTakeView] = useState<'mine' | 'all'>('mine');
   const [hasChapterRecording, setHasChapterRecording] = useState(false);
   const [hasUnuploadableTakes, setHasUnuploadableTakes] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { draftingUnit } = useDraftingUnit();
-  const [recordingUnit, setRecordingUnit] =
-    useState<RecordingUnitCapture | null>(null);
 
-  const [pericopeSetId, setPericopeSetId] = useState<number | null>(null);
-  const [pericopeSetResolved, setPericopeSetResolved] = useState(
-    chapterData.projectId === null,
-  );
-  const [activePericope, setActivePericope] =
-    useState<PericopeGroupResult | null>(null);
-  const [activePericopeResolved, setActivePericopeResolved] = useState(
-    draftingUnit !== 'pericope',
-  );
-  const pericopeRequestIdRef = useRef(0);
-
-  useEffect(() => {
-    if (chapterData.projectId === null) {
-      setPericopeSetId(null);
-      setPericopeSetResolved(true);
-      return;
-    }
-    setPericopeSetResolved(false);
-    let cancelled = false;
-    void getProjectPericopeSetId(chapterData.projectId).then(id => {
-      if (!cancelled) {
-        setPericopeSetId(id);
-        setPericopeSetResolved(true);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [chapterData.projectId]);
-
-  useEffect(() => {
-    const requestId = ++pericopeRequestIdRef.current;
-    if (draftingUnit !== 'pericope') {
-      setActivePericope(null);
-      setActivePericopeResolved(true);
-      return;
-    }
-    if (!pericopeSetResolved) {
-      setActivePericope(null);
-      setActivePericopeResolved(false);
-      return;
-    }
-    if (pericopeSetId === null) {
-      setActivePericope(null);
-      setActivePericopeResolved(true);
-      return;
-    }
-    setActivePericope(null);
-    setActivePericopeResolved(false);
-    void getPericopeForVerse(
-      chapterData.bookId,
-      chapterData.chapterNumber,
-      selectedVerse,
-      pericopeSetId,
-    ).then(result => {
-      if (requestId === pericopeRequestIdRef.current) {
-        setActivePericope(result);
-        setActivePericopeResolved(true);
-      }
-    });
-  }, [
-    draftingUnit,
-    pericopeSetId,
-    pericopeSetResolved,
-    chapterData.bookId,
-    chapterData.chapterNumber,
+  const verseStep = useVerseStep({
+    verses,
     selectedVerse,
-  ]);
-
-  const pericopeUnavailable =
-    draftingUnit === 'pericope' &&
-    pericopeSetResolved &&
-    (pericopeSetId === null ||
-      (activePericopeResolved && activePericope === null));
-
-  /**
-   * Unit used for capture + My Takes rows. Settings may say 'pericope' while
-   * the project has no local pericope data (#588); in that case behave as verse
-   * mode so verse takes stay real, deletable rows instead of a stitched row.
-   */
-  const effectiveUnit = pericopeUnavailable ? 'verse' : draftingUnit;
-
-  const captureBibleTextId = useMemo(() => {
-    if (bibleTextId === null || bibleTextVerse !== selectedVerse) {
-      return null;
-    }
-    return bibleTextId;
-  }, [bibleTextId, bibleTextVerse, selectedVerse]);
-
-  const recordingCaptureReady = useMemo(() => {
-    if (captureBibleTextId === null) {
-      return false;
-    }
-    if (effectiveUnit !== 'pericope') {
-      return true;
-    }
-    return (
-      recordingUnit !== null &&
-      recordingUnit.coveredViews.some(
-        view =>
-          view.bibleTextId === captureBibleTextId &&
-          view.chapterNumber === chapterData.chapterNumber &&
-          view.verseNumber === selectedVerse,
-      )
-    );
-  }, [
-    captureBibleTextId,
-    chapterData.chapterNumber,
-    effectiveUnit,
-    recordingUnit,
-    selectedVerse,
-  ]);
-
-  const activeRecordingUnit =
-    effectiveUnit === 'pericope' && recordingCaptureReady
-      ? recordingUnit
-      : null;
-
-  const verseAudio = useVerseAudio({
-    bibleTextId: captureBibleTextId,
-    chapterAssignmentId: chapterData.id,
-    projectUnitId: chapterData.projectUnitId,
-    userId,
-    chapterClaim: {
-      bibleId: chapterData.bibleId,
-      bookId: chapterData.bookId,
-      chapterNumber: chapterData.chapterNumber,
-      assignedUserId: chapterData.assignedUserId,
-    },
-    onChapterClaimed,
-    chapterNumber: chapterData.chapterNumber,
-    verseNumber: selectedVerse,
-    draftingUnit: effectiveUnit,
-    recordingUnit: activeRecordingUnit,
+    onChange: setSelectedVerse,
+    audioState: verseAudio.state,
+    discardCapture: verseAudio.discardCapture,
+    resetCapture,
   });
-  /**
-   * Latest-value ref synced during render so async `resolveRecordingUnit`
-   * settlements read current audio state without listing `verseAudio.state` in
-   * effect deps (that re-ran resolve and looped REHYDRATE — #411). Do not move
-   * to useLayoutEffect: the .then can settle before layout effects run.
-   */
-  const verseAudioStateRef = useRef<VerseAudioState>(verseAudio.state);
-  verseAudioStateRef.current = verseAudio.state;
-  const verseIndex = verses.findIndex(v => v.verseNumber === selectedVerse);
+  const verseIndex = verseStep.index;
   const selected = verses.find(v => v.verseNumber === selectedVerse);
-
-  const resolveBibleTextId = useCallback(async () => {
-    return getBibleTextId(
-      chapterData.bibleId,
-      chapterData.bookId,
-      chapterData.chapterNumber,
-      selectedVerse,
-    );
-  }, [
-    chapterData.bibleId,
-    chapterData.bookId,
-    chapterData.chapterNumber,
-    selectedVerse,
-  ]);
 
   const [lastPericopeOfChapter, setLastPericopeOfChapter] =
     useState<PericopeGroupResult | null>(null);
-
-  useEffect(() => {
-    if (verseAudio.recoveredElapsedMs > 0) {
-      setElapsedMs(verseAudio.recoveredElapsedMs);
-    }
-  }, [verseAudio.recoveredElapsedMs]);
 
   useEffect(() => {
     if (draftingUnit !== 'pericope' || pericopeSetId === null) {
@@ -524,22 +382,6 @@ export function RecordTab({
   const hasAnyTake = hasTake || verseAudio.allTakes.length > 0;
   const activeViewHasTakes = takeView === 'mine' ? hasTake : hasAnyTake;
 
-  /** Shared generation so sync-triggered and verse-change lookups ignore stale IDs. */
-  const bibleTextRequestIdRef = useRef(0);
-
-  const refreshBibleTextId = useCallback(() => {
-    const requestId = ++bibleTextRequestIdRef.current;
-    const verse = selectedVerse;
-    void resolveBibleTextId().then(id => {
-      if (requestId === bibleTextRequestIdRef.current) {
-        setBibleTextId(id);
-        setBibleTextVerse(verse);
-      }
-    });
-  }, [resolveBibleTextId, selectedVerse]);
-
-  const isSyncing = useGlobalSyncStatus(refreshBibleTextId);
-
   useEffect(() => {
     const requestId = ++crossChapterTextRequestIdRef.current;
     const otherChapters = Array.from(
@@ -578,93 +420,15 @@ export function RecordTab({
     chapterData.chapterNumber,
   ]);
 
-  // verseAudio.state is read via ref — listing it in deps caused a REHYDRATE
-  // idle↔recorded loop when switching to pericope (#411 device QA).
-  useEffect(() => {
-    const audioState = verseAudioStateRef.current;
-    if (
-      audioState === 'recording' ||
-      audioState === 'paused' ||
-      // Re-resolving during review would drop the capture unit mid-take, and
-      // the take load keys off it (#411). Verse changes tear playback down
-      // first, so this effect still re-runs with a fresh verse.
-      audioState === 'playing'
-    ) {
-      return;
-    }
-    if (captureBibleTextId === null) {
-      setRecordingUnit(null);
-      return;
-    }
-    let cancelled = false;
-    void resolveRecordingUnit({
-      draftingUnit,
-      projectId: chapterData.projectId ?? null,
-      bibleId: chapterData.bibleId,
-      bookId: chapterData.bookId,
-      chapterNumber: chapterData.chapterNumber,
-      verseNumber: selectedVerse,
-      selectedBibleTextId: captureBibleTextId,
-    }).then(unit => {
-      if (cancelled) {
-        return;
-      }
-      const settledState = verseAudioStateRef.current;
-      // Do not discard the first resolved unit just because review playback
-      // already started — only block while capture is active (#411).
-      if (settledState === 'recording' || settledState === 'paused') {
-        return;
-      }
-      // Keep the prior unit while async resolve runs, and skip setState when
-      // content is unchanged — nulling first made loadTakesFn flip and loop
-      // with REHYDRATE (#411 device QA).
-      setRecordingUnit(prev =>
-        recordingUnitCapturesEqual(prev, unit) ? prev : unit,
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    captureBibleTextId,
-    chapterData.bibleId,
-    chapterData.bookId,
-    chapterData.chapterNumber,
-    chapterData.projectId,
-    draftingUnit,
-    selectedVerse,
-  ]);
-
   useEffect(() => {
     setTakeView('mine');
   }, [captureBibleTextId]);
-
-  useEffect(() => {
-    void refreshRecordedVerses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only takes should trigger this
-  }, [verseAudio.takes]);
 
   useEffect(() => {
     if (!verseAudio.hasMultipleRecorders && takeView === 'all') {
       setTakeView('mine');
     }
   }, [verseAudio.hasMultipleRecorders, takeView]);
-
-  useEffect(() => {
-    const requestId = ++bibleTextRequestIdRef.current;
-    const verse = selectedVerse;
-    setBibleTextId(null);
-    setBibleTextVerse(null);
-    void resolveBibleTextId().then(id => {
-      if (requestId === bibleTextRequestIdRef.current) {
-        setBibleTextId(id);
-        setBibleTextVerse(verse);
-      }
-    });
-    return () => {
-      bibleTextRequestIdRef.current += 1;
-    };
-  }, [resolveBibleTextId, selectedVerse, verses.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -714,85 +478,22 @@ export function RecordTab({
     verseAudio.state,
   ]);
 
-  useEffect(() => {
-    if (verseAudio.state !== 'recording') {
-      return;
-    }
-    const tickStartedAt = Date.now() - elapsedMs;
-    const id = setInterval(() => {
-      setElapsedMs(Date.now() - tickStartedAt);
-    }, 200);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
-  }, [verseAudio.state]);
-
-  useEffect(() => {
-    if (verseAudio.state === 'idle') {
-      setElapsedMs(0);
-    }
-  }, [verseAudio.state]);
-
-  useEffect(() => {
-    if (!verseAudio.errorMessage) return;
-    Alert.alert('Audio error', verseAudio.errorMessage);
-  }, [verseAudio.errorMessage]);
-
-  const captureActive =
-    verseAudio.state === 'recording' || verseAudio.state === 'paused';
-
-  useEffect(() => {
-    onCaptureActiveChange?.(captureActive);
-    return () => onCaptureActiveChange?.(false);
-  }, [captureActive, onCaptureActiveChange]);
-
-  // `useRecordingEngine` returns a fresh object every render, so
-  // `verseAudio.resume` / `discardCapture` change identity each render. Hand the
-  // parent one stable controls object that delegates to the latest callbacks via
-  // a ref, otherwise the registration effect below re-registers every render and
-  // loops through the parent's `setCaptureControls`.
-  const captureActionsRef = useRef({
-    resume: verseAudio.resume,
-    discardCapture: verseAudio.discardCapture,
+  const draftPlaybackActionsRef = useRef({
+    stopPlayback: verseAudio.stopPlayback,
   });
-  captureActionsRef.current = {
-    resume: verseAudio.resume,
-    discardCapture: verseAudio.discardCapture,
+  draftPlaybackActionsRef.current = {
+    stopPlayback: verseAudio.stopPlayback,
   };
-
-  const captureControls = useMemo<CaptureControls>(
+  const draftPlaybackControls = useMemo<DraftPlaybackControls>(
     () => ({
-      resume: () => captureActionsRef.current.resume(),
-      discardCapture: () => captureActionsRef.current.discardCapture(),
+      stopPlayback: () => draftPlaybackActionsRef.current.stopPlayback(),
     }),
     [],
   );
-
   useEffect(() => {
-    onRegisterCaptureControls?.(captureActive ? captureControls : null);
-    return () => onRegisterCaptureControls?.(null);
-  }, [captureActive, captureControls, onRegisterCaptureControls]);
-
-  const recordDisabled = captureBibleTextId === null;
-  const syncingMessage = recordSourceTextHint(captureBibleTextId, isSyncing);
-
-  async function ensureMic(): Promise<boolean> {
-    const permission = await requestMicPermission();
-    if (permission === 'granted') return true;
-    Alert.alert(
-      'Microphone required',
-      'Allow microphone access in Settings to record drafts.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Go to Settings',
-          onPress: () => {
-            void Linking.openSettings();
-          },
-        },
-      ],
-    );
-    return false;
-  }
+    onRegisterDraftPlayback?.(draftPlaybackControls);
+    return () => onRegisterDraftPlayback?.(null);
+  }, [draftPlaybackControls, onRegisterDraftPlayback]);
 
   /**
    * Pericope take in Verse mode (#623): always confirm — delete removes the
@@ -845,34 +546,6 @@ export function RecordTab({
     );
   }
 
-  function changeVerse(next: number) {
-    bibleTextRequestIdRef.current += 1;
-    setBibleTextId(null);
-    setBibleTextVerse(null);
-    setRecordingUnit(null);
-    setSelectedVerse(next);
-  }
-
-  /** #49: capture in progress — offer Resume or Discard, then proceed. */
-  function requestVerseChange(next: number) {
-    if (verseAudio.state === 'paused' || verseAudio.state === 'recording') {
-      Alert.alert(CAPTURE_LEAVE_TITLE, CAPTURE_LEAVE_MESSAGE, [
-        { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },
-        {
-          text: CAPTURE_LEAVE_DISCARD,
-          style: 'destructive',
-          onPress: () => {
-            void verseAudio.discardCapture().then(() => {
-              changeVerse(next);
-            });
-          },
-        },
-      ]);
-      return;
-    }
-    changeVerse(next);
-  }
-
   const showIdle =
     (verseAudio.state === 'idle' && !activeViewHasTakes) ||
     (verseAudio.state === 'error' && !activeViewHasTakes);
@@ -903,20 +576,6 @@ export function RecordTab({
   });
 
   const currentUserId = userId;
-  const peerCheckCaptureBlocked = useMemo(
-    () => isBlockedFromPeerCheckCapture(chapterData, currentUserId),
-    [chapterData, currentUserId],
-  );
-  const stageLocked = useMemo(
-    () => isRecordingLockedByStage(chapterData),
-    [chapterData],
-  );
-  const isTaken = useMemo(
-    () => isChapterTakenByOther(chapterData, currentUserId),
-    [chapterData, currentUserId],
-  );
-  const captureDisabled =
-    recordDisabled || peerCheckCaptureBlocked || stageLocked || isTaken;
 
   async function handleStart() {
     if (stageLocked || isTaken || peerCheckCaptureBlocked) return;
@@ -1108,7 +767,7 @@ export function RecordTab({
               const targetIndex = isPericopeNav
                 ? pericopePrevIndex
                 : verseIndex - 1;
-              requestVerseChange(verses[targetIndex]!.verseNumber);
+              verseStep.request(verses[targetIndex]!.verseNumber);
             }
           }}
           disabled={prevDisabled}
@@ -1149,7 +808,7 @@ export function RecordTab({
               const targetIndex = isPericopeNav
                 ? pericopeNextIndex
                 : verseIndex + 1;
-              requestVerseChange(verses[targetIndex]!.verseNumber);
+              verseStep.request(verses[targetIndex]!.verseNumber);
             }
           }}
           disabled={nextDisabled}
@@ -1435,7 +1094,11 @@ export function RecordTab({
                         verseAudio.playingTakeId === take.id ||
                         (verseAudio.loadedTakeId === take.id &&
                           verseAudio.playbackStatus === 'paused');
+                      // Before Complete, preserve the existing loaded/selected
+                      // seek gate. At Complete, explicit-target seeking lets any
+                      // row scrub without changing the selected take (#833).
                       const isSeekable =
+                        stageLocked ||
                         verseAudio.loadedTakeId === take.id ||
                         (verseAudio.loadedTakeId === null && isSelected);
                       const leadingIndicator = verseAudio.hasMultipleRecorders
@@ -1481,7 +1144,10 @@ export function RecordTab({
                             onSeek={
                               isSeekable
                                 ? ms => {
-                                    void verseAudio.seek(ms);
+                                    // Explicit target: at Complete an unloaded
+                                    // row would otherwise resolve to the
+                                    // selected take (null) and no-op.
+                                    void verseAudio.seek(ms, take);
                                   }
                                 : undefined
                             }
@@ -1507,6 +1173,13 @@ export function RecordTab({
                           verseAudio.playingTakeId === take.id ||
                           (verseAudio.loadedTakeId === take.id &&
                             verseAudio.playbackStatus === 'paused');
+                        // Scrubbable when it is the take in the player, or
+                        // when nothing is loaded yet — the first scrub then
+                        // loads this row (explicit target below), which is
+                        // what makes an unplayed All Takes row respond (#833).
+                        const isSeekable =
+                          verseAudio.loadedTakeId === take.id ||
+                          verseAudio.loadedTakeId === null;
                         return (
                           <View key={take.id} style={styles.takeItemSpacing}>
                             <SharedTakeRow
@@ -1533,6 +1206,13 @@ export function RecordTab({
                                   : () => {
                                       void verseAudio.setCanonical(take.id);
                                     }
+                              }
+                              onSeek={
+                                isSeekable
+                                  ? ms => {
+                                      void verseAudio.seek(ms, take);
+                                    }
+                                  : undefined
                               }
                             />
                           </View>

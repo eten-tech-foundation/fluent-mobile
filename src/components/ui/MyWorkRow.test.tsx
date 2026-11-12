@@ -99,6 +99,7 @@ const baseChapter: MyWorkChapter = {
   hasConflict: false,
   lastActivityLabel: 'Yesterday',
   projectName: 'Demo',
+  milestoneName: 'Phase 1',
   targetLanguageName: 'English',
   projectUnitId: 11,
   projectId: 3,

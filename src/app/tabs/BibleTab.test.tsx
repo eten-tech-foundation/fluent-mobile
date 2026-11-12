@@ -439,6 +439,7 @@ describe('BibleTab', () => {
     });
     jest.mocked(getRecordedVerseNumbers).mockResolvedValue(new Set([1]));
     let coverages: {
+      granularity: string;
       startChapter: number;
       startVerse: number;
       endChapter: number;
@@ -480,6 +481,7 @@ describe('BibleTab', () => {
 
     coverages = [
       {
+        granularity: 'pericope',
         startChapter: 14,
         startVerse: 1,
         endChapter: 14,

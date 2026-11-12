@@ -70,12 +70,19 @@ jest.mock('./connectivity', () => ({
     isWifi: true,
     connectionType: 'wifi',
   }),
+  getRecentOnlineReachability: () => null,
 }));
 jest.mock('./userPreferences', () => ({
   getUploadOverCellular: () => false,
   subscribeToPreference: () => () => undefined,
 }));
+const mockKv = new Map<string, string>();
 jest.mock('./storage', () => ({
+  kvStorage: {
+    getItemSync: (key: string) => mockKv.get(key) ?? null,
+    setItemSync: (key: string, value: string) => mockKv.set(key, value),
+    removeItemSync: (key: string) => mockKv.delete(key),
+  },
   getActiveUserId: () => mockActiveUserId,
   getSyncPausedUntilMs: () => mockPausedUntil,
   setSyncPausedUntilMs: (value: number | null) => {
@@ -93,6 +100,7 @@ jest.mock('./sync', () => ({
 }));
 jest.mock('./keychain', () => ({
   getCredentials: async (id: string) => ({ token: `owner-${id}-token` }),
+  getCredentialsVersion: () => 0,
 }));
 jest.mock('./syncEvents', () => ({
   emitUploadSessionEvent: (event: UploadSessionEvent) => mockEmit(event),
@@ -171,6 +179,9 @@ const response = (bibleTextId: number) => ({
   uploadedBy: bibleTextId === 42 ? 10 : 12,
   versionToken: 1,
   conflictStatus: 'clean',
+  takeId: bibleTextId,
+  activeTakeId: bibleTextId,
+  takes: [],
 });
 
 beforeEach(async () => {
@@ -181,6 +192,7 @@ beforeEach(async () => {
   resetFileSystemMock();
   mockActiveUserId = '10';
   mockPausedUntil = null;
+  mockKv.clear();
   uploaded.clear();
   timers = [];
   authToken.set('active-10-token');

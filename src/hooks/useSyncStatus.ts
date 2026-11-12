@@ -37,7 +37,8 @@ export function useSyncStatus({
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
-  const { needsDownloadSync } = useLocalSyncHealth(refreshKey);
+  const { needsDownloadSync, missingTextChapters } =
+    useLocalSyncHealth(refreshKey);
   const { reauthRequired } = useReauthRequired();
   // Effect below is the single reader for persisted metadata errors (mount +
   // refreshKey). Avoid lazy useState init so we do not double-read on mount.
@@ -56,6 +57,8 @@ export function useSyncStatus({
   // Metadata sync_error_* / active-user reauth only — do not fold into
   // needsDownloadSync (Home auto-repair stays assignee-repair-only).
   const hasSyncRetryWork = hasMetadataSyncError || reauthRequired;
+  // Same reason: fetchable text keeps Sync offered without auto-triggering it.
+  const needsTextSync = missingTextChapters > 0;
 
   const effectivelyOnline =
     hasResolved &&
@@ -68,15 +71,23 @@ export function useSyncStatus({
       connectionType,
     });
 
+  // Unknown until both answers are in, unless /health already confirms
+  // offline. A down link reaches us as that answer; the transport snapshot
+  // alone can't tell down from not-yet-known.
+  const connectivityPending =
+    !hasResolved || (isOnline && !hasTransferResolved);
+
   return {
     status: deriveSyncStatus({
       isOnline: effectivelyOnline,
+      connectivityPending,
       isSyncing,
       hasPendingUploads: hasPendingUploads || countsUnknown,
       isUploading,
       hasFailedUploads,
       needsDownloadSync,
       hasSyncRetryWork,
+      needsTextSync,
     }),
     isOnline: effectivelyOnline,
     pendingCount,
@@ -88,5 +99,7 @@ export function useSyncStatus({
     uploadProgress,
     needsDownloadSync,
     hasSyncRetryWork,
+    needsTextSync,
+    missingTextChapters,
   };
 }

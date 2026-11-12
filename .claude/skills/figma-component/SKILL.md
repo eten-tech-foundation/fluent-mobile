@@ -21,9 +21,12 @@ Read it fully before step 1; this file is how an agent executes it.
 
 ## Environment facts (don't re-derive these)
 
-- Figma file key `VZ23XV2pxvIIAMn12wI4YI`. Foundations page `2308:6`
-  (01 Color primitives · 02 Roles · 03 Type · 04 Spacing · 05 Radius ·
-  06 Gradients · 07 Tactile · 08 Patterns · 09 Contrast).
+- Figma file key `VZ23XV2pxvIIAMn12wI4YI`. Foundations page `2308:6`, read
+  left to right: 00 Start here · 01 Color primitives · 02 Roles · 03 Type ·
+  04 Spacing · 05 Radius · 06 Gradients · 07 Tactile · 08 Patterns (the
+  component masters, then how each is used) · 09 Contrast · 10 Review
+  (exploration) · 11 Not in the app. Each section names the code file it
+  matches; code wins, so fix Figma when they disagree.
 - Variable collections: `Primitives` (single mode `Value`) and `Roles`
   (modes `Canvas`, `Hardware`, `Accent`). Effect styles `elevation/*` are
   bound to role variables.
@@ -41,6 +44,10 @@ Read it fully before step 1; this file is how an agent executes it.
   `t.controlSizes.*`, `t.type.*` (named type styles; layer `t.typeTelugu.*`
   for Telugu), plus the existing `t.spacing` / `t.radius`. Use `t.type.*` for
   new text, not the Legacy-keyed `t.typography.sizes`.
+- Icons: Phosphor (Figma's `Icon (Phosphor)`), from `src/components/ui/icons`.
+  Regular by default, Fill on hardware transport keys; check the weight by
+  matching the Figma SVG path to `phosphor-react-native/src/defs/<Name>.tsx`.
+  Add missing icons there as a typed `require` per icon. Lucide is Legacy only.
 - Haptics: `useHaptics()` from `src/hooks/useHaptics.ts` (no-op in Legacy, silent
   for the whole take, recording or paused, via `src/audio/micActivity.ts`).
 - Reference implementations: `src/components/ui/Key.tsx` (pressable, latch),
@@ -159,9 +166,14 @@ section "Screens: wire to what exists" before writing screen code:
 
 Before handing off, run the guide's "Before asking for review" checklist
 (rebased on `main`, product rules consistent, status docs correct from the
-top, Android floor noted, shared test state reset). Then hand off to
-`/create-pr`. In the PR: Figma link, the token mapping report
-(collapsed), gallery path under "How to verify", before/after screenshots,
+top, Android floor noted, shared test state reset). Then stop and say it's
+ready: **don't open a PR until the user says so**. When you're running
+`/start-issue`, still run `/create-pr`'s local gates and the code-reviewer
+agent at step 7, but skip the push, `gh pr create`, board move and CI watch.
+Report "PR held until the user asks" with the board left at In Progress
+(Dev). Once they ask, hand off to `/create-pr`. In the PR: Figma link, the
+token mapping report (collapsed), gallery path under "How to verify",
+before/after screenshots,
 **Needs QA? Yes** if haptics or recording are involved. For screens, add the
 **Existing functionality** table (UI element · Status · Source with file or
 OpenAPI path · Legacy uses it? · Offline? · Dev check) under Technical
@@ -170,6 +182,7 @@ issue. Ask reviewers to confirm the wiring in the PR TLDR.
 
 ## Don'ts
 
+- Don't open a PR (or run `/create-pr`) until the user asks for one.
 - Don't import `src/theme/next*` from UI, add keys to `tokens.ts`, or put
   hex in component files.
 - Don't call `expo-haptics` directly from components.

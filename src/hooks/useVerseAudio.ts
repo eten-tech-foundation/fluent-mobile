@@ -2,7 +2,6 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   addRecordingTake,
-  deleteRecordingTake,
   getAllTakesForVerse,
   getTakesForVerse,
   selectRecordingTake,
@@ -28,6 +27,7 @@ import { usePlaybackEngine } from './usePlaybackEngine';
 import { useRecordingEngine } from './useRecordingEngine';
 import { getConnectivitySnapshot } from '../services/connectivity';
 import { notifyPendingUploads } from '../services/uploadOrchestrator';
+import { deleteRecordingTakeWithUploadState } from '../services/recordingTakeDeletion';
 import { onRecordingDataChanged } from '../services/recordingDataEvents';
 import { onUploadSessionEvent } from '../services/syncEvents';
 import { shouldEndPlaybackOnIdle } from './playbackStatusGuards';
@@ -92,6 +92,8 @@ export type VerseAudioPersistDeps = {
   countTakesAtView?: (view: VerseViewRef) => Promise<number>;
   deleteTake?: (id: string) => Promise<void>;
   selectTake?: (id: string) => Promise<void>;
+  /** Re-choosing a selected take whose upload failed (#886). */
+  reassertTake?: (id: string) => Promise<boolean>;
   designateCanonical?: (id: string) => Promise<void>;
 };
 
@@ -216,6 +218,13 @@ function toMarkerCapture(snapshot: CapturePersistSnapshot): PausedTakeCapture {
   };
 }
 
+function defaultReassertTake(id: string): Promise<boolean> {
+  // Lazy require keeps KV storage out of hook tests that inject their own.
+  const { chooseLocalTakeAfterUnresolvedActivation } =
+    require('../services/uploadOperationState') as typeof import('../services/uploadOperationState');
+  return chooseLocalTakeAfterUnresolvedActivation(id);
+}
+
 /**
  * Composes recorder (#95) + player (#96) + storage (#94) + multi-take (#98)
  * behind the pure {@link verseAudioReducer}. Permission/Alert UX stays in the screen.
@@ -236,8 +245,9 @@ export function useVerseAudio({
   loadAllTakes,
   checkMultipleRecorders,
   countTakesAtView: countTakesAtViewArg,
-  deleteTake: deleteTakeFn = deleteRecordingTake,
+  deleteTake: deleteTakeFn = deleteRecordingTakeWithUploadState,
   selectTake: selectTakeFn = selectRecordingTake,
+  reassertTake: reassertTakeFn = defaultReassertTake,
   designateCanonical: designateCanonicalFn = setCanonicalTake,
 }: UseVerseAudioArgs) {
   const countTakesAtView = useCallback(
@@ -658,6 +668,9 @@ export function useVerseAudio({
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
+    // The last take is still saving; the reducer would drop this START and
+    // leave the mic running with nothing on screen.
+    if (state === 'saving') return;
     // Wait until capture metadata resolves so pericope mode cannot persist as verse.
     if (draftingUnit === 'pericope' && recordingUnit === null) return;
 
@@ -735,6 +748,7 @@ export function useVerseAudio({
     projectUnitId,
     recording,
     recordingUnit,
+    state,
     verseNumber,
   ]);
 
@@ -806,6 +820,7 @@ export function useVerseAudio({
    * paused segments and their marker (#567): `start()` no longer does.
    */
   const discardCapture = useCallback(async () => {
+    if (state === 'saving') return;
     if (capturePersistRef.current === null) return;
     try {
       const { uri } = await recording.stop();
@@ -853,7 +868,7 @@ export function useVerseAudio({
       // only fires from `recorded`.
       dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
     }
-  }, [recording, sessionKey, takes]);
+  }, [recording, sessionKey, state, takes]);
 
   const stop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
@@ -1006,7 +1021,7 @@ export function useVerseAudio({
 
   /** File checks + engine play, shared by single takes and stitched segments. */
   const playUri = useCallback(
-    async (path: string, isStale?: () => boolean) => {
+    async (path: string, isStale?: () => boolean, fromMs?: number) => {
       const exists = await fileExists(path);
       if (!exists) {
         throw new Error('Take file is missing on disk. Re-record this verse.');
@@ -1016,30 +1031,48 @@ export function useVerseAudio({
         throw new Error('Take file is empty (0 bytes). Re-record this verse.');
       }
       if (isStale?.()) return;
-      await playback.play(path);
+      // Omitted resumes a loaded file in place. An explicit 0 starts over.
+      if (fromMs !== undefined) {
+        await playback.resume(Math.max(0, fromMs), path);
+      } else {
+        await playback.play(path);
+      }
     },
     [playback],
   );
 
   const playTake = useCallback(
-    async (take: Recording) => {
+    /** `fromMs` starts partway in, e.g. where the take was scrubbed to. */
+    async (take: Recording, fromMs?: number) => {
       playbackLoadInFlightRef.current = true;
+      clearStitchQueue();
+      // Same generation `stopPlayback` bumps via `clearStitchQueue`, so a
+      // leave/Sync during file checks cannot restore playing/loaded ids (#866).
+      const generation = stitchPlaybackGenerationRef.current;
+      const isStale = () => generation !== stitchPlaybackGenerationRef.current;
       try {
-        clearStitchQueue();
         setErrorMessage(null);
-        await playUri(take.localFilePath);
+        await playUri(take.localFilePath, isStale, fromMs);
+        if (isStale()) {
+          return;
+        }
         setPlayingTakeId(take.id);
         setLoadedTakeId(take.id);
         dispatch({ type: 'PLAY' });
       } catch (error) {
+        if (isStale()) {
+          return;
+        }
         setPlayingTakeId(null);
         setLoadedTakeId(null);
         const message = error instanceof Error ? error.message : 'play failed';
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
       } finally {
-        playbackLoadInFlightRef.current = false;
-        setPlaybackLoadGate(n => n + 1);
+        if (!isStale()) {
+          playbackLoadInFlightRef.current = false;
+          setPlaybackLoadGate(n => n + 1);
+        }
       }
     },
     [clearStitchQueue, playUri],
@@ -1215,11 +1248,15 @@ export function useVerseAudio({
    * takes are remuxed via {@link getRemuxNativeModule} on commit (#233).
    */
   const seek = useCallback(
-    async (ms: number) => {
+    /** A recording picks the row; otherwise the loaded take, then the selected. */
+    async (ms: number, target?: Recording) => {
       const take =
+        target ??
         (loadedTakeId !== null
-          ? takes.find(t => t.id === loadedTakeId)
-          : null) ?? selectedTake;
+          ? takes.find(take => take.id === loadedTakeId) ??
+            allTakes.find(take => take.id === loadedTakeId)
+          : null) ??
+        selectedTake;
       if (!take?.localFilePath) return;
       playbackLoadInFlightRef.current = true;
       try {
@@ -1250,8 +1287,38 @@ export function useVerseAudio({
         setPlaybackLoadGate(n => n + 1);
       }
     },
-    [clearStitchQueue, loadedTakeId, playback, selectedTake, takes],
+    [allTakes, clearStitchQueue, loadedTakeId, playback, selectedTake, takes],
   );
+
+  /**
+   * Halt draft review playback (#866): stop the engine, drop loaded/playing
+   * ids, and return the reducer to `recorded` so the take row shows Play.
+   * Verse changes already stop via the load effect; this is for Back / leave
+   * while Record stays mounted, and for unmount of a frozen screen.
+   */
+  const stopPlayback = useCallback(async () => {
+    clearStitchQueue();
+    setPlayingTakeId(null);
+    setLoadedTakeId(null);
+    try {
+      await playback.stop();
+    } catch {
+      // Leave / Back must proceed even if native stop rejects.
+    }
+    dispatch({ type: 'PLAYBACK_END' });
+  }, [clearStitchQueue, playback.stop]);
+
+  const playbackStopRef = useRef(playback.stop);
+  playbackStopRef.current = playback.stop;
+  useEffect(() => {
+    return () => {
+      // Engine-only: do not setState after unmount. Drafting also calls
+      // stopPlayback while still mounted (Back / Sync).
+      void playbackStopRef.current().catch(() => {
+        // Native stop can reject if the player was already released.
+      });
+    };
+  }, []);
 
   /** Pause draft review playback (design review control shows Pause while playing). */
   const pausePlayback = useCallback(async () => {
@@ -1333,7 +1400,11 @@ export function useVerseAudio({
         clearStitchQueue();
         // The player still holds this file even after playback ended.
         if (loadedTakeId === id) {
-          await playback.stop();
+          try {
+            await playback.stop();
+          } catch {
+            // The player may already be released (screen unmounting).
+          }
           setPlayingTakeId(null);
           setLoadedTakeId(null);
         }
@@ -1349,11 +1420,15 @@ export function useVerseAudio({
         if (bibleTextId !== null) {
           await refreshAllTakes(bibleTextId);
         }
-        dispatch(
-          rows.length > 0
-            ? { type: 'REHYDRATE', hasTake: true }
-            : { type: 'DELETE' },
-        );
+        // Another take still playing keeps playing; REHYDRATE would drop
+        // the state to recorded under it.
+        if (!(state === 'playing' && loadedTakeId !== id)) {
+          dispatch(
+            rows.length > 0
+              ? { type: 'REHYDRATE', hasTake: true }
+              : { type: 'DELETE' },
+          );
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'delete failed';
@@ -1367,6 +1442,7 @@ export function useVerseAudio({
       loadTakesFn,
       loadedTakeId,
       playback,
+      state,
       takes,
       deleteTakeFn,
       refreshAllTakes,
@@ -1378,7 +1454,15 @@ export function useVerseAudio({
       try {
         clearStitchQueue();
         setPlayingTakeId(null);
-        await selectTakeFn(id);
+        const current = takes.find(take => take.id === id);
+        // Selecting is a no-op on an already-selected take; when its upload
+        // failed (e.g. another take became active on the server) the tap is
+        // the user's explicit choice to make this take active again.
+        if (current?.isSelected && current.syncStatus === 'failed') {
+          await reassertTakeFn(id);
+        } else {
+          await selectTakeFn(id);
+        }
         // Selection changes are syncable work now (#701) — queue an upload
         // pass when transport allows instead of waiting for the next sync.
         notifyPendingUploads();
@@ -1392,7 +1476,14 @@ export function useVerseAudio({
         dispatch({ type: 'ERROR', message });
       }
     },
-    [bibleTextId, clearStitchQueue, loadTakesFn, selectTakeFn],
+    [
+      bibleTextId,
+      clearStitchQueue,
+      loadTakesFn,
+      reassertTakeFn,
+      selectTakeFn,
+      takes,
+    ],
   );
 
   /** Designate canonical from All Takes (#279) — any account may call this. */
@@ -1436,6 +1527,8 @@ export function useVerseAudio({
     playbackStatus: playback.status,
     errorMessage,
     recoveredElapsedMs,
+    /** Live input level in dBFS while recording, for the Level wave. */
+    getMetering: recording.getMetering,
     positionMs: playback.positionMs,
     durationMs: playback.durationMs,
     start,
@@ -1452,6 +1545,7 @@ export function useVerseAudio({
     seekStitched,
     seek,
     pausePlayback,
+    stopPlayback,
     selectTake,
     deleteTake,
     setCanonical,

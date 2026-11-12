@@ -41,7 +41,18 @@ describe('useUiVersion / useTheme', () => {
     mockPreferenceStore();
   });
 
-  it('defaults to legacy theme', () => {
+  it('defaults to the Next theme', () => {
+    const { result } = renderHook(() => ({
+      version: useUiVersion(),
+      theme: useTheme(),
+    }));
+
+    expect(result.current.version).toBe('next');
+    expect(result.current.theme).toBe(nextTheme);
+  });
+
+  it('keeps an explicit stored Legacy choice', () => {
+    mockPreferenceStore({ pref_ui_version: 'legacy' });
     const { result } = renderHook(() => ({
       version: useUiVersion(),
       theme: useTheme(),
@@ -63,14 +74,14 @@ describe('useUiVersion / useTheme', () => {
       theme: useTheme(),
     }));
 
-    expect(result.current.theme).toBe(legacyTheme);
+    expect(result.current.theme).toBe(nextTheme);
 
     act(() => {
-      setUiVersion('next');
+      setUiVersion('legacy');
     });
 
-    expect(result.current.version).toBe('next');
-    expect(result.current.theme).toBe(nextTheme);
+    expect(result.current.version).toBe('legacy');
+    expect(result.current.theme).toBe(legacyTheme);
   });
 });
 
@@ -87,19 +98,17 @@ describe('useThemedStyles', () => {
       })),
     );
 
-    const legacyStyles = result.current;
+    const nextStyles = result.current;
 
     act(() => {
-      setUiVersion('next');
+      setUiVersion('legacy');
     });
 
-    expect(result.current).not.toBe(legacyStyles);
+    expect(result.current).not.toBe(nextStyles);
     expect(result.current.screen.backgroundColor).toBe(
-      nextTheme.colors.background,
-    );
-    expect(legacyStyles.screen.backgroundColor).toBe(
       legacyTheme.colors.background,
     );
+    expect(nextStyles.screen.backgroundColor).toBe(nextTheme.colors.background);
   });
 
   it('keeps the same style object when the theme does not change', () => {
@@ -134,6 +143,9 @@ describe('ColorModeScope', () => {
   });
 
   it('stays on Legacy when the UI version is Legacy', () => {
+    act(() => {
+      setUiVersion('legacy');
+    });
     const { result } = renderHook(() => useTheme(), { wrapper: canvasWrapper });
     expect(result.current).toBe(legacyTheme);
   });

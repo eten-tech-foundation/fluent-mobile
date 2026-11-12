@@ -118,6 +118,17 @@ describe('deriveSyncStatus', () => {
     ).toBe('online_needs_sync');
   });
 
+  it('returns online_needs_sync when verse text is still fetchable', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: true,
+        isSyncing: false,
+        hasPendingUploads: false,
+        needsTextSync: true,
+      }),
+    ).toBe('online_needs_sync');
+  });
+
   it('returns online_synced when queues empty and no retry work', () => {
     expect(
       deriveSyncStatus({
@@ -126,6 +137,7 @@ describe('deriveSyncStatus', () => {
         hasPendingUploads: false,
         needsDownloadSync: false,
         hasSyncRetryWork: false,
+        needsTextSync: false,
       }),
     ).toBe('online_synced');
   });
@@ -228,9 +240,44 @@ describe('deriveSyncStatus', () => {
       }),
     ).toBe('offline_pending');
   });
+
+  it('returns checking, not offline, while reachability is unknown', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: false,
+        connectivityPending: true,
+        isSyncing: false,
+        hasPendingUploads: true,
+        hasFailedUploads: true,
+      }),
+    ).toBe('checking');
+  });
+
+  it('ignores connectivityPending once online', () => {
+    expect(
+      deriveSyncStatus({
+        isOnline: true,
+        connectivityPending: true,
+        isSyncing: false,
+        hasPendingUploads: true,
+      }),
+    ).toBe('online_pending');
+  });
 });
 
 describe('formatSyncStatusLabel', () => {
+  it('says pending uploads wait for drafting only while held', () => {
+    expect(
+      formatSyncStatusLabel('online_pending', { heldForDrafting: true }),
+    ).toBe('Online · uploads wait until you leave drafting. Open Sync page.');
+    expect(
+      formatSyncStatusLabel('online_failed', { heldForDrafting: true }),
+    ).toBe('Upload failed. Open Sync page to retry.');
+    expect(formatSyncStatusLabel('online_pending')).toBe(
+      'Online · upload pending. Open Sync page.',
+    );
+  });
+
   it('includes upload progress counts for online_uploading', () => {
     expect(
       formatSyncStatusLabel('online_uploading', {

@@ -148,7 +148,7 @@ export default function SettingsScreen() {
             <View style={styles.sectionCard}>
               <SettingsSegmentedRow
                 title="UI version"
-                subtitle="Legacy is the current design. Next is the redesign in progress."
+                subtitle="Next is the current design. Legacy stays available."
                 options={[
                   { label: 'Legacy', value: 'legacy' },
                   { label: 'Next', value: 'next' },

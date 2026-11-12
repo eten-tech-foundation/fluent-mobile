@@ -26,7 +26,11 @@ describe('DraftingTabBar', () => {
   });
   it('renders Bible, Resources, Record in Lovable order with active top indicator', () => {
     const onTabChange = jest.fn();
-    render(<DraftingTabBar activeTab="record" onTabChange={onTabChange} />);
+    render(
+      <UiVersionOverride value="legacy">
+        <DraftingTabBar activeTab="record" onTabChange={onTabChange} />
+      </UiVersionOverride>,
+    );
 
     const bar = screen.getByTestId('drafting-tab-bar');
     expect(bar).toHaveStyle({

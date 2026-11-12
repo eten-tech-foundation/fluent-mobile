@@ -46,6 +46,14 @@ let mockPendingUploads = {
 };
 let mockSessionError: string | null = null;
 let mockHeldRecordings: HeldRecording[] = [];
+let mockMetadataSyncActive = false;
+let mockProgressCurrentChapter: {
+  bookId: number;
+  chapterNumber: number;
+  completedTakes: number;
+  failedTakes: number;
+  totalTakes: number;
+} | null = null;
 const mockPause = jest.fn();
 const mockCancel = jest.fn();
 const mockResumeUploads = jest.fn();
@@ -99,6 +107,12 @@ jest.mock('../../hooks/useSync', () => ({
   }),
 }));
 
+jest.mock('../../services/syncEvents', () => ({
+  emitUploadSessionEvent: jest.fn(),
+  emitAuthReauthRequired: jest.fn(),
+  onSyncComplete: jest.fn(),
+}));
+
 jest.mock('../../hooks/usePendingUploads', () => ({
   usePendingUploads: () => mockPendingUploads,
 }));
@@ -133,6 +147,7 @@ jest.mock('../../hooks/useUploadSessionState', () => ({
         : mockPageStatus,
     progressUploaded: 0,
     progressTotal: 3,
+    progressCurrentChapter: mockProgressCurrentChapter,
     nextRetryAt: undefined,
     sessionError: mockSessionError,
     isControlPending: false,
@@ -147,6 +162,10 @@ jest.mock('../../hooks/useUploadSessionState', () => ({
 jest.mock('../../db/queries', () => ({
   hasPendingChapterClaimsForUser: (...args: unknown[]) =>
     mockHasPendingChapterClaimsForUser(...args),
+}));
+
+jest.mock('../../hooks/useMetadataSyncActive', () => ({
+  useMetadataSyncActive: () => mockMetadataSyncActive,
 }));
 
 jest.mock('../../services/storage', () => ({
@@ -213,6 +232,8 @@ describe('SyncScreen', () => {
     mockConnectivityPending = false;
     mockTransferConnectivityPending = false;
     mockIsSyncing = false;
+    mockMetadataSyncActive = false;
+    mockProgressCurrentChapter = null;
     mockDisplayText = 'Last synced: Just now';
     mockStateType = 'normal';
     mockPendingUploads = {
@@ -420,6 +441,63 @@ describe('SyncScreen', () => {
       expect(mockSyncNowFromHook).not.toHaveBeenCalled();
     },
   );
+
+  describe('truthful progress (#886)', () => {
+    it('shows Syncing… instead of all synced while a metadata pass started elsewhere is in flight', () => {
+      mockPageStatus = 'allComplete';
+      mockMetadataSyncActive = true;
+      mockPendingUploads = {
+        ...mockPendingUploads,
+        hasPendingUploads: false,
+        pendingCount: 0,
+        pendingChapterCount: 0,
+      };
+      render(<SyncScreen />);
+
+      expect(screen.getByText('Syncing…')).toBeTruthy();
+      expect(screen.getByTestId('sync-metadata-syncing')).toBeTruthy();
+      expect(screen.queryByText('Online · all synced')).toBeNull();
+    });
+
+    it('keeps the upload copy when takes are uploading during a metadata pass', () => {
+      mockPageStatus = 'syncing';
+      mockMetadataSyncActive = true;
+      render(<SyncScreen />);
+
+      expect(
+        screen.getByText('Uploading your recordings to Fluent.'),
+      ).toBeTruthy();
+      expect(screen.queryByTestId('sync-metadata-syncing')).toBeNull();
+    });
+
+    it('shows the held state with Sync Now while drafting holds automatic uploads', () => {
+      mockPageStatus = 'held';
+      render(<SyncScreen />);
+
+      expect(screen.getByText('Upload waiting · drafting open')).toBeTruthy();
+      expect(screen.getByTestId('sync-held-subtitle')).toBeTruthy();
+      expect(screen.queryByText('Online · upload pending')).toBeNull();
+      expect(screen.getByTestId('sync-action-sync-now')).toBeTruthy();
+      expect(screen.queryByTestId('sync-upload-section')).toBeNull();
+    });
+
+    it('shows per-take progress for the chapter uploading now', () => {
+      mockPageStatus = 'syncing';
+      mockProgressCurrentChapter = {
+        bookId: 1,
+        chapterNumber: 7,
+        completedTakes: 2,
+        failedTakes: 0,
+        totalTakes: 10,
+      };
+      render(<SyncScreen />);
+
+      expect(screen.getByText('0 of 3 chapters uploaded')).toBeTruthy();
+      expect(
+        screen.getByTestId('upload-progress-current-chapter'),
+      ).toHaveTextContent('Chapter 7: 2 of 10 takes uploaded');
+    });
+  });
 
   it('keeps the upload section while pending and an upload session is active', () => {
     mockPageStatus = 'pending';

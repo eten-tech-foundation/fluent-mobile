@@ -16,6 +16,7 @@ const baseChapter: MyWorkChapter = {
   hasConflict: false,
   lastActivityLabel: 'Jun 1, 2024',
   projectName: 'Gospel of Luke',
+  milestoneName: 'Phase 1',
   targetLanguageName: 'Baka',
   projectUnitId: 11,
   projectId: 3,

@@ -1,0 +1,421 @@
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type AccessibilityActionEvent,
+  type LayoutChangeEvent,
+  type StyleProp,
+  View,
+  type ViewStyle,
+} from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { scheduleOnRN } from 'react-native-worklets';
+import { useTheme, useThemedStyles } from '../../theme/useTheme';
+import { VerseChip, verseChipWidth } from './VerseChip';
+
+/** Figma Wave bar: 2 wide, heights 6–52 in a 52pt row. */
+const BAR_WIDTH = 2;
+const ROW_HEIGHT = 52;
+/** Verses this far outside the frame still mount, so the scroll never shows a gap. */
+const WINDOW_MARGIN = 64;
+/** Window size before the frame is measured. */
+const UNMEASURED_WIDTH = 480;
+/** Figma holds the playhead about a third of the way across (130 of 380). */
+const PLAYHEAD_ANCHOR = 1 / 3;
+/** How far TalkBack's swipe up or down moves a seekable waveform (Q25). */
+const SEEK_STEP = 0.05;
+/**
+ * After a scrub, the finger's spot shows until playback reports within this
+ * many bars of it, or this long has passed (Q25).
+ */
+const SETTLE_BARS = 2;
+const SETTLE_MS = 1000;
+
+export interface WaveformVerse {
+  /**
+   * Null draws the bars with no chip or gap, when where verses fall isn't
+   * known. The groups still let off-screen bars unmount.
+   */
+  verse: number | null;
+  /** Bar heights in pt, one per sample. */
+  bars: readonly number[];
+}
+
+export interface WaveformProps {
+  verses: readonly WaveformVerse[];
+  /** 0–1 through the whole waveform. */
+  progress: number;
+  /** What's playing; TalkBack reads it with the percent. */
+  accessibilityLabel: string;
+  /**
+   * Makes it scrubbable: drag the strip like tape, or tap a bar. Called once,
+   * with 0–1, when the finger lifts.
+   */
+  onSeek?: (progress: number) => void;
+  style?: StyleProp<ViewStyle>;
+  /**
+   * Keep the strip at the start of the frame. The take card's live wave
+   * fills the measured width instead of sliding under a playhead at the end.
+   */
+  pinned?: boolean;
+  testID?: string;
+}
+
+/**
+ * Where a drag lands: the strip moves under the playhead like tape, so
+ * dragging left by the bars' span goes from the start to the end.
+ */
+export function scrubTo(from: number, dx: number, barSpan: number): number {
+  'worklet';
+  return Math.min(1, Math.max(0, from - dx / Math.max(1, barSpan)));
+}
+
+/** Playback has caught up with a released scrub, so the finger's spot can go. */
+export function scrubSettled(
+  target: number,
+  playing: number,
+  bars: number,
+): boolean {
+  return Math.abs(playing - target) <= SETTLE_BARS / Math.max(1, bars);
+}
+
+/** The bar nearest `x` on the strip, as 0–1 through the waveform. */
+export function nearestBar(barX: readonly number[], x: number): number {
+  let nearest = 0;
+  for (let i = 1; i < barX.length; i++) {
+    if (Math.abs(barX[i] - x) < Math.abs(barX[nearest] - x)) nearest = i;
+  }
+  return barX.length > 0 ? nearest / barX.length : 0;
+}
+
+/** A seek (Next, Previous, scrubbing) jumps past the window margin. */
+export function waveformJumps(prevOffset: number, nextOffset: number) {
+  return Math.abs(nextOffset - prevOffset) > WINDOW_MARGIN;
+}
+
+/**
+ * How far to slide the strip left so the playhead stays at the anchor once it
+ * gets there. 0 until the frame has been measured.
+ */
+export function waveformOffset(playheadX: number, frameWidth: number): number {
+  if (frameWidth <= 0) {
+    return 0;
+  }
+  return Math.max(0, playheadX - frameWidth * PLAYHEAD_ANCHOR);
+}
+
+/**
+ * Player waveform (Figma Wave bar 2409:505 and Verse chip 2409:502): a verse
+ * chip, then that verse's bars, played in fg/primary and unplayed in
+ * fg/inactive. The strip scrolls so the played edge holds about a third across.
+ */
+export function Waveform({
+  verses,
+  progress: playing,
+  accessibilityLabel,
+  onSeek,
+  style,
+  pinned = false,
+  testID,
+}: WaveformProps) {
+  // While a finger is scrubbing, it leads; playback catches up on release.
+  const [scrub, setScrub] = useState<{ p: number; released: boolean } | null>(
+    null,
+  );
+  const progress = scrub?.p ?? playing;
+  const theme = useTheme();
+  const styles = useThemedStyles(t => ({
+    frame: { height: ROW_HEIGHT, overflow: 'hidden' },
+    // Absolute, so the strip's width never feeds back into the frame's layout
+    // (the measure loop behind #298 / #596 in PlaybackProgressBar).
+    strip: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      height: ROW_HEIGHT,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: t.spacing.md,
+    },
+    tight: { gap: t.spacing.xs },
+    bars: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs },
+    bar: {
+      width: BAR_WIDTH,
+      borderRadius: t.radius.full,
+      backgroundColor: t.roles.fgInactive,
+    },
+    played: { backgroundColor: t.roles.fgPrimary },
+  }));
+
+  const { spacing, motion } = theme;
+  const layout = useMemo(() => {
+    const barX: number[] = [];
+    const verseStart: number[] = [];
+    const verseSpan: { from: number; to: number }[] = [];
+    let x = 0;
+    for (const v of verses) {
+      verseStart.push(barX.length);
+      const from = x;
+      if (v.verse !== null) x += verseChipWidth(v.verse) + spacing.md;
+      for (let i = 0; i < v.bars.length; i++) {
+        barX.push(x);
+        x += BAR_WIDTH + spacing.xs;
+      }
+      verseSpan.push({ from, to: x });
+      if (v.bars.length > 0 && v.verse !== null) {
+        x += spacing.md - spacing.xs;
+      }
+    }
+    return { barX, verseStart, verseSpan };
+  }, [verses, spacing]);
+
+  const chipless = verses.every(v => v.verse === null);
+  const total = layout.barX.length;
+  const clamped = Math.min(1, Math.max(0, progress));
+  // Rounded so a ratio like 20/77 lands on bar 20, not 19.999….
+  const position = Math.round(clamped * total * 1e6) / 1e6;
+  const playedCount = Math.floor(position);
+  const lastBar = Math.min(playedCount, total - 1);
+  // Interpolate toward the real next bar so crossing a chip doesn't jump.
+  const fromX = layout.barX[lastBar] ?? 0;
+  const toX = layout.barX[lastBar + 1] ?? fromX + BAR_WIDTH + spacing.xs;
+  const playheadX =
+    total > 0 ? fromX + (position - lastBar) * (toX - fromX) : 0;
+
+  const [frameWidth, setFrameWidth] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const next = Math.round(e.nativeEvent.layout.width);
+    setFrameWidth(prev => (prev === next ? prev : next));
+  };
+
+  const reduceMotion = useReducedMotion();
+  const offset = useSharedValue(0);
+  const measured = useRef(false);
+  const lastTarget = useRef(0);
+  const target = pinned ? 0 : waveformOffset(playheadX, frameWidth);
+  // Where a seek glides from, so the bars along the way stay mounted.
+  const [glideFrom, setGlideFrom] = useState<number | null>(null);
+  const glideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (glideTimer.current) {
+        clearTimeout(glideTimer.current);
+      }
+    },
+    [],
+  );
+
+  // Linear like ProgressRing: position arrives every 100ms during playback.
+  // The first measured offset snaps so the strip doesn't slide in on mount.
+  useEffect(() => {
+    if (!measured.current) {
+      measured.current = frameWidth > 0;
+      lastTarget.current = target;
+      offset.value = target;
+      return;
+    }
+    if (reduceMotion) {
+      lastTarget.current = target;
+      offset.value = target;
+      return;
+    }
+    // A seek (Next, Previous, scrubbing) glides with ease-standard; playback
+    // ticks stay linear so the strip moves at an even speed.
+    const from = lastTarget.current;
+    lastTarget.current = target;
+    if (!waveformJumps(from, target)) {
+      offset.value = withTiming(target, {
+        duration: motion.releaseMs,
+        easing: Easing.linear,
+      });
+      return;
+    }
+    const { x1, y1, x2, y2 } = motion.easeStandard;
+    setGlideFrom(from);
+    offset.value = withTiming(target, {
+      duration: motion.releaseMs,
+      easing: Easing.bezier(x1, y1, x2, y2),
+    });
+    if (glideTimer.current) {
+      clearTimeout(glideTimer.current);
+    }
+    glideTimer.current = setTimeout(() => setGlideFrom(null), motion.releaseMs);
+  }, [target, frameWidth, motion, offset, reduceMotion]);
+
+  // Only mount bars near the frame; a long pericope would otherwise mount
+  // every bar it has. Off-screen verses keep their width as a spacer.
+  const viewWidth = frameWidth || UNMEASURED_WIDTH;
+  const lo = Math.min(target, glideFrom ?? target);
+  const hi = Math.max(target, glideFrom ?? target);
+  const inWindow = (vi: number) =>
+    layout.verseSpan[vi].to >= lo - WINDOW_MARGIN &&
+    layout.verseSpan[vi].from <= hi + viewWidth + WINDOW_MARGIN;
+  const barsWidth = (count: number) =>
+    count * BAR_WIDTH + (count - 1) * spacing.xs;
+
+  const stripStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -offset.value }],
+  }));
+
+  // Scrubbing. Dragging moves the strip under the playhead; a tap jumps to
+  // the bar under it.
+  const barSpan =
+    total > 0
+      ? layout.barX[total - 1] + BAR_WIDTH + spacing.xs - layout.barX[0]
+      : 1;
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearSettle = () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = null;
+  };
+  useEffect(() => clearSettle, []);
+  useEffect(() => {
+    if (scrub?.released && scrubSettled(scrub.p, playing, total)) {
+      clearSettle();
+      setScrub(null);
+    }
+  }, [playing, scrub, total]);
+  const preview = (p: number) => {
+    clearSettle();
+    setScrub({ p, released: false });
+  };
+  const cancel = () => setScrub(null);
+  const finish = (p: number) => {
+    const target = Math.min(1, Math.max(0, p));
+    clearSettle();
+    setScrub({ p: target, released: true });
+    settleTimer.current = setTimeout(() => setScrub(null), SETTLE_MS);
+    onSeek?.(target);
+  };
+  const tapAt = (x: number) => finish(nearestBar(layout.barX, x));
+  const scrubbable = onSeek !== undefined && total > 0;
+  // Where the drag started, pinned: the preview re-renders this mid-drag.
+  const base = scrub?.released ? scrub.p : Math.min(1, Math.max(0, playing));
+  const from = useSharedValue(0);
+  const drag = Gesture.Pan()
+    .enabled(scrubbable)
+    .activeOffsetX([-6, 6])
+    .failOffsetY([-12, 12])
+    .onStart(() => {
+      from.value = base;
+    })
+    .onUpdate(e => {
+      scheduleOnRN(preview, scrubTo(from.value, e.translationX, barSpan));
+    })
+    .onEnd((e, success) => {
+      if (success) {
+        scheduleOnRN(finish, scrubTo(from.value, e.translationX, barSpan));
+      } else {
+        scheduleOnRN(cancel);
+      }
+    });
+  const tap = Gesture.Tap()
+    .enabled(scrubbable)
+    .onEnd((e, success) => {
+      if (success) scheduleOnRN(tapAt, e.x + offset.value);
+    });
+  const onAccessibilityAction = (e: AccessibilityActionEvent) => {
+    const { actionName } = e.nativeEvent;
+    if (actionName !== 'increment' && actionName !== 'decrement') return;
+    const step = actionName === 'increment' ? SEEK_STEP : -SEEK_STEP;
+    onSeek?.(Math.min(1, Math.max(0, clamped + step)));
+  };
+
+  return (
+    <GestureDetector gesture={Gesture.Race(drag, tap)}>
+      <View
+        style={[styles.frame, style]}
+        onLayout={onLayout}
+        accessible
+        accessibilityRole={scrubbable ? 'adjustable' : 'progressbar'}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityValue={{
+          min: 0,
+          max: 100,
+          now: Math.round(clamped * 100),
+        }}
+        accessibilityActions={
+          scrubbable
+            ? [{ name: 'increment' }, { name: 'decrement' }]
+            : undefined
+        }
+        onAccessibilityAction={scrubbable ? onAccessibilityAction : undefined}
+        testID={testID}
+      >
+        <Animated.View
+          style={[styles.strip, chipless && styles.tight, stripStyle]}
+          importantForAccessibility="no-hide-descendants"
+          testID={testID ? `${testID}-strip` : undefined}
+        >
+          {verses.map((v, vi) => (
+            <React.Fragment key={vi}>
+              {v.verse !== null ? (
+                <VerseChip
+                  verse={v.verse}
+                  current={layout.verseStart[vi] <= lastBar}
+                  testID={testID ? `${testID}-verse-${v.verse}` : undefined}
+                />
+              ) : null}
+              {v.bars.length > 0 && !inWindow(vi) ? (
+                <View style={{ width: barsWidth(v.bars.length) }} />
+              ) : v.bars.length > 0 ? (
+                <VerseBars
+                  bars={v.bars}
+                  start={layout.verseStart[vi]}
+                  played={Math.min(
+                    v.bars.length,
+                    Math.max(0, playedCount - layout.verseStart[vi]),
+                  )}
+                  styles={styles}
+                  testID={testID}
+                />
+              ) : null}
+            </React.Fragment>
+          ))}
+        </Animated.View>
+      </View>
+    </GestureDetector>
+  );
+}
+
+type BarStyles = {
+  bars: StyleProp<ViewStyle>;
+  bar: StyleProp<ViewStyle>;
+  played: StyleProp<ViewStyle>;
+};
+
+/** One verse's bars; memoized so a tick only re-renders the verse playing. */
+const VerseBars = memo(function VerseBars({
+  bars,
+  start,
+  played,
+  styles,
+  testID,
+}: {
+  bars: readonly number[];
+  start: number;
+  played: number;
+  styles: BarStyles;
+  testID?: string;
+}) {
+  return (
+    <View style={styles.bars}>
+      {bars.map((height, i) => (
+        <View
+          key={i}
+          style={[
+            styles.bar,
+            { height: Math.min(ROW_HEIGHT, Math.max(0, height)) },
+            i < played && styles.played,
+          ]}
+          testID={testID ? `${testID}-bar-${start + i}` : undefined}
+        />
+      ))}
+    </View>
+  );
+});

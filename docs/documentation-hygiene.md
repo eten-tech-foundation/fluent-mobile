@@ -33,7 +33,7 @@ them rather than weakening their rules.
 | 9 | [guides/project-board.md](./guides/project-board.md) | current | Aligns with `project-board.mdc` |
 | 10 | [guides/dependabot-process.md](./guides/dependabot-process.md) | current | Aligns with `dependabot-workflow.mdc` |
 | 11 | [guides/dependabot-resolution-log.md](./guides/dependabot-resolution-log.md) | log | Historical batches |
-| 12 | [guides/expo-first-dependencies.md](./guides/expo-first-dependencies.md) | current | Aligns with `expo-first-dependencies.mdc` |
+| 12 | [guides/expo-first-dependencies.md](./guides/expo-first-dependencies.md) | current | Aligns with Cursor/Claude expo-first adapters + `AGENTS.md` |
 | 13 | [guides/figma-to-component.md](./guides/figma-to-component.md) | operational | Figma → Next UI |
 | 14 | [guides/maestro.md](./guides/maestro.md) | operational | Maestro harness |
 | 15 | [guides/qa-process.md](./guides/qa-process.md) | current | Needs QA / nightly |

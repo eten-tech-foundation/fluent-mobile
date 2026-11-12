@@ -45,6 +45,19 @@ describe('FluentAPI translation-resources', () => {
     );
   });
 
+  it('getTranslationNotes sends a captured bearer, not the current one', async () => {
+    mockOkJson({ items: [] });
+    authToken.set('token-b');
+
+    await FluentAPI.getTranslationNotes(42, 'MRK', 1, 1, 'eng', 'token-a');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const init = fetchMock.mock.calls[0]![1] as RequestInit;
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      'Bearer token-a',
+    );
+  });
+
   it('getTranslationQuestions calls the questions path with languageCode', async () => {
     mockOkJson({ items: [] });
 

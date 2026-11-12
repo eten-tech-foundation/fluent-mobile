@@ -56,9 +56,37 @@ export function takeIdFromVerseAudioResponse(
 }
 
 /**
- * Unit version token from a take delete response (#716). Read loosely: after
- * the last take is deleted the unit has no download URL or active take, which
- * the strict upload parser rejects.
+ * What an activating PUT's 200 says about the requested activation.
+ * - `activated`: the returned take is the unit's active take.
+ * - `conflicted`: the unit is in conflict (existing conflict handling).
+ * - `stored_not_active`: the bytes are stored as `takeId`, but another take
+ *   stayed active (e.g. a stale precondition on duplicate bytes is a 200
+ *   no-op). Not a successful activation.
+ * - `unverified`: no `takeId` (pre-#465 API), so activation cannot be
+ *   distinguished from storage; callers keep the legacy treatment.
+ */
+export type ActivationResponseState =
+  | 'activated'
+  | 'conflicted'
+  | 'stored_not_active'
+  | 'unverified';
+
+export function activationStateFromResponse(
+  response: VerseAudioResponse,
+): ActivationResponseState {
+  if (response.conflictStatus === 'conflict') return 'conflicted';
+  if (!isFiniteNumber(response.takeId)) return 'unverified';
+  return response.activeTakeId === response.takeId
+    ? 'activated'
+    : 'stored_not_active';
+}
+
+/**
+ * Unit version token from a take delete response (#716). Only `versionToken`
+ * is used. A missing or non-numeric token is null, so a partial body does not
+ * fail the delete. A null unit `downloadUrl` is valid on the strict parser
+ * (#864); this reader stays loose because the worker does not need the rest
+ * of the unit.
  */
 export function versionTokenFromVerseAudioBody(data: unknown): {
   versionToken: number | null;
@@ -111,6 +139,20 @@ export function outcomeFromVerseAudioFailure(
   const message =
     error instanceof Error ? error.message : 'Verse audio upload failed';
   return { kind: 'retryable', message, retryable: true };
+}
+
+/**
+ * True when a failed PUT may still have been applied by the server, so the
+ * worker must reconcile (GET + content hash) before sending it again:
+ * transport loss, timeouts, any 5xx, 409, and non-HTTP errors (including a
+ * malformed 200). Other 4xx and 429 are rejected before any write.
+ */
+export function isPossiblyAppliedUploadFailure(error: unknown): boolean {
+  if (!isApiError(error)) return true;
+  if (error.status === 0 || error.status === 408 || error.status === 409) {
+    return true;
+  }
+  return error.status >= 500;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -247,7 +289,12 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
       'Malformed verse audio response: missing contentType',
     );
   }
-  if (typeof body.downloadUrl !== 'string' || body.downloadUrl.length === 0) {
+  // A stored-only PUT on a unit with no active take is a 200 with
+  // downloadUrl: null (#864). Empty string is still malformed.
+  if (
+    body.downloadUrl !== null &&
+    (typeof body.downloadUrl !== 'string' || body.downloadUrl.length === 0)
+  ) {
     throw createApiError(
       500,
       'Malformed verse audio response: missing downloadUrl',
@@ -290,7 +337,7 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
         : (body.activeTakeId as number),
     ...(isFiniteNumber(body.takeId) ? { takeId: body.takeId } : {}),
     verseNumber: body.verseNumber as number,
-    downloadUrl: body.downloadUrl,
+    downloadUrl: body.downloadUrl === null ? null : body.downloadUrl,
     takes: body.takes.map(parseVerseAudioTake),
     createdAt: body.createdAt,
     updatedAt: body.updatedAt,

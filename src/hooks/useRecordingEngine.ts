@@ -14,6 +14,8 @@ import { setMicActive } from '../audio/micActivity';
 
 export type UseRecordingEngineApi = RecorderApi & {
   requestMicPermission: typeof requestMicPermission;
+  /** Input level in dBFS while recording (Q6), or null when there's none. */
+  getMetering: () => number | null;
 };
 
 export type UseRecordingEngineOptions = {
@@ -27,6 +29,8 @@ export type UseRecordingEngineOptions = {
 
 const KILL_SAFE_RECORDING_OPTIONS: RecordingOptions = {
   ...RecordingPresets.HIGH_QUALITY,
+  // Live input level for the Level wave; doesn't change the file.
+  isMeteringEnabled: true,
   directory: 'document',
   extension: '.aac',
   android: {
@@ -126,5 +130,6 @@ export function useRecordingEngine({
     resume: () => engine.resume(),
     stop: () => engine.stop(),
     requestMicPermission,
+    getMetering: () => recorder.getStatus().metering ?? null,
   };
 }

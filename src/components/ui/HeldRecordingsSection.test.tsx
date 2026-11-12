@@ -112,7 +112,11 @@ describe('HeldRecordingsSection (#855)', () => {
   });
 
   it('plays a held recording from the device and pauses it again', async () => {
-    render(<HeldRecordingsSection recordings={[held()]} />);
+    render(
+      <HeldRecordingsSection
+        recordings={[held()]}
+      />,
+    );
 
     fireEvent.press(screen.getByTestId('record-play-button-held-1'));
     await waitFor(() => {
@@ -126,7 +130,11 @@ describe('HeldRecordingsSection (#855)', () => {
   });
 
   it('renders nothing when there are no held recordings', () => {
-    render(<HeldRecordingsSection recordings={[]} />);
+    render(
+      <HeldRecordingsSection
+        recordings={[]}
+      />,
+    );
     expect(screen.queryByTestId('sync-held-section')).toBeNull();
   });
 });

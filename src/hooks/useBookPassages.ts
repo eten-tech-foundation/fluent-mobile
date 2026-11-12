@@ -1,0 +1,306 @@
+import { useEffect, useState } from 'react';
+import {
+  getChapterAssignmentById,
+  getPericopesForChapter,
+  getSelectedTakeCoverages,
+  hasPendingStageAdvance,
+} from '../db/queries';
+import { getProjectPericopeSetId } from '../db/repository';
+import type { ProjectChapter, WorkflowBadgeStage } from '../types/db/types';
+import {
+  buildBibleUnits,
+  unitRecordedCount,
+  type BibleUnitRecordedStatus,
+  type BibleUnitVerse,
+} from '../utils/bibleTabUnits';
+import { logger } from '../utils/logger';
+import { useDraftingUnit } from './useDraftingUnit';
+import { isPastDraft, isPastPeerCheck } from '../utils/workflowStage';
+
+const log = logger.create('useBookPassages');
+
+export interface BookPassage {
+  key: string;
+  /** Pericope title; null when the set has none, or for a whole chapter. */
+  title: string | null;
+  /** e.g. "Mark 14:22–25". */
+  reference: string;
+  /** Verse range for the cover, e.g. "22–25", or "14:72–15:5" across chapters. */
+  verses: string;
+  /** Verse in this chapter that drafting opens at. */
+  anchorVerse: number;
+  recordedStatus: BibleUnitRecordedStatus;
+  /**
+   * Verses with a take on this device, plus every verse in a chapter
+   * submitted for peer check, since others' takes aren't downloaded.
+   */
+  recordedVerses: number;
+  totalVerses: number;
+  /** Every chapter it's in was submitted for peer check. */
+  submitted: boolean;
+  /** Every chapter it's in passed peer check. */
+  peerChecked: boolean;
+  /** Its chapter was sent on here and the send hasn't synced; book page only. */
+  waitingToSend?: boolean;
+  /** Stable id the cover art is drawn from. */
+  seed: string;
+  /** The chapter it starts in, so a chapter's covers share a style. */
+  groupSeed: string;
+}
+
+export type BookPassages =
+  | { status: 'loading' }
+  | {
+      status: 'ready';
+      byChapter: Map<number, BookPassage[]>;
+      /** Some of it is pericopes; otherwise each chapter is recorded whole. */
+      pericopes: boolean;
+    };
+
+export function coverVerses(
+  verses: BibleUnitVerse[],
+  chapterNumber: number,
+): string {
+  const first = verses[0];
+  const last = verses[verses.length - 1];
+  if (!first || !last) return '';
+  if (first.chapterNumber !== last.chapterNumber) {
+    return `${first.chapterNumber}:${first.verseNumber}–${last.chapterNumber}:${last.verseNumber}`;
+  }
+  if (first.chapterNumber !== chapterNumber) {
+    return `${first.chapterNumber}:${first.verseNumber}–${last.verseNumber}`;
+  }
+  return first.verseNumber === last.verseNumber
+    ? String(first.verseNumber)
+    : `${first.verseNumber}–${last.verseNumber}`;
+}
+
+function recordedStatusOf(
+  recordedVerses: number,
+  totalVerses: number,
+): BibleUnitRecordedStatus {
+  if (recordedVerses <= 0) return 'none';
+  return recordedVerses >= totalVerses ? 'recorded' : 'partial';
+}
+
+const WHOLE_CHAPTER_KEY = 'chapter:';
+const LOADING: BookPassages = { status: 'loading' };
+
+function isWholeChapter(passage: BookPassage): boolean {
+  return passage.key.startsWith(WHOLE_CHAPTER_KEY);
+}
+
+/**
+ * A chapter with no pericopes is one passage, tracked by verse counts.
+ * `localVerses` counts this phone's takes, which the stored count lags.
+ */
+export function wholeChapter(
+  chapter: ProjectChapter,
+  localVerses = 0,
+): BookPassage {
+  const recordedVerses = isPastDraft(chapter.workflowStage)
+    ? chapter.totalVerses
+    : Math.max(chapter.completedVerses, localVerses);
+  return {
+    key: `${WHOLE_CHAPTER_KEY}${chapter.id}`,
+    title: null,
+    reference: chapter.displayLabel,
+    verses:
+      chapter.totalVerses > 0
+        ? `1–${chapter.totalVerses}`
+        : chapter.displayLabel,
+    anchorVerse: 1,
+    recordedStatus: recordedStatusOf(recordedVerses, chapter.totalVerses),
+    recordedVerses,
+    totalVerses: chapter.totalVerses,
+    submitted: isPastDraft(chapter.workflowStage),
+    peerChecked: isPastPeerCheck(chapter.workflowStage),
+    seed: `${chapter.bookName}:${chapter.chapterNumber}:chapter`,
+    groupSeed: `${chapter.bookName}:${chapter.chapterNumber}`,
+  };
+}
+
+type Coverages = ReturnType<typeof getSelectedTakeCoverages>;
+export type CoveragesFor = (bibleId: number, bookId: number) => Coverages;
+
+/** Selected-take coverage per book, read once for a project unit's chapters. */
+export function coverageLookup(
+  projectUnitId: number,
+  onError?: () => void,
+): CoveragesFor {
+  const coverages = new Map<string, Coverages>();
+  return (bibleId, bookId) => {
+    const key = `${bibleId}:${bookId}`;
+    let found = coverages.get(key);
+    if (!found) {
+      found = getSelectedTakeCoverages(bibleId, bookId, projectUnitId, onError);
+      coverages.set(key, found);
+    }
+    return found;
+  };
+}
+
+/** Stage of another chapter in the same book, by chapter number. */
+type StageOf = (chapterNumber: number) => WorkflowBadgeStage | null | undefined;
+
+/**
+ * One chapter's passages from the pericope set, with how much is recorded.
+ * `stageOf` finds the other chapters a passage crosses into, and one it
+ * can't find (in another milestone) counts as not started; without it they
+ * take this chapter's stage.
+ */
+export async function loadChapterPassages(
+  chapter: ProjectChapter & { bibleId?: number; bookId?: number },
+  pericopeSetId: number | null,
+  coveragesFor: CoveragesFor,
+  stageOf?: StageOf,
+): Promise<BookPassage[]> {
+  // A My Work chapter already carries its assignment row's bible and book.
+  const assignment =
+    (chapter.bibleId ?? 0) > 0 && (chapter.bookId ?? 0) > 0
+      ? {
+          bibleId: chapter.bibleId as number,
+          bookId: chapter.bookId as number,
+          chapterNumber: chapter.chapterNumber,
+        }
+      : await getChapterAssignmentById(chapter.id);
+  if (!assignment) return [wholeChapter(chapter)];
+  const { bibleId, bookId, chapterNumber } = assignment;
+  const [groups, coverages] = await Promise.all([
+    pericopeSetId === null
+      ? []
+      : getPericopesForChapter(bookId, chapterNumber, pericopeSetId),
+    coveragesFor(bibleId, bookId),
+  ]);
+  if (groups.length === 0) {
+    const verses = Array.from({ length: chapter.totalVerses }, (_, i) => ({
+      chapterNumber,
+      verseNumber: i + 1,
+    }));
+    return [wholeChapter(chapter, unitRecordedCount(verses, coverages))];
+  }
+
+  const units = buildBibleUnits({
+    draftingUnit: 'pericope',
+    verses: [],
+    pericopes: groups,
+    chapterNumber,
+    chapterName: chapter.displayLabel,
+    bookName: chapter.bookName,
+  });
+  const stageIn = (n: number) => {
+    if (n === chapterNumber) return chapter.workflowStage;
+    return stageOf ? stageOf(n) ?? null : chapter.workflowStage;
+  };
+  return units.map((unit, i) => {
+    const stages = new Map(
+      unit.verses.map(v => [v.chapterNumber, stageIn(v.chapterNumber)]),
+    );
+    const inSubmitted = (v: BibleUnitVerse) =>
+      isPastDraft(stages.get(v.chapterNumber));
+    const recordedVerses =
+      unit.verses.filter(inSubmitted).length +
+      unitRecordedCount(
+        unit.verses.filter(v => !inSubmitted(v)),
+        coverages,
+      );
+    return {
+      key: unit.key,
+      title: groups[i]?.pericopeTitle?.trim() || null,
+      reference: unit.title,
+      verses: coverVerses(unit.verses, chapterNumber),
+      anchorVerse: unit.anchorVerse,
+      recordedStatus: recordedStatusOf(recordedVerses, unit.verses.length),
+      recordedVerses,
+      totalVerses: unit.verses.length,
+      submitted: Array.from(stages.values()).every(isPastDraft),
+      peerChecked: Array.from(stages.values()).every(isPastPeerCheck),
+      // From the passage, not this chapter, so one crossing chapters looks the
+      // same under both.
+      seed: `${chapter.bookName}:${unit.key}`,
+      groupSeed: `${chapter.bookName}:${
+        unit.verses[0]?.chapterNumber ?? chapterNumber
+      }`,
+    };
+  });
+}
+
+/**
+ * Each chapter's passages from the project's pericope set (whole chapters
+ * when recording verse by verse), with how much of
+ * each is recorded, read from the local DB like the Legacy Bible tab.
+ * Reloads whenever `chapters` changes, so returning from drafting refreshes it.
+ */
+export function useBookPassages(
+  chapters: ProjectChapter[],
+  projectId: number,
+  projectUnitId: number,
+): BookPassages {
+  const { draftingUnit } = useDraftingUnit();
+  const [passages, setPassages] = useState<{
+    loaded: BookPassages;
+    unit: typeof draftingUnit;
+  }>({ loaded: LOADING, unit: draftingUnit });
+
+  useEffect(() => {
+    let cancelled = false;
+    const coveragesFor = coverageLookup(projectUnitId);
+    (async () => {
+      // Verse by verse works through whole chapters, as Legacy does.
+      const pericopeSetId =
+        draftingUnit === 'verse'
+          ? null
+          : await getProjectPericopeSetId(projectId);
+      const stages = new Map(
+        chapters.map(c => [
+          `${c.bookName}:${c.chapterNumber}`,
+          c.workflowStage,
+        ]),
+      );
+      const lists = await Promise.all(
+        chapters.map(async c => {
+          const [list, waitingToSend] = await Promise.all([
+            loadChapterPassages(c, pericopeSetId, coveragesFor, n =>
+              stages.get(`${c.bookName}:${n}`),
+            ),
+            hasPendingStageAdvance(c.id).catch(() => false),
+          ]);
+          return waitingToSend
+            ? list.map(p => ({ ...p, waitingToSend }))
+            : list;
+        }),
+      );
+      return {
+        byChapter: new Map(chapters.map((c, i) => [c.id, lists[i] ?? []])),
+        pericopes: lists.some(list => list.some(p => !isWholeChapter(p))),
+      };
+    })()
+      .then(loaded => {
+        if (!cancelled) {
+          setPassages({
+            loaded: { status: 'ready', ...loaded },
+            unit: draftingUnit,
+          });
+        }
+      })
+      .catch(error => {
+        log.error('Failed to load book passages', { error });
+        if (!cancelled) {
+          setPassages({
+            loaded: {
+              status: 'ready',
+              byChapter: new Map(chapters.map(c => [c.id, [wholeChapter(c)]])),
+              pericopes: false,
+            },
+            unit: draftingUnit,
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [chapters, projectId, projectUnitId, draftingUnit]);
+
+  // Covers loaded under the other unit would open the wrong passage.
+  return passages.unit === draftingUnit ? passages.loaded : LOADING;
+}

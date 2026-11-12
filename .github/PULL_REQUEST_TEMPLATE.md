@@ -35,13 +35,13 @@ Refs #<!-- issue number this PR implements — or `Refs: none` for no-ticket cho
 
 #### Testing
 
-<!-- What you ran (`npm run lint`, `npm run typecheck`, `npm test -- --ci`, …) OR waiver + rationale. -->
+<!-- What you ran (`npm run format:check`, `npm run lint`, `npm run architecture-guard`, `npm run typecheck`, `npm test -- --ci`, …) OR waiver + rationale. See AGENTS.md / commands.mdc. -->
 
 ### How to verify
 
 <!-- Numbered steps for reviewers OR "Manual verification waived" + rationale. -->
 
-1. <!-- e.g. npm run format:check && npm run lint && npm run typecheck && npm test -- --ci -->
+1. <!-- e.g. npm run format:check && npm run lint && npm run architecture-guard && npm run typecheck && npm test -- --ci -->
 2. <!-- manual / Android steps when behavior changed -->
 
 **Expected:** <!-- What reviewers should confirm -->

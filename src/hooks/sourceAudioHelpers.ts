@@ -49,23 +49,47 @@ export function verseAtPositionMs(
   return activeVerse;
 }
 
+function verseStartSeconds(
+  verse: number,
+  timestamps: ApiSourceAudioVerseTimestamp[] | undefined,
+  preferredDblAudioBibleId?: string,
+): number | null {
+  const matches = timestamps?.filter(t => t.verse === verse) ?? [];
+  const preferred =
+    preferredDblAudioBibleId !== undefined
+      ? matches.find(t => t.dblAudioBibleId === preferredDblAudioBibleId)
+      : undefined;
+  const startSeconds = (preferred ?? matches[0])?.startSeconds;
+  return startSeconds === undefined || !Number.isFinite(startSeconds)
+    ? null
+    : startSeconds;
+}
+
+/** The timestamps give this verse a start, so seeking to it lands on it. */
+export function hasVerseStart(
+  verse: number,
+  timestamps: ApiSourceAudioVerseTimestamp[] | undefined,
+  preferredDblAudioBibleId?: string,
+): boolean {
+  return (
+    verseStartSeconds(verse, timestamps, preferredDblAudioBibleId) !== null
+  );
+}
+
 /** Verse start offset in ms from provider timestamps (0 when missing). */
 export function verseStartMs(
   verse: number,
   timestamps: ApiSourceAudioVerseTimestamp[] | undefined,
   preferredDblAudioBibleId?: string,
 ): number {
-  if (!timestamps?.length) return 0;
-  const matches = timestamps.filter(t => t.verse === verse);
-  if (matches.length === 0) return 0;
-  const preferred =
-    preferredDblAudioBibleId !== undefined
-      ? matches.find(t => t.dblAudioBibleId === preferredDblAudioBibleId)
-      : undefined;
-  const entry = preferred ?? matches[0];
-  const startSeconds = entry?.startSeconds;
-  if (startSeconds === undefined || !Number.isFinite(startSeconds)) return 0;
-  return Math.max(0, Math.round(startSeconds * 1000));
+  const startSeconds = verseStartSeconds(
+    verse,
+    timestamps,
+    preferredDblAudioBibleId,
+  );
+  return startSeconds === null
+    ? 0
+    : Math.max(0, Math.round(startSeconds * 1000));
 }
 
 export function chapterSourceAudioCacheKey(args: {

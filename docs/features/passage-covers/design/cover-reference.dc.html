@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pericope cover</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&amp;family=Roboto:wght@400;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: {{size}}px; height: {{size}}px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: {{stackGap}}px; font-family: Roboto, system-ui, sans-serif; color: {{c.text}}">
+  <sc-if value="{{isCollection}}" hint-placeholder-val="{{ false }}">
+    <div aria-hidden="true" style="width: {{sliver2}}px; height: {{sliverH}}px; border-radius: {{rad}}px {{rad}}px 0 0; background: {{c.tone}}; opacity: 0.5"></div>
+    <div aria-hidden="true" style="width: {{sliver1}}px; height: {{sliverH}}px; border-radius: {{rad}}px {{rad}}px 0 0; background: {{c.tone}}"></div>
+  </sc-if>
+  <div style="position: relative; overflow: hidden; flex-shrink: 0; width: {{art}}px; height: {{art}}px; border-radius: {{rad}}px; background: {{c.ground}}">
+    <div aria-hidden="true" style="position: absolute; inset: 0">
+      <sc-if value="{{isField}}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{blobs}}" as="b" hint-placeholder-count="3">
+          <div style="position: absolute; border-radius: 50%; left: {{b.x}}px; top: {{b.y}}px; width: {{b.w}}px; height: {{b.h}}px; transform: translate(-50%, -50%) rotate({{b.rot}}deg); background: {{b.c}}; filter: blur({{b.blur}}px); opacity: {{b.o}}"></div>
+        </sc-for>
+        <sc-for list="{{fRings}}" as="r" hint-placeholder-count="1">
+          <div style="position: absolute; box-sizing: border-box; border-radius: 50%; left: {{r.x}}px; top: {{r.y}}px; width: {{r.d}}px; height: {{r.d}}px; transform: translate(-50%, -50%); border: {{r.w}}px solid {{r.c}}"></div>
+        </sc-for>
+        <sc-if value="{{nz.plain}}" hint-placeholder-val="{{ false }}">
+          <svg viewBox="0 0 200 200" preserveAspectRatio="none" width="100%" height="100%" style="position: absolute; inset: 0">
+            <filter id="{{nz.id}}" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+              <feTurbulence type="{{nz.type}}" baseFrequency="{{nz.freq}}" numOctaves="{{nz.oct}}" seed="{{nz.seed}}"></feTurbulence>
+              <feColorMatrix type="matrix" values="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1"></feColorMatrix>
+              <feGaussianBlur stdDeviation="{{nz.blur}}"></feGaussianBlur>
+              <feComponentTransfer>
+                <feFuncR type="table" tableValues="{{nz.r}}"></feFuncR>
+                <feFuncG type="table" tableValues="{{nz.g}}"></feFuncG>
+                <feFuncB type="table" tableValues="{{nz.b}}"></feFuncB>
+              </feComponentTransfer>
+            </filter>
+            <rect width="200" height="200" filter="url(#{{nz.id}})"></rect>
+          </svg>
+        </sc-if>
+        <sc-if value="{{nz.warped}}" hint-placeholder-val="{{ false }}">
+          <svg viewBox="0 0 200 200" preserveAspectRatio="none" width="100%" height="100%" style="position: absolute; inset: 0">
+            <defs>
+              <linearGradient id="{{nz.gid}}" x1="0" y1="0" x2="{{nz.x2}}" y2="{{nz.y2}}" spreadMethod="{{nz.spread}}" gradientTransform="rotate({{nz.ang}} 0.5 0.5)">
+                <stop offset="0" stop-color="#000000"></stop>
+                <stop offset="{{nz.mid}}" stop-color="#FFFFFF"></stop>
+                <stop offset="1" stop-color="{{nz.end}}"></stop>
+              </linearGradient>
+            </defs>
+            <filter id="{{nz.id}}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+              <feTurbulence type="fractalNoise" baseFrequency="{{nz.freq}}" numOctaves="{{nz.oct}}" seed="{{nz.seed}}" result="n"></feTurbulence>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="{{nz.disp}}" xChannelSelector="R" yChannelSelector="G" result="d"></feDisplacementMap>
+              <feColorMatrix in="n" type="matrix" values="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1" result="g"></feColorMatrix>
+              <feComposite in="d" in2="g" operator="arithmetic" k1="0" k2="{{nz.k2}}" k3="{{nz.k3}}" k4="{{nz.k4}}" result="m"></feComposite>
+              <feGaussianBlur in="m" stdDeviation="{{nz.blur}}" result="mb"></feGaussianBlur>
+              <feComponentTransfer in="mb">
+                <feFuncR type="table" tableValues="{{nz.r}}"></feFuncR>
+                <feFuncG type="table" tableValues="{{nz.g}}"></feFuncG>
+                <feFuncB type="table" tableValues="{{nz.b}}"></feFuncB>
+              </feComponentTransfer>
+            </filter>
+            <rect x="-40" y="-40" width="280" height="280" fill="url(#{{nz.gid}})" filter="url(#{{nz.id}})"></rect>
+          </svg>
+        </sc-if>
+      </sc-if>
+      <sc-if value="{{isSignal}}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{bars}}" as="b" hint-placeholder-count="7">
+          <div style="position: absolute; left: {{b.x}}px; top: {{b.y}}px; width: {{b.w}}px; height: {{b.h}}px; border-radius: {{b.rad}}px; background: {{b.c}}"></div>
+        </sc-for>
+      </sc-if>
+      <sc-if value="{{isOrbit}}" hint-placeholder-val="{{ true }}">
+        <div style="position: absolute; inset: 0; -webkit-mask-image: {{orbitMask}}; mask-image: {{orbitMask}}">
+        <sc-for list="{{rings}}" as="r" hint-placeholder-count="7">
+          <div style="position: absolute; box-sizing: border-box; border-radius: 50%; left: {{r.x}}px; top: {{r.y}}px; width: {{r.d}}px; height: {{r.d}}px; transform: translate(-50%, -50%); border: {{r.w}}px solid {{r.c}}"></div>
+        </sc-for>
+        <sc-for list="{{arcs}}" as="a" hint-placeholder-count="7">
+          <div style="position: absolute; box-sizing: border-box; border-radius: 50%; left: {{a.x}}px; top: {{a.y}}px; width: {{a.d}}px; height: {{a.d}}px; transform: translate(-50%, -50%) rotate({{a.rot}}deg); border: {{a.w}}px solid transparent; border-top-color: {{a.c}}"></div>
+        </sc-for>
+        <sc-for list="{{beads}}" as="k" hint-placeholder-count="4">
+          <div style="position: absolute; border-radius: 50%; left: {{k.x}}px; top: {{k.y}}px; width: {{k.d}}px; height: {{k.d}}px; transform: translate(-50%, -50%); background: {{k.c}}"></div>
+        </sc-for>
+        <div style="position: absolute; border-radius: 50%; left: {{dot.x}}px; top: {{dot.y}}px; width: {{dot.d}}px; height: {{dot.d}}px; transform: translate(-50%, -50%); background: {{dot.c}}"></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{isType}}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; left: {{numeral.x}}px; top: {{numeral.y}}px; font-size: {{numeral.fs}}px; line-height: 0.8; font-weight: 700; letter-spacing: -0.05em; color: {{numeral.c}}; white-space: nowrap">{{numeral.t}}</div>
+        <sc-for list="{{bands}}" as="b" hint-placeholder-count="2">
+          <div style="position: absolute; left: -50%; width: 200%; top: {{b.y}}px; height: {{b.h}}px; transform: rotate({{b.rot}}deg); background: {{b.c}}"></div>
+        </sc-for>
+      </sc-if>
+      <sc-if value="{{grain}}" hint-placeholder-val="{{ true }}">
+        <svg width="100%" height="100%" style="position: absolute; inset: 0; mix-blend-mode: overlay; opacity: {{grainOpacity}}">
+          <filter id="{{grainId}}">
+            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="{{grainSeed}}" stitchTiles="stitch"></feTurbulence>
+            <feColorMatrix type="saturate" values="0"></feColorMatrix>
+          </filter>
+          <rect width="100%" height="100%" filter="url(#{{grainId}})"></rect>
+        </svg>
+      </sc-if>
+    </div>
+    <div style="position: absolute; inset: 0; box-sizing: border-box; padding: {{t.pad}}px; display: flex; flex-direction: column; justify-content: space-between">
+      <div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: {{t.eb}}px; line-height: {{t.ebLh}}px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-shadow: {{halo}}">{{eyebrow}}</div>
+      <div style="font-size: {{t.lb}}px; line-height: {{t.lbLh}}px; font-weight: 700; white-space: nowrap; text-shadow: {{halo}}">{{label}}</div>
+    </div>
+    <sc-if value="{{showBadge}}" hint-placeholder-val="{{ true }}">
+      <div aria-hidden="true" style="position: absolute; top: {{badge.inset}}px; right: {{badge.inset}}px; width: {{badge.plate}}px; height: {{badge.plate}}px; border-radius: 50%; background: {{c.ground}}; display: flex; align-items: center; justify-content: center">
+        <div style="position: relative; width: {{badge.d}}px; height: {{badge.d}}px">
+          <sc-if value="{{badge.done}}" hint-placeholder-val="{{ false }}">
+            <div style="position: absolute; inset: 0; border-radius: 50%; background: {{c.lit}}; display: flex; align-items: center; justify-content: center">
+              <svg width="{{badge.icon}}" height="{{badge.icon}}" viewBox="0 0 24 24" fill="none" stroke="{{c.ground}}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+            </div>
+          </sc-if>
+          <sc-if value="{{badge.ring}}" hint-placeholder-val="{{ true }}">
+            <div style="position: absolute; inset: 0; box-sizing: border-box; border-radius: 50%; border: {{badge.w}}px solid {{c.line}}"></div>
+            <div style="position: absolute; inset: 0; border-radius: 50%; background: {{badge.arcBg}}; -webkit-mask-image: {{badge.mask}}; mask-image: {{badge.mask}}"></div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"direction":{"editor":"enum","options":["field","signal","orbit","type"],"default":"orbit"},"vamp":{"editor":"enum","options":["mist","current","dawn","ribbon","classic","bloom","tide","bokeh","aurora"],"default":"mist"},"palette":{"editor":"enum","options":["auto","night","surface","ink","paper"],"default":"paper"},"grain":{"editor":"boolean","default":true},"textGuard":{"editor":"boolean","default":true},"badge":{"editor":"boolean","default":true},"seed":{"editor":"text","default":"Mark-17"},"verseCount":{"editor":"int","default":6,"min":1,"max":60},"recorded":{"editor":"int","default":2,"min":0,"max":60},"takes":{"editor":"int","default":5,"min":0,"max":300},"playing":{"editor":"boolean","default":true},"listen":{"editor":"range","default":0.4,"min":0,"max":1,"step":0.01},"size":{"editor":"int","default":320,"min":96,"max":800},"kind":{"editor":"enum","options":["pericope","collection"],"default":"pericope"},"paletteSeed":{"editor":null,"default":"Mark-ch4"},"eyebrow":{"editor":null,"default":"Mark 4"},"label":{"editor":null,"default":"35–41"},"numeral":{"editor":null,"default":"4"},"$preview":{"width":320,"height":320}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var p = this.props;
+    var num = function (v, d) { var n = Number(v); return isFinite(n) && v !== null && v !== undefined && v !== '' ? n : d; };
+    var bool = function (v, d) { return v === undefined || v === null || v === '' ? d : !(v === false || v === 'false'); };
+    var r2 = function (v) { return Math.round(v * 10) / 10; };
+    var hash = function (s) {
+      var h = 2166136261;
+      for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return h >>> 0;
+    };
+    var rngOf = function (s) {
+      var a = hash(s);
+      return function () {
+        a = (a + 0x6D2B79F5) | 0;
+        var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    };
+    var hex = function (h) { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+    var mix = function (a, b, u) {
+      var x = hex(a), y = hex(b);
+      return 'rgb(' + [0, 1, 2].map(function (i) { return Math.round(x[i] + (y[i] - x[i]) * u); }).join(', ') + ')';
+    };
+
+    // Foundations primitives only. Neutral marks = recorded; blue (`active`) = happening now
+    // (listening progress), matching ProgressRing's accent arc. Red stays reserved for record state.
+    // night = surface/sunken (bone 950) and surface = surface/default (bone 900): all-neutral,
+    // so blue only ever means "active". ink / paper are kept for comparison.
+    var PAL = {
+      night: { ground: '#121211', tone: '#2C2B29', forms: ['#40403D', '#2C2B29', '#5E5E5A'], accent: '#7B7A76', active: '#2A70F4', text: '#E6E5DD', lit: '#E6E5DD', dim: '#40403D', line: 'rgba(230, 229, 221, 0.32)' },
+      surface: { ground: '#2C2B29', tone: '#40403D', forms: ['#5E5E5A', '#40403D', '#7B7A76'], accent: '#93928D', active: '#538EFB', text: '#E6E5DD', lit: '#E6E5DD', dim: '#5E5E5A', line: 'rgba(230, 229, 221, 0.3)' },
+      ink:   { ground: '#043692', tone: '#0B50D0', forms: ['#0B50D0', '#022468', '#2A70F4'], accent: '#538EFB', active: '#9BBEFC', text: '#FFFFFF', lit: '#FFFFFF', dim: 'rgba(255, 255, 255, 0.22)', line: 'rgba(255, 255, 255, 0.36)' },
+      paper: { ground: '#E6E5DD', tone: '#D2D1CA', forms: ['#538EFB', '#9BBEFC', '#BFBEB7'], accent: '#538EFB', active: '#0B50D0', text: '#121211', lit: '#121211', dim: '#BFBEB7', line: 'rgba(18, 18, 17, 0.28)' }
+    };
+    // Blue ramp (Foundations blue 900 → 500): the shader's "status" colour, deep → bright as work lands.
+    var B = ['#022468', '#043692', '#0B50D0', '#2A70F4', '#538EFB'];
+
+    var size = num(p.size, 320);
+    var isCollection = (p.kind || 'pericope') === 'collection';
+    var art = Math.round(isCollection ? size * 0.9 : size);
+    var direction = p.direction || 'orbit';
+    var vamp = p.vamp || 'mist';
+    var seed = String(p.seed || 'Mark-17');
+    var verseCount = Math.max(1, Math.round(num(p.verseCount, 7)));
+    var recorded = Math.max(0, Math.min(verseCount, Math.round(num(p.recorded, 3))));
+    var takes = Math.max(0, Math.round(num(p.takes, recorded)));
+    var playing = bool(p.playing, false);
+    var listen = Math.max(0, Math.min(1, num(p.listen, 0.4)));
+    var grain = bool(p.grain, true);
+    var guard = bool(p.textGuard, true);
+    var badgeOn = bool(p.badge, true);
+    var prog = recorded / verseCount;
+
+    var palName = p.palette || 'night';
+    if (!PAL[palName]) {
+      // auto: chapters alternate between the two neutral grounds
+      var pr = rngOf('palette:' + String(p.paletteSeed || seed))();
+      palName = pr < 0.6 ? 'night' : 'surface';
+    }
+    var c = PAL[palName];
+    var rnd = rngOf(direction + ':' + seed);
+    var s = art / 165; // 165px = the cover's width in the book grid at 390dp
+    var t = { pad: r2(12 * s), eb: r2(14 * s), ebLh: r2(20 * s), lb: r2(42 * s), lbLh: r2(48 * s) };
+
+    // A · Field (Skia: RuntimeEffect). `vamp` picks how complexity + blue grow with status.
+    var blobs = [], fRings = [];
+    var mk = function (x, y, w, h, col, blur, o, rot) {
+      return { x: r2(x), y: r2(y), w: r2(w), h: r2(h), c: col, blur: r2(blur), o: o == null ? 1 : o, rot: r2(rot || 0) };
+    };
+    var thin = r2(Math.max(1, 1.3 * s));
+    var r4 = function (v) { return Math.round(v * 10000) / 10000; };
+    var isNoise = vamp === 'mist' || vamp === 'current' || vamp === 'dawn' || vamp === 'ribbon';
+    var nz = { blur: 6, plain: false, warped: false, type: 'fractalNoise', id: '', gid: '', freq: '0.01', oct: 1, seed: 0, disp: 0, x2: '0', y2: '1', spread: 'pad', ang: 0, mid: '1', end: '#FFFFFF', k2: 0.8, k3: 0.45, k4: -0.22, r: '0 1', g: '0 1', b: '0 1' };
+    if (direction === 'field' && isNoise) {
+      // Noise vamps: no discrete shapes. fbm / turbulence (Skia: <FractalNoise>, <Turbulence>,
+      // <DisplacementMap>) → a colour ramp. Progress lowers the ramp's threshold (more of the
+      // field turns blue), raises its top (brighter blues) and adds octaves (more detail).
+      var Bx = B.map(hex);
+      var lerp3 = function (a, b, u) { return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u]; };
+      var blueAt = function (x) { x = Math.max(0, Math.min(4, x)); var bi = Math.min(3, Math.floor(x)); return lerp3(Bx[bi], Bx[bi + 1], x - bi); };
+      // Soft, low-contrast ramp: neutral haze → a gentle blend into blue (no hard threshold),
+      // blues capped around blue 700–600 for progress; listening alone lifts toward blue 500.
+      var g0 = hex(c.ground), t0 = hex(c.tone), topLevel = 0.8 + prog * 1.6;
+      var smooth = function (a, b, x) { var q = Math.max(0, Math.min(1, (x - a) / (b - a))); return q * q * (3 - 2 * q); };
+      var has = recorded > 0, rp;
+      var ramp = function (lo, hi, thr) {
+        var R = [], G = [], Bl = [];
+        for (var ri = 0; ri < 24; ri++) {
+          var u = Math.max(0, Math.min(1, (ri / 23 - lo) / (hi - lo)));
+          var col = lerp3(g0, t0, Math.pow(u, 1.4) * 0.75);
+          if (has) {
+            var amt = smooth(thr - 0.3, thr + 0.35, u);
+            col = lerp3(col, blueAt(Math.min(topLevel, 0.4 + u * topLevel)), amt * 0.9);
+            if (playing) col = lerp3(col, Bx[4], smooth(0.7, 1, u) * 0.55);
+          }
+          R.push((col[0] / 255).toFixed(3)); G.push((col[1] / 255).toFixed(3)); Bl.push((col[2] / 255).toFixed(3));
+        }
+        return { r: R.join(' '), g: G.join(' '), b: Bl.join(' ') };
+      };
+      nz.seed = hash(seed) % 997;
+      if (vamp === 'mist') {
+        // Big, soft fbm clouds; blue seeps into the lightest folds as verses land.
+        var fx = 0.0045 + 0.002 * prog;
+        nz.plain = true; nz.type = 'fractalNoise'; nz.freq = r4(fx) + ' ' + r4(fx * 1.5); nz.oct = prog > 0.5 ? 2 : 1; nz.blur = 7;
+        rp = ramp(0.3, 0.7, 0.75 - 0.4 * prog);
+      } else if (vamp === 'current' || vamp === 'dawn') {
+        // A gradient gently warped by noise: blue rises (current: from the bottom,
+        // dawn: from a corner on a diagonal) with a soft, slow edge.
+        nz.warped = true; nz.freq = '0.007 0.011'; nz.oct = 2; nz.disp = Math.round(22 + 18 * prog); nz.blur = vamp === 'dawn' ? 6 : 5;
+        nz.x2 = '0'; nz.y2 = '1'; nz.spread = 'pad'; nz.mid = '1'; nz.end = '#FFFFFF';
+        nz.ang = vamp === 'dawn' ? r2(-30 - rnd() * 35) : 0;
+        nz.k2 = 0.85; nz.k3 = 0.35; nz.k4 = -0.18;
+        rp = ramp(0, 1.05, 0.9 - 0.6 * prog);
+      } else {
+        // ribbon: one to three wide ribbons, softly warped; more and bluer as it fills.
+        var nRib = 1 + Math.round(prog * 2);
+        nz.warped = true; nz.freq = '0.007'; nz.oct = 1; nz.disp = Math.round(30 + 15 * prog); nz.blur = 6;
+        nz.x2 = String(r4(1 / nRib)); nz.y2 = '0'; nz.spread = 'repeat'; nz.ang = r2(-40 + rnd() * 80); nz.mid = '0.5'; nz.end = '#000000';
+        nz.k2 = 0.85; nz.k3 = 0.25; nz.k4 = -0.08;
+        rp = ramp(0, 1.05, 0.85 - 0.4 * prog);
+      }
+      nz.r = rp.r; nz.g = rp.g; nz.b = rp.b;
+      // Ids must differ per rendered state, or every cover on a page reuses the first filter.
+      nz.id = 'nz' + hash([vamp, seed, recorded, takes, playing, listen, palName, size].join('|'));
+      nz.gid = nz.id + 'g';
+    }
+    if (direction === 'field' && !isNoise) {
+      if (vamp === 'classic') {
+        c.forms.forEach(function (col) {
+          var x = art * (0.35 + rnd() * 0.7), y = art * (0.3 + rnd() * 0.75), d = art * (0.5 + rnd() * 0.55);
+          blobs.push(mk(x, y, d, d, col, art * 0.13));
+        });
+        var rx = art * (0.3 + rnd() * 0.6), ry = art * (0.3 + rnd() * 0.6), rd = art * (0.35 + rnd() * 0.4);
+        fRings.push({ x: r2(rx), y: r2(ry), d: r2(rd), w: thin, c: c.line });
+      } else {
+        // Shared: a base wash that drifts from neutral toward deep blue with progress.
+        blobs.push(mk(art * (0.3 + rnd() * 0.4), art * (0.6 + rnd() * 0.25), art * 1.3, art * 1.0, mix(c.tone, B[1], prog * 0.85), art * 0.2, 1));
+
+        if (vamp === 'bloom') {
+          // A mass per verse; recorded verses bloom blue, bigger and brighter as the passage fills.
+          var nB = Math.max(3, Math.min(9, verseCount)), litB = Math.round(prog * nB);
+          var unlit = [], lit = [];
+          for (var i2 = 0; i2 < nB; i2++) {
+            var bx = art * (0.3 + rnd() * 0.7), by = art * (0.2 + rnd() * 0.8), bs = art * (0.22 + rnd() * 0.36), bj = rnd();
+            if (i2 < litB) {
+              var gs = bs * (1 + 0.35 * prog);
+              lit.push(mk(bx, by, gs, gs, B[Math.min(4, Math.floor(bj * 1.5 + prog * 3.2))], art * (0.05 + 0.04 * (1 - prog)), 0.95));
+            } else {
+              unlit.push(mk(bx, by, bs * 0.85, bs * 0.85, c.forms[i2 % 3], art * 0.1, 0.8));
+            }
+          }
+          blobs = blobs.concat(unlit, lit);
+          if (playing) {
+            var last = lit.length ? lit[lit.length - 1] : { x: art * 0.65, y: art * 0.55 };
+            blobs.push(mk(last.x, last.y, art * 0.2, art * 0.2, c.active, art * 0.035, 1));
+            fRings.push({ x: last.x, y: last.y, d: r2(art * (0.3 + 0.3 * listen)), w: thin, c: c.active });
+          } else if (recorded >= verseCount) {
+            fRings.push({ x: r2(art * 0.62), y: r2(art * 0.52), d: r2(art * 0.52), w: thin, c: c.line });
+          }
+        } else if (vamp === 'tide') {
+          // Blue rises with verses recorded; more layers (depth) as it fills.
+          var layers = recorded > 0 ? 1 + Math.round(prog * 3) : 1;
+          var level = art * (1 - (0.1 + 0.8 * prog));
+          var topIdx = Math.min(4, 1 + Math.round(prog * 3));
+          for (var L = 0; L < layers; L++) {
+            var col = recorded > 0 ? B[Math.max(0, topIdx - L)] : c.forms[0];
+            var wy = level + art * 0.55 + L * art * (0.07 + rnd() * 0.05);
+            blobs.push(mk(art * (0.35 + rnd() * 0.4), wy, art * (1.7 + rnd() * 0.5), art * 1.1, col, art * (0.05 + 0.02 * L), 1, -10 + rnd() * 20));
+          }
+          if (playing) {
+            blobs.push(mk(art * (0.1 + 0.8 * listen), level + art * 0.02, art * 0.24, art * 0.12, c.active, art * 0.03, 1));
+          }
+        } else if (vamp === 'bokeh') {
+          // A point of light per take (blue); unrecorded verses stay as grey motes.
+          var grayN = Math.min(14, verseCount - recorded), blueN = Math.min(36, takes);
+          for (var g = 0; g < grayN; g++) {
+            var gd = art * (0.05 + rnd() * 0.12);
+            blobs.push(mk(art * rnd(), art * rnd(), gd, gd, c.forms[g % 3], art * (0.01 + rnd() * 0.03), 0.7));
+          }
+          var curSet = playing ? Math.floor(listen * blueN) : -99;
+          for (var k2 = 0; k2 < blueN; k2++) {
+            var kd = art * (0.035 + rnd() * 0.15), kx = art * (0.08 + rnd() * 0.9), ky = art * (0.08 + rnd() * 0.9);
+            var kIdx = Math.min(4, Math.floor(rnd() * (1.5 + prog * 3.5))), kb = art * (0.004 + rnd() * 0.035);
+            var near = Math.abs(k2 - curSet) <= 1;
+            blobs.push(mk(kx, ky, near ? kd * 1.3 : kd, near ? kd * 1.3 : kd, near ? c.active : B[kIdx], near ? art * 0.008 : kb, near ? 1 : 0.88));
+          }
+        } else if (vamp === 'aurora') {
+          // Bands multiply and shift to blue as verses land, from the bottom up.
+          var ang = -35 + rnd() * 70;
+          var nA = 3 + Math.round(prog * 6);
+          var litA = recorded > 0 ? Math.max(1, Math.round(prog * nA)) : 0;
+          var curA = playing ? Math.min(nA - 1, Math.floor(listen * nA)) : -1;
+          for (var a1 = 0; a1 < nA; a1++) {
+            var ay = art * (0.12 + 0.82 * (a1 + 0.5) / nA) + (rnd() - 0.5) * art * 0.06;
+            var ah = art * (0.05 + rnd() * 0.14), aj = rnd(), ab = art * (0.025 + rnd() * 0.05);
+            var isLa = a1 >= nA - litA, isCa = a1 === curA;
+            var colA = isCa ? c.active : isLa ? B[Math.min(4, Math.floor(1 + aj * 1.2 + prog * 2))] : c.forms[a1 % 3];
+            blobs.push(mk(art * 0.5, ay, art * 2.2, ah, colA, isCa ? art * 0.015 : ab, isLa || isCa ? 0.95 : 0.6, ang));
+          }
+        }
+      }
+    }
+
+    // B · Signal: one bar per verse, lit once recorded, the playing verse in blue
+    var bars = [];
+    if (direction === 'signal') {
+      var n = Math.max(3, Math.min(48, verseCount));
+      var litN = Math.round((recorded / verseCount) * n);
+      var curN = playing ? Math.min(n - 1, Math.floor(listen * n)) : -1;
+      var left = t.pad, width = art - t.pad * 2;
+      var top = t.pad + t.ebLh, bottom = art - t.pad - t.lbLh;
+      var mid = (top + bottom) / 2, amp = (bottom - top) * 0.92;
+      var slot = width / n, bw = Math.max(1.5, slot * 0.56);
+      var f1 = 0.35 + rnd() * 0.6, f2 = 1.1 + rnd() * 1.4, p1 = rnd() * 6.28, p2 = rnd() * 6.28;
+      for (var i = 0; i < n; i++) {
+        var v = 0.55 * Math.sin(i * f1 + p1) + 0.3 * Math.sin(i * f2 + p2) + 0.15 * (rnd() * 2 - 1);
+        var h = Math.max(bw, amp * (0.2 + 0.8 * Math.min(1, Math.abs(v))));
+        bars.push({ x: r2(left + i * slot + (slot - bw) / 2), y: r2(mid - h / 2), w: r2(bw), h: r2(h), rad: r2(bw / 2), c: i === curN ? c.active : i < litN ? c.lit : c.dim });
+      }
+    }
+
+    // C · Orbit: a ring per verse. Recorded verse = lit arc + one bead per take trailing it.
+    // Playing: the current verse's ring, arc, beads and the centre go blue.
+    var rings = [], arcs = [], beads = [];
+    var dot = { x: 0, y: 0, d: 0, c: 'transparent' };
+    if (direction === 'orbit') {
+      var m = Math.max(3, Math.min(14, verseCount));
+      var litM = Math.round((recorded / verseCount) * m);
+      var cur = playing ? Math.min(m - 1, Math.floor(listen * m)) : -1;
+      var cx = guard ? r2(art * (0.62 + rnd() * 0.22)) : r2(art * (0.5 + rnd() * 0.38));
+      var cy = guard ? r2(art * (0.4 + rnd() * 0.22)) : r2(art * (0.38 + rnd() * 0.34));
+      var dMin = art * 0.16, dMax = art * (1.25 + rnd() * 0.4);
+      var lw = r2(Math.max(1, 1.1 * s)), aw = r2(Math.max(2, 3.2 * s));
+      var bd = r2(Math.max(3, aw * 1.5));
+      var per = [];
+      for (var a0 = 0; a0 < litM; a0++) per.push(1);
+      var extra = Math.max(0, takes - litM), tr = rngOf('takes:' + seed), guardN = 0;
+      while (extra > 0 && litM > 0 && guardN < 400) {
+        var ix = Math.floor(tr() * litM);
+        if (per[ix] < 5) { per[ix]++; extra--; }
+        guardN++;
+      }
+      for (var j = 0; j < m; j++) {
+        var d = r2(dMin + (dMax - dMin) * (j / (m - 1)));
+        var rot = r2(rnd() * 360);
+        var isCur = j === cur, isLit = j < litM;
+        rings.push({ x: cx, y: cy, d: d, w: isCur ? aw * 0.5 : lw, c: isCur ? c.active : c.line });
+        arcs.push({ x: cx, y: cy, d: d, w: aw, rot: rot, c: isCur ? c.active : isLit ? c.lit : c.dim });
+        if (isLit) {
+          var rad = d / 2, gap = (bd * 2.1) / rad;
+          for (var b = 0; b < per[j]; b++) {
+            var th = (rot + 45) * Math.PI / 180 + gap * (b + 1);
+            beads.push({ x: r2(cx + rad * Math.sin(th)), y: r2(cy - rad * Math.cos(th)), d: bd, c: isCur ? c.active : c.lit });
+          }
+        }
+      }
+      dot = { x: cx, y: cy, d: r2(art * 0.07), c: playing ? c.active : litM >= m ? c.lit : c.dim };
+    }
+
+    // D · Numeral
+    var numeral = { t: '', fs: 0, x: 0, y: 0, c: 'transparent' };
+    var bands = [];
+    if (direction === 'type') {
+      var nm = String(p.numeral || '4');
+      numeral = { t: nm, fs: r2(art * (nm.length > 1 ? 0.95 : 1.25)), x: r2(art * (0.16 + rnd() * 0.22)), y: r2(-art * (0.02 + rnd() * 0.12)), c: c.tone };
+      var k = 1 + Math.floor(rnd() * 2);
+      for (var q = 0; q < k; q++) {
+        bands.push({ y: r2(art * (0.3 + rnd() * 0.36)), h: r2(art * (q === 0 ? 0.09 + rnd() * 0.12 : 0.025 + rnd() * 0.03)), rot: r2(-38 + rnd() * 76), c: q === 0 ? c.forms[0] : c.accent });
+      }
+    }
+
+    // Status badge, top-right: partial = ring filling with recorded verses, recorded = check,
+    // playing = blue ring filling with listening progress (same idea as ProgressRing).
+    var done = !playing && recorded >= verseCount;
+    var frac = playing ? listen : recorded / verseCount;
+    var deg = r2(frac * 360);
+    var arcCol = playing ? c.active : c.lit;
+    var bw2 = r2(Math.max(2, 2.6 * s));
+    var badge = {
+      inset: r2(t.pad * 0.55), plate: r2(30 * s), d: r2(21 * s), w: bw2, icon: r2(13 * s),
+      done: done, ring: !done,
+      arcBg: 'conic-gradient(' + arcCol + ' 0deg ' + deg + 'deg, transparent ' + deg + 'deg 360deg)',
+      mask: 'radial-gradient(farthest-side, transparent calc(100% - ' + bw2 + 'px), #000 calc(100% - ' + bw2 + 'px))'
+    };
+
+    var gseed = hash(direction + seed);
+    return {
+      size: size, art: art, isCollection: isCollection,
+      stackGap: r2(size * 0.006), sliverH: r2((size - art) / 2 - size * 0.006), sliver1: r2(art * 0.92), sliver2: r2(art * 0.84),
+      rad: r2(8 * s), c: c, t: t,
+      eyebrow: p.eyebrow != null ? p.eyebrow : 'Mark 4',
+      label: p.label != null ? p.label : '35–41',
+      isField: direction === 'field', isSignal: direction === 'signal', isOrbit: direction === 'orbit', isType: direction === 'type',
+      blobs: blobs, fRings: fRings, nz: nz, bars: bars, rings: rings, arcs: arcs, beads: beads, dot: dot, numeral: numeral, bands: bands,
+      showBadge: badgeOn && (playing || recorded > 0), badge: badge,
+      orbitMask: guard ? 'linear-gradient(110deg, rgba(0, 0, 0, 0.16) 0%, rgba(0, 0, 0, 0.16) 30%, #000000 72%)' : 'none',
+      halo: guard ? '0 0 ' + r2(3 * s) + 'px ' + c.ground + ', 0 0 ' + r2(10 * s) + 'px ' + c.ground : 'none',
+      grain: grain, grainOpacity: direction === 'field' && isNoise ? 0.1 : palName === 'paper' ? 0.3 : 0.22, grainSeed: gseed % 997, grainId: 'grain' + (gseed % 100000)
+    };
+  }
+}
+</script>
+</body>
+</html>

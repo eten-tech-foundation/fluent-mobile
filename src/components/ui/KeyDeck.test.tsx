@@ -23,6 +23,7 @@ describe('KeyDeck', () => {
   });
 
   it('frames its keys in surface/inverse with 2pt seams', () => {
+    act(() => setUiVersion('legacy'));
     renderWithPreferences(
       <KeyDeck testID="deck">
         <Text>Play</Text>
@@ -44,6 +45,7 @@ describe('KeyDeck', () => {
     const original = roles.surfaceInverse;
     try {
       roles.surfaceInverse = '#123456';
+      act(() => setUiVersion('legacy'));
       renderWithPreferences(
         <KeyDeck testID="deck">
           <Text>Play</Text>

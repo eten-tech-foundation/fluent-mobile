@@ -8,7 +8,10 @@ import {
   type ResourceVerseRef,
 } from '../utils/loadResourcesForVerseRange';
 import { FluentAPI } from './api';
+import { authToken } from './authToken';
 import { findDownloadedRows, readDownloadedJson } from './offlineResources';
+import { reusePassageResource } from './passageResourceReuse';
+import { getActiveUserId } from './storage';
 
 const DEFAULT_TN_LANGUAGE_CODE = 'eng';
 
@@ -31,6 +34,8 @@ export type LoadTranslationNotesParams = {
   userId?: number | null;
   /** False when offline, so we never call the API. */
   isOnline?: boolean;
+  /** Explicit retry: ask the API again instead of reusing a recent answer. */
+  refresh?: boolean;
 };
 
 type TipTapContentItem = {
@@ -57,6 +62,7 @@ function isContentItemArray(value: unknown): value is TipTapContentItem[] {
  */
 export function parseTranslationNotesItem(
   item: ApiTranslationNoteItem,
+  ref?: ResourceVerseRef,
 ): TranslationNoteItem[] {
   if (!isContentItemArray(item.content)) {
     return [];
@@ -93,6 +99,17 @@ export function parseTranslationNotesItem(
       id: `tn-api-${item.id}-${index}`,
       title,
       body: noteBody || body,
+      ...(firstLine.length > 0 && firstLine.length <= 120
+        ? { quote: firstLine }
+        : {}),
+      ...(ref
+        ? {
+            verse: {
+              chapterNumber: ref.chapterNumber,
+              verseNumber: ref.verseNumber,
+            },
+          }
+        : {}),
     });
   });
 
@@ -143,7 +160,7 @@ async function loadLocalTranslationNotesForRef(
       // TipTap block array, so rewrap non-arrays to keep the parser happy.
       content: Array.isArray(content) ? content : [content],
     } as unknown as ApiTranslationNoteItem;
-    notes.push(...parseTranslationNotesItem(item));
+    notes.push(...parseTranslationNotesItem(item, ref));
   }
   // Every downloaded file was unreadable (missing/corrupt): fall back to the
   // API instead of showing an empty section.
@@ -186,6 +203,16 @@ export async function loadTranslationNotesForUnit(
     return [];
   }
 
+  // The account this load is for: a switch while the local lookups run must
+  // not send (and keep, under this account) the request as the new one.
+  const bearer = authToken.get() ?? undefined;
+  const userId = params.userId;
+  // A known account's notes come only from its own session: not from
+  // another account that is active by now, nor a token set later.
+  const remoteAllowed =
+    userId === null ||
+    userId === undefined ||
+    (bearer !== undefined && getActiveUserId() === String(userId));
   const refs = resolveTranslationNotesRefs(params);
   const localNotes: TranslationNoteItem[] = [];
   const missingRefs: ResourceVerseRef[] = [];
@@ -209,19 +236,34 @@ export async function loadTranslationNotesForUnit(
     return localNotes;
   }
 
+  if (!remoteAllowed) {
+    throw new Error('Translation Notes account is not the active session');
+  }
+
   const languageCode = params.languageCode?.trim() || DEFAULT_TN_LANGUAGE_CODE;
   const projectId = params.projectId;
-  const remote = await loadResourcesForVerseRange(missingRefs, async ref => {
+  const fetchRef = async (ref: ResourceVerseRef) => {
     const response = await FluentAPI.getTranslationNotes(
       projectId,
       bookCode,
       ref.chapterNumber,
       ref.verseNumber,
       languageCode,
+      bearer,
     );
     const items = Array.isArray(response?.items) ? response.items : [];
-    return items.flatMap(parseTranslationNotesItem);
-  });
+    return items.flatMap(item => parseTranslationNotesItem(item, ref));
+  };
+  const remote = await loadResourcesForVerseRange(missingRefs, ref =>
+    userId === null || userId === undefined
+      ? fetchRef(ref)
+      : reusePassageResource(
+          String(userId),
+          `notes:${projectId}:${bookCode}:${ref.chapterNumber}:${ref.verseNumber}:${languageCode}`,
+          () => fetchRef(ref),
+          { fresh: params.refresh },
+        ),
+  );
   mergeNotesById(localNotes, remote, seenIds);
   return localNotes;
 }

@@ -2,17 +2,16 @@ import type { PendingUploadChapter } from '../db/queries';
 import { logger } from '../utils/logger';
 import { isUploadNetworkInterruptedError } from '../utils/networkError';
 import { transportAllowsTransfer } from '../utils/transportPolicy';
-import type { UploadSessionEvent } from './syncEvents';
+import type { UploadSessionEvent, UploadTakeProgress } from './syncEvents';
+import { isAuthError } from './authError';
 
 const log = logger.create('UploadOrchestrator');
 
 export const PAUSE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Failed-session retries use #150's existing silent-retry default: three
+/** Failed-session retries use #150's existing silent-retry default: three
  * attempts, delay `attempt * 500` ms (same as recording upload and metadata
- * sync). Longer escalation stays out of scope.
- */
+ * sync). Longer escalation stays out of scope. */
 export const SESSION_RETRY_MAX_ATTEMPTS = 3;
 
 export function sessionRetryDelayMs(attempt: number): number {
@@ -31,11 +30,29 @@ export type UploadPhase =
   | 'waiting_wifi'
   | 'offline';
 
+/** Per-take progress inside one chapter pass (#886). */
+export type TakeProgressListener = (progress: {
+  completedTakes: number;
+  failedTakes: number;
+  totalTakes: number;
+}) => void;
+
 export type ChapterUploadWorker = {
   uploadChapter: (
     chapter: PendingUploadChapter,
     signal: AbortSignal,
+    onTakeProgress?: TakeProgressListener,
   ) => Promise<void>;
+  /** Drain queued server take deletes (all owners) **once per session**, after
+   * the claim push and before the first chapter, instead of re-scanning the
+   * whole queue before every chapter (#886). Resolves with the number of
+   * rows **the active account is shown as pending** that are left after a
+   * terminal failure — the session still uploads every chapter, then ends
+   * without `complete` so the bounded retry re-drains. Other owners' stuck
+   * rows are logged and stay queued without blocking this user's session.
+   * Throws on abort, network interruption and auth failure like `uploadChapter`.
+   */
+  drainPendingDeletions?: (signal: AbortSignal) => Promise<{ failed: number }>;
 };
 
 export type UploadOrchestratorDeps = {
@@ -51,24 +68,28 @@ export type UploadOrchestratorDeps = {
   subscribeToUploadOverCellular: (
     listener: (value: boolean) => void,
   ) => () => void;
-  getPendingUploadChapters: () => Promise<PendingUploadChapter[]>;
+  /** `onError` runs when the read failed and the empty list is not an answer. */
+  getPendingUploadChapters: (
+    onError?: () => void,
+  ) => Promise<PendingUploadChapter[]>;
   getPausedUntilMs: () => number | null;
   setPausedUntilMs: (ms: number | null) => void;
   now: () => number;
   pauseWindowMs: number;
   worker: ChapterUploadWorker | null;
   emit: (event: UploadSessionEvent) => void;
-  /** Fresh reachability for Sync Now / runSession (avoids stale cache vs Sync UI). */
-  getSessionTransportSnapshot?: () => Promise<{
+  /**
+   * Fresh reachability for Sync Now / runSession (avoids stale cache vs Sync UI).
+   * `allowRecent` lets the session started by an online publish reuse that
+   * just-completed `/health` success instead of probing again.
+   */
+  getSessionTransportSnapshot?: (options?: {
+    allowRecent: boolean;
+  }) => Promise<{
     isOnline: boolean;
     isWifi: boolean;
     connectionType: string;
   }>;
-  /**
-   * Pause-window expiry and failed-session retry.
-   * Defaults to setTimeout; tests inject a manual scheduler.
-   */
-  schedule?: (callback: () => void, delayMs: number) => () => void;
   /**
    * Push offline chapter claims before uploading takes (#611).
    * Soft-fail / auth behavior is owned by the injected implementation.
@@ -90,8 +111,30 @@ export type UploadOrchestratorDeps = {
    * Return held takes to the queue when project membership is back (#855).
    * Runs before the pending-chapter read: held rows are excluded from that
    * read, so releasing them afterwards would leave them stuck on the device.
+   * Resolves with the number of held rows still left on a terminal failure —
+   * the session must not proceed past the failure, so the bounded retry
+   * re-evaluates without deleting those takes.
    */
-  reconcileHeldBeforeUpload?: () => Promise<void>;
+  reconcileHeldBeforeUpload?: () => Promise<{ held: number; released: number }>;
+  /**
+   * True when the active user has a queued offline chapter claim. A reconnect
+   * with no takes and no stage rows still runs a session so the claim is
+   * pushed instead of waiting for the next metadata trigger (#886).
+   */
+  hasPendingClaims?: () => Promise<boolean>;
+  /**
+   * The active user and the database's write count, or null when unreadable
+   * (#886). While it equals the mark taken before an automatic check that
+   * cleanly found nothing queued, no row has been written since, so the
+   * queue is still empty.
+   */
+  getQueueWriteMark?: () => Promise<object | null>;
+  /**
+   * Pause-window expiry and failed-session retry.
+   * Defaults to setTimeout; tests inject a manual scheduler.
+   */
+  schedule?: (callback: () => void, delayMs: number) => () => void;
+  sameQueueWriteMark?: (a: object, b: object) => boolean;
 };
 
 export type UploadOrchestratorSnapshot = {
@@ -99,6 +142,10 @@ export type UploadOrchestratorSnapshot = {
   completedChapters: number;
   totalChapters: number;
   pausedUntilMs: number | null;
+  /** Take progress for the chapter uploading right now, else null (#886). */
+  currentChapter: UploadTakeProgress | null;
+  /** Why automatic uploads are not starting, when they are held (#886). */
+  holdReason: 'drafting' | null;
 };
 
 export type UploadOrchestrator = {
@@ -125,6 +172,7 @@ export function createUploadOrchestrator(
   let phase: UploadPhase = 'idle';
   let completedChapters = 0;
   let totalChapters = 0;
+  let currentChapter: UploadTakeProgress | null = null;
   /** Chapters that belong to the current pause/resume session (`bookId:chapterNumber`). */
   let sessionKeys = new Set<string>();
   let isOnline = false;
@@ -146,6 +194,11 @@ export function createUploadOrchestrator(
   let draftingHold = Boolean(options?.initialDraftingHold);
   let holdChain: Promise<void> = Promise.resolve();
   let wasOnline = false;
+  /**
+   * Reachability was just published online. Only the next automatic session
+   * may reuse that result; retries, interrupt rechecks and Sync Now probe.
+   */
+  let onlineJustConfirmed = false;
   let evaluateChain: Promise<void> = Promise.resolve();
   const schedule = deps.schedule ?? defaultSchedule;
   let pauseTimerCancel: (() => void) | null = null;
@@ -155,6 +208,12 @@ export function createUploadOrchestrator(
   let sessionOpen = false;
   /** Take saved (or similar) while a session was in flight. */
   let rerunAfterSession = false;
+  /**
+   * Write mark from before the last automatic check that cleanly found
+   * nothing queued. Dropped by new work, a nonempty or failed read, and stop.
+   */
+  let confirmedEmpty: { mark: object; version: number } | null = null;
+  let pendingWorkNotices = 0;
 
   const clearPauseTimer = (): void => {
     pauseTimerCancel?.();
@@ -171,6 +230,8 @@ export function createUploadOrchestrator(
     completedChapters,
     totalChapters,
     pausedUntilMs: deps.getPausedUntilMs(),
+    currentChapter,
+    holdReason: draftingHold ? 'drafting' : null,
   });
 
   const isUserPaused = (): boolean => {
@@ -184,6 +245,7 @@ export function createUploadOrchestrator(
   const clearSessionCounts = (): void => {
     completedChapters = 0;
     totalChapters = 0;
+    currentChapter = null;
     sessionKeys = new Set();
   };
 
@@ -224,13 +286,15 @@ export function createUploadOrchestrator(
     if (sessionPromise === promise) sessionPromise = null;
   };
 
-  const applyFreshTransportSnapshot = async (): Promise<void> => {
+  const applyFreshTransportSnapshot = async (
+    allowRecent = false,
+  ): Promise<void> => {
     if (!deps.getSessionTransportSnapshot) {
       return;
     }
 
     const version = lifecycleVersion;
-    const snapshot = await deps.getSessionTransportSnapshot();
+    const snapshot = await deps.getSessionTransportSnapshot({ allowRecent });
     if (!started || version !== lifecycleVersion) return;
     isOnline = snapshot.isOnline;
     isWifi = snapshot.isWifi;
@@ -269,6 +333,7 @@ export function createUploadOrchestrator(
       return false;
     }
     const delayMs = sessionRetryDelayMs(sessionFailures);
+
     log.info('Scheduling upload session retry', {
       attempt: sessionFailures,
       delayMs,
@@ -300,6 +365,15 @@ export function createUploadOrchestrator(
     }, delayMs);
   }
 
+  const readPendingWork = (onError?: () => void) =>
+    Promise.all([
+      deps.getPendingUploadChapters(onError),
+      deps.hasPendingStageAdvances
+        ? deps.hasPendingStageAdvances()
+        : Promise.resolve(false),
+      deps.hasPendingClaims ? deps.hasPendingClaims() : Promise.resolve(false),
+    ]);
+
   const runSession = async (reason: 'auto' | 'sync_now'): Promise<void> => {
     if (!started) return;
     const version = lifecycleVersion;
@@ -311,6 +385,26 @@ export function createUploadOrchestrator(
     // Object so the async work closure can publish the outcome. A bare `let`
     // is narrowed to its initializer at `finally`, which hides the assignment.
     const sessionResult: { followUp: 'none' | 'retry' } = { followUp: 'none' };
+    let heldRecordingsChecked = false;
+    const reconcileHeld = async (): Promise<boolean> => {
+      if (!deps.reconcileHeldBeforeUpload) return false;
+      heldRecordingsChecked = true;
+      try {
+        const outcome = await deps.reconcileHeldBeforeUpload();
+        if (outcome.held > 0) {
+          log.info('Held recordings present; deferring upload session', {
+            reconcileHeld: outcome.held,
+          });
+          return true;
+        }
+      } catch (error) {
+        log.warn('Held-recording membership reconcile failed; holding', {
+          error,
+        });
+        return true;
+      }
+      return false;
+    };
 
     try {
       if (!deps.worker) {
@@ -322,7 +416,62 @@ export function createUploadOrchestrator(
         return;
       }
 
-      await applyFreshTransportSnapshot();
+      const allowRecent = reason === 'auto' && onlineJustConfirmed;
+      onlineJustConfirmed = false;
+      if (
+        reason === 'auto' &&
+        !isUserPaused() &&
+        !suppressAutoUntilOnlineEdge &&
+        !draftingHold
+      ) {
+        // Held takes are excluded from the pending query. Reconcile them
+        // before the empty-queue shortcut so restored membership can requeue
+        // them for this same automatic session.
+        if (await reconcileHeld()) return;
+        // Nothing queued means nothing for `/health` to gate. A clean empty
+        // answer holds while no row is written and no work is announced.
+        // Work that is queued is re-read after the probe below, as before.
+        const notices = pendingWorkNotices;
+        const mark = deps.getQueueWriteMark
+          ? await deps.getQueueWriteMark().catch(() => null)
+          : null;
+        if (!started || version !== lifecycleVersion) return;
+        const known = confirmedEmpty;
+        confirmedEmpty = null;
+        let nothingQueued =
+          mark !== null &&
+          known !== null &&
+          known.version === version &&
+          notices === pendingWorkNotices &&
+          deps.sameQueueWriteMark?.(known.mark, mark) === true;
+        let cleanRead = nothingQueued;
+        if (!nothingQueued) {
+          let readFailed = false;
+          const [queued, hasStageWork, hasClaimWork] = await readPendingWork(
+            () => {
+              readFailed = true;
+            },
+          );
+          if (!started || version !== lifecycleVersion) return;
+          nothingQueued = queued.length === 0 && !hasStageWork && !hasClaimWork;
+          cleanRead = !readFailed;
+        }
+        if (
+          nothingQueued &&
+          !isUserPaused() &&
+          !suppressAutoUntilOnlineEdge &&
+          !draftingHold
+        ) {
+          if (mark && cleanRead && notices === pendingWorkNotices) {
+            confirmedEmpty = { mark, version };
+          }
+          phase = 'idle';
+          clearSessionCounts();
+          deps.emit({ type: 'idle' });
+          return;
+        }
+      }
+      await applyFreshTransportSnapshot(allowRecent);
       if (!started || version !== lifecycleVersion) return;
 
       const uploadOverCellular = deps.getUploadOverCellular();
@@ -354,21 +503,16 @@ export function createUploadOrchestrator(
         return;
       }
 
-      if (deps.reconcileHeldBeforeUpload) {
-        try {
-          await deps.reconcileHeldBeforeUpload();
-        } catch (error) {
-          log.warn('Held-recording reconcile before upload failed', { error });
-        }
-        if (!started || version !== lifecycleVersion) return;
-      }
+      // #855: re-establish fresh project membership before evaluating uploads,
+      // so a user removed while offline cannot reach an upload attempt. The
+      // reconcile releases held rows when membership returns, so they upload
+      // with no extra step. Its result is observed so a terminal failure
+      // (database lock / failed transaction) defers every affected take
+      // instead of deleting or failing them here.
+      if (!heldRecordingsChecked && (await reconcileHeld())) return;
+      if (!started || version !== lifecycleVersion) return;
 
-      const [chapters, hasStageWork] = await Promise.all([
-        deps.getPendingUploadChapters(),
-        deps.hasPendingStageAdvances
-          ? deps.hasPendingStageAdvances()
-          : Promise.resolve(false),
-      ]);
+      const [chapters, hasStageWork, hasClaimWork] = await readPendingWork();
       if (!started || version !== lifecycleVersion) return;
       // Controls and connectivity may change while the queue read is pending,
       // before there is an AbortController for pause/cancel/offline to abort.
@@ -399,7 +543,7 @@ export function createUploadOrchestrator(
         return;
       }
       const stageOnly = chapters.length === 0;
-      if (stageOnly && !hasStageWork) {
+      if (stageOnly && !hasStageWork && !hasClaimWork) {
         phase = 'idle';
         clearSessionCounts();
         deps.emit({ type: 'idle' });
@@ -417,8 +561,13 @@ export function createUploadOrchestrator(
       if (stageOnly) {
         // No take progress to show; HomeScreen refreshes on `complete` after
         // the drain so a mounted My Work list can drop the yellow row (#257).
+        // Claim-only reconnects take the same path (#886).
         phase = 'syncing';
-        log.info('Upload session draining stage advances', { reason });
+        log.info('Upload session draining queued claims / stage advances', {
+          reason,
+          hasStageWork,
+          hasClaimWork,
+        });
       } else {
         const resumePausedSession =
           (phase === 'paused' || phase === 'offline') && sessionKeys.size > 0;
@@ -471,12 +620,29 @@ export function createUploadOrchestrator(
           // Claims must land before takes — reconnect auto-upload and Sync Now
           // otherwise race the full sync's claim step (~30s of master data) (#611).
           // Race abort so Cancel/pause do not hang on the claim round-trip.
+          // A drain-only session must not `complete` over a claim that is
+          // still queued; remember the soft failure, still drain the stage
+          // rows below, and fail the session afterwards so the bounded retry
+          // runs (#886, same shape as `deletionsFailed`).
+          let claimPushError: unknown = null;
           if (deps.pushPendingClaimsBeforeUpload) {
             try {
               await raceAbort(deps.pushPendingClaimsBeforeUpload());
             } catch (error) {
               if (abort.signal.aborted) {
                 return;
+              }
+              // Offline at claim time is deferred work for the whole session,
+              // not something to upload past: take the connectivity-pause
+              // path below instead of a silent "continuing" (#886).
+              if (
+                isUploadNetworkInterruptedError(error) ||
+                isAuthError(error)
+              ) {
+                throw error;
+              }
+              if (stageOnly) {
+                claimPushError = error;
               }
               log.warn('Pending claim push before upload failed; continuing', {
                 reason,
@@ -487,11 +653,52 @@ export function createUploadOrchestrator(
           if (abort.signal.aborted) {
             return;
           }
+          // Deletes before takes, once per session (#886). A terminal
+          // delete failure must not starve the chapters below: remember it
+          // and fail the session only after they have had their turn.
+          let deletionsFailed = 0;
+          if (!stageOnly && deps.worker!.drainPendingDeletions) {
+            const drained = await deps.worker!.drainPendingDeletions(
+              abort.signal,
+            );
+            deletionsFailed = drained.failed;
+          }
+          if (abort.signal.aborted) {
+            return;
+          }
           for (const chapter of chapters) {
             if (abort.signal.aborted) {
               return;
             }
-            await deps.worker!.uploadChapter(chapter, abort.signal);
+            // Per-take progress inside this chapter (#886). Chapter
+            // counts stay the headline; the worker reports after each take.
+            let sawTakeProgress = false;
+            const onTakeProgress: TakeProgressListener = progress => {
+              if (abort.signal.aborted || version !== lifecycleVersion) {
+                return;
+              }
+              sawTakeProgress = true;
+              currentChapter = {
+                bookId: chapter.bookId,
+                chapterNumber: chapter.chapterNumber,
+                ...progress,
+              };
+              deps.emit({
+                type: 'progress',
+                completedChapters,
+                totalChapters,
+                currentChapter,
+              });
+            };
+            try {
+              await deps.worker!.uploadChapter(
+                chapter,
+                abort.signal,
+                onTakeProgress,
+              );
+            } finally {
+              currentChapter = null;
+            }
             if (abort.signal.aborted) {
               return;
             }
@@ -501,7 +708,9 @@ export function createUploadOrchestrator(
             }
             const before = completedChapters;
             applyPendingChapters(pending);
-            if (completedChapters > before) {
+            // Also emit when take progress was shown so listeners drop the
+            // per-take detail at the chapter boundary (#886).
+            if (completedChapters > before || sawTakeProgress) {
               deps.emit({
                 type: 'progress',
                 completedChapters,
@@ -528,6 +737,16 @@ export function createUploadOrchestrator(
               throw error;
             }
           }
+          if (deletionsFailed > 0) {
+            // Honest terminal summary: work remains, so no `complete` and no
+            // cleared retry budget (#886).
+            throw new Error(
+              `Upload session left ${deletionsFailed} take delete(s) pending`,
+            );
+          }
+          if (claimPushError !== null) {
+            throw claimPushError;
+          }
           if (!abort.signal.aborted) {
             phase = 'idle';
             log.info('Upload session complete', { totalChapters });
@@ -551,12 +770,14 @@ export function createUploadOrchestrator(
             sessionFailures = 0;
             isOnline = false;
             wasOnline = false;
+            onlineJustConfirmed = false;
             phase = 'offline';
             deps.emit({ type: 'paused', reason: 'connectivity' });
             scheduleTransportRecheckAfterInterrupt();
             return;
           }
           log.error('Upload session failed', { error });
+          onlineJustConfirmed = false;
           phase = 'idle';
           clearSessionCounts();
           deps.emit({ type: 'idle' });
@@ -650,6 +871,7 @@ export function createUploadOrchestrator(
   ) => {
     const becameOnline = online && !wasOnline;
     wasOnline = online;
+    onlineJustConfirmed = online;
     isOnline = online;
     isWifi = wifi;
     connectionType = type ?? (wifi ? 'wifi' : '');
@@ -679,16 +901,25 @@ export function createUploadOrchestrator(
   };
 
   const applyDraftingHold = async (held: boolean): Promise<void> => {
+    const changed = draftingHold !== held;
     if (held) {
       // Do not abort an in-flight session. The hold only blocks the next
       // automatic start.
       draftingHold = true;
+      if (changed && started) {
+        // Make the hold visible: the Sync page re-reads the snapshot on any
+        // session event and shows "waiting" instead of "pending" (#886).
+        deps.emit({ type: 'hold', held: true, reason: 'drafting' });
+      }
       return;
     }
 
     draftingHold = false;
     if (!started) {
       return;
+    }
+    if (changed) {
+      deps.emit({ type: 'hold', held: false, reason: 'drafting' });
     }
     evaluateAuto();
   };
@@ -722,6 +953,8 @@ export function createUploadOrchestrator(
       clearRetryTimer();
       sessionFailures = 0;
       rerunAfterSession = false;
+      onlineJustConfirmed = false;
+      confirmedEmpty = null;
       void abortActiveSession();
       // Detach the old lifecycle immediately, including unresolved preflight.
       sessionAbort = null;
@@ -767,11 +1000,34 @@ export function createUploadOrchestrator(
       clearRetryTimer();
       sessionFailures = 0;
       rerunAfterSession = false;
+      const inFlight = sessionPromise;
+      if (inFlight) {
+        // A session is actively uploading. Since #886 the session abort
+        // reaches the in-flight PUT, so restarting here would discard a
+        // transfer in progress and replay it from byte zero. Join the running
+        // session, then run an explicit sync_now pass so the user's request
+        // keeps its contract (ignores the drafting hold, not deferred behind
+        // a session retry timer). Preflight-only sessions (sessionOpen
+        // without a promise) have nothing in flight and are still restarted
+        // below.
+        try {
+          await inFlight;
+        } catch {
+          // aborted / failed sessions are expected
+        }
+        if (!started) return;
+        clearRetryTimer();
+        sessionFailures = 0;
+        await runSession('sync_now');
+        return;
+      }
       await abortActiveSession();
       await runSession('sync_now');
     },
 
     notifyPendingWork() {
+      confirmedEmpty = null;
+      pendingWorkNotices += 1;
       if (!started) {
         return;
       }

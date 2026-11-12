@@ -7,7 +7,7 @@
  */
 export type UiVersion = 'legacy' | 'next';
 
-export const DEFAULT_UI_VERSION: UiVersion = 'legacy';
+export const DEFAULT_UI_VERSION: UiVersion = 'next';
 
 export function isUiVersion(value: string | undefined): value is UiVersion {
   return value === 'legacy' || value === 'next';

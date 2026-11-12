@@ -21,7 +21,11 @@ jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(() => 42),
 }));
 
-import { getFailedUploadErrorSummary } from './queries';
+import {
+  getFailedUploadCount,
+  getFailedUploadErrorSummary,
+  getPendingUploadChapters,
+} from './queries';
 
 describe('getFailedUploadErrorSummary', () => {
   beforeEach(() => {
@@ -78,4 +82,40 @@ describe('getFailedUploadErrorSummary', () => {
     mockExecute.mockRejectedValue(new Error('db unavailable'));
     await expect(getFailedUploadErrorSummary()).resolves.toBeNull();
   });
+});
+
+describe('queries that answer empty when they fail', () => {
+  beforeEach(() => {
+    mockExecute.mockReset();
+  });
+
+  const cases = [
+    ['getPendingUploadChapters', getPendingUploadChapters, []],
+    ['getFailedUploadCount', getFailedUploadCount, 0],
+    ['getFailedUploadErrorSummary', getFailedUploadErrorSummary, null],
+  ] as const;
+
+  it.each(cases)(
+    '%s reports a failure through onError and still answers empty',
+    async (_name, read, empty) => {
+      mockExecute.mockRejectedValue(new Error('disk I/O error'));
+      const onError = jest.fn();
+
+      await expect(read(onError)).resolves.toEqual(empty);
+
+      expect(onError).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(cases)(
+    '%s does not call onError for a valid empty answer',
+    async (_name, read) => {
+      mockExecute.mockResolvedValue({ rows: [] });
+      const onError = jest.fn();
+
+      await read(onError);
+
+      expect(onError).not.toHaveBeenCalled();
+    },
+  );
 });

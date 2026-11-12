@@ -1,9 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { TRANSLATION_NOTES_LOAD_ERROR } from '../constants/messages';
 import {
   loadTranslationNotesForUnit,
   type LoadTranslationNotesParams,
 } from '../services/translationNotes';
+import {
+  passageResourceEpoch,
+  subscribePassageResourceClears,
+} from '../services/passageResourceReuse';
 import { TranslationNoteItem } from '../types/resources/translationNotes';
 import {
   verseRefsFromChapter,
@@ -20,9 +31,12 @@ export type TranslationNotesLoadState =
   | { status: 'error'; message: string };
 
 type TrackedLoadState = {
+  userId: number | null | undefined;
   projectId: number | null;
   bookCode: string;
   versesKey: string;
+  languageCode: string | undefined;
+  epoch: string;
   value: TranslationNotesLoadState;
 };
 
@@ -85,74 +99,95 @@ export function useTranslationNotesForUnit(
     ],
   );
   const versesKey = useMemo(() => verseRefsKey(refs), [refs]);
+  const owner = userId === null || userId === undefined ? '' : String(userId);
+  const epoch = useSyncExternalStore(subscribePassageResourceClears, () =>
+    passageResourceEpoch(owner),
+  );
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
+    userId,
     projectId,
     bookCode,
     versesKey,
+    languageCode,
+    epoch,
     value: { status: 'loading' },
   });
   const requestIdRef = useRef(0);
 
-  const load = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-    setTracked({
-      projectId,
-      bookCode,
-      versesKey,
-      value: { status: 'loading' },
-    });
-    try {
-      const notes = await loadTranslationNotesForUnit({
-        projectId,
+  const load = useCallback(
+    async (refresh = false) => {
+      const requestId = ++requestIdRef.current;
+      setTracked({
         userId,
-        isOnline,
+        projectId,
         bookCode,
-        chapterNumber,
-        verseNumber,
-        verseRefs: refs,
+        versesKey,
         languageCode,
+        epoch,
+        value: { status: 'loading' },
       });
-      if (requestId !== requestIdRef.current) {
-        return;
+      try {
+        const notes = await loadTranslationNotesForUnit({
+          projectId,
+          userId,
+          isOnline,
+          bookCode,
+          chapterNumber,
+          verseNumber,
+          verseRefs: refs,
+          languageCode,
+          refresh,
+        });
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        setTracked({
+          userId,
+          projectId,
+          bookCode,
+          versesKey,
+          languageCode,
+          epoch,
+          value: { status: 'ready', notes },
+        });
+      } catch (error) {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        log.warn('Translation Notes load failed', {
+          projectId,
+          bookCode,
+          versesKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        setTracked({
+          userId,
+          projectId,
+          bookCode,
+          versesKey,
+          languageCode,
+          epoch,
+          value: {
+            status: 'error',
+            message: TRANSLATION_NOTES_LOAD_ERROR,
+          },
+        });
       }
-      setTracked({
-        projectId,
-        bookCode,
-        versesKey,
-        value: { status: 'ready', notes },
-      });
-    } catch (error) {
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-      log.warn('Translation Notes load failed', {
-        projectId,
-        bookCode,
-        versesKey,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      setTracked({
-        projectId,
-        bookCode,
-        versesKey,
-        value: {
-          status: 'error',
-          message: TRANSLATION_NOTES_LOAD_ERROR,
-        },
-      });
-    }
-  }, [
-    projectId,
-    userId,
-    isOnline,
-    bookCode,
-    chapterNumber,
-    verseNumber,
-    refs,
-    versesKey,
-    languageCode,
-  ]);
+    },
+    [
+      projectId,
+      userId,
+      isOnline,
+      bookCode,
+      chapterNumber,
+      verseNumber,
+      refs,
+      versesKey,
+      languageCode,
+      epoch,
+    ],
+  );
 
   useEffect(() => {
     void load();
@@ -160,17 +195,21 @@ export function useTranslationNotesForUnit(
       requestIdRef.current += 1;
     };
   }, [load]);
+  const retry = useCallback(() => load(true), [load]);
 
   const state: TranslationNotesLoadState =
+    tracked.userId === userId &&
     tracked.projectId === projectId &&
     tracked.bookCode === bookCode &&
-    tracked.versesKey === versesKey
+    tracked.versesKey === versesKey &&
+    tracked.languageCode === languageCode &&
+    tracked.epoch === epoch
       ? tracked.value
       : { status: 'loading' };
 
   return {
     state,
-    retry: load,
+    retry,
   };
 }
 

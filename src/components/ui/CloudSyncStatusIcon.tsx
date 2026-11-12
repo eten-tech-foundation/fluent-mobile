@@ -318,6 +318,9 @@ function glyphsForTheme(
         color={options?.cloudColor ?? theme.colors.syncStatusOffline}
       />
     ),
+    checking: (size, options) => (
+      <CloudOutline size={size} color={options?.cloudColor ?? CLOUD_COLOR} />
+    ),
   };
 }
 

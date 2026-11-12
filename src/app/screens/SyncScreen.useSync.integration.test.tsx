@@ -27,6 +27,7 @@ jest.mock('../../db/queries', () => ({
 
 jest.mock('../../services/sync', () => ({
   syncAllUsers: jest.fn().mockResolvedValue(undefined),
+  isMetadataSyncActive: () => false,
 }));
 
 jest.mock('expo-router', () => ({

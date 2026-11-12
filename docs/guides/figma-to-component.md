@@ -14,10 +14,12 @@ the Legacy / Next split described there.
 | --- | --- |
 | Foundations roles, all three modes | `theme.roles.*` via `useTheme()` / `useThemedStyles()`; wrap a subtree in `ColorModeScope` for Canvas or Accent (Hardware is the default) |
 | Effect styles as `boxShadow` | `theme.elevation.raised` · `inset` · `soft` · `floating` |
+| Fades as `experimental_backgroundImage` | `theme.fade.reading` (Figma `fade/reading`), laid over the end of text that's still to come |
 | Motion | `theme.motion.pressMs` · `releaseMs` · `easeStandard` |
-| Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon24` / `icon32` |
+| Disabled opacity, icon sizes | `theme.opacity.disabled` · `theme.controlSizes.icon20` / `icon24` / `icon32` |
 | Radius `xs` (4), space `2`, strokes | `theme.radius.xs`, `theme.spacing.xxs`, `theme.stroke[1]` / `[2]` |
 | Type styles | `theme.type.reading` … `meta` (spread into a style); layer `theme.typeTelugu.*` for Telugu; Reading text gets `maxFontSizeMultiplier={theme.fontScale.readingMax}`, which caps the glyphs but not `lineHeight` (Android scales it by the full font scale), so pass `lineHeight: type.reading.lineHeight * Math.min(scale, readingMax) / scale` with `scale = PixelRatio.getFontScale()` |
+| Icons | Figma's Phosphor set from `src/components/ui/icons`: Regular, except Fill on hardware transport keys. Add a new icon there as a typed `require` of its own module (`phosphor-react-native/src/icons/<Name>`); never import the package root or Lucide in Next UI |
 | Haptics | `useHaptics()` from `src/hooks/useHaptics.ts` |
 | Review screen | `/gallery` (`fluent://gallery`), entries in `src/app/gallery/entries/` |
 | Reference components | `src/components/ui/Key.tsx` (Figma Key, `2326:34`) in `KeyDeck.tsx` (Hardware panel keys, `2411:465`) · `src/components/ui/Switch.tsx` (Figma Switch, `2326:41`) · `src/components/ui/RoundButton.tsx` (Figma Round button, `2326:64`) · `src/components/ui/ProgressRing.tsx` (Figma Progress ring, `2400:302`) |
@@ -148,7 +150,9 @@ Figma 07 · Tactile defines the state model. In code:
   the icon to `opacity/disabled`. Figma's Key / State=Disabled was updated to
   match on 2026-10-06. Don't use `fg/inactive` for it: in Canvas and Accent it's the same
   color as `surface/default`, so the glyph disappears. Check every disabled
-  or inactive state in all three modes with the gallery's Mode switcher.
+  or inactive state in all three modes, in a unit test or a temporary
+  `ColorModeScope` around the demo, since a pinned entry ignores the
+  gallery's Mode switcher.
 - Respect reduce motion: `useReducedMotion()` from Reanimated. Snap between
   states instead of animating; keep the haptic.
 - `boxShadow` (with `inset`) needs the New Architecture and parents with
@@ -167,7 +171,7 @@ Figma 07 · Tactile defines the state model. In code:
 
 Haptics are part of the design, so they go in the contract. Use the
 semantic `useHaptics()` hook in `src/hooks/useHaptics.ts`, never
-`expo-haptics` directly in components. It has `press()` and `toggle(on)` today; add a method when a component needs
+`expo-haptics` directly in components. It has `press()`, `toggle(on)`, `dragStart()` and `dragEnd()` today; add a method when a component needs
 one, using this mapping:
 
 | Interaction | Helper | Android constant |
@@ -178,7 +182,7 @@ one, using this mapping:
 | Segmented control, stepper tick | `haptics.tick()` | `Segment_Tick` |
 | Scrubbing past a verse or marker | `haptics.tick()` (throttled) | `Segment_Tick` |
 | Long press recognized | `haptics.longPress()` | `Long_Press` |
-| Drag picked up / dropped | `haptics.dragStart()` / `dragEnd()` | `Drag_Start` / `Gesture_End` |
+| Drag picked up / dropped | `haptics.dragStart()` / `dragEnd()` | `Drag_Start` / `Gesture_End` (`Long_Press` below API 34, `Virtual_Key` below API 30) |
 | Commit (advance stage, save take) | `haptics.confirm()` | `Confirm` |
 | Blocked or failed action | `haptics.reject()` | `Reject` |
 
@@ -213,9 +217,8 @@ transport demo latches Play and disables the skip keys at the first and last
 verse. Find that job on the Figma screen pages, not just the component page:
 where it's instanced, what content sits around it, which mode the screen is
 in. Don't invent a scenario. The Switch is the Listen / Record mode toggle,
-so its demo is that toggle; the Progress ring shows listening progress
-through a pericope's tracks, so its demo is the passage list for *The Last
-Supper*. Each entry covers:
+so its demo is that toggle; the Progress ring fills as each verse is
+recorded, so its demo is verse mode's verse list (`VerseList.tsx`). Each entry covers:
 
 - every state in the contract reachable through real use, including disabled
   and latched (the Mode toggle locks while a take is recording). If a state or
@@ -230,6 +233,9 @@ Supper*. Each entry covers:
   component scales: the 72 × 72 Key keeps the same 12 → 8 lip, so the
   constants hold, but verify, don't assume.
 - long-text and Telugu samples for anything with text
+- the mode it's designed for: set `pin` on an entry built for one mode, and
+  wrap mixed-mode parts (Canvas player, Hardware keys) in `ColorModeScope`
+  inside the entry, with their styles read inside that scope
 
 Put the Figma link as a comment on the entry in `entries/index.ts`, not in
 the UI (it can't open on the phone).
@@ -261,7 +267,10 @@ emulator (haptics need a real device):
 
 ### 10. Ship
 
-Normal delivery: `/start-issue` → `/create-pr`, `Refs #NNN`, PR template. Mark
+Normal delivery: `/start-issue` → `/create-pr`, `Refs #NNN`, PR template. Only
+open a PR when the user asks for one (this includes `/start-issue`, which
+otherwise chains into `/create-pr`); until then, commit on the branch and say
+it's ready. Pushing to a PR that already exists is fine once asked. Mark
 **Needs QA? Yes** when the component adds haptics or touches recording, since
 those need a human on a device ([qa-process.md](qa-process.md)). Include
 before/after screenshots and the gallery path in "How to verify".
@@ -443,9 +452,10 @@ The review screen for tapping and feeling components in isolation.
 - **Always Next:** the screen wraps itself in `UiVersionOverride` (from
   `src/theme/useTheme`), so it renders and vibrates as Next whatever the
   device's UI version is. Check Legacy in the real screens, not here.
-- **Controls:** **Mode** (Canvas · Hardware · Accent) puts the demo stage in
-  that Figma color-role mode through `ColorModeScope`; the header and
-  controls stay in Hardware. **Simulate recording** marks the mic active so
+- **Controls:** **Mode** (Canvas · Hardware · Accent) recolors only the
+  entries without `pin` (Type styles, Icons). Pinned entries render on their
+  own mode's background, and Canvas or Accent entries scope their own parts.
+  The header and controls stay in Hardware. **Simulate recording** marks the mic active so
   you can confirm haptics go quiet.
 - **Entries:** one file per component under `src/app/gallery/entries/`,
   registered in `entries/index.ts`. No auto-discovery, no Storybook.

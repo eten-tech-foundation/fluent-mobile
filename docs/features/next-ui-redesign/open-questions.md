@@ -26,25 +26,14 @@ ticket.
 The token-level detail is in the
 [theme audit](theme-figma-audit.md#still-open).
 
-- **Q1 · Font families** *(design)*. Figma's Google Sans Flex, DM Mono and
-  Noto Sans Telugu are placeholders. Code renders the named type styles in
-  the system sans and `monospace` until this is decided; then it's loading the
-  fonts and changing `nextFontFamilies` in `src/theme/nextFoundation.ts` (on
-  `jskager/feature/696-named-type-styles`; on `main` the only knob is
-  `nextTypography.fontFamily`).
-  Google Sans Flex would need static weight files, since RN on Android doesn't
-  drive variable font axes.
-- **Q2 · Gradients, strokes and `space/48`** *(design)*. `fade/reading`,
-  `gradient/accent` and `Fluent Gradient` aren't encoded yet. `stroke/1` and
-  `stroke/2` land with #693. `space/48` is the screen top inset in Figma (code
-  would use safe-area insets). Needed before the reading fade and note
-  overlays.
+- **Q2 · Gradients, strokes and `space/48`** *(design)*. `fade/reading` is
+  encoded as `theme.fade.reading`; `gradient/accent` and `Fluent Gradient`
+  aren't yet. `stroke/1` and `stroke/2` land with #693. `space/48` is the
+  screen top inset in Figma (code would use safe-area insets). Needed before
+  the note overlays.
 
 ### Components
 
-- **Q3 · What Eject does** *(design)*. The Record mode Hardware panel has
-  Record · Play · Eject. Eject has no defined action, so the gallery only
-  acknowledges the press.
 - **Q4 · Take card and Take chip tokens** *(design)*. The Record page's take
   card and take stacking frames are exploration frames with plain hex and no
   bound variables. They need roles bound before they're built. The Level wave
@@ -54,16 +43,10 @@ The token-level detail is in the
   variant lifting or the long variant scrolling, so two values are code-side
   guesses: the short variant lifts to 16pt, and the long variant's recording
   front holds two thirds across before scrolling.
-- **Q6 · Live mic levels** *(dev)*. The recorder doesn't enable metering
-  today, so the long Level wave uses simulated levels in the gallery. Wiring
-  it means turning on expo-audio metering in the recording engine and mapping
-  dB to 0–1 levels. Touches recording, so it needs device QA.
-- **Q20 · Contrast of unplayed and resting marks** *(design)*. Figma binds
-  unplayed Wave bars to `fg/inactive`, and the Level wave's resting ticks use
-  it too. That's about 1.5:1 on `bg/default` in Canvas and Hardware (WCAG
-  asks 3:1 for graphics you need to read), and identical to `surface/default`
-  in Canvas, so on a Canvas card they vanish. Keep it as a deliberate quiet
-  state, or move them to `fg/secondary` like the short Level wave's dots?
+- **Q6 · Live mic levels** *(dev)*. Metering is on in the recording engine,
+  and the Next player's take card draws live levels (`useLiveLevels` maps dB
+  to 0–1). Saved takes keep their wave only for the session, since levels
+  aren't stored. Touches recording, so it needs device QA.
 - **Q7 · Listen / Record segmented control** *(design)*. The Pericope screen
   has a Listen | Record segmented button that isn't a Foundations component
   yet.
@@ -87,7 +70,8 @@ The token-level detail is in the
   and Speaking the Word don't exist in fluent-mobile, fluent-web or
   fluent-api. Only Source Text maps to real audio. Nearest lead: Aquifer
   "Guide" resources, which mobile doesn't call. Until then, screens ship
-  Source Text only.
+  Source Text only: the six step pages and their listening-material rows are
+  hidden, so the player has one page and no dots (Q16).
 - **Q12 · Pericope window inside a chapter file** *(API)*. Source audio is
   one file per chapter with verse start times only. The uncalled
   `GET /projects/{projectId}/playback-audio/{bookCode}/{chapter}` adds
@@ -98,6 +82,18 @@ The token-level detail is in the
   Nothing stores that today, in SQLite or the API.
 - **Q14 · Waveform amplitude** *(API, optional)*. No API returns peaks, so
   waveforms stay decorative, as they are in Legacy.
+- **Q32 · Verse timings for source audio** *(API)*. Following, seeking
+  and paging by verse need `verseTimestamps`, and fluent-api only reads
+  them from DBL timecodes (fluent-api#380). No source in the catalogue has
+  them, BSB included, so verse mode can't follow the audio on real data.
+  Proposal: fluent-api runs forced alignment (Meta's MMS aligner, or
+  aeneas) once per chapter against the verse text, caches the result and
+  returns it in the same field, with DBL timecodes winning where they
+  exist. The app needs no change. Until then, verse mode without timings
+  plays the passage as one track: no playing verse, no chips on the
+  waveform, and a verse row opens its page without playing (Q31). Once
+  timings exist, the footer's verse chips should sit at them, as Legacy's
+  ticks do, rather than by each verse's text length (`scriptBars`).
 - **Q18 · Which pericope set the designs assume** *(design + product)*. The
   Figma example, "The Last Supper", Mark 14:22–25, doesn't come out of either
   set the app ships: FCBH groups Mark 14:22–26 with no title, and FIA groups
@@ -107,6 +103,29 @@ The token-level detail is in the
 - **Q19 · What "Understanding" shows** *(product)*. The player's
   Understanding variant shows notes. Translation notes are wired today; is
   that the content, or Aquifer Guide content?
+  #873 builds it from translation notes: a note's phrase is found in its
+  verse (exactly, or by the longest run of at least 3 of its words that
+  covers 60% of the quote, since notes can quote another translation) and
+  shows as a Phrase chip. Notes that don't place follow in the note pager
+  and open from a notebook button ("+N"), pinned at the script's bottom right above
+  the waveform (on a verse page, that verse's only). Note audio is
+  missing (DES-2989), so the note screen has no waveform or Play yet.
+- **Q31 · How many translation notes a passage shows** *(product + API)*.
+  unfoldingWord's notes are dense: Matthew 1:1–17 has 44 over 17 verses,
+  including about 14 whole-verse notes (one per "X fathered Y" verse), about
+  12 on names, several on overlapping phrases ("The book", "The book of the
+  genealogy", "…of Jesus Christ") and a few exact repeats. They quote the
+  ULT, so where the source text reads differently ("was the father of",
+  "Ram", "Asa") they have no phrase to sit on and only open from "N more
+  notes" (#873). Options, none built:
+  1. Merge notes with the same quote in the same verse into one page.
+  2. Show whole-verse notes once as an "about this verse" note, not as chips.
+  3. Pair the source text with the notes' translation: a ULT source text, or
+     word alignment from the API, so notes place on the right words.
+  Meanwhile phrases rest as a quiet Note style (fg/primary text in a
+  stroke/2 accent/primary outline) and only the note last read stays a blue
+  Phrase chip, since Genesis 1:1–2:3's 188 notes turned most of its script
+  blue. Note isn't a Word style in Figma yet; it needs adding there.
 
 ### Review
 
@@ -123,7 +142,9 @@ translator hears them all last.
   notifications ("your turn").
 - **Q22 · Who are the reviewers?** *(product)*. Peer checker, community
   reviewers, Observers (#452), or anyone present? Do seats need accounts, or
-  just a name for the round?
+  just a name for the round? Meanwhile an Observer's chapter, from Home or the
+  book page, opens Legacy's read-only Observer view (`observer-draft`), never
+  the passage page.
 - **Q23 · How does this relate to the comment tickets?** *(product + design)*.
   #451 specs text and audio comments in a half drawer, one level of threading
   and emoji reactions; #703 adds comment counts to My Work rows. The Review
@@ -135,16 +156,46 @@ translator hears them all last.
 
 ### Screens
 
-- **Q15 · Pericope title fallback** *(design)*. The bundled FCBH set has no
-  titles at all. In FIA about half the rows have none, and split pericopes
-  mostly title only the first part (17 of 119 later parts have one). What
-  does a header show without a title? The reference range is the obvious
-  choice.
-- **Q16 · Page dots paging rule** *(design)*. The player's page dots need a
-  paging rule for verse text: by verse, or by measured height?
-- **Q17 · What Previous / Next skip in the player** *(design)*. Verse,
-  pericope or track? Record already moves between pericopes; track skip
-  depends on Q11.
+- **Q25 · Values with no Foundations token** *(design)*. The book and passage
+  pages use a few values Figma doesn't define: one spring for the sheet, take
+  fan and Track row (`NEXT_SPRING`), 0.7 opacity on a pressed book cover, the
+  hero's 36 × 4 grab handle, a 12pt check on the fan's official badge, the
+  Track row's 8pt unheard dot, and no glow on the official take card (Figma
+  shows one, which is a gradient-style effect like Q2). Deleting a take adds
+  a 300ms hold to pick it up, a 5s undo window, the 82% scrim, the 22% red
+  tint over the bin, 16pt of slop around the bin, the bin growing in from 60%
+  and 8% more under a take, a 160ms drop that shrinks the take by 60%, and a
+  150ms fade on the undo card. Scrubbing steps 5% per TalkBack swipe and
+  holds the finger's spot until playback is within 2 bars of it, or 1s. The
+  undo card and the bin also use raw
+  colors in Figma (2557-1257, 2557-1092); code maps them to
+  `surface/sunken`, `border/highlight`, `surface/inverse` and `accent/record`,
+  and the bin's lighter dashed ring to `fg/on-accent` at 40%. The note screen's reveal adds a 380ms open, a
+  300ms close and a 12pt rise for its content (#873).
+- **Q28 · Which chapter you're in** *(design + product)*. Split from Q27.
+  Where should the open player show the chapter, in Listen and Record, in
+  pericope and verse mode? In pericope mode the header shows the title when
+  there is one (otherwise the reference, Q15), so for a titled passage only
+  the reference under the waveform names the chapter, and only on the script
+  page in Listen. In Record the take card covers it, and the title's sheet
+  (which names the chapter) is off during a take. The script's verse numbers
+  don't mark where a second chapter starts (Mark 14:72–15:5 reads 72, then
+  1–5). **Engineering's call for now (Q31):** verse mode's Previous / Next
+  and verse pages stay inside the assignment's chapter and stop at its last
+  verse there. The other chapter's verses read dimmed in the script and get
+  no page, since their takes belong to that chapter's assignment.
+- **Q30 · Who sees Send, and what shows before it** *(design + product)*.
+  Split from Q29. It shapes the book page's chapter header (`BookScreen`,
+  on `jskager/feature/next-ui-theme`) and the Home card's copy, so the
+  chapter send waits on it. Send shows only once the whole chapter is
+  recorded. Until then, should the header say what's left (e.g. "4 of 6
+  passages recorded")? And the book page lists every chapter in the
+  milestone, including other people's: does Send show only for whoever
+  Legacy offers it to (`getStageAdvanceVisibility`: the drafter in Draft,
+  the peer checker in Peer Check, or any non-drafter while none is
+  assigned, and any translator from Community Review on), with the Home
+  card's copy following the stage? Meanwhile the header shows nothing extra
+  until Send appears.
 
 ## Decided
 
@@ -152,7 +203,19 @@ Rows marked — were decided before this doc had IDs.
 
 | ID | Question | Answer | Date | Where |
 | --- | --- | --- | --- | --- |
+| Q1 | Font families | Plus Jakarta Sans for heading, title, overline and meta, and Atkinson Hyperlegible Next for reading, lead, body and label, bundled on Android with `expo-font` and set in `nextFontFamilies` (`src/theme/nextFoundation.ts`). Overline and meta aren't mono or uppercase. Telugu falls back to the system font, since neither family has Telugu glyphs. Below Android 9 (API 28) RN only picks regular or bold, so 500 and 600 render as regular there | 2026-11-06 | [#891](https://github.com/eten-tech-foundation/fluent-mobile/pull/891) |
+| Q3 | What Eject does | Finishes ("stamps") the take. Record starts a take, pauses it and resumes it, and Eject saves it, so the next Record starts a new take. A take recovered after a crash works the same way. Sending a chapter on isn't in the player (Q29). Having Eject send the chapter from any passage was considered and dropped | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | Q8 | Where Next screens branch on UI version | One signed-in shell: route files under `(app)` pick the Legacy or Next screen; v2 screens live in `src/app/v2/screens/`. Both share hooks and services, and the rules inside `RecordTab` / `DraftingScreen` move into shared hooks. A separate `/v2` route tree was dropped in the #727 review | 2026-10-21 | [v2-feature-manifest.md](v2-feature-manifest.md#v2-routes) |
+| Q15 | Pericope title fallback | The reference range, as built: without a title, the passage header, its cover and Home's Next up show "Mark 14:22–25" | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q16 | Page dots paging rule | One dot for the script and one per listening material, swiped sideways; the script scrolls inside its page instead of paging by verse or height. With only one page there are no dots. Record in verse mode pages by verse instead (Q31), with a count in place of the dots past 12 verses | 2026-10-29, updated 2026-11-03 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q17 | What Previous / Next skip in the player | They work like swiping. In pericope mode they step through the pages the dots count (the script, then each listening material) and stop at either end. In verse mode Previous / Next step verses, and both Listen and Record swipe between verse pages (Q31). Record's keys have no Previous / Next. In verse mode TalkBack also turns verses in Listen and Record by adjusting the position row (swipe up or down); without TalkBack, Record's verses turn by swiping or in Listen (2026-11-05) | 2026-10-29, updated 2026-11-03 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q31 | Verse mode in the Next player | The drafting unit in Settings is the mode switch (none in the player for now). Pericope mode works by pericope: the book page and Home's Next up show pericopes, and Record makes passage takes. Verse mode works by chapter, as in Legacy: the book page and Next up show whole chapters, the passage page is the chapter, and Record makes a take per verse (2026-11-04; at first verse mode recorded inside each pericope). Verse is the default unit, as in Legacy, so anyone who hasn't picked one sees whole chapters. A chapter without pericopes is verse by verse in either mode. In verse mode the open player pages through the verses in both Listen and Record. In Listen the pages follow the verse playing and turn to the next when it ends, when the source has verse timings (without them it plays as one track, Q32); in Record each page has that verse's takes. Hearing a verse is the Listen toggle, not a button on the page. Under the hero a Verses list replaces the listening materials while those are hidden (Q11); each row's ring fills once the verse is recorded, and tapping it opens Listen on that verse and plays it when the source has verse timings, or just opens the page when it doesn't (2026-11-04). When the materials come back they stack above Verses, so each list's ring keeps one meaning (heard, or recorded). A passage take over a verse has its own tile in the fan, not deletable there, and its card names its verses, and when the verse has no take of its own the take card names it and Play plays it. In both modes, tapping a tile only brings it to the card to play; the card's check picks it and makes it official, and asks first when that deselects takes of the other unit (2026-11-05). Recording the verse on its own asks first because it deselects that take for the whole passage, as in Legacy. In pericope mode, verses recorded on their own show as one read-only card ("Recorded verse by verse", or "4 of 31 verses recorded on their own") that plays them back to back, as Legacy's stitched row does, while no passage take is the draft; recording or picking a passage take over them asks first, and the hero counts the verses while they're the draft. A verse take paused by a crash resumes on its verse. Switching Listen and Record keeps the place: the verse playing, or the verse Record was on. Each verse page shows its translation notes as chips, as the script does; in Record they're dimmed and don't open (2026-11-05) | 2026-11-03 | This doc |
+| Q20 | Contrast of unplayed and resting marks | Keep `fg/inactive` (about 1.5:1 on `bg/default`) as a deliberate quiet state, decided after seeing it rendered in all three modes. The Canvas take card sits on `surface/sunken` (1.33:1) on purpose | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q26 | What Next takes from `main` | Builds on Q8. Next uses `main`'s shared logic but keeps its own screen layout, grouping and UX. That logic includes Home sync behavior (#804), drawer theming (#749, `UserSettingsMenu`) and the My Work query and hook changes (`assignmentStatus` from #772; `useMyWorkChapters` and `myWorkChapterFilter` from #780). Legacy-only, so Next doesn't adopt them: My Work's stage accordion (`MyWorkTab`, `myWorkStageGroups`, #772) and its download chip (`DraftDownloadChip`, #780; the `useDraftDownload` hook behind it is shared). When `main` merges into `jskager/feature/next-ui-theme`, combine both sides of a conflict instead of taking either one whole. For example, Legacy `HomeScreen.tsx` keeps #824's guard against a double sync tap and its header staying mounted while loading, and also #853's move of its sync state into `useHomeSyncState` (on `jskager/feature/837-next-home` until #853 merges) | 2026-10-29 | [#853](https://github.com/eten-tech-foundation/fluent-mobile/pull/853) |
+| Q27 | Which chapter a passage that crosses chapters sends | Both. Each chapter is sent on its own, outside the player (Q29), so Mark 14:72–15:5 is part of both Mark 14's and Mark 15's sends. The rest moved to Q28 | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q29 | Where sending a chapter lives | Two places: an `AttentionCard` on Home like `ChangesRequested` (eyebrow "Ready to send", title "Mark 14 is recorded", action "Send to Peer Check"), and a Send button inline with the chapter's header on the book page (`BookScreen`; both on `jskager/feature/next-ui-theme`). Both show only once every verse or pericope in the chapter is recorded, as in Legacy (#542) and web. The server doesn't check that, but the drafter can't change the chapter once it's in Peer Check and the app has no way to send it back, so the rule stays. Not built yet. Still to come with it: the confirm (Dialog, in the gallery), picking the peer checker, sending both chapters of a passage that crosses them (Q27), and, offline, the send waiting in #770's stage-advance queue (on `main`, not yet on `jskager/feature/next-ui-theme`), shown as "Waiting to send" on the passage's cover and page. Until Send
+ships (a separate ticket), the passage page's "Open in classic drafting"
+bridge is how a Next user sends a chapter. A send moves the chapter's stage and saves a copy of its typed text, not its recordings. Who sees Send, and what shows before then, is Q30 | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
 | — | Header progress dots on the Pericope screen | They're a resting waveform: Level wave, short variant | 2026-10-13 | Figma Level wave `2595:772` |
 | — | Speaker grill hole color | `surface/inverse` (was the `bone/800` primitive) | 2026-10-14 | Figma Speaker grill `2409:533` |
 | — | Icon/md size | `theme.controlSizes.icon20` | 2026-10-14 | `jskager/feature/695-hardware-panel` |
@@ -188,8 +251,8 @@ The source player is docked under the Bible and Record tabs there.
 | Played bars, playhead, seek | Wired | `useSourceAudio` `positionMs` / `durationMs` / `seek` on `usePlaybackEngine` | Yes (`SourceAudioPlayerBar.tsx:165-178`) | Yes when downloaded | Chapter-relative; rebase to the pericope |
 | Verse segments and chips | Wired, partial | `subdivisionTickMarks` (`bibleTabUnits.ts:183`) from `verseTimestamps` | Yes (ticks on the source dock, #408) | Yes when downloaded | Start times only (Q12) |
 | Reference "Mark 14:22–25" | Wired | `pericopeTitle()` range builder (`bibleTabUnits.ts:69`, a different thing from the DB title above) | Yes | Yes | n/a |
-| Page dots | Static (derived) | Would be computed from `bodyVerses` | No | Yes | Q16 |
+| Page dots | Static (derived) | Would be computed from `bodyVerses` | No | Yes | Decided (Q16): one dot per page, none with one page |
 | Play / Pause | Wired | `SourceAudioShell` `handlePlayPause` (`SourceAudioShell.tsx:125`) | Yes | Yes when downloaded | Keep the draft/source exclusivity bridge (`SourceAudioShell.tsx:263`) |
-| Previous / Next | Wired (as unit nav) | `RecordTab.tsx:427-450` pericope prev/next; selecting a verse seeks to its start | Yes (Record tab) | Yes | Q17 |
+| Previous / Next | Wired (as unit nav) | `RecordTab.tsx:427-450` pericope prev/next; selecting a verse seeks to its start | Yes (Record tab) | Yes | Decided (Q17): pages, like swiping |
 | Mode toggle (Listen / Record) | Wired (equivalent) | Hardware panel `recordMode` / `modeLocked` (on `jskager/feature/695-hardware-panel`); Legacy is the Bible → Record tab switch (`DraftingScreen.tsx:471`) with the capture-leave guard (`:110`) | Yes (as tabs) | Yes | Lock while capturing, same as today |
 | Understanding variant notes | Wired | `useTranslationNotesForUnit` → `GET /projects/{projectId}/translation-resources/notes/{bookCode}/{chapter}/{verse}` | Yes (Resources tab) | Partial (#578 still open) | Q19 |

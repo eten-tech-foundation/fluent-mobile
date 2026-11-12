@@ -6,10 +6,17 @@ export type SyncStatus =
   | 'online_needs_sync'
   | 'online_pending'
   | 'offline_synced'
-  | 'offline_pending';
+  | 'offline_pending'
+  /** Reachability not known yet: neither online nor offline is shown. */
+  | 'checking';
 
 export interface SyncStatusInputs {
   isOnline: boolean;
+  /**
+   * The first `/health` or link result hasn't arrived, so `isOnline: false`
+   * is not a confirmed offline.
+   */
+  connectivityPending?: boolean;
   isSyncing: boolean;
   hasPendingUploads: boolean;
   /** Recording upload worker is actively transferring. */
@@ -23,18 +30,26 @@ export interface SyncStatusInputs {
    * work with empty media queues (same chrome as needsDownloadSync).
    */
   hasSyncRetryWork?: boolean;
+  /**
+   * Verse text a sync could still fetch is missing locally. Same chrome as
+   * the flags above, but deliberately not part of Home auto-repair.
+   */
+  needsTextSync?: boolean;
 }
 
 export function deriveSyncStatus({
   isOnline,
+  connectivityPending = false,
   isSyncing,
   hasPendingUploads,
   isUploading = false,
   hasFailedUploads = false,
   needsDownloadSync = false,
   hasSyncRetryWork = false,
+  needsTextSync = false,
 }: SyncStatusInputs): SyncStatus {
   if (!isOnline) {
+    if (connectivityPending) return 'checking';
     return hasPendingUploads || hasFailedUploads
       ? 'offline_pending'
       : 'offline_synced';
@@ -56,7 +71,7 @@ export function deriveSyncStatus({
     return 'online_pending';
   }
 
-  if (needsDownloadSync || hasSyncRetryWork) {
+  if (needsDownloadSync || hasSyncRetryWork || needsTextSync) {
     return 'online_needs_sync';
   }
 
@@ -77,7 +92,16 @@ export const SYNC_STATUS_LABELS: Record<SyncStatus, string> = {
   online_pending: 'Online · upload pending. Open Sync page.',
   offline_synced: 'Offline · nothing pending. Open Sync page.',
   offline_pending: 'Offline · upload pending. Open Sync page.',
+  checking: 'Checking connection. Open Sync page.',
 };
+
+export const SYNC_STATUS_HELD_FOR_DRAFTING =
+  'Online · uploads wait until you leave drafting';
+/** Visible word beside the header cloud while drafting holds uploads. */
+export const SYNC_STATUS_HELD_FOR_DRAFTING_SHORT = 'Waiting';
+/** Visible header subtitle while drafting holds uploads (Legacy drafting). */
+export const SYNC_STATUS_HELD_FOR_DRAFTING_CAPTION =
+  'Uploads wait until you leave drafting';
 
 /** Accessibility / status-line label with optional upload progress counts. */
 export function formatSyncStatusLabel(
@@ -87,6 +111,8 @@ export function formatSyncStatusLabel(
     total?: number;
     failedCount?: number;
     failedErrorText?: string | null;
+    /** Automatic uploads wait while a drafting screen is open (#886). */
+    heldForDrafting?: boolean;
   },
 ): string {
   if (
@@ -115,6 +141,10 @@ export function formatSyncStatusLabel(
 
   if (status === 'online_failed' && options?.failedErrorText) {
     return `${SYNC_STATUS_LABELS[status]} ${options.failedErrorText}`;
+  }
+
+  if (status === 'online_pending' && options?.heldForDrafting) {
+    return `${SYNC_STATUS_HELD_FOR_DRAFTING}. Open Sync page.`;
   }
 
   return SYNC_STATUS_LABELS[status];
