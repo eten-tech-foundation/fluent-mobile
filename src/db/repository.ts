@@ -2145,6 +2145,7 @@ export {
   selectRecordingTake,
   reassertRecordingActivation,
   setCanonicalTake,
+  findOfficialAtOtherAnchor,
   getPendingRecordingDeletions,
   clearRecordingDeletion,
 } from './recordingsRepository';

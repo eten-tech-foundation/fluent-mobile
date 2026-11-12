@@ -694,6 +694,7 @@ export function useRecorder({
     }
   }
   async function choose(t: (typeof verseAudio.takes)[number]) {
+    if (await verseAudio.blockUnsupportedReplacement(t.id)) return;
     const isCover = coverTakes.some(c => c.id === t.id);
     const ask = t.isSelected
       ? null
@@ -726,8 +727,11 @@ export function useRecorder({
       return;
     }
     // Selecting a selected take whose upload failed starts a new attempt.
-    if (!t.isSelected || t.syncStatus === 'failed') {
-      await verseAudio.selectTake(t.id);
+    if (
+      (!t.isSelected || t.syncStatus === 'failed') &&
+      !(await verseAudio.selectTake(t.id))
+    ) {
+      return;
     }
     await verseAudio.setCanonical(t.id);
   }
