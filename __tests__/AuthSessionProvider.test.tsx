@@ -15,6 +15,18 @@ jest.mock('../src/navigation/splashGate', () => ({
   holdSplashForFirstPaint: () => mockHoldSplashForFirstPaint(),
 }));
 
+const mockLogWarn = jest.fn();
+jest.mock('../src/utils/logger', () => ({
+  logger: {
+    create: (scope: string) => ({
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: (...args: unknown[]) => mockLogWarn(scope, ...args),
+      error: jest.fn(),
+    }),
+  },
+}));
+
 jest.mock('../src/db/index', () => ({
   initializeDatabase: jest.fn(() => Promise.resolve()),
 }));
@@ -241,6 +253,11 @@ describe('AuthSessionProvider', () => {
     await act(async () => {});
     expect(getByTestId('auth-flag').props.children).toBe('yes');
     expect(queryByTestId('auth-session-error')).toBeNull();
+    expect(mockLogWarn).toHaveBeenCalledWith(
+      'AuthSession',
+      'Clearing orphaned paused takes failed',
+      { error: 'Error: kv down' },
+    );
   });
 
   it('restores auth and starts upload orchestrator', async () => {
