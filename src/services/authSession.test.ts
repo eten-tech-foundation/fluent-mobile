@@ -12,7 +12,6 @@ jest.mock('./api', () => ({
 }));
 
 jest.mock('./keychain', () => ({
-  hasCredentials: jest.fn(),
   getCredentials: jest.fn(),
   getTempCredentials: jest.fn().mockResolvedValue(null),
   getAllStoredUserIds: jest.fn(),
@@ -55,7 +54,6 @@ import {
   getAllStoredUserIds,
   getCredentials,
   getTempCredentials,
-  hasCredentials,
   saveCredentials,
   saveTempCredentials,
 } from './keychain';
@@ -89,7 +87,6 @@ describe('restoreSession', () => {
   it('restores the active user when credentials exist', async () => {
     jest.mocked(getActiveUserId).mockReturnValue('2');
     jest.mocked(getAllStoredUserIds).mockResolvedValue(['2']);
-    jest.mocked(hasCredentials).mockResolvedValue(true);
     jest.mocked(getCredentials).mockResolvedValue({ token: 'active-token' });
 
     await expect(restoreSession()).resolves.toEqual({
@@ -103,9 +100,6 @@ describe('restoreSession', () => {
   it('does not authenticate as another known user when active credentials are missing', async () => {
     jest.mocked(getActiveUserId).mockReturnValue('1');
     jest.mocked(getAllStoredUserIds).mockResolvedValue(['1', '2']);
-    jest
-      .mocked(hasCredentials)
-      .mockImplementation(async userId => userId === '2');
     jest
       .mocked(getCredentials)
       .mockImplementation(async userId =>
@@ -122,9 +116,6 @@ describe('restoreSession', () => {
   it('does not fall back to another known user when active user id is empty', async () => {
     jest.mocked(getActiveUserId).mockReturnValue('');
     jest.mocked(getAllStoredUserIds).mockResolvedValue(['2']);
-    jest
-      .mocked(hasCredentials)
-      .mockImplementation(async userId => userId === '2');
     jest.mocked(getCredentials).mockResolvedValue({ token: 'user-2-token' });
 
     await expect(restoreSession()).resolves.toEqual({
@@ -139,9 +130,6 @@ describe('restoreSession', () => {
     jest.mocked(getAllStoredUserIds).mockResolvedValue(['1', '2']);
     jest.mocked(getTempCredentials).mockResolvedValue({ token: 'temp-token' });
     jest.mocked(kvStorage.getItemSync).mockReturnValue(undefined);
-    jest
-      .mocked(hasCredentials)
-      .mockImplementation(async userId => userId === '1' || userId === '2');
     jest
       .mocked(getCredentials)
       .mockImplementation(async userId =>
@@ -177,7 +165,6 @@ describe('restoreSession', () => {
   it('restores persisted credentials after login before sync when sync never ran', async () => {
     jest.mocked(getActiveUserId).mockReturnValue('42');
     jest.mocked(getAllStoredUserIds).mockResolvedValue(['42']);
-    jest.mocked(hasCredentials).mockResolvedValue(true);
     jest.mocked(getCredentials).mockResolvedValue({ token: 'persisted-token' });
 
     await expect(restoreSession()).resolves.toEqual({
@@ -214,12 +201,22 @@ describe('restoreSession', () => {
   it('returns unauthenticated when no credentials are available', async () => {
     jest.mocked(getActiveUserId).mockReturnValue('9');
     jest.mocked(getAllStoredUserIds).mockResolvedValue(['9']);
-    jest.mocked(hasCredentials).mockResolvedValue(false);
+    jest.mocked(getCredentials).mockResolvedValue(null);
 
     await expect(restoreSession()).resolves.toEqual({
       authenticated: false,
     });
     expect(authToken.set).toHaveBeenCalledWith(null);
+  });
+
+  it('reads the active user’s credentials from SecureStore once (#973)', async () => {
+    jest.mocked(getActiveUserId).mockReturnValue('2');
+    jest.mocked(getCredentials).mockResolvedValue({ token: 'active-token' });
+
+    await restoreSession();
+
+    expect(getCredentials).toHaveBeenCalledTimes(1);
+    expect(getCredentials).toHaveBeenCalledWith('2');
   });
 });
 
