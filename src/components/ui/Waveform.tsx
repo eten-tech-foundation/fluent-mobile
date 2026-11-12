@@ -58,6 +58,11 @@ export interface WaveformProps {
    */
   onSeek?: (progress: number) => void;
   style?: StyleProp<ViewStyle>;
+  /**
+   * Keep the strip at the start of the frame. The take card's live wave
+   * fills the measured width instead of sliding under a playhead at the end.
+   */
+  pinned?: boolean;
   testID?: string;
 }
 
@@ -115,6 +120,7 @@ export function Waveform({
   accessibilityLabel,
   onSeek,
   style,
+  pinned = false,
   testID,
 }: WaveformProps) {
   // While a finger is scrubbing, it leads; playback catches up on release.
@@ -134,7 +140,6 @@ export function Waveform({
       height: ROW_HEIGHT,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingLeft: t.spacing.lg,
       gap: t.spacing.md,
     },
     tight: { gap: t.spacing.xs },
@@ -152,7 +157,7 @@ export function Waveform({
     const barX: number[] = [];
     const verseStart: number[] = [];
     const verseSpan: { from: number; to: number }[] = [];
-    let x = spacing.lg;
+    let x = 0;
     for (const v of verses) {
       verseStart.push(barX.length);
       const from = x;
@@ -192,7 +197,7 @@ export function Waveform({
   const offset = useSharedValue(0);
   const measured = useRef(false);
   const lastTarget = useRef(0);
-  const target = waveformOffset(playheadX, frameWidth);
+  const target = pinned ? 0 : waveformOffset(playheadX, frameWidth);
   // Where a seek glides from, so the bars along the way stay mounted.
   const [glideFrom, setGlideFrom] = useState<number | null>(null);
   const glideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
