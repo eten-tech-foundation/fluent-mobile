@@ -8,7 +8,9 @@ import { Text, TouchableOpacity } from 'react-native';
 
 const mockHideSplash = jest.fn();
 const mockHoldSplashForFirstPaint = jest.fn();
+const mockArmSplashGate = jest.fn();
 jest.mock('../src/navigation/splashGate', () => ({
+  armSplashGate: () => mockArmSplashGate(),
   hideSplash: (...args: unknown[]) => mockHideSplash(...args),
   holdSplashForFirstPaint: () => mockHoldSplashForFirstPaint(),
 }));
@@ -146,6 +148,8 @@ describe('AuthSessionProvider', () => {
     );
 
     expect(getByTestId('auth-session-loading')).toBeTruthy();
+    // A new activity in a live JS runtime shows its own splash to take down.
+    expect(mockArmSplashGate).toHaveBeenCalledTimes(1);
     expect(mockHoldSplashForFirstPaint).not.toHaveBeenCalled();
 
     await waitFor(() => {

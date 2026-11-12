@@ -19,6 +19,7 @@ export type SplashHideReason =
   | 'home:blurred'
   | 'home:legacy'
   | 'auth'
+  | 'sync'
   | 'init-error'
   | 'fallback';
 
@@ -61,11 +62,19 @@ export function holdSplashForFirstPaint(): void {
   }, SPLASH_FALLBACK_MS);
 }
 
-/** Test-only. */
-export function __resetSplashGateForTests(): void {
+/**
+ * App root mounted: a splash is up that this gate has not hidden. The JS
+ * runtime can outlive the activity (the upload service keeps the process
+ * alive after the app is swiped away), and the next activity shows a new
+ * splash, so the gate's state from the last one must not carry over.
+ */
+export function armSplashGate(): void {
   hideRequested = false;
   if (fallback !== null) {
     clearTimeout(fallback);
     fallback = null;
   }
 }
+
+/** Test-only. */
+export const __resetSplashGateForTests = armSplashGate;

@@ -29,6 +29,7 @@ import {
   isWaitingWifiForTransfer,
 } from '../../utils/transportPolicy';
 import { hrefs } from '../../navigation/hrefs';
+import { hideSplash } from '../../navigation/splashGate';
 import { SyncPageStatus } from '../../types/sync/types';
 import type { UploadTakeProgress } from '../../services/syncEvents';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -228,6 +229,9 @@ export default function SyncScreen() {
           { paddingBottom: theme.spacing.lg + insets.bottom },
         ]}
         testID="sync-screen"
+        // The upload notification opens Sync straight from a cold start,
+        // with no Home under it to take the splash down.
+        onLayout={() => hideSplash('sync')}
       >
         <View style={styles.statusSection}>
           <SyncStatusIndicator

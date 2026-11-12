@@ -1,6 +1,7 @@
 import BootSplash from 'react-native-bootsplash';
 import {
   __resetSplashGateForTests,
+  armSplashGate,
   hideSplash,
   holdSplashForFirstPaint,
   SPLASH_FALLBACK_MS,
@@ -12,6 +13,18 @@ import {
 
 jest.mock('react-native-bootsplash', () => ({
   hide: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockLogError = jest.fn();
+jest.mock('../utils/logger', () => ({
+  logger: {
+    create: () => ({
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: (...args: unknown[]) => mockLogError(...args),
+    }),
+  },
 }));
 
 const mockHide = BootSplash.hide as jest.Mock;
@@ -81,12 +94,28 @@ describe('splashGate', () => {
     expect(getStartupMarks().some(m => m.name === 'splash_hidden')).toBe(true);
   });
 
-  it('survives a native hide failure', async () => {
+  it('logs a native hide failure instead of leaving it unhandled', async () => {
     mockHide.mockRejectedValueOnce(new Error('no splash'));
     hideSplash('auth');
     await Promise.resolve();
     await Promise.resolve();
 
     expect(getStartupMarks().some(m => m.name === 'splash_hidden')).toBe(false);
+    expect(mockLogError).toHaveBeenCalledWith('BootSplash hide failed', {
+      error: 'Error: no splash',
+    });
+  });
+
+  it('hides the splash a new activity shows once the app root mounts again', () => {
+    hideSplash('home:content');
+    holdSplashForFirstPaint();
+    expect(mockHide).toHaveBeenCalledTimes(1);
+
+    // Same JS runtime, new activity (the upload service kept the process).
+    armSplashGate();
+    holdSplashForFirstPaint();
+    hideSplash('sync');
+
+    expect(mockHide).toHaveBeenCalledTimes(2);
   });
 });
