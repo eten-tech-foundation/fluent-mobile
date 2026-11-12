@@ -190,13 +190,21 @@ export function useHomeSyncState({
   }, [autoPrompt]);
 
   // Tier 1 clears postLoginSyncActive while Tier 2 keeps emitSyncStart active.
-  // Drop route newUserLoading + bump refreshKey so Home is interactive; header
-  // sync chrome still shows (#670).
+  // The re-read has to be visible in this render: a passive effect would let
+  // one frame paint the empty message against the pre-sync lists (#980).
+  const [trackedPostLogin, setTrackedPostLogin] = useState(postLoginSyncActive);
+  if (trackedPostLogin !== postLoginSyncActive) {
+    setTrackedPostLogin(postLoginSyncActive);
+    if (trackedPostLogin && !postLoginSyncActive) {
+      setRefreshKey(key => key + 1);
+    }
+  }
+  // Drop route newUserLoading so Home is interactive; header sync chrome
+  // still shows (#670).
   const wasPostLoginSyncActiveRef = useRef(false);
   useEffect(() => {
     if (wasPostLoginSyncActiveRef.current && !postLoginSyncActive) {
       setIsNewUserLoading(false);
-      setRefreshKey(key => key + 1);
     }
     wasPostLoginSyncActiveRef.current = postLoginSyncActive;
   }, [postLoginSyncActive]);

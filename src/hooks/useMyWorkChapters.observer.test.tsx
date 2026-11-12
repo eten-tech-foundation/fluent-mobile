@@ -189,6 +189,17 @@ describe('useMyWorkChapters Observer grants', () => {
     await waitFor(() => {
       expect(result.current.chapters).toEqual([observerChapter]);
     });
+    expect(result.current.error).toBe(false);
+  });
+
+  it('reports a failed first read, so Home can tell it from no chapters', async () => {
+    mockGetMyWorkChapters.mockRejectedValueOnce(new Error('disk I/O error'));
+    const { result } = renderHook(() => useMyWorkChapters());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBe(true);
+    expect(result.current.chapters).toEqual([]);
+    expect(result.current.reading).toBe(false);
   });
 
   it('asks for the write mark first, then reads without waiting for it', async () => {
@@ -632,6 +643,58 @@ describe('useMyWorkChapters Observer grants', () => {
       });
 
       expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports a failed read and clears the rows', async () => {
+      const { result, rerender } = await mountedWithKey();
+      mockGetMyWorkChapters.mockRejectedValueOnce(new Error('disk I/O error'));
+      mockWrites = 1;
+
+      rerender({ key: 1 });
+      await waitFor(() => expect(result.current.error).toBe(true));
+
+      expect(result.current.chapters).toEqual([]);
+      expect(result.current.reading).toBe(false);
+    });
+
+    it('stays reading until the refresh-key read lands', async () => {
+      const { result, rerender } = await mountedWithKey();
+      let resolveNext: (chapters: MyWorkChapter[]) => void = () => {};
+      let started = false;
+      mockGetMyWorkChapters.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            started = true;
+            resolveNext = resolve;
+          }),
+      );
+      mockWrites = 1;
+
+      rerender({ key: 1 });
+
+      expect(result.current.reading).toBe(true);
+      expect(result.current.chapters).toEqual([observerChapter]);
+      await waitFor(() => expect(started).toBe(true));
+
+      await act(async () => {
+        resolveNext([assignedChapter]);
+      });
+      await waitFor(() => expect(result.current.reading).toBe(false));
+      expect(result.current.chapters).toEqual([assignedChapter]);
+    });
+
+    it('clears reading when the write mark cannot be read', async () => {
+      const { result, rerender } = await mountedWithKey();
+      const queries = jest.requireMock('../db/queries') as {
+        getDatabaseWriteMark: jest.Mock;
+      };
+      queries.getDatabaseWriteMark.mockRejectedValueOnce(new Error('db down'));
+
+      rerender({ key: 1 });
+
+      await waitFor(() => expect(result.current.reading).toBe(false));
+      expect(result.current.error).toBe(true);
+      expect(result.current.chapters).toEqual([]);
     });
   });
 });

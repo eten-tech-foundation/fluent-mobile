@@ -350,6 +350,54 @@ describe('useHomeBooks', () => {
     expect(result.current.books).toEqual([]);
   });
 
+  it('stays reading until the refresh-key read lands', async () => {
+    const { result, rerender } = renderHook(
+      ({ key }: { key: number }) => useHomeBooks(key),
+      { initialProps: { key: 0 } },
+    );
+    await waitFor(() => expect(result.current.reading).toBe(false));
+
+    let resolveNext: (books: HomeBookSummary[]) => void = () => {};
+    let started = false;
+    mockGetHomeBookSummaries.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          started = true;
+          resolveNext = resolve;
+        }),
+    );
+    mockWrites = 1;
+    rerender({ key: 1 });
+
+    expect(result.current.reading).toBe(true);
+    expect(result.current.books).toEqual([MARK]);
+    await waitFor(() => expect(started).toBe(true));
+
+    await act(async () => {
+      resolveNext([{ ...MARK, bookName: 'Luke' }]);
+    });
+    await waitFor(() => expect(result.current.reading).toBe(false));
+    expect(result.current.books[0]?.bookName).toBe('Luke');
+  });
+
+  it('clears reading when the write mark cannot be read', async () => {
+    const { result, rerender } = renderHook(
+      ({ key }: { key: number }) => useHomeBooks(key),
+      { initialProps: { key: 0 } },
+    );
+    await waitFor(() => expect(result.current.reading).toBe(false));
+    const queries = jest.requireMock('../db/queries') as {
+      getDatabaseWriteMark: jest.Mock;
+    };
+    queries.getDatabaseWriteMark.mockRejectedValueOnce(new Error('db down'));
+
+    rerender({ key: 1 });
+
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.reading).toBe(false);
+    expect(result.current.books).toEqual([MARK]);
+  });
+
   describe('when the refresh key changes', () => {
     async function mountedWithKey() {
       const hook = renderHook(({ key }: { key: number }) => useHomeBooks(key), {
