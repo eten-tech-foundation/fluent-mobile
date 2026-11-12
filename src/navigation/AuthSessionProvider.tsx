@@ -39,7 +39,11 @@ import { isE2eUploadHoldEnabled } from '../config/e2eUploadHoldGuard';
 import { ApiUser } from '../types/api/responses';
 import { appStyles } from '../app/appStyles';
 import { theme } from '../theme';
-import { hideSplash, holdSplashForFirstPaint } from './splashGate';
+import {
+  armSplashGate,
+  hideSplash,
+  holdSplashForFirstPaint,
+} from './splashGate';
 
 const log = logger.create('AuthSession');
 
@@ -83,6 +87,10 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     clearAuthSession();
     setIsAuthenticated(false);
     setPostLoginSyncActive(false);
+  }, []);
+
+  useEffect(() => {
+    armSplashGate();
   }, []);
 
   useEffect(() => {

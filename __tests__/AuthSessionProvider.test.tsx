@@ -8,7 +8,9 @@ import { Text, TouchableOpacity } from 'react-native';
 
 const mockHideSplash = jest.fn();
 const mockHoldSplashForFirstPaint = jest.fn();
+const mockArmSplashGate = jest.fn();
 jest.mock('../src/navigation/splashGate', () => ({
+  armSplashGate: () => mockArmSplashGate(),
   hideSplash: (...args: unknown[]) => mockHideSplash(...args),
   holdSplashForFirstPaint: () => mockHoldSplashForFirstPaint(),
 }));
@@ -146,6 +148,8 @@ describe('AuthSessionProvider', () => {
     );
 
     expect(getByTestId('auth-session-loading')).toBeTruthy();
+    // A new activity in a live JS runtime shows its own splash to take down.
+    expect(mockArmSplashGate).toHaveBeenCalledTimes(1);
     expect(mockHoldSplashForFirstPaint).not.toHaveBeenCalled();
 
     await waitFor(() => {
@@ -171,6 +175,8 @@ describe('AuthSessionProvider', () => {
       }),
     );
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    // Never settles: the first screen must not wait on it.
+    clearOrphanedPausedTakes.mockReturnValueOnce(new Promise<number>(() => {}));
 
     const { getByTestId, queryByTestId } = render(
       <AuthSessionProvider>
@@ -214,6 +220,27 @@ describe('AuthSessionProvider', () => {
     await waitFor(() => expect(getByTestId('auth-session-error')).toBeTruthy());
     await act(async () => {});
     expect(clearOrphanedPausedTakes).not.toHaveBeenCalled();
+  });
+
+  it('keeps the first screen when paused-take cleanup fails', async () => {
+    const { clearOrphanedPausedTakes } = jest.requireMock(
+      '../src/services/pausedTakes',
+    ) as { clearOrphanedPausedTakes: jest.Mock };
+    clearOrphanedPausedTakes.mockRejectedValueOnce(new Error('kv down'));
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+
+    const { getByTestId, queryByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() =>
+      expect(clearOrphanedPausedTakes).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {});
+    expect(getByTestId('auth-flag').props.children).toBe('yes');
+    expect(queryByTestId('auth-session-error')).toBeNull();
   });
 
   it('restores auth and starts upload orchestrator', async () => {
