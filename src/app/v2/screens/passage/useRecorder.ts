@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Alert } from 'react-native';
 import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_MAX_IN_PASSAGE_TAKES,
@@ -18,6 +18,8 @@ import {
   RECORD_OTHERS_OFFICIAL,
   RECORD_PAUSED_TAKE,
   RECORD_RECOVERED_TAKE,
+  RECORD_SETUP_FAILED_MESSAGE,
+  RECORD_SETUP_FAILED_TITLE,
   RECORD_SOURCE_TEXT_SYNCING,
   RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
@@ -761,8 +763,8 @@ export function useRecorder({
     try {
       await action();
     } catch (error) {
-      // Recorder calls report their own errors; the mic request and start()'s
-      // take count can still reject.
+      // Recorder calls report their own errors; record() explains the mic
+      // request and start()'s take count rejecting.
       log.error('Player key failed', { error });
     } finally {
       busy.current = false;
@@ -808,7 +810,8 @@ export function useRecorder({
     ) {
       return;
     }
-    if (!(await session.ensureMic())) return;
+    // A denied mic shows its own Settings alert and resolves false.
+    if (!(await explainSetupFailure(() => session.ensureMic()))) return;
     // A new take counts toward the limit, so a pending delete goes first.
     await deletion.commit();
     // The player may have closed while the delete ran; don't record hidden.
@@ -820,7 +823,26 @@ export function useRecorder({
       return;
     }
     session.setElapsedMs(0);
-    await latestAudio.current.start();
+    // start() reports recorder failures itself (Audio error); only its take
+    // count, read before the recorder starts, rejects.
+    await explainSetupFailure(() => latestAudio.current.start());
+  }
+
+  /**
+   * Runs a Record setup step whose rejection nothing else shows, so the tap
+   * isn't silently ignored. Resolves false when it rejected; the key unlocks
+   * after, so Record can be tried again.
+   */
+  async function explainSetupFailure<T>(
+    step: () => Promise<T>,
+  ): Promise<T | false> {
+    try {
+      return await step();
+    } catch (error) {
+      log.error('Record setup failed', { error });
+      Alert.alert(RECORD_SETUP_FAILED_TITLE, RECORD_SETUP_FAILED_MESSAGE);
+      return false;
+    }
   }
 
   // Saving a take deselects every take it overlaps, whatever its unit.

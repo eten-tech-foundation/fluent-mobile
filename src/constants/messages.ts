@@ -201,3 +201,7 @@ export const OPEN_CLASSIC_DRAFTING = 'Open in classic drafting';
 /** One line on the take card, so these stay short. */
 export const RECORD_RECOVERED_TAKE = 'Take recovered. Eject finishes it.';
 export const RECORD_PAUSED_TAKE = 'Paused. Eject finishes the take.';
+/** Record couldn't get ready (mic request or take count failed); retryable. */
+export const RECORD_SETUP_FAILED_TITLE = "Couldn't start recording";
+export const RECORD_SETUP_FAILED_MESSAGE =
+  'Something went wrong getting ready to record. Try Record again.';

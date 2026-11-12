@@ -1156,28 +1156,109 @@ describe('PassageScreen', () => {
     expect(mockStart).toHaveBeenCalled();
   });
 
-  it('takes Record again after the mic request fails', async () => {
-    const mockTransport = jest.fn();
-    logger.setTransport(mockTransport);
-    mockEnsureMic.mockRejectedValueOnce(new Error('no mic'));
-    render(<PassageScreen />);
-    fireEvent.press(screen.getByTestId('passage-record'));
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('passage-key-record'));
+  describe('when Record setup fails', () => {
+    let alert: jest.SpyInstance;
+    beforeEach(() => {
+      alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     });
-    expect(mockStart).not.toHaveBeenCalled();
-    expect(mockTransport).toHaveBeenCalledWith(
-      'error',
-      'useRecorder',
-      'Player key failed',
-      { error: expect.any(Error) },
-    );
+    afterEach(() => alert.mockRestore());
 
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('passage-key-record'));
+    async function tapRecord() {
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-record'));
+      });
+    }
+    function openRecord() {
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+    }
+    function expectNothingRemoved() {
+      expect(mockDeleteTake).not.toHaveBeenCalled();
+      expect(mockDiscard).not.toHaveBeenCalled();
+    }
+
+    it('explains a failed mic request once and takes Record again', async () => {
+      const mockTransport = jest.fn();
+      logger.setTransport(mockTransport);
+      mockEnsureMic.mockRejectedValueOnce(new Error('no mic'));
+      openRecord();
+
+      await tapRecord();
+      expect(mockStart).not.toHaveBeenCalled();
+      expect(mockTransport).toHaveBeenCalledWith(
+        'error',
+        'useRecorder',
+        'Record setup failed',
+        { error: expect.any(Error) },
+      );
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledWith(
+        "Couldn't start recording",
+        'Something went wrong getting ready to record. Try Record again.',
+      );
+      expectNothingRemoved();
+
+      await tapRecord();
+      expect(mockStart).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledTimes(1);
     });
-    expect(mockStart).toHaveBeenCalledTimes(1);
+
+    it('explains a take count that fails before recording starts, once', async () => {
+      const mockTransport = jest.fn();
+      logger.setTransport(mockTransport);
+      mockStart.mockRejectedValueOnce(new Error('count failed'));
+      openRecord();
+
+      await tapRecord();
+      expect(mockTransport).toHaveBeenCalledWith(
+        'error',
+        'useRecorder',
+        'Record setup failed',
+        { error: expect.any(Error) },
+      );
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledWith(
+        "Couldn't start recording",
+        expect.any(String),
+      );
+      expectNothingRemoved();
+
+      await tapRecord();
+      expect(mockEnsureMic).toHaveBeenCalledTimes(2);
+      expect(mockStart).toHaveBeenCalledTimes(2);
+      expect(alert).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves a denied mic to its Settings alert alone', async () => {
+      mockEnsureMic.mockImplementationOnce(async () => {
+        Alert.alert('Microphone required', 'Allow microphone access.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Go to Settings' },
+        ]);
+        return false;
+      });
+      openRecord();
+
+      await tapRecord();
+      expect(mockStart).not.toHaveBeenCalled();
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledWith(
+        'Microphone required',
+        expect.any(String),
+        expect.any(Array),
+      );
+    });
+
+    it("adds nothing to the recorder's own error", async () => {
+      mockStart.mockImplementationOnce(async () => {
+        Alert.alert('Audio error', 'start failed');
+      });
+      openRecord();
+
+      await tapRecord();
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledWith('Audio error', 'start failed');
+    });
   });
 
   it('shows the take in progress and pauses it from the same key', async () => {
