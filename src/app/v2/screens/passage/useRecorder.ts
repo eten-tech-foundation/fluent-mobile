@@ -727,13 +727,15 @@ export function useRecorder({
       return;
     }
     // Selecting a selected take whose upload failed starts a new attempt.
+    // selectTake re-checks the overlap after the question, and canonical
+    // follows with no wait, so it trusts the latest check.
     if (
       (!t.isSelected || t.syncStatus === 'failed') &&
       !(await verseAudio.selectTake(t.id))
     ) {
       return;
     }
-    await verseAudio.setCanonical(t.id);
+    await verseAudio.setCanonical(t.id, { overlapChecked: true });
   }
 
   // Leaving Record answers an open question with no.

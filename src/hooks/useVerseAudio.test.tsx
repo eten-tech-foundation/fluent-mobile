@@ -524,6 +524,22 @@ describe('useVerseAudio', () => {
       expect(result.current.errorMessage).toBe('db closed');
     });
 
+    it('trusts a check the caller just made', async () => {
+      const { result } = renderGuarded();
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      let applied = false;
+      await act(async () => {
+        applied = await result.current.setCanonical('rec_2', {
+          overlapChecked: true,
+        });
+      });
+
+      expect(applied).toBe(true);
+      expect(findOfficialAtOtherAnchor).not.toHaveBeenCalled();
+      expect(designateCanonical).toHaveBeenCalledWith('rec_2');
+    });
+
     it('answers the pre-check without writing anything', async () => {
       const { result } = renderGuarded();
       await waitFor(() => expect(result.current.state).toBe('recorded'));

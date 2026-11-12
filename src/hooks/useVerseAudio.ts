@@ -1485,11 +1485,16 @@ export function useVerseAudio({
     [findOfficialAtOtherAnchorFn, onReplacementBlocked],
   );
 
-  /** Resolves true when the selection was written. */
+  /**
+   * Resolves true when the selection was written. Pass `overlapChecked` only
+   * right after {@link blockUnsupportedReplacement} cleared the same take.
+   */
   const selectTake = useCallback(
-    async (id: string): Promise<boolean> => {
+    async (id: string, { overlapChecked = false } = {}): Promise<boolean> => {
       try {
-        if (await blockUnsupportedReplacement(id)) return false;
+        if (!overlapChecked && (await blockUnsupportedReplacement(id))) {
+          return false;
+        }
         clearStitchQueue();
         setPlayingTakeId(null);
         const current = takes.find(take => take.id === id);
@@ -1529,9 +1534,11 @@ export function useVerseAudio({
 
   /** Designate canonical from All Takes (#279) — any account may call this. */
   const setCanonical = useCallback(
-    async (id: string): Promise<boolean> => {
+    async (id: string, { overlapChecked = false } = {}): Promise<boolean> => {
       try {
-        if (await blockUnsupportedReplacement(id)) return false;
+        if (!overlapChecked && (await blockUnsupportedReplacement(id))) {
+          return false;
+        }
         await designateCanonicalFn(id);
         // A designation can create a pending upload on its own (#701).
         notifyPendingUploads();

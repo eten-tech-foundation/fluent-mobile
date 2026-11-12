@@ -12,7 +12,7 @@ jest.mock('../services/recordingDataEvents', () => ({
 
 type Take = {
   id: string;
-  /** bible_texts id: 100 + chapter * 10 + verse in Matthew; 900+ in Mark. */
+  /** bible_texts id: 100 + chapter * 10 + verse in Matthew; 913 Mark; 813 another bible. */
   anchor: number;
   granularity?: 'verse' | 'pericope';
   range: [number, number, number, number];
@@ -69,13 +69,15 @@ describe('findOfficialAtOtherAnchor against real SQLite (#896)', () => {
       INSERT INTO users(id, email) VALUES (7, 'fixture@example.test');
       INSERT INTO languages(id, lang_name, script_direction) VALUES (1, 'Fixture', 'ltr');
       INSERT INTO books(id, code, eng_display_name) VALUES (40, 'MAT', 'Matthew'), (41, 'MRK', 'Mark');
-      INSERT INTO bibles(id, language_id, name, abbreviation) VALUES (1, 1, 'Fixture', 'FIX');
+      INSERT INTO bibles(id, language_id, name, abbreviation)
+        VALUES (1, 1, 'Fixture', 'FIX'), (2, 1, 'Other', 'OTH');
       INSERT INTO projects(id, name, source_language_id, target_language_id, is_active, status, updated_at)
         VALUES (1, 'Fixture', 1, 1, 1, 'not_assigned', '2026-01-01');
       INSERT INTO project_units(id, project_id, status, name)
         VALUES (12, 1, 'not_started', ''), (13, 1, 'not_started', '');
       INSERT INTO bible_texts(id, bible_id, book_id, chapter_number, verse_number, text)
-        VALUES ${verses}, (913, 1, 41, 1, 3, 'Mark 1:3');
+        VALUES ${verses}, (913, 1, 41, 1, 3, 'Mark 1:3'),
+          (813, 2, 40, 1, 3, 'Other Matthew 1:3');
     `);
   });
   afterEach(async () => {
@@ -154,6 +156,60 @@ describe('findOfficialAtOtherAnchor against real SQLite (#896)', () => {
     });
   });
 
+  it('reads a pre-range target as its own verse', async () => {
+    await insert({
+      id: 'passage',
+      anchor: 111,
+      granularity: 'pericope',
+      range: [1, 1, 1, 5],
+      canonical: true,
+    });
+    await insert({ id: 'legacy3', anchor: 113, range: [0, 0, 0, 0] });
+
+    await expect(findOfficialAtOtherAnchor('legacy3')).resolves.toMatchObject({
+      id: 'passage',
+    });
+  });
+
+  it('treats a one-verse passage and a verse take as different anchors', async () => {
+    await insert({
+      id: 'verse3',
+      anchor: 113,
+      range: [1, 3, 1, 3],
+      canonical: true,
+    });
+    await insert({
+      id: 'onePassage',
+      anchor: 113,
+      granularity: 'pericope',
+      range: [1, 3, 1, 3],
+    });
+
+    await expect(
+      findOfficialAtOtherAnchor('onePassage'),
+    ).resolves.toMatchObject({ id: 'verse3' });
+  });
+
+  it('matches an official take saved without a unit', async () => {
+    await insert({
+      id: 'noUnit3',
+      anchor: 113,
+      range: [1, 3, 1, 3],
+      canonical: true,
+      unit: null,
+    });
+    await insert({
+      id: 'passage',
+      anchor: 111,
+      granularity: 'pericope',
+      range: [1, 1, 1, 5],
+    });
+
+    await expect(findOfficialAtOtherAnchor('passage')).resolves.toMatchObject({
+      id: 'noUnit3',
+    });
+  });
+
   it('allows another verse take at the same verse', async () => {
     await insert({
       id: 'official3',
@@ -197,7 +253,13 @@ describe('findOfficialAtOtherAnchor against real SQLite (#896)', () => {
     await expect(findOfficialAtOtherAnchor('verse2_3')).resolves.toBeNull();
   });
 
-  it('ignores another book and another unit', async () => {
+  it('ignores another bible, another book and another unit', async () => {
+    await insert({
+      id: 'otherBibleVerse',
+      anchor: 813,
+      range: [1, 3, 1, 3],
+      canonical: true,
+    });
     await insert({
       id: 'markVerse',
       anchor: 913,
