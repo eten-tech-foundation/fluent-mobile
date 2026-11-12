@@ -24,7 +24,7 @@ import { useTheme } from '../../../../theme/useTheme';
 import type { NextIconProps } from '../../../../components/ui/icons';
 
 /** Figma's Record key: the dot is red at rest and while recording. */
-function RecordDot({ size }: NextIconProps) {
+export function RecordDot({ size }: NextIconProps) {
   const theme = useTheme();
   return <RecordFill color={theme.roles.accentRecord} size={size} />;
 }
@@ -38,7 +38,7 @@ const BREATH_LOW = 0.45;
  * Pressing it stops the take for now; pressing it again picks the same take up.
  * Visual only: haptics stay silent for the whole take.
  */
-function StopRed({ size }: NextIconProps) {
+export function StopRed({ size }: NextIconProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const breath = useSharedValue(1);
