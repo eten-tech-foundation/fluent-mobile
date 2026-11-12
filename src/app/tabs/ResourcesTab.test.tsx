@@ -194,6 +194,17 @@ const downloadedRows = getDownloadedResourcesByProject as jest.Mock;
 const mockLoadNotes = loadTranslationNotesForUnit as jest.MockedFunction<
   typeof loadTranslationNotesForUnit
 >;
+/** A load where every verse answered. */
+function notesResult(notes: TranslationNoteItem[]) {
+  return {
+    notes,
+    refs: [],
+    succeededRefs: [],
+    failedRefs: [],
+    unavailableOfflineRefs: [],
+    notesByRef: {},
+  };
+}
 const mockLoadQuestions =
   loadTranslationQuestionsForUnit as jest.MockedFunction<
     typeof loadTranslationQuestionsForUnit
@@ -374,7 +385,7 @@ describe('ResourcesTab', () => {
       transferConnectivityPending: false,
     });
     mockLoadNotes.mockImplementation(async ({ verseNumber }) =>
-      notesForVerse(verseNumber),
+      notesResult(notesForVerse(verseNumber)),
     );
     mockLoadQuestions.mockImplementation(async ({ verseNumber }) =>
       questionsForVerse(verseNumber),
@@ -433,7 +444,7 @@ describe('ResourcesTab', () => {
   });
 
   it('hides Translation Notes when the unit loads empty online', async () => {
-    mockLoadNotes.mockImplementation(async () => []);
+    mockLoadNotes.mockImplementation(async () => notesResult([]));
     mockLoadQuestions.mockImplementation(async () => questionsForVerse(2));
     mockLoadImages.mockImplementation(async () => imagesForVerse(2));
     renderResources(2);

@@ -50,6 +50,18 @@ function notesForVerse(verseNumber: number): TranslationNoteItem[] {
   return verseNumber === 3 ? [] : NOTES_FOR_VERSE_1;
 }
 
+/** A load where every verse answered. */
+function notesResult(notes: TranslationNoteItem[]) {
+  return {
+    notes,
+    refs: [],
+    succeededRefs: [],
+    failedRefs: [],
+    unavailableOfflineRefs: [],
+    notesByRef: {},
+  };
+}
+
 function SectionHarness({
   verseNumber,
   sectionExpanded = true,
@@ -78,7 +90,7 @@ function SectionHarness({
 describe('TranslationNotesSection', () => {
   beforeEach(() => {
     mockLoad.mockImplementation(async ({ verseNumber }) =>
-      notesForVerse(verseNumber),
+      notesResult(notesForVerse(verseNumber)),
     );
   });
 
@@ -122,7 +134,7 @@ describe('TranslationNotesSection', () => {
 
   it('shows section-scoped error and recovers on Retry', async () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
-    mockLoad.mockResolvedValueOnce(NOTES_FOR_VERSE_1);
+    mockLoad.mockResolvedValueOnce(notesResult(NOTES_FOR_VERSE_1));
 
     render(<SectionHarness verseNumber={1} />);
 
