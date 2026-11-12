@@ -696,5 +696,40 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(result.current.error).toBe(true);
       expect(result.current.chapters).toEqual([]);
     });
+
+    it("stays reading when an earlier sync's read lands while the next sync's check is out", async () => {
+      const { result, rerender } = await mountedWithKey();
+      const queries = jest.requireMock('../db/queries') as {
+        getDatabaseWriteMark: jest.Mock;
+      };
+      const first = deferred<MyWorkChapter[]>();
+      mockGetMyWorkChapters.mockReturnValueOnce(first.promise);
+      mockWrites = 1;
+      rerender({ key: 1 });
+      await waitFor(() =>
+        expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2),
+      );
+
+      // The next check's mark queues behind the first read on the connection.
+      const mark = deferred<void>();
+      queries.getDatabaseWriteMark.mockImplementationOnce(async () => {
+        await mark.promise;
+        return { connection: mockConnection, changes: 2 };
+      });
+      rerender({ key: 2 });
+      await act(async () => {
+        first.resolve([]);
+      });
+
+      expect(result.current.reading).toBe(true);
+      expect(result.current.chapters).toEqual([observerChapter]);
+
+      mockGetMyWorkChapters.mockResolvedValueOnce([assignedChapter]);
+      await act(async () => {
+        mark.resolve();
+      });
+      await waitFor(() => expect(result.current.reading).toBe(false));
+      expect(result.current.chapters).toEqual([assignedChapter]);
+    });
   });
 });

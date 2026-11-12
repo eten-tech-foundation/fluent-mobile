@@ -63,6 +63,11 @@ function currentGrantsKey(userId: number): string {
   return grantsKey(getObserverProjectIds(id), getTranslatorProjectIds(id));
 }
 
+/** Empty, keeping the same array when it already is. */
+function clearRows(prev: MyWorkChapter[]): MyWorkChapter[] {
+  return prev.length === 0 ? prev : [];
+}
+
 /** What the list on screen was queried with. */
 type PublishedRead = {
   userId: number;
@@ -178,7 +183,7 @@ export function useMyWorkChapters(refreshKey = 0) {
         // prior-account rows cannot linger. `error` tells that apart from a
         // real empty list.
         publishedRef.current = null;
-        setChapterRows([]);
+        setChapterRows(clearRows);
         setError(true);
         setLoading(false);
         setReading(false);
@@ -189,19 +194,24 @@ export function useMyWorkChapters(refreshKey = 0) {
   );
 
   const loadChaptersIfChanged = useCallback(async () => {
+    // Taken before the mark's await so a read started for an earlier sync
+    // can't publish, and end `reading`, while this check is pending.
+    const generation = ++loadGenerationRef.current;
     let writes: DatabaseWriteMark | null;
     try {
       writes = await getDatabaseWriteMark();
     } catch (error) {
+      if (loadGenerationRef.current !== generation) return;
       log.error('Error loading my work chapters', { error });
       publishedRef.current = null;
-      setChapterRows([]);
+      setChapterRows(clearRows);
       setError(true);
       setLoading(false);
       setReading(false);
       markStartup('chapters_read', { count: 0, error: true });
       return;
     }
+    if (loadGenerationRef.current !== generation) return;
     // Whatever is on screen now, which may be newer than when focus came back.
     const read = publishedRef.current;
     const userId = resolveValidatedMyWorkUserId();

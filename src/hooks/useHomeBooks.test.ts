@@ -396,6 +396,57 @@ describe('useHomeBooks', () => {
     await waitFor(() => expect(result.current.error).toBe(true));
     expect(result.current.reading).toBe(false);
     expect(result.current.books).toEqual([MARK]);
+
+    // Nothing was written since, but the books were never re-verified.
+    rerender({ key: 2 });
+    await waitFor(() => expect(result.current.error).toBe(false));
+  });
+
+  it("stays reading when an earlier sync's read lands while the next sync's check is out", async () => {
+    const { result, rerender } = renderHook(
+      ({ key }: { key: number }) => useHomeBooks(key),
+      { initialProps: { key: 0 } },
+    );
+    await waitFor(() => expect(result.current.reading).toBe(false));
+    const queries = jest.requireMock('../db/queries') as {
+      getDatabaseWriteMark: jest.Mock;
+    };
+
+    let resolveFirst: (books: HomeBookSummary[]) => void = () => {};
+    mockGetHomeBookSummaries.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveFirst = resolve;
+        }),
+    );
+    mockWrites = 1;
+    rerender({ key: 1 });
+    await waitFor(() =>
+      expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
+    );
+
+    // The next check's mark queues behind the first read on the connection.
+    const mark = deferred();
+    queries.getDatabaseWriteMark.mockImplementationOnce(async () => {
+      await mark.promise;
+      return { connection: mockConnection, changes: 2 };
+    });
+    rerender({ key: 2 });
+    await act(async () => {
+      resolveFirst([]);
+    });
+
+    expect(result.current.reading).toBe(true);
+    expect(result.current.books).toEqual([MARK]);
+
+    mockGetHomeBookSummaries.mockResolvedValueOnce([
+      { ...MARK, bookName: 'Luke' },
+    ]);
+    await act(async () => {
+      mark.resolve();
+    });
+    await waitFor(() => expect(result.current.reading).toBe(false));
+    expect(result.current.books[0]?.bookName).toBe('Luke');
   });
 
   describe('when the refresh key changes', () => {

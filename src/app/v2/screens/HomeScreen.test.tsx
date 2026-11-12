@@ -469,8 +469,12 @@ describe('Next HomeScreen', () => {
   it('holds the spinner instead of the empty message while the post-sync read is in flight', () => {
     mockChapters = [];
     mockBooks = [];
-    mockChaptersReading = true;
+    // Home has painted once already, as it has by the time a sync ends.
     render(<HomeScreen />);
+    expect(screen.getByTestId('home-empty')).toBeTruthy();
+
+    mockChaptersReading = true;
+    screen.rerender(<HomeScreen />);
 
     expect(screen.queryByTestId('home-empty')).toBeNull();
     expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();

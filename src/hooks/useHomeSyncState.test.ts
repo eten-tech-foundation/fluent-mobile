@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { renderHook } from '@testing-library/react-native';
 import { useHomeSyncState } from './useHomeSyncState';
 
@@ -75,9 +76,19 @@ jest.mock('../utils/parseUserId', () => ({
 
 describe('useHomeSyncState', () => {
   it('bumps the re-read in the render where the post-login sync ends', () => {
+    const commits: { active: boolean; refreshKey: number }[] = [];
     const hook = renderHook(
-      ({ active }: { active: boolean }) =>
-        useHomeSyncState({ postLoginSyncActive: active, userSwitchEpoch: 0 }),
+      ({ active }: { active: boolean }) => {
+        const state = useHomeSyncState({
+          postLoginSyncActive: active,
+          userSwitchEpoch: 0,
+        });
+        const { refreshKey } = state;
+        useEffect(() => {
+          commits.push({ active, refreshKey });
+        }, [active, refreshKey]);
+        return state;
+      },
       { initialProps: { active: true } },
     );
     const before = hook.result.current.refreshKey;
@@ -86,5 +97,10 @@ describe('useHomeSyncState', () => {
 
     expect(hook.result.current.refreshKey).toBe(before + 1);
     expect(hook.result.current.showLoading).toBe(false);
+    // No commit shows the ended sync with the old key, which would let Home
+    // paint the pre-sync (empty) lists for a frame.
+    expect(commits.filter(c => !c.active && c.refreshKey === before)).toEqual(
+      [],
+    );
   });
 });
