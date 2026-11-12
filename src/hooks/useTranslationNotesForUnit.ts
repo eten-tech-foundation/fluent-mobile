@@ -9,7 +9,9 @@ import {
 import { TRANSLATION_NOTES_LOAD_ERROR } from '../constants/messages';
 import {
   loadTranslationNotesForUnit,
+  mergeTranslationNotesRetry,
   type LoadTranslationNotesParams,
+  type TranslationNotesLoadResult,
 } from '../services/translationNotes';
 import {
   passageResourceEpoch,
@@ -27,20 +29,30 @@ const log = logger.create('useTranslationNotesForUnit');
 
 export type TranslationNotesLoadState =
   | { status: 'loading' }
-  | { status: 'ready'; notes: TranslationNoteItem[] }
-  | { status: 'error'; message: string };
+  | {
+      status: 'ready';
+      notes: TranslationNoteItem[];
+      /** Verses whose notes failed to load; `retry` asks for just these. */
+      failedRefs: ResourceVerseRef[];
+      /** Offline verses with nothing downloaded. */
+      unavailableOfflineRefs: ResourceVerseRef[];
+    }
+  | {
+      status: 'error';
+      message: string;
+      /** Every verse failed; empty when the load failed as a whole. */
+      failedRefs: ResourceVerseRef[];
+    };
 
 type TrackedLoadState = {
-  userId: number | null | undefined;
-  projectId: number | null;
-  bookCode: string;
-  versesKey: string;
-  languageCode: string | undefined;
-  epoch: string;
+  identity: string;
   value: TranslationNotesLoadState;
 };
 
-export type UseTranslationNotesForUnitParams = LoadTranslationNotesParams;
+export type UseTranslationNotesForUnitParams = Omit<
+  LoadTranslationNotesParams,
+  'signal'
+>;
 
 function resolveRefs(params: LoadTranslationNotesParams): ResourceVerseRef[] {
   if (params.verseRefs && params.verseRefs.length > 0) {
@@ -53,12 +65,32 @@ function resolveRefs(params: LoadTranslationNotesParams): ResourceVerseRef[] {
   );
 }
 
+function stateFor(
+  result: TranslationNotesLoadResult,
+): TranslationNotesLoadState {
+  if (result.succeededRefs.length === 0 && result.failedRefs.length > 0) {
+    return {
+      status: 'error',
+      message: TRANSLATION_NOTES_LOAD_ERROR,
+      failedRefs: result.failedRefs,
+    };
+  }
+  return {
+    status: 'ready',
+    notes: result.notes,
+    failedRefs: result.failedRefs,
+    unavailableOfflineRefs: result.unavailableOfflineRefs,
+  };
+}
+
 /**
  * Section-scoped TN loader (#189). Failures stay local — do not block TQ / Images.
- * Ignores stale responses when the active unit changes mid-load.
+ * Ignores stale responses when the active unit changes mid-load, and stops
+ * the old load's queue (#901).
  * Downloaded rows win; fluent-api translation-resources (fluent-api #274)
  * is only hit when nothing usable is downloaded and the device is online.
- * Online pericope units fan out across their verse refs (#593).
+ * Online pericope units fan out across their verse refs (#593). Some verses
+ * failing still shows the rest; `retry` then asks only for the failed ones.
  */
 export function useTranslationNotesForUnit(
   params: UseTranslationNotesForUnitParams,
@@ -103,54 +135,59 @@ export function useTranslationNotesForUnit(
   const epoch = useSyncExternalStore(subscribePassageResourceClears, () =>
     passageResourceEpoch(owner),
   );
-
-  const [tracked, setTracked] = useState<TrackedLoadState>({
-    userId,
+  const identity = JSON.stringify([
+    userId ?? null,
     projectId,
     bookCode,
     versesKey,
-    languageCode,
+    languageCode ?? null,
     epoch,
+  ]);
+
+  const [tracked, setTracked] = useState<TrackedLoadState>({
+    identity,
     value: { status: 'loading' },
   });
   const requestIdRef = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
+  const lastResultRef = useRef<{
+    identity: string;
+    result: TranslationNotesLoadResult;
+  } | null>(null);
 
   const load = useCallback(
     async (refresh = false) => {
       const requestId = ++requestIdRef.current;
-      setTracked({
-        userId,
-        projectId,
-        bookCode,
-        versesKey,
-        languageCode,
-        epoch,
-        value: { status: 'loading' },
-      });
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      const last = lastResultRef.current;
+      const previous =
+        refresh && last?.identity === identity && last.result.failedRefs.length
+          ? last.result
+          : null;
+      setTracked({ identity, value: { status: 'loading' } });
       try {
-        const notes = await loadTranslationNotesForUnit({
+        const loaded = await loadTranslationNotesForUnit({
           projectId,
           userId,
           isOnline,
           bookCode,
           chapterNumber,
           verseNumber,
-          verseRefs: refs,
+          verseRefs: previous ? previous.failedRefs : refs,
           languageCode,
           refresh,
+          signal: controller.signal,
         });
         if (requestId !== requestIdRef.current) {
           return;
         }
-        setTracked({
-          userId,
-          projectId,
-          bookCode,
-          versesKey,
-          languageCode,
-          epoch,
-          value: { status: 'ready', notes },
-        });
+        const result = previous
+          ? mergeTranslationNotesRetry(previous, loaded)
+          : loaded;
+        lastResultRef.current = { identity, result };
+        setTracked({ identity, value: stateFor(result) });
       } catch (error) {
         if (requestId !== requestIdRef.current) {
           return;
@@ -162,20 +199,17 @@ export function useTranslationNotesForUnit(
           error: error instanceof Error ? error.message : String(error),
         });
         setTracked({
-          userId,
-          projectId,
-          bookCode,
-          versesKey,
-          languageCode,
-          epoch,
+          identity,
           value: {
             status: 'error',
             message: TRANSLATION_NOTES_LOAD_ERROR,
+            failedRefs: [],
           },
         });
       }
     },
     [
+      identity,
       projectId,
       userId,
       isOnline,
@@ -185,7 +219,6 @@ export function useTranslationNotesForUnit(
       refs,
       versesKey,
       languageCode,
-      epoch,
     ],
   );
 
@@ -193,19 +226,13 @@ export function useTranslationNotesForUnit(
     void load();
     return () => {
       requestIdRef.current += 1;
+      controllerRef.current?.abort();
     };
   }, [load]);
   const retry = useCallback(() => load(true), [load]);
 
   const state: TranslationNotesLoadState =
-    tracked.userId === userId &&
-    tracked.projectId === projectId &&
-    tracked.bookCode === bookCode &&
-    tracked.versesKey === versesKey &&
-    tracked.languageCode === languageCode &&
-    tracked.epoch === epoch
-      ? tracked.value
-      : { status: 'loading' };
+    tracked.identity === identity ? tracked.value : { status: 'loading' };
 
   return {
     state,

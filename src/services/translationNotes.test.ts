@@ -1,7 +1,10 @@
 import type { ApiTranslationNoteItem } from '../types/api/translationResources';
 import {
   loadTranslationNotesForUnit,
+  mergeTranslationNotesRetry,
   parseTranslationNotesItem,
+  TRANSLATION_NOTES_MAX_REQUESTS_IN_FLIGHT,
+  type LoadTranslationNotesParams,
   setTranslationNotesLoadFailureForTests,
 } from './translationNotes';
 import { FluentAPI } from './api';
@@ -99,6 +102,9 @@ describe('parseTranslationNotesItem', () => {
   });
 });
 
+const loadNotes = async (params: LoadTranslationNotesParams) =>
+  (await loadTranslationNotesForUnit(params)).notes;
+
 describe('loadTranslationNotesForUnit', () => {
   beforeEach(() => {
     clearPassageResourceReuse();
@@ -116,7 +122,7 @@ describe('loadTranslationNotesForUnit', () => {
 
   it('returns [] when projectId is null', async () => {
     await expect(
-      loadTranslationNotesForUnit({
+      loadNotes({
         projectId: null,
         bookCode: 'MRK',
         chapterNumber: 14,
@@ -128,7 +134,7 @@ describe('loadTranslationNotesForUnit', () => {
 
   it('returns [] when bookCode is missing', async () => {
     await expect(
-      loadTranslationNotesForUnit({
+      loadNotes({
         projectId: 7,
         bookCode: '  ',
         chapterNumber: 14,
@@ -142,7 +148,7 @@ describe('loadTranslationNotesForUnit', () => {
     getTranslationNotes.mockResolvedValue({ items: [] });
 
     await expect(
-      loadTranslationNotesForUnit({
+      loadNotes({
         projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
@@ -155,7 +161,7 @@ describe('loadTranslationNotesForUnit', () => {
     getTranslationNotes.mockResolvedValue({} as never);
 
     await expect(
-      loadTranslationNotesForUnit({
+      loadNotes({
         projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
@@ -164,7 +170,7 @@ describe('loadTranslationNotesForUnit', () => {
     ).resolves.toEqual([]);
   });
 
-  it('propagates ApiError so the section can show retry', async () => {
+  it('reports a failed verse so the section can show retry', async () => {
     getTranslationNotes.mockRejectedValue(
       new ApiError(502, 'Aquifer service is unavailable'),
     );
@@ -176,10 +182,11 @@ describe('loadTranslationNotesForUnit', () => {
         chapterNumber: 14,
         verseNumber: 2,
       }),
-    ).rejects.toMatchObject({
-      name: 'ApiError',
-      status: 502,
-      message: expect.stringMatching(/unavailable/i),
+    ).resolves.toMatchObject({
+      notes: [],
+      succeededRefs: [],
+      failedRefs: [{ chapterNumber: 14, verseNumber: 2 }],
+      unavailableOfflineRefs: [],
     });
   });
 
@@ -187,7 +194,7 @@ describe('loadTranslationNotesForUnit', () => {
     getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
 
     await expect(
-      loadTranslationNotesForUnit({
+      loadNotes({
         projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
@@ -225,7 +232,7 @@ describe('loadTranslationNotesForUnit', () => {
       ],
     }));
 
-    const notes = await loadTranslationNotesForUnit({
+    const notes = await loadNotes({
       projectId: 7,
       bookCode: 'MRK',
       chapterNumber: 14,
@@ -240,7 +247,7 @@ describe('loadTranslationNotesForUnit', () => {
   it('throws when failure injection is enabled', async () => {
     setTranslationNotesLoadFailureForTests(true);
     await expect(
-      loadTranslationNotesForUnit({
+      loadNotes({
         projectId: 7,
         bookCode: 'MRK',
         chapterNumber: 14,
@@ -262,7 +269,7 @@ describe('loadTranslationNotesForUnit', () => {
       getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
 
       await expect(
-        loadTranslationNotesForUnit({
+        loadNotes({
           projectId: 7,
           userId: 42,
           isOnline: true,
@@ -287,7 +294,7 @@ describe('loadTranslationNotesForUnit', () => {
       getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
 
       await expect(
-        loadTranslationNotesForUnit({
+        loadNotes({
           projectId: 7,
           userId: 42,
           isOnline: true,
@@ -311,7 +318,7 @@ describe('loadTranslationNotesForUnit', () => {
       mockFindRows.mockResolvedValue(null);
 
       await expect(
-        loadTranslationNotesForUnit({
+        loadNotes({
           projectId: 7,
           userId: 42,
           isOnline: false,
@@ -331,7 +338,7 @@ describe('loadTranslationNotesForUnit', () => {
       getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
 
       await expect(
-        loadTranslationNotesForUnit({
+        loadNotes({
           projectId: 7,
           userId: 42,
           isOnline: true,
@@ -358,7 +365,7 @@ describe('loadTranslationNotesForUnit', () => {
       mockReadJson.mockResolvedValue(undefined);
 
       await expect(
-        loadTranslationNotesForUnit({
+        loadNotes({
           projectId: 7,
           userId: 42,
           isOnline: false,
@@ -408,7 +415,7 @@ describe('loadTranslationNotesForUnit', () => {
         ],
       });
 
-      const notes = await loadTranslationNotesForUnit({
+      const notes = await loadNotes({
         projectId: 7,
         userId: 42,
         isOnline: true,
@@ -465,7 +472,7 @@ describe('loadTranslationNotesForUnit', () => {
         },
       ]);
 
-      const notes = await loadTranslationNotesForUnit({
+      const notes = await loadNotes({
         projectId: 7,
         userId: 42,
         isOnline: false,
@@ -505,8 +512,8 @@ describe('loadTranslationNotesForUnit', () => {
       getTranslationNotes.mockImplementation(async (_p, _b, _c, verse) =>
         verse === 2 ? { items: [sampleItem] } : { items: [] },
       );
-      const first = await loadTranslationNotesForUnit(unit);
-      const second = await loadTranslationNotesForUnit(unit);
+      const first = await loadNotes(unit);
+      const second = await loadNotes(unit);
       expect(second).toEqual(first);
       expect(first).toHaveLength(1);
       expect(getTranslationNotes).toHaveBeenCalledTimes(2);
@@ -517,11 +524,11 @@ describe('loadTranslationNotesForUnit', () => {
         if (verse === 2) throw new Error('502');
         return { items: [] };
       });
-      await loadTranslationNotesForUnit(unit);
+      await loadNotes(unit);
       expect(getTranslationNotes).toHaveBeenCalledTimes(2);
 
       getTranslationNotes.mockResolvedValue({ items: [sampleItem] });
-      await expect(loadTranslationNotesForUnit(unit)).resolves.toHaveLength(1);
+      await expect(loadNotes(unit)).resolves.toHaveLength(1);
       expect(getTranslationNotes).toHaveBeenCalledTimes(3);
       expect(getTranslationNotes).toHaveBeenLastCalledWith(
         7,
@@ -532,29 +539,29 @@ describe('loadTranslationNotesForUnit', () => {
         'token-42',
       );
 
-      await loadTranslationNotesForUnit({ ...unit, refresh: true });
+      await loadNotes({ ...unit, refresh: true });
       expect(getTranslationNotes).toHaveBeenCalledTimes(5);
 
       switchAccount('43', 'token-43');
-      await loadTranslationNotesForUnit({ ...unit, userId: 43 });
+      await loadNotes({ ...unit, userId: 43 });
       expect(getTranslationNotes).toHaveBeenCalledTimes(7);
     });
 
     it('asks again in another language', async () => {
       getTranslationNotes.mockResolvedValue({ items: [] });
-      await loadTranslationNotesForUnit(unit);
-      await loadTranslationNotesForUnit({ ...unit, languageCode: 'spa' });
+      await loadNotes(unit);
+      await loadNotes({ ...unit, languageCode: 'spa' });
       expect(getTranslationNotes).toHaveBeenCalledTimes(4);
     });
 
     it('still prefers a row downloaded since the first open', async () => {
       getTranslationNotes.mockResolvedValue({ items: [] });
-      await loadTranslationNotesForUnit(unit);
+      await loadNotes(unit);
       mockFindRows.mockResolvedValue([
         downloadedRow({ localFilePath: 'file:///downloads/tn.json' }),
       ]);
       mockReadJson.mockResolvedValue(sampleItem.content);
-      const notes = await loadTranslationNotesForUnit(unit);
+      const notes = await loadNotes(unit);
       expect(notes.length).toBeGreaterThan(0);
       expect(getTranslationNotes).toHaveBeenCalledTimes(2);
     });
@@ -582,7 +589,7 @@ describe('loadTranslationNotesForUnit', () => {
           missLocally = resolve;
         }),
       );
-      const stale = loadTranslationNotesForUnit(verse);
+      const stale = loadNotes(verse);
       await Promise.resolve();
 
       // An account switch lands while A's local lookup is still out.
@@ -592,7 +599,7 @@ describe('loadTranslationNotesForUnit', () => {
       expect(bearers).not.toContain('token-b');
 
       switchAccount('42', 'token-a');
-      const notes = await loadTranslationNotesForUnit(verse);
+      const notes = await loadNotes(verse);
       expect(bearers).toEqual(['token-a']);
       expect(notes.every(note => note.id.startsWith('tn-api-1-'))).toBe(true);
     });
@@ -614,13 +621,11 @@ describe('loadTranslationNotesForUnit', () => {
       );
       // B is active before A's passage props have caught up.
       switchAccount('43', 'token-b');
-      await expect(loadTranslationNotesForUnit(verse)).rejects.toThrow(
-        /not the active session/,
-      );
+      await expect(loadNotes(verse)).rejects.toThrow(/not the active session/);
       expect(bearers).toEqual([]);
 
       switchAccount('42', 'token-a');
-      const notes = await loadTranslationNotesForUnit(verse);
+      const notes = await loadNotes(verse);
       expect(bearers).toEqual(['token-a']);
       expect(notes.every(note => note.id.startsWith('tn-api-1-'))).toBe(true);
     });
@@ -644,7 +649,7 @@ describe('loadTranslationNotesForUnit', () => {
           missLocally = resolve;
         }),
       );
-      const stale = loadTranslationNotesForUnit(verse);
+      const stale = loadNotes(verse);
       await Promise.resolve();
 
       switchAccount('43', 'token-b');
@@ -652,5 +657,257 @@ describe('loadTranslationNotesForUnit', () => {
       await expect(stale).rejects.toThrow(/not the active session/);
       expect(bearers).toEqual([]);
     });
+  });
+});
+
+describe('bounded note requests and partial results (#901)', () => {
+  type Pending = {
+    chapter: number;
+    verse: number;
+    answer: () => void;
+    fail: () => void;
+  };
+  let pending: Pending[];
+  let active: number;
+  let peak: number;
+  let starts: number;
+
+  const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+  const ref = (chapterNumber: number, verseNumber: number) => ({
+    chapterNumber,
+    verseNumber,
+  });
+  const chapterRefs = (chapter: number, from: number, to: number) =>
+    Array.from({ length: to - from + 1 }, (_, i) => ref(chapter, from + i));
+  const itemFor = (
+    chapter: number,
+    verse: number,
+    id = chapter * 1000 + verse,
+  ) => ({
+    ...sampleItem,
+    id,
+    name: `Mark ${chapter}:${verse}`,
+    localizedName: `Mark ${chapter}:${verse}`,
+  });
+  const unit = (
+    verseRefs: { chapterNumber: number; verseNumber: number }[],
+  ) => ({
+    projectId: 7,
+    bookCode: 'MRK',
+    chapterNumber: verseRefs[0]!.chapterNumber,
+    verseNumber: verseRefs[0]!.verseNumber,
+    verseRefs,
+  });
+
+  /** Answers (or fails) every request as it starts, newest first. */
+  async function settleAll(
+    load: Promise<unknown>,
+    fails: (chapter: number, verse: number) => boolean = () => false,
+  ) {
+    let done = false;
+    void load.then(
+      () => (done = true),
+      () => (done = true),
+    );
+    while (!done) {
+      await flush();
+      const batch = pending.splice(0).reverse();
+      for (const call of batch) {
+        if (fails(call.chapter, call.verse)) call.fail();
+        else call.answer();
+      }
+    }
+  }
+
+  beforeEach(() => {
+    clearPassageResourceReuse();
+    switchAccount('', null);
+    mockFindRows.mockResolvedValue(null);
+    pending = [];
+    active = 0;
+    peak = 0;
+    starts = 0;
+    getTranslationNotes.mockImplementation(
+      (_project, _book, chapter, verse) =>
+        new Promise((resolve, reject) => {
+          starts += 1;
+          active += 1;
+          peak = Math.max(peak, active);
+          pending.push({
+            chapter,
+            verse,
+            answer: () => {
+              active -= 1;
+              resolve({ items: [itemFor(chapter, verse)] });
+            },
+            fail: () => {
+              active -= 1;
+              reject(new ApiError(502, 'unavailable'));
+            },
+          });
+        }),
+    );
+  });
+
+  afterEach(() => {
+    getTranslationNotes.mockReset();
+    mockFindRows.mockReset();
+    mockReadJson.mockReset();
+  });
+
+  it.each([
+    ['an uncached 176-verse chapter', chapterRefs(1, 1, 176)],
+    [
+      'a 201-verse unit across a chapter break',
+      [...chapterRefs(1, 1, 150), ...chapterRefs(2, 1, 51)],
+    ],
+  ])('keeps %s to the cap and anchors every note', async (_label, refs) => {
+    const load = loadTranslationNotesForUnit(unit(refs));
+    await settleAll(load);
+    const result = await load;
+
+    expect(starts).toBe(refs.length);
+    expect(peak).toBe(TRANSLATION_NOTES_MAX_REQUESTS_IN_FLIGHT);
+    expect(result.failedRefs).toEqual([]);
+    expect(result.succeededRefs).toEqual(refs);
+    expect(result.notes.map(note => note.verse)).toEqual(refs);
+    expect(result.notes.map(note => note.title)).toEqual(
+      refs.map(r => `Mark ${r.chapterNumber}:${r.verseNumber}`),
+    );
+  });
+
+  it('keeps the readable verses and lists exactly the failed ones', async () => {
+    const refs = chapterRefs(14, 1, 12);
+    const load = loadTranslationNotesForUnit(unit(refs));
+    await settleAll(load, (_c, verse) => verse % 5 === 0);
+    const result = await load;
+
+    expect(result.failedRefs).toEqual([ref(14, 5), ref(14, 10)]);
+    expect(result.succeededRefs).toHaveLength(10);
+    expect(result.notes.map(note => note.verse?.verseNumber)).toEqual([
+      1, 2, 3, 4, 6, 7, 8, 9, 11, 12,
+    ]);
+  });
+
+  it('lists every verse when all of them fail', async () => {
+    const refs = chapterRefs(14, 1, 6);
+    const load = loadTranslationNotesForUnit(unit(refs));
+    await settleAll(load, () => true);
+
+    await expect(load).resolves.toMatchObject({
+      notes: [],
+      succeededRefs: [],
+      failedRefs: refs,
+    });
+  });
+
+  it('counts an empty answer as a finished lookup', async () => {
+    getTranslationNotes.mockResolvedValue({ items: [] });
+
+    const result = await loadTranslationNotesForUnit(
+      unit(chapterRefs(14, 1, 3)),
+    );
+
+    expect(result.succeededRefs).toEqual(chapterRefs(14, 1, 3));
+    expect(result.failedRefs).toEqual([]);
+    expect(result.notes).toEqual([]);
+  });
+
+  it('orders local and remote notes by verse and anchors a shared note on its first verse', async () => {
+    mockFindRows.mockImplementation(async query =>
+      query.verseNumber === 4
+        ? [downloadedRow({ resourceId: 'local-4', label: 'Mark 14:4' })]
+        : null,
+    );
+    mockReadJson.mockResolvedValue(sampleItem.content);
+    getTranslationNotes.mockImplementation(async (_p, _b, chapter, verse) => ({
+      // Verses 7 and 9 share one note; 9 answers first.
+      items: [
+        itemFor(chapter, verse, verse === 9 ? 79 : verse === 7 ? 79 : verse),
+      ],
+    }));
+    const refs = [ref(14, 9), ref(14, 2), ref(14, 7), ref(14, 4)];
+
+    const result = await loadTranslationNotesForUnit(unit(refs));
+
+    expect(getTranslationNotes).toHaveBeenCalledTimes(3);
+    expect(
+      result.notes.map(note => [note.id, note.verse?.verseNumber]),
+    ).toEqual([
+      ['tn-api-2-0', 2],
+      ['tn-api-local-4-0', 4],
+      ['tn-api-79-0', 7],
+    ]);
+    expect(result.succeededRefs).toEqual([
+      ref(14, 2),
+      ref(14, 4),
+      ref(14, 7),
+      ref(14, 9),
+    ]);
+  });
+
+  it('makes no requests offline and lists missing verses as unavailable, not failed', async () => {
+    mockFindRows.mockImplementation(async query =>
+      query.verseNumber === 1
+        ? [downloadedRow({ resourceId: 'local-1', label: 'Mark 14:1' })]
+        : null,
+    );
+    mockReadJson.mockResolvedValue(sampleItem.content);
+
+    const result = await loadTranslationNotesForUnit({
+      ...unit(chapterRefs(14, 1, 3)),
+      isOnline: false,
+    });
+
+    expect(getTranslationNotes).not.toHaveBeenCalled();
+    expect(result.succeededRefs).toEqual([ref(14, 1)]);
+    expect(result.unavailableOfflineRefs).toEqual([ref(14, 2), ref(14, 3)]);
+    expect(result.failedRefs).toEqual([]);
+  });
+
+  it('retries only the failed verses and keeps what already loaded', async () => {
+    const refs = chapterRefs(14, 1, 4);
+    const first = loadTranslationNotesForUnit(unit(refs));
+    await settleAll(first, (_c, verse) => verse === 2 || verse === 3);
+    const previous = await first;
+    starts = 0;
+
+    const again = loadTranslationNotesForUnit({
+      ...unit(previous.failedRefs),
+      refresh: true,
+    });
+    await settleAll(again, (_c, verse) => verse === 3);
+    const merged = mergeTranslationNotesRetry(previous, await again);
+
+    expect(starts).toBe(2);
+    expect(merged.failedRefs).toEqual([ref(14, 3)]);
+    expect(merged.succeededRefs).toEqual([ref(14, 1), ref(14, 2), ref(14, 4)]);
+    expect(merged.notes.map(note => note.verse?.verseNumber)).toEqual([
+      1, 2, 4,
+    ]);
+  });
+
+  it('stops a cancelled load from starting more and shares the cap with the next one', async () => {
+    const controller = new AbortController();
+    const old = loadTranslationNotesForUnit({
+      ...unit(chapterRefs(1, 1, 40)),
+      signal: controller.signal,
+    });
+    await flush();
+    expect(starts).toBe(TRANSLATION_NOTES_MAX_REQUESTS_IN_FLIGHT);
+
+    controller.abort();
+    const next = loadTranslationNotesForUnit(unit(chapterRefs(2, 1, 10)));
+    await flush();
+    // The old requests still hold every slot until they settle.
+    expect(starts).toBe(TRANSLATION_NOTES_MAX_REQUESTS_IN_FLIGHT);
+
+    await settleAll(Promise.allSettled([old, next]));
+    await expect(old).rejects.toMatchObject({ name: 'AbortError' });
+    const result = await next;
+
+    expect(peak).toBe(TRANSLATION_NOTES_MAX_REQUESTS_IN_FLIGHT);
+    expect(starts).toBe(TRANSLATION_NOTES_MAX_REQUESTS_IN_FLIGHT + 10);
+    expect(result.succeededRefs).toEqual(chapterRefs(2, 1, 10));
   });
 });
