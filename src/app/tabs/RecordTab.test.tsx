@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import {
+  act,
   render,
   screen,
   waitFor,
@@ -12,6 +13,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   PERICOPE_UNAVAILABLE_WARNING,
   RECORD_AUDIO_CONFLICT_WARNING,
+  RECORD_REPLACEMENT_BLOCKED_MESSAGE,
+  RECORD_REPLACEMENT_BLOCKED_TITLE,
   RECORD_TAKEN_CHAPTER_WARNING,
   RECORD_SOURCE_TEXT_OPEN_SYNC,
   RECORD_SOURCE_TEXT_SYNCING,
@@ -204,6 +207,7 @@ const idleAudio: VerseAudioApi = {
   selectTake: jest.fn(),
   deleteTake: jest.fn(),
   setCanonical: jest.fn(),
+  blockUnsupportedReplacement: jest.fn().mockResolvedValue(false),
 };
 
 const mockUseVerseAudio = jest.fn<VerseAudioApi, [UseVerseAudioArgs]>(
@@ -601,6 +605,20 @@ describe('RecordTab', () => {
 
     expect(Alert.alert).not.toHaveBeenCalled();
     expect(idleAudio.deleteTake).toHaveBeenCalledWith('rec_1');
+  });
+
+  it('explains a refused cross-anchor official replacement (#896)', () => {
+    renderTab();
+    const args = mockUseVerseAudio.mock.calls.at(-1)?.[0];
+
+    act(() => {
+      args?.onReplacementBlocked?.();
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      RECORD_REPLACEMENT_BLOCKED_TITLE,
+      RECORD_REPLACEMENT_BLOCKED_MESSAGE,
+    );
   });
 
   it('confirms before deleting the selected take, and only deletes on confirm', () => {

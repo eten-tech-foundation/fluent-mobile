@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   addRecordingTake,
+  findOfficialAtOtherAnchor,
   getAllTakesForVerse,
   getTakesForVerse,
   selectRecordingTake,
@@ -95,6 +96,7 @@ export type VerseAudioPersistDeps = {
   /** Re-choosing a selected take whose upload failed (#886). */
   reassertTake?: (id: string) => Promise<boolean>;
   designateCanonical?: (id: string) => Promise<void>;
+  findOfficialAtOtherAnchor?: (id: string) => Promise<Recording | null>;
 };
 
 export type ChapterClaimContext = {
@@ -117,6 +119,8 @@ export type UseVerseAudioArgs = {
   verseNumber?: number;
   draftingUnit?: DraftingUnit;
   recordingUnit?: RecordingUnitCapture | null;
+  /** A choice was refused because it would replace an official take at another anchor (#896). */
+  onReplacementBlocked?: () => void;
 } & VerseAudioPersistDeps;
 
 /** Append a segment URI unless it is already the last one (pause/resume reuses the same file). */
@@ -240,6 +244,7 @@ export function useVerseAudio({
   verseNumber,
   draftingUnit = 'verse',
   recordingUnit = null,
+  onReplacementBlocked,
   persistTake = defaultPersistTake,
   loadTakes,
   loadAllTakes,
@@ -249,6 +254,8 @@ export function useVerseAudio({
   selectTake: selectTakeFn = selectRecordingTake,
   reassertTake: reassertTakeFn = defaultReassertTake,
   designateCanonical: designateCanonicalFn = setCanonicalTake,
+  findOfficialAtOtherAnchor:
+    findOfficialAtOtherAnchorFn = findOfficialAtOtherAnchor,
 }: UseVerseAudioArgs) {
   const countTakesAtView = useCallback(
     async (view: VerseViewRef): Promise<number> => {
@@ -1449,9 +1456,45 @@ export function useVerseAudio({
     ],
   );
 
-  const selectTake = useCallback(
-    async (id: string) => {
+  /**
+   * True (and explains why) when making `id` official would replace an
+   * official take at another anchor — nothing reconciles that on the server
+   * yet (#896, until #898). Callers must not write anything after a true.
+   * A failed check also blocks, reported as an audio error.
+   */
+  const blockUnsupportedReplacement = useCallback(
+    async (id: string): Promise<boolean> => {
+      let official: Recording | null;
       try {
+        official = await findOfficialAtOtherAnchorFn(id);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'official check failed';
+        setErrorMessage(message);
+        dispatch({ type: 'ERROR', message });
+        return true;
+      }
+      if (!official) return false;
+      log.info('Blocked cross-anchor official replacement', {
+        takeId: id,
+        officialTakeId: official.id,
+      });
+      onReplacementBlocked?.();
+      return true;
+    },
+    [findOfficialAtOtherAnchorFn, onReplacementBlocked],
+  );
+
+  /**
+   * Resolves true when the selection was written. Pass `overlapChecked` only
+   * right after {@link blockUnsupportedReplacement} cleared the same take.
+   */
+  const selectTake = useCallback(
+    async (id: string, { overlapChecked = false } = {}): Promise<boolean> => {
+      try {
+        if (!overlapChecked && (await blockUnsupportedReplacement(id))) {
+          return false;
+        }
         clearStitchQueue();
         setPlayingTakeId(null);
         const current = takes.find(take => take.id === id);
@@ -1469,15 +1512,18 @@ export function useVerseAudio({
         if (bibleTextId !== null) {
           setTakes(await loadTakesFn(bibleTextId));
         }
+        return true;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'select failed';
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
+        return false;
       }
     },
     [
       bibleTextId,
+      blockUnsupportedReplacement,
       clearStitchQueue,
       loadTakesFn,
       reassertTakeFn,
@@ -1488,8 +1534,11 @@ export function useVerseAudio({
 
   /** Designate canonical from All Takes (#279) — any account may call this. */
   const setCanonical = useCallback(
-    async (id: string) => {
+    async (id: string, { overlapChecked = false } = {}): Promise<boolean> => {
       try {
+        if (!overlapChecked && (await blockUnsupportedReplacement(id))) {
+          return false;
+        }
         await designateCanonicalFn(id);
         // A designation can create a pending upload on its own (#701).
         notifyPendingUploads();
@@ -1504,14 +1553,22 @@ export function useVerseAudio({
             setTakes(await loadTakesFn(bibleTextId));
           }
         }
+        return true;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'canonical select failed';
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
+        return false;
       }
     },
-    [bibleTextId, designateCanonicalFn, loadTakesFn, refreshAllTakes],
+    [
+      bibleTextId,
+      blockUnsupportedReplacement,
+      designateCanonicalFn,
+      loadTakesFn,
+      refreshAllTakes,
+    ],
   );
 
   return {
@@ -1549,5 +1606,6 @@ export function useVerseAudio({
     selectTake,
     deleteTake,
     setCanonical,
+    blockUnsupportedReplacement,
   };
 }

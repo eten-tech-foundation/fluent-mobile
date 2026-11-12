@@ -150,6 +150,10 @@ export const RECORD_MAX_WITH_PASSAGE_TAKES =
   'This verse has 5 takes, counting passage takes over it. Delete one to record.';
 export const RECORD_NO_PERICOPE =
   "This chapter isn't split into pericopes. Record it in classic drafting.";
+/** Choosing this take would replace an official take recorded as a verse or passage the other way (#896). */
+export const RECORD_REPLACEMENT_BLOCKED_TITLE = "Can't use this take yet";
+export const RECORD_REPLACEMENT_BLOCKED_MESSAGE =
+  "An official take overlaps it, recorded as a verse or passage the other way. Replacing that isn't supported yet, so nothing changed. You can still listen to every take.";
 export const RECORD_OBSERVER =
   "You're observing this project, so you can listen but not record.";
 /** Another translator's take is official; the player only lists yours. */
