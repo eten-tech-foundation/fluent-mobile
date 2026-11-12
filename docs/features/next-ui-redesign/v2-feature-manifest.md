@@ -225,6 +225,15 @@ Things the Figma designs add that v1 doesn't do.
   `resolved`, but mobile only accepts `clean` or `conflict`
   (`src/services/verseAudioContract.ts:86-88`). Re-recording that verse would
   probably fail to sync. Not reproduced yet.
+- **Unused Next components:** `TrackRow` and `LevelWave` have no callers
+  outside their tests now (the book page uses Passage cover, and the take
+  card draws with `Waveform`). Their gallery entries are gone; deleting the
+  components and their tests is a follow-up.
+- **One waveform:** `Waveform` covers playback and live recording, so it
+  stays the only one and `LevelWave` goes. Smaller places, like a button
+  showing playback or the mic level once you leave the player, get a compact
+  size on `Waveform` that scales the row and bar heights together. Add it
+  with the first button that needs it, not before.
 - **Coverage script:** `npm run api:coverage` reports 28 operations called;
   the real number is 24, because it ignores the HTTP method and matches paths
   in comments.
@@ -384,19 +393,28 @@ Folded in from Legacy, so Next blocks and warns the same way:
 
 ### Figma follow-ups
 
-- Screen header: Home, the book page and the translation note share a header
-  row with `space-12` above and below its buttons, and a `stroke/1`
-  `shadow/edge` line along its bottom that fades in once the content scrolls
-  under it. Home's header is pinned now instead of scrolling away. Figma's
-  Home, book page and note frames need the padding, the pinned header and a
-  scrolled state.
-- Type (Foundations · 03 Type): Next uses Plus Jakarta Sans for heading,
-  title, overline and meta, and Atkinson Hyperlegible Next for reading, lead,
-  body and label. Figma still shows Google Sans Flex and DM Mono, so the
-  styles need the new families, with overline and meta no longer mono or
-  uppercase. Jakarta draws taller, so heading's line height is 54 (not 48)
-  and overline's 26 (not 24), and the Word chip in notes is a space/2 shorter
-  than its line, not a space/4.
+Foundations (`2308:6`) was synced with code on 11 Nov 2026: Jakarta and
+Atkinson type styles with code's line heights and case, `space/20` and
+`size/icon-20`, the screen header and Waveform patterns, Word Note and Note
+dimmed, and stale masters moved to 11 · Not in the app. A new **V2 · As
+built** page holds captures of every Next screen from the dev build (Home,
+Accounts sheet, book page, passage, player Listen and Record, translation
+note), so the design pages read as intent. Each design page carries a
+"Design intent" note. What's left on the design frames:
+
+- Screen header: Figma's Home, book page and note frames need the header
+  padding (`space-20` sides, `space-12` above and below), the pinned header
+  and a scrolled state with the `stroke/1` `shadow/edge` line. The pattern is
+  in Foundations · 08.
+- Waveform: the screens still use the Level wave and Progress dot (96
+  instances). Code keeps only `Waveform`, so those should become a compact
+  Wave bar once one exists.
+- Passage row and Now playing: still on the screen pages (58 and 27
+  instances), though the app has Passage covers and no Now playing bar.
+- Gallery: the Dialog demo is the player's take-pick confirm, since Next has
+  no Send yet, while Figma's Dialog frame is the send confirm (2648-616).
+- Word: the Word chip in notes is a space/2 shorter than its line, not a
+  space/4.
 
 ### Elsewhere on Project 4
 

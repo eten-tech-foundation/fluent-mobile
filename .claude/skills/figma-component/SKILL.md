@@ -21,9 +21,12 @@ Read it fully before step 1; this file is how an agent executes it.
 
 ## Environment facts (don't re-derive these)
 
-- Figma file key `VZ23XV2pxvIIAMn12wI4YI`. Foundations page `2308:6`
-  (01 Color primitives · 02 Roles · 03 Type · 04 Spacing · 05 Radius ·
-  06 Gradients · 07 Tactile · 08 Patterns · 09 Contrast).
+- Figma file key `VZ23XV2pxvIIAMn12wI4YI`. Foundations page `2308:6`, read
+  left to right: 00 Start here · 01 Color primitives · 02 Roles · 03 Type ·
+  04 Spacing · 05 Radius · 06 Gradients · 07 Tactile · 08 Patterns (the
+  component masters, then how each is used) · 09 Contrast · 10 Review
+  (exploration) · 11 Not in the app. Each section names the code file it
+  matches; code wins, so fix Figma when they disagree.
 - Variable collections: `Primitives` (single mode `Value`) and `Roles`
   (modes `Canvas`, `Hardware`, `Accent`). Effect styles `elevation/*` are
   bound to role variables.

@@ -86,6 +86,8 @@ const LIFT_SCALE = 0.775;
 /** Figma's bin: 140 across, its center 202 above the front take's. */
 const BIN = 140;
 const BIN_RISE = 202;
+/** How far the bin reaches above the fan's top, for room to drag into. */
+export const TAKE_FAN_BIN_ROOM = BIN_RISE + BIN / 2 - TAKE_FAN_HEIGHT / 2;
 const BIN_ICON_W = 60;
 const BIN_ICON_H = 66;
 /** A drop this close to the bin's edge still counts (Q25). */

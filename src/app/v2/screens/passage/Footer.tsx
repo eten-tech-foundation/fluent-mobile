@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   interpolate,
@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { NEXT_SPRING } from '../../../../components/ui/motion';
+import { fillShortWave } from '../../../../components/ui/fillWaveform';
 import {
   Waveform,
   type WaveformVerse,
@@ -74,7 +75,8 @@ export function Footer({
   /** A take is lifted: dim everything above the keys but the fan. */
   dimmed?: boolean;
 }) {
-  const { motion } = useTheme();
+  const { motion, spacing } = useTheme();
+  const [waveWidth, setWaveWidth] = useState(0);
   const reduceMotion = useReducedMotion();
   const { height: screenHeight } = useWindowDimensions();
   const dim = useSharedValue(dimmed ? 1 : 0);
@@ -123,6 +125,13 @@ export function Footer({
   }));
 
   const name = passage.reference;
+  const listenWave = useMemo(() => {
+    const source = scriptBars(passage.verses, listen.verseChips);
+    const verses = fillShortWave(source, waveWidth, spacing);
+    const bars = (groups: WaveformVerse[]) =>
+      groups.reduce((n, v) => n + v.bars.length, 0);
+    return { verses, filled: bars(verses) > bars(source) };
+  }, [passage.verses, listen.verseChips, waveWidth, spacing]);
   const listenProps = {
     pointerEvents: recordMode ? ('none' as const) : ('auto' as const),
     importantForAccessibility: recordMode
@@ -142,11 +151,19 @@ export function Footer({
           onOpenClassic={onOpenClassic}
           testID="player-notices"
         />
-        <Animated.View style={[styles.wave, listenStyle]} {...listenProps}>
+        <Animated.View
+          style={[styles.wave, listenStyle]}
+          onLayout={e => {
+            const next = Math.round(e.nativeEvent.layout.width);
+            setWaveWidth(prev => (prev === next ? prev : next));
+          }}
+          {...listenProps}
+        >
           <Waveform
-            verses={scriptBars(passage.verses, listen.verseChips)}
+            verses={listenWave.verses}
             progress={listen.progress}
             onSeek={listen.onSeek}
+            pinned={listenWave.filled}
             accessibilityLabel={`${name} playback`}
             testID="passage-waveform"
           />
