@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
+import { verseChipWidth } from '../../../../components/ui/VerseChip';
 import { Waveform } from '../../../../components/ui/Waveform';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import { fitBars } from './fitBars';
@@ -25,9 +26,21 @@ export const BAR_MAX = 52;
 /** Color tweens: the record edge and turning official. */
 const EDGE_MS = 150;
 const OFFICIAL_MS = 220;
-/** One Waveform bar and its gap (2 + space/4), and the verse chip before them. */
-const BAR_SLOT = 6;
-const WAVE_LEAD = 48;
+/** Waveform bar width. The gap after each bar except the last is spacing.xs. */
+const BAR_WIDTH = 2;
+
+/**
+ * Bars that fit beside this verse's chip. The chip and the gap in front of
+ * the first bar come off the width. A three-digit verse is wider than 32.
+ */
+export function barsInTakeWave(
+  waveWidth: number,
+  firstVerse: number,
+  spacing: { md: number; xs: number },
+) {
+  const lead = verseChipWidth(firstVerse) + spacing.md - spacing.xs;
+  return Math.max(1, Math.floor((waveWidth - lead) / (BAR_WIDTH + spacing.xs)));
+}
 /** A take's wave sweeping in when it comes to the front. */
 const SWEEP_MS = 320;
 
@@ -200,12 +213,11 @@ export function TakeCard({
   );
 
   const takeLabel = take.label ?? `Take ${take.takeNumber}`;
-  // Only as many bars as fit: the newest until Eject, the whole take
-  // squeezed to fit after. A bar per sample would grow without end.
+  // Only as many bars as fit: a short take stretches across the slot;
+  // the newest until Eject, the whole take squeezed after. A bar per
+  // sample would grow without end.
   const maxBars =
-    waveWidth > 0
-      ? Math.max(1, Math.floor((waveWidth - WAVE_LEAD) / BAR_SLOT))
-      : 60;
+    waveWidth > 0 ? barsInTakeWave(waveWidth, firstVerse, spacing) : 60;
   // A take from before this session has no levels: flat bars still show
   // the playhead and give scrubbing something to hold.
   const flat = take.levels.length === 0 && (take.durationMs ?? 0) > 0;
@@ -235,6 +247,7 @@ export function TakeCard({
         pointerEvents={live ? 'auto' : 'none'}
         importantForAccessibility={live ? 'auto' : 'no-hide-descendants'}
         onLayout={e => setWaveWidth(Math.round(e.nativeEvent.layout.width))}
+        testID="passage-take-wave-slot"
       >
         <Animated.View style={[styles.clip, sweepStyle]}>
           <Waveform
@@ -250,6 +263,7 @@ export function TakeCard({
                 : `${takeLabel} playback`
             }
             onSeek={inProgress ? undefined : take.onSeek}
+            pinned
             style={waveWidth > 0 ? { width: waveWidth } : undefined}
             testID="passage-take-wave"
           />
