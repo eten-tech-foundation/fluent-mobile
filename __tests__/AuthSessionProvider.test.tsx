@@ -175,6 +175,8 @@ describe('AuthSessionProvider', () => {
       }),
     );
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    // Never settles: the first screen must not wait on it.
+    clearOrphanedPausedTakes.mockReturnValueOnce(new Promise<number>(() => {}));
 
     const { getByTestId, queryByTestId } = render(
       <AuthSessionProvider>
@@ -218,6 +220,27 @@ describe('AuthSessionProvider', () => {
     await waitFor(() => expect(getByTestId('auth-session-error')).toBeTruthy());
     await act(async () => {});
     expect(clearOrphanedPausedTakes).not.toHaveBeenCalled();
+  });
+
+  it('keeps the first screen when paused-take cleanup fails', async () => {
+    const { clearOrphanedPausedTakes } = jest.requireMock(
+      '../src/services/pausedTakes',
+    ) as { clearOrphanedPausedTakes: jest.Mock };
+    clearOrphanedPausedTakes.mockRejectedValueOnce(new Error('kv down'));
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+
+    const { getByTestId, queryByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() =>
+      expect(clearOrphanedPausedTakes).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {});
+    expect(getByTestId('auth-flag').props.children).toBe('yes');
+    expect(queryByTestId('auth-session-error')).toBeNull();
   });
 
   it('restores auth and starts upload orchestrator', async () => {
