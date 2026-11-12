@@ -1,28 +1,43 @@
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Dialog } from '../../../components/ui/Dialog';
+import {
+  PICK_OVER_VERSES_CONFIRM,
+  pickOverPassageTitle,
+  RECORD_OVER_PASSAGE_CANCEL,
+  recordOverPassageMessage,
+} from '../../../constants/messages';
 import { useThemedStyles } from '../../../theme/useTheme';
+
+/** Passage take 1 covers Mark 14:22–25; take 2 is verse 23's own. */
+const COVERING = {
+  takeNumber: 1,
+  startChapter: 14,
+  startVerse: 22,
+  endChapter: 14,
+  endVerse: 25,
+};
 
 const COPY = {
   english: {
-    title: 'Send Mark 14 to Peer Check?',
-    message:
-      'This marks Mark 14 as ready for Peer Check. You won’t be able to record on it after you send it.',
-    confirm: 'Send',
-    cancel: 'Not yet',
+    title: pickOverPassageTitle(2, 23),
+    message: recordOverPassageMessage(COVERING),
+    confirm: PICK_OVER_VERSES_CONFIRM,
+    cancel: RECORD_OVER_PASSAGE_CANCEL,
   },
   telugu: {
-    title: 'మార్కు 14 ను సహచర తనిఖీకి పంపాలా?',
+    title: 'v. 23 కోసం టేక్ 2 ను ఉపయోగించాలా?',
     message:
-      'ఇది మార్కు 14 ను సహచర తనిఖీకి సిద్ధంగా ఉన్నట్లు గుర్తిస్తుంది. పంపిన తర్వాత మీరు దానిపై రికార్డ్ చేయలేరు.',
-    confirm: 'పంపండి',
-    cancel: 'ఇంకా కాదు',
+      'పాసేజ్ టేక్ 1 ఇకపై v. 22–25 కోసం ఉపయోగించబడదు, కాబట్టి ఆ వచనాలలో మిగిలినవి కూడా రికార్డ్ చేయాలి.',
+    confirm: 'ఉపయోగించండి',
+    cancel: 'రద్దు చేయి',
   },
 };
 
 /**
- * Asks before sending a chapter on: Send or Not yet, or tap outside or press
- * Back to back out. Also in Telugu, for longer lines.
+ * The player asks before a verse take replaces the passage take over it:
+ * Use it or Cancel, or tap outside or press Back to back out. Also in
+ * Telugu, for longer lines.
  */
 export function DialogEntry() {
   const [open, setOpen] = useState(false);
@@ -44,7 +59,7 @@ export function DialogEntry() {
         style={styles.toggle}
         testID="gallery-dialog-open"
       >
-        <Text style={styles.link}>Send Mark 14</Text>
+        <Text style={styles.link}>Use take 2 for v. 23</Text>
       </Pressable>
       {answer ? <Text style={styles.status}>{answer}</Text> : null}
       <Pressable
@@ -61,12 +76,12 @@ export function DialogEntry() {
         confirmLabel={copy.confirm}
         onConfirm={() => {
           setOpen(false);
-          setAnswer('Sent to Peer Check');
+          setAnswer('Take 2 is official for v. 23');
         }}
         cancelLabel={copy.cancel}
         onCancel={() => {
           setOpen(false);
-          setAnswer('Not sent yet');
+          setAnswer('Passage take 1 still covers v. 23');
         }}
       />
     </View>
