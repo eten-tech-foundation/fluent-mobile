@@ -7,8 +7,10 @@ describe('levelFromDb', () => {
   it('maps room tone to the floor and full scale to the top', () => {
     expect(levelFromDb(null)).toBe(0);
     expect(levelFromDb(-80)).toBe(0);
+    expect(levelFromDb(-32)).toBe(0);
     expect(levelFromDb(0)).toBe(1);
-    expect(levelFromDb(-27.5)).toBeCloseTo(0.5);
+    // Halfway up the dB range stays short; voice near full scale fills the bar.
+    expect(levelFromDb(-16)).toBeCloseTo(0.25);
   });
 });
 
