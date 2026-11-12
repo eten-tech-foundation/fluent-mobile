@@ -1,8 +1,24 @@
 import { fitBars } from './fitBars';
 
 describe('fitBars', () => {
-  it('keeps every level when they fit', () => {
-    expect(fitBars([0.1, 0.5], 4, true)).toEqual([0.1, 0.5]);
+  it('spreads a short take across the slot, newest last', () => {
+    const bars = fitBars([0.2, 0.8], 5, true);
+    expect(bars).toHaveLength(5);
+    expect(bars[0]).toBe(0.2);
+    expect(bars[4]).toBe(0.8);
+    expect(bars).toContain(0.2);
+    expect(bars).toContain(0.8);
+  });
+
+  it('spreads a saved short take the same way', () => {
+    const bars = fitBars([0.2, 0.8], 5, false);
+    expect(bars).toHaveLength(5);
+    expect(bars[0]).toBe(0.2);
+    expect(bars[4]).toBe(0.8);
+  });
+
+  it('keeps a single sample across the whole slot', () => {
+    expect(fitBars([0.4], 4, true)).toEqual([0.4, 0.4, 0.4, 0.4]);
   });
 
   it('keeps the newest levels while recording', () => {
