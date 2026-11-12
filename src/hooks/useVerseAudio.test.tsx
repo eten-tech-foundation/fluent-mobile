@@ -1626,6 +1626,44 @@ describe('useVerseAudio', () => {
     expect(result.current.errorMessage).toMatch(/Maximum of 5 takes/);
   });
 
+  it('rejects start without recording when the pericope take count fails', async () => {
+    const countTakesAtView = jest.fn().mockResolvedValue(0);
+    loadTakes.mockResolvedValue([]);
+    const args = {
+      ...verseAudioArgs(),
+      draftingUnit: 'pericope' as const,
+      chapterNumber: 1,
+      verseNumber: 3,
+      countTakesAtView,
+      recordingUnit: {
+        granularity: 'pericope' as const,
+        startChapter: 1,
+        startVerse: 3,
+        endChapter: 1,
+        endVerse: 3,
+        anchorBibleTextId: 103,
+        coveredViews: [{ bibleTextId: 103, chapterNumber: 1, verseNumber: 3 }],
+      },
+    };
+
+    const { result } = renderHook(() => useVerseAudio(args));
+    await waitFor(() => expect(result.current.canRecordNewTake).toBe(true));
+    countTakesAtView.mockRejectedValueOnce(new Error('count failed'));
+
+    // Nothing reports this one, so the caller (useRecorder) explains it.
+    let thrown: unknown;
+    await act(async () => {
+      await result.current.start().catch(e => {
+        thrown = e;
+      });
+    });
+
+    expect(thrown).toEqual(new Error('count failed'));
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('idle');
+    expect(result.current.errorMessage).toBeNull();
+  });
+
   it('loads takes for every covered verse in pericope mode, without duplicates', async () => {
     const { getTakesForVerse } = jest.requireMock('../db/repository');
     const spanningTake = makeTake({
