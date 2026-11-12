@@ -316,6 +316,67 @@ describe('useTranslationNotesForUnit', () => {
     });
   });
 
+  it("never retries another unit's failed verses (#901)", async () => {
+    mockLoad
+      .mockResolvedValueOnce(partial([1, 2]))
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(
+        loaded([note(5)], [{ chapterNumber: 15, verseNumber: 5 }]),
+      );
+    const { result, rerender } = renderHook(
+      (props: { chapterNumber: number; verseNumbers: number[] }) =>
+        useTranslationNotesForUnit({
+          projectId: 7,
+          bookCode: 'MRK',
+          verseNumber: props.verseNumbers[0]!,
+          ...props,
+        }),
+      { initialProps: { chapterNumber: 14, verseNumbers: [1, 2, 3] } },
+    );
+    await waitFor(() => expect(result.current.state.status).toBe('ready'));
+
+    rerender({ chapterNumber: 15, verseNumbers: [5] });
+    await waitFor(() => expect(result.current.state.status).toBe('error'));
+    await act(async () => {
+      await result.current.retry();
+    });
+
+    expect(mockLoad).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        verseRefs: [{ chapterNumber: 15, verseNumber: 5 }],
+      }),
+    );
+    expect(result.current.state).toMatchObject({
+      status: 'ready',
+      notes: [note(5)],
+    });
+  });
+
+  it('cancels a load still running when retry starts another (#901)', async () => {
+    const signals: AbortSignal[] = [];
+    mockLoad.mockImplementation((params: LoadTranslationNotesParams) => {
+      signals.push(params.signal!);
+      return new Promise(() => {});
+    });
+    const { result } = renderHook(() =>
+      useTranslationNotesForUnit({
+        projectId: 7,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 1,
+      }),
+    );
+    await waitFor(() => expect(signals).toHaveLength(1));
+
+    act(() => {
+      void result.current.retry();
+    });
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0]!.aborted).toBe(true);
+    expect(signals[1]!.aborted).toBe(false);
+  });
+
   it('cancels the old load when the unit changes and on unmount (#901)', async () => {
     const signals: AbortSignal[] = [];
     mockLoad.mockImplementation((params: LoadTranslationNotesParams) => {

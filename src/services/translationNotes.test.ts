@@ -820,15 +820,40 @@ describe('bounded note requests and partial results (#901)', () => {
         : null,
     );
     mockReadJson.mockResolvedValue(sampleItem.content);
-    getTranslationNotes.mockImplementation(async (_p, _b, chapter, verse) => ({
-      // Verses 7 and 9 share one note; 9 answers first.
-      items: [
-        itemFor(chapter, verse, verse === 9 ? 79 : verse === 7 ? 79 : verse),
-      ],
-    }));
+    let answerVerse7!: () => void;
+    let verse9Answered!: () => void;
+    const verse9 = new Promise<void>(resolve => {
+      verse9Answered = resolve;
+    });
+    getTranslationNotes.mockImplementation(
+      (_p, _b, chapter, verse) =>
+        new Promise(answer => {
+          // Verses 7 and 9 share one note; 7 answers only after 9.
+          const reply = () =>
+            answer({
+              items: [
+                itemFor(
+                  chapter,
+                  verse,
+                  verse === 7 || verse === 9 ? 79 : verse,
+                ),
+              ],
+            });
+          if (verse === 7) {
+            answerVerse7 = reply;
+            return;
+          }
+          reply();
+          if (verse === 9) verse9Answered();
+        }),
+    );
     const refs = [ref(14, 9), ref(14, 2), ref(14, 7), ref(14, 4)];
 
-    const result = await loadTranslationNotesForUnit(unit(refs));
+    const load = loadTranslationNotesForUnit(unit(refs));
+    await verse9;
+    await flush();
+    answerVerse7();
+    const result = await load;
 
     expect(getTranslationNotes).toHaveBeenCalledTimes(3);
     expect(
@@ -885,6 +910,28 @@ describe('bounded note requests and partial results (#901)', () => {
     expect(merged.notes.map(note => note.verse?.verseNumber)).toEqual([
       1, 2, 4,
     ]);
+  });
+
+  it('stops looking through downloads once cancelled', async () => {
+    let releaseLookup!: (rows: null) => void;
+    mockFindRows.mockReturnValueOnce(
+      new Promise(resolve => {
+        releaseLookup = resolve;
+      }),
+    );
+    const controller = new AbortController();
+    const load = loadTranslationNotesForUnit({
+      ...unit(chapterRefs(14, 1, 5)),
+      signal: controller.signal,
+    });
+    await flush();
+
+    controller.abort();
+    releaseLookup(null);
+
+    await expect(load).rejects.toMatchObject({ name: 'AbortError' });
+    expect(mockFindRows).toHaveBeenCalledTimes(1);
+    expect(getTranslationNotes).not.toHaveBeenCalled();
   });
 
   it('stops a cancelled load from starting more and shares the cap with the next one', async () => {
