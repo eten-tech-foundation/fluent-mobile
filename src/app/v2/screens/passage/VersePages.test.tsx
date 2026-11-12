@@ -198,8 +198,8 @@ describe('VersePages', () => {
     it('compensates the line height from 1 to 2 (40 → 26)', () => {
       mounted();
       setFontScale(2);
+      expectLine(26);
       screen.rerender(page());
-
       expectLine(26);
     });
 
