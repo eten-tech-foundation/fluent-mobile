@@ -1,10 +1,10 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import {
+  act,
   fireEvent,
   render,
   screen,
-  waitFor,
   within,
 } from '@testing-library/react-native';
 import {
@@ -201,41 +201,69 @@ describe('Books', () => {
     expect(screen.queryByTestId('home-books')).toBeNull();
   });
 
-  it('draws the first rows at once and the rest of a long list after them', async () => {
-    const books = Array.from({ length: FIRST_FRAME_BOOKS + 4 }, (_, i) =>
-      book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
-    );
-    render(<Books books={books} onOpen={jest.fn()} />);
+  describe('first frame', () => {
+    // The next frame is driven by hand so the test doesn't race a timer.
+    let frames: ((time: number) => void)[];
+    beforeEach(() => {
+      frames = [];
+      jest
+        .spyOn(globalThis, 'requestAnimationFrame')
+        .mockImplementation((callback: (time: number) => void) =>
+          frames.push(callback),
+        );
+      jest
+        .spyOn(globalThis, 'cancelAnimationFrame')
+        .mockImplementation(() => {});
+    });
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+    const nextFrame = () =>
+      act(() => {
+        const due = frames.splice(0);
+        due.forEach(callback => callback(0));
+      });
 
-    expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
-    expect(screen.queryByText(`Book ${FIRST_FRAME_BOOKS}`)).toBeNull();
+    it('draws the first rows at once and the rest of a long list after them', () => {
+      const books = Array.from({ length: FIRST_FRAME_BOOKS + 4 }, (_, i) =>
+        book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
+      );
+      render(<Books books={books} onOpen={jest.fn()} />);
 
-    await waitFor(() =>
-      expect(screen.getAllByRole('button')).toHaveLength(books.length),
-    );
-    expect(screen.getByText(`Book ${books.length - 1}`)).toBeTruthy();
-  });
+      expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
+      expect(screen.queryByText(`Book ${FIRST_FRAME_BOOKS}`)).toBeNull();
+      expect(frames).toHaveLength(1);
 
-  it('defers the rest of a long list that arrives after an empty one', async () => {
-    const books = Array.from({ length: FIRST_FRAME_BOOKS + 4 }, (_, i) =>
-      book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
-    );
-    const { rerender } = render(<Books books={[]} onOpen={jest.fn()} />);
-    rerender(<Books books={books} onOpen={jest.fn()} />);
+      nextFrame();
 
-    expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
+      expect(screen.getAllByRole('button')).toHaveLength(books.length);
+      expect(screen.getByText(`Book ${books.length - 1}`)).toBeTruthy();
+    });
 
-    await waitFor(() =>
-      expect(screen.getAllByRole('button')).toHaveLength(books.length),
-    );
-  });
+    it('defers the rest of a long list that arrives after an empty one', () => {
+      const books = Array.from({ length: FIRST_FRAME_BOOKS + 4 }, (_, i) =>
+        book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
+      );
+      const { rerender } = render(<Books books={[]} onOpen={jest.fn()} />);
+      expect(frames).toHaveLength(0);
 
-  it('draws a short list whole in the first frame', () => {
-    const books = Array.from({ length: FIRST_FRAME_BOOKS }, (_, i) =>
-      book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
-    );
-    render(<Books books={books} onOpen={jest.fn()} />);
+      rerender(<Books books={books} onOpen={jest.fn()} />);
 
-    expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
+      expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
+
+      nextFrame();
+
+      expect(screen.getAllByRole('button')).toHaveLength(books.length);
+    });
+
+    it('draws a short list whole without waiting for a frame', () => {
+      const books = Array.from({ length: FIRST_FRAME_BOOKS }, (_, i) =>
+        book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
+      );
+      render(<Books books={books} onOpen={jest.fn()} />);
+
+      expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
+      expect(frames).toHaveLength(0);
+    });
   });
 });
