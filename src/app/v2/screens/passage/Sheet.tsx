@@ -236,6 +236,7 @@ export function Sheet({
     unit,
     openVerse,
     showing: expanded && recordMode,
+    focused,
     downloading: downloadState === 'downloading',
     onReload,
     onCaptureActiveChange,
@@ -604,7 +605,10 @@ export function Sheet({
           onActionsLayout={setActions}
           notes={scriptNotes}
           onOpen={record => open(record)}
-          onBack={onBack}
+          onBack={() => {
+            recorder.releaseReview();
+            onBack();
+          }}
           onClose={close}
           sync={sync}
           onDownload={onDownload}
@@ -632,7 +636,10 @@ export function Sheet({
           chapterName={chapterName}
           milestoneName={milestoneName}
           onClose={() => setTitleSheetOpen(false)}
-          onOpenBook={onOpenBook}
+          onOpenBook={() => {
+            recorder.releaseReview();
+            onOpenBook();
+          }}
           onOpenClassic={onOpenClassic}
         />
       </ColorModeScope>
