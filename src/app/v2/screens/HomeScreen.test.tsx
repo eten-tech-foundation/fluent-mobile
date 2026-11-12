@@ -28,6 +28,7 @@ let mockChaptersLoading = false;
 const mockRefresh = jest.fn();
 let mockBooks: HomeBookSummary[] = [];
 let mockBooksLoading = false;
+let mockBooksError = false;
 const mockRefreshBooks = jest.fn();
 let mockNextUp: NextUp = {
   status: 'ready',
@@ -36,9 +37,10 @@ let mockNextUp: NextUp = {
   checking: [],
 };
 
+let mockIsFocused = true;
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
-  useIsFocused: () => true,
+  useIsFocused: () => mockIsFocused,
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -105,6 +107,11 @@ jest.mock('../../../navigation/chapterOpen', () => ({
 
 let mockActiveUserId: string | null = '7';
 
+const mockHideSplash = jest.fn();
+jest.mock('../../../navigation/splashGate', () => ({
+  hideSplash: (...args: unknown[]) => mockHideSplash(...args),
+}));
+
 jest.mock('../../../hooks/useNextUp', () => ({
   ...jest.requireActual('../../../hooks/useNextUp'),
   useNextUp: () => mockNextUp,
@@ -123,6 +130,7 @@ jest.mock('../../../hooks/useHomeBooks', () => ({
   useHomeBooks: () => ({
     books: mockBooks,
     loading: mockBooksLoading,
+    error: mockBooksError,
     refresh: mockRefreshBooks,
   }),
 }));
@@ -186,10 +194,12 @@ describe('Next HomeScreen', () => {
     mockChaptersLoading = false;
     mockBooks = [MARK];
     mockBooksLoading = false;
+    mockBooksError = false;
     mockNextUp = { status: 'ready', hero: null, after: [], checking: [] };
     mockChangesPreview = false;
     mockOpen = { kind: 'work' };
     mockActiveUserId = '7';
+    mockIsFocused = true;
   });
 
   it('shows the account, the sync status and a chapter summary', () => {
@@ -291,6 +301,76 @@ describe('Next HomeScreen', () => {
     );
   });
 
+  describe('cold-start splash', () => {
+    const layout = () =>
+      fireEvent(screen.getByTestId('home-body'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 100 } },
+      });
+
+    it('comes down once the content is laid out', () => {
+      render(<HomeScreen />);
+      layout();
+
+      expect(mockHideSplash).toHaveBeenCalledWith('home:content');
+    });
+
+    it('comes down for the empty message too', () => {
+      mockChapters = [];
+      mockBooks = [];
+      render(<HomeScreen />);
+      layout();
+
+      expect(mockHideSplash).toHaveBeenCalledWith('home:empty');
+    });
+
+    it('comes down for the failed-read message too', () => {
+      mockChapters = [];
+      mockBooks = [];
+      mockBooksError = true;
+      render(<HomeScreen />);
+      layout();
+
+      expect(mockHideSplash).toHaveBeenCalledWith('home:error');
+    });
+
+    it('stays up while the lists are still being read', () => {
+      mockBooksLoading = true;
+      render(<HomeScreen />);
+      layout();
+
+      expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
+      expect(mockHideSplash).not.toHaveBeenCalled();
+    });
+
+    it('comes down for the spinner of a launch-time sync with nothing saved', () => {
+      mockChapters = [];
+      mockBooks = [];
+      mockSession = { ...sessionDefaults, isSyncingChapters: true };
+      render(<HomeScreen />);
+      layout();
+
+      expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
+      expect(mockHideSplash).toHaveBeenCalledWith('home:syncing');
+    });
+
+    it('comes down when a screen is pushed over Home before its lists land', () => {
+      mockBooksLoading = true;
+      mockNextUp = { status: 'loading' };
+      mockIsFocused = false;
+      render(<HomeScreen />);
+
+      expect(mockHideSplash).toHaveBeenCalledWith('home:blurred');
+    });
+
+    it('leaves the splash to Home while it is focused and still reading', () => {
+      mockBooksLoading = true;
+      mockNextUp = { status: 'loading' };
+      render(<HomeScreen />);
+
+      expect(mockHideSplash).not.toHaveBeenCalled();
+    });
+  });
+
   it('points to the books when nothing is mine yet', () => {
     mockChapters = [];
     render(<HomeScreen />);
@@ -308,15 +388,16 @@ describe('Next HomeScreen', () => {
     expect(screen.queryByText('Next up')).toBeNull();
   });
 
-  it('shows Books while Next up loads, and keeps them first when it lands', () => {
+  it('holds the first paint until Next up lands, then shows Books before it', () => {
     mockChapters = [chapter(1, 'Mark', 14)];
     mockNextUp = { status: 'loading' };
     render(<HomeScreen />);
 
-    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
-    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
+    // Chapters and books are read, but Home waits for the hero so it
+    // appears complete at once rather than Books first and the hero later.
+    expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
+    expect(screen.queryByTestId('home-books')).toBeNull();
     expect(screen.queryByTestId('home-next-up')).toBeNull();
-    const booksBefore = screen.getByTestId('home-books');
 
     mockNextUp = {
       status: 'ready',
@@ -345,14 +426,57 @@ describe('Next HomeScreen', () => {
 
     expect(screen.getByTestId('home-next-up-hero')).toBeTruthy();
     expect(screen.queryByText('Then')).toBeNull();
-    // Same Books instance, ahead of Next up in the scroll content.
-    const books = screen.getByTestId('home-books');
-    expect(books).toBe(booksBefore);
+    // Books ahead of Next up in the scroll content.
     const order = testIdsInOrder(screen.toJSON());
     expect(order.indexOf('home-books')).toBeGreaterThanOrEqual(0);
     expect(order.indexOf('home-books')).toBeLessThan(
       order.indexOf('home-next-up'),
     );
+  });
+
+  it('keeps Books on screen when Next up reloads later', () => {
+    mockChapters = [chapter(1, 'Mark', 14)];
+    render(<HomeScreen />);
+    const booksBefore = screen.getByTestId('home-books');
+
+    // e.g. the drafting unit changed: Next up goes back to loading.
+    mockNextUp = { status: 'loading' };
+    screen.rerender(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
+    expect(screen.getByTestId('home-books')).toBe(booksBefore);
+    expect(screen.queryByTestId('home-next-up')).toBeNull();
+  });
+
+  it("doesn't wait on Next up when there are no chapters to draft", () => {
+    mockChapters = [];
+    mockNextUp = { status: 'loading' };
+    render(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
+    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
+  });
+
+  it('says the reads failed, with a retry, when there is nothing saved to show', () => {
+    mockChapters = [];
+    mockBooks = [];
+    mockBooksError = true;
+    render(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-empty')).toBeNull();
+    expect(screen.getByTestId('home-error')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('home-retry'));
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    expect(mockRefreshBooks).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the saved books when a later read fails', () => {
+    mockBooksError = true;
+    render(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-error')).toBeNull();
+    expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
   it('keeps Next up and Books showing while they reload after a sync', () => {

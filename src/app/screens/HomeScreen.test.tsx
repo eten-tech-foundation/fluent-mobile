@@ -182,12 +182,24 @@ jest.mock('../../components/ui/ReauthBanner', () => ({
   ReauthBanner: () => null,
 }));
 
+const mockHideSplash = jest.fn();
+jest.mock('../../navigation/splashGate', () => ({
+  hideSplash: (...args: unknown[]) => mockHideSplash(...args),
+}));
+
 import { HomeScreenBody } from './HomeScreen';
 
 describe('HomeScreenBody progressive login (#670)', () => {
   beforeEach(() => {
     delete mockLocalSearchParams.newUserLoading;
     mockPush.mockClear();
+    mockHideSplash.mockClear();
+  });
+
+  it('takes the cold-start splash down as soon as it mounts', () => {
+    render(<HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />);
+
+    expect(mockHideSplash).toHaveBeenCalledWith('home:legacy');
   });
 
   it('dismisses full-screen loading when Tier 1 clears while sync continues', async () => {

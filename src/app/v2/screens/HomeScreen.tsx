@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -23,17 +24,21 @@ import { useNextUp } from '../../../hooks/useNextUp';
 import { useAuthSession } from '../../../navigation/AuthSessionProvider';
 import { resolveChapterOpen } from '../../../navigation/chapterOpen';
 import { hrefs } from '../../../navigation/hrefs';
+import { hideSplash } from '../../../navigation/splashGate';
 import { useTheme, useThemedStyles } from '../../../theme/useTheme';
 import type { HomeBookSummary, MyWorkChapter } from '../../../types/db/types';
 import {
   getAccountDisplayName,
   getAccountInitials,
 } from '../../../utils/accountDisplay';
+import { markStartup } from '../../../utils/startupTrace';
 import type { SyncStatus } from '../../../utils/syncStatusState';
 import { AccountsSheet } from './home/AccountsSheet';
 import { Books } from './home/Books';
 import { ChangesRequested } from './home/ChangesRequested';
 import { NextUp } from './home/NextUp';
+
+const PRESSED_OPACITY = 0.7;
 
 const SYNC_SUMMARY: Record<SyncStatus, string> = {
   online_synced: 'All synced',
@@ -74,6 +79,11 @@ function HomeBody({
   const router = useRouter();
   const isFocused = useIsFocused();
   const syncPushLockRef = useRef(false);
+  const mountMarkedRef = useRef(false);
+  if (!mountMarkedRef.current) {
+    mountMarkedRef.current = true;
+    markStartup('home_mount');
+  }
   const [accountsOpen, setAccountsOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -91,6 +101,7 @@ function HomeBody({
   const {
     books,
     loading: booksLoading,
+    error: booksError,
     refresh: refreshBooks,
   } = useHomeBooks(refreshKey);
   const nextUp = useNextUp(chapters);
@@ -103,6 +114,10 @@ function HomeBody({
     } finally {
       setRefreshing(false);
     }
+  }, [refresh, refreshBooks]);
+  const retryReads = useCallback(() => {
+    void refresh();
+    void refreshBooks();
   }, [refresh, refreshBooks]);
 
   const styles = useThemedStyles(t => ({
@@ -129,6 +144,8 @@ function HomeBody({
       color: t.roles.fgPrimary,
       textAlign: 'center',
     },
+    retry: { ...t.type.title, color: t.roles.accentPrimary },
+    pressed: { opacity: PRESSED_OPACITY },
   }));
 
   const openAccounts = useCallback(() => setAccountsOpen(true), []);
@@ -190,6 +207,10 @@ function HomeBody({
 
   useEffect(() => {
     if (isFocused) syncPushLockRef.current = false;
+    // A screen pushed over Home before its lists land (an upload
+    // notification tap, launch recovery) is what the user sees next, and
+    // Next up doesn't load while Home is blurred. A no-op once it's down.
+    else hideSplash('home:blurred');
   }, [isFocused]);
 
   // Home already watches sync for the empty state, so the cloud keeps this
@@ -213,14 +234,22 @@ function HomeBody({
     chapters.length === 1 ? 'chapter' : 'chapters'
   }`;
   // `loading` is each list's first read; later reads keep the lists on screen.
-  const firstContentReady = !loading && !booksLoading;
+  // The first paint also waits for Next up, which reads a bounded few
+  // passages after the chapters land: Home then appears complete at once
+  // rather than Books first and the hero a moment later (#972).
+  const firstContentReady =
+    !loading &&
+    !booksLoading &&
+    (chapters.length === 0 || nextUp.status === 'ready');
   if (!loadedOnce && firstContentReady) setLoadedOnce(true);
   const waitingForChapters =
     (!firstContentReady && !loadedOnce) ||
     (isSyncingChapters && chapters.length === 0 && books.length === 0);
 
   let body: React.ReactNode;
+  let bodyKind: 'loading' | 'empty' | 'error' | 'content';
   if (showLoading) {
+    bodyKind = 'loading';
     body = (
       <View style={styles.centered} testID="home-loading">
         <ActivityIndicator size="large" color={theme.roles.accentPrimary} />
@@ -228,18 +257,39 @@ function HomeBody({
       </View>
     );
   } else if (waitingForChapters) {
+    bodyKind = 'loading';
     body = (
       <View style={styles.centered} testID="home-chapters-loading">
         <ActivityIndicator size="large" color={theme.roles.accentPrimary} />
       </View>
     );
+  } else if (chapters.length === 0 && books.length === 0 && booksError) {
+    // Nothing saved to show and the read failed: say so rather than "no
+    // chapters", which would be wrong.
+    bodyKind = 'error';
+    body = (
+      <View style={styles.centered} testID="home-error">
+        <Text style={styles.message}>Couldn’t load your work.</Text>
+        <Pressable
+          onPress={retryReads}
+          accessibilityRole="button"
+          hitSlop={theme.spacing.md}
+          style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+          testID="home-retry"
+        >
+          <Text style={styles.retry}>Try again</Text>
+        </Pressable>
+      </View>
+    );
   } else if (chapters.length === 0 && books.length === 0) {
+    bodyKind = 'empty';
     body = (
       <View style={styles.centered} testID="home-empty">
         <Text style={styles.message}>{HOME_EMPTY_MESSAGE}</Text>
       </View>
     );
   } else {
+    bodyKind = 'content';
     body = (
       <>
         <ChangesRequested chapters={chapters} onOpen={openPassage} />
@@ -314,7 +364,35 @@ function HomeBody({
             {waitingForChapters ? SYNC_SUMMARY[syncStatus] : chaptersLabel}
           </Text>
         </View>
-        {body}
+        <View
+          style={styles.content}
+          testID="home-body"
+          // Remounted once the local reads are in, so its first layout event
+          // always fires (a same-size frame change sends none): that is the
+          // first paint with something to show, and the cold-start splash can
+          // go. A launch-time sync with nothing saved yet shows its spinner
+          // rather than holding the splash to the fallback.
+          key={loadedOnce ? 'ready' : 'pending'}
+          onLayout={
+            loadedOnce
+              ? () => {
+                  markStartup('first_content_commit', {
+                    kind: bodyKind,
+                    chapters: chapters.length,
+                    books: books.length,
+                    nextUpReady: nextUp.status === 'ready',
+                  });
+                  hideSplash(
+                    bodyKind === 'loading'
+                      ? 'home:syncing'
+                      : `home:${bodyKind}`,
+                  );
+                }
+              : undefined
+          }
+        >
+          {body}
+        </View>
       </ScrollView>
       <AccountsSheet visible={accountsOpen} onClose={closeAccounts} />
     </View>

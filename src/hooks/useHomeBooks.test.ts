@@ -331,8 +331,23 @@ describe('useHomeBooks', () => {
     mockWrites = 1;
     rerender({ key: 1 });
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.loading).toBe(false);
     expect(result.current.books).toEqual([MARK]);
+
+    // The next read that lands clears it.
+    mockWrites = 2;
+    rerender({ key: 2 });
+    await waitFor(() => expect(result.current.error).toBe(false));
+  });
+
+  it('reports a failed first read, so Home can tell it from no books', async () => {
+    mockGetHomeBookSummaries.mockRejectedValueOnce(new Error('disk I/O error'));
+    const { result } = renderHook(() => useHomeBooks());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBe(true);
+    expect(result.current.books).toEqual([]);
   });
 
   describe('when the refresh key changes', () => {
