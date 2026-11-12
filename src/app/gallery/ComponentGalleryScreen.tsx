@@ -16,7 +16,7 @@ import {
   useTheme,
   useThemedStyles,
 } from '../../theme/useTheme';
-import { galleryEntries } from './entries';
+import { galleryEntries, gallerySections } from './entries';
 
 const MODE_OPTIONS: { label: string; value: ColorMode }[] = [
   { label: 'Canvas', value: 'canvas' },
@@ -71,7 +71,8 @@ function Gallery() {
     },
   }));
 
-  // Header and controls stay in Hardware; only the demo stage takes the mode.
+  // Header and controls stay in Hardware; only the demo stage takes the mode,
+  // and pinned entries override it.
   return (
     <ScreenContainer>
       <View style={styles.screen}>
@@ -90,7 +91,7 @@ function Gallery() {
           <View style={styles.card}>
             <SettingsSegmentedRow
               title="Mode"
-              subtitle="Figma color-role mode for the demos below."
+              subtitle="Color-role mode for the demos not pinned to one mode."
               options={MODE_OPTIONS}
               value={mode}
               onValueChange={setMode}
@@ -123,6 +124,14 @@ function DemoStage() {
       padding: t.spacing.lg,
       gap: t.spacing.xxl,
     },
+    section: { gap: t.spacing.xl },
+    sectionName: {
+      ...t.type.overline,
+      color: t.roles.fgSecondary,
+      paddingBottom: t.spacing.sm,
+      borderBottomWidth: t.stroke[1],
+      borderBottomColor: t.roles.borderRim,
+    },
     entry: { gap: t.spacing.md },
     entryHeader: { gap: t.spacing.xs },
     entryName: {
@@ -140,15 +149,58 @@ function DemoStage() {
 
   return (
     <View style={styles.stage} testID="gallery-stage">
-      {galleryEntries.map(entry => (
-        <View key={entry.id} style={styles.entry}>
-          <View style={styles.entryHeader}>
-            <Text style={styles.entryName}>{entry.name}</Text>
-            <Text style={styles.entryMeta}>Designed for {entry.modes}</Text>
-          </View>
-          <entry.Component />
+      {gallerySections.map(section => (
+        <View key={section} style={styles.section}>
+          <Text style={styles.sectionName} accessibilityRole="header">
+            {section}
+          </Text>
+          {galleryEntries
+            .filter(entry => entry.section === section)
+            .map(entry => (
+              <View key={entry.id} style={styles.entry}>
+                <View style={styles.entryHeader}>
+                  <Text style={styles.entryName}>{entry.name}</Text>
+                  <Text style={styles.entryMeta}>
+                    Designed for {entry.modes}
+                  </Text>
+                </View>
+                {entry.pin ? (
+                  <ColorModeScope value={entry.pin}>
+                    <PinnedStage testID={`gallery-pinned-${entry.id}`}>
+                      <entry.Component />
+                    </PinnedStage>
+                  </ColorModeScope>
+                ) : (
+                  <entry.Component />
+                )}
+              </View>
+            ))}
         </View>
       ))}
+    </View>
+  );
+}
+
+/** A pinned entry on its own mode's background, whatever the Mode switcher says. */
+function PinnedStage({
+  children,
+  testID,
+}: {
+  children: React.ReactNode;
+  testID: string;
+}) {
+  const styles = useThemedStyles(t => ({
+    stage: {
+      backgroundColor: t.roles.bgDefault,
+      borderRadius: t.radius.sm,
+      // Bleeds to DemoStage's edges; keep in step with its padding.
+      marginHorizontal: -t.spacing.lg,
+      padding: t.spacing.lg,
+    },
+  }));
+  return (
+    <View style={styles.stage} testID={testID}>
+      {children}
     </View>
   );
 }

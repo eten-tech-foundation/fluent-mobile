@@ -226,6 +226,30 @@ describe('Waveform windowing and chips', () => {
     jest.useRealTimers();
   });
 
+  it('keeps the strip in the frame when pinned at the recording front', () => {
+    const long = [
+      {
+        verse: null as number | null,
+        bars: Array(80).fill(10) as number[],
+      },
+    ];
+    render(
+      <Waveform
+        verses={long}
+        progress={1}
+        pinned
+        accessibilityLabel="Take 1, recording"
+        testID="w"
+      />,
+    );
+    fireEvent(screen.getByTestId('w'), 'layout', {
+      nativeEvent: { layout: { width: 360, height: 52 } },
+    });
+
+    expect(screen.getByTestId('w-bar-0', hidden)).toBeTruthy();
+    expect(screen.getByTestId('w-bar-79', hidden)).toBeTruthy();
+  });
+
   it('widens the chip for three-digit verses', () => {
     render(
       <Waveform

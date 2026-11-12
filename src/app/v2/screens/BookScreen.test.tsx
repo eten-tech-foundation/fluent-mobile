@@ -405,6 +405,31 @@ describe('BookScreen', () => {
       });
     });
 
+    it('waits to scroll until the list is shown, even if the focused chapter already has covers', () => {
+      const loaded = mockPassages;
+      if (loaded.status !== 'ready') throw new Error('expected ready passages');
+      mockParams = { ...baseParams, focusChapterId: '2' };
+      mockPassages = {
+        status: 'ready',
+        byChapter: new Map([[2, loaded.byChapter.get(2) ?? []]]),
+        pericopes: true,
+      };
+      const { rerender } = render(<BookScreen />);
+      expect(screen.queryByTestId('book-list')).toBeNull();
+      expect(scrollToIndex).not.toHaveBeenCalled();
+
+      mockPassages = loaded;
+      rerender(<BookScreen />);
+
+      expect(screen.getByTestId('book-list')).toBeTruthy();
+      expect(scrollToIndex).toHaveBeenCalledTimes(1);
+      expect(scrollToIndex).toHaveBeenCalledWith({
+        index: 1,
+        viewPosition: 0,
+        animated: false,
+      });
+    });
+
     it('starts at the top without a chapter, with one it does not have, or at the first', () => {
       render(<BookScreen />);
       mockParams = { ...baseParams, focusChapterId: '99' };
@@ -448,6 +473,60 @@ describe('BookScreen', () => {
 
     mockChapters = [chapter(1, 14), chapter(2, 15)];
     rerender(<BookScreen />);
+    expect(screen.getByText('Chapter 14')).toBeTruthy();
+  });
+
+  it('shows the spinner, not the list, while chapters are ready and passages are loading', () => {
+    mockPassages = { status: 'loading' };
+    render(<BookScreen />);
+
+    expect(screen.getByTestId('loading-spinner')).toBeTruthy();
+    expect(screen.queryByTestId('book-list')).toBeNull();
+    expect(screen.queryByText('Mark')).toBeNull();
+    expect(screen.queryByText('Chapter 14')).toBeNull();
+  });
+
+  it('holds the spinner until covers exist for the chapters', () => {
+    mockPassages = { status: 'ready', byChapter: new Map(), pericopes: true };
+    render(<BookScreen />);
+
+    expect(screen.getByTestId('loading-spinner')).toBeTruthy();
+    expect(screen.queryByTestId('book-list')).toBeNull();
+  });
+
+  it('shows the list and the book name together once passages are ready', () => {
+    const loaded = mockPassages;
+    mockPassages = { status: 'loading' };
+    const { rerender } = render(<BookScreen />);
+    expect(screen.queryByTestId('book-list')).toBeNull();
+
+    mockPassages = loaded;
+    rerender(<BookScreen />);
+
+    expect(screen.getByTestId('book-list')).toBeTruthy();
+    expect(screen.getByText('Mark')).toBeTruthy();
+    expect(screen.getByTestId('book-passage-1-pericope::1')).toBeTruthy();
+  });
+
+  it('keeps the list mounted on a later focus when passages stay ready', () => {
+    const { rerender } = render(<BookScreen />);
+    expect(screen.getByTestId('book-list')).toBeTruthy();
+
+    rerender(<BookScreen />);
+
+    expect(screen.getByTestId('book-list')).toBeTruthy();
+    expect(screen.getByText('Mark')).toBeTruthy();
+  });
+
+  it('keeps the list when coming back even if passages load again', () => {
+    const { rerender } = render(<BookScreen />);
+    expect(screen.getByTestId('book-list')).toBeTruthy();
+
+    mockPassages = { status: 'loading' };
+    rerender(<BookScreen />);
+
+    expect(screen.getByTestId('book-list')).toBeTruthy();
+    expect(screen.getByText('Mark')).toBeTruthy();
     expect(screen.getByText('Chapter 14')).toBeTruthy();
   });
 
