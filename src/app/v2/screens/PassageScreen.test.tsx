@@ -864,6 +864,57 @@ describe('PassageScreen', () => {
       );
     });
 
+    it('keeps the spot a take was loading from when the route goes first', async () => {
+      playing();
+      openRecord();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPauseTake).toHaveBeenCalled();
+      stopped();
+      screen.rerender(<PassageScreen />);
+      let finishLoad = () => {};
+      mockPlayTake.mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            finishLoad = resolve;
+          }),
+      );
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't1' }),
+        4000,
+      );
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      expect(mockStopPlayback).toHaveBeenCalledTimes(1);
+      await act(async () => finishLoad());
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenCalledTimes(2);
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't1' }),
+        4000,
+      );
+    });
+
+    it('leaves a take saving alone', () => {
+      mockSession = { ...mockSession, state: 'saving', captureActive: false };
+      openRecord();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+
+      expect(mockStopPlayback).not.toHaveBeenCalled();
+    });
+
     it('leaves a take being recorded to the capture guard', () => {
       mockSession = { ...mockSession, state: 'recording', captureActive: true };
       openRecord();

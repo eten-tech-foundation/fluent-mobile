@@ -861,7 +861,7 @@ export function useRecorder({
     if (frontCover) {
       setParked(null);
       const parkedHere = parked?.id === frontCover.id;
-      await verseAudio.playTake(
+      await playFrom(
         frontCover,
         parkedHere
           ? coverParkedMs >= coverLength
@@ -876,10 +876,24 @@ export function useRecorder({
     setParked(null);
     const parkedHere = parked?.id === frontTake.id;
     // Nothing parked resumes. A scrub, including to 0 or the end, is explicit.
-    await verseAudio.playTake(
+    await playFrom(
       frontTake,
       parkedHere ? (parkedMs >= frontLength ? 0 : parkedMs) : undefined,
     );
+  }
+
+  /** Where a take still loading was asked to start, until it plays. */
+  const loadingFrom = useRef<{ id: string; ms: number } | null>(null);
+  async function playFrom(
+    t: Parameters<typeof verseAudio.playTake>[0],
+    ms: number | undefined,
+  ) {
+    loadingFrom.current = ms === undefined ? null : { id: t.id, ms };
+    try {
+      await verseAudio.playTake(t, ms);
+    } finally {
+      loadingFrom.current = null;
+    }
   }
 
   // Passage stays mounted under a pushed screen, Record still open. Losing
@@ -894,6 +908,8 @@ export function useRecorder({
       } else if (playingCover) {
         setParked({ id: frontCover.id, ms: verseAudio.positionMs });
       }
+    } else if (loadingFrom.current) {
+      setParked(loadingFrom.current);
     }
     void verseAudio.stopPlayback();
   }
