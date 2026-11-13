@@ -89,12 +89,14 @@ async function seed(db: DB): Promise<void> {
     unit: number | null;
     status: string;
     error?: string | null;
+    takeNumber?: number;
   }): Promise<void> => {
     await db.execute(
       `INSERT INTO recordings (
          id, bible_text_id, recorded_by_user_id, project_unit_id,
-         local_file_path, sync_status, upload_error, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         local_file_path, sync_status, upload_error, take_number,
+         created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         args.id,
         args.bibleTextId,
@@ -103,6 +105,7 @@ async function seed(db: DB): Promise<void> {
         `/recordings/${args.id}.m4a`,
         args.status,
         args.error ?? null,
+        args.takeNumber ?? 1,
         '2024-01-01',
         '2024-01-01',
       ],
@@ -144,6 +147,7 @@ async function seed(db: DB): Promise<void> {
     owner: 1,
     unit: null,
     status: 'pending',
+    takeNumber: 2,
   });
 }
 
@@ -205,8 +209,17 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
       bookName: 'Genesis',
       chapterNumber: 1,
       verseNumber: 1,
+      takeNumber: 1,
       localFilePath: '/recordings/beta-pending.m4a',
     });
+    // Two takes of the same verse keep their own take numbers.
+    expect(records.find(record => record.id === 'beta-failed')).toMatchObject({
+      verseNumber: 2,
+      takeNumber: 1,
+    });
+    expect(
+      records.find(record => record.id === 'beta-resolved-unit'),
+    ).toMatchObject({ verseNumber: 2, takeNumber: 2 });
     // Another account's held/pending work is not shown here.
     await expect(getHeldRecordings(2)).resolves.toEqual([]);
   });
@@ -227,6 +240,23 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
       'pending',
     );
     await expect(getHeldRecordings(1)).resolves.toEqual([]);
+  });
+
+  it('holds an interrupted uploading take for a removed owner (#855)', async () => {
+    await mockDb.execute(
+      `UPDATE recordings SET sync_status = 'uploading' WHERE id = ?`,
+      ['beta-pending'],
+    );
+
+    await reconcileHeldRecordings(1);
+
+    await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('held');
+  });
+
+  it('rejects instead of reporting a clean reconcile when the transaction fails', async () => {
+    await mockDb.execute('DROP TABLE recordings');
+
+    await expect(reconcileHeldRecordings(1)).rejects.toThrow();
   });
 
   it('does nothing without an active account', async () => {

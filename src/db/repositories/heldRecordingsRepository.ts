@@ -23,6 +23,8 @@ export type HeldRecording = {
   startVerse: number | null;
   endChapter: number | null;
   endVerse: number | null;
+  /** Per verse + owner take number, so multiple held takes stay distinct. */
+  takeNumber: number;
   localFilePath: string;
   durationMs: number | null;
 };
@@ -41,6 +43,13 @@ export type HeldReconcileResult = {
  *   pass uploads them with no extra user action.
  * - `pending` / `failed` rows whose owner is not a member become `held`
  *   instead of being retried into a permanent failure.
+ * - `uploading` rows are included because a process kill mid-upload leaves
+ *   that status behind and [`getPendingRecordings`] still returns it. Passes
+ *   and their reconciliation run one at a time before any take is marked
+ *   `uploading`, so a row matched here has no live upload: it is either this
+ *   pass (not yet started) or an interrupted earlier one. A take held by the
+ *   transition keeps its upload operation state and resumes once membership
+ *   returns, the same as a held `pending` row.
  *
  * Owner is the capture-time account, falling back to the active account for
  * legacy rows; shared devices keep each account's own membership.
@@ -87,7 +96,7 @@ export async function reconcileHeldRecordings(
          SET sync_status = 'held',
              upload_error = NULL,
              updated_at = ?
-         WHERE sync_status IN ('pending', 'failed')
+         WHERE sync_status IN ('pending', 'failed', 'uploading')
            AND IFNULL(granularity, 'verse') IN ('verse', 'pericope')
            AND bible_text_id > 0
            AND EXISTS (
@@ -116,12 +125,13 @@ export async function reconcileHeldRecordings(
     });
     return outcome;
   } catch (error) {
-    // Never block an upload pass on the hold bookkeeping.
     log.error('Failed to reconcile held recordings', {
       activeUserId,
       error,
     });
-    return { held: 0, released: 0 };
+    // A failed transaction is not a clean reconcile: callers must treat
+    // membership as unconfirmed and defer, never upload past the check (#855).
+    throw error;
   }
 }
 
@@ -146,6 +156,7 @@ export async function getHeldRecordings(
          r.start_verse AS start_verse,
          r.end_chapter AS end_chapter,
          r.end_verse AS end_verse,
+         r.take_number AS take_number,
          bt.book_id AS book_id,
          bt.chapter_number AS chapter_number,
          bt.verse_number AS verse_number,
@@ -184,6 +195,7 @@ export async function getHeldRecordings(
       startVerse: toNullableInt(row.start_verse),
       endChapter: toNullableInt(row.end_chapter),
       endVerse: toNullableInt(row.end_verse),
+      takeNumber: toNullableInt(row.take_number) ?? 1,
       localFilePath: String(row.local_file_path),
       durationMs: toNullableInt(row.duration_ms),
     }));

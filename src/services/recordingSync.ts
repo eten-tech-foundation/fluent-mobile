@@ -14,6 +14,7 @@ import {
   updateRecordingVersionToken,
 } from '../db/repository';
 import { reconcileHeldRecordings } from '../db/repositories/heldRecordingsRepository';
+import { refreshProjectMembership } from './projectMembership';
 import type {
   PendingRecording,
   PendingRecordingDeletion,
@@ -1328,24 +1329,30 @@ async function runUploadPass(
 
   // #855: before evaluating any pending take, establish fresh project
   // membership for the active account. Recordings whose owner lost
-  // membership stay 'held' (never removed, never failed); they must not be
-  // uploaded in this pass and must be deferred until membership returns.
+  // membership stay 'held' (never removed, never failed) and are excluded
+  // from the pending read below, so they are not uploaded in this pass. The
+  // held count is per-pass bookkeeping for the log: takes newly held must not
+  // defer the still-eligible rows queued for other projects/chapters.
   // A failed reconciliation means membership could not be confirmed, so
-  // nothing is uploaded and all pending rows are held/deferred safely.
+  // nothing is uploaded and all pending rows are deferred safely.
+  //
+  // Reconciliation only reads the cached `user_projects`, so an unscoped pass
+  // (manual retry, which has no orchestrator session ahead of it) refreshes
+  // membership from the server first: a removal that happened while offline is
+  // otherwise invisible and the take would upload into a permanent failure
+  // (#848). Chapter-scoped passes inherit the refresh their session ran, so
+  // they do not repeat the request once per chapter.
   const activeUserId = Number(getActiveUserId());
+  const membershipUserId =
+    Number.isFinite(activeUserId) && activeUserId > 0 ? activeUserId : null;
   let membershipEstablished = true;
   let membershipHeld = 0;
   try {
-    const outcome = await reconcileHeldRecordings(
-      Number.isFinite(activeUserId) && activeUserId > 0 ? activeUserId : null,
-    );
-    membershipHeld = outcome.held;
-    if (outcome.held > 0) {
-      // Fresh membership returned but these recordings are still held: do
-      // not upload them now. They will be released by the next successful
-      // membership restore and uploaded automatically.
-      membershipEstablished = false;
+    if (options.chapter === undefined && membershipUserId !== null) {
+      await refreshProjectMembership(membershipUserId);
     }
+    const outcome = await reconcileHeldRecordings(membershipUserId);
+    membershipHeld = outcome.held;
   } catch (error) {
     log.warn('Held-recording membership reconciliation failed; deferring', {
       error,
@@ -1407,8 +1414,8 @@ async function runUploadPass(
       throwIfAborted(options.signal);
 
       // Membership/reconciliation gate: if membership could not be
-      // established (reconciliation failed, or rows are still held), this
-      // take is deferred — never marked failed, never deleted, and never
+      // established (the refresh or the reconcile failed), this take is
+      // deferred — never marked failed, never deleted, and never
       // subject to a terminal upload error. It is released on the next
       // successful sync when membership is restored and uploaded
       // automatically.

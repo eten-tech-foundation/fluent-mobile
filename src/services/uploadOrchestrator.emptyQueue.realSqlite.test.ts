@@ -54,6 +54,11 @@ jest.mock('./sync', () => ({
 jest.mock('./keychain', () => ({
   getCredentials: async () => ({ token: 'owner-token' }),
 }));
+// Membership refresh is exercised in projectMembership.test.ts; here it must
+// resolve so the empty-queue checks under test still run (#848).
+jest.mock('./projectMembership', () => ({
+  refreshProjectMembership: async () => undefined,
+}));
 jest.mock('./syncEvents', () => ({
   emitUploadSessionEvent: (event: unknown) => mockEmit(event),
   emitAuthReauthRequired: jest.fn(),

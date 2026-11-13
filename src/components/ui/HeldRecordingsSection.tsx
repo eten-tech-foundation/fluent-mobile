@@ -54,8 +54,19 @@ export function groupHeldRecordings(
   return [...projects.values()];
 }
 
-/** Row label for a verse take or a pericope range (#410). */
+/**
+ * Row label for a verse take or a pericope range (#410), with the take number
+ * appended when it is not the first take of that verse so held takes of the
+ * same reference stay distinguishable (#855).
+ */
 export function formatHeldRecordingLabel(recording: HeldRecording): string {
+  const range = formatHeldRecordingRange(recording);
+  return recording.takeNumber > 1
+    ? `${range} · Take ${recording.takeNumber}`
+    : range;
+}
+
+function formatHeldRecordingRange(recording: HeldRecording): string {
   if (recording.granularity === 'pericope') {
     const startChapter = recording.startChapter ?? recording.chapterNumber;
     const startVerse = recording.startVerse ?? recording.verseNumber;
@@ -169,7 +180,7 @@ export function HeldRecordingsSection({
                   <DraftTakeRow
                     key={recording.id}
                     takeId={recording.id}
-                    takeNumber={1}
+                    takeNumber={recording.takeNumber}
                     label={formatHeldRecordingLabel(recording)}
                     positionMs={isCurrent ? playback.positionMs : 0}
                     durationMs={

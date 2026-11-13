@@ -140,7 +140,7 @@ function createRecordingConflictTestDb() {
     if (
       sql.includes('FROM recordings r') &&
       sql.includes('JOIN bible_texts bt') &&
-      sql.includes("sync_status NOT IN ('uploaded', 'conflicted'")
+      sql.includes("sync_status NOT IN ('uploaded', 'conflicted', 'held')")
     ) {
       // #701 PM rule: canonical is what syncs as the selected take. A
       // selected-only row is deferred while the same verse has a canonical
@@ -160,6 +160,7 @@ function createRecordingConflictTestDb() {
             ) &&
             r.sync_status !== 'uploaded' &&
             r.sync_status !== 'conflicted' &&
+            r.sync_status !== 'held' &&
             r.bible_text_id > 0 &&
             ['verse', 'pericope'].includes(r.granularity ?? 'verse'),
         )
@@ -348,8 +349,23 @@ describe('recording upload conflict repository helpers (#256)', () => {
     await expect(getLatestVersionToken(42, 12)).resolves.toBeUndefined();
   });
 
-  it('getPendingRecordings excludes uploaded and conflicted rows', async () => {
+  it('getPendingRecordings excludes uploaded, conflicted and held rows', async () => {
     const db = createRecordingConflictTestDb();
+    // #855: a take held for a removed project must not be queued for upload.
+    db.__recordings.push({
+      id: 'rec-held',
+      bible_text_id: 42,
+      local_file_path: '/held.m4a',
+      duration_ms: 1000,
+      recorded_by_user_id: 1,
+      is_selected: 1,
+      sync_status: 'held',
+      blob_key: null,
+      version_token: null,
+      upload_error: null,
+      updated_at: '2026-01-06T00:00:00.000Z',
+      project_unit_id: 12,
+    });
     setDatabase(db as never);
 
     const pending = await getPendingRecordings();

@@ -57,6 +57,7 @@ function held(overrides: Partial<HeldRecording> = {}): HeldRecording {
     startVerse: null,
     endChapter: null,
     endVerse: null,
+    takeNumber: 1,
     localFilePath: 'file:///mock-document/held-1.m4a',
     durationMs: 2000,
     ...overrides,
@@ -92,6 +93,22 @@ describe('HeldRecordingsSection (#855)', () => {
         }),
       ),
     ).toBe('1:5–2:1');
+    // Later takes of the same reference stay distinguishable.
+    expect(formatHeldRecordingLabel(held({ takeNumber: 2 }))).toBe(
+      'v. 5 · Take 2',
+    );
+    expect(
+      formatHeldRecordingLabel(
+        held({
+          takeNumber: 3,
+          granularity: 'pericope',
+          startChapter: 1,
+          startVerse: 5,
+          endChapter: 1,
+          endVerse: 7,
+        }),
+      ),
+    ).toBe('vv. 5–7 · Take 3');
   });
 
   it('groups by project and chapter in query order', () => {
@@ -112,11 +129,7 @@ describe('HeldRecordingsSection (#855)', () => {
   });
 
   it('plays a held recording from the device and pauses it again', async () => {
-    render(
-      <HeldRecordingsSection
-        recordings={[held()]}
-      />,
-    );
+    render(<HeldRecordingsSection recordings={[held()]} />);
 
     fireEvent.press(screen.getByTestId('record-play-button-held-1'));
     await waitFor(() => {
@@ -130,11 +143,7 @@ describe('HeldRecordingsSection (#855)', () => {
   });
 
   it('renders nothing when there are no held recordings', () => {
-    render(
-      <HeldRecordingsSection
-        recordings={[]}
-      />,
-    );
+    render(<HeldRecordingsSection recordings={[]} />);
     expect(screen.queryByTestId('sync-held-section')).toBeNull();
   });
 });

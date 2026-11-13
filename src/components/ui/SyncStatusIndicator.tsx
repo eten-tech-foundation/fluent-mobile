@@ -13,6 +13,7 @@ function resolveIconState(
   hasFailedUploads: boolean,
   isUploading: boolean,
   isMetadataSyncing = false,
+  hasHeldRecordings = false,
 ): { status: SyncStatus; animated: boolean } {
   if (isUploading || status === 'syncing' || isMetadataSyncing) {
     // Lovable Sync page uses the spinning cloud-sync glyph for online-syncing.
@@ -26,6 +27,16 @@ function resolveIconState(
 
   if (hasFailedUploads && isOnline) {
     return { status: 'online_failed', animated: false };
+  }
+
+  // Held recordings (removed from their project) never upload on their own, so
+  // they must not resolve to a synced cloud even when pageStatus is
+  // `allComplete` (#855). Reuse the pending glyph: unsent work on the device.
+  if (hasHeldRecordings && !hasPendingUploads) {
+    return {
+      status: isOnline ? 'online_pending' : 'offline_pending',
+      animated: false,
+    };
   }
 
   switch (status) {
@@ -56,6 +67,8 @@ interface SyncStatusIndicatorProps {
   isUploading?: boolean;
   /** A metadata pass is in flight (#886). */
   isMetadataSyncing?: boolean;
+  /** Recordings are held on the device because of a project removal (#855). */
+  hasHeldRecordings?: boolean;
 }
 
 export function SyncStatusIndicator({
@@ -65,6 +78,7 @@ export function SyncStatusIndicator({
   hasFailedUploads = false,
   isUploading = false,
   isMetadataSyncing = false,
+  hasHeldRecordings = false,
 }: SyncStatusIndicatorProps) {
   const theme = useTheme();
   const styles = useStyles();
@@ -75,6 +89,7 @@ export function SyncStatusIndicator({
     hasFailedUploads,
     isUploading,
     isMetadataSyncing,
+    hasHeldRecordings,
   );
 
   return (

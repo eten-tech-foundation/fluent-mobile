@@ -37,6 +37,11 @@ jest.mock('../db/stageAdvanceQueueRepository', () => ({
 jest.mock('../db/repositories/heldRecordingsRepository', () => ({
   reconcileHeldRecordings: async () => ({ held: 0, released: 0 }),
 }));
+// Membership refresh is exercised in projectMembership.test.ts; here it must
+// resolve so these drain sessions still run (#848).
+jest.mock('./projectMembership', () => ({
+  refreshProjectMembership: async () => undefined,
+}));
 jest.mock('./connectivity', () => ({
   subscribeToConnectivity: (listener: ConnectivityListener) => {
     mockListeners.add(listener);

@@ -3,6 +3,7 @@ import {
   hasPendingChapterClaimsForUser,
 } from '../db/queries';
 import { reconcileHeldRecordings } from '../db/repositories/heldRecordingsRepository';
+import { refreshProjectMembership } from './projectMembership';
 import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   getConnectivitySnapshot,
@@ -132,6 +133,19 @@ async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
       `Stage-advance drain deferred ${result.deferred} row(s): offline`,
     );
   }
+}
+
+/**
+ * Fresh server truth for the active account's project memberships (#848).
+ * Signed-out sessions keep the existing cache-only behavior; the reconcile
+ * below is a no-op without an active user.
+ */
+async function refreshMembershipBeforeUpload(): Promise<void> {
+  const activeUserId = Number(getActiveUserId());
+  if (!Number.isFinite(activeUserId) || activeUserId <= 0) {
+    return;
+  }
+  await refreshProjectMembership(activeUserId);
 }
 
 async function reconcileHeldBeforeUpload(): Promise<{
@@ -278,6 +292,7 @@ export function startUploadOrchestrator(
     pushPendingClaimsBeforeUpload,
     pushPendingStageAdvancesAfterUpload,
     hasPendingStageAdvances,
+    refreshMembershipBeforeUpload,
     reconcileHeldBeforeUpload,
     hasPendingClaims,
     getQueueWriteMark,

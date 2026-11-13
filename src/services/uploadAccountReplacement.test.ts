@@ -41,6 +41,11 @@ jest.mock('../db/queries', () => ({
 jest.mock('../db/repositories/heldRecordingsRepository', () => ({
   reconcileHeldRecordings: async () => ({ held: 0, released: 0 }),
 }));
+// Membership refresh is exercised in projectMembership.test.ts; here it must
+// resolve so the account-replacement session still runs (#848).
+jest.mock('./projectMembership', () => ({
+  refreshProjectMembership: async () => undefined,
+}));
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
     mockGetPendingRecordings(...args),

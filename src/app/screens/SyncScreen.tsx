@@ -256,6 +256,8 @@ export default function SyncScreen() {
             hasPendingUploads={hasPendingUploads || countsUnknown}
             hasFailedUploads={hasFailedUploads}
             isUploading={isUploading}
+            isMetadataSyncing={metadataOnlySyncing}
+            hasHeldRecordings={heldRecordingsVisible}
           />
 
           {renderStatusLine(
@@ -302,9 +304,7 @@ export default function SyncScreen() {
           </View>
         ) : null}
         {heldRecordingsVisible ? (
-          <HeldRecordingsSection
-            recordings={heldRecordings}
-          />
+          <HeldRecordingsSection recordings={heldRecordings} />
         ) : null}
         <View style={styles.controlsSection}>
           <SyncActionControls

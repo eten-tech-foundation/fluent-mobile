@@ -214,7 +214,8 @@ jest.mock('../../components/ui/CloudSyncStatusIcon', () => {
   const MockReact = require('react');
   const { View } = require('react-native');
   return {
-    CloudSyncStatusIcon: () => MockReact.createElement(View),
+    CloudSyncStatusIcon: (props: Record<string, unknown>) =>
+      MockReact.createElement(View, { ...props, testID: 'sync-status-cloud' }),
   };
 });
 
@@ -475,6 +476,10 @@ describe('SyncScreen', () => {
 
       expect(screen.getByText('Syncing…')).toBeTruthy();
       expect(screen.getByTestId('sync-metadata-syncing')).toBeTruthy();
+      // The indicator spins too — it must not look idle while metadata syncs.
+      expect(screen.getByTestId('sync-status-cloud').props).toEqual(
+        expect.objectContaining({ status: 'online_syncing', animated: true }),
+      );
       expect(screen.queryByText('Online · all synced')).toBeNull();
     });
 
@@ -722,6 +727,7 @@ describe('SyncScreen', () => {
         startVerse: null,
         endChapter: null,
         endVerse: null,
+        takeNumber: 1,
         localFilePath: 'file:///mock-document/held-1.m4a',
         durationMs: 2000,
       },
@@ -738,6 +744,7 @@ describe('SyncScreen', () => {
         startVerse: null,
         endChapter: null,
         endVerse: null,
+        takeNumber: 1,
         localFilePath: 'file:///mock-document/held-2.m4a',
         durationMs: 3000,
       },
@@ -763,6 +770,10 @@ describe('SyncScreen', () => {
     expect(screen.getByText('v. 7')).toBeTruthy();
     // Held work is not "all synced" and shows no upload-complete banner.
     expect(screen.getByText('Online · recordings held')).toBeTruthy();
+    // The status cloud must not signal synced while recordings are held.
+    expect(screen.getByTestId('sync-status-cloud').props.status).toBe(
+      'online_pending',
+    );
     expect(screen.queryByText('Online · all synced')).toBeNull();
     expect(screen.queryByText('All synced')).toBeNull();
     expect(

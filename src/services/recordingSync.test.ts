@@ -45,6 +45,12 @@ const mockClearRecordingDeletion = jest.fn();
 const mockRaiseVerseVersionToken = jest.fn();
 const mockDeleteVerseAudioTake = jest.fn();
 const mockReconcileHeldRecordings = jest.fn();
+const mockRefreshProjectMembership = jest.fn();
+
+jest.mock('./projectMembership', () => ({
+  refreshProjectMembership: (...args: unknown[]) =>
+    mockRefreshProjectMembership(...args),
+}));
 
 jest.mock('../db/repositories/heldRecordingsRepository', () => ({
   reconcileHeldRecordings: (...args: unknown[]) =>
@@ -228,6 +234,7 @@ describe('recordingSync', () => {
     mockRaiseVerseVersionToken.mockResolvedValue(undefined);
     mockDeleteVerseAudioTake.mockResolvedValue({ versionToken: 3 });
     mockReconcileHeldRecordings.mockResolvedValue({ held: 0, released: 0 });
+    mockRefreshProjectMembership.mockResolvedValue(undefined);
     // Reconciliation after a possibly-applied failure: nothing on the server
     // yet, so a first-take activation replays.
     mockGetVerseAudioUnit.mockRejectedValue(new ApiError(404, 'Not found'));
@@ -242,6 +249,80 @@ describe('recordingSync', () => {
     await syncPendingRecordings('tok-1', { delay });
 
     expect(mockReconcileHeldRecordings).toHaveBeenCalledWith(2);
+  });
+
+  it('refreshes server membership before reconciling an unscoped pass (#848)', async () => {
+    const order: string[] = [];
+    mockRefreshProjectMembership.mockImplementation(async () => {
+      order.push('refresh');
+    });
+    mockReconcileHeldRecordings.mockImplementation(async () => {
+      order.push('reconcile');
+      return { held: 0, released: 0 };
+    });
+
+    await syncPendingRecordings('tok-1', { delay });
+
+    // A manual pass has no orchestrator session ahead of it, so it must not
+    // reconcile against a cache that may still name a removed project.
+    expect(order).toEqual(['refresh', 'reconcile']);
+    expect(mockRefreshProjectMembership).toHaveBeenCalledWith(2);
+  });
+
+  it('defers every take when the membership refresh fails (#848)', async () => {
+    mockRefreshProjectMembership.mockRejectedValue(
+      new Error('projects unavailable'),
+    );
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    expect(result.uploaded).toBe(0);
+    expect(result.failed).toBe(0);
+    expect(result.deferred).toBe(1);
+    // Membership is unconfirmed: the take is held back, not failed or deleted.
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+    expect(mockReconcileHeldRecordings).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat the membership refresh inside a chapter pass (#848)', async () => {
+    // Chapter passes run inside a session whose first pass just refreshed
+    // membership; repeating it would add a request per chapter.
+    await syncPendingRecordings('tok-1', {
+      delay,
+      chapter: { bookId: 40, chapterNumber: 1 },
+    });
+
+    expect(mockRefreshProjectMembership).not.toHaveBeenCalled();
+    expect(mockReconcileHeldRecordings).toHaveBeenCalledWith(2);
+  });
+
+  it('still uploads eligible takes when reconciliation holds another take (#855)', async () => {
+    // `getPendingRecordings` excludes held rows, so this queue holds only the
+    // still-eligible take: holding a different recording must not defer it.
+    mockReconcileHeldRecordings.mockResolvedValue({ held: 1, released: 0 });
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'rec-2', bibleTextId: 50 }),
+    ]);
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+    expect(result.uploaded).toBe(1);
+    expect(result.deferred).toBe(0);
+  });
+
+  it('defers every take when held reconciliation fails (#855)', async () => {
+    mockReconcileHeldRecordings.mockRejectedValue(new Error('database locked'));
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    expect(result.uploaded).toBe(0);
+    expect(result.failed).toBe(0);
+    expect(result.deferred).toBe(1);
+    // A take held back by an unconfirmed membership is never terminal.
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
   });
 
   it('uploads pending recordings via FluentAPI and marks uploaded with blob_key', async () => {
