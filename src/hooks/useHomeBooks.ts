@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   DatabaseWriteMark,
@@ -45,6 +51,13 @@ export function useHomeBooks(refreshKey = 0) {
     userId: number;
     writes: DatabaseWriteMark | null;
   } | null>(null);
+
+  // Commit-phase invalidation: a prior refreshKey's read can finish after
+  // render sets `reading` and before the passive refresh effect runs. Bump
+  // generation here so that completion cannot clear `reading` early.
+  useLayoutEffect(() => {
+    loadGenerationRef.current += 1;
+  }, [refreshKey]);
 
   // Only a read that publishes (or fails) ends the first load.
   const setBooks = useCallback((next: HomeBookSummary[]) => {

@@ -183,6 +183,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
         grantProjectIds: [100],
         translatorProjectIds: [],
+        throwOnError: true,
       });
     });
     expect(mockGetObserverProjectIds).toHaveBeenCalledWith('7');
@@ -257,6 +258,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
     });
   });
@@ -329,6 +331,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
         grantProjectIds: [100],
         translatorProjectIds: [3],
+        throwOnError: true,
       });
     });
 
@@ -479,6 +482,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
       expect(result.current.chapters).toEqual([]);
     });
@@ -498,6 +502,7 @@ describe('useMyWorkChapters Observer grants', () => {
         expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
           grantProjectIds: [100],
           translatorProjectIds: [],
+          throwOnError: true,
         }),
       );
 
@@ -517,6 +522,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
         grantProjectIds: [100, 200],
         translatorProjectIds: [],
+        throwOnError: true,
       });
       expect(result.current.chapters).toEqual([observerChapter, gainedChapter]);
     });
@@ -530,6 +536,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
         grantProjectIds: [100],
         translatorProjectIds: [3],
+        throwOnError: true,
       });
     });
 
@@ -545,6 +552,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(8, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
       expect(result.current.chapters).toEqual([]);
     });
@@ -616,6 +624,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
     });
 
@@ -632,6 +641,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(8, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
     });
 
@@ -748,6 +758,85 @@ describe('useMyWorkChapters Observer grants', () => {
       });
       await waitFor(() => expect(result.current.reading).toBe(false));
       expect(result.current.chapters).toEqual([assignedChapter]);
+    });
+
+    it('keeps reading when a prior refreshKey read settles before the next refresh effect', async () => {
+      // See useHomeBooks: defer passives so a stale read can finish in the
+      // layout-to-effect window that production hits after paint.
+      const React = require('react') as typeof import('react');
+      const deferredPassives: Array<() => void | (() => void)> = [];
+      const useEffectSpy = jest
+        .spyOn(React, 'useEffect')
+        .mockImplementation((effect: React.EffectCallback) => {
+          React.useLayoutEffect(() => {
+            deferredPassives.push(effect);
+          });
+        });
+
+      let resolveStale: (chapters: MyWorkChapter[]) => void = () => {};
+      let staleStarted = false;
+
+      try {
+        const { result, rerender } = renderHook(
+          ({ key }: { key: number }) => useMyWorkChapters(key),
+          { initialProps: { key: 0 } },
+        );
+
+        await act(async () => {
+          for (const effect of deferredPassives.splice(0)) {
+            effect();
+          }
+        });
+        await waitFor(() => expect(result.current.reading).toBe(false));
+
+        const queries = jest.requireMock('../db/queries') as {
+          getDatabaseWriteMark: jest.Mock;
+        };
+
+        mockGetMyWorkChapters.mockImplementationOnce(
+          () =>
+            new Promise(resolve => {
+              staleStarted = true;
+              resolveStale = resolve;
+            }),
+        );
+        mockWrites = 1;
+        rerender({ key: 1 });
+        await act(async () => {
+          for (const effect of deferredPassives.splice(0)) {
+            effect();
+          }
+        });
+        await waitFor(() => expect(staleStarted).toBe(true));
+
+        const mark = deferred<void>();
+        queries.getDatabaseWriteMark.mockImplementationOnce(async () => {
+          await mark.promise;
+          return { connection: mockConnection, changes: 2 };
+        });
+
+        rerender({ key: 2 });
+        expect(result.current.reading).toBe(true);
+
+        await act(async () => {
+          resolveStale([]);
+        });
+
+        expect(result.current.reading).toBe(true);
+        expect(result.current.chapters).toEqual([observerChapter]);
+
+        mockGetMyWorkChapters.mockResolvedValueOnce([assignedChapter]);
+        await act(async () => {
+          for (const effect of deferredPassives.splice(0)) {
+            effect();
+          }
+          mark.resolve();
+        });
+        await waitFor(() => expect(result.current.reading).toBe(false));
+        expect(result.current.chapters).toEqual([assignedChapter]);
+      } finally {
+        useEffectSpy.mockRestore();
+      }
     });
   });
 });

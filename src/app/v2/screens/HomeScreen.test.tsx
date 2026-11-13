@@ -495,6 +495,20 @@ describe('Next HomeScreen', () => {
     expect(screen.getByTestId('home-error')).toBeTruthy();
   });
 
+  it('retries both Home reads from the chapters-error empty state', () => {
+    mockChapters = [];
+    mockBooks = [];
+    mockChaptersError = true;
+    render(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-empty')).toBeNull();
+    expect(screen.getByTestId('home-error')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('home-retry'));
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    expect(mockRefreshBooks).toHaveBeenCalledTimes(1);
+  });
+
   it('says the reads failed, with a retry, when there is nothing saved to show', () => {
     mockChapters = [];
     mockBooks = [];

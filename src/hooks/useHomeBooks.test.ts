@@ -467,6 +467,89 @@ describe('useHomeBooks', () => {
     expect(result.current.books[0]?.bookName).toBe('Luke');
   });
 
+  it('keeps reading when a prior refreshKey read settles before the next refresh effect', async () => {
+    // Production paints between layout and passive effects. Jest's act flushes
+    // passives in the same turn, so defer useEffect to a macrotask to open the
+    // real window: an older read can finish after render sets `reading` and
+    // before the refresh effect bumps generation.
+    const React = require('react') as typeof import('react');
+    const deferredPassives: Array<() => void | (() => void)> = [];
+    const useEffectSpy = jest
+      .spyOn(React, 'useEffect')
+      .mockImplementation((effect: React.EffectCallback) => {
+        React.useLayoutEffect(() => {
+          deferredPassives.push(effect);
+        });
+      });
+
+    let resolveStale: (books: HomeBookSummary[]) => void = () => {};
+    let staleStarted = false;
+
+    try {
+      const { result, rerender } = renderHook(
+        ({ key }: { key: number }) => useHomeBooks(key),
+        { initialProps: { key: 0 } },
+      );
+
+      await act(async () => {
+        for (const effect of deferredPassives.splice(0)) {
+          effect();
+        }
+      });
+      await waitFor(() => expect(result.current.reading).toBe(false));
+
+      const queries = jest.requireMock('../db/queries') as {
+        getDatabaseWriteMark: jest.Mock;
+      };
+
+      mockGetHomeBookSummaries.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            staleStarted = true;
+            resolveStale = resolve;
+          }),
+      );
+      mockWrites = 1;
+      rerender({ key: 1 });
+      await act(async () => {
+        for (const effect of deferredPassives.splice(0)) {
+          effect();
+        }
+      });
+      await waitFor(() => expect(staleStarted).toBe(true));
+
+      const mark = deferred();
+      queries.getDatabaseWriteMark.mockImplementationOnce(async () => {
+        await mark.promise;
+        return { connection: mockConnection, changes: 2 };
+      });
+
+      rerender({ key: 2 });
+      expect(result.current.reading).toBe(true);
+
+      await act(async () => {
+        resolveStale([]);
+      });
+
+      expect(result.current.reading).toBe(true);
+      expect(result.current.books).toEqual([MARK]);
+
+      mockGetHomeBookSummaries.mockResolvedValueOnce([
+        { ...MARK, bookName: 'Luke' },
+      ]);
+      await act(async () => {
+        for (const effect of deferredPassives.splice(0)) {
+          effect();
+        }
+        mark.resolve();
+      });
+      await waitFor(() => expect(result.current.reading).toBe(false));
+      expect(result.current.books[0]?.bookName).toBe('Luke');
+    } finally {
+      useEffectSpy.mockRestore();
+    }
+  });
+
   describe('when the refresh key changes', () => {
     async function mountedWithKey() {
       const hook = renderHook(({ key }: { key: number }) => useHomeBooks(key), {

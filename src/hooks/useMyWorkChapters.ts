@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   DatabaseWriteMark,
@@ -104,6 +110,13 @@ export function useMyWorkChapters(refreshKey = 0) {
   const keyedBeforeRef = useRef(false);
   const publishedRef = useRef<PublishedRead | null>(null);
 
+  // Commit-phase invalidation: a prior refreshKey's read can finish after
+  // render sets `reading` and before the passive refresh effect runs. Bump
+  // generation here so that completion cannot clear `reading` early.
+  useLayoutEffect(() => {
+    loadGenerationRef.current += 1;
+  }, [refreshKey]);
+
   // Only a read that publishes ends the first load; a superseded one doesn't.
   const setChapters = useCallback((next: MyWorkChapter[]) => {
     markStartup('chapters_read', { count: next.length });
@@ -142,6 +155,8 @@ export function useMyWorkChapters(refreshKey = 0) {
           getMyWorkChapters(requestUserId, {
             grantProjectIds,
             translatorProjectIds,
+            // Home must see SQL failures as `error`, not a genuine empty list.
+            throwOnError: true,
           }),
         ]);
         if (loadGenerationRef.current !== generation) {
