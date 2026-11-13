@@ -5,10 +5,26 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Text, TouchableOpacity } from 'react-native';
-import BootSplash from 'react-native-bootsplash';
 
-jest.mock('react-native-bootsplash', () => ({
-  hide: jest.fn().mockResolvedValue(undefined),
+const mockHideSplash = jest.fn();
+const mockHoldSplashForFirstPaint = jest.fn();
+const mockArmSplashGate = jest.fn();
+jest.mock('../src/navigation/splashGate', () => ({
+  armSplashGate: () => mockArmSplashGate(),
+  hideSplash: (...args: unknown[]) => mockHideSplash(...args),
+  holdSplashForFirstPaint: () => mockHoldSplashForFirstPaint(),
+}));
+
+const mockLogWarn = jest.fn();
+jest.mock('../src/utils/logger', () => ({
+  logger: {
+    create: (scope: string) => ({
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: (...args: unknown[]) => mockLogWarn(scope, ...args),
+      error: jest.fn(),
+    }),
+  },
 }));
 
 jest.mock('../src/db/index', () => ({
@@ -144,13 +160,104 @@ describe('AuthSessionProvider', () => {
     );
 
     expect(getByTestId('auth-session-loading')).toBeTruthy();
+    // A new activity in a live JS runtime shows its own splash to take down.
+    expect(mockArmSplashGate).toHaveBeenCalledTimes(1);
+    expect(mockHoldSplashForFirstPaint).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(queryByTestId('auth-session-loading')).toBeNull();
       expect(getByTestId('auth-flag').props.children).toBe('no');
     });
-    expect(BootSplash.hide).toHaveBeenCalledTimes(1);
-    expect(BootSplash.hide).toHaveBeenCalledWith();
+    // The splash waits for the first screen's paint (bounded), not for this.
+    expect(mockHoldSplashForFirstPaint).toHaveBeenCalledTimes(1);
+    expect(mockHideSplash).not.toHaveBeenCalled();
+  });
+
+  it('opens the database and restores the session together, then cleans up paused takes (#973)', async () => {
+    const { initializeDatabase } = jest.requireMock('../src/db/index') as {
+      initializeDatabase: jest.Mock;
+    };
+    const { clearOrphanedPausedTakes } = jest.requireMock(
+      '../src/services/pausedTakes',
+    ) as { clearOrphanedPausedTakes: jest.Mock };
+    let openDatabase!: () => void;
+    initializeDatabase.mockReturnValueOnce(
+      new Promise<void>(resolve => {
+        openDatabase = resolve;
+      }),
+    );
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    // Never settles: the first screen must not wait on it.
+    clearOrphanedPausedTakes.mockReturnValueOnce(new Promise<number>(() => {}));
+
+    const { getByTestId, queryByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    // The session is read without waiting for the database to open.
+    await waitFor(() => expect(mockRestoreSession).toHaveBeenCalledTimes(1));
+    expect(getByTestId('auth-session-loading')).toBeTruthy();
+    expect(clearOrphanedPausedTakes).not.toHaveBeenCalled();
+
+    await act(async () => {
+      openDatabase();
+    });
+    await waitFor(() => {
+      expect(queryByTestId('auth-session-loading')).toBeNull();
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    // Housekeeping runs after the first screen is let through.
+    await waitFor(() =>
+      expect(clearOrphanedPausedTakes).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it('skips paused-take cleanup when bootstrap fails', async () => {
+    const { initializeDatabase } = jest.requireMock('../src/db/index') as {
+      initializeDatabase: jest.Mock;
+    };
+    const { clearOrphanedPausedTakes } = jest.requireMock(
+      '../src/services/pausedTakes',
+    ) as { clearOrphanedPausedTakes: jest.Mock };
+    initializeDatabase.mockRejectedValueOnce(new Error('db boom'));
+
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => expect(getByTestId('auth-session-error')).toBeTruthy());
+    await act(async () => {});
+    expect(clearOrphanedPausedTakes).not.toHaveBeenCalled();
+  });
+
+  it('keeps the first screen when paused-take cleanup fails', async () => {
+    const { clearOrphanedPausedTakes } = jest.requireMock(
+      '../src/services/pausedTakes',
+    ) as { clearOrphanedPausedTakes: jest.Mock };
+    clearOrphanedPausedTakes.mockRejectedValueOnce(new Error('kv down'));
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+
+    const { getByTestId, queryByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() =>
+      expect(clearOrphanedPausedTakes).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {});
+    expect(getByTestId('auth-flag').props.children).toBe('yes');
+    expect(queryByTestId('auth-session-error')).toBeNull();
+    expect(mockLogWarn).toHaveBeenCalledWith(
+      'AuthSession',
+      'Clearing orphaned paused takes failed',
+      { error: 'Error: kv down' },
+    );
   });
 
   it('restores auth and starts upload orchestrator', async () => {
@@ -304,8 +411,8 @@ describe('AuthSessionProvider', () => {
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockStopUploadProgressNotification).toHaveBeenCalled();
   });
-  
-    it('refreshes the sync-status store when a session starts', async () => {
+
+  it('refreshes the sync-status store when a session starts', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
     const { getByTestId } = render(
       <AuthSessionProvider>
@@ -381,5 +488,11 @@ describe('AuthSessionProvider', () => {
       expect(getByTestId('auth-session-error')).toBeTruthy();
     });
     expect(queryByTestId('auth-flag')).toBeNull();
+
+    // The error is the first screen: once laid out, it takes the splash down.
+    fireEvent(getByTestId('auth-session-error'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 100 } },
+    });
+    expect(mockHideSplash).toHaveBeenCalledWith('init-error');
   });
 });

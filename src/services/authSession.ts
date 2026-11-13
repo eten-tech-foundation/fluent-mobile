@@ -9,7 +9,6 @@ import {
   getAllStoredUserIds,
   getCredentials,
   getTempCredentials,
-  hasCredentials,
   saveCredentials,
   saveTempCredentials,
 } from './keychain';
@@ -34,11 +33,7 @@ export interface SessionRestoreResult {
 }
 
 async function tryRestoreUser(userId: string): Promise<SessionRestoreResult> {
-  const hasToken = await hasCredentials(userId);
-  if (!hasToken) {
-    return { authenticated: false };
-  }
-
+  // One SecureStore read: a missing entry comes back null (#973).
   const creds = await getCredentials(userId);
   if (!creds?.token) {
     return { authenticated: false };
