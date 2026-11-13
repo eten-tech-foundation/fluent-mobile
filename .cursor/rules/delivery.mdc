@@ -30,7 +30,7 @@ When the user asks to **handle/process Dependabot PRs**, agents may approve and 
 
 1. Run local gates from [commands.mdc](./commands.mdc) (also listed in [`AGENTS.md`](../../AGENTS.md)).
 2. Apply delivery judgment from [`AGENTS.md`](../../AGENTS.md) (AC, scope, abstraction, human QA).
-3. One independent `code-reviewer` pass on the final intended diff (proportional re-review — see [`AGENTS.md`](../../AGENTS.md) and [`.claude/commands/create-pr.md`](../../.claude/commands/create-pr.md)); fix or waive per-item before handoff.
+3. Two independent reviews on the final intended diff, `correctness-reviewer` then `code-reviewer` (proportional re-review — see [`AGENTS.md`](../../AGENTS.md) and [`.claude/commands/create-pr.md`](../../.claude/commands/create-pr.md)); fix or waive per-item before handoff.
 4. Watch CI after push/open; report done only when required checks are green (or an out-of-scope base-branch blocker is documented).
 
 Human merges — agents do not merge over unfixed review findings.

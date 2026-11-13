@@ -8,8 +8,8 @@ import React, {
   type PropsWithChildren,
 } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
-import BootSplash from 'react-native-bootsplash';
 import { logger } from '../utils/logger';
+import { markStartup } from '../utils/startupTrace';
 import { initializeDatabase } from '../db/index';
 import { syncAllData } from '../services/sync';
 import {
@@ -39,6 +39,11 @@ import { isE2eUploadHoldEnabled } from '../config/e2eUploadHoldGuard';
 import { ApiUser } from '../types/api/responses';
 import { appStyles } from '../app/appStyles';
 import { theme } from '../theme';
+import {
+  armSplashGate,
+  hideSplash,
+  holdSplashForFirstPaint,
+} from './splashGate';
 
 const log = logger.create('AuthSession');
 
@@ -85,21 +90,46 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
+    armSplashGate();
+  }, []);
+
+  useEffect(() => {
     const initApp = async () => {
+      let ready = false;
       try {
-        await initializeDatabase();
-        const removed = await clearOrphanedPausedTakes();
-        if (removed > 0) {
-          log.info('Cleared orphaned paused takes on launch', { removed });
-        }
-        const session = await restoreSession();
+        // The session lives in SecureStore and the KV store, not the
+        // database, so the two open together (#973).
+        const [, session] = await Promise.all([
+          initializeDatabase(),
+          restoreSession(),
+        ]);
+        markStartup('session_restored', {
+          authenticated: session.authenticated,
+        });
         setIsAuthenticated(session.authenticated);
+        ready = true;
       } catch (e: unknown) {
         log.error('initApp failed:', { error: String(e) });
         setError((e as Error).message);
       } finally {
         setIsLoading(false);
       }
+      if (!ready) return;
+      // Housekeeping, off the path to the first screen. Launch recovery
+      // (`collectLaunchRecoveries`) skips orphans on its own, so order
+      // between the two doesn't matter.
+      clearOrphanedPausedTakes()
+        .then(removed => {
+          markStartup('paused_takes_cleared', { removed });
+          if (removed > 0) {
+            log.info('Cleared orphaned paused takes on launch', { removed });
+          }
+        })
+        .catch((e: unknown) => {
+          log.warn('Clearing orphaned paused takes failed', {
+            error: String(e),
+          });
+        });
     };
 
     void initApp();
@@ -137,16 +167,11 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     // userSwitchEpoch: stop/restart so pending downloads cannot resume for the previous account
   }, [isLoading, isAuthenticated, userSwitchEpoch]);
 
+  // The splash comes down when the first screen reports its paint (Home's
+  // content, the login form, or the error below), bounded by the gate's
+  // fallback; see splashGate.ts.
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    // A fade opens a second splash window on the UI thread while the first
-    // screen is mounting, holding saved content back on every cold launch.
-    BootSplash.hide().catch(e => {
-      log.error('BootSplash hide failed', { error: String(e) });
-    });
+    if (!isLoading) holdSplashForFirstPaint();
   }, [isLoading]);
 
   const runPostLoginSync = useCallback(
@@ -215,7 +240,11 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   return (
     <AuthSessionContext.Provider value={value}>
       {error ? (
-        <View style={appStyles.containerAppInit} testID="auth-session-error">
+        <View
+          style={appStyles.containerAppInit}
+          onLayout={() => hideSplash('init-error')}
+          testID="auth-session-error"
+        >
           <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
         </View>
       ) : isLoading ? (

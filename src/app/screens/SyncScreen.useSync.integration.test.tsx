@@ -4,6 +4,10 @@ import { render, screen } from '@testing-library/react-native';
 const mockGetSyncError = jest.fn();
 const mockGetSyncState = jest.fn();
 
+jest.mock('../../navigation/splashGate', () => ({
+  hideSplash: jest.fn(),
+}));
+
 jest.mock('../../services/storage', () => ({
   KV_KEYS: {
     SYNC_ERROR_USER: 'sync_error_user',

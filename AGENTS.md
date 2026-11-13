@@ -32,7 +32,7 @@ When an umbrella instruction and a fluent-mobile rule disagree, **fluent-mobile 
 | Shared entry | With both files present, loads **`CLAUDE.md`** by default — this repo uses `@AGENTS.md` inside `CLAUDE.md` so Claude gets these gates | Root `AGENTS.md` + Cursor rules | Root `AGENTS.md` | [`.github/copilot-instructions.md`](.github/copilot-instructions.md) → this file |
 | Topic rules | `.claude/rules/*.md` (optional); does **not** auto-load `.cursor/rules` | `.cursor/rules/*.mdc` | Via this file + docs | Via Copilot → this file + docs |
 | Commands | `.claude/commands/*.md` (native) | `.cursor/commands/` are slash-palette shims only — **read** `.claude/commands/` | Local `.agents/skills/source-command-*` wrappers point at `.claude/commands/` | Follow docs / ask |
-| Skills / agents | `.claude/skills/`, `.claude/agents/` | Documented discovery of `.claude/` (+ `.agents/skills`) | Prefer shared content under `.claude/`; invoke reviewer **by path** | N/A |
+| Skills / agents | `.claude/skills/`, `.claude/agents/` (subagent `name`) | `.cursor/agents/` shims, each reading the matching `.claude/agents/` prompt. Task type is that `name` | Read `.claude/agents/` and follow it. No subagent registry. Local command wrappers are not the procedure | Read `.claude/agents/` and follow it. No subagent registry |
 | Hooks | `.claude/settings.json` | `.cursor/hooks.json` | `.codex/` (machine-local, gitignored) | N/A |
 
 Do not claim a rule, hook, skill, or command loads automatically unless verified for that tool.
@@ -105,7 +105,12 @@ On feature PRs with heavy agent co-authorship, reviewers should prioritize **sco
 
 ## Review (proportional)
 
-Before handoff, run **one** independent review of the final intended diff via [`.claude/agents/code-reviewer.md`](.claude/agents/code-reviewer.md) (invoke **by path**). Fix every finding or record a per-item human waiver; re-run local gates. A **second** full review is required only when fixes introduce material behavior, contract, scope, or risk changes; when new hunks go beyond applying listed findings; or when correctness remains uncertain. Do not loop full reviews for mechanical format/lint/type fixes. Never silently waive unresolved blockers. Procedure: [`.claude/commands/create-pr.md`](.claude/commands/create-pr.md).
+Before handoff, run **two** independent reviews of the final intended diff, in order. Spawn each as its own subagent (Claude: the `name` in `.claude/agents/`; Cursor: the Task type, via the `.cursor/agents/` shim). Codex and Copilot read the `.claude/agents/` file and follow it. There is no subagent registry for those two:
+
+1. [`.claude/agents/correctness-reviewer.md`](.claude/agents/correctness-reviewer.md) — consumers, awaits, fail-closed, and tests that cannot fail.
+2. [`.claude/agents/code-reviewer.md`](.claude/agents/code-reviewer.md) — layer boundaries, Android-only, theme tokens, `Refs`, template, device QA.
+
+Fix every finding or record a per-item human waiver; re-run local gates. A **second** full pass of a reviewer is required only when fixes introduce material behavior, contract, scope, or risk changes; when new hunks go beyond applying listed findings; or when correctness remains uncertain. Do not loop full reviews for mechanical format/lint/type fixes. Never silently waive unresolved blockers. Procedure: [`.claude/commands/create-pr.md`](.claude/commands/create-pr.md).
 
 ## Related
 

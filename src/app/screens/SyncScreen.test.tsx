@@ -218,6 +218,11 @@ jest.mock('../../components/ui/CloudSyncStatusIcon', () => {
   };
 });
 
+const mockHideSplash = jest.fn();
+jest.mock('../../navigation/splashGate', () => ({
+  hideSplash: (...args: unknown[]) => mockHideSplash(...args),
+}));
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -257,6 +262,20 @@ describe('SyncScreen', () => {
     mockSyncNowFromHook.mockResolvedValue(undefined);
     mockGetActiveUserId.mockReturnValue('1');
     mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+  });
+
+  it('takes the splash down when opened straight from the upload notification', async () => {
+    render(<SyncScreen />);
+    expect(mockHideSplash).not.toHaveBeenCalled();
+
+    fireEvent(screen.getByTestId('sync-screen'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 640 } },
+    });
+
+    expect(mockHideSplash).toHaveBeenCalledWith('sync');
+    await waitFor(() =>
+      expect(mockHasPendingChapterClaimsForUser).toHaveBeenCalled(),
+    );
   });
 
   it('shows Sync Now when only pending chapter claims remain (#611)', async () => {

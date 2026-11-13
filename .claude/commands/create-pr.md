@@ -1,5 +1,5 @@
 ---
-description: Open a draft GitHub PR against main with the Fluent template, Refs #NNN, code-reviewer, Project 4 In PR Review, and CI watch to green. Never merge. /open-pr is an alias.
+description: Open a draft GitHub PR against main with the Fluent template, Refs #NNN, correctness-reviewer then code-reviewer, Project 4 In PR Review, and CI watch to green. Never merge. /open-pr is an alias.
 argument-hint: '[optional: targeted test path/pattern]'
 ---
 
@@ -87,21 +87,39 @@ git branch --show-current
 Warn on uncommitted changes unless the user wants them included. **Do not push**
 uncommitted repairs.
 
-### 3b. Convention review (**hard-block** on any unfixed finding)
+### 3b. Review (**hard-block** on any unfixed finding)
 
-**One independent review of the final intended working diff is enough** before
-commit/push. Invoke the repo reviewer **by path**:
-[`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md)
-(works for Claude Code, Cursor, and Codex). Fall back to `origin/main...HEAD`
-only if the working tree is clean.
+**Two independent reviews of the final intended working diff**, in this order,
+before commit/push. Spawn each as its own subagent. Do not do either review
+in the parent. The prompt for both lives in `.claude/agents/`. Fall back to
+`origin/main...HEAD` only if the working tree is clean.
+
+- **Claude Code:** subagent `correctness-reviewer`, then `code-reviewer`
+  (`.claude/agents/<name>.md`, `name` in the frontmatter).
+- **Cursor:** Task subagent type `correctness-reviewer`, then `code-reviewer`.
+  `.cursor/agents/<name>.md` is the shim Cursor registers; it reads the
+  `.claude/agents/` prompt. If a type is absent from the tool enum, spawn a
+  general-purpose subagent whose only instructions are that `.claude/agents`
+  file.
+- **Codex and Copilot:** no subagent registry. Read each `.claude/agents`
+  file and run it as a fresh pass. A local `.agents/skills/source-command-*`
+  summary is not the procedure.
+
+1. [`.claude/agents/correctness-reviewer.md`](../../.claude/agents/correctness-reviewer.md)
+   — consumers, awaits, fail-closed, tests that cannot fail.
+2. [`.claude/agents/code-reviewer.md`](../../.claude/agents/code-reviewer.md)
+   — layer boundaries, Android-only, theme tokens, `Refs`, template, device QA.
+
+A **Question** from the correctness pass is not a finding. Report it to the
+human and do not invent an answer.
 
 - Fix **every** finding **before pushing** — **Blocking**, **Should-fix**,
   **Nit**. Severity only orders the work; it does **not** make a finding optional.
 - After applying fixes: re-run local checks (step 3) and **verify each finding
-  against its fix** (diff / file read). Do **not** launch another full
-  `code-reviewer` pass solely because listed findings were applied or because
-  mechanical format/lint/type repairs were made.
-- **Re-run `code-reviewer` only when** any of:
+  against its fix** (diff / file read). Do **not** launch another full review
+  pass solely because listed findings were applied or because mechanical
+  format/lint/type repairs were made.
+- **Re-run a reviewer only when** any of:
   - the to-be-committed tree was **never** reviewed this session, or
   - fixes / CI repairs add **material** behavior, contract, scope, or risk
     changes, or
@@ -114,7 +132,7 @@ only if the working tree is clean.
 - The only escape is an **explicit per-item human waiver** documented in the PR
   body (what was waived, why, who approved). Do not invent waivers; do not
   batch-waive an entire severity.
-- Do **not** skip the **required first** review on the final diff. Do **not**
+- Do **not** skip either required review on the final diff. Do **not**
   re-run a full pass when the diff was already reviewed and only finding-fixes
   (or mechanical format/lint/type repairs) landed.
 
@@ -240,7 +258,7 @@ Opening the PR is **not** the finish line.
 1. Watch required checks: `gh pr checks --watch`.
 2. If any required check **fails**, treat it as your job: read the failing log,
    fix, **commit** the repair, re-run local gates (step 3). Re-run
-   `code-reviewer` **only** under the step 3b re-review criteria (material
+   a reviewer **only** under the step 3b re-review criteria (material
    behavior/contract/scope/risk, new hunks beyond finding-fixes, or uncertain
    correctness) — not for mechanical CI repairs alone. Then push (never push
    uncommitted repairs) and re-watch. Loop until green (or blocked on an
@@ -256,7 +274,7 @@ human waiver in the PR body. Green CI is not fulfilled AC or device QA.
 ### 8. Report
 
 Print the **PR URL** and a one-line recap (title, base = `main`, local check
-results, **code-reviewer verdict**, **CI status = green**, whether the linked
+results, **both review verdicts**, **CI status = green**, whether the linked
 issue was moved to In PR Review). Confirm assignee is the author
 (`gh pr view --json assignees`).
 

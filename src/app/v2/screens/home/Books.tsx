@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { BookCover } from '../../../../components/ui/BookCover';
 import type { HomeBookSummary } from '../../../../types/db/types';
 import { useThemedStyles } from '../../../../theme/useTheme';
 
 const PRESSED_OPACITY = 0.7;
+/**
+ * Books in Home's first frame: three rows, which fill a phone screen. Each
+ * cover is an SVG of a dozen gradient shapes, so a long list (140 books is
+ * 5,000 native views) is drawn after that frame is on screen (#972).
+ */
+export const FIRST_FRAME_BOOKS = 6;
 
 function peerChecked(book: HomeBookSummary): boolean {
   return book.totalChapters > 0 && book.checkedChapters === book.totalChapters;
@@ -83,8 +89,20 @@ export function Books({
     pressed: { opacity: PRESSED_OPACITY },
     meta: { ...t.type.meta, color: t.roles.fgSecondary },
   }));
+  // Seeded false so a list that arrives long after an empty first render
+  // is deferred too, not only one that mounts long.
+  const [showAll, setShowAll] = useState(false);
+  const deferRest = books.length > FIRST_FRAME_BOOKS && !showAll;
+  useEffect(() => {
+    if (!deferRest) return;
+    // Next frame: the first rows are committed, and drawing them on the UI
+    // thread overlaps with building the rest here.
+    const frame = requestAnimationFrame(() => setShowAll(true));
+    return () => cancelAnimationFrame(frame);
+  }, [deferRest]);
 
   if (books.length === 0) return null;
+  const shown = deferRest ? books.slice(0, FIRST_FRAME_BOOKS) : books;
 
   return (
     <View testID="home-books">
@@ -92,7 +110,7 @@ export function Books({
         Books
       </Text>
       <View style={styles.grid}>
-        {books.map(book => {
+        {shown.map(book => {
           const counts = bookCounts(book);
           return (
             <Pressable

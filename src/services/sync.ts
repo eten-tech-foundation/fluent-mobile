@@ -37,6 +37,7 @@ import {
 } from '../db/repository';
 import type { BibleTextChapterRef } from '../db/repository';
 import { logger } from '../utils/logger';
+import { markStartup } from '../utils/startupTrace';
 import { getDatabase } from '../db/db';
 import { ApiBook, ApiVerse } from '../types/api/types';
 import { ApiError, isApiError, isRetryableApiError } from '../types/api/errors';
@@ -2711,6 +2712,7 @@ export async function syncAllData(
       const notifyTier1Complete = () => {
         if (tier1Notified) return;
         tier1Notified = true;
+        markStartup('tier1_complete');
         options?.onTier1Complete?.();
       };
 
@@ -3493,6 +3495,9 @@ export async function refreshChapterMetadataIfOnline(
     } finally {
       inFlightMetadataRefresh.delete(userId);
       metadataRefreshesReachingServer.delete(userId);
+      markStartup('metadata_refresh_complete', {
+        reachedServer: notifyComplete,
+      });
       // Home useSyncStatus resamples metadata sync_error_* on this event;
       // refresh clears (or sets) those keys without bumping refreshKey.
       // A pass that never reached the server (quiet catalogue, offline, user
