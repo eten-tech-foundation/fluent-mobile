@@ -131,18 +131,16 @@ describe('chapter metadata refresh on list open', () => {
     expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledTimes(2);
   });
 
-  it('loads View Project from cache immediately and refreshes it after metadata sync when still a member', async () => {
+  it('waits for membership before loading View Project chapters when still a member', async () => {
     const metadataRefresh = deferred<void>();
     mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(
       metadataRefresh.promise,
     );
 
-    renderHook(() => useMilestoneChapters(10, 3));
+    const { result } = renderHook(() => useMilestoneChapters(10, 3));
 
-    await waitFor(() => {
-      expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
-    });
-    expect(mockGetMilestoneChapters).toHaveBeenCalledWith(10, 7);
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
+    expect(result.current.chapters).toEqual([]);
     expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledWith(7);
 
     await act(async () => {
@@ -152,8 +150,9 @@ describe('chapter metadata refresh on list open', () => {
 
     await waitFor(() => {
       expect(mockIsUserProjectMember).toHaveBeenCalledWith(7, 3);
-      expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(2);
+      expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
     });
+    expect(mockGetMilestoneChapters).toHaveBeenCalledWith(10, 7);
   });
 
   it('flags removedFromProject and does not reload chapters when membership was revoked', async () => {
@@ -165,9 +164,7 @@ describe('chapter metadata refresh on list open', () => {
 
     const { result } = renderHook(() => useMilestoneChapters(10, 3));
 
-    await waitFor(() => {
-      expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
-    });
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
 
     await act(async () => {
       metadataRefresh.resolve();
@@ -178,8 +175,8 @@ describe('chapter metadata refresh on list open', () => {
       expect(result.current.removedFromProject).toBe(true);
     });
 
-    // second reload should never fire — membership was revoked
-    expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
+    expect(result.current.chapters).toEqual([]);
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
   });
 
   it('clears removedFromProject when membership is restored on a later refresh', async () => {
@@ -211,5 +208,58 @@ describe('chapter metadata refresh on list open', () => {
     });
 
     await waitFor(() => expect(result.current.removedFromProject).toBe(false));
+  });
+
+  it('ignores a stale unassigned result after a newer open has started', async () => {
+    const firstRefresh = deferred<void>();
+    const firstMembership = deferred<boolean>();
+    const secondRefresh = deferred<void>();
+    const secondMembership = deferred<boolean>();
+    mockRefreshChapterMetadataIfOnline
+      .mockReturnValueOnce(firstRefresh.promise)
+      .mockReturnValueOnce(secondRefresh.promise);
+    mockIsUserProjectMember
+      .mockReturnValueOnce(firstMembership.promise)
+      .mockReturnValueOnce(secondMembership.promise);
+
+    const { result } = renderHook(() => useMilestoneChapters(10, 3));
+
+    await act(async () => {
+      firstRefresh.resolve();
+      await firstRefresh.promise;
+    });
+    await waitFor(() =>
+      expect(mockIsUserProjectMember).toHaveBeenCalledTimes(1),
+    );
+
+    await act(async () => {
+      capturedFocusCallback?.();
+    });
+
+    await act(async () => {
+      secondRefresh.resolve();
+      await secondRefresh.promise;
+    });
+    await waitFor(() =>
+      expect(mockIsUserProjectMember).toHaveBeenCalledTimes(2),
+    );
+
+    await act(async () => {
+      firstMembership.resolve(false);
+      await firstMembership.promise;
+    });
+
+    expect(result.current.removedFromProject).toBe(false);
+    expect(result.current.chapters).toEqual([]);
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
+
+    await act(async () => {
+      secondMembership.resolve(true);
+      await secondMembership.promise;
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.removedFromProject).toBe(false);
+    expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
   });
 });

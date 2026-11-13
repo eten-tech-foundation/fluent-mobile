@@ -1,6 +1,9 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useMilestoneChapters } from './useMilestoneChapters';
 import { getMilestoneChapters } from '../db/queries';
+import { isUserProjectMember } from '../db/repository';
+import { getActiveUserId } from '../services/storage';
+import { refreshChapterMetadataIfOnline } from '../services/sync';
 import { parseUserId } from '../utils/parseUserId';
 import type { ProjectChapter } from '../types/db/types';
 
@@ -41,6 +44,22 @@ jest.mock('expo-router', () => {
 
 const mockGetMilestoneChapters = getMilestoneChapters as jest.Mock;
 const mockParseUserId = parseUserId as jest.Mock;
+const mockGetActiveUserId = getActiveUserId as jest.Mock;
+const mockRefreshChapterMetadataIfOnline =
+  refreshChapterMetadataIfOnline as jest.MockedFunction<
+    typeof refreshChapterMetadataIfOnline
+  >;
+const mockIsUserProjectMember = isUserProjectMember as jest.MockedFunction<
+  typeof isUserProjectMember
+>;
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>(res => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 function makeChapter(overrides: Partial<ProjectChapter> = {}): ProjectChapter {
   return {
@@ -63,6 +82,9 @@ describe('useMilestoneChapters', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     mockParseUserId.mockReturnValue(1);
+    mockGetActiveUserId.mockReturnValue(null);
+    mockRefreshChapterMetadataIfOnline.mockResolvedValue(undefined);
+    mockIsUserProjectMember.mockResolvedValue(true);
   });
 
   it('keeps the newer result when an older, slower request resolves last', async () => {
@@ -117,5 +139,113 @@ describe('useMilestoneChapters', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.chapters).toEqual([]);
     expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
+  });
+
+  it('does not expose cached chapters until membership resolves as revoked', async () => {
+    mockGetActiveUserId.mockReturnValue('1');
+    const cached = [makeChapter()];
+    mockGetMilestoneChapters.mockResolvedValue(cached);
+    const metadataRefresh = deferred<void>();
+    const membership = deferred<boolean>();
+    mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(
+      metadataRefresh.promise,
+    );
+    mockIsUserProjectMember.mockReturnValueOnce(membership.promise);
+
+    const { result } = renderHook(() => useMilestoneChapters(10, 100));
+
+    expect(result.current.chapters).toEqual([]);
+    expect(result.current.loading).toBe(true);
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
+
+    await act(async () => {
+      metadataRefresh.resolve();
+      await metadataRefresh.promise;
+    });
+
+    expect(result.current.chapters).toEqual([]);
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
+
+    await act(async () => {
+      membership.resolve(false);
+      await membership.promise;
+    });
+
+    await waitFor(() => expect(result.current.removedFromProject).toBe(true));
+    expect(result.current.chapters).toEqual([]);
+    expect(result.current.loading).toBe(false);
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
+  });
+
+  it('exposes chapters after the membership check confirms the user is still a member', async () => {
+    mockGetActiveUserId.mockReturnValue('1');
+    const cached = [makeChapter()];
+    mockGetMilestoneChapters.mockResolvedValue(cached);
+    const metadataRefresh = deferred<void>();
+    mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(
+      metadataRefresh.promise,
+    );
+
+    const { result } = renderHook(() => useMilestoneChapters(10, 100));
+
+    expect(result.current.chapters).toEqual([]);
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
+
+    await act(async () => {
+      metadataRefresh.resolve();
+      await metadataRefresh.promise;
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.chapters).toEqual(cached);
+    expect(result.current.removedFromProject).toBe(false);
+    expect(mockIsUserProjectMember).toHaveBeenCalledWith(1, 100);
+    expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
+    expect(mockGetMilestoneChapters).toHaveBeenCalledWith(10, 1);
+  });
+
+  it('does not expose cached chapters when reload runs before membership resolves', async () => {
+    mockGetActiveUserId.mockReturnValue('1');
+    const cached = [makeChapter()];
+    mockGetMilestoneChapters.mockResolvedValue(cached);
+    const membership = deferred<boolean>();
+    mockIsUserProjectMember.mockReturnValueOnce(membership.promise);
+
+    const { result } = renderHook(() => useMilestoneChapters(10, 100));
+
+    await act(async () => {
+      await result.current.reload();
+    });
+
+    expect(result.current.chapters).toEqual([]);
+    expect(result.current.loading).toBe(true);
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
+
+    await act(async () => {
+      membership.resolve(false);
+      await membership.promise;
+    });
+
+    await waitFor(() => expect(result.current.removedFromProject).toBe(true));
+    expect(result.current.chapters).toEqual([]);
+    expect(mockGetMilestoneChapters).not.toHaveBeenCalled();
+  });
+
+  it('skips the network membership refresh when offline and keeps the cached book', async () => {
+    mockGetActiveUserId.mockReturnValue('1');
+    const cached = [makeChapter()];
+    mockGetMilestoneChapters.mockResolvedValue(cached);
+    // Offline: refreshChapterMetadataIfOnline returns without hitting the
+    // server, then the local membership row is still true.
+    mockRefreshChapterMetadataIfOnline.mockResolvedValueOnce(undefined);
+    mockIsUserProjectMember.mockResolvedValueOnce(true);
+
+    const { result } = renderHook(() => useMilestoneChapters(10, 100));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.chapters).toEqual(cached);
+    expect(result.current.removedFromProject).toBe(false);
+    expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledWith(1);
+    expect(mockIsUserProjectMember).toHaveBeenCalledWith(1, 100);
   });
 });
