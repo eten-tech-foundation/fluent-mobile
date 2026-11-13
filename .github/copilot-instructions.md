@@ -10,3 +10,5 @@ Use the **same** contracts as other tools. Do not invent a Copilot-only workflow
 6. Canonical commands: [`.claude/commands/`](../.claude/commands/) (read the file; do not assume IDE slash commands exist)
 
 Prefer Expo SDK modules; Android-only permanently; `Refs #NNN` (never closing keywords) or in-session `Refs: none` for approved no-ticket chores.
+
+Before a PR, follow the review order in `AGENTS.md`: read `.claude/agents/correctness-reviewer.md`, then `.claude/agents/code-reviewer.md`, and run each as its own pass. Copilot has no subagent registry.
