@@ -13,6 +13,7 @@ jest.mock('../db', () => ({
 
 import {
   getHeldRecordings,
+  getRecordingOwnerIds,
   reconcileHeldRecordings,
 } from './heldRecordingsRepository';
 
@@ -182,7 +183,7 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
   });
 
   it('holds takes for projects the recording account left and keeps member work pending', async () => {
-    await reconcileHeldRecordings(1);
+    await reconcileHeldRecordings(1, [1, 2]);
 
     await expect(statusOf(mockDb, 'alpha-ok')).resolves.toBe('pending');
     await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('held');
@@ -195,7 +196,7 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
   });
 
   it('lists held takes for the active account grouped-ready for the Sync page', async () => {
-    await reconcileHeldRecordings(1);
+    await reconcileHeldRecordings(1, [1, 2]);
 
     const records = await getHeldRecordings(1);
     expect(records.map(record => record.id)).toEqual([
@@ -225,14 +226,14 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
   });
 
   it('releases held takes once membership returns so the next pass uploads them', async () => {
-    await reconcileHeldRecordings(1);
+    await reconcileHeldRecordings(1, [1, 2]);
     await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('held');
 
     await mockDb.execute(
       'INSERT INTO user_projects (user_id, project_id) VALUES (?, ?)',
       [1, 200],
     );
-    await reconcileHeldRecordings(1);
+    await reconcileHeldRecordings(1, [1, 2]);
 
     await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('pending');
     await expect(statusOf(mockDb, 'beta-failed')).resolves.toBe('pending');
@@ -248,7 +249,7 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
       ['beta-pending'],
     );
 
-    await reconcileHeldRecordings(1);
+    await reconcileHeldRecordings(1, [1, 2]);
 
     await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('held');
   });
@@ -256,15 +257,63 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
   it('rejects instead of reporting a clean reconcile when the transaction fails', async () => {
     await mockDb.execute('DROP TABLE recordings');
 
-    await expect(reconcileHeldRecordings(1)).rejects.toThrow();
+    await expect(reconcileHeldRecordings(1, [1, 2])).rejects.toThrow();
   });
 
   it('does nothing without an active account', async () => {
-    await expect(reconcileHeldRecordings(null)).resolves.toEqual({
+    await expect(reconcileHeldRecordings(null, [1])).resolves.toEqual({
       held: 0,
       released: 0,
     });
     await expect(getHeldRecordings(null)).resolves.toEqual([]);
     await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('pending');
+  });
+
+  it('only acts on owners whose membership was verified', async () => {
+    // Owner 1 could not be confirmed: its stale cache must not hold anything.
+    const outcome = await reconcileHeldRecordings(1, [2]);
+
+    expect(outcome).toEqual({ held: 0, released: 0 });
+    await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('pending');
+    await expect(statusOf(mockDb, 'beta-failed')).resolves.toBe('failed');
+
+    await expect(reconcileHeldRecordings(1, [])).resolves.toEqual({
+      held: 0,
+      released: 0,
+    });
+    await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('pending');
+  });
+
+  it('does not release a held take for an unverified owner', async () => {
+    await reconcileHeldRecordings(1, [1, 2]);
+    await mockDb.execute(
+      'INSERT INTO user_projects (user_id, project_id) VALUES (?, ?)',
+      [1, 200],
+    );
+
+    await reconcileHeldRecordings(1, [2]);
+
+    await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('held');
+  });
+
+  it('persists the resolved project unit when a take is held', async () => {
+    await reconcileHeldRecordings(1, [1, 2]);
+
+    const result = await mockDb.execute(
+      'SELECT project_unit_id FROM recordings WHERE id = ?',
+      ['beta-resolved-unit'],
+    );
+    expect(Number(result.rows[0]?.project_unit_id)).toBe(20);
+  });
+
+  it('lists the active account and every account with work on the device', async () => {
+    const owners = await getRecordingOwnerIds(1);
+    expect([...owners].sort()).toEqual([1, 2]);
+
+    await mockDb.execute(
+      `DELETE FROM recordings WHERE recorded_by_user_id = 2`,
+    );
+    await expect(getRecordingOwnerIds(1)).resolves.toEqual([1]);
+    await expect(getRecordingOwnerIds(null)).resolves.toEqual([1]);
   });
 });

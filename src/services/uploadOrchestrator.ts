@@ -1,9 +1,18 @@
 import {
+  getDatabaseWriteMark,
   getPendingUploadChapters,
   hasPendingChapterClaimsForUser,
+  sameDatabaseWrites,
+  type DatabaseWriteMark,
 } from '../db/queries';
-import { reconcileHeldRecordings } from '../db/repositories/heldRecordingsRepository';
-import { refreshProjectMembership } from './projectMembership';
+import {
+  getRecordingOwnerIds,
+  reconcileHeldRecordings,
+} from '../db/repositories/heldRecordingsRepository';
+import {
+  getVerifiedMembershipOwners,
+  refreshMembershipForOwners,
+} from './projectMembership';
 import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   getConnectivitySnapshot,
@@ -12,6 +21,7 @@ import {
 } from './connectivity';
 import {
   emitAuthReauthRequired,
+  emitHeldRecordingsChanged,
   emitUploadSessionEvent,
   onSyncComplete,
 } from './syncEvents';
@@ -32,11 +42,6 @@ import {
   subscribeToPreference,
 } from './userPreferences';
 import { logger } from '../utils/logger';
-import {
-  getDatabaseWriteMark,
-  sameDatabaseWrites,
-  type DatabaseWriteMark,
-} from '../db/queries';
 import { UploadNetworkInterruptedError } from '../utils/networkError';
 import {
   createUploadOrchestrator,
@@ -136,16 +141,24 @@ async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
 }
 
 /**
- * Fresh server truth for the active account's project memberships (#848).
- * Signed-out sessions keep the existing cache-only behavior; the reconcile
- * below is a no-op without an active user.
+ * Fresh server truth for every account that owns work on the device (#848).
+ * An owner that cannot be confirmed keeps its takes deferred (the passes and
+ * the reconcile below only act on verified owners) without blocking the rest;
+ * the session defers and retries only when no owner could be confirmed.
+ * Signed-out sessions keep the existing cache-only behavior.
  */
 async function refreshMembershipBeforeUpload(): Promise<void> {
   const activeUserId = Number(getActiveUserId());
   if (!Number.isFinite(activeUserId) || activeUserId <= 0) {
     return;
   }
-  await refreshProjectMembership(activeUserId);
+  const owners = await getRecordingOwnerIds(activeUserId);
+  const verified = await refreshMembershipForOwners(owners);
+  if (verified.size === 0) {
+    throw new Error(
+      'Project membership could not be confirmed for any account',
+    );
+  }
 }
 
 async function reconcileHeldBeforeUpload(): Promise<{
@@ -155,7 +168,11 @@ async function reconcileHeldBeforeUpload(): Promise<{
   const activeUserId = Number(getActiveUserId());
   const outcome = await reconcileHeldRecordings(
     Number.isFinite(activeUserId) && activeUserId > 0 ? activeUserId : null,
+    [...getVerifiedMembershipOwners()],
   );
+  if (outcome.held > 0 || outcome.released > 0) {
+    emitHeldRecordingsChanged();
+  }
   return { held: outcome.held, released: outcome.released };
 }
 

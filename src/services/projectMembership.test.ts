@@ -20,6 +20,19 @@ jest.mock('../db/repository', () => ({
   selectExistingIds: (...args: unknown[]) => mockSelectExistingIds(...args),
 }));
 
+const mockSetReauthRequired = jest.fn();
+const mockGetActiveUserId = jest.fn();
+jest.mock('./storage', () => ({
+  setReauthRequired: (...args: unknown[]) => mockSetReauthRequired(...args),
+  getActiveUserId: () => mockGetActiveUserId(),
+}));
+
+const mockEmitAuthReauthRequired = jest.fn();
+jest.mock('./syncEvents', () => ({
+  emitAuthReauthRequired: (...args: unknown[]) =>
+    mockEmitAuthReauthRequired(...args),
+}));
+
 jest.mock('../utils/logger', () => ({
   logger: {
     create: () => ({
@@ -30,7 +43,13 @@ jest.mock('../utils/logger', () => ({
   },
 }));
 
-import { refreshProjectMembership } from './projectMembership';
+import { AuthError } from './authError';
+import {
+  getVerifiedMembershipOwners,
+  OWNER_CREDENTIALS_MISSING,
+  refreshMembershipForOwners,
+  refreshProjectMembership,
+} from './projectMembership';
 
 describe('refreshProjectMembership (#848)', () => {
   beforeEach(() => {
@@ -111,5 +130,71 @@ describe('refreshProjectMembership (#848)', () => {
       'An active user is required',
     );
     expect(mockGetUserProjects).not.toHaveBeenCalled();
+  });
+});
+
+describe('missing credentials (#855)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetCredentials.mockResolvedValue(null);
+  });
+
+  it('throws an AuthError carrying the missing-credentials code', async () => {
+    const error = await refreshProjectMembership(1).catch(e => e);
+
+    expect(error).toBeInstanceOf(AuthError);
+    expect(error.code).toBe(OWNER_CREDENTIALS_MISSING);
+  });
+});
+
+describe('refreshMembershipForOwners (#855)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetUserProjects.mockResolvedValue({ data: [{ id: 10 }] });
+    mockSelectExistingIds.mockResolvedValue(new Set([10]));
+    mockInsertUserProjects.mockResolvedValue(undefined);
+    mockReconcileUserProjects.mockResolvedValue(undefined);
+    mockGetActiveUserId.mockReturnValue('1');
+    mockGetCredentials.mockImplementation(async (id: string) =>
+      id === '2' ? null : { token: `tok-${id}` },
+    );
+  });
+
+  it('verifies every owner it can confirm and leaves the rest out', async () => {
+    const verified = await refreshMembershipForOwners([1, 2, 3]);
+
+    expect([...verified].sort()).toEqual([1, 3]);
+    expect([...getVerifiedMembershipOwners()].sort()).toEqual([1, 3]);
+    expect(mockReconcileUserProjects).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps going when one owner fails with a transport error', async () => {
+    mockGetUserProjects.mockImplementation(async (id: number) => {
+      if (id === 1) throw new Error('offline');
+      return { data: [{ id: 10 }] };
+    });
+
+    const verified = await refreshMembershipForOwners([1, 3]);
+
+    expect([...verified]).toEqual([3]);
+    expect(mockSetReauthRequired).not.toHaveBeenCalled();
+  });
+
+  it('flags reauth for an owner without credentials and signals only the active one', async () => {
+    await refreshMembershipForOwners([2]);
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('2');
+    expect(mockEmitAuthReauthRequired).not.toHaveBeenCalled();
+
+    mockGetActiveUserId.mockReturnValue('2');
+    await refreshMembershipForOwners([2]);
+    expect(mockEmitAuthReauthRequired).toHaveBeenCalledWith('2');
+  });
+
+  it('checks each owner once and replaces the previous verified set', async () => {
+    await refreshMembershipForOwners([1, 1, 3]);
+    expect(mockGetUserProjects).toHaveBeenCalledTimes(2);
+
+    await refreshMembershipForOwners([3]);
+    expect([...getVerifiedMembershipOwners()]).toEqual([3]);
   });
 });

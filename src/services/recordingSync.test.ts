@@ -45,16 +45,23 @@ const mockClearRecordingDeletion = jest.fn();
 const mockRaiseVerseVersionToken = jest.fn();
 const mockDeleteVerseAudioTake = jest.fn();
 const mockReconcileHeldRecordings = jest.fn();
-const mockRefreshProjectMembership = jest.fn();
+const mockRefreshMembershipForOwners = jest.fn();
+const mockGetVerifiedMembershipOwners = jest.fn();
+const mockGetRecordingOwnerIds = jest.fn();
+const mockEmitHeldRecordingsChanged = jest.fn();
 
 jest.mock('./projectMembership', () => ({
-  refreshProjectMembership: (...args: unknown[]) =>
-    mockRefreshProjectMembership(...args),
+  refreshMembershipForOwners: (...args: unknown[]) =>
+    mockRefreshMembershipForOwners(...args),
+  getVerifiedMembershipOwners: (...args: unknown[]) =>
+    mockGetVerifiedMembershipOwners(...args),
 }));
 
 jest.mock('../db/repositories/heldRecordingsRepository', () => ({
   reconcileHeldRecordings: (...args: unknown[]) =>
     mockReconcileHeldRecordings(...args),
+  getRecordingOwnerIds: (...args: unknown[]) =>
+    mockGetRecordingOwnerIds(...args),
 }));
 
 jest.mock('../db/repository', () => ({
@@ -155,6 +162,8 @@ jest.mock('./syncEvents', () => ({
     mockEmitUploadSessionEvent(...args),
   emitAuthReauthRequired: (...args: unknown[]) =>
     mockEmitAuthReauthRequired(...args),
+  emitHeldRecordingsChanged: (...args: unknown[]) =>
+    mockEmitHeldRecordingsChanged(...args),
 }));
 
 const FILE_URI = 'file:///mock-document/recordings/verse-1.m4a';
@@ -234,7 +243,12 @@ describe('recordingSync', () => {
     mockRaiseVerseVersionToken.mockResolvedValue(undefined);
     mockDeleteVerseAudioTake.mockResolvedValue({ versionToken: 3 });
     mockReconcileHeldRecordings.mockResolvedValue({ held: 0, released: 0 });
-    mockRefreshProjectMembership.mockResolvedValue(undefined);
+    // Owners 2 (active), 7, 8 and 9 have work on the device and all verify.
+    mockGetRecordingOwnerIds.mockResolvedValue([2, 7, 8, 9]);
+    mockRefreshMembershipForOwners.mockImplementation(
+      async (ids: number[]) => new Set(ids),
+    );
+    mockGetVerifiedMembershipOwners.mockReturnValue(new Set([2, 7, 8, 9]));
     // Reconciliation after a possibly-applied failure: nothing on the server
     // yet, so a first-take activation replays.
     mockGetVerseAudioUnit.mockRejectedValue(new ApiError(404, 'Not found'));
@@ -245,16 +259,17 @@ describe('recordingSync', () => {
     authToken.set(null);
   });
 
-  it('reconciles held takes for the active account before uploading (#855)', async () => {
+  it('reconciles held takes for the verified owners before uploading (#855)', async () => {
     await syncPendingRecordings('tok-1', { delay });
 
-    expect(mockReconcileHeldRecordings).toHaveBeenCalledWith(2);
+    expect(mockReconcileHeldRecordings).toHaveBeenCalledWith(2, [2, 7, 8, 9]);
   });
 
-  it('refreshes server membership before reconciling an unscoped pass (#848)', async () => {
+  it('refreshes server membership for every owner before reconciling an unscoped pass (#848)', async () => {
     const order: string[] = [];
-    mockRefreshProjectMembership.mockImplementation(async () => {
+    mockRefreshMembershipForOwners.mockImplementation(async (ids: number[]) => {
       order.push('refresh');
+      return new Set(ids);
     });
     mockReconcileHeldRecordings.mockImplementation(async () => {
       order.push('reconcile');
@@ -266,13 +281,11 @@ describe('recordingSync', () => {
     // A manual pass has no orchestrator session ahead of it, so it must not
     // reconcile against a cache that may still name a removed project.
     expect(order).toEqual(['refresh', 'reconcile']);
-    expect(mockRefreshProjectMembership).toHaveBeenCalledWith(2);
+    expect(mockRefreshMembershipForOwners).toHaveBeenCalledWith([2, 7, 8, 9]);
   });
 
-  it('defers every take when the membership refresh fails (#848)', async () => {
-    mockRefreshProjectMembership.mockRejectedValue(
-      new Error('projects unavailable'),
-    );
+  it('defers every take when no owner can be verified (#848)', async () => {
+    mockRefreshMembershipForOwners.mockResolvedValue(new Set());
 
     const result = await syncPendingRecordings('tok-1', { delay });
 
@@ -282,7 +295,45 @@ describe('recordingSync', () => {
     expect(result.deferred).toBe(1);
     // Membership is unconfirmed: the take is held back, not failed or deleted.
     expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
-    expect(mockReconcileHeldRecordings).not.toHaveBeenCalled();
+    expect(mockReconcileHeldRecordings).toHaveBeenCalledWith(2, []);
+  });
+
+  it('defers only the takes of an owner whose membership cannot be verified (#855)', async () => {
+    mockRefreshMembershipForOwners.mockResolvedValue(new Set([2]));
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'mine', bibleTextId: 50 }),
+      pendingRecording({ id: 'other', bibleTextId: 51, recordedByUserId: 7 }),
+    ]);
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+    expect(result.uploaded).toBe(1);
+    expect(result.deferred).toBe(1);
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+    // Only verified owners are reconciled: a stale cache for owner 7 must not
+    // hold or release anything.
+    expect(mockReconcileHeldRecordings).toHaveBeenCalledWith(2, [2]);
+  });
+
+  it('holds back a second account removed while offline instead of uploading it (#855)', async () => {
+    // Owner 7's refresh confirmed the removal; reconcile then held their take,
+    // so the pending read no longer returns it and only owner 2 uploads.
+    mockReconcileHeldRecordings.mockResolvedValue({ held: 1, released: 0 });
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'mine', bibleTextId: 50 }),
+    ]);
+
+    const result = await syncPendingRecordings('tok-1', { delay });
+
+    expect(result.uploaded).toBe(1);
+    expect(mockEmitHeldRecordingsChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not emit held-changed when reconcile changes nothing (#855)', async () => {
+    await syncPendingRecordings('tok-1', { delay });
+
+    expect(mockEmitHeldRecordingsChanged).not.toHaveBeenCalled();
   });
 
   it('does not repeat the membership refresh inside a chapter pass (#848)', async () => {
@@ -293,8 +344,21 @@ describe('recordingSync', () => {
       chapter: { bookId: 40, chapterNumber: 1 },
     });
 
-    expect(mockRefreshProjectMembership).not.toHaveBeenCalled();
-    expect(mockReconcileHeldRecordings).toHaveBeenCalledWith(2);
+    expect(mockRefreshMembershipForOwners).not.toHaveBeenCalled();
+    expect(mockReconcileHeldRecordings).toHaveBeenCalledWith(2, [2, 7, 8, 9]);
+  });
+
+  it('reports idle, not complete, when an empty queue has an unverified owner (#855)', async () => {
+    mockRefreshMembershipForOwners.mockResolvedValue(new Set([2]));
+    mockGetPendingRecordings.mockResolvedValue([]);
+
+    await syncPendingRecordings('tok-1', { delay });
+
+    const types = mockEmitUploadSessionEvent.mock.calls.map(
+      ([event]) => (event as UploadSessionEvent).type,
+    );
+    expect(types).toContain('idle');
+    expect(types).not.toContain('complete');
   });
 
   it('still uploads eligible takes when reconciliation holds another take (#855)', async () => {

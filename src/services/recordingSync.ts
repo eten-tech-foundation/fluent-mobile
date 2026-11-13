@@ -13,8 +13,14 @@ import {
   setRecordingSyncStatus,
   updateRecordingVersionToken,
 } from '../db/repository';
-import { reconcileHeldRecordings } from '../db/repositories/heldRecordingsRepository';
-import { refreshProjectMembership } from './projectMembership';
+import {
+  getRecordingOwnerIds,
+  reconcileHeldRecordings,
+} from '../db/repositories/heldRecordingsRepository';
+import {
+  getVerifiedMembershipOwners,
+  refreshMembershipForOwners,
+} from './projectMembership';
 import type {
   PendingRecording,
   PendingRecordingDeletion,
@@ -54,6 +60,7 @@ import {
 } from './uploadOperationState';
 import {
   emitAuthReauthRequired,
+  emitHeldRecordingsChanged,
   emitUploadSessionEvent,
   type UploadSessionEvent,
 } from './syncEvents';
@@ -173,7 +180,7 @@ function isAbortError(error: unknown): boolean {
 }
 
 function fileNameFromPath(path: string): string {
-  const parts = path.split(/[\\/]/);
+  const parts = path.split(/[/\\]/);
   const name = parts[parts.length - 1];
   return name && name.length > 0 ? name : 'recording.m4a';
 }
@@ -295,7 +302,8 @@ function createPassOwnerTokens() {
   };
 }
 
-/** Canonical and selected takes become the server's active take; other takes
+/**
+ * Canonical and selected takes become the server's active take; other takes
  * upload as stored-only alternates (#716).
  */
 function shouldActivateTake(recording: PendingRecording): boolean {
@@ -400,11 +408,9 @@ async function reconcileActivation(
       observedVersionToken: unit.versionToken,
     };
   }
-
-  // A stale-precondition PUT 200s with a conflict into a selection that is
-  // not this recording's take: the server still accepted bytes and moved the
-  // unit. One replay of the current selection surfaces the conflict without
-  // looping.
+  // fluent-api main answers a stale precondition with a conflict 200, so one
+  // replay surfaces the conflict. If the unit moved and that replay still did
+  // not land (e.g. repeated 409s), stop rather than cycle.
   const versionMoved = unit.versionToken !== operation.baseVersionToken;
   if (versionMoved && (operation.movedReplays ?? 0) >= 1) {
     return {
@@ -416,7 +422,6 @@ async function reconcileActivation(
   }
   return { kind: 'replay', versionMoved };
 }
-
 /**
  * Apply a durable receipt (#886) to a recording that is still pending: the
  * server already accepted these bytes, only the local marker is missing.
@@ -1101,10 +1106,20 @@ async function uploadOneRecording(
       }
     }
   }
+
+  if (
+    (await markRecordingFailed(
+      recording.id,
+      lastMessage,
+      recording.uploadIntentVersion ?? 0,
+    )) === false
+  )
+    return 'deferred';
   return 'failed';
 }
 
-/** Per-take result of one upload attempt sequence. `deferred`: the row's
+/**
+ * Per-take result of one upload attempt sequence. `deferred`: the row's
  * intent generation moved while this pass held it, so nothing was marked.
  */
 type TakeUploadOutcome = 'deferred' | 'uploaded' | 'conflicted' | 'failed';
@@ -1287,7 +1302,8 @@ async function runDeletePass(
   return result;
 }
 
-/** Session-level delete drain for the orchestrator (#886): runs once per
+/**
+ * Session-level delete drain for the orchestrator (#886): runs once per
  * upload session before the first chapter, so chapter passes no longer
  * re-scan every account's deletes. Unscoped manual passes still drain inline.
  */
@@ -1345,19 +1361,34 @@ async function runUploadPass(
   const activeUserId = Number(getActiveUserId());
   const membershipUserId =
     Number.isFinite(activeUserId) && activeUserId > 0 ? activeUserId : null;
-  let membershipEstablished = true;
+  // Membership is verified per owner: one account that cannot be confirmed
+  // defers only its own takes (#855). Signed-out passes (no active account)
+  // keep the cache-only behavior.
+  let reconcileFailed = false;
+  let gateFailed = false;
   let membershipHeld = 0;
+  let verifiedOwners: ReadonlySet<number> = new Set();
   try {
-    if (options.chapter === undefined && membershipUserId !== null) {
-      await refreshProjectMembership(membershipUserId);
+    if (membershipUserId !== null) {
+      const owners = await getRecordingOwnerIds(membershipUserId);
+      verifiedOwners =
+        options.chapter === undefined
+          ? await refreshMembershipForOwners(owners)
+          : getVerifiedMembershipOwners();
+      gateFailed = owners.some(owner => !verifiedOwners.has(owner));
+      const outcome = await reconcileHeldRecordings(membershipUserId, [
+        ...verifiedOwners,
+      ]);
+      membershipHeld = outcome.held;
+      if (outcome.held > 0 || outcome.released > 0) {
+        emitHeldRecordingsChanged();
+      }
     }
-    const outcome = await reconcileHeldRecordings(membershipUserId);
-    membershipHeld = outcome.held;
   } catch (error) {
     log.warn('Held-recording membership reconciliation failed; deferring', {
       error,
     });
-    membershipEstablished = false;
+    reconcileFailed = true;
   }
 
   const pending = await getPendingRecordings(options.chapter);
@@ -1365,7 +1396,7 @@ async function runUploadPass(
   log.info('Starting recording upload pass', {
     count: pending.length,
     chapter: options.chapter ?? null,
-    membershipEstablished,
+    membershipEstablished: !reconcileFailed && !gateFailed,
     membershipHeld,
   });
 
@@ -1413,22 +1444,16 @@ async function runUploadPass(
     for (const recording of pending) {
       throwIfAborted(options.signal);
 
-      // Membership/reconciliation gate: if membership could not be
-      // established (the refresh or the reconcile failed), this take is
-      // deferred — never marked failed, never deleted, and never
-      // subject to a terminal upload error. It is released on the next
-      // successful sync when membership is restored and uploaded
-      // automatically.
-      if (!membershipEstablished) {
-        try {
-          // Re-read to confirm still held; keep the row 'pending' so the
-          // next membership-restored sync releases it. Leave it untouched.
-          (recording as unknown as Record<string, unknown>).sync_status =
-            'held';
-        } catch {
-          // Never throw over membership bookkeeping; the row stays pending
-          // and the retry path re-reads it.
-        }
+      // Membership gate: a take whose owner's membership could not be
+      // confirmed (refresh or reconcile failed) is deferred, never marked
+      // failed or deleted. It uploads automatically once membership is
+      // restored on a later pass.
+      const ownerId = recording.recordedByUserId ?? membershipUserId;
+      if (
+        reconcileFailed ||
+        (membershipUserId !== null &&
+          (ownerId === null || !verifiedOwners.has(ownerId)))
+      ) {
         deferred += 1;
         uploadTokens.clear();
         continue;
@@ -1485,7 +1510,13 @@ async function runUploadPass(
     // reset, but no success signal is sent (Home only refreshes on `complete`).
     emitPassEvent({
       type:
-        failed > 0 || deferred > 0 || deletionsFailed > 0 ? 'idle' : 'complete',
+        failed > 0 ||
+        deferred > 0 ||
+        deletionsFailed > 0 ||
+        reconcileFailed ||
+        gateFailed
+          ? 'idle'
+          : 'complete',
     });
     log.info('Recording upload pass finished', {
       uploaded,

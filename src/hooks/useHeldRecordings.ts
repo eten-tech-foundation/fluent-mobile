@@ -5,13 +5,16 @@ import {
   type HeldRecording,
 } from '../db/repositories/heldRecordingsRepository';
 import { getActiveUserId } from '../services/storage';
-import { onUploadSessionEvent } from '../services/syncEvents';
+import {
+  onHeldRecordingsChanged,
+  onUploadSessionEvent,
+} from '../services/syncEvents';
 
 /**
  * Sync page held-work list (#855): takes kept on the device because the
  * recording account was removed from the project. Reloads on focus, when the
  * parent bumps `refreshKey`, and after an upload session finishes so uploaded
- * takes drop out of the list.
+ * takes drop out of the list, and when a reconcile holds or releases takes.
  */
 export function useHeldRecordings(refreshKey = 0): {
   recordings: HeldRecording[];
@@ -56,6 +59,14 @@ export function useHeldRecordings(refreshKey = 0): {
         if (event.type === 'complete' || event.type === 'idle') {
           void load();
         }
+      }),
+    [load],
+  );
+
+  useEffect(
+    () =>
+      onHeldRecordingsChanged(() => {
+        void load();
       }),
     [load],
   );

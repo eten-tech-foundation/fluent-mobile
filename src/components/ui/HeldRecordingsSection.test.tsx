@@ -142,6 +142,36 @@ describe('HeldRecordingsSection (#855)', () => {
     });
   });
 
+  it('stops playback when the playing row leaves the list', async () => {
+    const { rerender } = render(
+      <HeldRecordingsSection recordings={[held(), held({ id: 'held-2' })]} />,
+    );
+    fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await waitFor(() => {
+      expect(mockPlay).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(<HeldRecordingsSection recordings={[held({ id: 'held-2' })]} />);
+
+    await waitFor(() => {
+      expect(mockPause).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('keeps playing while its row stays in the list', async () => {
+    const { rerender } = render(
+      <HeldRecordingsSection recordings={[held(), held({ id: 'held-2' })]} />,
+    );
+    fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await waitFor(() => {
+      expect(mockPlay).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(<HeldRecordingsSection recordings={[held()]} />);
+
+    expect(mockPause).not.toHaveBeenCalled();
+  });
+
   it('renders nothing when there are no held recordings', () => {
     render(<HeldRecordingsSection recordings={[]} />);
     expect(screen.queryByTestId('sync-held-section')).toBeNull();

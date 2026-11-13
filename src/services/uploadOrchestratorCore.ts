@@ -9,9 +9,11 @@ const log = logger.create('UploadOrchestrator');
 
 export const PAUSE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-/** Failed-session retries use #150's existing silent-retry default: three
+/**
+ * Failed-session retries use #150's existing silent-retry default: three
  * attempts, delay `attempt * 500` ms (same as recording upload and metadata
- * sync). Longer escalation stays out of scope. */
+ * sync). Longer escalation stays out of scope.
+ */
 export const SESSION_RETRY_MAX_ATTEMPTS = 3;
 
 export function sessionRetryDelayMs(attempt: number): number {
@@ -43,7 +45,8 @@ export type ChapterUploadWorker = {
     signal: AbortSignal,
     onTakeProgress?: TakeProgressListener,
   ) => Promise<void>;
-  /** Drain queued server take deletes (all owners) **once per session**, after
+  /**
+   * Drain queued server take deletes (all owners) **once per session**, after
    * the claim push and before the first chapter, instead of re-scanning the
    * whole queue before every chapter (#886). Resolves with the number of
    * rows **the active account is shown as pending** that are left after a
@@ -91,6 +94,11 @@ export type UploadOrchestratorDeps = {
     connectionType: string;
   }>;
   /**
+   * Pause-window expiry and failed-session retry.
+   * Defaults to setTimeout; tests inject a manual scheduler.
+   */
+  schedule?: (callback: () => void, delayMs: number) => () => void;
+  /**
    * Push offline chapter claims before uploading takes (#611).
    * Soft-fail / auth behavior is owned by the injected implementation.
    */
@@ -137,11 +145,6 @@ export type UploadOrchestratorDeps = {
    * queue is still empty.
    */
   getQueueWriteMark?: () => Promise<object | null>;
-  /**
-   * Pause-window expiry and failed-session retry.
-   * Defaults to setTimeout; tests inject a manual scheduler.
-   */
-  schedule?: (callback: () => void, delayMs: number) => () => void;
   sameQueueWriteMark?: (a: object, b: object) => boolean;
 };
 
@@ -341,7 +344,6 @@ export function createUploadOrchestrator(
       return false;
     }
     const delayMs = sessionRetryDelayMs(sessionFailures);
-
     log.info('Scheduling upload session retry', {
       attempt: sessionFailures,
       delayMs,

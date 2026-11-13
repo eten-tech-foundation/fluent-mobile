@@ -106,6 +106,15 @@ export function HeldRecordingsSection({
     }
   }, [playback.status]);
 
+  // A row that uploads or is released leaves the list mid-playback: stop the
+  // audio so it does not keep playing with no row to control it.
+  useEffect(() => {
+    if (playingId !== null && !recordings.some(r => r.id === playingId)) {
+      void playback.pause();
+      setPlayingId(null);
+    }
+  }, [recordings, playingId, playback]);
+
   const handlePlayPause = useCallback(
     async (recording: HeldRecording) => {
       setPlaybackError(null);

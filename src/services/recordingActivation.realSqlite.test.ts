@@ -62,13 +62,22 @@ jest.mock('./keychain', () => ({
 }));
 // Membership refresh is exercised in projectMembership.test.ts; these activation
 // passes must reach the worker under test (#848).
-jest.mock('./projectMembership', () => ({
-  refreshProjectMembership: async () => undefined,
-}));
+jest.mock('./projectMembership', () => {
+  let verified = new Set<number>();
+  return {
+    refreshProjectMembership: async () => undefined,
+    refreshMembershipForOwners: async (ids: number[]) => {
+      verified = new Set(ids);
+      return verified;
+    },
+    getVerifiedMembershipOwners: () => verified,
+  };
+});
 jest.mock('./recordingDataEvents', () => ({
   emitRecordingDataChanged: jest.fn(),
 }));
 jest.mock('./syncEvents', () => ({
+  emitHeldRecordingsChanged: jest.fn(),
   emitUploadSessionEvent: jest.fn(),
   emitAuthReauthRequired: jest.fn(),
   onSyncComplete: jest.fn(),

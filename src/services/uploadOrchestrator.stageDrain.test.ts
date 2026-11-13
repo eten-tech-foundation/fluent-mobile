@@ -36,12 +36,21 @@ jest.mock('../db/stageAdvanceQueueRepository', () => ({
 }));
 jest.mock('../db/repositories/heldRecordingsRepository', () => ({
   reconcileHeldRecordings: async () => ({ held: 0, released: 0 }),
+  getRecordingOwnerIds: async (id: number | null) => (id === null ? [] : [id]),
 }));
 // Membership refresh is exercised in projectMembership.test.ts; here it must
 // resolve so these drain sessions still run (#848).
-jest.mock('./projectMembership', () => ({
-  refreshProjectMembership: async () => undefined,
-}));
+jest.mock('./projectMembership', () => {
+  let verified = new Set<number>();
+  return {
+    refreshProjectMembership: async () => undefined,
+    refreshMembershipForOwners: async (ids: number[]) => {
+      verified = new Set(ids);
+      return verified;
+    },
+    getVerifiedMembershipOwners: () => verified,
+  };
+});
 jest.mock('./connectivity', () => ({
   subscribeToConnectivity: (listener: ConnectivityListener) => {
     mockListeners.add(listener);
@@ -73,6 +82,7 @@ jest.mock('./keychain', () => ({
   getCredentials: (id: string) => mockGetCredentials(id),
 }));
 jest.mock('./syncEvents', () => ({
+  emitHeldRecordingsChanged: jest.fn(),
   emitUploadSessionEvent: (event: UploadSessionEvent) => mockEmit(event),
   emitAuthReauthRequired: (id: string) => mockEmitReauth(id),
   onSyncComplete: jest.fn(),

@@ -35,6 +35,35 @@ export type HeldReconcileResult = {
 };
 
 /**
+ * Accounts that own work this reconcile could touch, plus the active account.
+ * Legacy rows without an owner belong to the active account.
+ */
+export async function getRecordingOwnerIds(
+  activeUserId: number | null,
+): Promise<number[]> {
+  const owners = new Set<number>();
+  if (activeUserId !== null && Number.isFinite(activeUserId)) {
+    owners.add(activeUserId);
+  }
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT DISTINCT COALESCE(recorded_by_user_id, ?) AS owner_id
+     FROM recordings
+     WHERE sync_status IN ('pending', 'failed', 'uploading', 'held')
+       AND IFNULL(granularity, 'verse') IN ('verse', 'pericope')
+       AND bible_text_id > 0`,
+    [activeUserId],
+  );
+  for (const row of result.rows ?? []) {
+    const id = Number(row.owner_id);
+    if (Number.isFinite(id) && id > 0) {
+      owners.add(id);
+    }
+  }
+  return [...owners];
+}
+
+/**
  * Re-mark takes whose owner lost project membership (#855).
  *
  * Runs before every upload pass (and after metadata sync through the upload
@@ -52,14 +81,22 @@ export type HeldReconcileResult = {
  *   returns, the same as a held `pending` row.
  *
  * Owner is the capture-time account, falling back to the active account for
- * legacy rows; shared devices keep each account's own membership.
+ * legacy rows; shared devices keep each account's own membership. Only
+ * `verifiedOwnerIds` (accounts whose membership the server just confirmed) are
+ * acted on: a stale cache for any other account must neither hold nor release.
  */
 export async function reconcileHeldRecordings(
   activeUserId: number | null,
+  verifiedOwnerIds: readonly number[],
 ): Promise<HeldReconcileResult> {
   if (activeUserId === null || !Number.isFinite(activeUserId)) {
     return { held: 0, released: 0 };
   }
+  if (verifiedOwnerIds.length === 0) {
+    return { held: 0, released: 0 };
+  }
+  const ownerPlaceholders = verifiedOwnerIds.map(() => '?').join(', ');
+  const ownerFilter = `AND COALESCE(recordings.recorded_by_user_id, ?) IN (${ownerPlaceholders})`;
 
   const db = getDatabase();
   const now = new Date().toISOString();
@@ -87,13 +124,19 @@ export async function reconcileHeldRecordings(
                  WHERE up.project_id = pu.project_id
                    AND up.user_id = COALESCE(recordings.recorded_by_user_id, ?)
                )
-           )`,
-        [now, activeUserId],
+           )
+           ${ownerFilter}`,
+        [now, activeUserId, activeUserId, ...verifiedOwnerIds],
       );
 
       const held = await tx.execute(
         `UPDATE recordings
          SET sync_status = 'held',
+             project_unit_id = (
+               SELECT ${unit}
+               FROM bible_texts bt
+               WHERE bt.id = recordings.bible_text_id
+             ),
              upload_error = NULL,
              updated_at = ?
          WHERE sync_status IN ('pending', 'failed', 'uploading')
@@ -110,8 +153,9 @@ export async function reconcileHeldRecordings(
                  WHERE up.project_id = pu.project_id
                    AND up.user_id = COALESCE(recordings.recorded_by_user_id, ?)
                )
-           )`,
-        [now, activeUserId],
+           )
+           ${ownerFilter}`,
+        [now, activeUserId, activeUserId, ...verifiedOwnerIds],
       );
 
       outcome.held = Number(held.rowsAffected ?? 0);

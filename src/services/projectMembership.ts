@@ -6,9 +6,27 @@ import {
   selectExistingIds,
 } from '../db/repository';
 import { getCredentials } from './keychain';
+import { AuthError } from './authError';
+import { getActiveUserId, setReauthRequired } from './storage';
+import { emitAuthReauthRequired } from './syncEvents';
 import { logger } from '../utils/logger';
 
 const log = logger.create('ProjectMembership');
+
+/** `AuthError.code` when an account's stored credentials are gone. */
+export const OWNER_CREDENTIALS_MISSING = 'OWNER_CREDENTIALS_MISSING';
+
+/** Owners whose membership the latest refresh confirmed with the server. */
+let verifiedOwners: ReadonlySet<number> = new Set();
+
+/**
+ * Owners confirmed by the most recent `refreshMembershipForOwners`. Chapter
+ * passes inherit this from the session that refreshed, so they neither repeat
+ * the request per chapter nor act on an owner nobody could verify.
+ */
+export function getVerifiedMembershipOwners(): ReadonlySet<number> {
+  return verifiedOwners;
+}
 
 /**
  * Replace the cached `user_projects` rows for `userId` with the server's
@@ -37,7 +55,10 @@ export async function refreshProjectMembership(
   const credentials = await getCredentials(String(userId));
   const token = credentials?.token;
   if (!token) {
-    throw new Error(`No credentials for user ${userId}`);
+    throw new AuthError(
+      `No credentials for user ${userId}`,
+      OWNER_CREDENTIALS_MISSING,
+    );
   }
 
   const response = await FluentAPI.getUserProjects(userId, token);
@@ -72,4 +93,40 @@ export async function refreshProjectMembership(
     memberProjects: currentProjectIds.length,
     cachedProjects: cachedProjectIds.size,
   });
+}
+
+/**
+ * Refresh membership for every account that owns work on the device (#855).
+ *
+ * One account that cannot be confirmed (expired session, transport error)
+ * must not block the others: it is left out of the returned set and its takes
+ * stay deferred, while verified accounts upload. An owner whose credentials
+ * are gone enters the reauth path, mirroring the queued-claim owner handling.
+ */
+export async function refreshMembershipForOwners(
+  ownerIds: readonly number[],
+): Promise<Set<number>> {
+  const verified = new Set<number>();
+  for (const ownerId of new Set(ownerIds)) {
+    try {
+      await refreshProjectMembership(ownerId);
+      verified.add(ownerId);
+    } catch (error) {
+      log.warn('Membership refresh failed for owner; deferring their takes', {
+        userId: ownerId,
+        error,
+      });
+      if (
+        error instanceof AuthError &&
+        error.code === OWNER_CREDENTIALS_MISSING
+      ) {
+        setReauthRequired(String(ownerId));
+        if (getActiveUserId() === String(ownerId)) {
+          emitAuthReauthRequired(String(ownerId));
+        }
+      }
+    }
+  }
+  verifiedOwners = verified;
+  return verified;
 }
