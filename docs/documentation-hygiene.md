@@ -1,7 +1,8 @@
 # Documentation hygiene
 
-Canonical map of every Markdown file under `docs/` (inventory date 2026-10-23;
-**43** files). **Preserve history — do not delete docs.** Move authority by
+Canonical map of Markdown files under `docs/` (inventory date 2026-10-23;
+**43** files listed then). Later additions are appended and were not
+recounted. **Preserve history — do not delete docs.** Move authority by
 labeling status and linking successors. Update this inventory when you add,
 move, or retire a doc.
 
@@ -20,7 +21,7 @@ them rather than weakening their rules.
 | **living-product** | Product behavior guide (labels inside those files govern AC vs inference) |
 | **log** | Append-only history |
 
-## Full inventory (43 files)
+## Full inventory (43 files listed on 2026-10-23; later files are appended below and were not recounted)
 
 | # | Path | Status | Notes |
 | ---: | --- | --- | --- |
@@ -42,6 +43,7 @@ them rather than weakening their rules.
 | 18 | [guides/local-development-workflow.md](./guides/local-development-workflow.md) | operational | Dev vs Docker API |
 | 19–22 | api-client / recordings-sync / pericope / ui-version guides | current | Engineering contract guides |
 | 23–28 | [features/next-ui-redesign/](./features/next-ui-redesign/README.md) (6 files) | design/historical | Working drafts + dated Lovable / Figma reviews |
+| — | [features/next-ui-redesign/retirement-checklist.md](./features/next-ui-redesign/retirement-checklist.md) | design | #907 checklist. Added 2026-11-13. Not in the 2026-10-23 count. |
 | 29 | [features/record-tab/design/README.md](./features/record-tab/design/README.md) | design | Historical notice applied |
 | 30 | [assessments/README.md](./assessments/README.md) | historical | Assessment index; #717 ledger archive pointer |
 | 31–38 | [assessments/](./assessments/README.md) #526 audits (7 READMEs + 1 ticket) | historical | Matrices preserved |
