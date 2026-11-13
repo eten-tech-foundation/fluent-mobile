@@ -183,12 +183,24 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
         grantProjectIds: [100],
         translatorProjectIds: [],
+        throwOnError: true,
       });
     });
     expect(mockGetObserverProjectIds).toHaveBeenCalledWith('7');
     await waitFor(() => {
       expect(result.current.chapters).toEqual([observerChapter]);
     });
+    expect(result.current.error).toBe(false);
+  });
+
+  it('reports a failed first read, so Home can tell it from no chapters', async () => {
+    mockGetMyWorkChapters.mockRejectedValueOnce(new Error('disk I/O error'));
+    const { result } = renderHook(() => useMyWorkChapters());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBe(true);
+    expect(result.current.chapters).toEqual([]);
+    expect(result.current.reading).toBe(false);
   });
 
   it('asks for the write mark first, then reads without waiting for it', async () => {
@@ -246,6 +258,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
     });
   });
@@ -318,6 +331,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
         grantProjectIds: [100],
         translatorProjectIds: [3],
+        throwOnError: true,
       });
     });
 
@@ -468,6 +482,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
       expect(result.current.chapters).toEqual([]);
     });
@@ -487,6 +502,7 @@ describe('useMyWorkChapters Observer grants', () => {
         expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
           grantProjectIds: [100],
           translatorProjectIds: [],
+          throwOnError: true,
         }),
       );
 
@@ -506,6 +522,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
         grantProjectIds: [100, 200],
         translatorProjectIds: [],
+        throwOnError: true,
       });
       expect(result.current.chapters).toEqual([observerChapter, gainedChapter]);
     });
@@ -519,6 +536,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
         grantProjectIds: [100],
         translatorProjectIds: [3],
+        throwOnError: true,
       });
     });
 
@@ -534,6 +552,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(8, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
       expect(result.current.chapters).toEqual([]);
     });
@@ -605,6 +624,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
     });
 
@@ -621,6 +641,7 @@ describe('useMyWorkChapters Observer grants', () => {
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(8, {
         grantProjectIds: [],
         translatorProjectIds: [],
+        throwOnError: true,
       });
     });
 
@@ -632,6 +653,190 @@ describe('useMyWorkChapters Observer grants', () => {
       });
 
       expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports a failed read and clears the rows', async () => {
+      const { result, rerender } = await mountedWithKey();
+      mockGetMyWorkChapters.mockRejectedValueOnce(new Error('disk I/O error'));
+      mockWrites = 1;
+
+      rerender({ key: 1 });
+      await waitFor(() => expect(result.current.error).toBe(true));
+
+      expect(result.current.chapters).toEqual([]);
+      expect(result.current.reading).toBe(false);
+    });
+
+    it('stays reading until the refresh-key read lands', async () => {
+      const { result, rerender } = await mountedWithKey();
+      let resolveNext: (chapters: MyWorkChapter[]) => void = () => {};
+      let started = false;
+      mockGetMyWorkChapters.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            started = true;
+            resolveNext = resolve;
+          }),
+      );
+      mockWrites = 1;
+
+      rerender({ key: 1 });
+
+      expect(result.current.reading).toBe(true);
+      expect(result.current.chapters).toEqual([observerChapter]);
+      await waitFor(() => expect(started).toBe(true));
+
+      await act(async () => {
+        resolveNext([assignedChapter]);
+      });
+      await waitFor(() => expect(result.current.reading).toBe(false));
+      expect(result.current.chapters).toEqual([assignedChapter]);
+    });
+
+    it('reads in full when the check cannot read the write mark', async () => {
+      const { result, rerender } = await mountedWithKey();
+      const queries = jest.requireMock('../db/queries') as {
+        getDatabaseWriteMark: jest.Mock;
+      };
+      queries.getDatabaseWriteMark.mockResolvedValueOnce(null);
+      mockGetMyWorkChapters.mockResolvedValueOnce([assignedChapter]);
+
+      rerender({ key: 1 });
+
+      await waitFor(() =>
+        expect(result.current.chapters).toEqual([assignedChapter]),
+      );
+      expect(result.current.error).toBe(false);
+      expect(result.current.reading).toBe(false);
+    });
+
+    it('fails closed when the database is down', async () => {
+      const { result, rerender } = await mountedWithKey();
+      const queries = jest.requireMock('../db/queries') as {
+        getDatabaseWriteMark: jest.Mock;
+      };
+      queries.getDatabaseWriteMark.mockResolvedValueOnce(null);
+      mockGetMyWorkChapters.mockRejectedValueOnce(new Error('db down'));
+
+      rerender({ key: 1 });
+
+      await waitFor(() => expect(result.current.error).toBe(true));
+      expect(result.current.reading).toBe(false);
+      expect(result.current.chapters).toEqual([]);
+    });
+
+    it("stays reading when an earlier sync's read lands while the next sync's check is out", async () => {
+      const { result, rerender } = await mountedWithKey();
+      const queries = jest.requireMock('../db/queries') as {
+        getDatabaseWriteMark: jest.Mock;
+      };
+      const first = deferred<MyWorkChapter[]>();
+      mockGetMyWorkChapters.mockReturnValueOnce(first.promise);
+      mockWrites = 1;
+      rerender({ key: 1 });
+      await waitFor(() =>
+        expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2),
+      );
+
+      // The next check's mark queues behind the first read on the connection.
+      const mark = deferred<void>();
+      queries.getDatabaseWriteMark.mockImplementationOnce(async () => {
+        await mark.promise;
+        return { connection: mockConnection, changes: 2 };
+      });
+      rerender({ key: 2 });
+      await act(async () => {
+        first.resolve([]);
+      });
+
+      expect(result.current.reading).toBe(true);
+      expect(result.current.chapters).toEqual([observerChapter]);
+
+      mockGetMyWorkChapters.mockResolvedValueOnce([assignedChapter]);
+      await act(async () => {
+        mark.resolve();
+      });
+      await waitFor(() => expect(result.current.reading).toBe(false));
+      expect(result.current.chapters).toEqual([assignedChapter]);
+    });
+
+    it('keeps reading when a prior refreshKey read settles before the next refresh effect', async () => {
+      // See useHomeBooks: defer passives so a stale read can finish in the
+      // layout-to-effect window that production hits after paint.
+      const React = require('react') as typeof import('react');
+      const deferredPassives: Array<() => void | (() => void)> = [];
+      const useEffectSpy = jest
+        .spyOn(React, 'useEffect')
+        .mockImplementation((effect: React.EffectCallback) => {
+          React.useLayoutEffect(() => {
+            deferredPassives.push(effect);
+          });
+        });
+
+      let resolveStale: (chapters: MyWorkChapter[]) => void = () => {};
+      let staleStarted = false;
+
+      try {
+        const { result, rerender } = renderHook(
+          ({ key }: { key: number }) => useMyWorkChapters(key),
+          { initialProps: { key: 0 } },
+        );
+
+        await act(async () => {
+          for (const effect of deferredPassives.splice(0)) {
+            effect();
+          }
+        });
+        await waitFor(() => expect(result.current.reading).toBe(false));
+
+        const queries = jest.requireMock('../db/queries') as {
+          getDatabaseWriteMark: jest.Mock;
+        };
+
+        mockGetMyWorkChapters.mockImplementationOnce(
+          () =>
+            new Promise(resolve => {
+              staleStarted = true;
+              resolveStale = resolve;
+            }),
+        );
+        mockWrites = 1;
+        rerender({ key: 1 });
+        await act(async () => {
+          for (const effect of deferredPassives.splice(0)) {
+            effect();
+          }
+        });
+        await waitFor(() => expect(staleStarted).toBe(true));
+
+        const mark = deferred<void>();
+        queries.getDatabaseWriteMark.mockImplementationOnce(async () => {
+          await mark.promise;
+          return { connection: mockConnection, changes: 2 };
+        });
+
+        rerender({ key: 2 });
+        expect(result.current.reading).toBe(true);
+
+        await act(async () => {
+          resolveStale([]);
+        });
+
+        expect(result.current.reading).toBe(true);
+        expect(result.current.chapters).toEqual([observerChapter]);
+
+        mockGetMyWorkChapters.mockResolvedValueOnce([assignedChapter]);
+        await act(async () => {
+          for (const effect of deferredPassives.splice(0)) {
+            effect();
+          }
+          mark.resolve();
+        });
+        await waitFor(() => expect(result.current.reading).toBe(false));
+        expect(result.current.chapters).toEqual([assignedChapter]);
+      } finally {
+        useEffectSpy.mockRestore();
+      }
     });
   });
 });

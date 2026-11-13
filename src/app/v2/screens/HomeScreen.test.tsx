@@ -29,6 +29,9 @@ const mockRefresh = jest.fn();
 let mockBooks: HomeBookSummary[] = [];
 let mockBooksLoading = false;
 let mockBooksError = false;
+let mockChaptersError = false;
+let mockChaptersReading = false;
+let mockBooksReading = false;
 const mockRefreshBooks = jest.fn();
 let mockNextUp: NextUp = {
   status: 'ready',
@@ -123,6 +126,8 @@ jest.mock('../../../hooks/useMyWorkChapters', () => ({
     loading: mockChaptersLoading,
     refreshing: false,
     refresh: mockRefresh,
+    error: mockChaptersError,
+    reading: mockChaptersReading,
   }),
 }));
 
@@ -131,6 +136,7 @@ jest.mock('../../../hooks/useHomeBooks', () => ({
     books: mockBooks,
     loading: mockBooksLoading,
     error: mockBooksError,
+    reading: mockBooksReading,
     refresh: mockRefreshBooks,
   }),
 }));
@@ -195,6 +201,9 @@ describe('Next HomeScreen', () => {
     mockBooks = [MARK];
     mockBooksLoading = false;
     mockBooksError = false;
+    mockChaptersError = false;
+    mockChaptersReading = false;
+    mockBooksReading = false;
     mockNextUp = { status: 'ready', hero: null, after: [], checking: [] };
     mockChangesPreview = false;
     mockOpen = { kind: 'work' };
@@ -455,6 +464,49 @@ describe('Next HomeScreen', () => {
 
     expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
+  });
+
+  it('holds the spinner instead of the empty message while the post-sync read is in flight', () => {
+    mockChapters = [];
+    mockBooks = [];
+    // Home has painted once already, as it has by the time a sync ends.
+    render(<HomeScreen />);
+    expect(screen.getByTestId('home-empty')).toBeTruthy();
+
+    mockChaptersReading = true;
+    screen.rerender(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-empty')).toBeNull();
+    expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
+
+    mockChaptersReading = false;
+    screen.rerender(<HomeScreen />);
+
+    expect(screen.getByTestId('home-empty')).toBeTruthy();
+  });
+
+  it('says the chapters read failed when there is nothing saved to show', () => {
+    mockChapters = [];
+    mockBooks = [];
+    mockChaptersError = true;
+    render(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-empty')).toBeNull();
+    expect(screen.getByTestId('home-error')).toBeTruthy();
+  });
+
+  it('retries both Home reads from the chapters-error empty state', () => {
+    mockChapters = [];
+    mockBooks = [];
+    mockChaptersError = true;
+    render(<HomeScreen />);
+
+    expect(screen.queryByTestId('home-empty')).toBeNull();
+    expect(screen.getByTestId('home-error')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('home-retry'));
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    expect(mockRefreshBooks).toHaveBeenCalledTimes(1);
   });
 
   it('says the reads failed, with a retry, when there is nothing saved to show', () => {
