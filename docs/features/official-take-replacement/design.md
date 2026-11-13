@@ -137,11 +137,20 @@ alternate that is not selected or canonical yet:
 - `server_take_id` is null
 - `blob_key` is null
 - `sync_status` is `pending`
-- `readUploadOperationOrUnreadable(id)` with no intent version
-  (`src/services/uploadOperationState.ts`) returns null. Any other value
-  is not eligible, including `dispatched` and unreadable storage.
-  `readUploadOperation(id, currentIntent)` is not this check: it returns
-  null for an older operation left behind after a conflict.
+- Upload-operation eligibility inspects the raw KV value first and does
+  not treat malformed and absent as the same case.
+  `readUploadOperationOrUnreadable(id)` with no intent version
+  (`src/services/uploadOperationState.ts` lines 115–136) returns null for
+  a missing key and also returns null after clearing a malformed stored
+  value, so that helper alone is not this check. #897 must read the raw
+  `upload_op:{id}` value (or an equivalent inspect-before-clear helper)
+  and fail closed when the value is present but unparseable: preserve that
+  evidence and treat the take as ineligible, because the bytes may have
+  been a dispatched upload whose outcome is unknown. A genuinely absent
+  key remains eligible under the no-intent-version rule. Any parsed
+  operation is not eligible, including `dispatched` and unreadable
+  storage. `readUploadOperation(id, currentIntent)` is not this check: it
+  returns null for an older operation left behind after a conflict.
   `pending` with a null blob is what a paused or cancelled upload returns
   to (`recordingSync.ts` around lines 959–966), so those columns alone do
   not prove the take was never sent.
@@ -177,13 +186,40 @@ range.
 Named prerequisite, before any #897 write: that intersecting-coverage read,
 including anchors that start in an earlier chapter. It belongs on the
 unfiled fluent-api issue with the coverage-replacement route. Until a
-successful read shows no overlapping active anchor except the winner's own
+successful read shows no overlapping active anchor except one on the
+winner's own anchor whose `recorded_by_user_id` is the active user
 (same-anchor upload already handles that one), #897 writes nothing,
-online or off, and says it can't confirm the server. The column and
-key-value checks above are necessary once the read exists. They are not
-sufficient while it does not.
+online or off, and says it can't confirm the server. The same-anchor
+exception is not "any active take on that anchor": another account's
+active take on the winner's anchor still refuses under the boundary
+table above. Do not assume today's same-anchor `activate=true` upload
+already rejects a foreign owner; this contract states the owner
+condition itself.
 
-When the set qualifies, one transaction:
+The intersecting-coverage read alone is not enough to keep the server
+safe through later activation. Another device can activate overlapping
+coverage after the read succeeds and before this device's winner
+uploads. The unfiled fluent-api work must therefore also define a
+server-enforced coverage version (or equivalent atomic validity token)
+captured by that read and checked again at activation of the winner or
+at `POST .../coverage-replacement`. If overlapping active coverage
+changed after the read, the server rejects the upload or replacement;
+local #897 success does not paper over that race. This document does not
+claim such a version field or check exists on `2db5db7`.
+
+The column and key-value checks above are necessary once the read
+exists. They are not sufficient while it does not.
+
+Eligibility checks and the local flag transaction below must share a
+synchronization point with upload dispatch for every take in the set.
+While a take's eligibility is being evaluated, or while the winner /
+superseded flag transaction is in progress, that take must not be
+queued or dispatched for activating upload. Name the required contract
+as a shared exclusion between those paths (for example a per-take or
+per-unit replacement gate held across the check-and-write). This
+document does not claim such a lock is implemented today.
+
+When the set qualifies, one transaction under that shared exclusion:
 
 - winner: `is_selected = 1` and `is_canonical = 1`
 - each superseded take: `is_selected = 0` and `is_canonical = 0`
@@ -236,10 +272,13 @@ In one database transaction the server:
 3. Compare-and-swaps every listed `versionToken`, winner included. Any miss
    rolls back with `409` and `currentVersionToken` per anchor. No anchor is
    deactivated alone.
-4. Sets the winner's `activeTakeId` to `takeId` and advances that anchor's
-   token. Clears `activeTakeId` on every superseded anchor and advances each
-   of those tokens. Does not split ranges. Does not delete takes. Does not
-   mark `resolved` and does not open `conflict` when the set matched.
+4. Before any anchor mutates, validates that `winner.takeId` exists and
+   belongs to `winner.bibleTextId`. Reject the whole request if the take
+   is missing or belongs to another anchor. Only then set the winner's
+   `activeTakeId` to `takeId` and advance that anchor's token. Clear
+   `activeTakeId` on every superseded anchor and advance each of those
+   tokens. Does not split ranges. Does not delete takes. Does not mark
+   `resolved` and does not open `conflict` when the set matched.
 5. Stores `requestId` with that result.
 
 Replay of the same `requestId` and the same body returns the stored result
@@ -257,9 +296,18 @@ Timeout, lost response, or cancellation is outcome-unknown. The client does
 not flip local flags from the silence. Readback is a replay of this `POST`
 with the same `requestId`. The existing per-anchor `GET` does not return
 `requestId`, so it is not the proof. A replay that returns the stored
-result is adopt. A replay that reports the set unchanged is safe to retry.
-Anything else stops and tells the user the result is unknown. `GET` is only
-for showing the anchors after that stop.
+result proves that original commit's outcome; the client may adopt that
+body as the acknowledgment of the earlier write. It must not treat local
+official flags as current coverage solely from that replay: another
+device can have superseded the same coverage afterward, leaving the
+stored result and its `versionToken` values stale relative to the server
+now. Before local official flags are treated as current, the client must
+complete the named intersecting-coverage read prerequisite (the same
+future read #897 waits on). That read is not today's per-anchor `GET`,
+and this contract does not claim an existing GET already covers
+intersecting anchors. A replay that reports the set unchanged is safe to
+retry. Anything else stops and tells the user the result is unknown.
+Per-anchor `GET` remains only for showing those anchors after that stop.
 
 ## Work split
 
@@ -267,9 +315,9 @@ for showing the anchors after that stop.
 | --- | --- | --- |
 | #895 (this document) | The rules above | SQL, routes, recorder |
 | #896 | Interim guard: the official control must not confirm a cross-anchor replacement the client cannot finish | The replacement itself |
-| #897 | The local transaction once the intersecting-coverage read exists and the key-value checks pass | Any write before that read exists; the coverage-replacement route; the activation predicate |
-| API replacement (fluent-api issue, not filed) | `POST .../coverage-replacement`, and the intersecting-coverage read #897 waits on | Mobile SQL |
-| #898 | Call the route, read back, adopt tokens, and surface rejection and outcome-unknown | Inventing a path or payload |
+| #897 | The local transaction once the intersecting-coverage read exists, the key-value checks pass, and upload dispatch is excluded for the set during that check-and-write | Any write before that read exists; inventing a server coverage-version field; the coverage-replacement route; the activation predicate |
+| API replacement (fluent-api issue, not filed) | `POST .../coverage-replacement`, the intersecting-coverage read #897 waits on, and the server-enforced coverage version (or equivalent) checked through winner activation | Mobile SQL |
+| #898 | Call the route, read back, adopt tokens, require the intersecting-coverage read before treating adopted-replay local flags as current, and surface rejection and outcome-unknown | Inventing a path or payload |
 
 #896 stays until #898 is in the client and the route is deployed on that
 environment (deployed SHA recorded, not inferred from `main`). It can come
@@ -282,8 +330,9 @@ select-then-canonical pair is the bug.
 ## Examples
 
 The local after-states below are what the #897 transaction writes once the
-intersecting-coverage read exists and returns no other active anchor. They
-do not run against today's chapter list.
+intersecting-coverage read exists and returns no overlapping active anchor
+except an active-user-owned take on the winner's own anchor. They do not
+run against today's chapter list.
 
 Passage verses 1–5, anchor on verse 1, replaced by verse 3. Same unit, same
 owner, never sent, read empty.
