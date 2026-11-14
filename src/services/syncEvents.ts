@@ -71,6 +71,21 @@ export function emitAuthReauthResolved(userId: string): void {
   [...authReauthResolvedListeners].forEach(fn => fn(userId));
 }
 
+const heldChangedListeners: SyncListener[] = [];
+
+/** Held-recording rows changed (taken or released) outside a session end. */
+export function onHeldRecordingsChanged(fn: SyncListener): () => void {
+  heldChangedListeners.push(fn);
+  return () => {
+    const idx = heldChangedListeners.indexOf(fn);
+    if (idx > -1) heldChangedListeners.splice(idx, 1);
+  };
+}
+
+export function emitHeldRecordingsChanged(): void {
+  [...heldChangedListeners].forEach(fn => fn());
+}
+
 /** Recording-upload session events (distinct from metadata sync). */
 /**
  * Take-level progress inside the chapter currently uploading (#886).

@@ -38,6 +38,23 @@ let mockPausedUntil: number | null = null;
 jest.mock('../db/queries', () => ({
   getPendingUploadChapters: () => mockGetPendingChapters(),
 }));
+jest.mock('../db/repositories/heldRecordingsRepository', () => ({
+  reconcileHeldRecordings: async () => ({ held: 0, released: 0 }),
+  getRecordingOwnerIds: async (id: number | null) => (id === null ? [] : [id]),
+}));
+// Membership refresh is exercised in projectMembership.test.ts; here it must
+// resolve so the account-replacement session still runs (#848).
+jest.mock('./projectMembership', () => {
+  let verified = new Set<number>();
+  return {
+    refreshProjectMembership: async () => undefined,
+    refreshMembershipForOwners: async (ids: number[]) => {
+      verified = new Set(ids);
+      return verified;
+    },
+    getVerifiedMembershipOwners: () => verified,
+  };
+});
 jest.mock('../db/repository', () => ({
   getPendingRecordings: (...args: unknown[]) =>
     mockGetPendingRecordings(...args),
@@ -100,8 +117,10 @@ jest.mock('./keychain', () => ({
   getCredentialsVersion: () => 0,
 }));
 jest.mock('./syncEvents', () => ({
+  emitHeldRecordingsChanged: jest.fn(),
   emitUploadSessionEvent: (event: UploadSessionEvent) => mockEmit(event),
   emitAuthReauthRequired: jest.fn(),
+  onSyncComplete: () => () => undefined,
 }));
 jest.mock('../utils/logger', () => ({
   logger: {

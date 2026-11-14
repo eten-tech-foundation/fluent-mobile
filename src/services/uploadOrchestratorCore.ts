@@ -116,6 +116,23 @@ export type UploadOrchestratorDeps = {
    */
   hasPendingStageAdvances?: () => Promise<boolean>;
   /**
+   * Replace cached project membership with the server's current answer before
+   * any held-recording reconciliation (#848). Cache-only reconciliation cannot
+   * see a removal that happened while the device was offline, so this must run
+   * first. A rejection means membership is unconfirmed: the session defers and
+   * retries instead of uploading against a stale cache.
+   */
+  refreshMembershipBeforeUpload?: () => Promise<void>;
+  /**
+   * Return held takes to the queue when project membership is back (#855).
+   * Runs before the pending-chapter read: held rows are excluded from that
+   * read, so releasing them afterwards would leave them stuck on the device.
+   * Resolves with the number of held rows still left on a terminal failure —
+   * the session must not proceed past the failure, so the bounded retry
+   * re-evaluates without deleting those takes.
+   */
+  reconcileHeldBeforeUpload?: () => Promise<{ held: number; released: number }>;
+  /**
    * True when the active user has a queued offline chapter claim. A reconnect
    * with no takes and no stage rows still runs a session so the claim is
    * pushed instead of waiting for the next metadata trigger (#886).
@@ -378,6 +395,55 @@ export function createUploadOrchestrator(
     // Object so the async work closure can publish the outcome. A bare `let`
     // is narrowed to its initializer at `finally`, which hides the assignment.
     const sessionResult: { followUp: 'none' | 'retry' } = { followUp: 'none' };
+    let heldRecordingsChecked = false;
+    let membershipChecked = false;
+    const reconcileHeld = async (): Promise<boolean> => {
+      // Membership first, once per session: reconciliation can only compare
+      // against cached `user_projects`, so a removal that happened offline is
+      // invisible until the server answers (#848).
+      if (!membershipChecked) {
+        membershipChecked = true;
+        if (deps.refreshMembershipBeforeUpload) {
+          try {
+            await deps.refreshMembershipBeforeUpload();
+          } catch (error) {
+            log.warn('Project membership refresh failed; deferring uploads', {
+              error,
+            });
+            // Same contract as a failed reconcile: count the attempt and ask
+            // the `finally` for a retry. Nothing is uploaded against a cache
+            // we could not verify.
+            sessionFailures += 1;
+            sessionResult.followUp = 'retry';
+            return true;
+          }
+        }
+      }
+      if (!deps.reconcileHeldBeforeUpload) return false;
+      heldRecordingsChecked = true;
+      try {
+        const outcome = await deps.reconcileHeldBeforeUpload();
+        if (outcome.held > 0) {
+          // Takes newly held are excluded from the pending query, so pending
+          // work in other projects/chapters can still run this session (#855).
+          log.info('Held recordings present; continuing with pending work', {
+            reconcileHeld: outcome.held,
+          });
+        }
+      } catch (error) {
+        log.warn('Held-recording membership reconcile failed; holding', {
+          error,
+        });
+        // Match the other failure paths: count the attempt and ask the
+        // `finally` below for a retry. Counting matters because
+        // `sessionRetryDelayMs(0)` is 0ms, so an uncounted retry would
+        // re-enter this session immediately and loop on a persistent failure.
+        sessionFailures += 1;
+        sessionResult.followUp = 'retry';
+        return true;
+      }
+      return false;
+    };
 
     try {
       if (!deps.worker) {
@@ -397,6 +463,10 @@ export function createUploadOrchestrator(
         !suppressAutoUntilOnlineEdge &&
         !draftingHold
       ) {
+        // Held takes are excluded from the pending query. Reconcile them
+        // before the empty-queue shortcut so restored membership can requeue
+        // them for this same automatic session.
+        if (await reconcileHeld()) return;
         // Nothing queued means nothing for `/health` to gate. A clean empty
         // answer holds while no row is written and no work is announced.
         // Work that is queued is re-read after the probe below, as before.
@@ -471,6 +541,15 @@ export function createUploadOrchestrator(
       if (reason === 'auto' && draftingHold) {
         return;
       }
+
+      // #848 / #855: refresh membership from the server, then reconcile held
+      // rows against it, before evaluating uploads. `reconcileHeld` runs the
+      // refresh once per session and returns true (deferring the session) when
+      // either step fails, so a user removed while offline cannot reach an
+      // upload attempt and a terminal failure (database lock / failed
+      // transaction) cannot delete or fail those takes here.
+      if (!heldRecordingsChecked && (await reconcileHeld())) return;
+      if (!started || version !== lifecycleVersion) return;
 
       const [chapters, hasStageWork, hasClaimWork] = await readPendingWork();
       if (!started || version !== lifecycleVersion) return;
