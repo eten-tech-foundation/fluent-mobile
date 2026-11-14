@@ -10,6 +10,7 @@
 | --- | --- |
 | [v2 feature manifest](v2-feature-manifest.md) | The plan: v1 features, gaps, backend parity, summit MVP, beta |
 | [Open questions](open-questions.md) | Product and design questions still to answer |
+| [Retirement checklist](retirement-checklist.md) | #907 workflow parity before classic routes go |
 | [Figma to component](../../guides/figma-to-component.md) | How a Figma component becomes code |
 | [UI version theming](../../guides/ui-version-theming.md) | Legacy vs Next tokens and color modes |
 | [Theme and Figma audit](theme-figma-audit.md) | How code tokens line up with Figma Foundations |
