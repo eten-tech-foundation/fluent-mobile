@@ -10,6 +10,8 @@ import {
   onUploadSessionEvent,
 } from '../services/syncEvents';
 
+const NO_HELD_RECORDINGS: HeldRecording[] = [];
+
 /**
  * Sync page held-work list (#855): takes kept on the device because the
  * recording account was removed from the project. Reloads on focus, when the
@@ -20,30 +22,29 @@ export function useHeldRecordings(refreshKey = 0): {
   recordings: HeldRecording[];
   loading: boolean;
 } {
-  const [recordings, setRecordings] = useState<HeldRecording[]>([]);
+  // Rows are stored with the account that owns them, so a render after an
+  // account switch can never show another account's held takes, even before
+  // the next load runs (or if the screen stays mounted through the switch).
+  const [held, setHeld] = useState<{
+    owner: number;
+    rows: HeldRecording[];
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const generationRef = useRef(0);
-  // Account whose rows are currently on screen.
-  const ownerRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     const generation = ++generationRef.current;
     const userId = Number(getActiveUserId());
     if (!Number.isFinite(userId) || userId <= 0) {
       if (generation === generationRef.current) {
-        ownerRef.current = null;
-        setRecordings([]);
+        setHeld(null);
         setLoading(false);
       }
       return;
     }
 
-    // Held takes belong to the account that recorded them: never keep showing
-    // the previous account's rows once another account is active.
-    if (ownerRef.current !== null && ownerRef.current !== userId) {
-      ownerRef.current = null;
-      setRecordings([]);
-    }
+    // Release the previous account's rows as soon as another account loads.
+    setHeld(prev => (prev && prev.owner !== userId ? null : prev));
     const rows = await getHeldRecordings(userId);
     // A load for an account that is no longer active must not publish.
     if (
@@ -52,8 +53,7 @@ export function useHeldRecordings(refreshKey = 0): {
     ) {
       return;
     }
-    ownerRef.current = userId;
-    setRecordings(rows);
+    setHeld({ owner: userId, rows });
     setLoading(false);
   }, []);
 
@@ -85,5 +85,8 @@ export function useHeldRecordings(refreshKey = 0): {
     [load],
   );
 
+  const activeUserId = Number(getActiveUserId());
+  const recordings =
+    held && held.owner === activeUserId ? held.rows : NO_HELD_RECORDINGS;
   return { recordings, loading };
 }
