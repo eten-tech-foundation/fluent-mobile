@@ -35,6 +35,25 @@ export type HeldReconcileResult = {
 };
 
 /**
+ * True when at least one take is in a state project membership can change
+ * (pending, failed, uploading or held). Unlike `getRecordingOwnerIds`, this
+ * does not count the active account, so an empty device answers false and the
+ * orchestrator can skip the membership request entirely.
+ */
+export async function hasRecordingsAffectedByMembership(): Promise<boolean> {
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT 1 AS found
+     FROM recordings
+     WHERE sync_status IN ('pending', 'failed', 'uploading', 'held')
+       AND IFNULL(granularity, 'verse') IN ('verse', 'pericope')
+       AND bible_text_id > 0
+     LIMIT 1`,
+  );
+  return (result.rows?.length ?? 0) > 0;
+}
+
+/**
  * Accounts that own work this reconcile could touch, plus the active account.
  * Legacy rows without an owner belong to the active account.
  */
@@ -137,6 +156,7 @@ export async function reconcileHeldRecordings(
                FROM bible_texts bt
                WHERE bt.id = recordings.bible_text_id
              ),
+             recorded_by_user_id = COALESCE(recorded_by_user_id, ?),
              upload_error = NULL,
              updated_at = ?
          WHERE sync_status IN ('pending', 'failed', 'uploading')
@@ -155,7 +175,7 @@ export async function reconcileHeldRecordings(
                )
            )
            ${ownerFilter}`,
-        [now, activeUserId, activeUserId, ...verifiedOwnerIds],
+        [activeUserId, now, activeUserId, activeUserId, ...verifiedOwnerIds],
       );
 
       outcome.held = Number(held.rowsAffected ?? 0);

@@ -115,14 +115,51 @@ describe('refreshProjectMembership (#848)', () => {
     expect(mockReconcileUserProjects).toHaveBeenCalledWith(1, []);
   });
 
-  it('ignores ids that are not positive numbers', async () => {
+  it('de-duplicates repeated project ids', async () => {
     mockGetUserProjects.mockResolvedValue({
-      data: [{ id: 10 }, { id: 10 }, { id: 0 }, { id: null }, { nope: true }],
+      data: [{ id: 10 }, { id: 10 }, { id: 20 }],
     });
 
     await refreshProjectMembership(1);
 
-    expect(mockReconcileUserProjects).toHaveBeenCalledWith(1, [10]);
+    expect(mockReconcileUserProjects).toHaveBeenCalledWith(1, [10, 20]);
+  });
+
+  it('treats a genuine empty list as no projects', async () => {
+    mockGetUserProjects.mockResolvedValue({ data: [] });
+    mockSelectExistingIds.mockResolvedValue(new Set());
+
+    await refreshProjectMembership(1);
+
+    expect(mockReconcileUserProjects).toHaveBeenCalledWith(1, []);
+  });
+
+  it.each([
+    ['no usable id at all', [{ unexpected: 100 }]],
+    ['a zero id', [{ id: 10 }, { id: 0 }]],
+    ['a null id', [{ id: 10 }, { id: null }]],
+    ['a null entry', [{ id: 10 }, null]],
+    ['a negative id', [{ id: -3 }]],
+  ])(
+    'rejects the whole response when it has %s and leaves the cache alone',
+    async (_label, data) => {
+      mockGetUserProjects.mockResolvedValue({ data });
+
+      await expect(refreshProjectMembership(1)).rejects.toThrow(
+        'Unexpected project membership entry',
+      );
+      expect(mockInsertUserProjects).not.toHaveBeenCalled();
+      expect(mockReconcileUserProjects).not.toHaveBeenCalled();
+    },
+  );
+
+  it('leaves the owner unverified when the payload is malformed', async () => {
+    mockGetUserProjects.mockResolvedValue({ data: [{ unexpected: 100 }] });
+
+    const verified = await refreshMembershipForOwners([1]);
+
+    expect([...verified]).toEqual([]);
+    expect(mockReconcileUserProjects).not.toHaveBeenCalled();
   });
 
   it('rejects without an active user', async () => {

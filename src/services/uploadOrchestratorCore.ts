@@ -133,6 +133,14 @@ export type UploadOrchestratorDeps = {
    */
   reconcileHeldBeforeUpload?: () => Promise<{ held: number; released: number }>;
   /**
+   * True when a take exists whose state project membership can change
+   * (pending, failed, uploading or held). The membership request and the held
+   * reconcile are skipped when it resolves false: with nothing on the device
+   * there is nothing for them to affect, and an empty queue must not cost a
+   * network request. A rejection is treated as true (fail toward checking).
+   */
+  hasRecordingsAffectedByMembership?: () => Promise<boolean>;
+  /**
    * True when the active user has a queued offline chapter claim. A reconnect
    * with no takes and no stage rows still runs a session so the claim is
    * pushed instead of waiting for the next metadata trigger (#886).
@@ -398,6 +406,13 @@ export function createUploadOrchestrator(
     let heldRecordingsChecked = false;
     let membershipChecked = false;
     const reconcileHeld = async (): Promise<boolean> => {
+      // No take for membership to affect: no request, no reconcile.
+      if (!heldRecordingsChecked && deps.hasRecordingsAffectedByMembership) {
+        const affected = await deps
+          .hasRecordingsAffectedByMembership()
+          .catch(() => true);
+        if (!affected) return false;
+      }
       // Membership first, once per session: reconciliation can only compare
       // against cached `user_projects`, so a removal that happened offline is
       // invisible until the server answers (#848).
@@ -465,7 +480,9 @@ export function createUploadOrchestrator(
       ) {
         // Held takes are excluded from the pending query. Reconcile them
         // before the empty-queue shortcut so restored membership can requeue
-        // them for this same automatic session.
+        // them for this same automatic session. `evaluateAuto` has already
+        // checked the transport gate, and `reconcileHeld` makes no request
+        // when no take exists for membership to affect.
         if (await reconcileHeld()) return;
         // Nothing queued means nothing for `/health` to gate. A clean empty
         // answer holds while no row is written and no work is announced.

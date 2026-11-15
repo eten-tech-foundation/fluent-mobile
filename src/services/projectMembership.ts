@@ -69,13 +69,21 @@ export async function refreshProjectMembership(
     throw new Error('Unexpected project membership response shape');
   }
 
-  const currentProjectIds = [
-    ...new Set(
-      raw
-        .map(row => Number((row as { id?: unknown } | null)?.id))
-        .filter(id => Number.isFinite(id) && id > 0),
-    ),
-  ];
+  // Validate every entry before touching the cache. Dropping unusable entries
+  // would turn a malformed payload such as `[{ unexpected: 100 }]` into "no
+  // projects", wipe the cached memberships, and hold every take for the
+  // account. Only a real empty array means no projects.
+  const projectIds = new Set<number>();
+  for (const row of raw) {
+    const id = Number((row as { id?: unknown } | null)?.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      throw new Error(
+        'Unexpected project membership entry: missing project id',
+      );
+    }
+    projectIds.add(id);
+  }
+  const currentProjectIds = [...projectIds];
 
   // `user_projects.project_id` references `projects(id)`, so only insert
   // memberships whose project row is already cached. A project this device has

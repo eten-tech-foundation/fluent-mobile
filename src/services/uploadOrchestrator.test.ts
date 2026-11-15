@@ -52,6 +52,7 @@ function createHarness(options?: {
   hasPendingClaims?: UploadOrchestratorDeps['hasPendingClaims'];
   refreshMembershipBeforeUpload?: UploadOrchestratorDeps['refreshMembershipBeforeUpload'];
   reconcileHeldBeforeUpload?: UploadOrchestratorDeps['reconcileHeldBeforeUpload'];
+  hasRecordingsAffectedByMembership?: UploadOrchestratorDeps['hasRecordingsAffectedByMembership'];
   getQueueWriteMark?: UploadOrchestratorDeps['getQueueWriteMark'];
   sameQueueWriteMark?: UploadOrchestratorDeps['sameQueueWriteMark'];
   /** Worker-owned once-per-session delete drain (#886). */
@@ -221,6 +222,8 @@ function createHarness(options?: {
     hasPendingClaims: options?.hasPendingClaims,
     refreshMembershipBeforeUpload: options?.refreshMembershipBeforeUpload,
     reconcileHeldBeforeUpload: options?.reconcileHeldBeforeUpload,
+    hasRecordingsAffectedByMembership:
+      options?.hasRecordingsAffectedByMembership,
     getQueueWriteMark: options?.getQueueWriteMark,
     sameQueueWriteMark: options?.sameQueueWriteMark,
   };
@@ -2767,5 +2770,78 @@ describe('uploadOrchestrator', () => {
     // Sync page uses to reload the held list (#855).
     expect(h.events.some(e => e.type === 'idle')).toBe(true);
     expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+  });
+
+  it('makes no membership request or reconcile when nothing is on the device (#855)', async () => {
+    const refresh = jest.fn(async () => undefined);
+    const reconcile = jest.fn(async () => ({ held: 0, released: 0 }));
+    const h = createHarness({
+      chapters: [],
+      refreshMembershipBeforeUpload: refresh,
+      reconcileHeldBeforeUpload: reconcile,
+      hasRecordingsAffectedByMembership: async () => false,
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(refresh).not.toHaveBeenCalled();
+    expect(reconcile).not.toHaveBeenCalled();
+    expect(h.events.some(e => e.type === 'idle')).toBe(true);
+  });
+
+  it('makes no membership request while the transport gate blocks automatic uploads (#848)', async () => {
+    const refresh = jest.fn(async () => undefined);
+    const h = createHarness({
+      uploadOverCellular: false,
+      refreshMembershipBeforeUpload: refresh,
+      hasRecordingsAffectedByMembership: async () => true,
+    });
+
+    h.emitConnectivity(true, false);
+    await h.flush();
+    await h.flush();
+
+    expect(refresh).not.toHaveBeenCalled();
+    expect(h.uploaded).toEqual([]);
+    expect(h.orchestrator.getSnapshot().phase).toBe('waiting_wifi');
+  });
+
+  it('refreshes membership and releases held takes before the empty-queue shortcut when takes exist (#855)', async () => {
+    const refresh = jest.fn(async () => undefined);
+    const h = createHarness({
+      chapters: [],
+      refreshMembershipBeforeUpload: refresh,
+      hasRecordingsAffectedByMembership: async () => true,
+      reconcileHeldBeforeUpload: async () => {
+        h.setChapters([{ bookId: 3, chapterNumber: 4 }]);
+        return { held: 0, released: 1 };
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 4 }]);
+  });
+
+  it('still checks membership when the affected-takes lookup fails (#848)', async () => {
+    const refresh = jest.fn(async () => undefined);
+    const h = createHarness({
+      refreshMembershipBeforeUpload: refresh,
+      hasRecordingsAffectedByMembership: async () => {
+        throw new Error('db busy');
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(h.uploaded.length).toBeGreaterThan(0);
   });
 });

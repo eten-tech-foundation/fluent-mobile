@@ -7,6 +7,7 @@ import {
 } from '../db/queries';
 import {
   getRecordingOwnerIds,
+  hasRecordingsAffectedByMembership,
   reconcileHeldRecordings,
 } from '../db/repositories/heldRecordingsRepository';
 import {
@@ -311,6 +312,7 @@ export function startUploadOrchestrator(
     hasPendingStageAdvances,
     refreshMembershipBeforeUpload,
     reconcileHeldBeforeUpload,
+    hasRecordingsAffectedByMembership,
     hasPendingClaims,
     getQueueWriteMark,
     sameQueueWriteMark,

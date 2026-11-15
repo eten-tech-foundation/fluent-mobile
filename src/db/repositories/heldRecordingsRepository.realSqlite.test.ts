@@ -14,6 +14,7 @@ jest.mock('../db', () => ({
 import {
   getHeldRecordings,
   getRecordingOwnerIds,
+  hasRecordingsAffectedByMembership,
   reconcileHeldRecordings,
 } from './heldRecordingsRepository';
 
@@ -294,6 +295,44 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
     await reconcileHeldRecordings(1, [2]);
 
     await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('held');
+  });
+
+  it('keeps a legacy take with no owner on the account that lost the project', async () => {
+    await mockDb.execute(
+      'UPDATE recordings SET recorded_by_user_id = NULL WHERE id = ?',
+      ['beta-pending'],
+    );
+
+    // Account 1 is not a member of Beta, so the take is held under account 1.
+    await reconcileHeldRecordings(1, [1]);
+    const owner = await mockDb.execute(
+      'SELECT recorded_by_user_id FROM recordings WHERE id = ?',
+      ['beta-pending'],
+    );
+    expect(Number(owner.rows[0]?.recorded_by_user_id)).toBe(1);
+    await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('held');
+
+    // Switching to account 2, a member of Beta, must neither show nor release it.
+    const forTwo = await getHeldRecordings(2);
+    expect(forTwo.map(r => r.id)).not.toContain('beta-pending');
+    await reconcileHeldRecordings(2, [2]);
+    await expect(statusOf(mockDb, 'beta-pending')).resolves.toBe('held');
+
+    const forOne = await getHeldRecordings(1);
+    expect(forOne.map(r => r.id)).toContain('beta-pending');
+  });
+
+  it('reports whether any take is affected by membership', async () => {
+    await expect(hasRecordingsAffectedByMembership()).resolves.toBe(true);
+
+    await mockDb.execute(`UPDATE recordings SET sync_status = 'uploaded'`);
+    await expect(hasRecordingsAffectedByMembership()).resolves.toBe(false);
+
+    await mockDb.execute(
+      `UPDATE recordings SET sync_status = 'held' WHERE id = ?`,
+      ['alpha-ok'],
+    );
+    await expect(hasRecordingsAffectedByMembership()).resolves.toBe(true);
   });
 
   it('persists the resolved project unit when a take is held', async () => {
