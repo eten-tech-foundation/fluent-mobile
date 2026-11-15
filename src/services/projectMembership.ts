@@ -109,7 +109,8 @@ export async function refreshProjectMembership(
  * One account that cannot be confirmed (expired session, transport error)
  * must not block the others: it is left out of the returned set and its takes
  * stay deferred, while verified accounts upload. An owner whose credentials
- * are gone enters the reauth path, mirroring the queued-claim owner handling.
+ * are gone or whose token the server rejected enters the reauth path,
+ * mirroring the queued-claim owner handling.
  */
 export async function refreshMembershipForOwners(
   ownerIds: readonly number[],
@@ -124,10 +125,11 @@ export async function refreshMembershipForOwners(
         userId: ownerId,
         error,
       });
-      if (
-        error instanceof AuthError &&
-        error.code === OWNER_CREDENTIALS_MISSING
-      ) {
+      // `AuthError` is always a 401: the stored credentials are gone
+      // (`OWNER_CREDENTIALS_MISSING`) or the server rejected the token, so the
+      // account needs to sign in again whichever code the server returned.
+      // Transport and other API failures keep the plain deferral.
+      if (error instanceof AuthError) {
         setReauthRequired(String(ownerId));
         if (getActiveUserId() === String(ownerId)) {
           emitAuthReauthRequired(String(ownerId));

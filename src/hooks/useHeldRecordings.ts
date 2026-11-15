@@ -23,22 +23,36 @@ export function useHeldRecordings(refreshKey = 0): {
   const [recordings, setRecordings] = useState<HeldRecording[]>([]);
   const [loading, setLoading] = useState(true);
   const generationRef = useRef(0);
+  // Account whose rows are currently on screen.
+  const ownerRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     const generation = ++generationRef.current;
     const userId = Number(getActiveUserId());
     if (!Number.isFinite(userId) || userId <= 0) {
       if (generation === generationRef.current) {
+        ownerRef.current = null;
         setRecordings([]);
         setLoading(false);
       }
       return;
     }
 
+    // Held takes belong to the account that recorded them: never keep showing
+    // the previous account's rows once another account is active.
+    if (ownerRef.current !== null && ownerRef.current !== userId) {
+      ownerRef.current = null;
+      setRecordings([]);
+    }
     const rows = await getHeldRecordings(userId);
-    if (generation !== generationRef.current) {
+    // A load for an account that is no longer active must not publish.
+    if (
+      generation !== generationRef.current ||
+      Number(getActiveUserId()) !== userId
+    ) {
       return;
     }
+    ownerRef.current = userId;
     setRecordings(rows);
     setLoading(false);
   }, []);

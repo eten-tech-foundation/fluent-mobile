@@ -43,6 +43,7 @@ jest.mock('../utils/logger', () => ({
   },
 }));
 
+import { ApiError } from '../types/api/errors';
 import { AuthError } from './authError';
 import {
   getVerifiedMembershipOwners,
@@ -225,6 +226,36 @@ describe('refreshMembershipForOwners (#855)', () => {
     mockGetActiveUserId.mockReturnValue('2');
     await refreshMembershipForOwners([2]);
     expect(mockEmitAuthReauthRequired).toHaveBeenCalledWith('2');
+  });
+
+  it('flags reauth when the server rejects an owner token with another AuthError code', async () => {
+    mockGetUserProjects.mockImplementation(async (id: number) => {
+      if (id === 3) throw new AuthError('Session expired', 'TOKEN_EXPIRED');
+      return { data: [{ id: 10 }] };
+    });
+
+    const verified = await refreshMembershipForOwners([1, 3]);
+
+    expect([...verified]).toEqual([1]);
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('3');
+    expect(mockSetReauthRequired).not.toHaveBeenCalledWith('1');
+    expect(mockEmitAuthReauthRequired).not.toHaveBeenCalled();
+
+    mockGetActiveUserId.mockReturnValue('3');
+    await refreshMembershipForOwners([3]);
+    expect(mockEmitAuthReauthRequired).toHaveBeenCalledWith('3');
+  });
+
+  it('does not flag reauth for a non-auth API failure', async () => {
+    mockGetUserProjects.mockRejectedValue(
+      new ApiError(500, 'Server error', 'SERVER_ERROR'),
+    );
+
+    const verified = await refreshMembershipForOwners([1]);
+
+    expect([...verified]).toEqual([]);
+    expect(mockSetReauthRequired).not.toHaveBeenCalled();
+    expect(mockEmitAuthReauthRequired).not.toHaveBeenCalled();
   });
 
   it('checks each owner once and replaces the previous verified set', async () => {

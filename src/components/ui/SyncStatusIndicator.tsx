@@ -31,8 +31,9 @@ function resolveIconState(
 
   // Held recordings (removed from their project) never upload on their own, so
   // they must not resolve to a synced cloud even when pageStatus is
-  // `allComplete` (#855). Reuse the pending glyph: unsent work on the device.
-  if (hasHeldRecordings && !hasPendingUploads) {
+  // `allComplete` (#855), whatever the pending flag says: callers can pass the
+  // props directly. Reuse the pending glyph: unsent work on the device.
+  if (hasHeldRecordings) {
     return {
       status: isOnline ? 'online_pending' : 'offline_pending',
       animated: false,

@@ -55,6 +55,34 @@ describe('SyncStatusIndicator', () => {
     [{ status: 'held', hasHeldRecordings: true }, 'online_pending', false],
     [
       {
+        status: 'allComplete',
+        hasHeldRecordings: true,
+        hasPendingUploads: true,
+      },
+      'online_pending',
+      false,
+    ],
+    [
+      {
+        status: 'allComplete',
+        hasHeldRecordings: true,
+        hasPendingUploads: true,
+        isOnline: false,
+      },
+      'offline_pending',
+      false,
+    ],
+    [
+      {
+        status: 'uploadComplete',
+        hasHeldRecordings: true,
+        hasPendingUploads: true,
+      },
+      'online_pending',
+      false,
+    ],
+    [
+      {
         status: 'pending',
         hasHeldRecordings: true,
         hasPendingUploads: true,
