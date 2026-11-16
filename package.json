@@ -85,14 +85,14 @@
     "react-native-safe-area-context": "^5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "^15.15.3",
-    "react-native-worklets": "0.10.1"
+    "react-native-worklets": "0.13.1"
   },
   "devDependencies": {
     "@babel/core": "^7.29.6",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "^20.2.0",
-    "@react-native-community/cli-platform-android": "^20.1.2",
+    "@react-native-community/cli": "^21.0.0",
+    "@react-native-community/cli-platform-android": "^21.0.0",
     "@react-native/jest-preset": "0.86.3",
     "@react-native/typescript-config": "0.86.3",
     "@testing-library/react-native": "^13.3.3",
