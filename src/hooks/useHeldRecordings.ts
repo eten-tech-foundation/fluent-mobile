@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { useAuthSession } from '../navigation/AuthSessionProvider';
 import {
   getHeldRecordings,
   type HeldRecording,
@@ -31,6 +32,9 @@ export function useHeldRecordings(refreshKey = 0): {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const generationRef = useRef(0);
+  // Bumped after a device-account switch (notifyUserSwitched), so a Sync screen
+  // that stays mounted through the switch reloads for the new account.
+  const { userSwitchEpoch } = useAuthSession();
 
   const load = useCallback(async () => {
     const generation = ++generationRef.current;
@@ -65,7 +69,7 @@ export function useHeldRecordings(refreshKey = 0): {
 
   useEffect(() => {
     void load();
-  }, [load, refreshKey]);
+  }, [load, refreshKey, userSwitchEpoch]);
 
   useEffect(
     () =>

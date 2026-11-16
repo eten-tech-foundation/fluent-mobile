@@ -75,8 +75,10 @@ export async function refreshProjectMembership(
   // account. Only a real empty array means no projects.
   const projectIds = new Set<number>();
   for (const row of raw) {
-    const id = Number((row as { id?: unknown } | null)?.id);
-    if (!Number.isFinite(id) || id <= 0) {
+    // Check the type, not `Number(id)`: that coerces `true` to 1, `'7'` to 7
+    // and `[7]` to 7, so a malformed row would pass as a real project id.
+    const id = (row as { id?: unknown } | null)?.id;
+    if (typeof id !== 'number' || !Number.isInteger(id) || id <= 0) {
       throw new Error(
         'Unexpected project membership entry: missing project id',
       );

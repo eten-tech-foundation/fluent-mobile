@@ -1,5 +1,6 @@
 import type { PendingUploadChapter } from '../db/queries';
 import { logger } from '../utils/logger';
+import { isChapterUploadDeferredError } from '../utils/chapterDeferredError';
 import { isUploadNetworkInterruptedError } from '../utils/networkError';
 import { transportAllowsTransfer } from '../utils/transportPolicy';
 import type { UploadSessionEvent, UploadTakeProgress } from './syncEvents';
@@ -713,6 +714,7 @@ export function createUploadOrchestrator(
           // delete failure must not starve the chapters below: remember it
           // and fail the session only after they have had their turn.
           let deletionsFailed = 0;
+          let deferredChapterError: unknown = null;
           if (!stageOnly && deps.worker!.drainPendingDeletions) {
             const drained = await deps.worker!.drainPendingDeletions(
               abort.signal,
@@ -752,6 +754,15 @@ export function createUploadOrchestrator(
                 abort.signal,
                 onTakeProgress,
               );
+            } catch (error) {
+              // Takes held back (an account whose membership is unconfirmed)
+              // must not starve other accounts' chapters. Remember it and fail
+              // the session after every chapter has had its turn, as for
+              // `deletionsFailed` (#855).
+              if (!isChapterUploadDeferredError(error)) {
+                throw error;
+              }
+              deferredChapterError ??= error;
             } finally {
               currentChapter = null;
             }
@@ -799,6 +810,9 @@ export function createUploadOrchestrator(
             throw new Error(
               `Upload session left ${deletionsFailed} take delete(s) pending`,
             );
+          }
+          if (deferredChapterError !== null) {
+            throw deferredChapterError;
           }
           if (claimPushError !== null) {
             throw claimPushError;

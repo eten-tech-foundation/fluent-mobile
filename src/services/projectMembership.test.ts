@@ -141,6 +141,11 @@ describe('refreshProjectMembership (#848)', () => {
     ['a null id', [{ id: 10 }, { id: null }]],
     ['a null entry', [{ id: 10 }, null]],
     ['a negative id', [{ id: -3 }]],
+    ['a boolean id', [{ id: 10 }, { id: true }]],
+    ['a numeric string id', [{ id: '7' }]],
+    ['a one-element array id', [{ id: [7] }]],
+    ['a fractional id', [{ id: 1.5 }]],
+    ['a non-finite id', [{ id: Number.POSITIVE_INFINITY }]],
   ])(
     'rejects the whole response when it has %s and leaves the cache alone',
     async (_label, data) => {

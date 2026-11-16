@@ -26,6 +26,7 @@ import type {
   PendingRecordingDeletion,
 } from '../types/db/types';
 import { logger } from '../utils/logger';
+import { ChapterUploadDeferredError } from '../utils/chapterDeferredError';
 import {
   isNetworkTransportError,
   UploadNetworkInterruptedError,
@@ -1594,8 +1595,10 @@ function throwIfChapterPassIncomplete(result: UploadResult): void {
     throw new Error(`Chapter upload failed for ${result.failed} recording(s)`);
   }
   if (result.deferred > 0) {
-    throw new Error(
-      `Chapter upload deferred ${result.deferred} recording(s) after a local change`,
+    // Not a hard failure: the orchestrator keeps going with other chapters
+    // (another account's takes may still be eligible) and fails afterwards.
+    throw new ChapterUploadDeferredError(
+      `Chapter upload deferred ${result.deferred} recording(s)`,
     );
   }
 }

@@ -3,6 +3,7 @@ import { waitFor } from '@testing-library/react-native';
 import { resetFileSystemMock } from '../test/mocks/expo-file-system';
 import type { PendingRecording } from '../types/db/types';
 import { ApiError } from '../types/api/errors';
+import { isChapterUploadDeferredError } from '../utils/chapterDeferredError';
 import type { VerseAudioResponse } from '../types/api/verseAudio';
 import { AuthError } from './authError';
 import { authToken } from './authToken';
@@ -1790,6 +1791,45 @@ describe('recordingSync', () => {
       ),
     ).rejects.toThrow(/Chapter upload failed/);
     expect(mockEmitUploadSessionEvent).not.toHaveBeenCalled();
+  });
+
+  it('createChapterUploadWorker throws the typed deferred error when only an unconfirmed owner has takes (#855)', async () => {
+    // Account 7's membership could not be confirmed; account 2 is verified.
+    mockGetVerifiedMembershipOwners.mockReturnValue(new Set([2]));
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'unconfirmed', recordedByUserId: 7 }),
+    ]);
+    const worker = createChapterUploadWorker(() => 'worker-tok');
+
+    const error = await worker
+      .uploadChapter(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      )
+      .catch(caught => caught);
+
+    expect(isChapterUploadDeferredError(error)).toBe(true);
+    expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+  });
+
+  it('createChapterUploadWorker keeps a real failure a plain error even when another take is deferred (#855)', async () => {
+    mockGetVerifiedMembershipOwners.mockReturnValue(new Set([2]));
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'unconfirmed', recordedByUserId: 7 }),
+      pendingRecording({ id: 'bad', recordedByUserId: 2, projectUnitId: null }),
+    ]);
+    const worker = createChapterUploadWorker(() => 'worker-tok');
+
+    const error = await worker
+      .uploadChapter(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      )
+      .catch(caught => caught);
+
+    expect(isChapterUploadDeferredError(error)).toBe(false);
+    expect((error as Error).message).toMatch(/Chapter upload failed/);
   });
 
   it('createChapterUploadWorker does not treat conflicts as chapter failures (#600)', async () => {

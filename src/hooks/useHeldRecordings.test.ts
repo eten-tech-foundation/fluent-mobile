@@ -15,6 +15,10 @@ jest.mock('../db/repositories/heldRecordingsRepository', () => ({
 }));
 
 let mockActiveUserId: string | null = '1';
+let mockEpoch = 0;
+jest.mock('../navigation/AuthSessionProvider', () => ({
+  useAuthSession: () => ({ userSwitchEpoch: mockEpoch }),
+}));
 jest.mock('../services/storage', () => ({
   getActiveUserId: () => mockActiveUserId,
 }));
@@ -50,6 +54,7 @@ describe('useHeldRecordings (#855)', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     mockActiveUserId = '1';
+    mockEpoch = 0;
     heldChangedListener = null;
     rowsFor = async () => [];
     mockGetHeldRecordings.mockImplementation((userId: number) =>
@@ -123,6 +128,47 @@ describe('useHeldRecordings (#855)', () => {
     expect(result.current.recordings.map(r => r.id)).toEqual([
       'account-2-take',
     ]);
+  });
+
+  it("hides the previous account's rows on render after a switch, before any reload", async () => {
+    rowsFor = async () => [held('account-1-take')];
+    const { result, rerender } = renderHook(() => useHeldRecordings());
+    await waitFor(() =>
+      expect(result.current.recordings.map(r => r.id)).toEqual([
+        'account-1-take',
+      ]),
+    );
+    const loadsBeforeSwitch = mockGetHeldRecordings.mock.calls.length;
+
+    // The screen stays mounted through the switch: no load, no event, only a
+    // re-render (focus return, connectivity change, ...).
+    mockActiveUserId = '2';
+    rerender({});
+
+    expect(result.current.recordings).toEqual([]);
+    expect(mockGetHeldRecordings.mock.calls.length).toBe(loadsBeforeSwitch);
+  });
+
+  it("loads the new account's rows when the switch epoch bumps while mounted", async () => {
+    rowsFor = async userId => [held(`account-${userId}-take`)];
+    const { result, rerender } = renderHook(() => useHeldRecordings());
+    await waitFor(() =>
+      expect(result.current.recordings.map(r => r.id)).toEqual([
+        'account-1-take',
+      ]),
+    );
+
+    // notifyUserSwitched: the active account changes and the epoch bumps; no
+    // focus change and no held-changed event.
+    mockActiveUserId = '2';
+    mockEpoch = 1;
+    rerender({});
+
+    await waitFor(() =>
+      expect(result.current.recordings.map(r => r.id)).toEqual([
+        'account-2-take',
+      ]),
+    );
   });
 
   it('clears the list when nobody is signed in', async () => {

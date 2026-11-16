@@ -9,6 +9,7 @@ import {
 } from './uploadOrchestratorCore';
 import type { UploadSessionEvent } from './syncEvents';
 import type { PendingUploadChapter } from '../db/queries';
+import { ChapterUploadDeferredError } from '../utils/chapterDeferredError';
 import { UploadNetworkInterruptedError } from '../utils/networkError';
 import { AuthError } from './authError';
 
@@ -42,6 +43,8 @@ function createHarness(options?: {
   /** Block this chapter until abort without removing it from the pending set. */
   holdChapterNumber?: number;
   failUploads?: () => boolean;
+  /** Chapters whose takes stay deferred (unconfirmed owner): throw, stay pending. */
+  deferChapterNumbers?: number[];
   /** Throw once when upload reaches this chapterNumber, before drop (stays pending). */
   networkInterruptOnChapter?: number;
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
@@ -107,6 +110,9 @@ function createHarness(options?: {
       options?.captureTakeProgress?.(onTakeProgress);
       if (options?.failUploads?.()) {
         throw new Error('upload failed');
+      }
+      if (options?.deferChapterNumbers?.includes(chapter.chapterNumber)) {
+        throw new ChapterUploadDeferredError('chapter deferred');
       }
       if (options?.takesPerChapter) {
         const { total, failed = 0, delayMs = 0 } = options.takesPerChapter;
@@ -806,6 +812,30 @@ describe('uploadOrchestrator', () => {
       h.fireTimer(sessionRetryDelayMs(1));
       await h.waitFor(() => h.events.some(event => event.type === 'complete'));
       expect(drainPendingDeletions).toHaveBeenCalledTimes(2);
+    });
+
+    it('still uploads later chapters when an earlier chapter is deferred, then ends without complete and arms a retry (#855)', async () => {
+      // Chapter 1 holds a take whose owner's membership is unconfirmed; the
+      // worker defers it. Chapter 2 belongs to a verified account and must
+      // not wait behind it.
+      const h = createHarness({
+        chapters: [
+          { bookId: 1, chapterNumber: 1 },
+          { bookId: 1, chapterNumber: 2 },
+        ],
+        deferChapterNumbers: [1],
+      });
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => h.uploaded.length === 1);
+      await h.flush();
+
+      expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 2 }]);
+      expect(h.events.some(event => event.type === 'complete')).toBe(false);
+      expect(h.events.at(-1)).toEqual({ type: 'idle' });
+      // The deferred work is still retried, within the usual budget.
+      expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([
+        sessionRetryDelayMs(1),
+      ]);
     });
 
     it('a cancel during the drain uploads nothing and emits neither idle nor complete', async () => {
