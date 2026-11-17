@@ -52,10 +52,13 @@ import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
 import { type Ready } from './ready';
+import { ResourcesPeek } from './ResourcesPeek';
+import { ResourcesSheet } from './ResourcesSheet';
 import { useScriptMetrics } from './scriptMetrics';
 import { sourceWindow, windowProgress, windowSeekMs } from './sourceWindow';
 import { TakeFan } from './TakeFan';
 import { TitleSheet } from './TitleSheet';
+import { usePassageImages } from './usePassageImages';
 import { usePassageNotes } from './usePassageNotes';
 import { useRecorder } from './useRecorder';
 import { VerseList } from './VerseList';
@@ -329,6 +332,18 @@ export function Sheet({
   const { isOnline, hasResolved } = useConnectivity();
   const [playingVerse, setPlayingVerse] = useState<number | null>(null);
   const steps = recorder.verse;
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  // Like the notes, they load the first time they're asked for, then stay.
+  const [resourcesAsked, setResourcesAsked] = useState(false);
+  const [peekHeight, setPeekHeight] = useState(0);
+  const images = usePassageImages({
+    passage,
+    userId,
+    enabled: resourcesAsked,
+  });
+  useEffect(() => {
+    if (!focused || expanded) setResourcesOpen(false);
+  }, [focused, expanded]);
   // Until the text is in, the script shows why instead.
   const versePages =
     steps !== null && expanded && passage.downloaded && steps.verses.length > 0;
@@ -569,6 +584,21 @@ export function Sheet({
     ],
   }));
 
+  // Sinks away as the player opens, which takes the bottom of the screen.
+  const peekStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.25], [1, 0], 'clamp'),
+    transform: [
+      {
+        translateY: interpolate(
+          progress.value,
+          [0, 0.4],
+          [0, peekHeight],
+          'clamp',
+        ),
+      },
+    ],
+  }));
+
   const measure = (set: (h: number) => void) => (e: LayoutChangeEvent) =>
     set(Math.round(e.nativeEvent.layout.height));
   const title = passage.title ?? passage.reference;
@@ -627,8 +657,20 @@ export function Sheet({
             reachedPlayAt.current = false;
             setPlayAt(verseNumber);
           }}
+          bottomInset={peekHeight}
         />
       ) : null}
+      <ColorModeScope value="canvas">
+        <ResourcesPeek
+          shown={!expanded}
+          style={peekStyle}
+          onLayout={measure(setPeekHeight)}
+          onPress={() => {
+            setResourcesAsked(true);
+            setResourcesOpen(true);
+          }}
+        />
+      </ColorModeScope>
       <ColorModeScope value="hardware">
         <TitleSheet
           visible={titleSheetOpen}
@@ -641,6 +683,13 @@ export function Sheet({
             onOpenBook();
           }}
           onOpenClassic={onOpenClassic}
+        />
+        <ResourcesSheet
+          visible={resourcesOpen}
+          reference={passage.reference}
+          images={images}
+          onRetryImages={() => void images.retry()}
+          onClose={() => setResourcesOpen(false)}
         />
       </ColorModeScope>
       <PlayerChrome

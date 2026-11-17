@@ -47,8 +47,9 @@ describe('galleryEntries', () => {
   });
 
   it('lets only the all-mode entries follow the Mode switcher', () => {
-    // Waveform, Word, Note, Take fan and Passage notices scope their own
-    // Canvas or Accent parts; every other entry is pinned to Hardware.
+    // Waveform, Word, Note, Take fan, Passage notices and the Resources peek
+    // scope their own Canvas or Accent parts; every other entry is pinned to
+    // Hardware.
     expect(galleryEntries.filter(e => !e.pin).map(e => e.id)).toEqual([
       'type',
       'icons',
@@ -57,6 +58,7 @@ describe('galleryEntries', () => {
       'note',
       'take-fan',
       'passage-notices',
+      'resources-peek',
     ]);
     for (const e of galleryEntries.filter(e => e.pin)) {
       expect(e.pin).toBe('hardware');

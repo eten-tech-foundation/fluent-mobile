@@ -11,6 +11,7 @@ import { KeyEntry } from './KeyEntry';
 import { NoteEntry } from './NoteEntry';
 import { PassageCoverEntry } from './PassageCoverEntry';
 import { PassageNoticesEntry } from './PassageNoticesEntry';
+import { ResourcesPeekEntry } from './ResourcesPeekEntry';
 import { RoundButtonEntry } from './RoundButtonEntry';
 import { ScreenHeaderEntry } from './ScreenHeaderEntry';
 import { SwitchEntry } from './SwitchEntry';
@@ -186,6 +187,16 @@ export const galleryEntries: GalleryEntry[] = [
     modes: 'Hardware (Home)',
     pin: 'hardware',
     Component: BottomSheetEntry,
+  },
+  {
+    // No Figma frame yet: the Pericope frame's Resources button
+    // https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2440-28492
+    // as a peek, with the Bottom sheet and List row.
+    id: 'resources-peek',
+    name: 'Resources peek · Resources sheet',
+    section: 'Sheets and dialogs',
+    modes: 'Canvas (the passage page) · Hardware (the sheet)',
+    Component: ResourcesPeekEntry,
   },
   {
     // Figma: Gap / Dialog https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-72

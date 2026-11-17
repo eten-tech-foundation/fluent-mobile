@@ -292,6 +292,24 @@ jest.mock('../../../hooks/useTranslationNotesForUnit', () => ({
   },
 }));
 
+// A disabled load never settles, so it can't update state outside act.
+const loadNoImages = (args: { projectId: number | null }): Promise<unknown[]> =>
+  args.projectId === null ? new Promise(() => {}) : Promise.resolve([]);
+const mockLoadImages = jest.fn(loadNoImages);
+
+jest.mock('../../../services/imagesMaps', () => ({
+  loadImagesMapsForUnit: (args: { projectId: number | null }) =>
+    mockLoadImages(args),
+}));
+
+jest.mock('../../../hooks/useResourcesInventory', () => ({
+  useResourcesInventory: () => ({
+    inventoryVersion: 0,
+    downloadedSections: [],
+    getResourceStatus: () => 'available',
+  }),
+}));
+
 jest.mock('../../../hooks/usePassage', () => ({
   usePassage: () => ({
     passage: mockPassage,
@@ -435,6 +453,7 @@ describe('PassageScreen', () => {
     mockUnuploadable.mockResolvedValue(false);
     mockObserverGrant = false;
     mockTranslatorGrant = false;
+    mockLoadImages.mockImplementation(loadNoImages);
   });
 
   afterEach(() => {
@@ -3143,5 +3162,107 @@ describe('PassageScreen', () => {
     settle();
 
     expect(screen.queryByTestId('passage-title-sheet')).toBeNull();
+  });
+
+  describe('Resources', () => {
+    function openResources() {
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Resources, Images and maps' }),
+      );
+      settle();
+    }
+
+    it("don't load until the peek is tapped", () => {
+      renderSettled();
+      expect(screen.getByTestId('passage-resources-peek')).toBeTruthy();
+      expect(mockLoadImages).not.toHaveBeenCalledWith(
+        expect.objectContaining({ projectId: 9 }),
+      );
+      expect(screen.queryByTestId('passage-resources')).toBeNull();
+    });
+
+    it("open from the peek for the passage's verses, with no classic route", async () => {
+      renderSettled();
+      openResources();
+      await act(async () => {});
+
+      expect(mockLoadImages).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: 9,
+          userId: 7,
+          isOnline: true,
+          bookCode: 'MRK',
+          languageCode: 'tel',
+          verseRefs: ready.verses.map(v => ({
+            chapterNumber: v.chapterNumber,
+            verseNumber: v.verseNumber,
+          })),
+        }),
+      );
+      const sheet = screen.getByTestId('passage-resources');
+      expect(within(sheet).getByText('Mark 14:22–25')).toBeTruthy();
+      expect(within(sheet).getByText('No images or maps here.')).toBeTruthy();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('retry reloads only the images, and recovers in place', async () => {
+      mockLoadImages.mockImplementation(async ({ projectId }) => {
+        if (projectId !== null) throw new Error('offline');
+        return [];
+      });
+      renderSettled();
+      openResources();
+      await act(async () => {});
+      const sourceRetries = mockRetrySource.mock.calls.length;
+      const loads = mockLoadImages.mock.calls.length;
+
+      mockLoadImages.mockImplementation(loadNoImages);
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Retry loading images and maps' }),
+      );
+      await act(async () => {});
+
+      expect(mockLoadImages).toHaveBeenCalledTimes(loads + 1);
+      expect(
+        within(screen.getByTestId('passage-resources')).getByText(
+          'No images or maps here.',
+        ),
+      ).toBeTruthy();
+      expect(mockRetrySource).toHaveBeenCalledTimes(sourceRetries);
+      expect(mockBack).not.toHaveBeenCalled();
+    });
+
+    it('steps aside while the player is open', () => {
+      renderSettled();
+      const peek = () => screen.getByTestId('passage-resources-peek', hidden);
+      expect(peek().props.pointerEvents).toBe('box-none');
+
+      fireEvent.press(screen.getByTestId('passage-listen'));
+      settle();
+      expect(peek().props.pointerEvents).toBe('none');
+      expect(peek().props.importantForAccessibility).toBe(
+        'no-hide-descendants',
+      );
+
+      fireEvent.press(screen.getByTestId('passage-close'));
+      settle();
+      expect(peek().props.pointerEvents).toBe('box-none');
+    });
+
+    it('close when another screen covers the passage', async () => {
+      renderSettled();
+      openResources();
+      await act(async () => {});
+      expect(screen.getByTestId('passage-resources')).toBeTruthy();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      settle();
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+      settle();
+
+      expect(screen.queryByTestId('passage-resources')).toBeNull();
+    });
   });
 });

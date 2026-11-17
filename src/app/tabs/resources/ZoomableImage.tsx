@@ -37,7 +37,14 @@ type ZoomableImageProps = {
   hostBackgroundColor?: string;
 };
 
-function clampTranslate(
+/** Pinch scale held to 1x–4x. */
+export function clampScale(savedScale: number, pinchScale: number) {
+  'worklet';
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, savedScale * pinchScale));
+}
+
+/** Keeps a zoomed image's edges from panning inside the viewport. */
+export function clampTranslate(
   x: number,
   y: number,
   scaleValue: number,
@@ -98,10 +105,7 @@ export function ZoomableImage({
 
   const pinch = Gesture.Pinch()
     .onUpdate(event => {
-      const next = Math.min(
-        MAX_SCALE,
-        Math.max(MIN_SCALE, savedScale.value * event.scale),
-      );
+      const next = clampScale(savedScale.value, event.scale);
       scale.value = next;
       const clamped = clampTranslate(
         translateX.value,
