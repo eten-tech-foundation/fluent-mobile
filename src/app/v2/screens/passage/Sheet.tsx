@@ -49,6 +49,7 @@ import { Dialog, type DialogProps } from '../../../../components/ui/Dialog';
 import { Footer } from './Footer';
 import { NoteScreen } from './NoteScreen';
 import { PassageHero } from './PassageHero';
+import { PassageQuestions } from './PassageQuestions';
 import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
 import { type Ready } from './ready';
@@ -57,6 +58,7 @@ import { sourceWindow, windowProgress, windowSeekMs } from './sourceWindow';
 import { TakeFan } from './TakeFan';
 import { TitleSheet } from './TitleSheet';
 import { usePassageNotes } from './usePassageNotes';
+import { usePassageQuestions } from './usePassageQuestions';
 import { useRecorder } from './useRecorder';
 import { VerseList } from './VerseList';
 
@@ -329,6 +331,18 @@ export function Sheet({
   const { isOnline, hasResolved } = useConnectivity();
   const [playingVerse, setPlayingVerse] = useState<number | null>(null);
   const steps = recorder.verse;
+  const [questionsOpen, setQuestionsOpen] = useState(false);
+  // Like the notes, they load the first time they're asked for, then stay.
+  const [questionsAsked, setQuestionsAsked] = useState(false);
+  const questions = usePassageQuestions({
+    passage,
+    userId,
+    verse: steps?.current ?? null,
+    enabled: questionsAsked,
+  });
+  useEffect(() => {
+    if (!focused) setQuestionsOpen(false);
+  }, [focused]);
   // Until the text is in, the script shows why instead.
   const versePages =
     steps !== null && expanded && passage.downloaded && steps.verses.length > 0;
@@ -640,7 +654,19 @@ export function Sheet({
             recorder.releaseReview();
             onOpenBook();
           }}
+          onOpenQuestions={() => {
+            setQuestionsAsked(true);
+            setQuestionsOpen(true);
+          }}
           onOpenClassic={onOpenClassic}
+        />
+        <PassageQuestions
+          visible={questionsOpen}
+          scopeLabel={steps ? `Verse ${steps.current}` : passage.reference}
+          scope={questions.scope}
+          state={questions.state}
+          onRetry={() => void questions.retry()}
+          onClose={() => setQuestionsOpen(false)}
         />
       </ColorModeScope>
       <PlayerChrome

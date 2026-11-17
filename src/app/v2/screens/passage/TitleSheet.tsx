@@ -1,13 +1,17 @@
 import React from 'react';
 import { BottomSheet } from '../../../../components/ui/BottomSheet';
 import { ListRow } from '../../../../components/ui/ListRow';
-import { OPEN_CLASSIC_DRAFTING } from '../../../../constants/messages';
+import {
+  OPEN_CLASSIC_DRAFTING,
+  PASSAGE_QUESTIONS_OPEN_DETAIL,
+  PASSAGE_QUESTIONS_TITLE,
+} from '../../../../constants/messages';
 
 /**
  * The title's sheet: the whole title, which the header may cut short, over a
- * row up to the passage's book page and one into classic drafting, for what
- * the player has no design for yet: verse mode, everyone's takes, resources
- * and Send.
+ * row up to the passage's book page, one to its Translation Questions, and one
+ * into classic drafting, for what the player has no design for yet: verse
+ * mode, everyone's takes, the other resources and Send.
  */
 export function TitleSheet({
   visible,
@@ -16,6 +20,7 @@ export function TitleSheet({
   milestoneName,
   onClose,
   onOpenBook,
+  onOpenQuestions,
   onOpenClassic,
 }: {
   visible: boolean;
@@ -25,6 +30,7 @@ export function TitleSheet({
   milestoneName: string;
   onClose: () => void;
   onOpenBook: () => void;
+  onOpenQuestions: () => void;
   onOpenClassic: () => void;
 }) {
   return (
@@ -44,6 +50,16 @@ export function TitleSheet({
         }}
         accessibilityLabel={`${chapterName} · ${milestoneName}. Open book page.`}
         testID="passage-book"
+      />
+      <ListRow
+        title={PASSAGE_QUESTIONS_TITLE}
+        subtitle={PASSAGE_QUESTIONS_OPEN_DETAIL}
+        trailing="chevron"
+        onPress={() => {
+          onClose();
+          onOpenQuestions();
+        }}
+        testID="passage-open-questions"
       />
       <ListRow
         title={OPEN_CLASSIC_DRAFTING}
