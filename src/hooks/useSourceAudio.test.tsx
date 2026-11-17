@@ -181,6 +181,56 @@ describe('useSourceAudio', () => {
     });
   });
 
+  it('keeps one chapter load across a verse change and readies the verse on screen (#945)', async () => {
+    let resolveFetch: (data: unknown) => void = () => {};
+    fetchChapterSourceAudio.mockImplementation(
+      () => new Promise(resolve => (resolveFetch = resolve)),
+    );
+    const { result, rerender } = renderHook(
+      (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
+      { initialProps: baseArgs() },
+    );
+    await waitFor(() => expect(fetchChapterSourceAudio).toHaveBeenCalled());
+    expect(result.current.loadState).toBe('loading');
+
+    rerender({ ...baseArgs(), verse: 2 });
+    expect(result.current.loadState).toBe('loading');
+
+    await act(async () => {
+      resolveFetch({
+        provider: 'aquifer',
+        bible: { name: 'BSB', abbreviation: 'BSB' },
+        bookCode: 'MRK',
+        chapter: 1,
+        items: [
+          {
+            format: 'mp3',
+            url: 'https://cdn.example/ch.mp3',
+            scope: 'chapter',
+          },
+        ],
+        verseTimestamps: [
+          { verse: 1, startSeconds: 0 },
+          { verse: 2, startSeconds: 4 },
+        ],
+      });
+    });
+
+    expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1);
+    expect(result.current.loadState).toBe('ready');
+
+    playbackState.positionMs = 4000;
+    await act(async () => {
+      await result.current.play();
+    });
+    expect(mockPlaybackSeek).toHaveBeenCalledWith(4000);
+    expect(onPlayingVerseChange).toHaveBeenLastCalledWith(2);
+
+    rerender({ ...baseArgs(), verse: 3 });
+    expect(result.current.loadState).toBe('ready');
+    expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1);
+  });
+
   it('sets empty when API returns no items', async () => {
     fetchChapterSourceAudio.mockResolvedValue({
       provider: 'aquifer',

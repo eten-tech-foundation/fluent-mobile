@@ -82,18 +82,52 @@ The token-level detail is in the
   Nothing stores that today, in SQLite or the API.
 - **Q14 · Waveform amplitude** *(API, optional)*. No API returns peaks, so
   waveforms stay decorative, as they are in Legacy.
-- **Q32 · Verse timings for source audio** *(API)*. Following, seeking
-  and paging by verse need `verseTimestamps`, and fluent-api only reads
-  them from DBL timecodes (fluent-api#380). No source in the catalogue has
-  them, BSB included, so verse mode can't follow the audio on real data.
-  Proposal: fluent-api runs forced alignment (Meta's MMS aligner, or
-  aeneas) once per chapter against the verse text, caches the result and
-  returns it in the same field, with DBL timecodes winning where they
-  exist. The app needs no change. Until then, verse mode without timings
-  plays the passage as one track: no playing verse, no chips on the
-  waveform, and a verse row opens its page without playing (Q31). Once
-  timings exist, the footer's verse chips should sit at them, as Legacy's
-  ticks do, rather than by each verse's text length (`scriptBars`).
+- **Q32 · Verse timings for source audio** *(API)*. Following and seeking
+  by verse need `verseTimestamps` on the chapter source-audio response.
+  Four different questions get mixed up here: what the API source
+  supports, what a deployed API includes, what one live bible actually
+  returns, and what the app does when the field is missing. A supported
+  field is not a populated catalogue.
+
+  **Source.** fluent-api has two writers, and DBL is not the only one.
+  `dblTracksToResponse` maps each DBL track's `timecodes` (`verseId` and
+  `start`) into `verseTimestamps` and omits the field when none parse
+  (fluent-api `2db5db7` `source-audio.service.ts` lines 150–192; the clock
+  parse landed in fluent-api#380, commit `35851e89`, 14 Oct 2026). The
+  Aquifer fallback reads `verse.audioTimestamp` in
+  `verseTimestampsFromChapter` and emits `verseTimestamps` only when at
+  least one verse parses (same tree, lines 117–127 and 235–251). That
+  Aquifer parser was already in `4bafff9a` (28 Aug 2026, lines 106–116
+  and 217–231). Aquifer timings are used only when DBL returns no tracks
+  or is unavailable (same tree, lines 292–309), so a DBL chapter with
+  tracks and no timecodes does not pick up Aquifer timings. Verse start
+  times are not word or phrase alignment.
+
+  **Deployed API.** Unknown. Repository `main` at `2db5db7` (9 Nov 2026)
+  is the source cited above, not a deployment identity. No environment,
+  release, or deployed SHA was recorded for this note.
+
+  **Live data.** Unknown. No provider, bible, or chapter response was
+  read for this note, BSB included. The old claim that the catalogue has
+  no timings is withdrawn. Resolving it takes an authorized read of one
+  named provider, bible, and chapter, plus that deployed SHA. Keep signed
+  audio URLs, tokens, and user data out of the record. A chapter that
+  returns audio and an empty or missing `verseTimestamps` is the only
+  remaining reason to consider forced alignment (for example MMS or
+  aeneas), cached per chapter, with DBL timecodes winning where both
+  exist. That work is not a prerequisite, and this note does not
+  commission it.
+
+  **App when timings are absent.** Verse mode plays the chapter as one
+  track and does not name a playing verse: the position poll does not
+  run (`useSourceAudio.ts` lines 358–360) and the sheet claims no heard
+  verse (`Sheet.tsx` lines 388–391). A verse row opens its page and does
+  not start playback when that verse has no start (`Sheet.tsx` lines
+  438–440). Footer chips stay off in verse mode until the field is
+  present (`Sheet.tsx` line 663). When chips are on, `scriptBars` still
+  sizes each verse by its text (`Footer.tsx` lines 193–209), not by
+  timestamp. The player follows a verse only when that response includes
+  a start for it.
 - **Q18 · Which pericope set the designs assume** *(design + product)*. The
   Figma example, "The Last Supper", Mark 14:22–25, doesn't come out of either
   set the app ships: FCBH groups Mark 14:22–26 with no title, and FIA groups

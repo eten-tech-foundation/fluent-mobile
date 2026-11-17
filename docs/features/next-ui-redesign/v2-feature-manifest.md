@@ -348,6 +348,10 @@ Settle these before anyone builds them:
 
 ### Next parity with Legacy
 
+The [retirement checklist](retirement-checklist.md) (#907) is the map of
+each workflow, its Next destination, and the issue that implements it.
+The bridges below stay until those issues land. They are not parity.
+
 Where Next has no design yet, it bridges to the matching Legacy screen rather
 than dead-ending:
 

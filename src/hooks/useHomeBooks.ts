@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   DatabaseWriteMark,
@@ -30,6 +36,14 @@ export function useHomeBooks(refreshKey = 0) {
   // True from a failed read until one succeeds, so Home can tell "no books"
   // from "couldn't read the books" when there is nothing else to show.
   const [error, setError] = useState(false);
+  // See useMyWorkChapters: true during a read, including the render where
+  // refreshKey changes, so an empty Home doesn't flash ahead of the read.
+  const [reading, setReading] = useState(true);
+  const [seenRefreshKey, setSeenRefreshKey] = useState(refreshKey);
+  if (seenRefreshKey !== refreshKey) {
+    setSeenRefreshKey(refreshKey);
+    setReading(true);
+  }
   const loadGenerationRef = useRef(0);
   const focusedBeforeRef = useRef(false);
   const keyedBeforeRef = useRef(false);
@@ -38,12 +52,20 @@ export function useHomeBooks(refreshKey = 0) {
     writes: DatabaseWriteMark | null;
   } | null>(null);
 
+  // Commit-phase invalidation: a prior refreshKey's read can finish after
+  // render sets `reading` and before the passive refresh effect runs. Bump
+  // generation here so that completion cannot clear `reading` early.
+  useLayoutEffect(() => {
+    loadGenerationRef.current += 1;
+  }, [refreshKey]);
+
   // Only a read that publishes (or fails) ends the first load.
   const setBooks = useCallback((next: HomeBookSummary[]) => {
     markStartup('books_read', { count: next.length });
     setBookRows(prev => (sameRows(prev, next) ? prev : next));
     setError(false);
     setLoading(false);
+    setReading(false);
   }, []);
 
   /** `writesBefore`: a write mark the caller just took, saving a second one. */
@@ -81,6 +103,7 @@ export function useHomeBooks(refreshKey = 0) {
         // Keep the books already on screen; `error` says they may be stale.
         setError(true);
         setLoading(false);
+        setReading(false);
       }
     },
     [setBooks],
@@ -89,7 +112,11 @@ export function useHomeBooks(refreshKey = 0) {
   const loadBooks = useCallback(() => readBooks(), [readBooks]);
 
   const loadBooksIfChanged = useCallback(async () => {
+    // See useMyWorkChapters: an earlier sync's read must not end `reading`.
+    const generation = ++loadGenerationRef.current;
+    // `null` when the mark is unreadable; sameDatabaseWrites then reads in full.
     const writes = await getDatabaseWriteMark();
+    if (loadGenerationRef.current !== generation) return;
     // Whatever is on screen now, which may be newer than when focus came back.
     const read = publishedRef.current;
     if (
@@ -97,6 +124,8 @@ export function useHomeBooks(refreshKey = 0) {
       parseUserId() === read.userId &&
       sameDatabaseWrites(read.writes, writes)
     ) {
+      // Nothing was written, so no read is in flight to keep `reading` up.
+      setReading(false);
       return;
     }
     await readBooks(writes);
@@ -118,5 +147,5 @@ export function useHomeBooks(refreshKey = 0) {
     }, [loadBooksIfChanged]),
   );
 
-  return { books, loading, error, refresh: loadBooks };
+  return { books, loading, error, reading, refresh: loadBooks };
 }
