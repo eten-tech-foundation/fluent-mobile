@@ -19,6 +19,7 @@ jest.mock('./storage', () => ({
   getCatalogueQuietSince: () => mockQuietSince,
   setCatalogueQuietSince: jest.fn(),
   clearCatalogueQuietSince: jest.fn(),
+  isReauthRequired: () => false,
 }));
 jest.mock('./connectivity', () => ({
   getConnectivitySnapshot: (...args: unknown[]) => mockSnapshot(...args),

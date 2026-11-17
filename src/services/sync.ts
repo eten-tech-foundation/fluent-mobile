@@ -102,6 +102,7 @@ import {
   getBibleTextChapterFullReconcileAt,
   setBibleTextChapterFullReconcileAt,
   setReauthRequired,
+  isReauthRequired,
   isBibleTextsServerIdRemapPending,
   clearBibleTextsServerIdRemapPending,
   getMasterDataUpdatedAt,
@@ -299,8 +300,10 @@ function getErrorMessage(error: unknown): string {
 }
 
 export async function handleSyncAuthFailure(userId: string): Promise<void> {
-  setReauthRequired(userId);
-  if (userId === getActiveUserId()) {
+  // A retry and the outer catch both report the same 401. Emit only when
+  // the flag actually changes. A test mock that returns undefined still emits.
+  const changed = setReauthRequired(userId);
+  if (changed !== false && userId === getActiveUserId()) {
     emitAuthReauthRequired(userId);
   }
 }
@@ -334,7 +337,7 @@ async function retrySyncStep<T>(
         const errorMessage = getErrorMessage(error);
 
         if (isAuthError(error)) {
-          log.error(`${stepName} failed: session invalid`, {
+          log.warn(`${stepName} failed: session invalid`, {
             error: errorMessage,
           });
           setSyncError(errorKey, errorMessage);
@@ -3351,6 +3354,17 @@ export async function refreshChapterMetadataIfOnline(
       () => undefined,
       () => undefined,
     );
+  }
+
+  // Checked before the in-flight promise is stored. A return inside that
+  // promise can finish before the map insert, and the finished promise
+  // would then swallow every later refresh for this user.
+  if (isReauthRequired(String(userId))) {
+    log.info('Metadata refresh skipped; sign-in required before sync', {
+      userId,
+    });
+    markStartup('metadata_refresh_complete', { reachedServer: false });
+    return;
   }
 
   const refreshPromise = (async () => {

@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ApiUser } from '../types/api/responses';
 import { FluentAPI } from '../services/api';
+import { switchToDeviceAccount } from '../services/accountSession';
 import {
   beginAddAccountSession,
   beginLoginSession,
@@ -9,14 +10,42 @@ import {
 import { queryKeys } from '../services/queryKeys';
 import { logger } from '../utils/logger';
 import { isApiError } from '../services/apiError';
+import {
+  restoreOfflineSession,
+  savePasswordVerifier,
+} from '../services/passwordVerifier';
 import { isValidEmail } from '../utils/validateEmail';
 
 const log = logger.create('useLogin');
 
+async function rememberPasswordVerifier(
+  userId: number | string,
+  password: string,
+): Promise<void> {
+  try {
+    await savePasswordVerifier(String(userId), password);
+  } catch (error) {
+    log.warn('Password verifier was not saved', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 export type LoginSessionMode = 'login' | 'addAccount' | 'reauth';
 
+export type LoginSuccessMeta = { offline?: boolean };
+
+type OnlineSignIn = Awaited<ReturnType<typeof FluentAPI.signIn>>;
+type LoginMutationResult =
+  | { kind: 'online'; response: OnlineSignIn }
+  | { kind: 'offline'; userId: string };
+
 export function useLogin(
-  onLoginSuccess: (email: string, preloadedUser?: ApiUser) => void,
+  onLoginSuccess: (
+    email: string,
+    preloadedUser?: ApiUser,
+    meta?: LoginSuccessMeta,
+  ) => void,
   options?: { initialEmail?: string; sessionMode?: LoginSessionMode },
 ) {
   const sessionMode = options?.sessionMode ?? 'login';
@@ -31,25 +60,66 @@ export function useLogin(
   const loginMutation = useMutation({
     mutationKey: queryKeys.auth.signIn,
     retry: false,
-    mutationFn: ({
+    mutationFn: async ({
       email: trimmedEmail,
       password: trimmedPassword,
     }: {
       email: string;
       password: string;
-    }) => FluentAPI.signIn(trimmedEmail, trimmedPassword),
-    onSuccess: async response => {
+    }): Promise<LoginMutationResult> => {
+      try {
+        const response = await FluentAPI.signIn(trimmedEmail, trimmedPassword);
+        return { kind: 'online', response };
+      } catch (error) {
+        // Adding an account has no stored token to restore.
+        if (
+          sessionMode === 'addAccount' ||
+          !isApiError(error) ||
+          error.status !== 0
+        ) {
+          throw error;
+        }
+        const restored = await restoreOfflineSession(
+          trimmedEmail,
+          trimmedPassword,
+        );
+        if (restored.ok) {
+          return { kind: 'offline', userId: restored.userId };
+        }
+        if (restored.reason === 'mismatch') {
+          throw new Error('Incorrect email or password.');
+        }
+        if (restored.reason === 'locked') {
+          throw new Error('Too many attempts. Wait a moment and try again.');
+        }
+        throw error;
+      }
+    },
+    onSuccess: async (result, variables) => {
+      if (result.kind === 'offline') {
+        // Restores the stored device session. Does not clear reauth and
+        // does not tell the server the session was renewed.
+        await switchToDeviceAccount(result.userId);
+        onLoginSuccess(variables.email, undefined, { offline: true });
+        return;
+      }
+      const { response } = result;
       if (sessionMode === 'addAccount') {
         const user = await beginAddAccountSession(
           response.token,
           response.user.email,
         );
+        // The hash yields the JS thread. Don't hold the signed-in navigation
+        // on it. A failed save leaves the next offline attempt on
+        // "Unable to connect" until the next online sign-in.
+        void rememberPasswordVerifier(user.id, variables.password);
         onLoginSuccess(response.user.email, user);
       } else {
         const user = await beginLoginSession(
           response.token,
           response.user.email,
         );
+        void rememberPasswordVerifier(user.id, variables.password);
         onLoginSuccess(response.user.email, user);
       }
     },

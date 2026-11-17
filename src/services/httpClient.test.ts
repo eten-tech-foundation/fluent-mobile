@@ -183,14 +183,24 @@ describe('Fluent API transport is cookie-less', () => {
   });
 
   it('401 still surfaces as AuthError on the cookie-less transport', async () => {
-    fetchMock.mockResolvedValue({
-      ...okJson({ message: 'Invalid or revoked session token' }, 401),
+    const events: string[] = [];
+    logger.setTransport(level => {
+      events.push(level);
     });
+    try {
+      fetchMock.mockResolvedValue({
+        ...okJson({ message: 'Invalid or revoked session token' }, 401),
+      });
 
-    await expect(authedRequest('/self/projects')).rejects.toMatchObject({
-      name: 'AuthError',
-    });
-    expect(usesWebViewCookieJar(lastInit())).toBe(false);
+      await expect(authedRequest('/self/projects')).rejects.toMatchObject({
+        name: 'AuthError',
+      });
+      expect(usesWebViewCookieJar(lastInit())).toBe(false);
+      expect(events).toContain('warn');
+      expect(events).not.toContain('error');
+    } finally {
+      logger.reset();
+    }
   });
 });
 
