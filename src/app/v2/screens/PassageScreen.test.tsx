@@ -252,6 +252,14 @@ jest.mock('../../../db/queries', () => ({
   chapterHasUnuploadableSelectedTakes: () => mockUnuploadable(),
 }));
 
+let mockPeerCheck: unknown = null;
+const mockSendToPeerCheck = jest.fn();
+jest.mock('../../../services/peerCheckSend', () => ({
+  PeerCheckSendBlockedError: class extends Error {},
+  readPeerCheckSend: async () => mockPeerCheck,
+  sendChapterToPeerCheck: (...args: unknown[]) => mockSendToPeerCheck(...args),
+}));
+
 let mockObserverGrant = false;
 let mockTranslatorGrant = false;
 jest.mock('../../../services/userOrgGrants', () => ({
@@ -435,6 +443,7 @@ describe('PassageScreen', () => {
     mockUnuploadable.mockResolvedValue(false);
     mockObserverGrant = false;
     mockTranslatorGrant = false;
+    mockPeerCheck = null;
   });
 
   afterEach(() => {
@@ -3143,5 +3152,76 @@ describe('PassageScreen', () => {
     settle();
 
     expect(screen.queryByTestId('passage-title-sheet')).toBeNull();
+  });
+
+  describe('Send to Peer Check', () => {
+    const sendable = {
+      chapter: {},
+      visibility: {
+        visible: true,
+        disabled: false,
+        destination: { nextStatus: 'peer_check' },
+      },
+      hasConflict: false,
+      hasUnuploadableTakes: false,
+    };
+    const withAssignment = (over: object, waitingToSend = false) => ({
+      ...ready,
+      waitingToSend,
+      assignment: { ...ready.assignment, ...over },
+    });
+    async function openTitleSheet() {
+      renderSettled();
+      await act(async () => {});
+      fireEvent.press(screen.getByTestId('passage-title'));
+      settle();
+    }
+
+    it("sends this passage's chapter from the title's sheet after confirming", async () => {
+      mockPeerCheck = sendable;
+      mockPassage = withAssignment({ bookName: 'Mark', status: 'draft' });
+      mockSendToPeerCheck.mockResolvedValue('confirmed');
+      await openTitleSheet();
+
+      fireEvent.press(screen.getByTestId('passage-send'));
+      settle();
+      const dialog = screen.getByTestId('passage-confirm');
+      expect(within(dialog).getByText(/Mark 14/)).toBeTruthy();
+      expect(mockSendToPeerCheck).not.toHaveBeenCalled();
+
+      mockReload.mockClear();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+      });
+      expect(mockSendToPeerCheck).toHaveBeenCalledWith({
+        chapterAssignmentId: 5,
+        userId: 7,
+        draftingUnit: 'pericope',
+      });
+      expect(mockReload).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers no Send where the gate does not', async () => {
+      await openTitleSheet();
+      expect(screen.queryByTestId('passage-send')).toBeNull();
+      expect(screen.getByTestId('passage-classic')).toBeTruthy();
+    });
+
+    it('shows a queued send apart from one the server has', async () => {
+      mockPassage = withAssignment(
+        { status: 'peer_check', assignedUserId: 7 },
+        true,
+      );
+      await openTitleSheet();
+      expect(screen.getByTestId('passage-send-queued')).toBeTruthy();
+      expect(screen.queryByTestId('passage-send-sent')).toBeNull();
+    });
+
+    it('shows a send the server has', async () => {
+      mockPassage = withAssignment({ status: 'peer_check', assignedUserId: 7 });
+      await openTitleSheet();
+      expect(screen.getByTestId('passage-send-sent')).toBeTruthy();
+      expect(screen.queryByTestId('passage-send-queued')).toBeNull();
+    });
   });
 });

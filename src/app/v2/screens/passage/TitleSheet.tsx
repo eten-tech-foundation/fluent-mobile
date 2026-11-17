@@ -1,19 +1,30 @@
 import React from 'react';
 import { BottomSheet } from '../../../../components/ui/BottomSheet';
 import { ListRow } from '../../../../components/ui/ListRow';
-import { OPEN_CLASSIC_DRAFTING } from '../../../../constants/messages';
+import {
+  OPEN_CLASSIC_DRAFTING,
+  OPEN_CLASSIC_DRAFTING_DETAIL,
+  PEER_CHECK_QUEUED_DETAIL,
+  PEER_CHECK_QUEUED_TITLE,
+  PEER_CHECK_SEND_LABEL,
+  PEER_CHECK_SENT_DETAIL,
+  PEER_CHECK_SENT_TITLE,
+} from '../../../../constants/messages';
+import type { PeerCheckRow } from './usePeerCheckSend';
 
 /**
  * The title's sheet: the whole title, which the header may cut short, over a
- * row up to the passage's book page and one into classic drafting, for what
- * the player has no design for yet: verse mode, everyone's takes, resources
- * and Send.
+ * row up to the passage's book page, the chapter's Send to Peer Check, and
+ * one into classic drafting, for what the player has no design for yet:
+ * verse mode, everyone's takes and resources.
  */
 export function TitleSheet({
   visible,
   title,
   chapterName,
   milestoneName,
+  send,
+  onSend,
   onClose,
   onOpenBook,
   onOpenClassic,
@@ -23,6 +34,9 @@ export function TitleSheet({
   /** e.g. "Mark 14". */
   chapterName: string;
   milestoneName: string;
+  /** Omitted when this account has no send here. */
+  send: PeerCheckRow | null;
+  onSend: () => void;
   onClose: () => void;
   onOpenBook: () => void;
   onOpenClassic: () => void;
@@ -45,9 +59,35 @@ export function TitleSheet({
         accessibilityLabel={`${chapterName} · ${milestoneName}. Open book page.`}
         testID="passage-book"
       />
+      {send?.kind === 'send' ? (
+        <ListRow
+          title={PEER_CHECK_SEND_LABEL}
+          subtitle={send.detail}
+          trailing="chevron"
+          disabled={send.disabled}
+          onPress={() => {
+            onClose();
+            onSend();
+          }}
+          accessibilityLabel={`${PEER_CHECK_SEND_LABEL}. ${send.detail}`}
+          testID="passage-send"
+        />
+      ) : send?.kind === 'queued' ? (
+        <ListRow
+          title={PEER_CHECK_QUEUED_TITLE}
+          subtitle={PEER_CHECK_QUEUED_DETAIL}
+          testID="passage-send-queued"
+        />
+      ) : send?.kind === 'sent' ? (
+        <ListRow
+          title={PEER_CHECK_SENT_TITLE}
+          subtitle={PEER_CHECK_SENT_DETAIL}
+          testID="passage-send-sent"
+        />
+      ) : null}
       <ListRow
         title={OPEN_CLASSIC_DRAFTING}
-        subtitle="Takes by everyone, resources and Send"
+        subtitle={OPEN_CLASSIC_DRAFTING_DETAIL}
         trailing="chevron"
         onPress={() => {
           onClose();

@@ -102,6 +102,27 @@ export const RECORD_TAKEN_CHAPTER_WARNING =
 export const RECORD_AUDIO_CONFLICT_WARNING =
   'Unresolved audio take conflict on this chapter/pericope.';
 
+/** Next passage's Send to Peer Check (#908). */
+export const PEER_CHECK_SEND_LABEL = 'Send to Peer Check';
+export const PEER_CHECK_SEND_CONFIRM = 'Send';
+export const PEER_CHECK_SEND_SENDING = 'Sending…';
+export const PEER_CHECK_SEND_RETRY = 'Try again';
+export const PEER_CHECK_SEND_CANCEL = 'Cancel';
+export const PEER_CHECK_SEND_OK = 'OK';
+export const PEER_CHECK_SEND_CAPTURING = 'Finish the take in progress first.';
+export const PEER_CHECK_SEND_FAILED =
+  "Couldn't send this chapter. Nothing changed. Try again.";
+export const PEER_CHECK_SEND_BLOCKED =
+  "This chapter can't be sent to Peer Check right now. Nothing changed.";
+export const PEER_CHECK_QUEUED_TITLE = 'Waiting to send to Peer Check';
+export const PEER_CHECK_QUEUED_DETAIL =
+  "Saved on this phone. It sends when you're online.";
+export const PEER_CHECK_SENT_TITLE = 'Sent to Peer Check';
+export const PEER_CHECK_SENT_DETAIL = 'The server has it.';
+export function peerCheckSendKept(chapterName: string): string {
+  return `The server kept ${chapterName} where it was, so it wasn't sent.`;
+}
+
 /** Stage advance blocked while selected takes cannot upload (#585). */
 export const RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING =
   "Can't advance yet — some takes on this chapter can't upload. Open Sync for details.";
@@ -202,6 +223,7 @@ export const RECORD_OVER_PASSAGE_CONFIRM = 'Record';
  * yet: verse mode, other people's takes, resources and Send.
  */
 export const OPEN_CLASSIC_DRAFTING = 'Open in classic drafting';
+export const OPEN_CLASSIC_DRAFTING_DETAIL = 'Takes by everyone and resources';
 /** One line on the take card, so these stay short. */
 export const RECORD_RECOVERED_TAKE = 'Take recovered. Eject finishes it.';
 export const RECORD_PAUSED_TAKE = 'Paused. Eject finishes the take.';
