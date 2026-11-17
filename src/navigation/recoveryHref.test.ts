@@ -203,6 +203,86 @@ describe('resolveRecoveryHref', () => {
       resolveRecoveryHref({ ...marker, capture: undefined }, 'next'),
     ).resolves.toEqual(legacyHref);
   });
+  it('reopens a verse take in a project without a pericope set, whatever the setting', async () => {
+    mockSetId.mockResolvedValue(null);
+
+    await expect(
+      resolveRecoveryHref(
+        { ...marker, capture: { ...capture, granularity: 'verse' } },
+        'next',
+      ),
+    ).resolves.toEqual(versePassage(22));
+    expect(mockPericope).not.toHaveBeenCalled();
+  });
+
+  describe('when the pericope read fails (#899)', () => {
+    /** SQLite rejects: the query signals it, then returns null as before. */
+    const failNextRead = () =>
+      mockPericope.mockImplementationOnce(async (...args: unknown[]) => {
+        (args[4] as (() => void) | undefined)?.();
+        return null;
+      });
+
+    it('keeps the saved verse session, not an inferred passage, then again once the read succeeds', async () => {
+      const verseTake = {
+        ...marker,
+        capture: { ...capture, granularity: 'verse' as const },
+      };
+      const before = JSON.parse(JSON.stringify(verseTake));
+
+      failNextRead();
+      await expect(resolveRecoveryHref(verseTake, 'next')).resolves.toEqual(
+        legacyHref,
+      );
+      // A later successful read, as the opened screen makes, must not move it.
+      await expect(resolveRecoveryHref(verseTake, 'next')).resolves.toEqual(
+        legacyHref,
+      );
+      expect(legacyHref.params).toMatchObject({
+        recoverSessionKey: '5:22',
+        recoverVerse: '22',
+      });
+      expect(verseTake).toEqual(before);
+    });
+
+    it('opens drafting on a passage take whose read fails, and Next once a read succeeds', async () => {
+      const passageTake = {
+        ...marker,
+        capture: { ...capture, granularity: 'pericope' as const },
+      };
+
+      failNextRead();
+      await expect(resolveRecoveryHref(passageTake, 'next')).resolves.toEqual(
+        legacyHref,
+      );
+      await expect(resolveRecoveryHref(passageTake, 'next')).resolves.toEqual(
+        hrefs.passage({
+          chapterId: 5,
+          anchorVerse: 22,
+          projectId: 9,
+          projectUnitId: 3,
+          chapterName: 'Mark 14',
+          projectName: 'Mark Telugu',
+          milestoneName: 'Gospels Phase 1',
+          language: 'Telugu',
+        }),
+      );
+    });
+
+    it('keeps the verse route when Next records verse by verse, which never reads pericopes', async () => {
+      mockUnit.mockReturnValue('verse');
+      failNextRead();
+
+      await expect(
+        resolveRecoveryHref(
+          { ...marker, capture: { ...capture, granularity: 'verse' } },
+          'next',
+        ),
+      ).resolves.toEqual(versePassage(22));
+      expect(mockSetId).not.toHaveBeenCalled();
+      expect(mockPericope).not.toHaveBeenCalled();
+    });
+  });
 
   it('is null when the marker has no chapter or the chapter is gone', async () => {
     await expect(
