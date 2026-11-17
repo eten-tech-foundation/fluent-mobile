@@ -14,6 +14,7 @@ import {
 } from '../db/queries';
 import { getActiveUserId } from '../services/storage';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
+import { afterFirstPaint } from '../navigation/splashGate';
 import type { HomeBookSummary } from '../types/db/types';
 import { logger } from '../utils/logger';
 import { parseUserId } from '../utils/parseUserId';
@@ -139,11 +140,19 @@ export function useHomeBooks(refreshKey = 0) {
 
   useFocusEffect(
     useCallback(() => {
+      const firstFocus = !focusedBeforeRef.current;
       if (focusedBeforeRef.current) void loadBooksIfChanged();
       focusedBeforeRef.current = true;
-      const activeUserId = getActiveUserId();
-      if (!activeUserId) return;
-      void refreshChapterMetadataIfOnline(Number(activeUserId));
+      if (!getActiveUserId()) return;
+      const refreshMetadata = () => {
+        const activeUserId = getActiveUserId();
+        if (!activeUserId) return;
+        void refreshChapterMetadataIfOnline(Number(activeUserId));
+      };
+      // The first focus waits for Home's first paint (#1002); later focuses
+      // refresh at once.
+      if (firstFocus) afterFirstPaint(refreshMetadata);
+      else refreshMetadata();
     }, [loadBooksIfChanged]),
   );
 

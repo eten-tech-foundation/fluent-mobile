@@ -29,7 +29,9 @@ function mockSetLaunchOverlayVisible(next: boolean) {
   for (const listener of mockLaunchOverlayListeners) listener();
 }
 
+const mockAfterFirstPaint = jest.fn((fn: () => void) => fn());
 jest.mock('../src/navigation/splashGate', () => ({
+  afterFirstPaint: (fn: () => void) => mockAfterFirstPaint(fn),
   armSplashGate: () => {
     mockArmSplashGate();
     mockSetLaunchOverlayVisible(true);
@@ -381,6 +383,51 @@ describe('AuthSessionProvider', () => {
     expect(mockStartUploadOrchestrator).toHaveBeenCalled();
     expect(mockStartUploadProgressNotification).toHaveBeenCalled();
     expect(mockStartDownloadQueueAutoResume).toHaveBeenCalled();
+  });
+
+  it('holds the upload orchestrator and auto-resume until the first paint (#1002)', async () => {
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    expect(mockStartUploadProgressNotification).toHaveBeenCalled();
+    expect(mockStartUploadOrchestrator).not.toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
+
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockStartUploadOrchestrator).toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).toHaveBeenCalled();
+  });
+
+  it('does not start the orchestrator when the provider unmounts before the first paint (#1002)', async () => {
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { getByTestId, unmount } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    const deferredStart = mockAfterFirstPaint.mock.calls[0][0];
+
+    unmount();
+    act(() => {
+      deferredStart();
+    });
+
+    expect(mockStartUploadOrchestrator).not.toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
   });
 
   it('E2E upload hold leaves the orchestrator stopped; downloads and sync unaffected', async () => {
