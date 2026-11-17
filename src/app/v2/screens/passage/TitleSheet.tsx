@@ -1,13 +1,18 @@
 import React from 'react';
 import { BottomSheet } from '../../../../components/ui/BottomSheet';
 import { ListRow } from '../../../../components/ui/ListRow';
-import { OPEN_CLASSIC_DRAFTING } from '../../../../constants/messages';
+import {
+  OPEN_CLASSIC_DRAFTING,
+  OPEN_CLASSIC_DRAFTING_DETAIL,
+  TAKE_REVIEW_OPEN_DETAIL,
+  TAKE_REVIEW_TITLE,
+} from '../../../../constants/messages';
 
 /**
  * The title's sheet: the whole title, which the header may cut short, over a
- * row up to the passage's book page and one into classic drafting, for what
- * the player has no design for yet: verse mode, everyone's takes, resources
- * and Send.
+ * row up to the passage's book page, one to everyone's takes when others
+ * have recorded here, and one into classic drafting, for what the player has
+ * no design for yet: resources and Send.
  */
 export function TitleSheet({
   visible,
@@ -17,6 +22,7 @@ export function TitleSheet({
   onClose,
   onOpenBook,
   onOpenClassic,
+  onOpenReview,
 }: {
   visible: boolean;
   title: string;
@@ -26,6 +32,8 @@ export function TitleSheet({
   onClose: () => void;
   onOpenBook: () => void;
   onOpenClassic: () => void;
+  /** Absent when no other account has takes here. */
+  onOpenReview?: () => void;
 }) {
   return (
     <BottomSheet
@@ -45,9 +53,21 @@ export function TitleSheet({
         accessibilityLabel={`${chapterName} · ${milestoneName}. Open book page.`}
         testID="passage-book"
       />
+      {onOpenReview ? (
+        <ListRow
+          title={TAKE_REVIEW_TITLE}
+          subtitle={TAKE_REVIEW_OPEN_DETAIL}
+          trailing="chevron"
+          onPress={() => {
+            onClose();
+            onOpenReview();
+          }}
+          testID="passage-open-review"
+        />
+      ) : null}
       <ListRow
         title={OPEN_CLASSIC_DRAFTING}
-        subtitle="Takes by everyone, resources and Send"
+        subtitle={OPEN_CLASSIC_DRAFTING_DETAIL}
         trailing="chevron"
         onPress={() => {
           onClose();

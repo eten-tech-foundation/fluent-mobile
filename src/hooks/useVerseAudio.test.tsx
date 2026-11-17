@@ -2185,6 +2185,46 @@ describe('useVerseAudio', () => {
       expect(mockPlaybackLoad).toHaveBeenCalledWith('/recordings/rec_9.m4a');
       expect(mockPlaybackSeek).toHaveBeenCalledWith(500);
     });
+
+    it.each([
+      ['checking the file', 'exists'],
+      ['loading it', 'load'],
+    ])(
+      'drops a scrub stopped while %s (#910)',
+      async (_name, during: string) => {
+        loadTakes.mockResolvedValue([makeTake()]);
+        const sharedTake = makeTake({
+          id: 'rec_9',
+          localFilePath: '/recordings/rec_9.m4a',
+          isSelected: false,
+        });
+        const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+        await waitFor(() => expect(result.current.takes).toHaveLength(1));
+
+        let release!: () => void;
+        const held = new Promise<void>(r => (release = r));
+        if (during === 'exists') {
+          mockFileExists.mockReturnValueOnce(held.then(() => true));
+        } else {
+          mockPlaybackLoad.mockReturnValueOnce(held);
+        }
+        let seeking!: Promise<void>;
+        act(() => {
+          seeking = result.current.seek(500, sharedTake);
+        });
+        await act(async () => {
+          await result.current.stopPlayback();
+        });
+        await act(async () => {
+          release();
+          await seeking;
+        });
+
+        expect(mockPlaybackSeek).not.toHaveBeenCalled();
+        expect(result.current.loadedTakeId).toBeNull();
+        expect(result.current.playingTakeId).toBeNull();
+      },
+    );
   });
 
   describe('seekStitched', () => {
