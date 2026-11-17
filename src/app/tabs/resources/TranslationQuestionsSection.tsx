@@ -8,7 +8,10 @@ import {
 } from 'react-native';
 import { TranslationQuestionAccordion } from './TranslationQuestionAccordion';
 import type { TranslationQuestionsLoadState } from '../../../hooks/useTranslationQuestionsForUnit';
-import { TRANSLATION_QUESTIONS_LOAD_ERROR } from '../../../constants/messages';
+import {
+  TRANSLATION_QUESTIONS_RETRY_LABEL,
+  TRANSLATION_QUESTIONS_LOAD_ERROR,
+} from '../../../constants/messages';
 import { theme } from '../../../theme';
 
 type TranslationQuestionsSectionProps = {
@@ -81,7 +84,7 @@ export function TranslationQuestionsSection({
         <TouchableOpacity
           onPress={() => void retry()}
           accessibilityRole="button"
-          accessibilityLabel="Retry loading Translation Questions"
+          accessibilityLabel={TRANSLATION_QUESTIONS_RETRY_LABEL}
           testID="translation-questions-retry"
         >
           <Text style={styles.retryLink}>Retry</Text>

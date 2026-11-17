@@ -292,6 +292,23 @@ jest.mock('../../../hooks/useTranslationNotesForUnit', () => ({
   },
 }));
 
+const mockLoadQuestions = jest.fn(
+  async (_args: { projectId: number | null }): Promise<unknown[]> => [],
+);
+
+jest.mock('../../../services/translationQuestions', () => ({
+  loadTranslationQuestionsForUnit: (args: { projectId: number | null }) =>
+    mockLoadQuestions(args),
+}));
+
+jest.mock('../../../hooks/useResourcesInventory', () => ({
+  useResourcesInventory: () => ({
+    inventoryVersion: 0,
+    downloadedSections: [],
+    getResourceStatus: () => 'available',
+  }),
+}));
+
 jest.mock('../../../hooks/usePassage', () => ({
   usePassage: () => ({
     passage: mockPassage,
@@ -435,6 +452,7 @@ describe('PassageScreen', () => {
     mockUnuploadable.mockResolvedValue(false);
     mockObserverGrant = false;
     mockTranslatorGrant = false;
+    mockLoadQuestions.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -3143,5 +3161,104 @@ describe('PassageScreen', () => {
     settle();
 
     expect(screen.queryByTestId('passage-title-sheet')).toBeNull();
+  });
+
+  describe('Translation Questions', () => {
+    const QUESTION = {
+      id: 'tq-api-1-0',
+      question: 'What did Jesus give them?',
+      answer: 'Bread and the cup.',
+    };
+
+    function openQuestions() {
+      fireEvent.press(screen.getByTestId('passage-title'));
+      fireEvent.press(
+        screen.getByRole('button', {
+          name: 'Translation Questions, Questions and answers to check the meaning',
+        }),
+      );
+      settle();
+    }
+
+    it("don't load until they're opened from the title's sheet", () => {
+      renderSettled();
+      expect(mockLoadQuestions).not.toHaveBeenCalledWith(
+        expect.objectContaining({ projectId: 9 }),
+      );
+      expect(screen.queryByTestId('passage-questions')).toBeNull();
+    });
+
+    it("open from the title's sheet for the passage's verses, with no classic route", async () => {
+      mockLoadQuestions.mockResolvedValue([QUESTION]);
+      renderSettled();
+      openQuestions();
+      await act(async () => {});
+
+      expect(screen.queryByTestId('passage-title-sheet')).toBeNull();
+      expect(mockLoadQuestions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: 9,
+          userId: 7,
+          isOnline: true,
+          bookCode: 'MRK',
+          verseRefs: ready.verses.map(v => ({
+            chapterNumber: v.chapterNumber,
+            verseNumber: v.verseNumber,
+          })),
+        }),
+      );
+      const sheet = screen.getByTestId('passage-questions');
+      expect(within(sheet).getByText('Mark 14:22–25')).toBeTruthy();
+      fireEvent.press(
+        within(sheet).getByRole('button', { name: QUESTION.question }),
+      );
+      expect(within(sheet).getByText(QUESTION.answer)).toBeTruthy();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('retry reloads only the questions, and recovers in place', async () => {
+      mockLoadQuestions.mockImplementation(async ({ projectId }) => {
+        if (projectId !== null) throw new Error('offline');
+        return [];
+      });
+      renderSettled();
+      openQuestions();
+      await act(async () => {});
+      const sourceCalls = mockRetrySource.mock.calls.length;
+
+      const loads = mockLoadQuestions.mock.calls.length;
+      mockLoadQuestions.mockResolvedValue([QUESTION]);
+      fireEvent.press(
+        screen.getByRole('button', {
+          name: 'Retry loading Translation Questions',
+        }),
+      );
+      await act(async () => {});
+
+      expect(mockLoadQuestions).toHaveBeenCalledTimes(loads + 1);
+      expect(
+        within(screen.getByTestId('passage-questions')).getByText(
+          QUESTION.question,
+        ),
+      ).toBeTruthy();
+      expect(mockRetrySource).toHaveBeenCalledTimes(sourceCalls);
+      expect(mockBack).not.toHaveBeenCalled();
+    });
+
+    it('close when another screen covers the passage', async () => {
+      renderSettled();
+      openQuestions();
+      await act(async () => {});
+      expect(screen.getByTestId('passage-questions')).toBeTruthy();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      settle();
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+      settle();
+
+      expect(screen.queryByTestId('passage-questions')).toBeNull();
+    });
   });
 });

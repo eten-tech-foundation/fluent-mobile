@@ -21,6 +21,8 @@ export type TranslationQuestionsLoadState =
 
 type TrackedLoadState = {
   projectId: number | null;
+  userId: number | null | undefined;
+  languageCode: string | undefined;
   bookCode: string;
   versesKey: string;
   value: TranslationQuestionsLoadState;
@@ -51,7 +53,8 @@ function verseNumbersKeySafe(verseNumbers: number[] | undefined): string {
 
 /**
  * Section-scoped TQ loader (#190). Failures stay local — do not block Notes / Images.
- * Ignores stale responses when the active unit changes mid-load.
+ * Ignores stale responses when the active unit changes mid-load, and shows
+ * loading rather than another account's or language's questions.
  * Downloaded rows win; fluent-api translation-resources (fluent-api #274)
  * is only hit when nothing usable is downloaded and the device is online.
  * Online pericope units fan out across their verse refs (#593).
@@ -97,6 +100,8 @@ export function useTranslationQuestionsForUnit(
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
     projectId,
+    userId,
+    languageCode,
     bookCode,
     versesKey,
     value: { status: 'loading' },
@@ -107,6 +112,8 @@ export function useTranslationQuestionsForUnit(
     const requestId = ++requestIdRef.current;
     setTracked({
       projectId,
+      userId,
+      languageCode,
       bookCode,
       versesKey,
       value: { status: 'loading' },
@@ -127,6 +134,8 @@ export function useTranslationQuestionsForUnit(
       }
       setTracked({
         projectId,
+        userId,
+        languageCode,
         bookCode,
         versesKey,
         value: { status: 'ready', questions },
@@ -143,6 +152,8 @@ export function useTranslationQuestionsForUnit(
       });
       setTracked({
         projectId,
+        userId,
+        languageCode,
         bookCode,
         versesKey,
         value: {
@@ -172,6 +183,8 @@ export function useTranslationQuestionsForUnit(
 
   const state: TranslationQuestionsLoadState =
     tracked.projectId === projectId &&
+    tracked.userId === userId &&
+    tracked.languageCode === languageCode &&
     tracked.bookCode === bookCode &&
     tracked.versesKey === versesKey
       ? tracked.value
