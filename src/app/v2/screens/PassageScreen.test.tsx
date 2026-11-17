@@ -48,8 +48,9 @@ const mockPlayStitched = jest.fn(async (_row: unknown) => {});
 const mockPauseTake = jest.fn(async () => {});
 const mockStopPlayback = jest.fn(async () => {});
 const mockDeleteTake = jest.fn(async (_id: string) => {});
-const mockSelectTake = jest.fn();
-const mockSetCanonical = jest.fn();
+const mockSelectTake = jest.fn(async (_id: string) => true);
+const mockSetCanonical = jest.fn(async (_id: string) => true);
+const mockBlockReplacement = jest.fn(async (_id: string) => false);
 type MockTake = {
   id: string;
   takeNumber: number;
@@ -166,6 +167,7 @@ jest.mock('../../../hooks/useRecordSession', () => {
           stitchPositionMs: 0,
           selectTake: mockSelectTake,
           setCanonical: mockSetCanonical,
+          blockUnsupportedReplacement: mockBlockReplacement,
           ownCanonicalTakeId: null,
           allTakes: mockSession.allTakes,
           getMetering: () => null,
@@ -2053,7 +2055,9 @@ describe('PassageScreen', () => {
 
       expect(screen.queryByTestId('passage-confirm')).toBeNull();
       expect(mockSelectTake).not.toHaveBeenCalled();
-      expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+      expect(mockSetCanonical).toHaveBeenCalledWith('t2', {
+        overlapChecked: true,
+      });
     });
 
     it('lets the official take be chosen again after its upload failed', async () => {
@@ -2087,7 +2091,9 @@ describe('PassageScreen', () => {
 
       expect(screen.queryByTestId('passage-confirm')).toBeNull();
       expect(mockSelectTake).toHaveBeenCalledWith('t2');
-      expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+      expect(mockSetCanonical).toHaveBeenCalledWith('t2', {
+        overlapChecked: true,
+      });
     });
 
     it('resumes the passage take over a verse where it was paused, and restarts it from the end', async () => {
@@ -2203,7 +2209,43 @@ describe('PassageScreen', () => {
           fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
         });
         expect(mockSelectTake).toHaveBeenCalledWith('t1');
-        expect(mockSetCanonical).toHaveBeenCalledWith('t1');
+        expect(mockSetCanonical).toHaveBeenCalledWith('t1', {
+          overlapChecked: true,
+        });
+      });
+
+      it('changes nothing and never asks when an official take at the other unit overlaps (#896)', async () => {
+        mockBlockReplacement.mockResolvedValueOnce(true);
+        mockSession = { ...mockSession, takes: [passageTake, ownTake] };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        fireEvent.press(screen.getByTestId('passage-fan-p1'));
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-take-official'));
+        });
+
+        expect(mockBlockReplacement).toHaveBeenCalledWith('t1');
+        expect(screen.queryByTestId('passage-confirm')).toBeNull();
+        expect(mockSelectTake).not.toHaveBeenCalled();
+        expect(mockSetCanonical).not.toHaveBeenCalled();
+        expect(screen.getByLabelText('Passage take 1, v. 22–23')).toBeTruthy();
+      });
+
+      it('stops before making it official when the pick is refused', async () => {
+        mockSelectTake.mockResolvedValueOnce(false);
+        mockSession = { ...mockSession, takes: [passageTake, ownTake] };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        fireEvent.press(screen.getByTestId('passage-fan-p1'));
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-take-official'));
+        });
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+        });
+
+        expect(mockSelectTake).toHaveBeenCalledWith('t1');
+        expect(mockSetCanonical).not.toHaveBeenCalled();
       });
 
       it("brings a picked passage take's tile forward to play it", async () => {
@@ -2867,7 +2909,9 @@ describe('PassageScreen', () => {
     await act(async () => {
       fireEvent.press(screen.getByTestId('passage-take-official'));
     });
-    expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+    expect(mockSetCanonical).toHaveBeenCalledWith('t2', {
+      overlapChecked: true,
+    });
     // A tap brings a take forward; its check picks it and makes it official.
     fireEvent.press(screen.getByTestId('passage-fan-1'));
     expect(mockSelectTake).not.toHaveBeenCalled();
@@ -2875,7 +2919,9 @@ describe('PassageScreen', () => {
       fireEvent.press(screen.getByTestId('passage-take-official'));
     });
     expect(mockSelectTake).toHaveBeenCalledWith('t1');
-    expect(mockSetCanonical).toHaveBeenCalledWith('t1');
+    expect(mockSetCanonical).toHaveBeenCalledWith('t1', {
+      overlapChecked: true,
+    });
     unmount();
     jest.clearAllMocks();
 
