@@ -220,10 +220,18 @@ export const RECORD_OVER_PASSAGE_CANCEL = 'Cancel';
 export const RECORD_OVER_PASSAGE_CONFIRM = 'Record';
 /**
  * Legacy drafting, opened from the Next player for what it has no design for
- * yet: verse mode, other people's takes, resources and Send.
+ * yet: resources.
  */
 export const OPEN_CLASSIC_DRAFTING = 'Open in classic drafting';
-export const OPEN_CLASSIC_DRAFTING_DETAIL = 'Takes by everyone and resources';
+export const OPEN_CLASSIC_DRAFTING_DETAIL = 'Resources';
+/** Next's review of every account's takes here (#910). */
+export const TAKE_REVIEW_TITLE = "Everyone's takes";
+export const TAKE_REVIEW_OPEN_DETAIL = 'Listen to the takes others recorded';
+export const TAKE_REVIEW_EMPTY = 'No takes here yet.';
+export const TAKE_REVIEW_MISSING = "This take's audio isn't on this phone.";
+export const TAKE_REVIEW_PLAY_FAILED = "Couldn't play this take. Try again.";
+export const TAKE_REVIEW_OFFICIAL = 'Official';
+export const TAKE_REVIEW_YOU = '(you)';
 /** One line on the take card, so these stay short. */
 export const RECORD_RECOVERED_TAKE = 'Take recovered. Eject finishes it.';
 export const RECORD_PAUSED_TAKE = 'Paused. Eject finishes the take.';

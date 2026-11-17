@@ -9,14 +9,14 @@ import {
   PEER_CHECK_SEND_LABEL,
   PEER_CHECK_SENT_DETAIL,
   PEER_CHECK_SENT_TITLE,
+  TAKE_REVIEW_OPEN_DETAIL,
+  TAKE_REVIEW_TITLE,
 } from '../../../../constants/messages';
 import type { PeerCheckRow } from './usePeerCheckSend';
 
 /**
- * The title's sheet: the whole title, which the header may cut short, over a
- * row up to the passage's book page, the chapter's Send to Peer Check, and
- * one into classic drafting, for what the player has no design for yet:
- * verse mode, everyone's takes and resources.
+ * The title's sheet: the book page, Send to Peer Check, everyone's takes when
+ * others have recorded here, and classic drafting for remaining resources.
  */
 export function TitleSheet({
   visible,
@@ -28,6 +28,7 @@ export function TitleSheet({
   onClose,
   onOpenBook,
   onOpenClassic,
+  onOpenReview,
 }: {
   visible: boolean;
   title: string;
@@ -40,6 +41,8 @@ export function TitleSheet({
   onClose: () => void;
   onOpenBook: () => void;
   onOpenClassic: () => void;
+  /** Absent when no other account has takes here. */
+  onOpenReview?: () => void;
 }) {
   return (
     <BottomSheet
@@ -83,6 +86,18 @@ export function TitleSheet({
           title={PEER_CHECK_SENT_TITLE}
           subtitle={PEER_CHECK_SENT_DETAIL}
           testID="passage-send-sent"
+        />
+      ) : null}
+      {onOpenReview ? (
+        <ListRow
+          title={TAKE_REVIEW_TITLE}
+          subtitle={TAKE_REVIEW_OPEN_DETAIL}
+          trailing="chevron"
+          onPress={() => {
+            onClose();
+            onOpenReview();
+          }}
+          testID="passage-open-review"
         />
       ) : null}
       <ListRow
