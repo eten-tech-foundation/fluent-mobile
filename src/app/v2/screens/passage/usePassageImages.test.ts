@@ -304,10 +304,12 @@ describe('usePassageImages', () => {
     ],
     ['book', { passage: passage(PERICOPE.verses, { bookCode: 'LUK' }) }],
     ['verses', { passage: passage([{ chapterNumber: 14, verseNumber: 3 }]) }],
-  ])('changes its scope with the %s', (_name, change) => {
+  ])('changes its scope with the %s', async (_name, change) => {
     const { result, rerender } = renderImages({ enabled: false });
     const first = result.current.scope;
     rerender({ passage: PERICOPE, userId: 5, enabled: false, ...change });
     expect(result.current.scope).not.toBe(first);
+    // Lets the disabled loads settle inside the test.
+    await act(async () => {});
   });
 });

@@ -146,6 +146,9 @@ export function ResourcesCard({
   }));
 
   const [header, setHeader] = useState(0);
+  // A preview that won't load drops out rather than sitting as an empty tile.
+  const [brokenIds, setBrokenIds] = useState<ReadonlySet<string>>(new Set());
+  const shownPreviews = previews.filter(p => !brokenIds.has(p.id));
   const { scrolled, onScroll, reset } = useScrolled();
   const list = useAnimatedRef<Animated.ScrollView>();
   // Each open starts at the top, while what's under the header is still faded.
@@ -190,6 +193,7 @@ export function ResourcesCard({
   }, [open, animate]);
 
   const drag = Gesture.Pan()
+    .withTestId('passage-resources-drag')
     .enabled(shown && travel > 0)
     .activeOffsetY([-12, 12])
     .onUpdate(e => {
@@ -238,6 +242,7 @@ export function ResourcesCard({
       <GestureDetector gesture={drag}>
         <View
           onLayout={e => setHeader(Math.round(e.nativeEvent.layout.height))}
+          testID="passage-resources-grab"
         >
           <ScreenHeader
             scrolled={scrolled}
@@ -261,14 +266,14 @@ export function ResourcesCard({
                 <Text style={styles.title}>{PASSAGE_RESOURCES_TITLE}</Text>
               </Pressable>
               <View style={[styles.slot, { minWidth: MIN_TARGET }]}>
-                {previews.length > 0 ? (
+                {shownPreviews.length > 0 ? (
                   <Animated.View
                     style={[styles.tiles, tilesStyle]}
                     pointerEvents={open ? 'none' : 'auto'}
                     importantForAccessibility="no-hide-descendants"
                     testID="passage-resources-previews"
                   >
-                    {previews.map(item => (
+                    {shownPreviews.map(item => (
                       <Pressable
                         key={item.id}
                         onPress={() => onOpenChange(true)}
@@ -281,6 +286,9 @@ export function ResourcesCard({
                           style={styles.tile}
                           contentFit="cover"
                           cachePolicy="memory-disk"
+                          onError={() =>
+                            setBrokenIds(ids => new Set(ids).add(item.id))
+                          }
                         />
                       </Pressable>
                     ))}

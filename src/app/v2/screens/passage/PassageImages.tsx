@@ -52,7 +52,7 @@ export function PassageImages({
   state: PassageImagesState;
   onRetry: () => void;
 }) {
-  const { roles } = useTheme();
+  const { roles, spacing } = useTheme();
   const styles = useThemedStyles(t => ({
     message: { ...t.type.body, color: t.roles.fgSecondary },
     failed: { gap: t.spacing.sm, alignItems: 'flex-start' },
@@ -175,7 +175,7 @@ export function PassageImages({
             key={item.id}
             item={item}
             listWidth={listWidth}
-            gap={styles.list.columnGap as number}
+            gap={spacing.md}
             failed={failedIds.has(item.id)}
             grown={grownId === item.id}
             onFailed={onImageFailed}

@@ -206,6 +206,7 @@ jest.mock('react-native-reanimated', () => ({
 
 jest.mock('react-native-gesture-handler', () => {
   const pan = {
+    withTestId: () => pan,
     enabled: () => pan,
     activeOffsetX: () => pan,
     activeOffsetY: () => pan,
@@ -292,10 +293,13 @@ jest.mock('../../../hooks/useTranslationNotesForUnit', () => ({
   },
 }));
 
-// A disabled load never settles, so it can't update state outside act.
+// Outside the Resources tests no image load settles, so the card's previews
+// can't update state after a test ends; those tests opt into results.
+const loadNever = (_args: { projectId: number | null }): Promise<unknown[]> =>
+  new Promise(() => {});
 const loadNoImages = (args: { projectId: number | null }): Promise<unknown[]> =>
   args.projectId === null ? new Promise(() => {}) : Promise.resolve([]);
-const mockLoadImages = jest.fn(loadNoImages);
+const mockLoadImages = jest.fn(loadNever);
 
 jest.mock('../../../services/imagesMaps', () => ({
   loadImagesMapsForUnit: (args: { projectId: number | null }) =>
@@ -453,7 +457,7 @@ describe('PassageScreen', () => {
     mockUnuploadable.mockResolvedValue(false);
     mockObserverGrant = false;
     mockTranslatorGrant = false;
-    mockLoadImages.mockImplementation(loadNoImages);
+    mockLoadImages.mockImplementation(loadNever);
   });
 
   afterEach(() => {
@@ -3165,6 +3169,8 @@ describe('PassageScreen', () => {
   });
 
   describe('Resources', () => {
+    beforeEach(() => mockLoadImages.mockImplementation(loadNoImages));
+
     function openResources() {
       fireEvent.press(screen.getByRole('button', { name: 'Resources' }));
       settle();

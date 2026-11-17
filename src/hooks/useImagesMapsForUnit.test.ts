@@ -174,6 +174,7 @@ describe('useImagesMapsForUnit', () => {
   it.each([
     ['account', { userId: 6 }],
     ['language', { languageCode: 'spa' }],
+    ['connectivity', { isOnline: true }],
   ])(
     "never renders the previous %s's images after a switch",
     async (_name, change) => {
@@ -183,6 +184,7 @@ describe('useImagesMapsForUnit', () => {
         projectId: 7,
         userId: 5 as number | null,
         languageCode: 'eng',
+        isOnline: false as boolean,
         bookCode: 'MRK',
         chapterNumber: 14,
         verseNumber: 2,

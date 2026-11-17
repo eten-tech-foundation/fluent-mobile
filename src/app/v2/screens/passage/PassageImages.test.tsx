@@ -269,6 +269,7 @@ describe('PassageImages', () => {
       />,
     );
     expect(viewerVisible()).toBe(false);
+    expect(grown('img-api-1')).toBe(false);
     expect(screen.queryByTestId('passage-image-img-api-2-failed')).toBeNull();
   });
 
@@ -295,7 +296,9 @@ describe('PassageImages', () => {
         onRetry={onRetry}
       />,
     );
+    layOut();
     expect(viewerVisible()).toBe(false);
+    expect(grown('img-api-1')).toBe(false);
     expect(screen.queryByTestId('passage-image-img-api-2-failed')).toBeNull();
   });
 });
