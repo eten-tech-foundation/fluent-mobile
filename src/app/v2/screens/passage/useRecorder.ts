@@ -357,7 +357,7 @@ export function useRecorder({
     if (!saveId) return;
     setLevelsByTake(prev => {
       const next = new Map(prev);
-      next.set(saveId, envelope.slice());
+      next.set(saveId, envelope);
       return next;
     });
     // envelope is omitted: the effect stores the value from the render that saved.
