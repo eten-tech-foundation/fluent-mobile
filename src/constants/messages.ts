@@ -48,6 +48,14 @@ export const IMAGES_MAPS_LOAD_ERROR = 'Images unavailable';
 
 export const TRANSLATION_NOTES_LOAD_ERROR = 'Unable to load Translation Notes.';
 
+/** Next player's notes status, under the waveform in Listen (#902). */
+export const PASSAGE_NOTES_LOADING = 'Loading translation notes…';
+export const PASSAGE_NOTES_RETRYING = 'Trying translation notes again…';
+export const PASSAGE_NOTES_EMPTY = 'No translation notes for this passage.';
+export const PASSAGE_NOTES_PARTIAL = "Some translation notes didn't load.";
+export const PASSAGE_NOTES_OFFLINE =
+  "Some translation notes aren't on this phone. Connect to the internet to load them.";
+
 export const TRANSLATION_NOTE_EMPTY_BODY = 'No note text available.';
 
 export const TRANSLATION_QUESTIONS_LOAD_ERROR =

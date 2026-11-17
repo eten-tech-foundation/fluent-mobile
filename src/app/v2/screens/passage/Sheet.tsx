@@ -48,6 +48,7 @@ import { ColorModeScope, useTheme } from '../../../../theme/useTheme';
 import { Dialog, type DialogProps } from '../../../../components/ui/Dialog';
 import { Footer } from './Footer';
 import { NoteScreen } from './NoteScreen';
+import { hasNotesStatus, NotesStatus } from './NotesStatus';
 import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
@@ -245,15 +246,8 @@ export function Sheet({
     onCaptureActiveChange,
     onRegisterCaptureControls,
   });
+  // A failed load says so in Listen and waits for Retry there.
   const notes = usePassageNotes(passage, userId, playerOpened);
-  // Notes that failed to load try again each time the player opens.
-  const notesRef = useRef(notes);
-  useEffect(() => {
-    notesRef.current = notes;
-  });
-  useEffect(() => {
-    if (expanded && notesRef.current.failed) void notesRef.current.retry();
-  }, [expanded]);
   /** Everyone's takes, over Record so a take playing keeps playing. */
   const [reviewOpen, setReviewOpen] = useState(false);
   const review = useTakeReview({
@@ -706,6 +700,11 @@ export function Sheet({
               verseChips: steps === null || timed,
             }}
             notices={recorder.notices}
+            notesStatus={
+              hasNotesStatus(notes.status) ? (
+                <NotesStatus status={notes.status} onRetry={notes.retry} />
+              ) : null
+            }
             onOpenClassic={openClassic}
             dimmed={lifted}
           />
