@@ -389,6 +389,46 @@ describe('useVerseAudio', () => {
       await waitFor(() => expect(result.current.takesLoaded).toBe(true));
     });
 
+    it('resets synchronously when the resolved pericope changes the takes query', async () => {
+      const pericopeUnit = {
+        granularity: 'pericope' as const,
+        startChapter: 1,
+        startVerse: 1,
+        endChapter: 1,
+        endVerse: 2,
+        anchorBibleTextId: 42,
+        coveredViews: [
+          { bibleTextId: 42, chapterNumber: 1, verseNumber: 1 },
+          { bibleTextId: 43, chapterNumber: 1, verseNumber: 2 },
+        ],
+      };
+      loadTakes.mockResolvedValueOnce([]);
+      const countTakesAtView = jest.fn().mockResolvedValue(0);
+      const { result, rerender } = renderHook(
+        ({ recordingUnit }: { recordingUnit: typeof pericopeUnit | null }) =>
+          useVerseAudio({
+            ...verseAudioArgs(),
+            chapterNumber: 1,
+            verseNumber: 1,
+            draftingUnit: 'pericope',
+            recordingUnit,
+            countTakesAtView,
+          }),
+        { initialProps: { recordingUnit: null } },
+      );
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+
+      let release!: (takes: Recording[]) => void;
+      loadTakes.mockImplementationOnce(
+        () => new Promise<Recording[]>(resolve => (release = resolve)),
+      );
+      await act(async () => rerender({ recordingUnit: pericopeUnit }));
+      expect(result.current.takesLoaded).toBe(false);
+
+      await act(async () => release([]));
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+    });
+
     it('ignores a stale load finishing after the verse changed', async () => {
       let releaseOld!: (takes: Recording[]) => void;
       loadTakes.mockImplementationOnce(

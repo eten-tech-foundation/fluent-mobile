@@ -254,6 +254,11 @@ export function useRecorder({
   // record() awaits a commit, then starts from the session as it is by then.
   const latestAudio = useRef(verseAudio);
   latestAudio.current = verseAudio;
+  const takeListReady = (audio: typeof verseAudio) => {
+    if (audio.takesLoaded) return true;
+    if (audio.state === 'error') audio.retryTakesLoad();
+    return false;
+  };
   // Capture can become active while the sheet is still in Listen. Treat that
   // as Record showing so a pending delete is not committed and Eject can run.
   const shown = showing || capturing;
@@ -799,10 +804,9 @@ export function useRecorder({
     }
     // A new take waits for the verse's takes to load, so its tile number and
     // the take cap are counted from the full list (#979).
-    if (!verseAudio.takesLoaded) {
+    if (!takeListReady(latestAudio.current)) {
       // A failed initial query leaves Record available as a retry affordance;
       // never begin a capture from its incomplete result.
-      if (verseAudio.state === 'error') verseAudio.retryTakesLoad();
       return;
     }
     if (
@@ -834,6 +838,9 @@ export function useRecorder({
       return;
     }
     if (!(await session.ensureMic())) return;
+    // Permission can remain open while pericope capture metadata resolves and
+    // starts a wider take query. Recheck the latest query before proceeding.
+    if (!takeListReady(latestAudio.current)) return;
     // A new take counts toward the limit, so a pending delete goes first.
     await deletion.commit();
     // The player may have closed while the delete ran; don't record hidden.
@@ -844,6 +851,7 @@ export function useRecorder({
     ) {
       return;
     }
+    if (!takeListReady(latestAudio.current)) return;
     session.setElapsedMs(0);
     await latestAudio.current.start();
   }

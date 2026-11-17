@@ -43,6 +43,7 @@ const publishedControls = {
   discardCapture: mockDiscard,
 };
 const mockEnsureMic = jest.fn(async () => true);
+const mockRetryTakesLoad = jest.fn();
 const mockPlayTake = jest.fn(async () => {});
 const mockPlayStitched = jest.fn(async (_row: unknown) => {});
 const mockPauseTake = jest.fn(async () => {});
@@ -73,6 +74,7 @@ const sessionDefaults = {
   captureDisabled: false,
   drafterCaptureBlocked: false,
   canRecordNewTake: true,
+  takesLoaded: true,
   pericopeUnavailable: false,
   takes: [] as MockTake[],
   allTakes: [] as Record<string, unknown>[],
@@ -148,8 +150,8 @@ jest.mock('../../../hooks/useRecordSession', () => {
         verseAudio: {
           state: mockSession.state,
           takes: mockSession.takes,
-          takesLoaded: true,
-          retryTakesLoad: jest.fn(),
+          takesLoaded: mockSession.takesLoaded,
+          retryTakesLoad: mockRetryTakesLoad,
           deleteTake: mockDeleteTake,
           playingTakeId: mockSession.playingTakeId,
           positionMs: mockSession.positionMs,
@@ -1156,6 +1158,28 @@ describe('PassageScreen', () => {
 
     expect(mockEnsureMic).toHaveBeenCalled();
     expect(mockStart).toHaveBeenCalled();
+  });
+
+  it('does not start if pericope take hydration begins during the mic request', async () => {
+    let grantMic!: (granted: boolean) => void;
+    mockEnsureMic.mockImplementationOnce(
+      () => new Promise<boolean>(resolve => (grantMic = resolve)),
+    );
+    const { rerender } = render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(mockEnsureMic).toHaveBeenCalledTimes(1);
+
+    // Resolving the pericope unit starts its wider take query while permission
+    // is still pending. The active query is no longer hydrated.
+    mockSession = { ...mockSession, takesLoaded: false };
+    await act(async () => rerender(<PassageScreen />));
+    await act(async () => grantMic(true));
+
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
   it('takes Record again after the mic request fails', async () => {

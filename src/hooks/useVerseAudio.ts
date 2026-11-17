@@ -367,9 +367,26 @@ export function useVerseAudio({
   const [takes, setTakes] = useState<Recording[]>([]);
   const [allTakes, setAllTakes] = useState<RecordingWithOwner[]>([]);
   const [hasMultipleRecorders, setHasMultipleRecorders] = useState(false);
-  // False until the verse's takes have loaded; Record waits on it (#979).
-  const [takesLoaded, setTakesLoaded] = useState(false);
   const [takesLoadAttempt, setTakesLoadAttempt] = useState(0);
+  // Key hydration to the exact take query. Pericope capture can resolve after
+  // the verse query has loaded, which must immediately make the wider list
+  // unready until that query completes (#979).
+  const takesLoadKey = JSON.stringify([
+    bibleTextId,
+    chapterAssignmentId,
+    chapterNumber,
+    verseNumber,
+    draftingUnit,
+    projectUnitId,
+    coveredViewsKey,
+    takesLoadAttempt,
+  ]);
+  const [loadedTakesKey, setLoadedTakesKey] = useState<string | null>(null);
+  const takesLoaded = bibleTextId === null || loadedTakesKey === takesLoadKey;
+  const takesLoadedRef = useRef(takesLoaded);
+  takesLoadedRef.current = takesLoaded;
+  const takesLoadKeyRef = useRef(takesLoadKey);
+  takesLoadKeyRef.current = takesLoadKey;
   const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
   /**
    * Take currently prepared in the player. Outlives `playingTakeId` (which
@@ -536,7 +553,6 @@ export function useVerseAudio({
 
     setLoadedTakeId(null);
     setPlayingTakeId(null);
-    setTakesLoaded(false);
     clearStitchQueue();
     activeBibleTextIdRef.current = bibleTextId;
     // Stop any in-flight draft playback when the active verse unit changes (#235).
@@ -548,7 +564,7 @@ export function useVerseAudio({
         setAllTakes([]);
         setHasMultipleRecorders(false);
         dispatch({ type: 'REHYDRATE', hasTake: false });
-        setTakesLoaded(true);
+        setLoadedTakesKey(takesLoadKey);
         return;
       }
       try {
@@ -556,7 +572,7 @@ export function useVerseAudio({
         if (isStale()) return;
         setTakes(rows);
         dispatch({ type: 'REHYDRATE', hasTake: rows.length > 0 });
-        setTakesLoaded(true);
+        setLoadedTakesKey(takesLoadKey);
         await refreshAllTakes(bibleTextId);
         if (isStale()) return;
         const key = pausedTakeSessionKey(
@@ -640,6 +656,7 @@ export function useVerseAudio({
     refreshAllTakes,
     clearStitchQueue,
     takesLoadAttempt,
+    takesLoadKey,
   ]);
 
   const retryTakesLoad = useCallback(() => {
@@ -679,6 +696,8 @@ export function useVerseAudio({
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
+    const startTakesLoadKey = takesLoadKey;
+    if (!takesLoadedRef.current) return;
     // The last take is still saving; the reducer would drop this START and
     // leave the mic running with nothing on screen.
     if (state === 'saving') return;
@@ -697,6 +716,12 @@ export function useVerseAudio({
       const counts = await Promise.all(
         recordingUnit.coveredViews.map(view => countTakesAtView(view)),
       );
+      if (
+        !takesLoadedRef.current ||
+        takesLoadKeyRef.current !== startTakesLoadKey
+      ) {
+        return;
+      }
       if (counts.some(c => c >= MAX_RECORDING_TAKES)) {
         setErrorMessage(
           'Maximum of 5 takes reached. Delete a take before recording another.',
@@ -710,12 +735,24 @@ export function useVerseAudio({
       return;
     }
     try {
+      if (
+        !takesLoadedRef.current ||
+        takesLoadKeyRef.current !== startTakesLoadKey
+      ) {
+        return;
+      }
       // Stop review playback first so re-record from `playing` can transition
       // and so audio mode is free for the mic (see createRecordingEngine).
       try {
         await playback.stop();
       } catch {
         // Ignore — recorder start below is what matters.
+      }
+      if (
+        !takesLoadedRef.current ||
+        takesLoadKeyRef.current !== startTakesLoadKey
+      ) {
+        return;
       }
       setPlayingTakeId(null);
       setLoadedTakeId(null);
@@ -760,6 +797,7 @@ export function useVerseAudio({
     recording,
     recordingUnit,
     state,
+    takesLoadKey,
     verseNumber,
   ]);
 
