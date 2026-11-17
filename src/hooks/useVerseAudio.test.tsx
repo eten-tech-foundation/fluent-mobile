@@ -318,6 +318,109 @@ describe('useVerseAudio', () => {
     });
   });
 
+  describe('takesLoaded (#979)', () => {
+    it('is false until the verse takes have loaded, then true', async () => {
+      let release!: (takes: Recording[]) => void;
+      loadTakes.mockImplementationOnce(
+        () =>
+          new Promise<Recording[]>(resolve => {
+            release = resolve;
+          }),
+      );
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      expect(result.current.takesLoaded).toBe(false);
+
+      await act(async () => {
+        release([makeTake()]);
+      });
+
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+      expect(result.current.takes).toHaveLength(1);
+    });
+
+    it('is true after a failed load, so Record is not locked out forever', async () => {
+      loadTakes.mockRejectedValue(new Error('db down'));
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+
+      await waitFor(() => expect(result.current.state).toBe('error'));
+      expect(result.current.takesLoaded).toBe(true);
+    });
+
+    it('is true when there is no verse to load', async () => {
+      const { result } = renderHook(() =>
+        useVerseAudio({ ...verseAudioArgs(), bibleTextId: null }),
+      );
+
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+      expect(loadTakes).not.toHaveBeenCalled();
+    });
+
+    it('resets to false while the next verse loads, then true again', async () => {
+      const { result, rerender } = renderHook(
+        ({ bibleTextId }: { bibleTextId: number }) =>
+          useVerseAudio({ ...verseAudioArgs(), bibleTextId }),
+        { initialProps: { bibleTextId: 42 } },
+      );
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+
+      let release!: (takes: Recording[]) => void;
+      loadTakes.mockImplementationOnce(
+        () =>
+          new Promise<Recording[]>(resolve => {
+            release = resolve;
+          }),
+      );
+      await act(async () => {
+        rerender({ bibleTextId: 43 });
+      });
+      expect(result.current.takesLoaded).toBe(false);
+
+      await act(async () => {
+        release([]);
+      });
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+    });
+
+    it('ignores a stale load finishing after the verse changed', async () => {
+      let releaseOld!: (takes: Recording[]) => void;
+      loadTakes.mockImplementationOnce(
+        () =>
+          new Promise<Recording[]>(resolve => {
+            releaseOld = resolve;
+          }),
+      );
+      const { result, rerender } = renderHook(
+        ({ bibleTextId }: { bibleTextId: number }) =>
+          useVerseAudio({ ...verseAudioArgs(), bibleTextId }),
+        { initialProps: { bibleTextId: 42 } },
+      );
+
+      let releaseNew!: (takes: Recording[]) => void;
+      loadTakes.mockImplementationOnce(
+        () =>
+          new Promise<Recording[]>(resolve => {
+            releaseNew = resolve;
+          }),
+      );
+      await act(async () => {
+        rerender({ bibleTextId: 43 });
+      });
+
+      // The old verse's load lands late. It must not mark the new verse loaded.
+      await act(async () => {
+        releaseOld([makeTake()]);
+      });
+      expect(result.current.takesLoaded).toBe(false);
+
+      await act(async () => {
+        releaseNew([]);
+      });
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+    });
+  });
+
   it('starts recording and transitions idle → recording', async () => {
     const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 

@@ -182,6 +182,7 @@ const idleAudio: VerseAudioApi = {
   selectedTake: null,
   canRecordNewTake: true,
   playingTakeId: null,
+  takesLoaded: true,
   loadedTakeId: null,
   playbackStatus: 'idle' as const,
   errorMessage: null,

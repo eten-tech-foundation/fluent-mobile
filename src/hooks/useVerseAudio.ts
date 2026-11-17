@@ -367,6 +367,8 @@ export function useVerseAudio({
   const [takes, setTakes] = useState<Recording[]>([]);
   const [allTakes, setAllTakes] = useState<RecordingWithOwner[]>([]);
   const [hasMultipleRecorders, setHasMultipleRecorders] = useState(false);
+  // False until the verse's takes have loaded; Record waits on it (#979).
+  const [takesLoaded, setTakesLoaded] = useState(false);
   const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
   /**
    * Take currently prepared in the player. Outlives `playingTakeId` (which
@@ -533,6 +535,7 @@ export function useVerseAudio({
 
     setLoadedTakeId(null);
     setPlayingTakeId(null);
+    setTakesLoaded(false);
     clearStitchQueue();
     activeBibleTextIdRef.current = bibleTextId;
     // Stop any in-flight draft playback when the active verse unit changes (#235).
@@ -544,6 +547,7 @@ export function useVerseAudio({
         setAllTakes([]);
         setHasMultipleRecorders(false);
         dispatch({ type: 'REHYDRATE', hasTake: false });
+        setTakesLoaded(true);
         return;
       }
       try {
@@ -551,6 +555,7 @@ export function useVerseAudio({
         if (isStale()) return;
         setTakes(rows);
         dispatch({ type: 'REHYDRATE', hasTake: rows.length > 0 });
+        setTakesLoaded(true);
         await refreshAllTakes(bibleTextId);
         if (isStale()) return;
         const key = pausedTakeSessionKey(
@@ -614,6 +619,7 @@ export function useVerseAudio({
       } catch (error) {
         log.error('Failed to load takes', { error });
         if (!isStale()) {
+          setTakesLoaded(true);
           dispatch({
             type: 'ERROR',
             message: error instanceof Error ? error.message : 'load failed',
@@ -1526,6 +1532,7 @@ export function useVerseAudio({
     loadedTakeId,
     playbackStatus: playback.status,
     errorMessage,
+    takesLoaded,
     recoveredElapsedMs,
     /** Live input level in dBFS while recording, for the Level wave. */
     getMetering: recording.getMetering,

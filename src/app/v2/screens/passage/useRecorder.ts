@@ -225,7 +225,8 @@ export function useRecorder({
   // from the moment saving starts, so the in-progress tile neither renumbers
   // nor doubles beside its own saved tile for a moment (#979). Snapshotting at
   // `saving` rather than at record start keeps a late initial load of existing
-  // takes visible while recording.
+  // takes visible while recording; Record waits on that load (`takesLoaded`),
+  // so the snapshot is always taken from a complete list.
   const savingTakeIds = useRef<Set<string> | null>(null);
   if (!saving) {
     savingTakeIds.current = null;
@@ -796,6 +797,9 @@ export function useRecorder({
       await verseAudio.resume();
       return;
     }
+    // A new take waits for the verse's takes to load, so its tile number and
+    // the take cap are counted from the full list (#979).
+    if (!verseAudio.takesLoaded) return;
     if (
       session.stageLocked ||
       session.drafterCaptureBlocked ||
@@ -955,6 +959,7 @@ export function useRecorder({
       !capturing &&
       (held ||
         stepping ||
+        !verseAudio.takesLoaded ||
         observerOnly ||
         classicReason !== null ||
         atCap ||
