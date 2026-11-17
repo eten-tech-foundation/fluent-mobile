@@ -1984,11 +1984,16 @@ export async function getSelectedTakeCoverages(
   }
 }
 
+/**
+ * The pericope a verse falls in, or null when it is in none. An unreadable
+ * answer is null too; `onError` tells a caller it was not a real one (#899).
+ */
 export async function getPericopeForVerse(
   bookId: number,
   chapterNumber: number,
   verseNumber: number,
   pericopeSetId: number,
+  onError?: () => void,
 ): Promise<PericopeGroupResult | null> {
   const db = getDatabase();
   try {
@@ -2037,6 +2042,7 @@ export async function getPericopeForVerse(
       verseNumber,
       pericopeSetId,
     });
+    onError?.();
     return null;
   }
 }
