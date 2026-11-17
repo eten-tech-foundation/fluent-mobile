@@ -219,10 +219,15 @@ export function setUserEmail(userId: string, email: string) {
 
 const reauthRequiredKey = (userId: string) => `${userId}:reauth_required`;
 
-export function setReauthRequired(userId: string): void {
+/** Returns false when the flag was already set, so callers log and emit once. */
+export function setReauthRequired(userId: string): boolean {
+  if (isReauthRequired(userId)) {
+    return false;
+  }
   clearCatalogueQuietSince(userId);
   kvStorage.setItemSync(reauthRequiredKey(userId), 'true');
   log.info('Reauth required flag set', { userId });
+  return true;
 }
 
 export function clearReauthRequired(userId: string): void {

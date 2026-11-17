@@ -10,6 +10,7 @@ import React, {
 import { ActivityIndicator, Text, View } from 'react-native';
 import { logger } from '../utils/logger';
 import { markStartup } from '../utils/startupTrace';
+import type { LoginSuccessMeta } from '../hooks/useLogin';
 import { initializeDatabase } from '../db/index';
 import { syncAllData } from '../services/sync';
 import {
@@ -55,7 +56,11 @@ export type AuthSessionContextValue = {
   postLoginSyncActive: boolean;
   error: string | null;
   /** Cold login: flip auth + run post-login sync with sync-active UI. */
-  signIn: (email: string, preloadedUser?: ApiUser) => void;
+  signIn: (
+    email: string,
+    preloadedUser?: ApiUser,
+    meta?: LoginSuccessMeta,
+  ) => void;
   /** Add-user login: keep auth tree; sync in background (no sync-active flag). */
   signInAddUser: (email: string, preloadedUser?: ApiUser) => void;
   signOut: () => void;
@@ -191,8 +196,14 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   );
 
   const signIn = useCallback(
-    (email: string, preloadedUser?: ApiUser) => {
+    (email: string, preloadedUser?: ApiUser, meta?: LoginSuccessMeta) => {
       setIsAuthenticated(true);
+      // Offline sign-in restores the stored token only. It does not sync
+      // and does not claim the server session was renewed.
+      if (meta?.offline) {
+        setUserSwitchEpoch(epoch => epoch + 1);
+        return;
+      }
       setPostLoginSyncActive(true);
       runPostLoginSync(email, preloadedUser, () =>
         setPostLoginSyncActive(false),

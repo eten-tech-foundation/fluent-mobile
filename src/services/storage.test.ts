@@ -187,7 +187,9 @@ describe('storage (KV wrapper)', () => {
   describe('reauth required flag', () => {
     it('round-trips per-user reauth state', () => {
       expect(isReauthRequired('7')).toBe(false);
-      setReauthRequired('7');
+      expect(setReauthRequired('7')).toBe(true);
+      expect(isReauthRequired('7')).toBe(true);
+      expect(setReauthRequired('7')).toBe(false);
       expect(isReauthRequired('7')).toBe(true);
       clearReauthRequired('7');
       expect(isReauthRequired('7')).toBe(false);
