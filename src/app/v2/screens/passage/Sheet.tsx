@@ -55,9 +55,11 @@ import { type Ready } from './ready';
 import { useScriptMetrics } from './scriptMetrics';
 import { sourceWindow, windowProgress, windowSeekMs } from './sourceWindow';
 import { TakeFan } from './TakeFan';
+import { TakeReview } from './TakeReview';
 import { TitleSheet } from './TitleSheet';
 import { usePassageNotes } from './usePassageNotes';
 import { useRecorder } from './useRecorder';
+import { useTakeReview } from './useTakeReview';
 import { VerseList } from './VerseList';
 
 /** How far the hero drags before a release opens or closes it. */
@@ -251,6 +253,17 @@ export function Sheet({
   useEffect(() => {
     if (expanded && notesRef.current.failed) void notesRef.current.retry();
   }, [expanded]);
+  /** Everyone's takes, over Record so a take playing keeps playing. */
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const review = useTakeReview({
+    audio: recorder.review,
+    userId,
+    open: reviewOpen,
+  });
+  // A sheet left up would sit over a screen pushed on top.
+  useEffect(() => {
+    if (!focused) setReviewOpen(false);
+  }, [focused]);
   /** A take is lifted to delete it: everything but the fan dims. */
   const [lifted, setLifted] = useState(false);
   const { capturing } = recorder;
@@ -641,6 +654,20 @@ export function Sheet({
             onOpenBook();
           }}
           onOpenClassic={onOpenClassic}
+          onOpenReview={
+            review.available && !capturing
+              ? () => {
+                  open(true);
+                  setReviewOpen(true);
+                }
+              : undefined
+          }
+        />
+        <TakeReview
+          visible={reviewOpen}
+          scopeLabel={steps ? `Verse ${steps.current}` : passage.reference}
+          owners={review.owners}
+          onClose={() => setReviewOpen(false)}
         />
       </ColorModeScope>
       <PlayerChrome
