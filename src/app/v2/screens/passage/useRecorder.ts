@@ -112,6 +112,7 @@ export function useRecorder({
   unit,
   openVerse,
   showing,
+  focused,
   downloading,
   onReload,
   onCaptureActiveChange,
@@ -125,6 +126,8 @@ export function useRecorder({
   openVerse?: number;
   /** The player is open in Record mode; leaving it commits a pending delete. */
   showing: boolean;
+  /** Passage has its route; a screen pushed over it (Book) takes it. */
+  focused: boolean;
   /** The passage's text is downloading, so recording waits on it. */
   downloading: boolean;
   /** Re-reads the passage, e.g. after recording claims its chapter. */
@@ -858,7 +861,7 @@ export function useRecorder({
     if (frontCover) {
       setParked(null);
       const parkedHere = parked?.id === frontCover.id;
-      await verseAudio.playTake(
+      await playFrom(
         frontCover,
         parkedHere
           ? coverParkedMs >= coverLength
@@ -873,11 +876,48 @@ export function useRecorder({
     setParked(null);
     const parkedHere = parked?.id === frontTake.id;
     // Nothing parked resumes. A scrub, including to 0 or the end, is explicit.
-    await verseAudio.playTake(
+    await playFrom(
       frontTake,
       parkedHere ? (parkedMs >= frontLength ? 0 : parkedMs) : undefined,
     );
   }
+
+  /** Where a take still loading was asked to start, until it plays. */
+  const loadingFrom = useRef<{ id: string; ms: number } | null>(null);
+  async function playFrom(
+    t: Parameters<typeof verseAudio.playTake>[0],
+    ms: number | undefined,
+  ) {
+    loadingFrom.current = ms === undefined ? null : { id: t.id, ms };
+    try {
+      await verseAudio.playTake(t, ms);
+    } finally {
+      loadingFrom.current = null;
+    }
+  }
+
+  // Passage stays mounted under a pushed screen, Record still open. Losing
+  // the route stops review, including a take still loading, and keeps its
+  // spot for Play; coming back doesn't play it. A take being recorded is
+  // left to the capture leave guard.
+  function releaseReview() {
+    if (capturing || verseAudio.state === 'saving') return;
+    if (verseAudio.state === 'playing') {
+      if (playingFront) {
+        setParked({ id: frontTake.id, ms: verseAudio.positionMs });
+      } else if (playingCover) {
+        setParked({ id: frontCover.id, ms: verseAudio.positionMs });
+      }
+    } else if (loadingFrom.current) {
+      setParked(loadingFrom.current);
+    }
+    void verseAudio.stopPlayback();
+  }
+  const releaseRef = useRef(releaseReview);
+  releaseRef.current = releaseReview;
+  useEffect(() => {
+    if (!focused) releaseRef.current();
+  }, [focused]);
 
   async function scrubFront(p: number) {
     if (!frontTake) return;
@@ -987,6 +1027,8 @@ export function useRecorder({
     },
     /** Stops a take so Listen's source audio can start alone. */
     pauseTakePlayback: verseAudio.pausePlayback,
+    /** Stops review before leaving for another screen, e.g. Book. */
+    releaseReview,
     discardCapture: verseAudio.discardCapture,
   };
 }
