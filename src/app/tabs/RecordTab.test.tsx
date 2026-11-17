@@ -359,6 +359,33 @@ describe('RecordTab', () => {
     );
   });
 
+  it('keeps Record disabled while the active take query is loading', () => {
+    mockUseVerseAudio.mockReturnValue({ ...idleAudio, takesLoaded: false });
+
+    renderTab();
+
+    expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    fireEvent.press(screen.getByTestId('record-start-button'));
+    expect(idleAudio.start).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed take load from the Record control', async () => {
+    const retryTakesLoad = jest.fn();
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'error',
+      takesLoaded: false,
+      retryTakesLoad,
+    });
+
+    renderTab();
+    await waitForCaptureReady();
+    fireEvent.press(screen.getByTestId('record-start-button'));
+
+    expect(retryTakesLoad).toHaveBeenCalledTimes(1);
+    expect(idleAudio.start).not.toHaveBeenCalled();
+  });
+
   it('disables record until bible text resolves for the active verse', async () => {
     const multiVerses = [
       {

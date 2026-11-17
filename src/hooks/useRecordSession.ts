@@ -388,7 +388,9 @@ export function useRecordSession({
     return () => onRegisterCaptureControls?.(null);
   }, [captureActive, captureControls, onRegisterCaptureControls]);
 
-  const recordDisabled = captureBibleTextId === null;
+  const recordDisabled =
+    captureBibleTextId === null ||
+    (!verseAudio.takesLoaded && verseAudio.state !== 'error');
   const syncingMessage = recordSourceTextHint(captureBibleTextId, isSyncing);
 
   async function ensureMic(): Promise<boolean> {
