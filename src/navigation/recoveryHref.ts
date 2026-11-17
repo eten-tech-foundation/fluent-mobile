@@ -16,8 +16,9 @@ import { passageSessionVerse } from './passageSessionVerse';
  * passage when the saved verse is the one the player records under, and a
  * verse take reopens its passage on that verse when the player records verse
  * by verse there. Any other take, a marker from before captures were
- * recorded, or any take in Legacy, opens drafting on it. Null when the
- * marker or its chapter is gone.
+ * recorded, or any take in Legacy, opens drafting on it, as does any take
+ * whose chapter's pericopes can't be read. Null when the marker or its chapter
+ * is gone.
  */
 export async function resolveRecoveryHref(
   marker: PausedTakeMarker,
@@ -52,7 +53,12 @@ export async function resolveRecoveryHref(
     return drafting;
   }
   const names = await getChapterRouteNames(chapterAssignmentId);
-  const pericopeSetId = await getProjectPericopeSetId(assignment.projectId);
+  const verseSetting = getDraftingUnit(getActiveUserId()) === 'verse';
+  // Verse by verse never reads pericopes, so there is nothing to fail there.
+  const pericopeSetId = verseSetting
+    ? null
+    : await getProjectPericopeSetId(assignment.projectId);
+  const lookup = { failed: false };
   const group =
     pericopeSetId === null
       ? null
@@ -61,8 +67,13 @@ export async function resolveRecoveryHref(
           assignment.chapterNumber,
           verseNumber,
           pericopeSetId,
+          () => {
+            lookup.failed = true;
+          },
         );
-  if (!names) return drafting;
+  // An unreadable lookup isn't "no pericopes": the chapter's shape is unknown,
+  // and a later read could open a different session than the paused one (#899).
+  if (lookup.failed || !names) return drafting;
   const passage = {
     chapterId: chapterAssignmentId,
     anchorVerse: verseNumber,
@@ -72,7 +83,7 @@ export async function resolveRecoveryHref(
     ...names,
   };
   // Verse by verse in the setting, or a chapter without pericopes.
-  const verseMode = !group || getDraftingUnit(getActiveUserId()) === 'verse';
+  const verseMode = !group || verseSetting;
   if (granularity === 'verse') {
     return verseMode
       ? hrefs.passage({ ...passage, verse: verseNumber })
