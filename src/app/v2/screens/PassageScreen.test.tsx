@@ -1353,6 +1353,66 @@ describe('PassageScreen', () => {
         expect(mockSeekSource).toHaveBeenCalledWith(0);
       });
 
+      function layOutVersePages() {
+        fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
+          nativeEvent: { layout: { width: 300, height: 600 } },
+        });
+      }
+
+      it('readies Play on the verse on screen once the chapter source loads (#945)', async () => {
+        const listenKey = () => screen.getByTestId('passage-key-listen');
+        mockSource = { ...mockSource, loadState: 'loading' };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-listen'));
+        layOutVersePages();
+
+        expect(listenKey().props.accessibilityLabel).toBe(
+          'Loading source audio',
+        );
+        expect(listenKey().props.accessibilityState).toMatchObject({
+          disabled: true,
+        });
+        expect(screen.getByLabelText('While they were eating')).toBeTruthy();
+        expect(
+          screen.getByLabelText(/^Verse 22(, recorded)?, 1 of 2$/),
+        ).toBeTruthy();
+
+        await act(async () => {
+          fireEvent.press(screen.getByLabelText('Next: verse 23'));
+        });
+        expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+        expect(mockUseSourceAudio.mock.calls.at(-1)?.[0]).toMatchObject({
+          verse: 23,
+          chapter: 14,
+          enabled: true,
+          deferred: false,
+        });
+        expect(listenKey().props.accessibilityLabel).toBe(
+          'Loading source audio',
+        );
+        expect(listenKey().props.accessibilityState).toMatchObject({
+          disabled: true,
+        });
+        expect(screen.getByLabelText('While they were eating')).toBeTruthy();
+
+        mockSource = { ...mockSource, loadState: 'ready' };
+        screen.rerender(<PassageScreen />);
+
+        expect(listenKey().props.accessibilityLabel).toBe('Play source audio');
+        expect(listenKey().props.accessibilityState).toMatchObject({
+          disabled: false,
+        });
+        expect(
+          screen.getByLabelText(/^Verse 23(, recorded)?, 2 of 2$/),
+        ).toBeTruthy();
+        expect(screen.getByLabelText('While they were eating')).toBeTruthy();
+        expect(screen.getByLabelText('Then he took a cup')).toBeTruthy();
+        await act(async () => {
+          fireEvent.press(listenKey());
+        });
+        expect(mockPlaySource).toHaveBeenCalledTimes(1);
+      });
+
       it('claims no verse playing without verse timings', () => {
         render(<PassageScreen />);
         playThrough23();
