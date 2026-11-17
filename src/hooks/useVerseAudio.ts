@@ -369,6 +369,7 @@ export function useVerseAudio({
   const [hasMultipleRecorders, setHasMultipleRecorders] = useState(false);
   // False until the verse's takes have loaded; Record waits on it (#979).
   const [takesLoaded, setTakesLoaded] = useState(false);
+  const [takesLoadAttempt, setTakesLoadAttempt] = useState(0);
   const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
   /**
    * Take currently prepared in the player. Outlives `playingTakeId` (which
@@ -619,7 +620,6 @@ export function useVerseAudio({
       } catch (error) {
         log.error('Failed to load takes', { error });
         if (!isStale()) {
-          setTakesLoaded(true);
           dispatch({
             type: 'ERROR',
             message: error instanceof Error ? error.message : 'load failed',
@@ -639,7 +639,12 @@ export function useVerseAudio({
     loadTakesFn,
     refreshAllTakes,
     clearStitchQueue,
+    takesLoadAttempt,
   ]);
+
+  const retryTakesLoad = useCallback(() => {
+    if (bibleTextId !== null) setTakesLoadAttempt(attempt => attempt + 1);
+  }, [bibleTextId]);
 
   // A dual-mounted Record tab keeps its take list across navigation. Upload
   // events update SQLite without changing the verse ID; refresh only row data
@@ -1533,6 +1538,7 @@ export function useVerseAudio({
     playbackStatus: playback.status,
     errorMessage,
     takesLoaded,
+    retryTakesLoad,
     recoveredElapsedMs,
     /** Live input level in dBFS while recording, for the Level wave. */
     getMetering: recording.getMetering,

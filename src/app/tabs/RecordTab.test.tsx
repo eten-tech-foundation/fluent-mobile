@@ -183,6 +183,7 @@ const idleAudio: VerseAudioApi = {
   canRecordNewTake: true,
   playingTakeId: null,
   takesLoaded: true,
+  retryTakesLoad: jest.fn(),
   loadedTakeId: null,
   playbackStatus: 'idle' as const,
   errorMessage: null,

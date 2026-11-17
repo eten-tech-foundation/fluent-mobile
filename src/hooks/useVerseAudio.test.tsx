@@ -339,13 +339,19 @@ describe('useVerseAudio', () => {
       expect(result.current.takes).toHaveLength(1);
     });
 
-    it('is true after a failed load, so Record is not locked out forever', async () => {
-      loadTakes.mockRejectedValue(new Error('db down'));
+    it('stays false after failure and retries until the take list loads', async () => {
+      loadTakes
+        .mockRejectedValueOnce(new Error('db down'))
+        .mockResolvedValueOnce([makeTake()]);
 
       const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
 
       await waitFor(() => expect(result.current.state).toBe('error'));
-      expect(result.current.takesLoaded).toBe(true);
+      expect(result.current.takesLoaded).toBe(false);
+
+      await act(async () => result.current.retryTakesLoad());
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+      expect(result.current.takes).toHaveLength(1);
     });
 
     it('is true when there is no verse to load', async () => {

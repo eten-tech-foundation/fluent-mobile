@@ -148,6 +148,8 @@ jest.mock('../../../hooks/useRecordSession', () => {
         verseAudio: {
           state: mockSession.state,
           takes: mockSession.takes,
+          takesLoaded: true,
+          retryTakesLoad: jest.fn(),
           deleteTake: mockDeleteTake,
           playingTakeId: mockSession.playingTakeId,
           positionMs: mockSession.positionMs,

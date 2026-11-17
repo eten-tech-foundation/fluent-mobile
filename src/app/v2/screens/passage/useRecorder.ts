@@ -799,7 +799,12 @@ export function useRecorder({
     }
     // A new take waits for the verse's takes to load, so its tile number and
     // the take cap are counted from the full list (#979).
-    if (!verseAudio.takesLoaded) return;
+    if (!verseAudio.takesLoaded) {
+      // A failed initial query leaves Record available as a retry affordance;
+      // never begin a capture from its incomplete result.
+      if (verseAudio.state === 'error') verseAudio.retryTakesLoad();
+      return;
+    }
     if (
       session.stageLocked ||
       session.drafterCaptureBlocked ||
@@ -959,10 +964,10 @@ export function useRecorder({
       !capturing &&
       (held ||
         stepping ||
-        !verseAudio.takesLoaded ||
+        (!verseAudio.takesLoaded && verseAudio.state !== 'error') ||
         observerOnly ||
         classicReason !== null ||
-        atCap ||
+        (verseAudio.takesLoaded && atCap) ||
         session.captureDisabled ||
         session.isTaken),
     onRecord: () => void oneAtATime(record),
