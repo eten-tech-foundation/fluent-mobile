@@ -52,8 +52,7 @@ import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
 import { type Ready } from './ready';
-import { ResourcesPeek } from './ResourcesPeek';
-import { ResourcesSheet } from './ResourcesSheet';
+import { ResourcesCard } from './ResourcesCard';
 import { useScriptMetrics } from './scriptMetrics';
 import { sourceWindow, windowProgress, windowSeekMs } from './sourceWindow';
 import { TakeFan } from './TakeFan';
@@ -62,6 +61,11 @@ import { usePassageImages } from './usePassageImages';
 import { usePassageNotes } from './usePassageNotes';
 import { useRecorder } from './useRecorder';
 import { VerseList } from './VerseList';
+
+/** Previews on the docked Resources card, and how many verses they search. */
+const PREVIEW_COUNT = 3;
+/** Lets the page's arrival paint before the previews ask for anything. */
+const PREVIEW_DELAY_MS = 600;
 
 /** How far the hero drags before a release opens or closes it. */
 const SNAP_AT = 0.35;
@@ -341,9 +345,37 @@ export function Sheet({
     userId,
     enabled: resourcesAsked,
   });
+  // A few previews for the docked card, from the first verses only, once
+  // the page has arrived; the full list waits for the card to open.
+  const [previewsAsked, setPreviewsAsked] = useState(false);
+  useEffect(() => {
+    const wait = setTimeout(() => setPreviewsAsked(true), PREVIEW_DELAY_MS);
+    return () => clearTimeout(wait);
+  }, []);
+  const firstImages = usePassageImages({
+    passage,
+    userId,
+    enabled: previewsAsked,
+    firstVerses: PREVIEW_COUNT,
+  });
+  const previews = (
+    images.state.status === 'ready'
+      ? images.state.items
+      : firstImages.state.status === 'ready'
+      ? firstImages.state.items
+      : []
+  ).slice(0, PREVIEW_COUNT);
   useEffect(() => {
     if (!focused || expanded) setResourcesOpen(false);
   }, [focused, expanded]);
+  useEffect(() => {
+    if (!resourcesOpen || !focused) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setResourcesOpen(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [resourcesOpen, focused]);
   // Until the text is in, the script shows why instead.
   const versePages =
     steps !== null && expanded && passage.downloaded && steps.verses.length > 0;
@@ -584,21 +616,6 @@ export function Sheet({
     ],
   }));
 
-  // Sinks away as the player opens, which takes the bottom of the screen.
-  const peekStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.25], [1, 0], 'clamp'),
-    transform: [
-      {
-        translateY: interpolate(
-          progress.value,
-          [0, 0.4],
-          [0, peekHeight],
-          'clamp',
-        ),
-      },
-    ],
-  }));
-
   const measure = (set: (h: number) => void) => (e: LayoutChangeEvent) =>
     set(Math.round(e.nativeEvent.layout.height));
   const title = passage.title ?? passage.reference;
@@ -660,17 +677,21 @@ export function Sheet({
           bottomInset={peekHeight}
         />
       ) : null}
-      <ColorModeScope value="canvas">
-        <ResourcesPeek
-          shown={!expanded}
-          style={peekStyle}
-          onLayout={measure(setPeekHeight)}
-          onPress={() => {
-            setResourcesAsked(true);
-            setResourcesOpen(true);
-          }}
-        />
-      </ColorModeScope>
+      {/* The page's own mode, like the Verses list it floats over. */}
+      <ResourcesCard
+        shown={!expanded}
+        open={resourcesOpen}
+        onOpenChange={to => {
+          if (to) setResourcesAsked(true);
+          setResourcesOpen(to);
+        }}
+        maxHeight={container - headerBottom - spacing.sm}
+        player={progress}
+        onPeekHeight={setPeekHeight}
+        images={images}
+        previews={previews}
+        onRetryImages={() => void images.retry()}
+      />
       <ColorModeScope value="hardware">
         <TitleSheet
           visible={titleSheetOpen}
@@ -683,13 +704,6 @@ export function Sheet({
             onOpenBook();
           }}
           onOpenClassic={onOpenClassic}
-        />
-        <ResourcesSheet
-          visible={resourcesOpen}
-          reference={passage.reference}
-          images={images}
-          onRetryImages={() => void images.retry()}
-          onClose={() => setResourcesOpen(false)}
         />
       </ColorModeScope>
       <PlayerChrome

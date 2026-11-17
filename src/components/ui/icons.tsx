@@ -15,10 +15,10 @@ const ArrowUUpLeftIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/ArrowUUpLeft').ArrowUUpLeftIcon;
 const BooksIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/Books').BooksIcon;
+const CaretDownIcon: PhosphorIcon =
+  require('phosphor-react-native/src/icons/CaretDown').CaretDownIcon;
 const CaretRightIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/CaretRight').CaretRightIcon;
-const CaretUpIcon: PhosphorIcon =
-  require('phosphor-react-native/src/icons/CaretUp').CaretUpIcon;
 const CheckIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/Check').CheckIcon;
 const CircleIcon: PhosphorIcon =
@@ -92,8 +92,8 @@ export const ArrowDown = weighted(ArrowDownIcon, 'regular', 'ArrowDown');
 export const ArrowLeft = weighted(ArrowLeftIcon, 'regular', 'ArrowLeft');
 export const ArrowRight = weighted(ArrowRightIcon, 'regular', 'ArrowRight');
 export const Books = weighted(BooksIcon, 'regular', 'Books');
+export const CaretDown = weighted(CaretDownIcon, 'regular', 'CaretDown');
 export const CaretRight = weighted(CaretRightIcon, 'regular', 'CaretRight');
-export const CaretUp = weighted(CaretUpIcon, 'regular', 'CaretUp');
 export const Check = weighted(CheckIcon, 'regular', 'Check');
 /** Bold, so the heard mark holds its own inside the 3pt Progress ring. */
 export const CheckBold = weighted(CheckIcon, 'bold', 'CheckBold');

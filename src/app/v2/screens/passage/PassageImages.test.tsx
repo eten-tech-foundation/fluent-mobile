@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal } from 'react-native';
+import { Modal, StyleSheet } from 'react-native';
 import {
   act,
   fireEvent,
@@ -78,8 +78,32 @@ function renderImages(
   onRetry: () => void = jest.fn(),
   scope = 'scope-a',
 ) {
-  return render(
+  const view = render(
     <PassageImages scope={scope} state={state} onRetry={onRetry} />,
+  );
+  layOut();
+  return view;
+}
+
+/** Tiles size from the list's width, so they wait for its layout. */
+function layOut() {
+  const list = screen.queryByTestId('passage-images-list');
+  if (!list) return;
+  fireEvent(list, 'layout', {
+    nativeEvent: { layout: { width: 300, height: 0 } },
+  });
+}
+
+const grow = (title: string) =>
+  fireEvent.press(screen.getByRole('button', { name: title }));
+const grown = (id: string) =>
+  screen.getByTestId(`passage-image-${id}-toggle`).props.accessibilityState
+    .expanded as boolean;
+/** Grows an image, then opens it full screen from its corner button. */
+function openFull(title: string) {
+  grow(title);
+  fireEvent.press(
+    screen.getByRole('button', { name: `Open ${title} full screen` }),
   );
 }
 
@@ -117,14 +141,50 @@ describe('PassageImages', () => {
     },
   );
 
-  it('shows the metadata it has and invents none', () => {
+  it('shows the metadata it has once grown, and invents none', () => {
     renderImages(ready(MAP, ROOM));
-    const map = screen.getByTestId('passage-image-img-api-1');
-    expect(within(map).getByText('Jerusalem')).toBeTruthy();
-    expect(within(map).getByText('The city and the temple')).toBeTruthy();
-    expect(within(map).getByText('Bible Journey Maps')).toBeTruthy();
+    const map = () => screen.getByTestId('passage-image-img-api-1');
+    expect(within(map()).getByText('Jerusalem')).toBeTruthy();
+    expect(within(map()).queryByText('The city and the temple')).toBeNull();
+
+    grow('Jerusalem');
+    expect(within(map()).getByText('The city and the temple')).toBeTruthy();
+    expect(within(map()).getByText('Bible Journey Maps')).toBeTruthy();
+
+    grow('Upper room');
     const room = screen.getByTestId('passage-image-img-api-2');
     expect(within(room).getAllByText(/./)).toHaveLength(1);
+  });
+
+  it('grows one image at a time, from its picture or its words', () => {
+    renderImages(ready(MAP, ROOM));
+    expect(screen.queryByRole('button', { name: /full screen/ })).toBeNull();
+
+    fireEvent.press(screen.getByTestId('passage-image-img-api-1-zoom'));
+    expect(grown('img-api-1')).toBe(true);
+    expect(
+      screen.getByRole('button', { name: 'Open Jerusalem full screen' }),
+    ).toBeTruthy();
+
+    grow('Upper room');
+    expect(grown('img-api-1')).toBe(false);
+    expect(grown('img-api-2')).toBe(true);
+
+    fireEvent.press(screen.getByTestId('passage-image-img-api-2-zoom'));
+    expect(grown('img-api-2')).toBe(false);
+    expect(viewerVisible()).toBe(false);
+  });
+
+  it('gives a grown image its own row at its whole shape', () => {
+    renderImages(ready(MAP, ROOM));
+    const width = (id: string) =>
+      StyleSheet.flatten(screen.getByTestId(`passage-image-${id}`).props.style)
+        .width;
+    expect(width('img-api-1')).toBe(width('img-api-2'));
+    expect(width('img-api-1')).toBeLessThan(300);
+
+    grow('Jerusalem');
+    expect(width('img-api-1')).toBe(300);
   });
 
   it('Retry on a failed load calls only the loader', () => {
@@ -142,9 +202,7 @@ describe('PassageImages', () => {
     expect(screen.getByTestId('passage-images-list')).toBeTruthy();
     expect(screen.getByTestId('passage-image-img-api-2-failed')).toBeTruthy();
     expect(screen.queryByTestId('passage-image-img-api-1-failed')).toBeNull();
-    fireEvent.press(
-      screen.getByRole('button', { name: 'Open Jerusalem full screen' }),
-    );
+    openFull('Jerusalem');
     expect(viewerVisible()).toBe(true);
   });
 
@@ -170,10 +228,10 @@ describe('PassageImages', () => {
     expect(screen.getByTestId('passage-images-list')).toBeTruthy();
   });
 
-  it('opens full screen from the button or a tap on the image', () => {
+  it("opens full screen from a grown image's corner button", () => {
     renderImages(ready(MAP));
     expect(viewerVisible()).toBe(false);
-    fireEvent.press(screen.getByTestId('passage-image-img-api-1-zoom'));
+    openFull('Jerusalem');
     expect(viewerVisible()).toBe(true);
     expect(
       within(screen.getByTestId('passage-image-viewer')).getByText('Jerusalem'),
@@ -182,16 +240,13 @@ describe('PassageImages', () => {
 
   it('closes full screen with Close and with Android Back alike', () => {
     renderImages(ready(MAP));
-    const open = () =>
-      fireEvent.press(
-        screen.getByRole('button', { name: 'Open Jerusalem full screen' }),
-      );
-
-    open();
+    openFull('Jerusalem');
     fireEvent.press(screen.getByTestId('passage-image-viewer-close'));
     expect(viewerVisible()).toBe(false);
 
-    open();
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Open Jerusalem full screen' }),
+    );
     act(() => {
       screen.UNSAFE_getByType(Modal).props.onRequestClose();
     });
@@ -202,9 +257,7 @@ describe('PassageImages', () => {
   it('closes an open image and clears failures when the images are for something else', () => {
     mockFailing = new Set(['room']);
     const view = renderImages(ready(MAP, ROOM));
-    fireEvent.press(
-      screen.getByRole('button', { name: 'Open Jerusalem full screen' }),
-    );
+    openFull('Jerusalem');
     expect(viewerVisible()).toBe(true);
 
     mockFailing = new Set();
@@ -223,9 +276,7 @@ describe('PassageImages', () => {
     mockFailing = new Set(['room']);
     const onRetry = jest.fn();
     const view = renderImages(ready(MAP, ROOM), onRetry);
-    fireEvent.press(
-      screen.getByRole('button', { name: 'Open Jerusalem full screen' }),
-    );
+    openFull('Jerusalem');
     expect(viewerVisible()).toBe(true);
 
     // e.g. connectivity flips and the same images load again.

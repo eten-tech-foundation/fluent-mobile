@@ -191,11 +191,12 @@ export const galleryEntries: GalleryEntry[] = [
   {
     // No Figma frame yet: the Pericope frame's Resources button
     // https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2440-28492
-    // as a peek, with the Bottom sheet and List row.
+    // as a card docked at the bottom that grows into the resources.
     id: 'resources-peek',
-    name: 'Resources peek · Resources sheet',
+    name: 'Resources card',
     section: 'Sheets and dialogs',
-    modes: 'Canvas (the passage page) · Hardware (the sheet)',
+    modes: 'Hardware (the passage page under the hero)',
+    pin: 'hardware',
     Component: ResourcesPeekEntry,
   },
   {

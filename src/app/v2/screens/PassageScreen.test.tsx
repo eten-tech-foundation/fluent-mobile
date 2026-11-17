@@ -3166,18 +3166,40 @@ describe('PassageScreen', () => {
 
   describe('Resources', () => {
     function openResources() {
-      fireEvent.press(
-        screen.getByRole('button', { name: 'Resources, Images and maps' }),
-      );
+      fireEvent.press(screen.getByRole('button', { name: 'Resources' }));
       settle();
     }
 
-    it("don't load until the peek is tapped", () => {
-      renderSettled();
-      expect(screen.getByTestId('passage-resources-peek')).toBeTruthy();
+    it('preview only the first three verses once the page has arrived', async () => {
+      const verses = [22, 23, 24, 25, 26].map(verseNumber => ({
+        ...ready.verses[0],
+        verseNumber,
+      }));
+      mockPassage = { ...ready, verses };
+      mockLoadImages.mockImplementation(async ({ projectId }) =>
+        projectId === null
+          ? new Promise(() => {})
+          : [{ id: 'img-api-1', title: 'Jerusalem', uri: 'file:///1.jpg' }],
+      );
+      jest.useFakeTimers();
+      render(<PassageScreen />);
       expect(mockLoadImages).not.toHaveBeenCalledWith(
         expect.objectContaining({ projectId: 9 }),
       );
+
+      settle();
+      await act(async () => {});
+      const asked = mockLoadImages.mock.calls
+        .map(
+          ([args]) => args as { projectId: number | null; verseRefs?: unknown },
+        )
+        .filter(args => args.projectId === 9);
+      expect(asked.map(args => args.verseRefs)).toEqual([
+        [22, 23, 24].map(verseNumber => ({ chapterNumber: 14, verseNumber })),
+      ]);
+      expect(
+        screen.getByTestId('passage-resources-previews', hidden),
+      ).toBeTruthy();
       expect(screen.queryByTestId('passage-resources')).toBeNull();
     });
 
@@ -3200,7 +3222,6 @@ describe('PassageScreen', () => {
         }),
       );
       const sheet = screen.getByTestId('passage-resources');
-      expect(within(sheet).getByText('Mark 14:22–25')).toBeTruthy();
       expect(within(sheet).getByText('No images or maps here.')).toBeTruthy();
       expect(mockPush).not.toHaveBeenCalled();
     });
@@ -3247,6 +3268,82 @@ describe('PassageScreen', () => {
       fireEvent.press(screen.getByTestId('passage-close'));
       settle();
       expect(peek().props.pointerEvents).toBe('box-none');
+    });
+
+    const expanded = () =>
+      screen.getByTestId('passage-resources-open').props.accessibilityState
+        .expanded;
+
+    it('grow in place, and the chevron puts the card back', async () => {
+      renderSettled();
+      expect(expanded()).toBe(false);
+      openResources();
+      await act(async () => {});
+      expect(expanded()).toBe(true);
+      expect(screen.getByTestId('passage-resources')).toBeTruthy();
+
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Collapse resources' }),
+      );
+      settle();
+      expect(expanded()).toBe(false);
+      expect(screen.queryByTestId('passage-resources')).toBeNull();
+    });
+
+    it('strokes the card header while its list is scrolled under it', async () => {
+      renderSettled();
+      openResources();
+      await act(async () => {});
+      const stroke = () =>
+        getAnimatedStyle(
+          screen.getByTestId('passage-resources-header-stroke', hidden),
+        ).opacity;
+      expect(stroke()).toBe(0);
+
+      const scrollTo = (y: number) => {
+        fireEvent.scroll(screen.getByTestId('passage-resources'), {
+          nativeEvent: { contentOffset: { y } },
+        });
+        settle();
+      };
+      scrollTo(40);
+      expect(stroke()).toBe(1);
+      scrollTo(0);
+      expect(stroke()).toBe(0);
+
+      // Put back scrolled, it opens again at the top.
+      scrollTo(40);
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Collapse resources' }),
+      );
+      settle();
+      openResources();
+      expect(stroke()).toBe(0);
+    });
+
+    it('Back puts the card back before it leaves the passage', async () => {
+      type BackListener = Parameters<typeof BackHandler.addEventListener>[1];
+      const handlers: BackListener[] = [];
+      const listen = jest
+        .spyOn(BackHandler, 'addEventListener')
+        .mockImplementation((_event, handler) => {
+          handlers.push(handler);
+          return { remove: jest.fn() };
+        });
+      try {
+        renderSettled();
+        openResources();
+        await act(async () => {});
+        let handled: boolean | null | undefined;
+        act(() => {
+          handled = handlers.at(-1)?.({} as Parameters<BackListener>[0]);
+        });
+        expect(handled).toBe(true);
+        expect(expanded()).toBe(false);
+        expect(mockBack).not.toHaveBeenCalled();
+      } finally {
+        listen.mockRestore();
+      }
     });
 
     it('close when another screen covers the passage', async () => {

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ColorModeScope, useThemedStyles } from '../../../theme/useTheme';
+import { useSharedValue } from 'react-native-reanimated';
+import { useThemedStyles } from '../../../theme/useTheme';
 import type { ImagesMapsItem } from '../../../types/resources/imagesMaps';
-import { ResourcesPeek } from '../../v2/screens/passage/ResourcesPeek';
-import { ResourcesSheet } from '../../v2/screens/passage/ResourcesSheet';
+import { ResourcesCard } from '../../v2/screens/passage/ResourcesCard';
 import type { PassageImagesState } from '../../v2/screens/passage/usePassageImages';
 
 const ITEMS: ImagesMapsItem[] = [
@@ -20,9 +20,14 @@ const ITEMS: ImagesMapsItem[] = [
     title: 'An upper room',
     uri: 'https://picsum.photos/seed/fluent-gallery-room/1200/800',
   },
+  {
+    id: 'gallery-lake',
+    title: 'The lake shore at Capernaum',
+    uri: 'https://picsum.photos/seed/fluent-gallery-lake/1200/800',
+  },
 ];
 
-/** Each state the sheet's Images and maps can be in. */
+/** Each state the card's Images and maps can be in. */
 const STATES: { label: string; state: PassageImagesState }[] = [
   { label: 'Images', state: { status: 'ready', items: ITEMS } },
   { label: 'Loading', state: { status: 'loading' } },
@@ -33,18 +38,28 @@ const STATES: { label: string; state: PassageImagesState }[] = [
   { label: 'Failed', state: { status: 'failed' } },
 ];
 
+/** What the docked card previews: the first three, once there are any. */
+const previewsOf = (state: PassageImagesState) =>
+  state.status === 'ready' ? state.items.slice(0, 3) : [];
+
+/** The page frame's height, and how tall the card grows inside it. */
+const PAGE = 440;
+const GROWN = 380;
+
 /**
- * The Resources peek at the bottom of a passage page, over the page's own
- * content. Tap it to open the Resources sheet; pick a state below to see
- * each one. Retry in Failed loads the images.
+ * The Resources card docked at the bottom of a passage page, previewing up
+ * to three images in line. Tap it or flick it up to grow it into the
+ * resources; flick it down or tap its chevron to put it back. Pick a state below to
+ * see each one; Retry in Failed loads them.
  */
 export function ResourcesPeekEntry() {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState(0);
+  const player = useSharedValue(0);
   const styles = useThemedStyles(t => ({
     demo: { gap: t.spacing.md },
     page: {
-      height: 220,
+      height: PAGE,
       borderRadius: t.radius.sm,
       overflow: 'hidden',
       backgroundColor: t.roles.bgDefault,
@@ -59,14 +74,22 @@ export function ResourcesPeekEntry() {
 
   return (
     <View style={styles.demo}>
-      <ColorModeScope value="canvas">
-        <View style={styles.page}>
-          <Text style={styles.row}>Verse 22</Text>
-          <Text style={styles.row}>Verse 23</Text>
-          <Text style={styles.row}>Verse 24</Text>
-          <ResourcesPeek shown onPress={() => setOpen(true)} />
-        </View>
-      </ColorModeScope>
+      <View style={styles.page}>
+        <Text style={styles.row}>Verse 22</Text>
+        <Text style={styles.row}>Verse 23</Text>
+        <Text style={styles.row}>Verse 24</Text>
+        <ResourcesCard
+          shown
+          open={open}
+          onOpenChange={setOpen}
+          maxHeight={GROWN}
+          player={player}
+          onPeekHeight={() => {}}
+          images={{ state: STATES[picked].state, scope: String(picked) }}
+          previews={previewsOf(STATES[picked].state)}
+          onRetryImages={() => setPicked(0)}
+        />
+      </View>
       <View style={styles.links}>
         {STATES.map(({ label }, i) => (
           <Pressable
@@ -81,15 +104,6 @@ export function ResourcesPeekEntry() {
           </Pressable>
         ))}
       </View>
-      <ColorModeScope value="hardware">
-        <ResourcesSheet
-          visible={open}
-          reference="Mark 14:22–25"
-          images={{ state: STATES[picked].state, scope: String(picked) }}
-          onRetryImages={() => setPicked(0)}
-          onClose={() => setOpen(false)}
-        />
-      </ColorModeScope>
     </View>
   );
 }

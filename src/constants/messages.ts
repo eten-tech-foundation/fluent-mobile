@@ -212,7 +212,7 @@ export const RECORD_SETUP_FAILED_MESSAGE =
 
 /** Next passage Resources (#912). */
 export const PASSAGE_RESOURCES_TITLE = 'Resources';
-export const PASSAGE_RESOURCES_DETAIL = 'Images and maps';
+export const PASSAGE_RESOURCES_COLLAPSE = 'Collapse resources';
 export const PASSAGE_IMAGES_TITLE = 'Images and maps';
 export const PASSAGE_IMAGES_LOADING = 'Loading images and maps';
 export const PASSAGE_IMAGES_EMPTY = 'No images or maps here.';
@@ -229,3 +229,5 @@ export const PASSAGE_IMAGE_UNAVAILABLE = 'Image unavailable';
 export const passageImageOpenLabel = (title: string) =>
   `Open ${title} full screen`;
 export const PASSAGE_IMAGE_CLOSE = 'Close';
+export const PASSAGE_IMAGE_GROW_HINT = 'Shows the whole image';
+export const PASSAGE_IMAGE_SHRINK_HINT = 'Shows it smaller';

@@ -31,10 +31,13 @@ export function usePassageImages({
   passage,
   userId,
   enabled,
+  firstVerses,
 }: {
   passage: Ready;
   userId: number | null;
   enabled: boolean;
+  /** Only the passage's first verses, e.g. for a few previews. */
+  firstVerses?: number;
 }) {
   const { assignment, verses } = passage;
   const { isOnline, hasResolved } = useConnectivity();
@@ -42,11 +45,11 @@ export function usePassageImages({
   const projectId = assignment.projectId ?? null;
   const verseRefs = useMemo(
     () =>
-      verses.map(v => ({
+      verses.slice(0, firstVerses).map(v => ({
         chapterNumber: v.chapterNumber,
         verseNumber: v.verseNumber,
       })),
-    [verses],
+    [verses, firstVerses],
   );
   const { getResourceStatus, downloadedSections } = useResourcesInventory(
     projectId,

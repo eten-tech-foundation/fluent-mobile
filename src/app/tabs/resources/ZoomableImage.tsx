@@ -27,7 +27,8 @@ type ZoomableImageProps = {
   contentFit?: 'cover' | 'contain';
   testID?: string;
   onLoadError?: () => void;
-  onLoad?: () => void;
+  /** Gets the image's own size, for callers that fit to its shape. */
+  onLoad?: (size: { width: number; height: number }) => void;
   /** Invoked on a clean single tap (not a pinch/pan/double-tap). */
   onPress?: () => void;
   /**
@@ -194,7 +195,12 @@ export function ZoomableImage({
             contentFit={contentFit}
             accessibilityLabel={accessibilityLabel}
             onError={onLoadError}
-            onLoad={onLoad}
+            onLoad={
+              onLoad
+                ? e =>
+                    onLoad({ width: e.source.width, height: e.source.height })
+                : undefined
+            }
             cachePolicy="memory-disk"
           />
         </Animated.View>

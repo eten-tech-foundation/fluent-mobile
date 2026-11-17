@@ -167,6 +167,22 @@ describe('usePassageImages', () => {
     });
   });
 
+  it('asks only for the first verses when told to', async () => {
+    getImages.mockResolvedValue(response());
+    const { result } = renderHook(() =>
+      usePassageImages({
+        passage: passage(
+          [1, 2, 3, 4].map(v => ({ chapterNumber: 14, verseNumber: v })),
+        ),
+        userId: 5,
+        enabled: true,
+        firstVerses: 3,
+      }),
+    );
+    await waitFor(() => expect(result.current.state.status).toBe('ready'));
+    expect(getImages.mock.calls.map(call => call[3])).toEqual([1, 2, 3]);
+  });
+
   it('keeps each chapter of a cross-chapter passage with its own verses', async () => {
     getImages.mockResolvedValue(response());
     const { result } = renderImages({
