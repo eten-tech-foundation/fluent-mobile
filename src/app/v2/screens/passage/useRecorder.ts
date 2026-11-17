@@ -219,6 +219,18 @@ export function useRecorder({
   const capturing = session.captureActive;
   const live = verseAudio.state === 'recording';
   const paused = verseAudio.state === 'paused';
+  // The take being saved joins the list before saving settles. Hold it back
+  // until then, so the in-progress tile neither renumbers nor doubles beside
+  // its own saved tile for a moment (#979).
+  const held = capturing || verseAudio.state === 'saving';
+  const heldTakeIds = useRef<Set<string> | null>(null);
+  if (!held) {
+    heldTakeIds.current = null;
+  } else if (heldTakeIds.current === null) {
+    heldTakeIds.current = new Set(verseAudio.takes.map(t => t.id));
+  }
+  const heldIds = heldTakeIds.current;
+  const listedBeforeHold = (id: string) => heldIds === null || heldIds.has(id);
   // A take found paused without recording here was recovered after a crash.
   // A failed save also lands on paused, so saving keeps what came before.
   const [wentLive, setWentLive] = useState(false);
@@ -275,6 +287,7 @@ export function useRecorder({
     (verseMode
       ? t.granularity !== 'pericope'
       : session.effectiveUnit !== 'pericope' || t.granularity === 'pericope') &&
+    listedBeforeHold(t.id) &&
     !deletion.hiddenIds.has(t.id);
   const coverTakes = verseMode
     ? verseAudio.takes
@@ -376,7 +389,6 @@ export function useRecorder({
   const [stepping, setStepping] = useState(false);
   const steppingRef = useRef(false);
   const steps = useRef(0);
-  const held = capturing || verseAudio.state === 'saving';
   const pendingId = deletion.pending?.id ?? null;
   // Only while that take's undo is open; after that the selected take leads.
   const overrideId = frontOverride === pendingId ? frontOverride : null;
