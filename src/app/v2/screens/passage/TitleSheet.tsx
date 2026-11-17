@@ -4,6 +4,8 @@ import { ListRow } from '../../../../components/ui/ListRow';
 import {
   OPEN_CLASSIC_DRAFTING,
   OPEN_CLASSIC_DRAFTING_DETAIL,
+  PASSAGE_QUESTIONS_OPEN_DETAIL,
+  PASSAGE_QUESTIONS_TITLE,
   PEER_CHECK_QUEUED_DETAIL,
   PEER_CHECK_QUEUED_TITLE,
   PEER_CHECK_SEND_LABEL,
@@ -16,7 +18,8 @@ import type { PeerCheckRow } from './usePeerCheckSend';
 
 /**
  * The title's sheet: the book page, Send to Peer Check, everyone's takes when
- * others have recorded here, and classic drafting for remaining resources.
+ * others have recorded here, the passage's Translation Questions, and classic
+ * drafting for remaining resources.
  */
 export function TitleSheet({
   visible,
@@ -27,6 +30,7 @@ export function TitleSheet({
   onSend,
   onClose,
   onOpenBook,
+  onOpenQuestions,
   onOpenClassic,
   onOpenReview,
 }: {
@@ -40,6 +44,7 @@ export function TitleSheet({
   onSend: () => void;
   onClose: () => void;
   onOpenBook: () => void;
+  onOpenQuestions: () => void;
   onOpenClassic: () => void;
   /** Absent when no other account has takes here. */
   onOpenReview?: () => void;
@@ -100,6 +105,16 @@ export function TitleSheet({
           testID="passage-open-review"
         />
       ) : null}
+      <ListRow
+        title={PASSAGE_QUESTIONS_TITLE}
+        subtitle={PASSAGE_QUESTIONS_OPEN_DETAIL}
+        trailing="chevron"
+        onPress={() => {
+          onClose();
+          onOpenQuestions();
+        }}
+        testID="passage-open-questions"
+      />
       <ListRow
         title={OPEN_CLASSIC_DRAFTING}
         subtitle={OPEN_CLASSIC_DRAFTING_DETAIL}
