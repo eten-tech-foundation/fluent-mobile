@@ -219,18 +219,22 @@ export function useRecorder({
   const capturing = session.captureActive;
   const live = verseAudio.state === 'recording';
   const paused = verseAudio.state === 'paused';
+  const saving = verseAudio.state === 'saving';
+  const held = capturing || saving;
   // The take being saved joins the list before saving settles. Hold it back
-  // until then, so the in-progress tile neither renumbers nor doubles beside
-  // its own saved tile for a moment (#979).
-  const held = capturing || verseAudio.state === 'saving';
-  const heldTakeIds = useRef<Set<string> | null>(null);
-  if (!held) {
-    heldTakeIds.current = null;
-  } else if (heldTakeIds.current === null) {
-    heldTakeIds.current = new Set(verseAudio.takes.map(t => t.id));
+  // from the moment saving starts, so the in-progress tile neither renumbers
+  // nor doubles beside its own saved tile for a moment (#979). Snapshotting at
+  // `saving` rather than at record start keeps a late initial load of existing
+  // takes visible while recording.
+  const savingTakeIds = useRef<Set<string> | null>(null);
+  if (!saving) {
+    savingTakeIds.current = null;
+  } else if (savingTakeIds.current === null) {
+    savingTakeIds.current = new Set(verseAudio.takes.map(t => t.id));
   }
-  const heldIds = heldTakeIds.current;
-  const listedBeforeHold = (id: string) => heldIds === null || heldIds.has(id);
+  const savingIds = savingTakeIds.current;
+  const listedBeforeSave = (id: string) =>
+    savingIds === null || savingIds.has(id);
   // A take found paused without recording here was recovered after a crash.
   // A failed save also lands on paused, so saving keeps what came before.
   const [wentLive, setWentLive] = useState(false);
@@ -287,7 +291,7 @@ export function useRecorder({
     (verseMode
       ? t.granularity !== 'pericope'
       : session.effectiveUnit !== 'pericope' || t.granularity === 'pericope') &&
-    listedBeforeHold(t.id) &&
+    listedBeforeSave(t.id) &&
     !deletion.hiddenIds.has(t.id);
   const coverTakes = verseMode
     ? verseAudio.takes
