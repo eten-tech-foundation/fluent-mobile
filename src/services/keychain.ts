@@ -24,6 +24,10 @@ function storageKey(userId: string): string {
   return `${SERVICE_PREFIX}.${userId}`;
 }
 
+function verifierKey(userId: string): string {
+  return `${SERVICE_PREFIX}.verifier.${userId}`;
+}
+
 function parseCredentials(raw: string): AuthCredentials | null {
   try {
     return JSON.parse(raw) as AuthCredentials;
@@ -94,9 +98,43 @@ export async function clearTempCredentials(): Promise<void> {
   }
 }
 
+export async function savePasswordVerifierRecord(
+  userId: string,
+  record: string,
+): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(verifierKey(userId), record);
+    log.info('Password verifier saved', { userId });
+  } catch (error) {
+    log.error('Failed to save password verifier', { error });
+    throw error;
+  }
+}
+
+export async function getPasswordVerifierRecord(
+  userId: string,
+): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(verifierKey(userId));
+  } catch (error) {
+    log.error('Failed to get password verifier', { error });
+    return null;
+  }
+}
+
+export async function clearPasswordVerifier(userId: string): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(verifierKey(userId));
+    log.info('Password verifier cleared', { userId });
+  } catch {
+    // Missing key is the steady state after a partial clear.
+  }
+}
+
 export async function clearCredentials(userId: string): Promise<void> {
   credentialsVersion += 1;
   try {
+    await clearPasswordVerifier(userId);
     await SecureStore.deleteItemAsync(storageKey(userId));
     log.info('Credentials cleared', { userId });
   } catch (error) {

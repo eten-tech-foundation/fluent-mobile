@@ -44,6 +44,15 @@ jest.mock('../../services/api', () => ({
   },
 }));
 
+jest.mock('../../services/accountSession', () => ({
+  switchToDeviceAccount: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock('../../services/passwordVerifier', () => ({
+  savePasswordVerifier: jest.fn(() => Promise.resolve()),
+  restoreOfflineSession: jest.fn(),
+}));
+
 jest.mock('../../services/authSession', () => ({
   beginLoginSession: jest.fn(() =>
     Promise.resolve({ id: 42, email: 't@fluent.local' }),

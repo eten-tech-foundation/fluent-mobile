@@ -38,6 +38,7 @@ Expo’s documented choice for Expo apps is **[Expo Router](https://docs.expo.de
 | Secure storage | `expo-secure-store` | Rolling your own Keystore wrapper |
 | Network reachability | `@react-native-community/netinfo` (already used) or Expo-documented equivalents | Extra net libraries without a ticket |
 | Updates / OTA | `expo-updates` | Custom OTA clients |
+| Password verifier (PBKDF2) | No Expo module | `@noble/hashes` PBKDF2-HMAC-SHA256 (pure JS, no native module). Do not store the password. |
 
 If Expo has no module for the capability, community libraries are fine — still install with `npx expo install` when the package is in the Expo compat set, and run `npm run doctor` after native-impacting bumps.
 

@@ -85,7 +85,14 @@ async function handleErrorResponse(
   auth: boolean,
 ): Promise<never> {
   const errorBody = await res.text();
-  log.error(logLabel, summarizeApiErrorResponse(res.status, errorBody));
+  const metadata = summarizeApiErrorResponse(res.status, errorBody);
+  // A 401 is an expected signed-out session, not a crash. console.error
+  // opens the dev LogBox; warn keeps the status in the log without a toast.
+  if (res.status === 401) {
+    log.warn(logLabel, metadata);
+  } else {
+    log.error(logLabel, metadata);
+  }
   const apiError = createApiError(res.status, errorBody);
 
   if (auth && res.status === 401) {
