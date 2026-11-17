@@ -64,6 +64,7 @@ reference/device fidelity remains unverified and is tracked separately in #738.
 | [features/next-ui-redesign/lovable-review.md](./features/next-ui-redesign/lovable-review.md) | design/historical | Original Lovable source review |
 | [features/next-ui-redesign/theme-figma-audit.md](./features/next-ui-redesign/theme-figma-audit.md) | design/historical | Theme Figma audit |
 | [features/record-tab/design/README.md](./features/record-tab/design/README.md) | design | Record tab design |
+| [features/official-take-replacement/design.md](./features/official-take-replacement/design.md) | design | #895 official-take replacement contract |
 | [assessments/README.md](./assessments/README.md) | historical | #526 feature audits; #717 Maestro ledger pointer |
 
 ## Dev vs QA (do not conflate)

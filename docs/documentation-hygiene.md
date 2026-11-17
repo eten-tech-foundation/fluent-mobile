@@ -1,7 +1,8 @@
 # Documentation hygiene
 
-Canonical map of every Markdown file under `docs/` (inventory date 2026-10-23;
-**43** files). **Preserve history — do not delete docs.** Move authority by
+Canonical map of Markdown files under `docs/` (inventory date 2026-10-23;
+**43** files listed then). Later additions are appended and were not
+recounted. **Preserve history — do not delete docs.** Move authority by
 labeling status and linking successors. Update this inventory when you add,
 move, or retire a doc.
 
@@ -20,7 +21,7 @@ them rather than weakening their rules.
 | **living-product** | Product behavior guide (labels inside those files govern AC vs inference) |
 | **log** | Append-only history |
 
-## Full inventory (43 files)
+## Full inventory (43 files listed on 2026-10-23; later files are appended below and were not recounted)
 
 | # | Path | Status | Notes |
 | ---: | --- | --- | --- |
@@ -46,6 +47,7 @@ them rather than weakening their rules.
 | 30 | [assessments/README.md](./assessments/README.md) | historical | Assessment index; #717 ledger archive pointer |
 | 31–38 | [assessments/](./assessments/README.md) #526 audits (7 READMEs + 1 ticket) | historical | Matrices preserved |
 | 39–43 | [assessments/maestro-acceptance-coverage/](./assessments/maestro-acceptance-coverage/) (5 files) | historical | #717 Maestro procedures + run evidence; files listed in [assessments/README.md](./assessments/README.md) |
+| — | [features/official-take-replacement/design.md](./features/official-take-replacement/design.md) | design | #895 contract; not implemented. Added 2026-11-13. |
 
 The full #717 Maestro acceptance ledger is **not** on `main`; see
 [assessments/README.md](./assessments/README.md#maestro-acceptance-ledger-717).
