@@ -11,6 +11,16 @@ const log = logger.create('SplashGate');
  */
 export const SPLASH_FALLBACK_MS = 3000;
 
+/**
+ * Longest the in-app launch overlay stays up with no paint report. The native
+ * splash falls back sooner (#972); this only stops a missing report from
+ * covering the app for the rest of the session (#1000).
+ */
+export const LAUNCH_OVERLAY_CAP_MS = 20_000;
+
+/** When the overlay copy switches from "Loading your work…" to "Still loading…". */
+export const LAUNCH_OVERLAY_STILL_MS = 4_000;
+
 export type SplashHideReason =
   | 'home:content'
   | 'home:empty'
@@ -25,6 +35,51 @@ export type SplashHideReason =
 
 let hideRequested = false;
 let fallback: ReturnType<typeof setTimeout> | null = null;
+let firstPaintReported = false;
+let overlayCap: ReturnType<typeof setTimeout> | null = null;
+const overlayListeners = new Set<() => void>();
+
+function emitOverlay(): void {
+  for (const listener of overlayListeners) listener();
+}
+
+/** True until a screen reports a real paint, or the hard cap fires. */
+export function isLaunchOverlayVisible(): boolean {
+  return !firstPaintReported;
+}
+
+export function subscribeLaunchOverlay(listener: () => void): () => void {
+  overlayListeners.add(listener);
+  return () => {
+    overlayListeners.delete(listener);
+  };
+}
+
+function clearOverlayCap(): void {
+  if (overlayCap !== null) {
+    clearTimeout(overlayCap);
+    overlayCap = null;
+  }
+}
+
+function reportFirstPaint(): void {
+  if (firstPaintReported) return;
+  firstPaintReported = true;
+  clearOverlayCap();
+  emitOverlay();
+}
+
+function armOverlayCap(): void {
+  clearOverlayCap();
+  overlayCap = setTimeout(() => {
+    overlayCap = null;
+    if (firstPaintReported) return;
+    log.warn(
+      'No screen reported a paint; clearing the launch overlay on the cap',
+    );
+    reportFirstPaint();
+  }, LAUNCH_OVERLAY_CAP_MS);
+}
 
 /**
  * Takes the splash down once, when the first screen has something to show
@@ -33,6 +88,9 @@ let fallback: ReturnType<typeof setTimeout> | null = null;
  * the blank the user saw.
  */
 export function hideSplash(reason: SplashHideReason): void {
+  // A real paint still clears the overlay after the native fallback already
+  // hid the splash. The fallback itself must not: nothing is committed yet.
+  if (reason !== 'fallback') reportFirstPaint();
   if (hideRequested) return;
   hideRequested = true;
   if (fallback !== null) {
@@ -70,10 +128,13 @@ export function holdSplashForFirstPaint(): void {
  */
 export function armSplashGate(): void {
   hideRequested = false;
+  firstPaintReported = false;
   if (fallback !== null) {
     clearTimeout(fallback);
     fallback = null;
   }
+  armOverlayCap();
+  emitOverlay();
 }
 
 /** Test-only. */
