@@ -15,10 +15,10 @@ accepted. Epic signoff is separate and is not this PR.
 
 | Entry | Where | What it still does |
 | --- | --- | --- |
-| Classic drafting | `src/routes/(app)/(stack)/verse-detail.tsx` re-exports `DraftingScreen` | Send, resources the player does not host, all-owner review, and the recovery cases below |
+| Classic drafting | `src/routes/(app)/(stack)/verse-detail.tsx` re-exports `DraftingScreen` | Send, resources the player does not host, all-owner review, and recovery in Legacy |
 | Open in classic drafting | `src/app/v2/screens/passage/TitleSheet.tsx` lines 48–57, test id `passage-classic` | The title sheet's bridge. The comment at lines 6–11 names verse mode, everyone's takes, resources, and Send |
 | Observer | `src/routes/(app)/(stack)/observer-draft.tsx` re-exports `ObserverDraftScreen` | Read-only chapter. Home and the book page get here from `resolveChapterOpen` (`chapterOpen.ts` lines 77–102) |
-| Recovery into classic | `resolveRecoveryHref` (`recoveryHref.ts` lines 22–88), launched from `src/routes/(app)/_layout.tsx` lines 46–57 | Legacy always opens drafting. Next opens the passage for a verse take in verse mode, or for a passage take whose saved verse is the first verse of that passage in this chapter (`passageSessionVerse`). It returns `verse-detail` when granularity is missing, `projectId` is null, route names are missing, a verse take is recorded while the unit is pericope, a passage take is opened in verse mode or a chapter with no pericopes, or a passage take was paused on a later verse. A missing marker or chapter returns null, so Resume does not navigate |
+| Recovery in Legacy | `resolveRecoveryHref` (`recoveryHref.ts`), launched from `src/routes/(app)/_layout.tsx` | Legacy opens drafting on the take. Next always opens the passage with `recoverSessionKey` and `recoverVerse`, and `readPassageRecovery` gives the page the saved unit and verse (Q33, #914). Null when the marker or chapter is gone or the chapter's names can't be read, so Resume offers Retry or Discard |
 | Home and book version switch | `src/routes/(app)/(stack)/index.tsx` and `chapters.tsx` | `useUiVersion() === 'next'` picks `HomeScreen` / `BookScreen`; otherwise Legacy `HomeScreen` / `ViewProject` |
 
 No required workflow in the tables below is "done" because that classic link exists. The link is the bridge until the named issue replaces it.
@@ -69,7 +69,7 @@ Roles follow [roles and permissions](../../product-behavior/roles-and-permission
 | Claim and ownership | Translator vs assigned drafter vs peer | Claim is online | 404 does not assign locally | Assignment id | Book and Home taps via `resolveChapterOpen` / `resolveAssignmentOpen` | Retained (`chapterOpen.ts`) | `chapterOpen` tests |
 | Verse recording | Drafter on an editable chapter | Capture is local; upload is sync | Mic denial explains itself | Take file and `recordings` row | Passage Record, verse mode | Passage already. Classic only for the gaps in this table | Passage record tests |
 | Passage recording | Drafter | Same | Same | Range on the take | Passage Record, pericope mode | Same | Passage record tests |
-| Interrupted capture | The account that started it | Offline | Resume cancelled leaves the marker. A missing marker or chapter does not navigate | `PausedTakeMarker`, including `capture` granularity and verse | Passage when `resolveRecoveryHref` returns `hrefs.passage`; otherwise not classic | #914 | `recoveryHref` tests for every `verse-detail` return: no granularity, null `projectId`, missing route names, verse take in pericope mode, passage take in verse mode or a chapter with no pericopes, passage take paused on a later verse |
+| Interrupted capture | The account that started it (`userId` on the marker; older markers are anyone's) | Offline | Resume cancelled leaves the marker. A missing marker or chapter, or unreadable names, offers Retry or Discard | `PausedTakeMarker`, including `capture` granularity and verse | Passage, in the saved unit and keyed on the saved verse (Q33) | Done in #914 | `recoveryHref.test.ts` and `recoveryHref.session.test.tsx`: verse, passage, no-pericope and capture-less fixtures, both settings, a later passage anchor, failed then successful names, failed Finish, another account. `PassageScreen.test.tsx` "opened to recover a paused take" |
 | All-owner review | Someone allowed to see other owners' takes | Reads local rows; refresh is sync | Another account's official take is not taken over unseen | Owner id on the take | A Next review surface | #910 | A fixture with two owners on one unit |
 | Source playback | Anyone who can open the passage | Prepared offline uses the downloaded file | Missing audio disables Play and keeps the verse label | Chapter file and `verseTimestamps` when present | Passage Listen | Retained | Passage listen tests. Timings: Q32 |
 | Translation notes | Anyone who can open the passage | Offline uses the download | Empty and error states stay on the passage | Note ids | Passage Understanding | Retained if those states already exist. Not a classic-only workflow | Passage notes tests, including empty and error |
@@ -82,7 +82,7 @@ Roles follow [roles and permissions](../../product-behavior/roles-and-permission
 | Prepare for offline | Signed-in user | Online to download | Failed download can be retried | Downloaded files | `prepare-for-offline` | Retained | Prepare tests |
 | Upload notification | Signed-in user | Either | A tap with no session waits until login | Notification id | `useUploadSyncNotificationTap` → Sync | Retained | Notification tap test |
 
-Every `verse-detail` return from `resolveRecoveryHref` is #914, including a passage take when the unit is in verse mode or the chapter has no pericopes (`recoveryHref.ts` line 82), a null `projectId` (line 50), and missing route names (line 65). Capture-less markers are `granularity === undefined` (lines 47–52). Mismatched anchors are `sessionVerse !== verseNumber` (lines 86–88). They are not waived.
+In Next, `resolveRecoveryHref` no longer returns `verse-detail` (#914). Its one `verse-detail` return is Legacy's.
 
 ## Dependency order
 
@@ -114,4 +114,4 @@ These are not presentation. Retirement must not delete them:
 - Sync, upload, and downloads
 - SQLite via `src/db/`
 
-Classic-only types that have to move before `verse-detail` and `observer-draft` are deleted: the verse-detail search params (`recoverSessionKey`, `recoverVerse` in `hrefs.verseDetail`), and the observer-draft href from `getObserverDraftDestination`. #914 and #913 own the new destinations. #917 may keep an old-URL adapter if a saved link still needs one. #920 removes the verse-detail route and those params when it deletes classic drafting.
+Classic-only types that have to move before `verse-detail` and `observer-draft` are deleted: the verse-detail search params (`recoverSessionKey`, `recoverVerse` in `hrefs.verseDetail`), and the observer-draft href from `getObserverDraftDestination`. #914 and #913 own the new destinations. #914's is `hrefs.passage` with `recover`, so an old verse-detail recovery link maps to it. #917 may keep an old-URL adapter if a saved link still needs one. #920 removes the verse-detail route and those params when it deletes classic drafting.

@@ -53,7 +53,7 @@ describe('collectLaunchRecoveries', () => {
     mockExisting.add('file:///a.aac');
     upsertPausedTake(marker());
 
-    const result = await collectLaunchRecoveries();
+    const result = await collectLaunchRecoveries(null);
 
     expect(result).toEqual([marker()]);
     expect(listPausedTakes()).toEqual([marker()]);
@@ -64,7 +64,7 @@ describe('collectLaunchRecoveries', () => {
     mockExisting.add('file:///a.aac');
     upsertPausedTake(marker({ verseNumber: undefined }));
 
-    const result = await collectLaunchRecoveries();
+    const result = await collectLaunchRecoveries(null);
 
     expect(result).toEqual([]);
     expect(listPausedTakes()).toEqual([]);
@@ -74,7 +74,7 @@ describe('collectLaunchRecoveries', () => {
   it('clears a marker with no surviving segment files', async () => {
     upsertPausedTake(marker());
 
-    const result = await collectLaunchRecoveries();
+    const result = await collectLaunchRecoveries(null);
 
     expect(result).toEqual([]);
     expect(listPausedTakes()).toEqual([]);
@@ -84,7 +84,7 @@ describe('collectLaunchRecoveries', () => {
     mockExisting.add('file:///a.aac');
     upsertPausedTake(marker({ segments: ['file:///a.aac', 'file:///b.aac'] }));
 
-    const result = await collectLaunchRecoveries();
+    const result = await collectLaunchRecoveries(null);
 
     expect(result).toEqual([marker({ segments: ['file:///a.aac'] })]);
   });
@@ -108,18 +108,42 @@ describe('collectLaunchRecoveries', () => {
       }),
     );
 
-    const result = await collectLaunchRecoveries();
+    const result = await collectLaunchRecoveries(null);
 
     expect(result.map(m => m.sessionKey)).toEqual(['7:3', '7:5']);
     expect(listPausedTakes().map(m => m.sessionKey)).toEqual(['7:3', '7:5']);
     expect(mockDeleteFile).toHaveBeenCalledWith('file:///b.aac');
   });
 
+  it("leaves another account's take to that account, files and all", async () => {
+    mockExisting.add('file:///a.aac');
+    mockExisting.add('file:///b.aac');
+    mockExisting.add('file:///c.aac');
+    upsertPausedTake(marker({ userId: 8 }));
+    upsertPausedTake(
+      marker({ sessionKey: '7:4', segments: ['file:///b.aac'], userId: 7 }),
+    );
+    upsertPausedTake(
+      marker({ sessionKey: '7:5', segments: ['file:///c.aac'] }),
+    );
+
+    const result = await collectLaunchRecoveries(7);
+
+    // Its own take, and one from before owners were kept.
+    expect(result.map(m => m.sessionKey)).toEqual(['7:4', '7:5']);
+    expect(listPausedTakes().map(m => m.sessionKey)).toEqual([
+      '7:3',
+      '7:4',
+      '7:5',
+    ]);
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+  });
+
   it('still clears the marker when deleting a file fails', async () => {
     mockDeleteFile.mockRejectedValue(new Error('disk'));
     upsertPausedTake(marker({ verseNumber: undefined }));
 
-    await expect(collectLaunchRecoveries()).resolves.toEqual([]);
+    await expect(collectLaunchRecoveries(null)).resolves.toEqual([]);
     expect(listPausedTakes()).toEqual([]);
   });
 });

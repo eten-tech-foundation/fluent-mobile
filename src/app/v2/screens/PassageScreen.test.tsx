@@ -237,9 +237,15 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
+/** Paused-take markers as stored, for a page opened to recover one. */
+let mockStoredMarkers: unknown[] = [];
 jest.mock('../../../services/storage', () => ({
   kvStorage: {
-    getItemSync: jest.fn(),
+    getItemSync: jest.fn((key: string) =>
+      key === 'paused_take_markers_v1'
+        ? JSON.stringify(mockStoredMarkers)
+        : undefined,
+    ),
     setItemSync: jest.fn(),
   },
 }));
@@ -314,13 +320,17 @@ jest.mock('../../../hooks/useTranslationNotesForUnit', () => ({
   },
 }));
 
+const mockUsePassage = jest.fn();
 jest.mock('../../../hooks/usePassage', () => ({
-  usePassage: () => ({
-    passage: mockPassage,
-    download: mockDownload,
-    downloadState: mockDownloadState,
-    reload: mockReload,
-  }),
+  usePassage: (...args: unknown[]) => {
+    mockUsePassage(...args);
+    return {
+      passage: mockPassage,
+      download: mockDownload,
+      downloadState: mockDownloadState,
+      reload: mockReload,
+    };
+  },
 }));
 
 const mockPlaySource = jest.fn(async () => {});
@@ -459,6 +469,7 @@ describe('PassageScreen', () => {
     mockObserverGrant = false;
     mockTranslatorGrant = false;
     mockPeerCheck = null;
+    mockStoredMarkers = [];
   });
 
   afterEach(() => {
@@ -1522,6 +1533,172 @@ describe('PassageScreen', () => {
     fireEvent.press(screen.getByLabelText('Finish take'));
     expect(mockStop).toHaveBeenCalled();
     expect(screen.getByText('Take recovered. Eject finishes it.')).toBeTruthy();
+  });
+
+  describe('opened to recover a paused take (#914)', () => {
+    const lastSession = () => mockSessionArgs.mock.calls.at(-1)?.[0];
+    const lastPassageUnit = () => mockUsePassage.mock.calls.at(-1)?.[3];
+    const passageCapture = {
+      bibleTextId: 1022,
+      granularity: 'pericope',
+      startChapter: 14,
+      startVerse: 22,
+      endChapter: 14,
+      endVerse: 25,
+    };
+    const stored = (fields: Record<string, unknown> = {}) => ({
+      sessionKey: '5:23',
+      segments: ['file:///paused.aac'],
+      elapsedMs: 4000,
+      startedAt: '2026-11-01T10:00:00Z',
+      chapterAssignmentId: 5,
+      verseNumber: 23,
+      userId: 7,
+      ...fields,
+    });
+    const openRecovery = () => {
+      mockParams = {
+        ...baseParams,
+        anchorVerse: '23',
+        verse: '23',
+        recoverSessionKey: '5:23',
+        recoverVerse: '23',
+      };
+    };
+
+    beforeEach(() => {
+      mockSession = { ...mockSession, state: 'paused', captureActive: true };
+      openRecovery();
+    });
+
+    it('keys a passage take on its saved verse, not where the passage starts, in its own unit', () => {
+      mockDraftingUnit = 'verse';
+      mockStoredMarkers = [stored({ capture: passageCapture })];
+      render(<PassageScreen />);
+
+      expect(lastPassageUnit()).toBe('pericope');
+      expect(lastSession()).toMatchObject({
+        draftingUnit: 'pericope',
+        selectedVerse: 23,
+      });
+      fireEvent.press(screen.getByTestId('passage-listen'));
+      expect(screen.getByLabelText('Resume recording')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Finish take'));
+      expect(mockStop).toHaveBeenCalled();
+      expect(screen.queryByTestId('passage-notices-classic')).toBeNull();
+    });
+
+    it('records a verse take verse by verse while the setting is passages', () => {
+      mockStoredMarkers = [
+        stored({ capture: { ...passageCapture, granularity: 'verse' } }),
+      ];
+      render(<PassageScreen />);
+
+      expect(lastPassageUnit()).toBe('verse');
+      expect(lastSession()).toMatchObject({
+        draftingUnit: 'verse',
+        selectedVerse: 23,
+      });
+    });
+
+    it('brings a marker from before captures back verse by verse on its verse', () => {
+      mockStoredMarkers = [stored({ userId: undefined })];
+      render(<PassageScreen />);
+
+      expect(lastPassageUnit()).toBe('verse');
+      expect(lastSession()).toMatchObject({
+        draftingUnit: 'verse',
+        selectedVerse: 23,
+      });
+    });
+
+    it('keeps its unit once Finish saves it, and keys new takes on the passage start', () => {
+      mockDraftingUnit = 'verse';
+      mockStoredMarkers = [stored({ capture: passageCapture })];
+      render(<PassageScreen />);
+      mockStoredMarkers = [];
+      mockSession = { ...mockSession, state: 'saving', captureActive: false };
+      screen.rerender(<PassageScreen />);
+      expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+
+      mockSession = { ...mockSession, state: 'recorded' };
+      screen.rerender(<PassageScreen />);
+
+      expect(lastPassageUnit()).toBe('pericope');
+      expect(lastSession()).toMatchObject({
+        draftingUnit: 'pericope',
+        selectedVerse: 22,
+      });
+    });
+
+    it('keys new takes on the passage start once the recovered take is discarded', () => {
+      mockDraftingUnit = 'verse';
+      mockStoredMarkers = [stored({ capture: passageCapture })];
+      render(<PassageScreen />);
+      mockStoredMarkers = [];
+      mockSession = { ...mockSession, state: 'idle', captureActive: false };
+      screen.rerender(<PassageScreen />);
+
+      expect(lastSession()).toMatchObject({
+        draftingUnit: 'pericope',
+        selectedVerse: 22,
+      });
+    });
+
+    it('keeps the saved verse while the take is still loading', () => {
+      mockDraftingUnit = 'verse';
+      mockStoredMarkers = [stored({ capture: passageCapture })];
+      mockSession = { ...sessionDefaults };
+      render(<PassageScreen />);
+      screen.rerender(<PassageScreen />);
+
+      expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+    });
+
+    it.each([
+      ['finished or discarded since', []],
+      ["another account's", [stored({ capture: passageCapture, userId: 8 })]],
+      [
+        'for another verse',
+        [stored({ capture: passageCapture, verseNumber: 24 })],
+      ],
+      [
+        'for another chapter',
+        [stored({ capture: passageCapture, chapterAssignmentId: 6 })],
+      ],
+    ])('opens as usual when the take is %s', (_case, markers) => {
+      mockSession = { ...sessionDefaults };
+      mockStoredMarkers = markers;
+      render(<PassageScreen />);
+
+      expect(lastPassageUnit()).toBeUndefined();
+      // The setting's unit, keyed where the passage starts.
+      expect(lastSession()).toMatchObject({
+        draftingUnit: 'pericope',
+        selectedVerse: 22,
+      });
+    });
+
+    it('opens on blank labels and without a project, whose book link goes back', () => {
+      mockStoredMarkers = [stored({ capture: passageCapture })];
+      mockParams = {
+        ...mockParams,
+        projectName: '',
+        milestoneName: '',
+        language: '',
+      };
+      delete mockParams.projectId;
+      mockSession = { ...sessionDefaults };
+      renderSettled();
+
+      fireEvent.press(
+        screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
+      );
+      fireEvent.press(screen.getByTestId('passage-book'));
+      settle();
+      expect(mockBack).toHaveBeenCalled();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
   });
 
   it('says why Record is off when a verse is at the take limit', () => {

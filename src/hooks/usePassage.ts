@@ -215,19 +215,22 @@ async function loadPassage(
  * One passage for the Next passage page: its text, how much is recorded and
  * its takes, read from the local DB, plus a download for its chapter's text
  * when it isn't on the device yet. Without a pericope set, or verse by
- * verse, it's the chapter.
+ * verse, it's the chapter. `unit` overrides the drafting setting, e.g. for a
+ * recovered take saved in the other unit.
  */
 export function usePassage(
   chapterAssignmentId: number,
   anchorVerse: number,
   projectUnitId: number,
+  unit?: DraftingUnit,
 ): {
   passage: Passage;
   download: () => void;
   downloadState: PassageDownload;
   reload: () => void;
 } {
-  const { draftingUnit } = useDraftingUnit();
+  const setting = useDraftingUnit().draftingUnit;
+  const draftingUnit = unit ?? setting;
   // Tagged with the unit it was loaded under, so a switch doesn't show the
   // old passage.
   const [loaded, setLoaded] = useState<{

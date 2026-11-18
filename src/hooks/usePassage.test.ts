@@ -211,6 +211,16 @@ describe('usePassage', () => {
     });
   });
 
+  it("loads in a recovered take's unit rather than the setting's", async () => {
+    mockUnit = 'verse';
+
+    const { result } = renderHook(() => usePassage(5, 23, 3, 'pericope'));
+
+    await waitFor(() => expect(result.current.passage.status).toBe('ready'));
+    expect(mockPericope).toHaveBeenCalledWith(41, 14, 23, 7);
+    expect(result.current.passage).toMatchObject({ wholeChapter: false });
+  });
+
   it('shows loading, not the old passage, while the other unit loads', async () => {
     const { result, rerender } = renderHook(() => usePassage(5, 22, 3));
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
