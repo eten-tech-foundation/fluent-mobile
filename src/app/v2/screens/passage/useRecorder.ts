@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Alert } from 'react-native';
 import {
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_MAX_IN_PASSAGE_TAKES,
@@ -18,6 +18,8 @@ import {
   RECORD_OTHERS_OFFICIAL,
   RECORD_PAUSED_TAKE,
   RECORD_RECOVERED_TAKE,
+  RECORD_SETUP_FAILED_MESSAGE,
+  RECORD_SETUP_FAILED_TITLE,
   RECORD_SOURCE_TEXT_SYNCING,
   RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
   RECORD_TAKEN_CHAPTER_WARNING,
@@ -112,6 +114,7 @@ export function useRecorder({
   unit,
   openVerse,
   showing,
+  focused,
   downloading,
   onReload,
   onCaptureActiveChange,
@@ -125,6 +128,8 @@ export function useRecorder({
   openVerse?: number;
   /** The player is open in Record mode; leaving it commits a pending delete. */
   showing: boolean;
+  /** Passage has its route; a screen pushed over it (Book) takes it. */
+  focused: boolean;
   /** The passage's text is downloading, so recording waits on it. */
   downloading: boolean;
   /** Re-reads the passage, e.g. after recording claims its chapter. */
@@ -694,6 +699,7 @@ export function useRecorder({
     }
   }
   async function choose(t: (typeof verseAudio.takes)[number]) {
+    if (await verseAudio.blockUnsupportedReplacement(t.id)) return;
     const isCover = coverTakes.some(c => c.id === t.id);
     const ask = t.isSelected
       ? null
@@ -726,10 +732,15 @@ export function useRecorder({
       return;
     }
     // Selecting a selected take whose upload failed starts a new attempt.
-    if (!t.isSelected || t.syncStatus === 'failed') {
-      await verseAudio.selectTake(t.id);
+    // selectTake re-checks the overlap after the question, and canonical
+    // follows with no wait, so it trusts the latest check.
+    if (
+      (!t.isSelected || t.syncStatus === 'failed') &&
+      !(await verseAudio.selectTake(t.id))
+    ) {
+      return;
     }
-    await verseAudio.setCanonical(t.id);
+    await verseAudio.setCanonical(t.id, { overlapChecked: true });
   }
 
   // Leaving Record answers an open question with no.
@@ -761,8 +772,8 @@ export function useRecorder({
     try {
       await action();
     } catch (error) {
-      // Recorder calls report their own errors; the mic request and start()'s
-      // take count can still reject.
+      // Recorder calls report their own errors; record() explains the mic
+      // request and start()'s take count rejecting.
       log.error('Player key failed', { error });
     } finally {
       busy.current = false;
@@ -808,7 +819,8 @@ export function useRecorder({
     ) {
       return;
     }
-    if (!(await session.ensureMic())) return;
+    // A denied mic shows its own Settings alert and resolves false.
+    if (!(await explainSetupFailure(() => session.ensureMic()))) return;
     // A new take counts toward the limit, so a pending delete goes first.
     await deletion.commit();
     // The player may have closed while the delete ran; don't record hidden.
@@ -820,7 +832,26 @@ export function useRecorder({
       return;
     }
     session.setElapsedMs(0);
-    await latestAudio.current.start();
+    // start() reports recorder failures itself (Audio error); only its take
+    // count, read before the recorder starts, rejects.
+    await explainSetupFailure(() => latestAudio.current.start());
+  }
+
+  /**
+   * Runs a Record setup step whose rejection nothing else shows, so the tap
+   * isn't silently ignored. Resolves false when it rejected; the key unlocks
+   * after, so Record can be tried again.
+   */
+  async function explainSetupFailure<T>(
+    step: () => Promise<T>,
+  ): Promise<T | false> {
+    try {
+      return await step();
+    } catch (error) {
+      log.error('Record setup failed', { error });
+      Alert.alert(RECORD_SETUP_FAILED_TITLE, RECORD_SETUP_FAILED_MESSAGE);
+      return false;
+    }
   }
 
   // Saving a take deselects every take it overlaps, whatever its unit.
@@ -858,7 +889,7 @@ export function useRecorder({
     if (frontCover) {
       setParked(null);
       const parkedHere = parked?.id === frontCover.id;
-      await verseAudio.playTake(
+      await playFrom(
         frontCover,
         parkedHere
           ? coverParkedMs >= coverLength
@@ -873,11 +904,48 @@ export function useRecorder({
     setParked(null);
     const parkedHere = parked?.id === frontTake.id;
     // Nothing parked resumes. A scrub, including to 0 or the end, is explicit.
-    await verseAudio.playTake(
+    await playFrom(
       frontTake,
       parkedHere ? (parkedMs >= frontLength ? 0 : parkedMs) : undefined,
     );
   }
+
+  /** Where a take still loading was asked to start, until it plays. */
+  const loadingFrom = useRef<{ id: string; ms: number } | null>(null);
+  async function playFrom(
+    t: Parameters<typeof verseAudio.playTake>[0],
+    ms: number | undefined,
+  ) {
+    loadingFrom.current = ms === undefined ? null : { id: t.id, ms };
+    try {
+      await verseAudio.playTake(t, ms);
+    } finally {
+      loadingFrom.current = null;
+    }
+  }
+
+  // Passage stays mounted under a pushed screen, Record still open. Losing
+  // the route stops review, including a take still loading, and keeps its
+  // spot for Play; coming back doesn't play it. A take being recorded is
+  // left to the capture leave guard.
+  function releaseReview() {
+    if (capturing || verseAudio.state === 'saving') return;
+    if (verseAudio.state === 'playing') {
+      if (playingFront) {
+        setParked({ id: frontTake.id, ms: verseAudio.positionMs });
+      } else if (playingCover) {
+        setParked({ id: frontCover.id, ms: verseAudio.positionMs });
+      }
+    } else if (loadingFrom.current) {
+      setParked(loadingFrom.current);
+    }
+    void verseAudio.stopPlayback();
+  }
+  const releaseRef = useRef(releaseReview);
+  releaseRef.current = releaseReview;
+  useEffect(() => {
+    if (!focused) releaseRef.current();
+  }, [focused]);
 
   async function scrubFront(p: number) {
     if (!frontTake) return;
@@ -987,6 +1055,8 @@ export function useRecorder({
     },
     /** Stops a take so Listen's source audio can start alone. */
     pauseTakePlayback: verseAudio.pausePlayback,
+    /** Stops review before leaving for another screen, e.g. Book. */
+    releaseReview,
     discardCapture: verseAudio.discardCapture,
   };
 }

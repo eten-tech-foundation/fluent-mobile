@@ -229,11 +229,15 @@ function VersePage({
   notes: ScriptNotes | undefined;
 }) {
   const theme = useTheme();
-  const { large, largeLine } = useScriptMetrics();
+  const { largeLine } = useScriptMetrics();
   const styles = useThemedStyles(t => ({
     // The open script's size, so a verse reads the same on its page.
-    reading: { ...large, lineHeight: largeLine, color: t.roles.fgPrimary },
+    reading: { ...t.type.lead, color: t.roles.fgPrimary },
   }));
+  const reading = useMemo(
+    () => [styles.reading, { lineHeight: largeLine }],
+    [styles.reading, largeLine],
+  );
   const chip = useChipStyle();
   const key = verseKey(verse.chapterNumber, verse.verseNumber);
   const segs = useMemo(
@@ -244,7 +248,7 @@ function VersePage({
   const { joined, onLines } = useChipJoins(order, notes !== undefined);
   return (
     <Text
-      style={styles.reading}
+      style={reading}
       maxFontSizeMultiplier={theme.fontScale.readingMax}
       // Chips read as buttons, not words, so TalkBack gets the verse here.
       accessibilityLabel={verse.text}

@@ -46,9 +46,11 @@ const mockEnsureMic = jest.fn(async () => true);
 const mockPlayTake = jest.fn(async () => {});
 const mockPlayStitched = jest.fn(async (_row: unknown) => {});
 const mockPauseTake = jest.fn(async () => {});
+const mockStopPlayback = jest.fn(async () => {});
 const mockDeleteTake = jest.fn(async (_id: string) => {});
-const mockSelectTake = jest.fn();
-const mockSetCanonical = jest.fn();
+const mockSelectTake = jest.fn(async (_id: string) => true);
+const mockSetCanonical = jest.fn(async (_id: string) => true);
+const mockBlockReplacement = jest.fn(async (_id: string) => false);
 type MockTake = {
   id: string;
   takeNumber: number;
@@ -158,12 +160,14 @@ jest.mock('../../../hooks/useRecordSession', () => {
           resume: mockResume,
           discardCapture: mockDiscard,
           pausePlayback: mockPauseTake,
+          stopPlayback: mockStopPlayback,
           playTake: mockPlayTake,
           playStitched: mockPlayStitched,
           seekStitched: jest.fn(),
           stitchPositionMs: 0,
           selectTake: mockSelectTake,
           setCanonical: mockSetCanonical,
+          blockUnsupportedReplacement: mockBlockReplacement,
           ownCanonicalTakeId: null,
           allTakes: mockSession.allTakes,
           getMetering: () => null,
@@ -772,6 +776,170 @@ describe('PassageScreen', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  describe('when Passage loses its route with a take playing', () => {
+    const playing = () => {
+      mockSession = {
+        ...mockSession,
+        takes: [{ ...take(1), isSelected: true }],
+        state: 'playing',
+        playingTakeId: 't1',
+        positionMs: 4000,
+      };
+    };
+    const stopped = () => {
+      mockSession = { ...mockSession, state: 'recorded', playingTakeId: null };
+    };
+    function openRecord() {
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      // The collapsed first render paused the take, as Record was hidden.
+      mockPauseTake.mockClear();
+    }
+
+    it('stops review before Book is pushed over the open player', () => {
+      playing();
+      openRecord();
+
+      fireEvent.press(screen.getByTestId('passage-title'));
+      fireEvent.press(screen.getByTestId('passage-book'));
+
+      expect(mockStopPlayback).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      expect(mockStopPlayback.mock.invocationCallOrder[0]).toBeLessThan(
+        mockPush.mock.invocationCallOrder[0],
+      );
+      expect(mockPauseTake).not.toHaveBeenCalled();
+    });
+
+    it('stops review before going back to the book page it came from', () => {
+      mockParams = { ...baseParams, from: 'book' };
+      playing();
+      openRecord();
+
+      fireEvent.press(screen.getByTestId('passage-title'));
+      fireEvent.press(screen.getByTestId('passage-book'));
+
+      expect(mockStopPlayback).toHaveBeenCalled();
+      expect(mockBack).toHaveBeenCalledTimes(1);
+      expect(mockStopPlayback.mock.invocationCallOrder[0]).toBeLessThan(
+        mockBack.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('stops review on Back', () => {
+      playing();
+      render(<PassageScreen />);
+
+      fireEvent.press(screen.getByTestId('passage-back', hidden));
+
+      expect(mockStopPlayback).toHaveBeenCalled();
+      expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops review when covered while still mounted, and waits for Play on return', async () => {
+      playing();
+      openRecord();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      expect(mockStopPlayback).toHaveBeenCalledTimes(1);
+
+      stopped();
+      screen.rerender(<PassageScreen />);
+      // Covered again before coming back: stopping twice is harmless.
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+      expect(mockStopPlayback).toHaveBeenCalledTimes(2);
+      expect(mockPlayTake).not.toHaveBeenCalled();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenCalledTimes(1);
+      expect(mockPlayTake).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 't1' }),
+        4000,
+      );
+    });
+
+    it('keeps the spot a take was loading from when the route goes first', async () => {
+      playing();
+      openRecord();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPauseTake).toHaveBeenCalled();
+      stopped();
+      screen.rerender(<PassageScreen />);
+      let finishLoad = () => {};
+      mockPlayTake.mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            finishLoad = resolve;
+          }),
+      );
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't1' }),
+        4000,
+      );
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      expect(mockStopPlayback).toHaveBeenCalledTimes(1);
+      await act(async () => finishLoad());
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-play'));
+      });
+      expect(mockPlayTake).toHaveBeenCalledTimes(2);
+      expect(mockPlayTake).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 't1' }),
+        4000,
+      );
+    });
+
+    it('leaves a take saving alone', () => {
+      mockSession = { ...mockSession, state: 'saving', captureActive: false };
+      openRecord();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+
+      expect(mockStopPlayback).not.toHaveBeenCalled();
+    });
+
+    it('leaves a take being recorded to the capture guard', () => {
+      mockSession = { ...mockSession, state: 'recording', captureActive: true };
+      openRecord();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+
+      expect(mockStopPlayback).not.toHaveBeenCalled();
+      expect(mockDiscard).not.toHaveBeenCalled();
+      expect(mockStop).not.toHaveBeenCalled();
+    });
+
+    it('still pauses review when Record closes', async () => {
+      playing();
+      openRecord();
+
+      fireEvent.press(screen.getByTestId('passage-close'));
+
+      await waitFor(() => expect(mockPauseTake).toHaveBeenCalled());
+      expect(mockStopPlayback).not.toHaveBeenCalled();
+    });
+  });
+
   it('keeps source audio off while a take capture is active', () => {
     mockSession = { ...mockSession, state: 'recording', captureActive: true };
     render(<PassageScreen />);
@@ -1156,28 +1324,109 @@ describe('PassageScreen', () => {
     expect(mockStart).toHaveBeenCalled();
   });
 
-  it('takes Record again after the mic request fails', async () => {
-    const mockTransport = jest.fn();
-    logger.setTransport(mockTransport);
-    mockEnsureMic.mockRejectedValueOnce(new Error('no mic'));
-    render(<PassageScreen />);
-    fireEvent.press(screen.getByTestId('passage-record'));
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('passage-key-record'));
+  describe('when Record setup fails', () => {
+    let alert: jest.SpyInstance;
+    beforeEach(() => {
+      alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     });
-    expect(mockStart).not.toHaveBeenCalled();
-    expect(mockTransport).toHaveBeenCalledWith(
-      'error',
-      'useRecorder',
-      'Player key failed',
-      { error: expect.any(Error) },
-    );
+    afterEach(() => alert.mockRestore());
 
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('passage-key-record'));
+    async function tapRecord() {
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-key-record'));
+      });
+    }
+    function openRecord() {
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+    }
+    function expectNothingRemoved() {
+      expect(mockDeleteTake).not.toHaveBeenCalled();
+      expect(mockDiscard).not.toHaveBeenCalled();
+    }
+
+    it('explains a failed mic request once and takes Record again', async () => {
+      const mockTransport = jest.fn();
+      logger.setTransport(mockTransport);
+      mockEnsureMic.mockRejectedValueOnce(new Error('no mic'));
+      openRecord();
+
+      await tapRecord();
+      expect(mockStart).not.toHaveBeenCalled();
+      expect(mockTransport).toHaveBeenCalledWith(
+        'error',
+        'useRecorder',
+        'Record setup failed',
+        { error: expect.any(Error) },
+      );
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledWith(
+        "Couldn't start recording",
+        'Something went wrong getting ready to record. Try Record again.',
+      );
+      expectNothingRemoved();
+
+      await tapRecord();
+      expect(mockStart).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledTimes(1);
     });
-    expect(mockStart).toHaveBeenCalledTimes(1);
+
+    it('explains a take count that fails before recording starts, once', async () => {
+      const mockTransport = jest.fn();
+      logger.setTransport(mockTransport);
+      mockStart.mockRejectedValueOnce(new Error('count failed'));
+      openRecord();
+
+      await tapRecord();
+      expect(mockTransport).toHaveBeenCalledWith(
+        'error',
+        'useRecorder',
+        'Record setup failed',
+        { error: expect.any(Error) },
+      );
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledWith(
+        "Couldn't start recording",
+        expect.any(String),
+      );
+      expectNothingRemoved();
+
+      await tapRecord();
+      expect(mockEnsureMic).toHaveBeenCalledTimes(2);
+      expect(mockStart).toHaveBeenCalledTimes(2);
+      expect(alert).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves a denied mic to its Settings alert alone', async () => {
+      mockEnsureMic.mockImplementationOnce(async () => {
+        Alert.alert('Microphone required', 'Allow microphone access.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Go to Settings' },
+        ]);
+        return false;
+      });
+      openRecord();
+
+      await tapRecord();
+      expect(mockStart).not.toHaveBeenCalled();
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledWith(
+        'Microphone required',
+        expect.any(String),
+        expect.any(Array),
+      );
+    });
+
+    it("adds nothing to the recorder's own error", async () => {
+      mockStart.mockImplementationOnce(async () => {
+        Alert.alert('Audio error', 'start failed');
+      });
+      openRecord();
+
+      await tapRecord();
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledWith('Audio error', 'start failed');
+    });
   });
 
   it('shows the take in progress and pauses it from the same key', async () => {
@@ -1351,6 +1600,66 @@ describe('PassageScreen', () => {
           fireEvent.press(screen.getByLabelText('Previous: verse 22'));
         });
         expect(mockSeekSource).toHaveBeenCalledWith(0);
+      });
+
+      function layOutVersePages() {
+        fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
+          nativeEvent: { layout: { width: 300, height: 600 } },
+        });
+      }
+
+      it('readies Play on the verse on screen once the chapter source loads (#945)', async () => {
+        const listenKey = () => screen.getByTestId('passage-key-listen');
+        mockSource = { ...mockSource, loadState: 'loading' };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-listen'));
+        layOutVersePages();
+
+        expect(listenKey().props.accessibilityLabel).toBe(
+          'Loading source audio',
+        );
+        expect(listenKey().props.accessibilityState).toMatchObject({
+          disabled: true,
+        });
+        expect(screen.getByLabelText('While they were eating')).toBeTruthy();
+        expect(
+          screen.getByLabelText(/^Verse 22(, recorded)?, 1 of 2$/),
+        ).toBeTruthy();
+
+        await act(async () => {
+          fireEvent.press(screen.getByLabelText('Next: verse 23'));
+        });
+        expect(lastSession()).toMatchObject({ selectedVerse: 23 });
+        expect(mockUseSourceAudio.mock.calls.at(-1)?.[0]).toMatchObject({
+          verse: 23,
+          chapter: 14,
+          enabled: true,
+          deferred: false,
+        });
+        expect(listenKey().props.accessibilityLabel).toBe(
+          'Loading source audio',
+        );
+        expect(listenKey().props.accessibilityState).toMatchObject({
+          disabled: true,
+        });
+        expect(screen.getByLabelText('While they were eating')).toBeTruthy();
+
+        mockSource = { ...mockSource, loadState: 'ready' };
+        screen.rerender(<PassageScreen />);
+
+        expect(listenKey().props.accessibilityLabel).toBe('Play source audio');
+        expect(listenKey().props.accessibilityState).toMatchObject({
+          disabled: false,
+        });
+        expect(
+          screen.getByLabelText(/^Verse 23(, recorded)?, 2 of 2$/),
+        ).toBeTruthy();
+        expect(screen.getByLabelText('While they were eating')).toBeTruthy();
+        expect(screen.getByLabelText('Then he took a cup')).toBeTruthy();
+        await act(async () => {
+          fireEvent.press(listenKey());
+        });
+        expect(mockPlaySource).toHaveBeenCalledTimes(1);
       });
 
       it('claims no verse playing without verse timings', () => {
@@ -1746,7 +2055,9 @@ describe('PassageScreen', () => {
 
       expect(screen.queryByTestId('passage-confirm')).toBeNull();
       expect(mockSelectTake).not.toHaveBeenCalled();
-      expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+      expect(mockSetCanonical).toHaveBeenCalledWith('t2', {
+        overlapChecked: true,
+      });
     });
 
     it('lets the official take be chosen again after its upload failed', async () => {
@@ -1780,7 +2091,9 @@ describe('PassageScreen', () => {
 
       expect(screen.queryByTestId('passage-confirm')).toBeNull();
       expect(mockSelectTake).toHaveBeenCalledWith('t2');
-      expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+      expect(mockSetCanonical).toHaveBeenCalledWith('t2', {
+        overlapChecked: true,
+      });
     });
 
     it('resumes the passage take over a verse where it was paused, and restarts it from the end', async () => {
@@ -1896,7 +2209,43 @@ describe('PassageScreen', () => {
           fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
         });
         expect(mockSelectTake).toHaveBeenCalledWith('t1');
-        expect(mockSetCanonical).toHaveBeenCalledWith('t1');
+        expect(mockSetCanonical).toHaveBeenCalledWith('t1', {
+          overlapChecked: true,
+        });
+      });
+
+      it('changes nothing and never asks when an official take at the other unit overlaps (#896)', async () => {
+        mockBlockReplacement.mockResolvedValueOnce(true);
+        mockSession = { ...mockSession, takes: [passageTake, ownTake] };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        fireEvent.press(screen.getByTestId('passage-fan-p1'));
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-take-official'));
+        });
+
+        expect(mockBlockReplacement).toHaveBeenCalledWith('t1');
+        expect(screen.queryByTestId('passage-confirm')).toBeNull();
+        expect(mockSelectTake).not.toHaveBeenCalled();
+        expect(mockSetCanonical).not.toHaveBeenCalled();
+        expect(screen.getByLabelText('Passage take 1, v. 22–23')).toBeTruthy();
+      });
+
+      it('stops before making it official when the pick is refused', async () => {
+        mockSelectTake.mockResolvedValueOnce(false);
+        mockSession = { ...mockSession, takes: [passageTake, ownTake] };
+        render(<PassageScreen />);
+        fireEvent.press(screen.getByTestId('passage-record'));
+        fireEvent.press(screen.getByTestId('passage-fan-p1'));
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-take-official'));
+        });
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+        });
+
+        expect(mockSelectTake).toHaveBeenCalledWith('t1');
+        expect(mockSetCanonical).not.toHaveBeenCalled();
       });
 
       it("brings a picked passage take's tile forward to play it", async () => {
@@ -2560,7 +2909,9 @@ describe('PassageScreen', () => {
     await act(async () => {
       fireEvent.press(screen.getByTestId('passage-take-official'));
     });
-    expect(mockSetCanonical).toHaveBeenCalledWith('t2');
+    expect(mockSetCanonical).toHaveBeenCalledWith('t2', {
+      overlapChecked: true,
+    });
     // A tap brings a take forward; its check picks it and makes it official.
     fireEvent.press(screen.getByTestId('passage-fan-1'));
     expect(mockSelectTake).not.toHaveBeenCalled();
@@ -2568,7 +2919,9 @@ describe('PassageScreen', () => {
       fireEvent.press(screen.getByTestId('passage-take-official'));
     });
     expect(mockSelectTake).toHaveBeenCalledWith('t1');
-    expect(mockSetCanonical).toHaveBeenCalledWith('t1');
+    expect(mockSetCanonical).toHaveBeenCalledWith('t1', {
+      overlapChecked: true,
+    });
     unmount();
     jest.clearAllMocks();
 

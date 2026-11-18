@@ -1065,6 +1065,13 @@ export type GetMyWorkChaptersOptions = {
   grantProjectIds?: readonly number[];
   /** Project IDs with a known Project Translator grant for open Peer Check. */
   translatorProjectIds?: readonly number[];
+  /**
+   * When true, SQL failures throw instead of returning `[]`. Default keeps
+   * the empty-list fallback for callers that treat read failure as "nothing
+   * visible" (e.g. first-visible chapter groups). Home's hook opts in so a
+   * failed read cannot clear `error` as a successful empty list.
+   */
+  throwOnError?: boolean;
 };
 
 export async function getMyWorkChapters(
@@ -1139,6 +1146,9 @@ export async function getMyWorkChapters(
     log.error('Error fetching my work chapters', {
       error: error instanceof Error ? error.message : String(error),
     });
+    if (options?.throwOnError) {
+      throw error;
+    }
     return [];
   }
 }

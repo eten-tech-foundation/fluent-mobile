@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
   DatabaseWriteMark,
@@ -63,6 +69,11 @@ function currentGrantsKey(userId: number): string {
   return grantsKey(getObserverProjectIds(id), getTranslatorProjectIds(id));
 }
 
+/** Empty, keeping the same array when it already is. */
+function clearRows(prev: MyWorkChapter[]): MyWorkChapter[] {
+  return prev.length === 0 ? prev : [];
+}
+
 /** What the list on screen was queried with. */
 type PublishedRead = {
   userId: number;
@@ -81,16 +92,38 @@ export function useMyWorkChapters(refreshKey = 0) {
   const [chapters, setChapterRows] = useState<MyWorkChapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // True from a failed read until one succeeds. Rows are cleared on failure
+  // (fail closed), so Home needs this to tell "no chapters" from "couldn't
+  // read them".
+  const [error, setError] = useState(false);
+  // True while a read is in flight. A refresh-key change (a sync just
+  // finished) sets it during render, so Home can hold the loading body for
+  // the frame before the effect's read publishes.
+  const [reading, setReading] = useState(true);
+  const [seenRefreshKey, setSeenRefreshKey] = useState(refreshKey);
+  if (seenRefreshKey !== refreshKey) {
+    setSeenRefreshKey(refreshKey);
+    setReading(true);
+  }
   const loadGenerationRef = useRef(0);
   const focusedBeforeRef = useRef(false);
   const keyedBeforeRef = useRef(false);
   const publishedRef = useRef<PublishedRead | null>(null);
 
+  // Commit-phase invalidation: a prior refreshKey's read can finish after
+  // render sets `reading` and before the passive refresh effect runs. Bump
+  // generation here so that completion cannot clear `reading` early.
+  useLayoutEffect(() => {
+    loadGenerationRef.current += 1;
+  }, [refreshKey]);
+
   // Only a read that publishes ends the first load; a superseded one doesn't.
   const setChapters = useCallback((next: MyWorkChapter[]) => {
     markStartup('chapters_read', { count: next.length });
     setChapterRows(prev => (sameRows(prev, next) ? prev : next));
+    setError(false);
     setLoading(false);
+    setReading(false);
   }, []);
 
   /** `writesBefore`: a write mark the caller just took, saving a second one. */
@@ -122,6 +155,8 @@ export function useMyWorkChapters(refreshKey = 0) {
           getMyWorkChapters(requestUserId, {
             grantProjectIds,
             translatorProjectIds,
+            // Home must see SQL failures as `error`, not a genuine empty list.
+            throwOnError: true,
           }),
         ]);
         if (loadGenerationRef.current !== generation) {
@@ -159,17 +194,27 @@ export function useMyWorkChapters(refreshKey = 0) {
           return;
         }
         log.error('Error loading my work chapters', { error });
-        // Fail closed like the success path: clear even if the account changed
-        // during the await so prior-account rows cannot linger.
+        // Fail closed: clear even if the account changed during the await so
+        // prior-account rows cannot linger. `error` tells that apart from a
+        // real empty list.
         publishedRef.current = null;
-        setChapters([]);
+        setChapterRows(clearRows);
+        setError(true);
+        setLoading(false);
+        setReading(false);
+        markStartup('chapters_read', { count: 0, error: true });
       }
     },
     [setChapters],
   );
 
   const loadChaptersIfChanged = useCallback(async () => {
+    // Taken before the mark's await so a read started for an earlier sync
+    // can't publish, and end `reading`, while this check is pending.
+    const generation = ++loadGenerationRef.current;
+    // `null` when the mark is unreadable; sameDatabaseWrites then reads in full.
     const writes = await getDatabaseWriteMark();
+    if (loadGenerationRef.current !== generation) return;
     // Whatever is on screen now, which may be newer than when focus came back.
     const read = publishedRef.current;
     const userId = resolveValidatedMyWorkUserId();
@@ -179,6 +224,8 @@ export function useMyWorkChapters(refreshKey = 0) {
       currentGrantsKey(userId) === read.grants &&
       sameDatabaseWrites(read.writes, writes)
     ) {
+      // Nothing was written, so no read is in flight to keep `reading` up.
+      setReading(false);
       return;
     }
     await loadChapters(writes);
@@ -217,5 +264,5 @@ export function useMyWorkChapters(refreshKey = 0) {
     }
   }, [loadChapters]);
 
-  return { chapters, loading, refreshing, refresh };
+  return { chapters, loading, refreshing, refresh, error, reading };
 }

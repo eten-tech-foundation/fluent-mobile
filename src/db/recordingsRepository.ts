@@ -529,6 +529,80 @@ export async function verseHasMultipleRecorders(
   return cnt > 0;
 }
 
+/** A recording's stored range, or its own verse for a pre-#410 0 stub. */
+function effectiveRangeSql(r: string, bt: string) {
+  const usable = `${r}.start_chapter > 0 AND ${r}.start_verse > 0`;
+  return {
+    startChapter: `CASE WHEN ${usable} THEN ${r}.start_chapter ELSE ${bt}.chapter_number END`,
+    startVerse: `CASE WHEN ${usable} THEN ${r}.start_verse ELSE ${bt}.verse_number END`,
+    endChapter: `CASE WHEN ${usable} THEN ${r}.end_chapter ELSE ${bt}.chapter_number END`,
+    endVerse: `CASE WHEN ${usable} THEN ${r}.end_verse ELSE ${bt}.verse_number END`,
+  };
+}
+
+function atOrBeforeSql(
+  chapterA: string,
+  verseA: string,
+  chapterB: string,
+  verseB: string,
+): string {
+  return `(${chapterA} < ${chapterB} OR (${chapterA} = ${chapterB} AND ${verseA} <= ${verseB}))`;
+}
+
+/**
+ * An official (canonical) take that making `id` official would supersede at
+ * another anchor: a verse inside an official passage, or a passage over an
+ * official verse, across chapters too (#896). Canonical is per anchor, and
+ * nothing reconciles the other anchor on the server yet (#898), so callers
+ * block the choice. Null when `id` is already official, is gone, or nothing
+ * official overlaps it at another anchor.
+ */
+export async function findOfficialAtOtherAnchor(
+  id: string,
+): Promise<Recording | null> {
+  const db = getDatabase();
+  const t = effectiveRangeSql('target', 'target_bt');
+  const o = effectiveRangeSql('other', 'other_bt');
+  const result = await db.execute(
+    `SELECT other.*
+     FROM recordings target
+     INNER JOIN bible_texts target_bt ON target_bt.id = target.bible_text_id
+     INNER JOIN recordings other
+       ON other.id <> target.id AND other.is_canonical = 1
+     INNER JOIN bible_texts other_bt ON other_bt.id = other.bible_text_id
+     WHERE target.id = ?
+       AND target.is_canonical = 0
+       AND other_bt.bible_id = target_bt.bible_id
+       AND other_bt.book_id = target_bt.book_id
+       AND (other.project_unit_id IS target.project_unit_id
+         OR other.project_unit_id IS NULL
+         OR target.project_unit_id IS NULL)
+       AND ${atOrBeforeSql(
+         o.startChapter,
+         o.startVerse,
+         t.endChapter,
+         t.endVerse,
+       )}
+       AND ${atOrBeforeSql(
+         t.startChapter,
+         t.startVerse,
+         o.endChapter,
+         o.endVerse,
+       )}
+       AND NOT (
+         other.granularity = target.granularity
+         AND ${o.startChapter} = ${t.startChapter}
+         AND ${o.startVerse} = ${t.startVerse}
+         AND ${o.endChapter} = ${t.endChapter}
+         AND ${o.endVerse} = ${t.endVerse}
+       )
+     LIMIT 1`,
+    [id],
+  );
+  const row = result.rows?.[0] as unknown as RecordingRow | undefined;
+  return row ? mapRecordingRow(row) : null;
+}
+
 export async function setCanonicalTake(id: string): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
