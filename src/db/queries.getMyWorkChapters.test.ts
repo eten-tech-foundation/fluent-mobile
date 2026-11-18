@@ -123,6 +123,21 @@ describe('getMyWorkChapters', () => {
     expect(await getMyWorkChapters(7)).toEqual([]);
   });
 
+  it('rethrows SQL failures when throwOnError is set', async () => {
+    const failure = new Error('db unavailable');
+    mockExecute.mockRejectedValue(failure);
+    await expect(getMyWorkChapters(7, { throwOnError: true })).rejects.toBe(
+      failure,
+    );
+  });
+
+  it('still returns a genuine empty list when SQL succeeds with no rows', async () => {
+    mockExecute.mockResolvedValue({ rows: [] });
+    await expect(getMyWorkChapters(7, { throwOnError: true })).resolves.toEqual(
+      [],
+    );
+  });
+
   it('binds assigned params only when Observer grant IDs are absent', async () => {
     mockExecute.mockResolvedValue({ rows: [row()] });
 

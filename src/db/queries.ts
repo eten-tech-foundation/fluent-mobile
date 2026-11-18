@@ -1065,6 +1065,13 @@ export type GetMyWorkChaptersOptions = {
   grantProjectIds?: readonly number[];
   /** Project IDs with a known Project Translator grant for open Peer Check. */
   translatorProjectIds?: readonly number[];
+  /**
+   * When true, SQL failures throw instead of returning `[]`. Default keeps
+   * the empty-list fallback for callers that treat read failure as "nothing
+   * visible" (e.g. first-visible chapter groups). Home's hook opts in so a
+   * failed read cannot clear `error` as a successful empty list.
+   */
+  throwOnError?: boolean;
 };
 
 export async function getMyWorkChapters(
@@ -1139,6 +1146,9 @@ export async function getMyWorkChapters(
     log.error('Error fetching my work chapters', {
       error: error instanceof Error ? error.message : String(error),
     });
+    if (options?.throwOnError) {
+      throw error;
+    }
     return [];
   }
 }
@@ -1984,11 +1994,16 @@ export async function getSelectedTakeCoverages(
   }
 }
 
+/**
+ * The pericope a verse falls in, or null when it is in none. An unreadable
+ * answer is null too; `onError` tells a caller it was not a real one (#899).
+ */
 export async function getPericopeForVerse(
   bookId: number,
   chapterNumber: number,
   verseNumber: number,
   pericopeSetId: number,
+  onError?: () => void,
 ): Promise<PericopeGroupResult | null> {
   const db = getDatabase();
   try {
@@ -2037,6 +2052,7 @@ export async function getPericopeForVerse(
       verseNumber,
       pericopeSetId,
     });
+    onError?.();
     return null;
   }
 }
