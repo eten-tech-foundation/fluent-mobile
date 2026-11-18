@@ -13,11 +13,20 @@ import {
   setRecordingSyncStatus,
   updateRecordingVersionToken,
 } from '../db/repository';
+import {
+  getRecordingOwnerIds,
+  reconcileHeldRecordings,
+} from '../db/repositories/heldRecordingsRepository';
+import {
+  getVerifiedMembershipOwners,
+  refreshMembershipForOwners,
+} from './projectMembership';
 import type {
   PendingRecording,
   PendingRecordingDeletion,
 } from '../types/db/types';
 import { logger } from '../utils/logger';
+import { ChapterUploadDeferredError } from '../utils/chapterDeferredError';
 import {
   isNetworkTransportError,
   UploadNetworkInterruptedError,
@@ -52,6 +61,7 @@ import {
 } from './uploadOperationState';
 import {
   emitAuthReauthRequired,
+  emitHeldRecordingsChanged,
   emitUploadSessionEvent,
   type UploadSessionEvent,
 } from './syncEvents';
@@ -1333,11 +1343,62 @@ async function runUploadPass(
           maxAttempts,
         })
       : { attempted: 0, deleted: 0, failed: 0, failedForActiveUser: 0 };
+
+  // #855: before evaluating any pending take, establish fresh project
+  // membership for the active account. Recordings whose owner lost
+  // membership stay 'held' (never removed, never failed) and are excluded
+  // from the pending read below, so they are not uploaded in this pass. The
+  // held count is per-pass bookkeeping for the log: takes newly held must not
+  // defer the still-eligible rows queued for other projects/chapters.
+  // A failed reconciliation means membership could not be confirmed, so
+  // nothing is uploaded and all pending rows are deferred safely.
+  //
+  // Reconciliation only reads the cached `user_projects`, so an unscoped pass
+  // (manual retry, which has no orchestrator session ahead of it) refreshes
+  // membership from the server first: a removal that happened while offline is
+  // otherwise invisible and the take would upload into a permanent failure
+  // (#848). Chapter-scoped passes inherit the refresh their session ran, so
+  // they do not repeat the request once per chapter.
+  const activeUserId = Number(getActiveUserId());
+  const membershipUserId =
+    Number.isFinite(activeUserId) && activeUserId > 0 ? activeUserId : null;
+  // Membership is verified per owner: one account that cannot be confirmed
+  // defers only its own takes (#855). Signed-out passes (no active account)
+  // keep the cache-only behavior.
+  let reconcileFailed = false;
+  let gateFailed = false;
+  let membershipHeld = 0;
+  let verifiedOwners: ReadonlySet<number> = new Set();
+  try {
+    if (membershipUserId !== null) {
+      const owners = await getRecordingOwnerIds(membershipUserId);
+      verifiedOwners =
+        options.chapter === undefined
+          ? await refreshMembershipForOwners(owners)
+          : getVerifiedMembershipOwners();
+      gateFailed = owners.some(owner => !verifiedOwners.has(owner));
+      const outcome = await reconcileHeldRecordings(membershipUserId, [
+        ...verifiedOwners,
+      ]);
+      membershipHeld = outcome.held;
+      if (outcome.held > 0 || outcome.released > 0) {
+        emitHeldRecordingsChanged();
+      }
+    }
+  } catch (error) {
+    log.warn('Held-recording membership reconciliation failed; deferring', {
+      error,
+    });
+    reconcileFailed = true;
+  }
+
   const pending = await getPendingRecordings(options.chapter);
 
   log.info('Starting recording upload pass', {
     count: pending.length,
     chapter: options.chapter ?? null,
+    membershipEstablished: !reconcileFailed && !gateFailed,
+    membershipHeld,
   });
 
   // Chapter-scoped passes run inside an orchestrator session. That session
@@ -1383,6 +1444,22 @@ async function runUploadPass(
   try {
     for (const recording of pending) {
       throwIfAborted(options.signal);
+
+      // Membership gate: a take whose owner's membership could not be
+      // confirmed (refresh or reconcile failed) is deferred, never marked
+      // failed or deleted. It uploads automatically once membership is
+      // restored on a later pass.
+      const ownerId = recording.recordedByUserId ?? membershipUserId;
+      if (
+        reconcileFailed ||
+        (membershipUserId !== null &&
+          (ownerId === null || !verifiedOwners.has(ownerId)))
+      ) {
+        deferred += 1;
+        uploadTokens.clear();
+        continue;
+      }
+
       const { token: uploadToken, userId: tokenUserId } =
         await uploadTokens.resolve(recording, token);
       const result = await uploadOneRecording(recording, {
@@ -1434,7 +1511,13 @@ async function runUploadPass(
     // reset, but no success signal is sent (Home only refreshes on `complete`).
     emitPassEvent({
       type:
-        failed > 0 || deferred > 0 || deletionsFailed > 0 ? 'idle' : 'complete',
+        failed > 0 ||
+        deferred > 0 ||
+        deletionsFailed > 0 ||
+        reconcileFailed ||
+        gateFailed
+          ? 'idle'
+          : 'complete',
     });
     log.info('Recording upload pass finished', {
       uploaded,
@@ -1512,8 +1595,10 @@ function throwIfChapterPassIncomplete(result: UploadResult): void {
     throw new Error(`Chapter upload failed for ${result.failed} recording(s)`);
   }
   if (result.deferred > 0) {
-    throw new Error(
-      `Chapter upload deferred ${result.deferred} recording(s) after a local change`,
+    // Not a hard failure: the orchestrator keeps going with other chapters
+    // (another account's takes may still be eligible) and fails afterwards.
+    throw new ChapterUploadDeferredError(
+      `Chapter upload deferred ${result.deferred} recording(s)`,
     );
   }
 }

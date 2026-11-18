@@ -10,7 +10,6 @@ import {
   startUploadOrchestrator,
   stopUploadOrchestrator,
 } from './uploadOrchestrator';
-
 type ConnectivityListener = (
   online: boolean,
   wifi: boolean,
@@ -35,6 +34,23 @@ jest.mock('../db/queries', () => ({
 jest.mock('../db/stageAdvanceQueueRepository', () => ({
   getPendingStageAdvances: () => mockGetPendingStageAdvances(),
 }));
+jest.mock('../db/repositories/heldRecordingsRepository', () => ({
+  reconcileHeldRecordings: async () => ({ held: 0, released: 0 }),
+  getRecordingOwnerIds: async (id: number | null) => (id === null ? [] : [id]),
+}));
+// Membership refresh is exercised in projectMembership.test.ts; here it must
+// resolve so these drain sessions still run (#848).
+jest.mock('./projectMembership', () => {
+  let verified = new Set<number>();
+  return {
+    refreshProjectMembership: async () => undefined,
+    refreshMembershipForOwners: async (ids: number[]) => {
+      verified = new Set(ids);
+      return verified;
+    },
+    getVerifiedMembershipOwners: () => verified,
+  };
+});
 jest.mock('./connectivity', () => ({
   subscribeToConnectivity: (listener: ConnectivityListener) => {
     mockListeners.add(listener);
@@ -66,8 +82,10 @@ jest.mock('./keychain', () => ({
   getCredentials: (id: string) => mockGetCredentials(id),
 }));
 jest.mock('./syncEvents', () => ({
+  emitHeldRecordingsChanged: jest.fn(),
   emitUploadSessionEvent: (event: UploadSessionEvent) => mockEmit(event),
   emitAuthReauthRequired: (id: string) => mockEmitReauth(id),
+  onSyncComplete: jest.fn(),
 }));
 jest.mock('../utils/logger', () => ({
   logger: {
@@ -86,7 +104,6 @@ type Timer = { callback: () => void; delay: number; cancelled: boolean };
 let timers: Timer[] = [];
 const schedule = (callback: () => void, delay: number) => {
   const timer: Timer = {
-    // A fired timer is no longer armed.
     callback: () => {
       timer.cancelled = true;
       callback();
@@ -106,7 +123,6 @@ const waitFor = async (condition: () => boolean): Promise<void> => {
   expect(condition()).toBe(true);
 };
 const settle = async (): Promise<void> => {
-  // Let already-resolved promise chains finish before asserting absence.
   await new Promise<void>(resolve => setTimeout(resolve, 20));
 };
 const armedTimers = () => timers.filter(timer => !timer.cancelled);
@@ -128,7 +144,6 @@ beforeEach(() => {
   mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
   mockClaimsDrain.mockResolvedValue({ synced: 0, conflicts: 0, failed: 0 });
 });
-
 afterEach(() => {
   stopUploadOrchestrator();
 });
@@ -158,13 +173,11 @@ describe('stage drain result contract (#257)', () => {
     await waitFor(() => mockDrain.mock.calls.length === 1);
     await waitFor(() => armedTimers().length === 1);
 
-    // First pass left the row pending: no `complete`, one retry armed.
     expect(eventTypes()).not.toContain('complete');
     expect(armedTimers().map(timer => timer.delay)).toEqual([
       sessionRetryDelayMs(1),
     ]);
 
-    // Retry confirms the stage: only now does `complete` fire.
     armedTimers()[0]?.callback();
     await waitFor(() => eventTypes().includes('complete'));
     expect(mockDrain).toHaveBeenCalledTimes(2);
@@ -237,9 +250,6 @@ describe('stage drain result contract (#257)', () => {
       type: 'paused',
       reason: 'connectivity',
     });
-    // Connectivity pause, not a failed session: no `idle`, and the only timer
-    // is the transport recheck (same delay as the first retry, but it
-    // re-reads the connectivity snapshot instead of spending retry budget).
     expect(eventTypes()).not.toContain('complete');
     expect(eventTypes()).not.toContain('idle');
     expect(armedTimers()).toHaveLength(1);

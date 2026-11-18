@@ -60,12 +60,27 @@ jest.mock('./keychain', () => ({
   getCredentials: async (userId: string) => mockCredentials.get(userId) ?? null,
   getCredentialsVersion: () => 0,
 }));
+// Membership refresh is exercised in projectMembership.test.ts; these activation
+// passes must reach the worker under test (#848).
+jest.mock('./projectMembership', () => {
+  let verified = new Set<number>();
+  return {
+    refreshProjectMembership: async () => undefined,
+    refreshMembershipForOwners: async (ids: number[]) => {
+      verified = new Set(ids);
+      return verified;
+    },
+    getVerifiedMembershipOwners: () => verified,
+  };
+});
 jest.mock('./recordingDataEvents', () => ({
   emitRecordingDataChanged: jest.fn(),
 }));
 jest.mock('./syncEvents', () => ({
+  emitHeldRecordingsChanged: jest.fn(),
   emitUploadSessionEvent: jest.fn(),
   emitAuthReauthRequired: jest.fn(),
+  onSyncComplete: jest.fn(),
 }));
 jest.mock('./uploadOrchestrator', () => ({
   setChapterUploadWorker: jest.fn(),
@@ -296,6 +311,7 @@ describe('activation upload reconciliation (real worker + SQLite, #886)', () => 
       INSERT INTO bibles(id, language_id, name, abbreviation) VALUES (1, 1, 'Fixture', 'FIX');
       INSERT INTO projects(id, name, source_language_id, target_language_id, is_active, status, updated_at)
         VALUES (1, 'Fixture', 1, 1, 1, 'not_assigned', '2026-01-01');
+      INSERT INTO user_projects(user_id, project_id) VALUES (7, 1);
       INSERT INTO project_units(id, project_id, status, name) VALUES (12, 1, 'not_started', '');
       INSERT INTO bible_texts(id, bible_id, book_id, chapter_number, verse_number, text)
         VALUES (42, 1, 40, 1, 1, 'Fixture');
