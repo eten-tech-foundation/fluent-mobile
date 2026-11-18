@@ -4,6 +4,7 @@ import { launchRecoveryGate } from './launchRecoveryGate';
 import { collectLaunchRecoveries } from './pausedTakeLaunchRecovery';
 import { clearPausedTake, type PausedTakeMarker } from './pausedTakes';
 import { deleteFile } from '../utils/audioStorage';
+import { parseUserId } from '../utils/parseUserId';
 import { logger } from '../utils/logger';
 
 const log = logger.create('launchRecoveryPrompt');
@@ -45,7 +46,7 @@ export function useLaunchRecoveryPrompt({
     void (async () => {
       let queue: PausedTakeMarker[] = [];
       try {
-        queue = await collectLaunchRecoveries();
+        queue = await collectLaunchRecoveries(parseUserId());
       } catch (error) {
         log.warn('Launch recovery scan failed', { error });
         launchRecoveryGate.settle();
