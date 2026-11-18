@@ -390,6 +390,23 @@ describe('RecordTab', () => {
     expect(idleAudio.start).not.toHaveBeenCalled();
   });
 
+  it('keeps Record off at the take cap after an error that is not a failed load', async () => {
+    // e.g. a failed delete or stop: the list is loaded and still full.
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'error',
+      takesLoaded: true,
+      canRecordNewTake: false,
+    });
+
+    renderTab();
+    await waitForCaptureReady();
+
+    expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    fireEvent.press(screen.getByTestId('record-start-button'));
+    expect(idleAudio.start).not.toHaveBeenCalled();
+  });
+
   it('disables record until bible text resolves for the active verse', async () => {
     const multiVerses = [
       {

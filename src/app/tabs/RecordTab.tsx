@@ -950,7 +950,7 @@ export function RecordTab({
                 disabled={
                   captureDisabled ||
                   recordDisabled ||
-                  (verseAudio.state !== 'error' && !verseAudio.canRecordNewTake)
+                  (verseAudio.takesLoaded && !verseAudio.canRecordNewTake)
                 }
                 accessibilityLabel={`Record ${reference}`}
                 testID="record-start-button"
@@ -1237,7 +1237,7 @@ export function RecordTab({
                     styles.newTakeButton,
                     (captureDisabled ||
                       recordDisabled ||
-                      (verseAudio.state !== 'error' &&
+                      (verseAudio.takesLoaded &&
                         !verseAudio.canRecordNewTake)) &&
                       styles.disabled,
                   ]}
@@ -1247,8 +1247,7 @@ export function RecordTab({
                   disabled={
                     captureDisabled ||
                     recordDisabled ||
-                    (verseAudio.state !== 'error' &&
-                      !verseAudio.canRecordNewTake)
+                    (verseAudio.takesLoaded && !verseAudio.canRecordNewTake)
                   }
                   accessibilityRole="button"
                   accessibilityLabel="Record new take"

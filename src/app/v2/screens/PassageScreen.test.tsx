@@ -1472,6 +1472,40 @@ describe('PassageScreen', () => {
     expect(mockStart).not.toHaveBeenCalled();
   });
 
+  it('keeps the take tile and its number while the saved take joins the list (#979)', () => {
+    mockSession = {
+      ...mockSession,
+      state: 'recording',
+      captureActive: true,
+      takes: [take(1)],
+    };
+    const { rerender } = render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    expect(screen.getByLabelText('Take 2, recording')).toBeTruthy();
+
+    // Saving starts with the earlier takes, then the new take joins the list
+    // before saving settles. Its own tile must not double beside the held one,
+    // nor push the held one's number to 3.
+    mockSession = {
+      ...mockSession,
+      state: 'saving',
+      captureActive: false,
+      takes: [take(1)],
+    };
+    rerender(<PassageScreen />);
+    const saved = { ...take(2), isSelected: true };
+    mockSession = { ...mockSession, takes: [take(1), saved] };
+    rerender(<PassageScreen />);
+    expect(screen.getAllByTestId('passage-fan-2', hidden)).toHaveLength(1);
+    expect(screen.queryByTestId('passage-fan-3', hidden)).toBeNull();
+
+    // SAVED: the saved take replaces the held tile.
+    mockSession = { ...mockSession, state: 'recorded' };
+    rerender(<PassageScreen />);
+    expect(screen.getAllByTestId('passage-fan-2', hidden)).toHaveLength(1);
+    expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();
+  });
+
   it('keeps going on the paused take from Record', async () => {
     mockSession = { ...mockSession, state: 'recording', captureActive: true };
     const { rerender } = render(<PassageScreen />);

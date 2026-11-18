@@ -879,18 +879,21 @@ export function useVerseAudio({
     if (state === 'saving') return;
     if (capturePersistRef.current === null) return;
     try {
-      const { uri } = await recording.stop();
-      await deleteFile(uri).catch(deleteError => {
-        // Best-effort: the take was never persisted, so a stray temp file
-        // must not block the discard or surface as an error state. Log it so
-        // leaked temp files are visible.
-        log.warn('discardCapture temp file delete failed', {
-          message:
-            deleteError instanceof Error
-              ? deleteError.message
-              : String(deleteError),
+      const stopped = await recording.stop();
+      // No file means nothing was written, so there is nothing to delete.
+      if (stopped) {
+        await deleteFile(stopped.uri).catch(deleteError => {
+          // Best-effort: the take was never persisted, so a stray temp file
+          // must not block the discard or surface as an error state. Log it so
+          // leaked temp files are visible.
+          log.warn('discardCapture temp file delete failed', {
+            message:
+              deleteError instanceof Error
+                ? deleteError.message
+                : String(deleteError),
+          });
         });
-      });
+      }
     } catch (error) {
       log.warn('discardCapture recorder stop failed', {
         message: error instanceof Error ? error.message : String(error),
@@ -941,8 +944,29 @@ export function useVerseAudio({
         uri = tempUris[tempUris.length - 1]!;
         durationMs = 0;
       } else {
-        ({ uri, durationMs } = await recording.stop());
-        tempUris = appendSegment(recoveredSegmentsRef.current, uri);
+        const stopped = await recording.stop();
+        if (stopped === null && recoveredSegmentsRef.current.length === 0) {
+          // The recorder wrote no file and nothing was saved before it: there
+          // is no take. Drop it like a discard, with no error or alert (#979).
+          recoveredElapsedMsRef.current = 0;
+          setRecoveredElapsedMs(0);
+          if (sessionKey !== null) {
+            clearPausedTake(sessionKey);
+          }
+          setErrorMessage(null);
+          dispatch({ type: 'DISCARD' });
+          dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
+          return;
+        }
+        if (stopped === null) {
+          // Earlier segments are on disk: save those, as a recovered stop does.
+          tempUris = [...recoveredSegmentsRef.current];
+          uri = tempUris[tempUris.length - 1]!;
+          durationMs = 0;
+        } else {
+          ({ uri, durationMs } = stopped);
+          tempUris = appendSegment(recoveredSegmentsRef.current, uri);
+        }
       }
       dispatch({ type: 'STOP' });
       const persistMeta = {
@@ -1070,6 +1094,7 @@ export function useVerseAudio({
     persistTake,
     recording,
     sessionKey,
+    takes,
     userId,
     verseNumber,
     refreshAllTakes,
@@ -1450,6 +1475,7 @@ export function useVerseAudio({
 
   const deleteTake = useCallback(
     async (id: string) => {
+      const loadKey = takesLoadKeyRef.current;
       try {
         const target = takes.find(t => t.id === id);
         // A deleted take may be a stitched segment — drop the queue either way.
@@ -1473,6 +1499,12 @@ export function useVerseAudio({
         }
         const rows = bibleTextId !== null ? await loadTakesFn(bibleTextId) : [];
         setTakes(rows);
+        // This reload is the take query for this key. After a failed load it
+        // would otherwise leave the list unready (Record off, no retry) once
+        // REHYDRATE below leaves `error`.
+        if (takesLoadKeyRef.current === loadKey) {
+          setLoadedTakesKey(loadKey);
+        }
         if (bibleTextId !== null) {
           await refreshAllTakes(bibleTextId);
         }

@@ -355,6 +355,32 @@ describe('useVerseAudio', () => {
       expect(result.current.takes).toHaveLength(1);
     });
 
+    it('is true again once a delete reloads the list after a failed reload', async () => {
+      loadTakes
+        .mockResolvedValueOnce([makeTake({ id: 'rec_1' })])
+        .mockRejectedValueOnce(new Error('db down'))
+        .mockResolvedValue([]);
+
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+
+      // A reload fails and leaves the earlier list on screen, unready.
+      await act(async () => result.current.retryTakesLoad());
+      await waitFor(() => expect(result.current.state).toBe('error'));
+      expect(result.current.takesLoaded).toBe(false);
+      expect(result.current.takes).toHaveLength(1);
+
+      await act(async () => {
+        await result.current.deleteTake('rec_1');
+      });
+
+      // The delete's own reload leaves `error`, so Record must not stay off
+      // with nothing to retry.
+      expect(result.current.state).toBe('idle');
+      expect(result.current.takesLoaded).toBe(true);
+      expect(result.current.takes).toEqual([]);
+    });
+
     it('is true when there is no verse to load', async () => {
       const { result } = renderHook(() =>
         useVerseAudio({ ...verseAudioArgs(), bibleTextId: null }),
@@ -840,6 +866,93 @@ describe('useVerseAudio', () => {
     );
     expect(mockClearPausedTake).toHaveBeenCalledWith('7:3');
     expect(result.current.state).toBe('recorded');
+  });
+
+  describe('a take that stops with no file (#979)', () => {
+    const noFile = () =>
+      mockRecordingStop.mockImplementation(async () => {
+        mockRecordingState.status = 'idle';
+        return null;
+      });
+
+    it('drops the take quietly: nothing saved, no error, back to idle', async () => {
+      noFile();
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.state).toBe('idle'));
+
+      await act(async () => {
+        await result.current.start();
+      });
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(persistTake).not.toHaveBeenCalled();
+      expect(result.current.state).toBe('idle');
+      expect(result.current.errorMessage).toBeNull();
+      expect(result.current.takes).toEqual([]);
+    });
+
+    it('goes back to review when the verse already has takes', async () => {
+      noFile();
+      loadTakes.mockResolvedValue([makeTake()]);
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      await act(async () => {
+        await result.current.start();
+      });
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(persistTake).not.toHaveBeenCalled();
+      expect(result.current.state).toBe('recorded');
+      expect(result.current.errorMessage).toBeNull();
+      expect(result.current.takes).toHaveLength(1);
+    });
+
+    it('still saves the earlier segments when a resumed segment has no file', async () => {
+      noFile();
+      mockPausedMarkers.push(recoveredMarker());
+      loadTakes.mockResolvedValueOnce([]).mockResolvedValueOnce([makeTake()]);
+      const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+      await waitFor(() => expect(result.current.state).toBe('paused'));
+      await act(async () => {
+        await result.current.resume();
+      });
+
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(persistTake).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tempUri: 'file:///old.aac',
+          tempUris: ['file:///old.aac'],
+          durationMs: 1000,
+        }),
+      );
+      expect(result.current.errorMessage).toBeNull();
+      expect(result.current.state).toBe('recorded');
+    });
+
+    it('discards without deleting a file that was never written', async () => {
+      noFile();
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.state).toBe('idle'));
+      await act(async () => {
+        await result.current.start();
+      });
+
+      await act(async () => {
+        await result.current.discardCapture();
+      });
+
+      expect(mockDeleteFile).not.toHaveBeenCalled();
+      expect(result.current.state).toBe('idle');
+      expect(result.current.errorMessage).toBeNull();
+    });
   });
 
   it('cleans up a marker whose segment files are gone instead of pausing', async () => {
