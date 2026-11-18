@@ -79,7 +79,7 @@ export function levelFromDb(db: number | null): number {
 /** Keep the newest samples, one bar each, dropping the oldest past the cap. */
 function pushLive(prev: readonly number[], level: number): number[] {
   if (prev.length < LIVE_LEVEL_BARS) {
-    return prev.length === 0 ? [level] : prev.concat(level);
+    return prev.concat(level);
   }
   const next = prev.slice(1);
   next.push(level);
