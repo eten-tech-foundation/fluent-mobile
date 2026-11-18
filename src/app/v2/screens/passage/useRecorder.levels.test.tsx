@@ -148,6 +148,7 @@ describe('useRecorder take envelopes', () => {
           userId: 7,
           unit: 'pericope',
           showing: true,
+          focused: true,
           downloading: false,
           onReload: jest.fn(),
         }),
