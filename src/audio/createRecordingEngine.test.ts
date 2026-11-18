@@ -236,6 +236,24 @@ describe('createRecordingEngine', () => {
     expect(engine.getStatus()).toBe('idle');
   });
 
+  it('still resets to idle and releases audio when reading the recorder throws', async () => {
+    const recorder = makeFakeRecorder();
+    const releaseAudioMode = jest.fn(async () => undefined);
+    const engine = makeEngine({ recorder, releaseAudioMode });
+    await engine.start();
+    // A recorder released on unmount throws on property reads.
+    Object.defineProperty(recorder, 'currentTime', {
+      get() {
+        throw new Error('shared object released');
+      },
+    });
+
+    await expect(engine.stop()).rejects.toThrow('shared object released');
+
+    expect(engine.getStatus()).toBe('idle');
+    expect(releaseAudioMode).toHaveBeenCalledTimes(1);
+  });
+
   it('returns idle and releases audio after native stop failure, then freshly prepares a retry', async () => {
     const recorder = makeFakeRecorder();
     const stopFailure = new Error('native stop failed');
@@ -372,6 +390,47 @@ describe('createRecordingEngine', () => {
       expect(recorder.calls).toContain('stop');
     });
 
+    it('does not start the next take until the previous stop has finished cleaning up', async () => {
+      const recorder = makeFakeRecorder();
+      let finishRelease!: () => void;
+      const releaseAudioMode = jest
+        .fn<Promise<void>, []>()
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>(resolve => {
+              finishRelease = resolve;
+            }),
+        )
+        .mockResolvedValue(undefined);
+      const engine = createRecordingEngine({ recorder, releaseAudioMode });
+      const count = (call: string) =>
+        recorder.calls.filter(c => c === call).length;
+
+      await engine.start();
+      await jest.advanceTimersByTimeAsync(MIN_RECORDING_MS);
+      const stoppedA = engine.stop();
+      // Native stop is done and the engine reads idle, but cleanup is pending.
+      await jest.advanceTimersByTimeAsync(0);
+      expect(engine.getStatus()).toBe('idle');
+
+      const startedB = engine.start();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(count('record')).toBe(1);
+
+      finishRelease();
+      await stoppedA;
+      await startedB;
+      expect(count('record')).toBe(2);
+      expect(engine.getStatus()).toBe('recording');
+
+      // B's stop is its own: it holds for B's minimum and runs a second native stop.
+      const stoppedB = engine.stop();
+      await jest.advanceTimersByTimeAsync(MIN_RECORDING_MS);
+      await stoppedB;
+      expect(count('stop')).toBe(2);
+      expect(engine.getStatus()).toBe('idle');
+    });
+
     it('does not wait when the take has already run the minimum', async () => {
       const recorder = makeFakeRecorder();
       const engine = createRecordingEngine({ recorder });
@@ -404,7 +463,7 @@ describe('createRecordingEngine', () => {
       expect(engine.getStatus()).toBe('paused');
     });
 
-    it('does not wait for a later take once the recorder has stopped', async () => {
+    it('holds a later take for its own minimum, not the first take’s', async () => {
       const recorder = makeFakeRecorder();
       const engine = createRecordingEngine({ recorder });
       await engine.start();
@@ -413,8 +472,42 @@ describe('createRecordingEngine', () => {
 
       await engine.start();
       const stopped = engine.stop();
-      await jest.advanceTimersByTimeAsync(MIN_RECORDING_MS);
+      // The second take has its own minimum, not the first take's spent one.
+      await jest.advanceTimersByTimeAsync(MIN_RECORDING_MS - 1);
+      expect(recorder.calls.filter(c => c === 'stop')).toHaveLength(1);
+      await jest.advanceTimersByTimeAsync(1);
       await expect(stopped).resolves.not.toBeNull();
+      expect(recorder.calls.filter(c => c === 'stop')).toHaveLength(2);
+    });
+
+    it('holds for the minimum even if the device clock jumps forward', async () => {
+      const recorder = makeFakeRecorder();
+      const engine = createRecordingEngine({ recorder });
+      await engine.start();
+      jest.setSystemTime(Date.now() + 60_000);
+
+      const stopped = engine.stop();
+      await jest.advanceTimersByTimeAsync(MIN_RECORDING_MS - 1);
+      expect(recorder.calls).not.toContain('stop');
+      await jest.advanceTimersByTimeAsync(1);
+      await stopped;
+      expect(recorder.calls).toContain('stop');
+    });
+
+    it("does not pause a later take when an earlier take's held pause outlived an immediate stop", async () => {
+      const recorder = makeFakeRecorder();
+      recorder._uri = 'file:///segment.m4a';
+      const engine = createRecordingEngine({ recorder });
+      await engine.start();
+
+      const paused = engine.pause();
+      await engine.stop({ immediate: true });
+      await engine.start();
+
+      await expect(paused).resolves.toBeNull();
+      await jest.advanceTimersByTimeAsync(MIN_RECORDING_MS);
+      expect(recorder.calls).not.toContain('pause');
+      expect(engine.getStatus()).toBe('recording');
     });
 
     it('drops a pause that was pressed before a stop during the hold', async () => {

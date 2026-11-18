@@ -1350,6 +1350,38 @@ describe('PassageScreen', () => {
     expect(mockStart).not.toHaveBeenCalled();
   });
 
+  it('does not start on a replacement the user has not confirmed once the mic request ends (#979)', async () => {
+    let grantMic!: (granted: boolean) => void;
+    mockEnsureMic.mockImplementationOnce(
+      () => new Promise<boolean>(resolve => (grantMic = resolve)),
+    );
+    const { rerender } = render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(mockEnsureMic).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('passage-confirm')).toBeNull();
+
+    // A wider take query lists a selected verse take during the prompt. Saving
+    // would deselect it, and the user was never asked.
+    mockSession = {
+      ...mockSession,
+      takes: [{ ...take(1), granularity: 'verse', isSelected: true }],
+    };
+    await act(async () => rerender(<PassageScreen />));
+    await act(async () => grantMic(true));
+    expect(mockStart).not.toHaveBeenCalled();
+
+    // The next Record tap asks first.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(screen.getByTestId('passage-confirm')).toBeTruthy();
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
   describe('when Record setup fails', () => {
     let alert: jest.SpyInstance;
     beforeEach(() => {
@@ -1498,12 +1530,16 @@ describe('PassageScreen', () => {
     rerender(<PassageScreen />);
     expect(screen.getAllByTestId('passage-fan-2', hidden)).toHaveLength(1);
     expect(screen.queryByTestId('passage-fan-3', hidden)).toBeNull();
+    // Still the held tile (no status, not selected), not the saved take early.
+    expect(screen.getByLabelText('Take 2')).toBeTruthy();
+    expect(screen.queryByLabelText('Take 2, selected')).toBeNull();
 
     // SAVED: the saved take replaces the held tile.
     mockSession = { ...mockSession, state: 'recorded' };
     rerender(<PassageScreen />);
     expect(screen.getAllByTestId('passage-fan-2', hidden)).toHaveLength(1);
     expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();
+    expect(screen.queryByLabelText('Take 2')).toBeNull();
   });
 
   it('keeps going on the paused take from Record', async () => {

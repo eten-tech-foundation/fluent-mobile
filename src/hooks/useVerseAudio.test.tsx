@@ -431,16 +431,25 @@ describe('useVerseAudio', () => {
       };
       loadTakes.mockResolvedValueOnce([]);
       const countTakesAtView = jest.fn().mockResolvedValue(0);
+      // Every render's view of readiness, so the first render with the
+      // pericope unit can be checked before any effect has run.
+      const renders: { hasUnit: boolean; takesLoaded: boolean }[] = [];
       const { result, rerender } = renderHook(
-        ({ recordingUnit }: { recordingUnit: typeof pericopeUnit | null }) =>
-          useVerseAudio({
+        ({ recordingUnit }: { recordingUnit: typeof pericopeUnit | null }) => {
+          const audio = useVerseAudio({
             ...verseAudioArgs(),
             chapterNumber: 1,
             verseNumber: 1,
             draftingUnit: 'pericope',
             recordingUnit,
             countTakesAtView,
-          }),
+          });
+          renders.push({
+            hasUnit: recordingUnit !== null,
+            takesLoaded: audio.takesLoaded,
+          });
+          return audio;
+        },
         { initialProps: { recordingUnit: null } },
       );
       await waitFor(() => expect(result.current.takesLoaded).toBe(true));
@@ -449,7 +458,14 @@ describe('useVerseAudio', () => {
       loadTakes.mockImplementationOnce(
         () => new Promise<Recording[]>(resolve => (release = resolve)),
       );
+      const rendersBefore = renders.length;
       await act(async () => rerender({ recordingUnit: pericopeUnit }));
+      // The very first render with the pericope unit must already read
+      // unready, not only after effects have flushed.
+      expect(renders[rendersBefore]).toEqual({
+        hasUnit: true,
+        takesLoaded: false,
+      });
       expect(result.current.takesLoaded).toBe(false);
 
       await act(async () => release([]));
@@ -491,6 +507,43 @@ describe('useVerseAudio', () => {
         releaseNew([]);
       });
       await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+    });
+
+    it('is false when returning to a verse whose reload is still pending', async () => {
+      const { result, rerender } = renderHook(
+        ({ bibleTextId }: { bibleTextId: number }) =>
+          useVerseAudio({ ...verseAudioArgs(), bibleTextId }),
+        { initialProps: { bibleTextId: 42 } },
+      );
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+
+      // B's load never finishes, so we leave it before it does.
+      loadTakes.mockImplementationOnce(
+        () => new Promise<Recording[]>(() => {}),
+      );
+      await act(async () => {
+        rerender({ bibleTextId: 43 });
+      });
+
+      let releaseA!: (takes: Recording[]) => void;
+      loadTakes.mockImplementationOnce(
+        () =>
+          new Promise<Recording[]>(resolve => {
+            releaseA = resolve;
+          }),
+      );
+      await act(async () => {
+        rerender({ bibleTextId: 42 });
+      });
+
+      // Same key as the first load, but that load is old: not ready yet.
+      expect(result.current.takesLoaded).toBe(false);
+
+      await act(async () => {
+        releaseA([makeTake({ id: 'rec_new' })]);
+      });
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+      expect(result.current.takes.map(t => t.id)).toEqual(['rec_new']);
     });
   });
 
@@ -809,6 +862,33 @@ describe('useVerseAudio', () => {
     expect(mockRecordingStart).not.toHaveBeenCalled();
   });
 
+  it('keeps the take list unready until the paused-take check settles (#979)', async () => {
+    mockPausedMarkers.push(recoveredMarker());
+    let releaseFileCheck!: (exists: boolean) => void;
+    mockFileExists.mockReturnValueOnce(
+      new Promise<boolean>(resolve => {
+        releaseFileCheck = resolve;
+      }),
+    );
+
+    const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+    await waitFor(() => expect(mockFileExists).toHaveBeenCalled());
+
+    // The rows have loaded, but recovery has not been decided yet.
+    expect(result.current.takesLoaded).toBe(false);
+    await act(async () => {
+      await result.current.start();
+    });
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+
+    await act(async () => {
+      releaseFileCheck(true);
+    });
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+    expect(result.current.takesLoaded).toBe(true);
+    expect(result.current.recoveredElapsedMs).toBe(1000);
+  });
+
   it('resumes a recovered take into a new segment and persists all segments on stop', async () => {
     const saved = makeTake({ id: 'rec_new', isSelected: true });
     mockPausedMarkers.push(recoveredMarker());
@@ -883,10 +963,12 @@ describe('useVerseAudio', () => {
       await act(async () => {
         await result.current.start();
       });
+      expect(result.current.state).toBe('recording');
       await act(async () => {
         await result.current.stop();
       });
 
+      expect(mockRecordingStop).toHaveBeenCalledTimes(1);
       expect(persistTake).not.toHaveBeenCalled();
       expect(result.current.state).toBe('idle');
       expect(result.current.errorMessage).toBeNull();
@@ -902,10 +984,12 @@ describe('useVerseAudio', () => {
       await act(async () => {
         await result.current.start();
       });
+      expect(result.current.state).toBe('recording');
       await act(async () => {
         await result.current.stop();
       });
 
+      expect(mockRecordingStop).toHaveBeenCalledTimes(1);
       expect(persistTake).not.toHaveBeenCalled();
       expect(result.current.state).toBe('recorded');
       expect(result.current.errorMessage).toBeNull();
@@ -926,6 +1010,7 @@ describe('useVerseAudio', () => {
         await result.current.stop();
       });
 
+      expect(mockRecordingStop).toHaveBeenCalledTimes(1);
       expect(persistTake).toHaveBeenCalledWith(
         expect.objectContaining({
           tempUri: 'file:///old.aac',
@@ -944,15 +1029,96 @@ describe('useVerseAudio', () => {
       await act(async () => {
         await result.current.start();
       });
+      expect(result.current.state).toBe('recording');
 
       await act(async () => {
         await result.current.discardCapture();
       });
 
+      expect(mockRecordingStop).toHaveBeenCalledTimes(1);
       expect(mockDeleteFile).not.toHaveBeenCalled();
       expect(result.current.state).toBe('idle');
       expect(result.current.errorMessage).toBeNull();
     });
+
+    it('restores review from the takes current when the stop completes', async () => {
+      let finishStop!: () => void;
+      mockRecordingStop.mockImplementation(
+        () =>
+          new Promise<null>(resolve => {
+            finishStop = () => {
+              mockRecordingState.status = 'idle';
+              resolve(null);
+            };
+          }),
+      );
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.state).toBe('idle'));
+      await act(async () => {
+        await result.current.start();
+      });
+
+      let stopping!: Promise<void>;
+      act(() => {
+        stopping = result.current.stop();
+      });
+      // A refresh adds a take while the recorder is still stopping.
+      loadTakes.mockResolvedValue([makeTake()]);
+      await act(async () => {
+        emitRecordingDataChanged();
+      });
+      await waitFor(() => expect(result.current.takes).toHaveLength(1));
+
+      await act(async () => {
+        finishStop();
+        await stopping;
+      });
+
+      expect(persistTake).not.toHaveBeenCalled();
+      expect(result.current.state).toBe('recorded');
+    });
+  });
+
+  it('does not publish a delete reload once the verse has changed', async () => {
+    const takeA = makeTake({ id: 'rec_a' });
+    const takeB = makeTake({ id: 'rec_b' });
+    loadTakes.mockImplementation(async (id: number) =>
+      id === 42 ? [takeA] : [takeB],
+    );
+    let finishDelete!: () => void;
+    deleteTake.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          finishDelete = resolve;
+        }),
+    );
+    const { result, rerender } = renderHook(
+      ({ id }: { id: number }) =>
+        useVerseAudio({ ...verseAudioArgs(), bibleTextId: id }),
+      { initialProps: { id: 42 } },
+    );
+    await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+
+    let deleting!: Promise<void>;
+    act(() => {
+      deleting = result.current.deleteTake('rec_a');
+    });
+    rerender({ id: 43 });
+    await waitFor(() => expect(result.current.takes).toEqual([takeB]));
+    expect(result.current.takesLoaded).toBe(true);
+
+    // The delete's reload for the old verse must not replace the new verse's rows.
+    loadTakes.mockImplementation(async (id: number) =>
+      id === 42 ? [] : [takeB],
+    );
+    await act(async () => {
+      finishDelete();
+      await deleting;
+    });
+
+    expect(deleteTake).toHaveBeenCalledWith('rec_a');
+    expect(result.current.takes).toEqual([takeB]);
+    expect(result.current.takesLoaded).toBe(true);
   });
 
   it('cleans up a marker whose segment files are gone instead of pausing', async () => {

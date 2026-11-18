@@ -381,6 +381,11 @@ export function useRecorder({
   const versesSelected =
     !verseMode &&
     verseAudio.takes.some(t => t.granularity !== 'pericope' && t.isSelected);
+  // What a new take would replace, for record() to tell, after its awaits,
+  // whether the replacement the user confirmed is still the one at stake.
+  const replacementKey = `${coveringTake?.id ?? ''}|${versesSelected}`;
+  const replacementRef = useRef(replacementKey);
+  replacementRef.current = replacementKey;
   const first = passage.verses[0];
   const last = passage.verses[passage.verses.length - 1];
   const othersOfficial =
@@ -830,6 +835,9 @@ export function useRecorder({
       return;
     }
     const stepsBefore = steps.current;
+    // The replacement the confirms below are about. A save deselects what it
+    // overlaps, so a start must not go ahead on one the user has not seen.
+    const confirmedReplacement = replacementKey;
     if (
       coveringTake &&
       !(await confirmRecordOver(
@@ -853,6 +861,9 @@ export function useRecorder({
     // Permission can remain open while pericope capture metadata resolves and
     // starts a wider take query. Recheck the latest query before proceeding.
     if (!takeListReady(latestAudio.current)) return;
+    // A wider take query may have listed takes to replace during the prompt.
+    // Stop here: the next Record tap asks about them.
+    if (replacementRef.current !== confirmedReplacement) return;
     // A new take counts toward the limit, so a pending delete goes first.
     await deletion.commit();
     // The player may have closed while the delete ran; don't record hidden.
@@ -864,6 +875,7 @@ export function useRecorder({
       return;
     }
     if (!takeListReady(latestAudio.current)) return;
+    if (replacementRef.current !== confirmedReplacement) return;
     session.setElapsedMs(0);
     // start() reports recorder failures itself (Audio error); only its take
     // count, read before the recorder starts, rejects.

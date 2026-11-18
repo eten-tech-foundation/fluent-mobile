@@ -363,10 +363,12 @@ describe('RecordTab', () => {
     );
   });
 
-  it('keeps Record disabled while the active take query is loading', () => {
+  it('keeps Record disabled while the active take query is loading', async () => {
     mockUseVerseAudio.mockReturnValue({ ...idleAudio, takesLoaded: false });
 
     renderTab();
+    // Past the Bible-text gate, so only the take-loading gate can disable it.
+    await waitForCaptureReady();
 
     expect(screen.getByTestId('record-start-button')).toBeDisabled();
     fireEvent.press(screen.getByTestId('record-start-button'));

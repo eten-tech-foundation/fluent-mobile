@@ -372,6 +372,9 @@ export function useVerseAudio({
     'idle' as VerseAudioState,
   );
   const [takes, setTakes] = useState<Recording[]>([]);
+  // Latest rows, for async callbacks that must not act on the list as it
+  // was when they started.
+  const takesRef = useRef<typeof takes>([]);
   const [allTakes, setAllTakes] = useState<RecordingWithOwner[]>([]);
   const [hasMultipleRecorders, setHasMultipleRecorders] = useState(false);
   const [takesLoadAttempt, setTakesLoadAttempt] = useState(0);
@@ -394,6 +397,7 @@ export function useVerseAudio({
   takesLoadedRef.current = takesLoaded;
   const takesLoadKeyRef = useRef(takesLoadKey);
   takesLoadKeyRef.current = takesLoadKey;
+  takesRef.current = takes;
   const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
   /**
    * Take currently prepared in the player. Outlives `playingTakeId` (which
@@ -557,11 +561,21 @@ export function useVerseAudio({
     // chapterAssignmentId changes).
     const isStale = () =>
       cancelled || activeBibleTextIdRef.current !== bibleTextId;
-
+    // Ready means the rows AND the paused-take check are settled. Marking it
+    // earlier lets start() run before recovery has restored its refs, and the
+    // late recovery would then overwrite the new capture's snapshot.
+    const markLoaded = () => {
+      if (!isStale()) setLoadedTakesKey(takesLoadKey);
+    };
     setLoadedTakeId(null);
     setPlayingTakeId(null);
     clearStitchQueue();
     activeBibleTextIdRef.current = bibleTextId;
+    // Activating a different query un-readies whatever was loaded before it.
+    // Without this, returning to an earlier key before the newer load finishes
+    // would match the old `loadedTakesKey` and mark stale rows ready. A re-run
+    // for the same key keeps its rows ready, so there is no flicker.
+    setLoadedTakesKey(prev => (prev === takesLoadKey ? prev : null));
     // Stop any in-flight draft playback when the active verse unit changes (#235).
     void playback.stop();
     (async () => {
@@ -579,7 +593,6 @@ export function useVerseAudio({
         if (isStale()) return;
         setTakes(rows);
         dispatch({ type: 'REHYDRATE', hasTake: rows.length > 0 });
-        setLoadedTakesKey(takesLoadKey);
         await refreshAllTakes(bibleTextId);
         if (isStale()) return;
         const key = pausedTakeSessionKey(
@@ -589,6 +602,7 @@ export function useVerseAudio({
         );
         const marker = listPausedTakes().find(m => m.sessionKey === key);
         if (!marker) {
+          markLoaded();
           return;
         }
         const existingFiles = new Set<string>();
@@ -627,6 +641,7 @@ export function useVerseAudio({
             setRecoveredElapsedMs(m.elapsedMs);
             dispatch({ type: 'RECOVER' }); // idle/recorded -> paused
           }
+          markLoaded();
           return;
         }
         clearPausedTake(marker.sessionKey);
@@ -640,6 +655,7 @@ export function useVerseAudio({
             }),
           ),
         );
+        markLoaded();
       } catch (error) {
         log.error('Failed to load takes', { error });
         if (!isStale()) {
@@ -925,9 +941,9 @@ export function useVerseAudio({
       // prior state: REHYDRATE restores Review when takes remain (same as
       // deleteTake), otherwise it stays idle. Without it, Play is ignored — PLAY
       // only fires from `recorded`.
-      dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
+      dispatch({ type: 'REHYDRATE', hasTake: takesRef.current.length > 0 });
     }
-  }, [recording, sessionKey, state, takes]);
+  }, [recording, sessionKey, state]);
 
   const stop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
@@ -955,7 +971,8 @@ export function useVerseAudio({
           }
           setErrorMessage(null);
           dispatch({ type: 'DISCARD' });
-          dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
+          // A refresh may have added a take while the recorder was stopping.
+          dispatch({ type: 'REHYDRATE', hasTake: takesRef.current.length > 0 });
           return;
         }
         if (stopped === null) {
@@ -1094,7 +1111,6 @@ export function useVerseAudio({
     persistTake,
     recording,
     sessionKey,
-    takes,
     userId,
     verseNumber,
     refreshAllTakes,
@@ -1498,16 +1514,19 @@ export function useVerseAudio({
           });
         }
         const rows = bibleTextId !== null ? await loadTakesFn(bibleTextId) : [];
+        // The verse changed while this ran: the active query loads its own
+        // rows, so these must not replace them or mark that list loaded. The
+        // delete itself is already done.
+        if (takesLoadKeyRef.current !== loadKey) return;
         setTakes(rows);
         // This reload is the take query for this key. After a failed load it
         // would otherwise leave the list unready (Record off, no retry) once
         // REHYDRATE below leaves `error`.
-        if (takesLoadKeyRef.current === loadKey) {
-          setLoadedTakesKey(loadKey);
-        }
+        setLoadedTakesKey(loadKey);
         if (bibleTextId !== null) {
           await refreshAllTakes(bibleTextId);
         }
+        if (takesLoadKeyRef.current !== loadKey) return;
         // Another take still playing keeps playing; REHYDRATE would drop
         // the state to recorded under it.
         if (!(state === 'playing' && loadedTakeId !== id)) {
@@ -1518,6 +1537,12 @@ export function useVerseAudio({
           );
         }
       } catch (error) {
+        if (takesLoadKeyRef.current !== loadKey) {
+          log.warn('deleteTake failed for a verse that is no longer active', {
+            message: error instanceof Error ? error.message : String(error),
+          });
+          return;
+        }
         const message =
           error instanceof Error ? error.message : 'delete failed';
         setErrorMessage(message);

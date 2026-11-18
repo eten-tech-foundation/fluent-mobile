@@ -53,6 +53,10 @@ export type RecordingEngine = Omit<RecorderApi, 'stop'> & {
   syncPausedNativeState(): void;
 };
 
+/** Monotonic, so a device clock change cannot skip or stretch the hold. */
+declare const performance: { now(): number };
+const monotonicNow = (): number => performance.now();
+
 /**
  * UI/storage-agnostic recording engine around an expo-audio recorder instance.
  * Persistence and Alerts belong in #97 / screens — not here.
@@ -97,7 +101,7 @@ export function createRecordingEngine(
     if (startedAt === null) {
       return Promise.resolve();
     }
-    const wait = startedAt + minRecordingMs - Date.now();
+    const wait = startedAt + minRecordingMs - monotonicNow();
     if (wait <= 0) {
       return Promise.resolve();
     }
@@ -131,17 +135,22 @@ export function createRecordingEngine(
     if (!immediate) {
       await holdForMinimum();
     }
-    // A pause may have landed while this stop waited; stop works from either.
-    const durationMs = Math.max(0, Math.round(recorder.currentTime * 1000));
-
     let uri: string | null = null;
+    let durationMs = 0;
 
     try {
+      // A pause may have landed while this stop waited; stop works from either.
+      // Read inside the try: a recorder already released on unmount throws on
+      // property reads, and the finally below must still reset the state.
+      durationMs = Math.max(0, Math.round(recorder.currentTime * 1000));
       await recorder.stop();
       uri = recorder.uri;
     } finally {
       prepared = false;
       startedAt = null;
+      // Nothing may keep waiting on this take's hold, and the next take needs
+      // a hold of its own rather than this one's spent deadline.
+      hold?.release();
       setStatus('idle');
       await releaseMode();
     }
@@ -162,12 +171,18 @@ export function createRecordingEngine(
       return status;
     },
     async start() {
+      // The previous take's stop (native stop plus audio-mode release) must
+      // finish first: its release would otherwise land on this take, and a
+      // stop for this take would join the old one's promise.
+      if (stopping) {
+        await stopping.catch(() => {});
+      }
       if (status === 'recording') {
         return;
       }
       await ensurePrepared();
       recorder.record();
-      startedAt = Date.now();
+      startedAt = monotonicNow();
       setStatus('recording');
     },
     async pause(): Promise<PauseResult | null> {
@@ -224,6 +239,9 @@ export function createRecordingEngine(
       }
       if (status !== 'recording' && status !== 'paused') {
         return Promise.reject(new Error('Cannot stop recorder while idle'));
+      }
+      if (options?.immediate) {
+        hold?.release();
       }
       stopping = runStop(options?.immediate === true).finally(() => {
         stopping = null;

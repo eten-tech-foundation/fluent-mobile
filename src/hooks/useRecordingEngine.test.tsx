@@ -239,20 +239,25 @@ describe('useRecordingEngine', () => {
 
   it('stops a take still inside the minimum-run hold at once on unmount (#979)', async () => {
     mockMinRecordingMs = MIN_RECORDING_MS;
-    const { result, unmount } = renderHook(() => useRecordingEngine());
-    await act(async () => {
-      await result.current.start();
-    });
-    stopSpy.mockClear();
+    // Frozen time: a slow test process cannot let the minimum elapse, so this
+    // only passes when teardown skips the hold with `immediate: true`.
+    jest.useFakeTimers();
+    try {
+      const { result, unmount } = renderHook(() => useRecordingEngine());
+      await act(async () => {
+        await result.current.start();
+      });
+      stopSpy.mockClear();
 
-    await act(async () => {
-      unmount();
-    });
+      await act(async () => {
+        unmount();
+      });
 
-    // No waitFor: the hold has not elapsed, so this only passes when teardown
-    // skips it with `immediate: true`.
-    expect(stopSpy).toHaveBeenCalledTimes(1);
-    expect(isMicActive()).toBe(false);
+      expect(stopSpy).toHaveBeenCalledTimes(1);
+      expect(isMicActive()).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('uses the latest host background-pause callback without resubscribing or duplicating native pause', async () => {
