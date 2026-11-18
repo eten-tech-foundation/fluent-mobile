@@ -177,8 +177,8 @@ translator hears them all last.
 - **Q22 · Who are the reviewers?** *(product)*. Peer checker, community
   reviewers, Observers (#452), or anyone present? Do seats need accounts, or
   just a name for the round? Meanwhile an Observer's chapter, from Home or the
-  book page, opens Legacy's read-only Observer view (`observer-draft`), never
-  the passage page.
+  book page, opens the Next read-only Observer view (`observer-draft`, #913),
+  never the passage page.
 - **Q23 · How does this relate to the comment tickets?** *(product + design)*.
   #451 specs text and audio comments in a half drawer, one level of threading
   and emoji reactions; #703 adds comment counts to My Work rows. The Review
