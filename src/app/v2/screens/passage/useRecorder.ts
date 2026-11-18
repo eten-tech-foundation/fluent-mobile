@@ -113,6 +113,7 @@ export function useRecorder({
   userId,
   unit,
   openVerse,
+  sessionVerse,
   showing,
   focused,
   downloading,
@@ -126,6 +127,11 @@ export function useRecorder({
   unit: DraftingUnit;
   /** Verse mode starts here when it's in the passage, e.g. a recovered take. */
   openVerse?: number;
+  /**
+   * A recovered passage take's saved verse, which keys its session. Without
+   * it a passage records under its first verse in this chapter.
+   */
+  sessionVerse?: number;
   /** The player is open in Record mode; leaving it commits a pending delete. */
   showing: boolean;
   /** Passage has its route; a screen pushed over it (Book) takes it. */
@@ -161,10 +167,15 @@ export function useRecorder({
     setPickedWithVerses(true);
     setVerse(firstVerse());
   }
+  // The recovered take keeps its saved verse until it's saved or discarded.
+  // New takes after it key on the passage start, as any visit here does.
+  const [holdingSaved, setHoldingSaved] = useState(sessionVerse !== undefined);
   const session = useRecordSession({
     chapterData: assignment,
     userId,
-    selectedVerse: verseMode ? verse : anchorVerse,
+    selectedVerse: verseMode
+      ? verse
+      : (holdingSaved ? sessionVerse : undefined) ?? anchorVerse,
     versesLength: passage.chapterVerseCount,
     draftingUnit: unit,
     onChapterClaimed: onReload,
@@ -172,6 +183,16 @@ export function useRecorder({
     onRegisterCaptureControls,
   });
   const { verseAudio } = session;
+  const sawSaved = useRef(false);
+  useEffect(() => {
+    if (!holdingSaved) return;
+    const s = verseAudio.state;
+    if (s === 'paused' || s === 'recording' || s === 'saving') {
+      sawSaved.current = true;
+    } else if (sawSaved.current) {
+      setHoldingSaved(false);
+    }
+  }, [holdingSaved, verseAudio.state]);
   const step = useVerseStep({
     verses: stepVerses,
     selectedVerse: verse,

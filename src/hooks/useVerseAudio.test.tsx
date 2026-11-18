@@ -568,13 +568,14 @@ describe('useVerseAudio', () => {
     expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
   });
 
-  it('writes a paused-take marker when recording is paused', async () => {
+  it('writes a paused-take marker, with its account, when recording is paused', async () => {
     const { result } = renderHook(() =>
       useVerseAudio({
         ...verseAudioArgs(),
         chapterAssignmentId: 7,
         chapterNumber: 1,
         verseNumber: 3,
+        userId: 12,
       }),
     );
 
@@ -602,6 +603,7 @@ describe('useVerseAudio', () => {
         endChapter: 1,
         endVerse: 3,
       },
+      userId: 12,
     });
     expect(result.current.state).toBe('paused');
   });
