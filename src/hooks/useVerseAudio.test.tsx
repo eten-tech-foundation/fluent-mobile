@@ -130,6 +130,7 @@ jest.mock('../db/repository', () => ({
   getAllTakesForVerse: jest.fn().mockResolvedValue([]),
   verseHasMultipleRecorders: jest.fn().mockResolvedValue(false),
   selectRecordingTake: jest.fn(),
+  findOfficialAtOtherAnchor: jest.fn().mockResolvedValue(null),
   claimChapterOffline: jest.fn(),
 }));
 
@@ -581,6 +582,127 @@ describe('useVerseAudio', () => {
 
     expect(designateCanonical).toHaveBeenCalledWith('rec_1');
     expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
+  });
+
+  describe('official takes at another anchor (#896)', () => {
+    const designateCanonical = jest.fn();
+    const reassertTake = jest.fn();
+    const onReplacementBlocked = jest.fn();
+    const findOfficialAtOtherAnchor = jest.fn();
+
+    function renderGuarded() {
+      return renderHook(() =>
+        useVerseAudio({
+          ...verseAudioArgs(),
+          designateCanonical,
+          reassertTake,
+          onReplacementBlocked,
+          findOfficialAtOtherAnchor,
+        }),
+      );
+    }
+
+    beforeEach(() => {
+      designateCanonical.mockResolvedValue(undefined);
+      reassertTake.mockResolvedValue(true);
+      loadTakes.mockResolvedValue([
+        makeTake({ isSelected: true, syncStatus: 'failed' }),
+        makeTake({ id: 'rec_2' }),
+      ]);
+      findOfficialAtOtherAnchor.mockResolvedValue(
+        makeTake({ id: 'official_passage', granularity: 'pericope' }),
+      );
+    });
+
+    it('refuses to select, reactivate or designate, and explains once per try', async () => {
+      const { result } = renderGuarded();
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+      loadTakes.mockClear();
+
+      const applied: boolean[] = [];
+      await act(async () => {
+        applied.push(await result.current.selectTake('rec_2'));
+        applied.push(await result.current.selectTake('rec_1'));
+        applied.push(await result.current.setCanonical('rec_2'));
+      });
+
+      expect(applied).toEqual([false, false, false]);
+      expect(findOfficialAtOtherAnchor).toHaveBeenCalledWith('rec_2');
+      expect(onReplacementBlocked).toHaveBeenCalledTimes(3);
+      expect(selectTake).not.toHaveBeenCalled();
+      expect(reassertTake).not.toHaveBeenCalled();
+      expect(designateCanonical).not.toHaveBeenCalled();
+      expect(mockNotifyPendingUploads).not.toHaveBeenCalled();
+      expect(loadTakes).not.toHaveBeenCalled();
+      expect(result.current.errorMessage).toBeNull();
+      expect(result.current.takes.map(t => t.id)).toEqual(['rec_1', 'rec_2']);
+    });
+
+    it('lets same-anchor choices through', async () => {
+      findOfficialAtOtherAnchor.mockResolvedValue(null);
+      const { result } = renderGuarded();
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      const applied: boolean[] = [];
+      await act(async () => {
+        applied.push(await result.current.selectTake('rec_2'));
+        applied.push(await result.current.setCanonical('rec_2'));
+      });
+
+      expect(applied).toEqual([true, true]);
+      expect(selectTake).toHaveBeenCalledWith('rec_2');
+      expect(designateCanonical).toHaveBeenCalledWith('rec_2');
+      expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(2);
+      expect(onReplacementBlocked).not.toHaveBeenCalled();
+    });
+
+    it('blocks and reports an error when the overlap check fails', async () => {
+      findOfficialAtOtherAnchor.mockRejectedValue(new Error('db closed'));
+      const { result } = renderGuarded();
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      let applied = true;
+      await act(async () => {
+        applied = await result.current.setCanonical('rec_2');
+      });
+
+      expect(applied).toBe(false);
+      expect(designateCanonical).not.toHaveBeenCalled();
+      expect(mockNotifyPendingUploads).not.toHaveBeenCalled();
+      expect(onReplacementBlocked).not.toHaveBeenCalled();
+      expect(result.current.errorMessage).toBe('db closed');
+    });
+
+    it('trusts a check the caller just made', async () => {
+      const { result } = renderGuarded();
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      let applied = false;
+      await act(async () => {
+        applied = await result.current.setCanonical('rec_2', {
+          overlapChecked: true,
+        });
+      });
+
+      expect(applied).toBe(true);
+      expect(findOfficialAtOtherAnchor).not.toHaveBeenCalled();
+      expect(designateCanonical).toHaveBeenCalledWith('rec_2');
+    });
+
+    it('answers the pre-check without writing anything', async () => {
+      const { result } = renderGuarded();
+      await waitFor(() => expect(result.current.state).toBe('recorded'));
+
+      let blocked = false;
+      await act(async () => {
+        blocked = await result.current.blockUnsupportedReplacement('rec_2');
+      });
+
+      expect(blocked).toBe(true);
+      expect(onReplacementBlocked).toHaveBeenCalledTimes(1);
+      expect(selectTake).not.toHaveBeenCalled();
+      expect(designateCanonical).not.toHaveBeenCalled();
+    });
   });
 
   it('queues an upload pass after a take is deleted (#701)', async () => {
@@ -1561,7 +1683,7 @@ describe('useVerseAudio', () => {
 
     await waitFor(() => expect(result.current.takes).toEqual([takeA]));
 
-    let setCanonicalPromise: Promise<void>;
+    let setCanonicalPromise: Promise<boolean>;
     act(() => {
       setCanonicalPromise = result.current.setCanonical('rec_a');
     });
@@ -1773,6 +1895,44 @@ describe('useVerseAudio', () => {
 
     expect(mockRecordingStart).not.toHaveBeenCalled();
     expect(result.current.errorMessage).toMatch(/Maximum of 5 takes/);
+  });
+
+  it('rejects start without recording when the pericope take count fails', async () => {
+    const countTakesAtView = jest.fn().mockResolvedValue(0);
+    loadTakes.mockResolvedValue([]);
+    const args = {
+      ...verseAudioArgs(),
+      draftingUnit: 'pericope' as const,
+      chapterNumber: 1,
+      verseNumber: 3,
+      countTakesAtView,
+      recordingUnit: {
+        granularity: 'pericope' as const,
+        startChapter: 1,
+        startVerse: 3,
+        endChapter: 1,
+        endVerse: 3,
+        anchorBibleTextId: 103,
+        coveredViews: [{ bibleTextId: 103, chapterNumber: 1, verseNumber: 3 }],
+      },
+    };
+
+    const { result } = renderHook(() => useVerseAudio(args));
+    await waitFor(() => expect(result.current.canRecordNewTake).toBe(true));
+    countTakesAtView.mockRejectedValueOnce(new Error('count failed'));
+
+    // Nothing reports this one, so the caller (useRecorder) explains it.
+    let thrown: unknown;
+    await act(async () => {
+      await result.current.start().catch(e => {
+        thrown = e;
+      });
+    });
+
+    expect(thrown).toEqual(new Error('count failed'));
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('idle');
+    expect(result.current.errorMessage).toBeNull();
   });
 
   it('loads takes for every covered verse in pericope mode, without duplicates', async () => {

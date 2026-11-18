@@ -97,12 +97,19 @@ function HomeBody({
     reauthRequired,
   } = useHomeSyncState({ postLoginSyncActive, userSwitchEpoch });
   const account = useActiveAccountSummary(userSwitchEpoch);
-  const { chapters, loading, refresh } = useMyWorkChapters(refreshKey);
+  const {
+    chapters,
+    loading,
+    refresh,
+    error: chaptersError,
+    reading: chaptersReading,
+  } = useMyWorkChapters(refreshKey);
   const {
     books,
     loading: booksLoading,
     error: booksError,
     refresh: refreshBooks,
+    reading: booksReading,
   } = useHomeBooks(refreshKey);
   const nextUp = useNextUp(chapters);
   const [loadedOnce, setLoadedOnce] = useState(false);
@@ -237,14 +244,21 @@ function HomeBody({
   // The first paint also waits for Next up, which reads a bounded few
   // passages after the chapters land: Home then appears complete at once
   // rather than Books first and the hero a moment later (#972).
+  // A sync bumps `refreshKey` and the new read publishes a tick later. While
+  // both lists are still empty and that read is in flight, the empty message
+  // would be a frame ahead of the data (#980).
+  const listsEmpty = chapters.length === 0 && books.length === 0;
+  const readInFlight = listsEmpty && (chaptersReading || booksReading);
   const firstContentReady =
     !loading &&
     !booksLoading &&
+    !readInFlight &&
     (chapters.length === 0 || nextUp.status === 'ready');
   if (!loadedOnce && firstContentReady) setLoadedOnce(true);
   const waitingForChapters =
     (!firstContentReady && !loadedOnce) ||
-    (isSyncingChapters && chapters.length === 0 && books.length === 0);
+    (isSyncingChapters && listsEmpty) ||
+    readInFlight;
 
   let body: React.ReactNode;
   let bodyKind: 'loading' | 'empty' | 'error' | 'content';
@@ -263,7 +277,7 @@ function HomeBody({
         <ActivityIndicator size="large" color={theme.roles.accentPrimary} />
       </View>
     );
-  } else if (chapters.length === 0 && books.length === 0 && booksError) {
+  } else if (listsEmpty && (booksError || chaptersError)) {
     // Nothing saved to show and the read failed: say so rather than "no
     // chapters", which would be wrong.
     bodyKind = 'error';

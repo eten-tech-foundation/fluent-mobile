@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Linking } from 'react-native';
 import { requestMicPermission } from '../audio/micPermission';
 import {
+  RECORD_REPLACEMENT_BLOCKED_MESSAGE,
+  RECORD_REPLACEMENT_BLOCKED_TITLE,
+} from '../constants/messages';
+import {
   getBibleTextId,
   getPericopeForVerse,
   type PericopeGroupResult,
@@ -24,6 +28,13 @@ import { resolveRecordingUnit } from './resolveRecordingUnit';
 import { useGlobalSyncStatus } from './useGlobalSyncStatus';
 import { useVerseAudio } from './useVerseAudio';
 import type { VerseAudioState } from './verseAudioReducer';
+
+function explainReplacementBlocked() {
+  Alert.alert(
+    RECORD_REPLACEMENT_BLOCKED_TITLE,
+    RECORD_REPLACEMENT_BLOCKED_MESSAGE,
+  );
+}
 
 export interface RecordSessionArgs {
   chapterData: ChapterAssignmentData;
@@ -202,6 +213,7 @@ export function useRecordSession({
     verseNumber: selectedVerse,
     draftingUnit: effectiveUnit,
     recordingUnit: activeRecordingUnit,
+    onReplacementBlocked: explainReplacementBlocked,
   });
   /**
    * Latest-value ref synced during render so async `resolveRecordingUnit`

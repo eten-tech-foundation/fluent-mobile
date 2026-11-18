@@ -36,6 +36,8 @@ describe('usePassageNotes', () => {
     mockState = {
       status: 'ready',
       notes: [{ id: 'a', title: 'A', body: 'for A' }],
+      failedRefs: [],
+      unavailableOfflineRefs: [],
     };
     const { result, rerender } = renderHook(
       ({ userId }: { userId: number }) =>
@@ -56,11 +58,13 @@ describe('usePassageNotes', () => {
     mockState = {
       status: 'ready',
       notes: [{ id: 'a', title: 'A', body: 'for A' }],
+      failedRefs: [],
+      unavailableOfflineRefs: [],
     };
     const { result } = renderHook(() => usePassageNotes(passage, 5, true));
     expect(result.current.notes).toEqual([{ id: 'a' }]);
 
-    mockState = { status: 'error', message: 'nope' };
+    mockState = { status: 'error', message: 'nope', failedRefs: [] };
     act(() => {
       clearPassageResourceReuse('5');
     });
