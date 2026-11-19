@@ -1552,7 +1552,6 @@ export function useVerseAudio({
         // settled; while that is still running it marks the list ready itself.
         // After a failed load the delete reload is not enough (recovery never
         // completed), so retry the whole load once the delete is published.
-        const retryFailedLoad = loadFailedKeyRef.current === queryKey;
         if (loadSettledKeyRef.current === queryKey) {
           setLoadedTakesKey(queryKey);
         }
@@ -1570,8 +1569,14 @@ export function useVerseAudio({
           );
         }
         // Last, because it changes the query key. Leaving `error` above must
-        // not leave Record off with nothing to retry.
-        if (retryFailedLoad) setTakesLoadAttempt(attempt => attempt + 1);
+        // not leave Record off with nothing to retry. Read here, not earlier:
+        // the paused-take check can fail while the awaits above are pending.
+        if (
+          loadFailedKeyRef.current === queryKey &&
+          loadSettledKeyRef.current !== queryKey
+        ) {
+          setTakesLoadAttempt(attempt => attempt + 1);
+        }
       } catch (error) {
         if (!isCurrent()) {
           log.warn('deleteTake failed for a verse that is no longer active', {

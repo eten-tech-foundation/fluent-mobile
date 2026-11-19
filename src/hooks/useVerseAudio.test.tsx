@@ -1285,6 +1285,52 @@ describe('useVerseAudio', () => {
       expect(result.current.takesLoaded).toBe(true);
     });
 
+    it('retries recovery when the paused-take check fails while the delete is still refreshing', async () => {
+      mockPausedMarkers.push(recoveredMarker());
+      loadTakes.mockResolvedValueOnce([takeA]).mockResolvedValue([]);
+      const loadAllTakes = jest.fn(async () => [withOwner(takeA)]);
+      let rejectFileCheck!: (error: Error) => void;
+      mockFileExists.mockReturnValueOnce(
+        new Promise<boolean>((_resolve, reject) => {
+          rejectFileCheck = reject;
+        }),
+      );
+
+      const { result } = renderHook(() =>
+        useVerseAudio({ ...recoveryArgs(), loadAllTakes }),
+      );
+      await waitFor(() => expect(mockFileExists).toHaveBeenCalled());
+
+      // The delete's All Takes refresh stays pending.
+      let releaseRefresh!: (rows: ReturnType<typeof withOwner>[]) => void;
+      loadAllTakes.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            releaseRefresh = resolve;
+          }),
+      );
+      let deleting!: Promise<void>;
+      act(() => {
+        deleting = result.current.deleteTake('rec_a');
+      });
+      await waitFor(() => expect(releaseRefresh).toBeDefined());
+
+      // The check fails only now, after the delete looked at the load state.
+      await act(async () => {
+        rejectFileCheck(new Error('fs down'));
+      });
+      await waitFor(() => expect(result.current.state).toBe('error'));
+
+      await act(async () => {
+        releaseRefresh([]);
+        await deleting;
+      });
+
+      // The delete leaves `error`, so it must retry rather than strand Record.
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+      expect(mockFileExists).toHaveBeenCalledTimes(2);
+    });
+
     it('keeps Record off after a delete while the paused-take check is pending', async () => {
       mockPausedMarkers.push(recoveredMarker());
       loadTakes.mockResolvedValueOnce([takeA]).mockResolvedValue([]);
