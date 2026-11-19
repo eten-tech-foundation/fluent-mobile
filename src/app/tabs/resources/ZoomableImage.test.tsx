@@ -2,6 +2,10 @@ import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { act, render, screen } from '@testing-library/react-native';
 import { Image } from 'expo-image';
+import {
+  fireGestureHandler,
+  getByGestureTestId,
+} from 'react-native-gesture-handler/jest-utils';
 import { clampScale, clampTranslate, ZoomableImage } from './ZoomableImage';
 
 describe('ZoomableImage limits', () => {
@@ -40,5 +44,45 @@ describe('ZoomableImage', () => {
       });
     });
     expect(onLoad).toHaveBeenLastCalledWith({ width: 800, height: 600 });
+  });
+
+  it('taps with one still finger only, so a quick pinch never taps', async () => {
+    const onPress = jest.fn();
+    render(<ZoomableImage uri="file:///map.jpg" onPress={onPress} />);
+    const tap = getByGestureTestId('zoomable-image-tap');
+
+    fireGestureHandler(tap);
+    // The tap hands off to the JS thread on a microtask.
+    await act(async () => {});
+    expect(onPress).toHaveBeenCalledTimes(1);
+
+    // A second finger, a pinch starting, fails the tap; one finger doesn't.
+    const touchesDown = tap.handlers.onTouchesDown as unknown as (
+      event: { numberOfTouches: number },
+      manager: { fail: () => void },
+    ) => void;
+    const fail = jest.fn();
+    touchesDown({ numberOfTouches: 1 }, { fail });
+    expect(fail).not.toHaveBeenCalled();
+    touchesDown({ numberOfTouches: 2 }, { fail });
+    expect(fail).toHaveBeenCalledTimes(1);
+
+    // A finger that moves past a small slop isn't a tap either.
+    expect((tap.config as { maxDist?: number }).maxDist).toBe(10);
+  });
+
+  it('never reads two quick pinches as a double tap that resets the zoom', () => {
+    render(<ZoomableImage uri="file:///map.jpg" />);
+    const doubleTap = getByGestureTestId('zoomable-image-double-tap');
+    const touchesDown = doubleTap.handlers.onTouchesDown as unknown as (
+      event: { numberOfTouches: number },
+      manager: { fail: () => void },
+    ) => void;
+    const fail = jest.fn();
+    touchesDown({ numberOfTouches: 1 }, { fail });
+    expect(fail).not.toHaveBeenCalled();
+    touchesDown({ numberOfTouches: 2 }, { fail });
+    expect(fail).toHaveBeenCalledTimes(1);
+    expect((doubleTap.config as { maxDist?: number }).maxDist).toBe(10);
   });
 });

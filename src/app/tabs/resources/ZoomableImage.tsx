@@ -7,7 +7,12 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  Gesture,
+  GestureDetector,
+  type GestureStateManager,
+  type GestureTouchEvent,
+} from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -19,6 +24,8 @@ import { theme } from '../../../theme';
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const RESET_EPSILON = 0.01;
+/** How far a finger can move and still be a tap. */
+const TAP_SLOP = 10;
 
 type ZoomableImageProps = {
   uri: string;
@@ -154,15 +161,32 @@ export function ZoomableImage({
       savedTranslateY.value = translateY.value;
     });
 
+  // Taps are one still finger: a second finger (a pinch starting) or a
+  // finger that moves fails them, so a quick pinch or a drag never taps,
+  // and two quick pinches never read as a double tap that resets the zoom.
+  const failOnSecondFinger = (
+    event: GestureTouchEvent,
+    manager: GestureStateManager,
+  ) => {
+    'worklet';
+    if (event.numberOfTouches > 1) manager.fail();
+  };
+
   const doubleTap = Gesture.Tap()
+    .withTestId('zoomable-image-double-tap')
     .numberOfTaps(2)
+    .maxDistance(TAP_SLOP)
+    .onTouchesDown(failOnSecondFinger)
     .onEnd(() => {
       resetZoom();
     });
 
   const singleTap = onPress
     ? Gesture.Tap()
+        .withTestId('zoomable-image-tap')
         .numberOfTaps(1)
+        .maxDistance(TAP_SLOP)
+        .onTouchesDown(failOnSecondFinger)
         .onEnd(() => {
           scheduleOnRN(onPress);
         })
