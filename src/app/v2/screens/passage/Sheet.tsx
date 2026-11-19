@@ -358,13 +358,14 @@ export function Sheet({
     enabled: previewsAsked,
     firstVerses: PREVIEW_COUNT,
   });
-  const previews = (
-    images.state.status === 'ready'
-      ? images.state.items
-      : firstImages.state.status === 'ready'
-      ? firstImages.state.items
-      : []
-  ).slice(0, PREVIEW_COUNT);
+  // The full list once it's in, else the first verses'. All of them, so
+  // the card can skip a thumbnail that won't load.
+  const previewSource = images.state.status === 'ready' ? images : firstImages;
+  const previews =
+    previewSource.state.status === 'ready' ? previewSource.state.items : [];
+  const previewsScope = `${previewSource === images ? 'all' : 'first'}:${
+    previewSource.scope
+  }:${previewSource.state.status}`;
   useEffect(() => {
     if (!focused || expanded) setResourcesOpen(false);
   }, [focused, expanded]);
@@ -690,6 +691,7 @@ export function Sheet({
         onPeekHeight={setPeekHeight}
         images={images}
         previews={previews}
+        previewsScope={previewsScope}
         onRetryImages={() => void images.retry()}
       />
       <ColorModeScope value="hardware">

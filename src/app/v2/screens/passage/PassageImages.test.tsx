@@ -28,6 +28,13 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
+/** Each zoom view's last fit, by its uri. */
+const mockZoomFits = new Map<string, string | undefined>();
+/** Each zoom view's load, by its uri, to fire when a test wants. */
+const mockZoomLoads = new Map<
+  string,
+  (size: { width: number; height: number }) => void
+>();
 /** Images whose asset fails as soon as it renders. */
 let mockFailing = new Set<string>();
 
@@ -37,15 +44,21 @@ jest.mock('../../../tabs/resources/ZoomableImage', () => {
   return {
     ZoomableImage: ({
       uri,
+      onLoad,
+      contentFit,
       onLoadError,
       onPress,
       testID,
     }: {
       uri: string;
+      onLoad?: (size: { width: number; height: number }) => void;
+      contentFit?: string;
       onLoadError?: () => void;
       onPress?: () => void;
       testID?: string;
     }) => {
+      if (onLoad) mockZoomLoads.set(uri, onLoad);
+      mockZoomFits.set(uri, contentFit);
       React.useLayoutEffect(() => {
         if ([...mockFailing].some(id => uri.includes(id))) onLoadError?.();
       }, [uri, onLoadError]);
@@ -173,6 +186,27 @@ describe('PassageImages', () => {
     fireEvent.press(screen.getByTestId('passage-image-img-api-2-zoom'));
     expect(grown('img-api-2')).toBe(false);
     expect(viewerVisible()).toBe(false);
+  });
+
+  it.each([
+    // Width by height, then the grown height on a 300 row and its fit.
+    ['a wide image at its own shape', 400, 200, 150, 'cover'],
+    ['a tall image capped, fitted inside', 200, 600, 450, 'contain'],
+  ])('grows %s', (_label, width, height, grownHeight, fit) => {
+    const uri = 'https://example.org/jerusalem-thumb.jpg';
+    renderImages(ready(MAP));
+    const previewHeight = () =>
+      StyleSheet.flatten(
+        screen.getByTestId('passage-image-img-api-1-preview').props.style,
+      ).height;
+    act(() => mockZoomLoads.get(uri)?.({ width, height }));
+    // Small, every tile is the same 4:3 crop.
+    expect(previewHeight()).toBeCloseTo(((300 - 12) / 2) * 0.75);
+    expect(mockZoomFits.get(uri)).toBe('cover');
+
+    grow('Jerusalem');
+    expect(previewHeight()).toBeCloseTo(grownHeight);
+    expect(mockZoomFits.get(uri)).toBe(fit);
   });
 
   it('gives a grown image its own row at its whole shape', () => {

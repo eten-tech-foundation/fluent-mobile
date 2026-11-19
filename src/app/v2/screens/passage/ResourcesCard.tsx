@@ -38,6 +38,8 @@ const FLING = 500;
 const MIN_TARGET = 48;
 /** A preview tile's side: small enough to sit in line with the title. */
 const TILE = 36;
+/** How many previews show in line. */
+const PREVIEW_TILES = 3;
 
 /**
  * The passage's resources as a card docked at the bottom of the page, inset
@@ -54,6 +56,7 @@ export function ResourcesCard({
   onPeekHeight,
   images,
   previews,
+  previewsScope,
   onRetryImages,
 }: {
   /** False while the player is open. */
@@ -67,8 +70,13 @@ export function ResourcesCard({
   /** The docked card's height, for the room the page leaves under it. */
   onPeekHeight: (height: number) => void;
   images: { state: PassageImagesState; scope: string };
-  /** Up to three items shown in line while docked, to invite a look. */
+  /** Items to preview; the first three that load show in line, to invite a look. */
   previews: ImagesMapsItem[];
+  /**
+   * Changes whenever the previews load again or are for something else,
+   * so a thumbnail that failed gets another try.
+   */
+  previewsScope: string;
   onRetryImages: () => void;
 }) {
   const { controlSizes, roles } = useTheme();
@@ -146,9 +154,19 @@ export function ResourcesCard({
   }));
 
   const [header, setHeader] = useState(0);
-  // A preview that won't load drops out rather than sitting as an empty tile.
+  // A preview that won't load drops out rather than sitting as an empty tile,
+  // and the next one that loads takes its place. Failures clear when the
+  // previews load again (a retry, coming back online, the full list), in
+  // render so an old failure never shows for a frame.
   const [brokenIds, setBrokenIds] = useState<ReadonlySet<string>>(new Set());
-  const shownPreviews = previews.filter(p => !brokenIds.has(p.id));
+  const [brokenFor, setBrokenFor] = useState(previewsScope);
+  if (brokenFor !== previewsScope) {
+    setBrokenFor(previewsScope);
+    setBrokenIds(new Set());
+  }
+  const shownPreviews = previews
+    .filter(p => !brokenIds.has(p.id))
+    .slice(0, PREVIEW_TILES);
   const { scrolled, onScroll, reset } = useScrolled();
   const list = useAnimatedRef<Animated.ScrollView>();
   // Each open starts at the top, while what's under the header is still faded.

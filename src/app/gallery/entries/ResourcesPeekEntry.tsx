@@ -87,6 +87,7 @@ export function ResourcesPeekEntry() {
           onPeekHeight={() => {}}
           images={{ state: STATES[picked].state, scope: String(picked) }}
           previews={previewsOf(STATES[picked].state)}
+          previewsScope={String(picked)}
           onRetryImages={() => setPicked(0)}
         />
       </View>

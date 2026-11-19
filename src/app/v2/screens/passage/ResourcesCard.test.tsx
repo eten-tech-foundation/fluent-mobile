@@ -26,7 +26,13 @@ const PREVIEWS: ImagesMapsItem[] = ['a', 'b', 'c'].map(id => ({
   uri: `file:///${id}.jpg`,
 }));
 
-function Card({ previews = [] }: { previews?: ImagesMapsItem[] }) {
+function Card({
+  previews = [],
+  previewsScope = 'p',
+}: {
+  previews?: ImagesMapsItem[];
+  previewsScope?: string;
+}) {
   const [open, setOpen] = useState(false);
   external = setOpen;
   return (
@@ -39,6 +45,7 @@ function Card({ previews = [] }: { previews?: ImagesMapsItem[] }) {
       onPeekHeight={() => {}}
       images={{ state: { status: 'loading' }, scope: 'a' }}
       previews={previews}
+      previewsScope={previewsScope}
       onRetryImages={() => {}}
     />
   );
@@ -133,5 +140,34 @@ describe('ResourcesCard', () => {
       screen.UNSAFE_getAllByType(Image)[1].props.onError();
     });
     expect(screen.UNSAFE_getAllByType(Image)).toHaveLength(2);
+  });
+
+  it('fills in with the next preview that loads, up to three', () => {
+    const four = [
+      ...PREVIEWS,
+      { id: 'd', title: 'Image d', uri: 'file:///d.jpg' },
+    ];
+    render(<Card previews={four} />);
+    const uris = () =>
+      screen
+        .UNSAFE_getAllByType(Image)
+        .map(image => (image.props.source as { uri: string }).uri);
+    expect(uris()).toEqual(['file:///a.jpg', 'file:///b.jpg', 'file:///c.jpg']);
+    act(() => {
+      screen.UNSAFE_getAllByType(Image)[0].props.onError();
+    });
+    expect(uris()).toEqual(['file:///b.jpg', 'file:///c.jpg', 'file:///d.jpg']);
+  });
+
+  it('gives a failed preview another try when the previews load again', () => {
+    const view = render(<Card previews={PREVIEWS} previewsScope="first" />);
+    act(() => {
+      screen.UNSAFE_getAllByType(Image)[1].props.onError();
+    });
+    expect(screen.UNSAFE_getAllByType(Image)).toHaveLength(2);
+
+    // The same images, loaded again (a retry, back online, the full list).
+    view.rerender(<Card previews={PREVIEWS} previewsScope="all" />);
+    expect(screen.UNSAFE_getAllByType(Image)).toHaveLength(3);
   });
 });
