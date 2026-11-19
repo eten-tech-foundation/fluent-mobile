@@ -3176,7 +3176,7 @@ describe('PassageScreen', () => {
       settle();
     }
 
-    it('preview only the first three verses once the page has arrived', async () => {
+    it('preview the first three verses once the page has arrived, then load the rest in the background', async () => {
       const verses = [22, 23, 24, 25, 26].map(verseNumber => ({
         ...ready.verses[0],
         verseNumber,
@@ -3187,26 +3187,119 @@ describe('PassageScreen', () => {
           ? new Promise(() => {})
           : [{ id: 'img-api-1', title: 'Jerusalem', uri: 'file:///1.jpg' }],
       );
+      const refs = (...nums: number[]) =>
+        nums.map(verseNumber => ({ chapterNumber: 14, verseNumber }));
+      const asked = () =>
+        mockLoadImages.mock.calls
+          .map(
+            ([args]) =>
+              args as { projectId: number | null; verseRefs?: unknown },
+          )
+          .filter(args => args.projectId === 9)
+          .map(args => args.verseRefs);
+      const notesProject = () => mockNotesFor.mock.calls.at(-1)?.[0].projectId;
       jest.useFakeTimers();
       render(<PassageScreen />);
-      expect(mockLoadImages).not.toHaveBeenCalledWith(
-        expect.objectContaining({ projectId: 9 }),
-      );
+      expect(asked()).toEqual([]);
 
+      // The previews come first, on their own.
       settle();
+      expect(asked()).toEqual([refs(22, 23, 24)]);
+
+      // Once they're in, the full list loads behind them; the notes still
+      // wait for the player.
       await act(async () => {});
-      const asked = mockLoadImages.mock.calls
-        .map(
-          ([args]) => args as { projectId: number | null; verseRefs?: unknown },
-        )
-        .filter(args => args.projectId === 9);
-      expect(asked.map(args => args.verseRefs)).toEqual([
-        [22, 23, 24].map(verseNumber => ({ chapterNumber: 14, verseNumber })),
-      ]);
+      expect(asked()).toEqual([refs(22, 23, 24), refs(22, 23, 24, 25, 26)]);
+      expect(notesProject()).toBeNull();
       expect(
         screen.getByTestId('passage-resources-previews', hidden),
       ).toBeTruthy();
       expect(screen.queryByTestId('passage-resources')).toBeNull();
+    });
+
+    describe('with five verses', () => {
+      /** Real loads of all five verses (a disabled hook asks with no project). */
+      const fullLoads = () =>
+        mockLoadImages.mock.calls.filter(([args]) => {
+          const { projectId, verseRefs } = args as {
+            projectId: number | null;
+            verseRefs?: unknown[];
+          };
+          return projectId === 9 && verseRefs?.length === 5;
+        }).length;
+      /** Previews are the first three verses; the full list is all five. */
+      const loadImages = (
+        previews: () => Promise<unknown[]>,
+        full: () => Promise<unknown[]>,
+      ) =>
+        mockLoadImages.mockImplementation(async args => {
+          const { projectId, verseRefs } = args as {
+            projectId: number | null;
+            verseRefs?: unknown[];
+          };
+          if (projectId === null) return new Promise(() => {});
+          return verseRefs?.length === 3 ? previews() : full();
+        });
+      beforeEach(() => {
+        mockPassage = {
+          ...ready,
+          verses: [22, 23, 24, 25, 26].map(verseNumber => ({
+            ...ready.verses[0],
+            verseNumber,
+          })),
+        };
+      });
+
+      it('load the full list when the card opens before the previews settle', async () => {
+        loadImages(
+          () => new Promise(() => {}),
+          async () => [],
+        );
+        renderSettled();
+        await act(async () => {});
+        expect(fullLoads()).toBe(0);
+
+        openResources();
+        await act(async () => {});
+        expect(fullLoads()).toBe(1);
+      });
+
+      it('load in the background when the previews fail, too', async () => {
+        loadImages(
+          async () => {
+            throw new Error('offline');
+          },
+          async () => [],
+        );
+        renderSettled();
+        await act(async () => {});
+        expect(fullLoads()).toBe(1);
+        expect(screen.queryByTestId('passage-resources')).toBeNull();
+      });
+
+      it('retry a failed background load when the card opens', async () => {
+        let fail = true;
+        loadImages(
+          async () => [],
+          async () => {
+            if (fail) throw new Error('502');
+            return [];
+          },
+        );
+        renderSettled();
+        await act(async () => {});
+        expect(fullLoads()).toBe(1);
+
+        fail = false;
+        openResources();
+        await act(async () => {});
+        expect(fullLoads()).toBe(2);
+        expect(
+          within(screen.getByTestId('passage-resources')).getByText(
+            'No images or maps here.',
+          ),
+        ).toBeTruthy();
+      });
     });
 
     it("open from the peek for the passage's verses, with no classic route", async () => {

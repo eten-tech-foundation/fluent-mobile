@@ -1,7 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Animated, { Easing, LinearTransition } from 'react-native-reanimated';
-import { CornersOut } from '../../../../components/ui/icons';
 import {
   PASSAGE_IMAGE_GROW_HINT,
   PASSAGE_IMAGE_SHRINK_HINT,
@@ -14,15 +13,13 @@ import {
   PASSAGE_IMAGES_RETRY,
   PASSAGE_IMAGES_RETRY_LABEL,
   PASSAGE_IMAGES_UNPREPARED,
-  passageImageOpenLabel,
 } from '../../../../constants/messages';
 import type { ImagesMapsItem } from '../../../../types/resources/imagesMaps';
 import { useTheme, useThemedStyles } from '../../../../theme/useTheme';
 import { ZoomableImage } from '../../../tabs/resources/ZoomableImage';
-import { ImageViewer } from './ImageViewer';
 import type { PassageImagesState } from './usePassageImages';
 
-/** Room to tap Retry or open an image, whatever the text size. */
+/** Room to tap Retry, whatever the text size. */
 const MIN_TARGET = 48;
 const PRESSED_OPACITY = 0.7;
 /** Tiles to a row, and their crop: 4:3, filled. */
@@ -38,19 +35,26 @@ const NONE: ReadonlySet<string> = new Set();
  * The passage's images and maps, two to a row. A tap grows one to its own
  * row at its whole, uncropped shape, pushing the rest along, and a second
  * tap shrinks it; one grows at a time. A grown one shows its caption and
- * credit and a corner button to open it full screen. Each pinches to zoom. A failed load, or every image failing, stays here with
- * its own Retry; the images that did load stay usable. Failures and an open
- * image clear when the images are for something else.
+ * credit. Each pinches to zoom in place. A failed load, or every image
+ * failing, stays here with its own Retry; the images that did load stay
+ * usable. Failures and a grown image clear when the images are for
+ * something else.
  */
 export function PassageImages({
   scope,
   state,
   onRetry,
+  onGrown,
 }: {
   /** Changes whenever the images are for something else. */
   scope: string;
   state: PassageImagesState;
   onRetry: () => void;
+  /**
+   * Where an image landed once grown, top and bottom in its parent's space,
+   * so the list it's in can bring it to the middle.
+   */
+  onGrown?: (top: number, bottom: number) => void;
 }) {
   const { roles, spacing } = useTheme();
   const styles = useThemedStyles(t => ({
@@ -77,16 +81,21 @@ export function PassageImages({
   const ids = state.status === 'ready' ? state.items.map(i => i.id) : [];
   const resetKey = `${scope}:${state.status}:${ids.join('|')}`;
   const [failedIds, setFailedIds] = useState(NONE);
-  const [openItem, setOpenItem] = useState<ImagesMapsItem | null>(null);
   const [grownId, setGrownId] = useState<string | null>(null);
   const [listWidth, setListWidth] = useState(0);
+  const [listTop, setListTop] = useState(0);
+  /**
+   * The grown image already reported, and whether its real size was known
+   * then: each grow reports once, and again once its real shape replaces
+   * the guessed one.
+   */
+  const reported = useRef<string | null>(null);
   // Reset in render so failures reported in the same commit aren't lost, and
-  // so a reload through loading never brings back an old viewer or failure.
+  // so a reload through loading never brings back an old grown image or failure.
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   if (resetKey !== prevResetKey) {
     setPrevResetKey(resetKey);
     setFailedIds(NONE);
-    setOpenItem(null);
     setGrownId(null);
   }
 
@@ -97,7 +106,6 @@ export function PassageImages({
   );
   const retry = () => {
     setFailedIds(NONE);
-    setOpenItem(null);
     onRetry();
   };
 
@@ -163,30 +171,59 @@ export function PassageImages({
   // Every asset failing reads as a failed load, never as an empty passage.
   if (failedIds.size >= state.items.length) return failedBody;
 
+  const grownAt = state.items.findIndex(item => item.id === grownId);
+  const items =
+    grownAt < 0 ? state.items : ownRow(state.items, grownAt, COLUMNS);
+  const onGrownLayout = (
+    id: string,
+    top: number,
+    bottom: number,
+    sized: boolean,
+  ) => {
+    const key = `${id}:${sized}`;
+    if (reported.current === key) return;
+    reported.current = key;
+    onGrown?.(listTop + top, listTop + bottom);
+  };
+
   return (
-    <>
-      <View
-        style={styles.list}
-        onLayout={e => setListWidth(Math.floor(e.nativeEvent.layout.width))}
-        testID="passage-images-list"
-      >
-        {state.items.map(item => (
-          <ImageCard
-            key={item.id}
-            item={item}
-            listWidth={listWidth}
-            gap={spacing.md}
-            failed={failedIds.has(item.id)}
-            grown={grownId === item.id}
-            onFailed={onImageFailed}
-            onToggle={() => setGrownId(id => (id === item.id ? null : item.id))}
-            onOpen={() => setOpenItem(item)}
-          />
-        ))}
-      </View>
-      <ImageViewer item={openItem} onClose={() => setOpenItem(null)} />
-    </>
+    <View
+      style={styles.list}
+      onLayout={e => {
+        setListWidth(Math.floor(e.nativeEvent.layout.width));
+        setListTop(e.nativeEvent.layout.y);
+      }}
+      testID="passage-images-list"
+    >
+      {items.map(item => (
+        <ImageCard
+          key={item.id}
+          item={item}
+          listWidth={listWidth}
+          gap={spacing.md}
+          failed={failedIds.has(item.id)}
+          grown={grownId === item.id}
+          onFailed={onImageFailed}
+          onToggle={() => {
+            reported.current = null;
+            setGrownId(id => (id === item.id ? null : item.id));
+          }}
+          onGrownLayout={onGrownLayout}
+        />
+      ))}
+    </View>
   );
+}
+
+/**
+ * The order with the item at `grownAt` on its own row, where it was: it
+ * moves to the start of its row, and the rest of its row drops to pair with
+ * what follows, so no row above the last is left short.
+ */
+export function ownRow<T>(items: T[], grownAt: number, columns: number): T[] {
+  const rowStart = grownAt - (grownAt % columns);
+  const rest = items.filter((_, i) => i !== grownAt);
+  return [...rest.slice(0, rowStart), items[grownAt], ...rest.slice(rowStart)];
 }
 
 function ImageCard({
@@ -197,7 +234,7 @@ function ImageCard({
   grown,
   onFailed,
   onToggle,
-  onOpen,
+  onGrownLayout,
 }: {
   item: ImagesMapsItem;
   /** The list's width; nothing is sized until it's known. */
@@ -207,9 +244,16 @@ function ImageCard({
   grown: boolean;
   onFailed: (id: string) => void;
   onToggle: () => void;
-  onOpen: () => void;
+  /** Where it landed once grown, top and bottom within the list. */
+  onGrownLayout: (
+    id: string,
+    top: number,
+    bottom: number,
+    /** Its real shape is known (or never will be), not guessed. */
+    sized: boolean,
+  ) => void;
 }) {
-  const { controlSizes, motion, roles } = useTheme();
+  const { motion, roles } = useTheme();
   // A tap moves the tiles, nothing throws them: the Foundations curve, with
   // no spring's overshoot on every tile at once.
   const reflow = useMemo(() => {
@@ -237,18 +281,6 @@ function ImageCard({
       backgroundColor: t.roles.surfaceSunken,
     },
     unavailable: { ...t.type.label, color: t.roles.fgSecondary },
-    open: {
-      position: 'absolute',
-      top: t.spacing.sm,
-      right: t.spacing.sm,
-      width: MIN_TARGET,
-      height: MIN_TARGET,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: t.radius.full,
-      backgroundColor: t.roles.surfaceInverse,
-    },
-    pressed: { opacity: PRESSED_OPACITY },
     text: { gap: t.spacing.xxs },
     // Tiles match the book page's passage covers; a grown one reads as a card.
     title: { ...t.type.label, color: t.roles.fgPrimary },
@@ -272,6 +304,14 @@ function ImageCard({
     <Animated.View
       layout={reflow}
       style={[styles.card, { width }]}
+      onLayout={
+        grown
+          ? e => {
+              const { y, height: tall } = e.nativeEvent.layout;
+              onGrownLayout(item.id, y, y + tall, size !== null || failed);
+            }
+          : undefined
+      }
       testID={`passage-image-${item.id}`}
     >
       <Animated.View
@@ -285,7 +325,9 @@ function ImageCard({
           </View>
         ) : (
           <>
+            {/* A fresh zoom each way, so a shrunk tile isn't left zoomed. */}
             <ZoomableImage
+              key={grown ? 'grown' : 'tile'}
               uri={previewUri}
               accessibilityLabel={item.title}
               style={styles.zoom}
@@ -303,18 +345,6 @@ function ImageCard({
             )}
           </>
         )}
-        {grown ? (
-          <Pressable
-            onPress={onOpen}
-            android_disableSound
-            accessibilityRole="button"
-            accessibilityLabel={passageImageOpenLabel(item.title)}
-            style={({ pressed }) => [styles.open, pressed && styles.pressed]}
-            testID={`passage-image-${item.id}-open`}
-          >
-            <CornersOut size={controlSizes.icon24} color={roles.fgOnInverse} />
-          </Pressable>
-        ) : null}
       </Animated.View>
       {/* The words grow it too, and are how TalkBack reaches it. */}
       <Pressable

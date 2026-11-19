@@ -337,16 +337,31 @@ export function Sheet({
   const [playingVerse, setPlayingVerse] = useState<number | null>(null);
   const steps = recorder.verse;
   const [resourcesOpen, setResourcesOpen] = useState(false);
-  // Like the notes, they load the first time they're asked for, then stay.
+  // The full list loads the first time the card opens, or in the background
+  // once the previews settle, then stays.
   const [resourcesAsked, setResourcesAsked] = useState(false);
+  const [prefetchAsked, setPrefetchAsked] = useState(false);
   const [peekHeight, setPeekHeight] = useState(0);
   const images = usePassageImages({
     passage,
     userId,
-    enabled: resourcesAsked,
+    enabled: resourcesAsked || prefetchAsked,
   });
+  // A background load that failed tries again when the card opens, as the
+  // card's first open used to.
+  const imagesRef = useRef(images);
+  useEffect(() => {
+    imagesRef.current = images;
+  });
+  useEffect(() => {
+    if (resourcesOpen && imagesRef.current.state.status === 'failed') {
+      void imagesRef.current.retry();
+    }
+  }, [resourcesOpen]);
   // A few previews for the docked card, from the first verses only, once
-  // the page has arrived; the full list waits for the card to open.
+  // the page has arrived. The full list follows in the background once the
+  // previews settle, so it's usually in by the time the card opens, without
+  // holding up the page or the previews.
   const [previewsAsked, setPreviewsAsked] = useState(false);
   useEffect(() => {
     const wait = setTimeout(() => setPreviewsAsked(true), PREVIEW_DELAY_MS);
@@ -358,6 +373,11 @@ export function Sheet({
     enabled: previewsAsked,
     firstVerses: PREVIEW_COUNT,
   });
+  const previewsSettled =
+    previewsAsked && firstImages.state.status !== 'loading';
+  useEffect(() => {
+    if (previewsSettled) setPrefetchAsked(true);
+  }, [previewsSettled]);
   // The full list once it's in, else the first verses'. All of them, so
   // the card can skip a thumbnail that won't load.
   const previewSource = images.state.status === 'ready' ? images : firstImages;

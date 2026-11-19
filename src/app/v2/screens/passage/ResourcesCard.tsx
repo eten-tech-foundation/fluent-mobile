@@ -79,7 +79,7 @@ export function ResourcesCard({
   previewsScope: string;
   onRetryImages: () => void;
 }) {
-  const { controlSizes, roles } = useTheme();
+  const { controlSizes, roles, spacing } = useTheme();
   const haptics = useHaptics();
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
@@ -90,8 +90,9 @@ export function ResourcesCard({
       right: t.spacing.md,
       bottom: 0,
       backgroundColor: t.roles.bgDefault,
-      borderTopLeftRadius: t.radius.lg,
-      borderTopRightRadius: t.radius.lg,
+      // Round all round: docked, the bottom is below the screen; open, the
+      // card floats above it.
+      borderRadius: t.radius.lg,
       boxShadow: t.elevation.floating,
       overflow: 'hidden',
     },
@@ -169,6 +170,12 @@ export function ResourcesCard({
     .slice(0, PREVIEW_TILES);
   const { scrolled, onScroll, reset } = useScrolled();
   const list = useAnimatedRef<Animated.ScrollView>();
+  // A grown image moves to the middle of what shows of the list.
+  const [viewport, setViewport] = useState(0);
+  const center = (top: number, bottom: number) => {
+    const y = centerOffset(top, bottom, viewport, spacing.lg);
+    if (y !== null) list.current?.scrollTo({ y, animated: !reduceMotion });
+  };
   // Each open starts at the top, while what's under the header is still faded.
   useEffect(() => {
     if (!open) return;
@@ -177,6 +184,14 @@ export function ResourcesCard({
   }, [open, list, reset]);
   // Docked, it shows its header above the system's gesture bar.
   const peek = header + insets.bottom;
+  // Open, it floats like a tall modal: it stops above the gesture bar by
+  // the same margin as its sides.
+  const lift = spacing.md + insets.bottom;
+  const height = Math.max(maxHeight - lift, peek);
+  /** How far below its open place it sits docked, and how far it moves. */
+  const dock = Math.max(0, height - peek);
+  // Normally dock + lift; on a page too short to float, it floats less and
+  // never rises past the page's header.
   const travel = Math.max(0, maxHeight - peek);
   useEffect(() => {
     if (header > 0) onPeekHeight(peek);
@@ -233,7 +248,8 @@ export function ResourcesCard({
     transform: [
       {
         translateY:
-          (1 - progress.value) * travel +
+          dock -
+          progress.value * travel +
           interpolate(player.value, [0, 0.4], [0, peek], 'clamp'),
       },
     ],
@@ -252,7 +268,7 @@ export function ResourcesCard({
 
   return (
     <Animated.View
-      style={[styles.card, { height: Math.max(maxHeight, peek) }, cardStyle]}
+      style={[styles.card, { height }, cardStyle]}
       pointerEvents={shown ? 'box-none' : 'none'}
       importantForAccessibility={shown ? 'auto' : 'no-hide-descendants'}
       testID="passage-resources-peek"
@@ -346,6 +362,7 @@ export function ResourcesCard({
         style={[styles.body, bodyStyle]}
         contentContainerStyle={styles.content}
         onScroll={onScroll}
+        onLayout={e => setViewport(e.nativeEvent.layout.height)}
         scrollEventThrottle={16}
         importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
         testID="passage-resources"
@@ -357,8 +374,28 @@ export function ResourcesCard({
           scope={images.scope}
           state={images.state}
           onRetry={onRetryImages}
+          onGrown={center}
         />
       </Animated.ScrollView>
     </Animated.View>
   );
+}
+
+/**
+ * Where to scroll so a span sits in the middle of a view, or null before
+ * the view has a size. A span taller than the view, less `margin` at each
+ * edge, starts `margin` from the top instead, so its top isn't cut off.
+ */
+export function centerOffset(
+  top: number,
+  bottom: number,
+  viewport: number,
+  margin: number,
+): number | null {
+  if (viewport <= 0) return null;
+  const y =
+    bottom - top > viewport - margin * 2
+      ? top - margin
+      : (top + bottom) / 2 - viewport / 2;
+  return Math.max(0, y);
 }

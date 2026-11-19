@@ -226,8 +226,5 @@ export const PASSAGE_IMAGES_FAILED = "Images and maps couldn't load.";
 export const PASSAGE_IMAGES_RETRY = 'Retry';
 export const PASSAGE_IMAGES_RETRY_LABEL = 'Retry loading images and maps';
 export const PASSAGE_IMAGE_UNAVAILABLE = 'Image unavailable';
-export const passageImageOpenLabel = (title: string) =>
-  `Open ${title} full screen`;
-export const PASSAGE_IMAGE_CLOSE = 'Close';
 export const PASSAGE_IMAGE_GROW_HINT = 'Shows the whole image';
 export const PASSAGE_IMAGE_SHRINK_HINT = 'Shows it smaller';

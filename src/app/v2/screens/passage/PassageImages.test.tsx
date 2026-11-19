@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import {
   act,
   fireEvent,
@@ -8,7 +8,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import type { ImagesMapsItem } from '../../../../types/resources/imagesMaps';
-import { PassageImages } from './PassageImages';
+import { ownRow, PassageImages } from './PassageImages';
 import type { PassageImagesState } from './usePassageImages';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -28,6 +28,8 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
+/** Images whose asset fails as soon as it renders. */
+let mockFailing = new Set<string>();
 /** Each zoom view's last fit, by its uri. */
 const mockZoomFits = new Map<string, string | undefined>();
 /** Each zoom view's load, by its uri, to fire when a test wants. */
@@ -35,8 +37,8 @@ const mockZoomLoads = new Map<
   string,
   (size: { width: number; height: number }) => void
 >();
-/** Images whose asset fails as soon as it renders. */
-let mockFailing = new Set<string>();
+/** Each zoom view mounted, by its uri; a new one starts at 1x. */
+const mockZoomMounts: string[] = [];
 
 jest.mock('../../../tabs/resources/ZoomableImage', () => {
   const React = require('react');
@@ -62,6 +64,8 @@ jest.mock('../../../tabs/resources/ZoomableImage', () => {
       React.useLayoutEffect(() => {
         if ([...mockFailing].some(id => uri.includes(id))) onLoadError?.();
       }, [uri, onLoadError]);
+      // Runs once per mount.
+      React.useState(() => mockZoomMounts.push(uri));
       return <Pressable testID={testID} onPress={onPress} />;
     },
   };
@@ -99,29 +103,52 @@ function renderImages(
 }
 
 /** Tiles size from the list's width, so they wait for its layout. */
-function layOut() {
+function layOut(y = 0) {
   const list = screen.queryByTestId('passage-images-list');
   if (!list) return;
   fireEvent(list, 'layout', {
-    nativeEvent: { layout: { width: 300, height: 0 } },
+    nativeEvent: { layout: { x: 0, y, width: 300, height: 0 } },
   });
 }
+
+/** Six images, 1 to 6, for laying out rows. */
+const SIX: ImagesMapsItem[] = [1, 2, 3, 4, 5, 6].map(n => ({
+  id: `img-${n}`,
+  title: `Image ${n}`,
+  uri: `https://example.org/${n}.jpg`,
+}));
+/** The images' numbers, in the order they show. */
+const shown = () =>
+  screen
+    .getAllByTestId(/^passage-image-img-\d+$/)
+    .map(el => Number(String(el.props.testID).split('-').at(-1)));
 
 const grow = (title: string) =>
   fireEvent.press(screen.getByRole('button', { name: title }));
 const grown = (id: string) =>
   screen.getByTestId(`passage-image-${id}-toggle`).props.accessibilityState
     .expanded as boolean;
-/** Grows an image, then opens it full screen from its corner button. */
-function openFull(title: string) {
-  grow(title);
-  fireEvent.press(
-    screen.getByRole('button', { name: `Open ${title} full screen` }),
-  );
-}
 
-const viewerVisible = () =>
-  screen.UNSAFE_getByType(Modal).props.visible as boolean;
+describe('ownRow', () => {
+  const nums = [1, 2, 3, 4, 5, 6];
+  it.each([
+    // Grown index, then the order: it starts its own row, and the rest of
+    // its row drops to pair with what follows.
+    [0, [1, 2, 3, 4, 5, 6]],
+    [1, [2, 1, 3, 4, 5, 6]],
+    [2, [1, 2, 3, 4, 5, 6]],
+    [3, [1, 2, 4, 3, 5, 6]],
+    [4, [1, 2, 3, 4, 5, 6]],
+    [5, [1, 2, 3, 4, 6, 5]],
+  ])('grows index %i of six as %j', (grownAt, order) => {
+    expect(ownRow(nums, grownAt, 2)).toEqual(order);
+  });
+
+  it('handles one and two', () => {
+    expect(ownRow([1], 0, 2)).toEqual([1]);
+    expect(ownRow([1, 2], 1, 2)).toEqual([2, 1]);
+  });
+});
 
 describe('PassageImages', () => {
   beforeEach(() => {
@@ -171,13 +198,10 @@ describe('PassageImages', () => {
 
   it('grows one image at a time, from its picture or its words', () => {
     renderImages(ready(MAP, ROOM));
-    expect(screen.queryByRole('button', { name: /full screen/ })).toBeNull();
-
     fireEvent.press(screen.getByTestId('passage-image-img-api-1-zoom'));
     expect(grown('img-api-1')).toBe(true);
-    expect(
-      screen.getByRole('button', { name: 'Open Jerusalem full screen' }),
-    ).toBeTruthy();
+    // It grows in place; nothing opens full screen.
+    expect(screen.queryByRole('button', { name: /full screen/ })).toBeNull();
 
     grow('Upper room');
     expect(grown('img-api-1')).toBe(false);
@@ -185,7 +209,95 @@ describe('PassageImages', () => {
 
     fireEvent.press(screen.getByTestId('passage-image-img-api-2-zoom'));
     expect(grown('img-api-2')).toBe(false);
-    expect(viewerVisible()).toBe(false);
+  });
+
+  it('starts a fresh zoom when an image grows or shrinks', () => {
+    renderImages(ready(MAP));
+    const mounts = () =>
+      mockZoomMounts.filter(u => u.includes('jerusalem')).length;
+    const before = mounts();
+    grow('Jerusalem');
+    expect(mounts()).toBe(before + 1);
+    grow('Jerusalem');
+    expect(mounts()).toBe(before + 2);
+  });
+
+  it('keeps a grown image in its row, and its row-mate drops to the next', () => {
+    renderImages(ready(...SIX));
+    expect(shown()).toEqual([1, 2, 3, 4, 5, 6]);
+    grow('Image 4');
+    expect(shown()).toEqual([1, 2, 4, 3, 5, 6]);
+    grow('Image 4');
+    expect(shown()).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('says where a grown image landed, once per grow', () => {
+    const onGrown = jest.fn();
+    render(
+      <PassageImages
+        scope="scope-a"
+        state={ready(...SIX)}
+        onRetry={jest.fn()}
+        onGrown={onGrown}
+      />,
+    );
+    layOut(40);
+    grow('Image 3');
+    const tile = screen.getByTestId('passage-image-img-3');
+    const land = (y: number) =>
+      fireEvent(tile, 'layout', {
+        nativeEvent: { layout: { x: 0, y, width: 300, height: 250 } },
+      });
+    land(200);
+    expect(onGrown).toHaveBeenCalledWith(240, 490);
+    land(210);
+    expect(onGrown).toHaveBeenCalledTimes(1);
+
+    // A tile at rest says nothing.
+    fireEvent(screen.getByTestId('passage-image-img-1'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 140, height: 120 } },
+    });
+    expect(onGrown).toHaveBeenCalledTimes(1);
+
+    // Shrunk and grown again, it says so again.
+    grow('Image 3');
+    grow('Image 3');
+    land(200);
+    expect(onGrown).toHaveBeenCalledTimes(2);
+  });
+
+  it('says again once a grown image trades its guessed shape for its own', () => {
+    const onGrown = jest.fn();
+    render(
+      <PassageImages
+        scope="scope-a"
+        state={ready(...SIX)}
+        onRetry={jest.fn()}
+        onGrown={onGrown}
+      />,
+    );
+    layOut();
+    // Grown before its thumbnail is in: the shape is a guess.
+    grow('Image 3');
+    const tile = screen.getByTestId('passage-image-img-3');
+    const land = (height: number) =>
+      fireEvent(tile, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 100, width: 300, height } },
+      });
+    land(250);
+    expect(onGrown).toHaveBeenCalledTimes(1);
+
+    act(() =>
+      mockZoomLoads.get('https://example.org/3.jpg')?.({
+        width: 200,
+        height: 300,
+      }),
+    );
+    land(480);
+    expect(onGrown).toHaveBeenCalledTimes(2);
+    expect(onGrown).toHaveBeenLastCalledWith(100, 580);
+    land(480);
+    expect(onGrown).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -236,8 +348,8 @@ describe('PassageImages', () => {
     expect(screen.getByTestId('passage-images-list')).toBeTruthy();
     expect(screen.getByTestId('passage-image-img-api-2-failed')).toBeTruthy();
     expect(screen.queryByTestId('passage-image-img-api-1-failed')).toBeNull();
-    openFull('Jerusalem');
-    expect(viewerVisible()).toBe(true);
+    grow('Jerusalem');
+    expect(grown('img-api-1')).toBe(true);
   });
 
   it('reads every image failing as a failed load with Retry, not as empty', () => {
@@ -262,37 +374,11 @@ describe('PassageImages', () => {
     expect(screen.getByTestId('passage-images-list')).toBeTruthy();
   });
 
-  it("opens full screen from a grown image's corner button", () => {
-    renderImages(ready(MAP));
-    expect(viewerVisible()).toBe(false);
-    openFull('Jerusalem');
-    expect(viewerVisible()).toBe(true);
-    expect(
-      within(screen.getByTestId('passage-image-viewer')).getByText('Jerusalem'),
-    ).toBeTruthy();
-  });
-
-  it('closes full screen with Close and with Android Back alike', () => {
-    renderImages(ready(MAP));
-    openFull('Jerusalem');
-    fireEvent.press(screen.getByTestId('passage-image-viewer-close'));
-    expect(viewerVisible()).toBe(false);
-
-    fireEvent.press(
-      screen.getByRole('button', { name: 'Open Jerusalem full screen' }),
-    );
-    act(() => {
-      screen.UNSAFE_getByType(Modal).props.onRequestClose();
-    });
-    expect(viewerVisible()).toBe(false);
-    expect(screen.getByTestId('passage-images-list')).toBeTruthy();
-  });
-
-  it('closes an open image and clears failures when the images are for something else', () => {
+  it('shrinks a grown image and clears failures when the images are for something else', () => {
     mockFailing = new Set(['room']);
     const view = renderImages(ready(MAP, ROOM));
-    openFull('Jerusalem');
-    expect(viewerVisible()).toBe(true);
+    grow('Jerusalem');
+    expect(grown('img-api-1')).toBe(true);
 
     mockFailing = new Set();
     view.rerender(
@@ -302,17 +388,16 @@ describe('PassageImages', () => {
         onRetry={jest.fn()}
       />,
     );
-    expect(viewerVisible()).toBe(false);
     expect(grown('img-api-1')).toBe(false);
     expect(screen.queryByTestId('passage-image-img-api-2-failed')).toBeNull();
   });
 
-  it('keeps an old viewer or failure from coming back after a reload', () => {
+  it('keeps an old grown image or failure from coming back after a reload', () => {
     mockFailing = new Set(['room']);
     const onRetry = jest.fn();
     const view = renderImages(ready(MAP, ROOM), onRetry);
-    openFull('Jerusalem');
-    expect(viewerVisible()).toBe(true);
+    grow('Jerusalem');
+    expect(grown('img-api-1')).toBe(true);
 
     // e.g. connectivity flips and the same images load again.
     mockFailing = new Set();
@@ -331,7 +416,6 @@ describe('PassageImages', () => {
       />,
     );
     layOut();
-    expect(viewerVisible()).toBe(false);
     expect(grown('img-api-1')).toBe(false);
     expect(screen.queryByTestId('passage-image-img-api-2-failed')).toBeNull();
   });

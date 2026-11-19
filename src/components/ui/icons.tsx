@@ -35,8 +35,6 @@ const CloudSlashIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/CloudSlash').CloudSlashIcon;
 const CloudWarningIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/CloudWarning').CloudWarningIcon;
-const CornersOutIcon: PhosphorIcon =
-  require('phosphor-react-native/src/icons/CornersOut').CornersOutIcon;
 const EjectIcon: PhosphorIcon =
   require('phosphor-react-native/src/icons/Eject').EjectIcon;
 const GearIcon: PhosphorIcon =
@@ -116,7 +114,6 @@ export const CloudWarning = weighted(
   'regular',
   'CloudWarning',
 );
-export const CornersOut = weighted(CornersOutIcon, 'regular', 'CornersOut');
 export const Gear = weighted(GearIcon, 'regular', 'Gear');
 export const Headphones = weighted(HeadphonesIcon, 'regular', 'Headphones');
 export const SignOut = weighted(SignOutIcon, 'regular', 'SignOut');
