@@ -67,6 +67,14 @@ updates:
       - dependency-name: '@op-engineering/op-sqlite'
         update-types:
           - 'version-update:semver-major'
+      # TypeScript 7 - blocked until typescript-eslint supports it (#499)
+      - dependency-name: 'typescript'
+        update-types:
+          - 'version-update:semver-major'
+      # Prettier 4 - semver-major only (migration ticket)
+      - dependency-name: 'prettier'
+        update-types:
+          - 'version-update:semver-major'
     reviewers:
       - 'eten-tech-foundation/fluent-admin'
     labels:
