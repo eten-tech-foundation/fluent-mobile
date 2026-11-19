@@ -1121,6 +1121,168 @@ describe('useVerseAudio', () => {
     expect(result.current.takesLoaded).toBe(true);
   });
 
+  describe('a delete reload is bound to its own query (#979)', () => {
+    const takeA = makeTake({ id: 'rec_a' });
+    const takeB = makeTake({ id: 'rec_b' });
+    const withOwner = (take: Recording) => ({
+      ...take,
+      ownerDisplayName: 'Recorder',
+    });
+
+    it('ignores a retained callback from a verse that is no longer active', async () => {
+      loadTakes.mockImplementation(async (id: number) =>
+        id === 42 ? [takeA] : [takeB],
+      );
+      const { result, rerender } = renderHook(
+        ({ id }: { id: number }) =>
+          useVerseAudio({ ...verseAudioArgs(), bibleTextId: id }),
+        { initialProps: { id: 42 } },
+      );
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+      // A confirmation alert keeps this callback past the verse change.
+      const retained = result.current.deleteTake;
+
+      rerender({ id: 43 });
+      await waitFor(() => expect(result.current.takes).toEqual([takeB]));
+
+      loadTakes.mockImplementation(async (id: number) =>
+        id === 42 ? [] : [takeB],
+      );
+      await act(async () => {
+        await retained('rec_a');
+      });
+
+      expect(deleteTake).toHaveBeenCalledWith('rec_a');
+      expect(result.current.takes).toEqual([takeB]);
+      expect(result.current.takesLoaded).toBe(true);
+    });
+
+    it('does not publish an All Takes refresh that was in flight when the verse changed', async () => {
+      let releaseOldAllTakes!: (rows: ReturnType<typeof withOwner>[]) => void;
+      const loadAllTakes = jest.fn(async () => [withOwner(takeA)]);
+      loadTakes.mockResolvedValue([takeA]);
+      const { result, rerender } = renderHook(
+        ({ id }: { id: number }) =>
+          useVerseAudio({ ...verseAudioArgs(), bibleTextId: id, loadAllTakes }),
+        { initialProps: { id: 42 } },
+      );
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+
+      // The delete's own All Takes refresh for the old verse stays pending.
+      loadAllTakes.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            releaseOldAllTakes = resolve;
+          }),
+      );
+      let deleting!: Promise<void>;
+      act(() => {
+        deleting = result.current.deleteTake('rec_a');
+      });
+      await waitFor(() => expect(releaseOldAllTakes).toBeDefined());
+
+      // The new verse's own load has not started its refresh yet.
+      loadTakes.mockImplementationOnce(
+        () => new Promise<Recording[]>(() => {}),
+      );
+      await act(async () => {
+        rerender({ id: 43 });
+      });
+
+      await act(async () => {
+        releaseOldAllTakes([withOwner(makeTake({ id: 'rec_stale' }))]);
+        await deleting;
+      });
+
+      expect(result.current.allTakes.map(t => t.id)).not.toContain('rec_stale');
+    });
+
+    it('does not mark a verse ready for a delete that began before A -> B -> A', async () => {
+      loadTakes.mockResolvedValue([takeA]);
+      let finishDelete!: () => void;
+      deleteTake.mockImplementation(
+        () =>
+          new Promise<void>(resolve => {
+            finishDelete = resolve;
+          }),
+      );
+      const { result, rerender } = renderHook(
+        ({ id }: { id: number }) =>
+          useVerseAudio({ ...verseAudioArgs(), bibleTextId: id }),
+        { initialProps: { id: 42 } },
+      );
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+
+      let deleting!: Promise<void>;
+      act(() => {
+        deleting = result.current.deleteTake('rec_a');
+      });
+
+      loadTakes.mockImplementationOnce(
+        () => new Promise<Recording[]>(() => {}),
+      );
+      await act(async () => {
+        rerender({ id: 43 });
+      });
+      let releaseA!: (takes: Recording[]) => void;
+      loadTakes.mockImplementationOnce(
+        () =>
+          new Promise<Recording[]>(resolve => {
+            releaseA = resolve;
+          }),
+      );
+      await act(async () => {
+        rerender({ id: 42 });
+      });
+      expect(result.current.takesLoaded).toBe(false);
+
+      await act(async () => {
+        finishDelete();
+        await deleting;
+      });
+
+      // The old delete shares A's key but not A's current load.
+      expect(result.current.takesLoaded).toBe(false);
+
+      await act(async () => {
+        releaseA([takeA]);
+      });
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+    });
+
+    it('keeps Record off after a delete while the paused-take check is pending', async () => {
+      mockPausedMarkers.push(recoveredMarker());
+      loadTakes.mockResolvedValueOnce([takeA]).mockResolvedValue([]);
+      let releaseFileCheck!: (exists: boolean) => void;
+      mockFileExists.mockReturnValueOnce(
+        new Promise<boolean>(resolve => {
+          releaseFileCheck = resolve;
+        }),
+      );
+
+      const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+      await waitFor(() => expect(mockFileExists).toHaveBeenCalled());
+      expect(result.current.takesLoaded).toBe(false);
+
+      await act(async () => {
+        await result.current.deleteTake('rec_a');
+      });
+
+      // The delete reloaded the rows, but recovery has not restored its refs.
+      expect(result.current.takesLoaded).toBe(false);
+      await act(async () => {
+        await result.current.start();
+      });
+      expect(mockRecordingStart).not.toHaveBeenCalled();
+
+      await act(async () => {
+        releaseFileCheck(true);
+      });
+      await waitFor(() => expect(result.current.state).toBe('paused'));
+      expect(result.current.takesLoaded).toBe(true);
+    });
+  });
+
   it('cleans up a marker whose segment files are gone instead of pausing', async () => {
     mockPausedMarkers.push(recoveredMarker());
     mockFileExists.mockResolvedValue(false);

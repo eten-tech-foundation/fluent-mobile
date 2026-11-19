@@ -413,6 +413,14 @@ export function useVerseAudio({
   const allTakesRequestIdRef = useRef(0);
   const chapterAssignedRef = useRef(false);
   const activeBibleTextIdRef = useRef<number | null>(null);
+  // Counts every activation of the take-load effect, even one that repeats an
+  // earlier key (A -> B -> A). A delete started under one activation must not
+  // publish rows or readiness under a later one (#979).
+  const activationRef = useRef(0);
+  // The key whose own load, paused-take check included, has finished or failed.
+  // A delete reload may mark a key ready only after that, so it cannot open
+  // Record while recovery is still restoring its refs (#979).
+  const loadSettledKeyRef = useRef<string | null>(null);
   /**
    * `playback.play` / `load` briefly leave the engine `idle` while `replace`
    * runs. If verse state is already `playing` (Take 1 → Take 2), the natural-end
@@ -565,12 +573,19 @@ export function useVerseAudio({
     // earlier lets start() run before recovery has restored its refs, and the
     // late recovery would then overwrite the new capture's snapshot.
     const markLoaded = () => {
-      if (!isStale()) setLoadedTakesKey(takesLoadKey);
+      if (isStale()) return;
+      loadSettledKeyRef.current = takesLoadKey;
+      setLoadedTakesKey(takesLoadKey);
     };
     setLoadedTakeId(null);
     setPlayingTakeId(null);
     clearStitchQueue();
     activeBibleTextIdRef.current = bibleTextId;
+    activationRef.current += 1;
+    loadSettledKeyRef.current = null;
+    // An All Takes refresh still in flight belongs to the previous activation;
+    // invalidate it so it cannot publish old rows over this query's.
+    allTakesRequestIdRef.current += 1;
     // Activating a different query un-readies whatever was loaded before it.
     // Without this, returning to an earlier key before the newer load finishes
     // would match the old `loadedTakesKey` and mark stale rows ready. A re-run
@@ -585,6 +600,7 @@ export function useVerseAudio({
         setAllTakes([]);
         setHasMultipleRecorders(false);
         dispatch({ type: 'REHYDRATE', hasTake: false });
+        loadSettledKeyRef.current = takesLoadKey;
         setLoadedTakesKey(takesLoadKey);
         return;
       }
@@ -659,6 +675,7 @@ export function useVerseAudio({
       } catch (error) {
         log.error('Failed to load takes', { error });
         if (!isStale()) {
+          loadSettledKeyRef.current = takesLoadKey;
           dispatch({
             type: 'ERROR',
             message: error instanceof Error ? error.message : 'load failed',
@@ -1491,7 +1508,14 @@ export function useVerseAudio({
 
   const deleteTake = useCallback(
     async (id: string) => {
-      const loadKey = takesLoadKeyRef.current;
+      // Bound to the query this callback was built for, not the current one: a
+      // retained callback (RecordTab keeps it in a confirmation alert) would
+      // otherwise read the new key while still using the old verse's loader.
+      const queryKey = takesLoadKey;
+      const activation = activationRef.current;
+      const isCurrent = () =>
+        takesLoadKeyRef.current === queryKey &&
+        activationRef.current === activation;
       try {
         const target = takes.find(t => t.id === id);
         // A deleted take may be a stitched segment — drop the queue either way.
@@ -1514,19 +1538,22 @@ export function useVerseAudio({
           });
         }
         const rows = bibleTextId !== null ? await loadTakesFn(bibleTextId) : [];
-        // The verse changed while this ran: the active query loads its own
-        // rows, so these must not replace them or mark that list loaded. The
-        // delete itself is already done.
-        if (takesLoadKeyRef.current !== loadKey) return;
+        // The query changed or was re-activated while this ran: the active
+        // query loads its own rows, so these must not replace them or mark that
+        // list loaded. The delete itself is already done.
+        if (!isCurrent()) return;
         setTakes(rows);
-        // This reload is the take query for this key. After a failed load it
-        // would otherwise leave the list unready (Record off, no retry) once
-        // REHYDRATE below leaves `error`.
-        setLoadedTakesKey(loadKey);
+        // After a failed load this reload is what keeps Record from staying off
+        // with nothing to retry once REHYDRATE below leaves `error`. Only once
+        // that load has settled: while it is still checking for a paused take,
+        // it marks the list ready itself.
+        if (loadSettledKeyRef.current === queryKey) {
+          setLoadedTakesKey(queryKey);
+        }
         if (bibleTextId !== null) {
           await refreshAllTakes(bibleTextId);
         }
-        if (takesLoadKeyRef.current !== loadKey) return;
+        if (!isCurrent()) return;
         // Another take still playing keeps playing; REHYDRATE would drop
         // the state to recorded under it.
         if (!(state === 'playing' && loadedTakeId !== id)) {
@@ -1537,7 +1564,7 @@ export function useVerseAudio({
           );
         }
       } catch (error) {
-        if (takesLoadKeyRef.current !== loadKey) {
+        if (!isCurrent()) {
           log.warn('deleteTake failed for a verse that is no longer active', {
             message: error instanceof Error ? error.message : String(error),
           });
@@ -1557,6 +1584,7 @@ export function useVerseAudio({
       playback,
       state,
       takes,
+      takesLoadKey,
       deleteTakeFn,
       refreshAllTakes,
     ],
