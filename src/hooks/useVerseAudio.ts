@@ -417,10 +417,14 @@ export function useVerseAudio({
   // earlier key (A -> B -> A). A delete started under one activation must not
   // publish rows or readiness under a later one (#979).
   const activationRef = useRef(0);
-  // The key whose own load, paused-take check included, has finished or failed.
+  // The key whose own load, paused-take check included, finished successfully.
   // A delete reload may mark a key ready only after that, so it cannot open
   // Record while recovery is still restoring its refs (#979).
   const loadSettledKeyRef = useRef<string | null>(null);
+  // The key whose load failed, in the rows or in the paused-take check. Recovery
+  // did not complete for it, so a delete reload retries the load instead of
+  // marking it ready.
+  const loadFailedKeyRef = useRef<string | null>(null);
   /**
    * `playback.play` / `load` briefly leave the engine `idle` while `replace`
    * runs. If verse state is already `playing` (Take 1 → Take 2), the natural-end
@@ -583,6 +587,7 @@ export function useVerseAudio({
     activeBibleTextIdRef.current = bibleTextId;
     activationRef.current += 1;
     loadSettledKeyRef.current = null;
+    loadFailedKeyRef.current = null;
     // An All Takes refresh still in flight belongs to the previous activation;
     // invalidate it so it cannot publish old rows over this query's.
     allTakesRequestIdRef.current += 1;
@@ -675,7 +680,7 @@ export function useVerseAudio({
       } catch (error) {
         log.error('Failed to load takes', { error });
         if (!isStale()) {
-          loadSettledKeyRef.current = takesLoadKey;
+          loadFailedKeyRef.current = takesLoadKey;
           dispatch({
             type: 'ERROR',
             message: error instanceof Error ? error.message : 'load failed',
@@ -1543,10 +1548,11 @@ export function useVerseAudio({
         // list loaded. The delete itself is already done.
         if (!isCurrent()) return;
         setTakes(rows);
-        // After a failed load this reload is what keeps Record from staying off
-        // with nothing to retry once REHYDRATE below leaves `error`. Only once
-        // that load has settled: while it is still checking for a paused take,
-        // it marks the list ready itself.
+        // Ready only once this key's own load, paused-take check included, has
+        // settled; while that is still running it marks the list ready itself.
+        // After a failed load the delete reload is not enough (recovery never
+        // completed), so retry the whole load once the delete is published.
+        const retryFailedLoad = loadFailedKeyRef.current === queryKey;
         if (loadSettledKeyRef.current === queryKey) {
           setLoadedTakesKey(queryKey);
         }
@@ -1563,6 +1569,9 @@ export function useVerseAudio({
               : { type: 'DELETE' },
           );
         }
+        // Last, because it changes the query key. Leaving `error` above must
+        // not leave Record off with nothing to retry.
+        if (retryFailedLoad) setTakesLoadAttempt(attempt => attempt + 1);
       } catch (error) {
         if (!isCurrent()) {
           log.warn('deleteTake failed for a verse that is no longer active', {

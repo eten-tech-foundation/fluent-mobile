@@ -374,10 +374,10 @@ describe('useVerseAudio', () => {
         await result.current.deleteTake('rec_1');
       });
 
-      // The delete's own reload leaves `error`, so Record must not stay off
-      // with nothing to retry.
+      // The delete's own reload leaves `error` and retries the load, so Record
+      // must not stay off with nothing to retry.
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
       expect(result.current.state).toBe('idle');
-      expect(result.current.takesLoaded).toBe(true);
       expect(result.current.takes).toEqual([]);
     });
 
@@ -1248,6 +1248,41 @@ describe('useVerseAudio', () => {
         releaseA([takeA]);
       });
       await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+    });
+
+    it('keeps Record off after a delete when the paused-take check failed, and retries recovery', async () => {
+      mockPausedMarkers.push(recoveredMarker());
+      loadTakes.mockResolvedValue([takeA]);
+      mockFileExists.mockRejectedValueOnce(new Error('fs down'));
+
+      const { result } = renderHook(() => useVerseAudio(recoveryArgs()));
+      await waitFor(() => expect(result.current.state).toBe('error'));
+      expect(result.current.takesLoaded).toBe(false);
+
+      loadTakes.mockResolvedValue([]);
+      let releaseRetry!: (exists: boolean) => void;
+      mockFileExists.mockReturnValueOnce(
+        new Promise<boolean>(resolve => {
+          releaseRetry = resolve;
+        }),
+      );
+      await act(async () => {
+        await result.current.deleteTake('rec_a');
+      });
+
+      // Recovery is retried but has not finished: recording stays blocked.
+      await waitFor(() => expect(mockFileExists).toHaveBeenCalledTimes(2));
+      expect(result.current.takesLoaded).toBe(false);
+      await act(async () => {
+        await result.current.start();
+      });
+      expect(mockRecordingStart).not.toHaveBeenCalled();
+
+      await act(async () => {
+        releaseRetry(true);
+      });
+      await waitFor(() => expect(result.current.state).toBe('paused'));
+      expect(result.current.takesLoaded).toBe(true);
     });
 
     it('keeps Record off after a delete while the paused-take check is pending', async () => {
