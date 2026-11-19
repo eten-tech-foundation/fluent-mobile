@@ -122,8 +122,8 @@ export function ScriptPager({
     downloadState === 'failed'
       ? "The text didn't download. Check your connection and try again."
       : downloadState === 'downloading'
-      ? 'Downloading the text…'
-      : 'The text isn’t on this phone yet.';
+        ? 'Downloading the text…'
+        : 'The text isn’t on this phone yet.';
   const [heroTop, playerTop] = top;
   const [heroHeight, playerHeight] = height;
   const pagerStyle = useAnimatedStyle(() => ({

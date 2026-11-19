@@ -161,7 +161,7 @@ export function PlaybackProgressBar({
   const activeBars = Math.round(progress * renderedBarCount);
   const rowHeight = tall
     ? theme.waveform.tallHeight
-    : rowHeightProp ?? theme.waveform.dockHeight;
+    : (rowHeightProp ?? theme.waveform.dockHeight);
   const playheadLeft =
     trackWidth > 0
       ? Math.min(
@@ -343,13 +343,13 @@ export function PlaybackProgressBar({
                 height: baseHeight,
                 backgroundColor: active
                   ? accentColor
-                  : idleColor ?? accentColor,
+                  : (idleColor ?? accentColor),
               },
               idleColor
                 ? undefined
                 : active
-                ? styles.barActive
-                : styles.barIdle,
+                  ? styles.barActive
+                  : styles.barIdle,
             ]}
           />
         );

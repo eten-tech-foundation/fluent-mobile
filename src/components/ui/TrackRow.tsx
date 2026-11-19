@@ -112,10 +112,10 @@ export function TrackRow({
       ? 'playing'
       : 'paused'
     : heard
-    ? 'heard'
-    : listened > 0
-    ? `${Math.round(listened * 100)}% heard`
-    : 'not heard yet';
+      ? 'heard'
+      : listened > 0
+        ? `${Math.round(listened * 100)}% heard`
+        : 'not heard yet';
 
   return (
     <LayoutAnimationConfig skipEntering>

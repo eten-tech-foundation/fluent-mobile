@@ -1,8 +1,6 @@
 /** Top-level Resources tab section slots (#189–#191). */
 export type ResourceSectionId =
-  | 'translationNotes'
-  | 'translationQuestions'
-  | 'imagesMaps';
+  'translationNotes' | 'translationQuestions' | 'imagesMaps';
 
 /**
  * @deprecated Prefer `UnitResourcesAvailability` from inventory.ts (#192).

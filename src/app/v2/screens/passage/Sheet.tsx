@@ -87,8 +87,8 @@ function verseTurn(
   const target =
     at < 0
       ? steps[side]
-      : steps.verses[side === 'previous' ? at - 1 : at + 1]?.verseNumber ??
-        null;
+      : (steps.verses[side === 'previous' ? at - 1 : at + 1]?.verseNumber ??
+        null);
   const replaying = heard !== null && target === steps.current;
   const replayTarget = replaying && target !== null ? replay(target) : null;
   return {
@@ -120,12 +120,12 @@ function listenKeys(
   const playLabel = failed
     ? 'Retry loading source audio'
     : loading
-    ? 'Loading source audio'
-    : source.loadState === 'empty'
-    ? 'No source audio'
-    : source.isPlaying
-    ? 'Pause source audio'
-    : 'Play source audio';
+      ? 'Loading source audio'
+      : source.loadState === 'empty'
+        ? 'No source audio'
+        : source.isPlaying
+          ? 'Pause source audio'
+          : 'Play source audio';
   return {
     playing: source.isPlaying,
     playDisabled: loading || source.loadState === 'empty',

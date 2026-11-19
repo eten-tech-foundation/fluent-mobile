@@ -227,8 +227,8 @@ export function TakeFan({
             take.placeholder
               ? 'placeholder'
               : take.passage
-              ? `passage-${take.id}`
-              : take.takeNumber
+                ? `passage-${take.id}`
+                : take.takeNumber
           }
           take={take}
           steps={i - front}
@@ -452,8 +452,8 @@ function Tile({
   const flatFill = take.deleted
     ? roles.surfaceSunken
     : take.placeholder
-    ? roles.bgDefault
-    : null;
+      ? roles.bgDefault
+      : null;
   const flatEdge =
     take.deleted || take.placeholder ? roles.borderHighlight : null;
   const style = useAnimatedStyle(() => {
@@ -557,14 +557,14 @@ function Tile({
   const status = take.recording
     ? 'recording'
     : take.paused
-    ? 'paused'
-    : take.deleted
-    ? 'deleted'
-    : take.placeholder
-    ? 'not recorded yet'
-    : `${take.official ? 'official' : ''}${
-        take.selected ? `${take.official ? ', ' : ''}selected` : ''
-      }`;
+      ? 'paused'
+      : take.deleted
+        ? 'deleted'
+        : take.placeholder
+          ? 'not recorded yet'
+          : `${take.official ? 'official' : ''}${
+              take.selected ? `${take.official ? ', ' : ''}selected` : ''
+            }`;
 
   return (
     <GestureDetector gesture={drag}>

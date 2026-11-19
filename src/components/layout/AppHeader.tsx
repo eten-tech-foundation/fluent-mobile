@@ -139,8 +139,8 @@ export function AppHeader({
             border === 'none'
               ? 0
               : border === 'hairline'
-              ? StyleSheet.hairlineWidth
-              : 1,
+                ? StyleSheet.hairlineWidth
+                : 1,
           borderBottomColor: theme.colors.border,
         },
         style,

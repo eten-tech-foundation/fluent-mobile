@@ -75,8 +75,8 @@ function Script() {
         {record
           ? 'Notes are for Listen, so they stay quiet in Record.'
           : open === null
-          ? 'Tap a phrase to read its note.'
-          : PHRASES[open].note}
+            ? 'Tap a phrase to read its note.'
+            : PHRASES[open].note}
       </Text>
       <Pressable accessibilityRole="button" onPress={toggleRecord}>
         <Text style={styles.link}>

@@ -6,6 +6,4 @@ import type { ApiChapterAssignment } from './types';
  * if the HTTP call succeeded (web already uses this endpoint online).
  */
 export type SubmitChapterAssignmentResponse =
-  | ApiChapterAssignment
-  | Record<string, unknown>
-  | null;
+  ApiChapterAssignment | Record<string, unknown> | null;

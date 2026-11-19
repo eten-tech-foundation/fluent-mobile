@@ -133,8 +133,8 @@ export function HeroActions({
               takes.length > 0
                 ? 'Record a take'
                 : line
-                ? 'Record'
-                : 'Record, not recorded yet'
+                  ? 'Record'
+                  : 'Record, not recorded yet'
             }
             onPress={onRecord}
             blocked={recordBlocked !== null}
@@ -149,8 +149,8 @@ export function HeroActions({
               downloadState === 'downloading'
                 ? 'Downloading the text'
                 : downloadState === 'failed'
-                ? "The text didn't download. Try again"
-                : 'Download the text'
+                  ? "The text didn't download. Try again"
+                  : 'Download the text'
             }
             onPress={onDownload}
             disabled={downloadState === 'downloading'}

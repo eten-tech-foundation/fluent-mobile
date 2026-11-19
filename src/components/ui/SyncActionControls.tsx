@@ -180,8 +180,8 @@ function SyncActionButton({
   const iconColor = disabled
     ? theme.colors.mutedForeground
     : isPrimary
-    ? theme.colors.primaryForeground
-    : theme.colors.foreground;
+      ? theme.colors.primaryForeground
+      : theme.colors.foreground;
 
   return (
     <TouchableOpacity

@@ -34,8 +34,7 @@ export async function switchToDeviceAccount(userId: string): Promise<void> {
 }
 
 export type SignOutDeviceAccountResult =
-  | { kind: 'switched'; userId: string }
-  | { kind: 'signed_out' };
+  { kind: 'switched'; userId: string } | { kind: 'signed_out' };
 
 /**
  * Signs out the active device account (best-effort server sign-out), removes

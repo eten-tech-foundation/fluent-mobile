@@ -37,8 +37,8 @@ export function SwitchEntry() {
   const status = recording
     ? 'Recording a take · stop to switch to Listen'
     : recordMode
-    ? 'Record mode'
-    : 'Listen mode';
+      ? 'Record mode'
+      : 'Listen mode';
 
   return (
     <View style={styles.demo}>

@@ -886,8 +886,8 @@ describe('recordingsRepository multi-take', () => {
         r.id === 'state-a'
           ? { ...r, sync_status: 'conflicted' as const }
           : r.id === 'state-b'
-          ? { ...r, sync_status: 'failed' as const }
-          : r,
+            ? { ...r, sync_status: 'failed' as const }
+            : r,
       );
 
       await selectRecordingTake('state-a');
@@ -1095,8 +1095,8 @@ describe('recordingsRepository multi-take', () => {
         r.id === 'canon-state-a'
           ? { ...r, sync_status: 'conflicted' as const }
           : r.id === 'canon-state-b'
-          ? { ...r, sync_status: 'failed' as const }
-          : r,
+            ? { ...r, sync_status: 'failed' as const }
+            : r,
       );
 
       await setCanonicalTake('canon-state-a');

@@ -101,8 +101,8 @@ jest.mock('expo-router/drawer', () => {
       >
         {icon?.({
           color: focused
-            ? activeTintColor ?? '#1a6ef5'
-            : inactiveTintColor ?? '#333',
+            ? (activeTintColor ?? '#1a6ef5')
+            : (inactiveTintColor ?? '#333'),
           size: 18,
           focused: !!focused,
         })}

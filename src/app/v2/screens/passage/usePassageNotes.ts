@@ -40,7 +40,7 @@ export function usePassageNotes(
     passageResourceEpoch(owner),
   );
   const { state, retry } = useTranslationNotesForUnit({
-    projectId: enabled ? assignment.projectId ?? null : null,
+    projectId: enabled ? (assignment.projectId ?? null) : null,
     userId,
     isOnline: hasResolved && isOnline,
     bookCode: assignment.bookCode ?? '',

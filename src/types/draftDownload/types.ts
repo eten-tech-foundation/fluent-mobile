@@ -20,19 +20,11 @@ export interface DraftDownloadRequest {
 }
 
 export type DraftDownloadStatus =
-  | 'idle'
-  | 'queued'
-  | 'downloading'
-  | 'ready'
-  | 'failed';
+  'idle' | 'queued' | 'downloading' | 'ready' | 'failed';
 
 /** High-level phase for chip/progress; audio always precedes observer scripture. */
 export type DraftDownloadPhase =
-  | 'idle'
-  | 'audio'
-  | 'draft_text'
-  | 'source_scripture'
-  | 'complete';
+  'idle' | 'audio' | 'draft_text' | 'source_scripture' | 'complete';
 
 /**
  * `ready` means the local snapshot is complete and intact. `freshness` says

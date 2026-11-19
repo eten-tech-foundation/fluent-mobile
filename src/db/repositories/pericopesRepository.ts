@@ -57,8 +57,7 @@ export async function getProjectPericopeSetId(
     [projectId],
   );
   const row = result.rows?.[0] as
-    | { pericope_set_id?: number | null }
-    | undefined;
+    { pericope_set_id?: number | null } | undefined;
   return row?.pericope_set_id ?? null;
 }
 

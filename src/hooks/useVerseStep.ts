@@ -29,8 +29,8 @@ export function useVerseStep({
   resetCapture: () => void;
 }) {
   const index = verses.findIndex(v => v.verseNumber === selectedVerse);
-  const previous = index > 0 ? verses[index - 1]?.verseNumber ?? null : null;
-  const next = index >= 0 ? verses[index + 1]?.verseNumber ?? null : null;
+  const previous = index > 0 ? (verses[index - 1]?.verseNumber ?? null) : null;
+  const next = index >= 0 ? (verses[index + 1]?.verseNumber ?? null) : null;
 
   function change(verseNumber: number) {
     resetCapture();

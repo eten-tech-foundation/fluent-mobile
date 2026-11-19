@@ -62,8 +62,7 @@ const mockUseFocusEffect = useFocusEffect as jest.Mock;
 /** Fire the focus callback the hook registered (simulate screen focus). */
 function fireFocusEffect(): void {
   const effect = mockUseFocusEffect.mock.calls.at(-1)?.[0] as
-    | (() => void | (() => void))
-    | undefined;
+    (() => void | (() => void)) | undefined;
   act(() => {
     effect?.();
   });

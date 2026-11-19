@@ -278,7 +278,7 @@ export function RecordTab({
       : `${chapterName}:${selectedVerse}`;
   const referenceSubtitle =
     draftingUnit === 'pericope' && pericopeRange
-      ? activePericope?.pericopeTitle ?? null
+      ? (activePericope?.pericopeTitle ?? null)
       : null;
 
   /**
@@ -364,10 +364,10 @@ export function RecordTab({
               chapterNumber: verse.chapterNumber,
               verseNumber: verse.verseNumber,
             }))
-          : activeRecordingUnit?.coveredViews.map(view => ({
+          : (activeRecordingUnit?.coveredViews.map(view => ({
               chapterNumber: view.chapterNumber,
               verseNumber: view.verseNumber,
-            })) ?? [],
+            })) ?? []),
         takes: verseAudio.takes,
       }),
     [
@@ -1122,7 +1122,7 @@ export function RecordTab({
                             durationMs={
                               showLiveProgress && verseAudio.durationMs > 0
                                 ? verseAudio.durationMs
-                                : take.durationMs ?? 0
+                                : (take.durationMs ?? 0)
                             }
                             onPlayPause={() => {
                               void (isThisPlaying
@@ -1193,7 +1193,7 @@ export function RecordTab({
                               durationMs={
                                 showLiveProgress && verseAudio.durationMs > 0
                                   ? verseAudio.durationMs
-                                  : take.durationMs ?? 0
+                                  : (take.durationMs ?? 0)
                               }
                               onPlayPause={() => {
                                 void (isThisPlaying

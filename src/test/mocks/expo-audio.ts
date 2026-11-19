@@ -187,8 +187,8 @@ export class AudioPlayer {
       typeof source === 'string'
         ? source
         : source && typeof source === 'object'
-        ? source.uri
-        : null;
+          ? source.uri
+          : null;
     this.uri = uri;
     this.isLoaded = Boolean(uri);
     this.duration = uri ? 1 : 0;

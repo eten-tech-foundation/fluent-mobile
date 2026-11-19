@@ -1,12 +1,7 @@
 export type DownloadTier = 1 | 2 | 3;
 
 export type DownloadQueueStatus =
-  | 'queued'
-  | 'downloading'
-  | 'paused'
-  | 'cancelled'
-  | 'completed'
-  | 'failed';
+  'queued' | 'downloading' | 'paused' | 'cancelled' | 'completed' | 'failed';
 
 export interface DownloadQueueItem {
   id: string;

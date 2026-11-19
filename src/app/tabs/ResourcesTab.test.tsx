@@ -654,34 +654,32 @@ describe('ResourcesTab', () => {
   });
 
   it('shows pericope range and fans out verseRefs (#593)', async () => {
-    mockUseBibleTabUnits.mockImplementation(
-      (): BibleTabUnitsMock => ({
-        draftingUnit: 'pericope',
-        effectiveUnit: 'pericope',
-        unitsPending: false,
-        units: [
-          {
-            key: 'pericope:1',
-            draftingUnit: 'pericope',
-            verses: [
-              { chapterNumber: 14, verseNumber: 1 },
-              { chapterNumber: 14, verseNumber: 2 },
-              { chapterNumber: 14, verseNumber: 3 },
-            ],
-            title: 'Mark 14:1–3',
-            anchorVerse: 1,
-            previewText: '',
-            bodyVerses: [],
-            recordedStatus: 'none',
-          },
-        ],
-        activeIndex: 0,
-        unitCaption: 'Pericope 1 / 1',
-        lastUnrecorded: null,
-        boundaryVerses: [2, 3],
-        refreshCoverages: jest.fn(),
-      }),
-    );
+    mockUseBibleTabUnits.mockImplementation((): BibleTabUnitsMock => ({
+      draftingUnit: 'pericope',
+      effectiveUnit: 'pericope',
+      unitsPending: false,
+      units: [
+        {
+          key: 'pericope:1',
+          draftingUnit: 'pericope',
+          verses: [
+            { chapterNumber: 14, verseNumber: 1 },
+            { chapterNumber: 14, verseNumber: 2 },
+            { chapterNumber: 14, verseNumber: 3 },
+          ],
+          title: 'Mark 14:1–3',
+          anchorVerse: 1,
+          previewText: '',
+          bodyVerses: [],
+          recordedStatus: 'none',
+        },
+      ],
+      activeIndex: 0,
+      unitCaption: 'Pericope 1 / 1',
+      lastUnrecorded: null,
+      boundaryVerses: [2, 3],
+      refreshCoverages: jest.fn(),
+    }));
     markSectionsCompleted(['translationNotes']);
     renderResources(1);
 

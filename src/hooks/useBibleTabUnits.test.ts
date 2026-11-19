@@ -21,12 +21,10 @@ jest.mock('../db/queries', () => ({
 
 type DraftingUnitApi = ReturnType<typeof useDraftingUnit>;
 
-const mockUseDraftingUnit = jest.fn(
-  (): DraftingUnitApi => ({
-    draftingUnit: 'verse',
-    setDraftingUnit: jest.fn(),
-  }),
-);
+const mockUseDraftingUnit = jest.fn((): DraftingUnitApi => ({
+  draftingUnit: 'verse',
+  setDraftingUnit: jest.fn(),
+}));
 
 jest.mock('./useDraftingUnit', () => ({
   useDraftingUnit: () => mockUseDraftingUnit(),

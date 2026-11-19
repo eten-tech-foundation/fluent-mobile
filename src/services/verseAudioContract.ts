@@ -66,10 +66,7 @@ export function takeIdFromVerseAudioResponse(
  *   distinguished from storage; callers keep the legacy treatment.
  */
 export type ActivationResponseState =
-  | 'activated'
-  | 'conflicted'
-  | 'stored_not_active'
-  | 'unverified';
+  'activated' | 'conflicted' | 'stored_not_active' | 'unverified';
 
 export function activationStateFromResponse(
   response: VerseAudioResponse,
@@ -212,8 +209,8 @@ function parseVerseAudioTake(data: unknown): VerseAudioTakeResponse {
     body.durationSeconds === null
       ? null
       : isFiniteNumber(body.durationSeconds)
-      ? body.durationSeconds
-      : null;
+        ? body.durationSeconds
+        : null;
 
   return {
     id: body.id as number,
@@ -318,8 +315,8 @@ export function parseVerseAudioResponse(data: unknown): VerseAudioResponse {
     body.durationSeconds === null
       ? null
       : isFiniteNumber(body.durationSeconds)
-      ? body.durationSeconds
-      : null;
+        ? body.durationSeconds
+        : null;
 
   return {
     id: body.id as number,

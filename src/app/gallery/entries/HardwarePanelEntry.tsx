@@ -50,10 +50,10 @@ export function HardwarePanelEntry() {
     ? recording
       ? `Recording take ${takes + 1} · finish it to switch to Listen`
       : take === 'paused'
-      ? `Take ${takes + 1} paused · Record keeps going, Eject finishes it`
-      : `Record · ${takes} ${takes === 1 ? 'take' : 'takes'}${
-          playing ? ' · playing back' : ''
-        }`
+        ? `Take ${takes + 1} paused · Record keeps going, Eject finishes it`
+        : `Record · ${takes} ${takes === 1 ? 'take' : 'takes'}${
+            playing ? ' · playing back' : ''
+          }`
     : `Listen · Mark 14:${VERSES[at]}${playing ? ' · Playing' : ''}`;
   const previous = VERSES[at - 1];
   const next = VERSES[at + 1];

@@ -1260,8 +1260,8 @@ export function useVerseAudio({
       const take =
         target ??
         (loadedTakeId !== null
-          ? takes.find(take => take.id === loadedTakeId) ??
-            allTakes.find(take => take.id === loadedTakeId)
+          ? (takes.find(take => take.id === loadedTakeId) ??
+            allTakes.find(take => take.id === loadedTakeId))
           : null) ??
         selectedTake;
       if (!take?.localFilePath) return;

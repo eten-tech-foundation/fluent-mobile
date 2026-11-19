@@ -166,10 +166,10 @@ export default function SyncScreen() {
     connectivityPending || transferConnectivityPending
       ? undefined
       : transportOffline
-      ? TRANSFER_OFFLINE_MESSAGE
-      : waitingWifi
-      ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
-      : undefined;
+        ? TRANSFER_OFFLINE_MESSAGE
+        : waitingWifi
+          ? SYNC_NOW_CELLULAR_DISABLED_MESSAGE
+          : undefined;
 
   const runSyncNow = useCallback(async () => {
     if (syncNowDisabled) {
@@ -202,8 +202,8 @@ export default function SyncScreen() {
     status === 'paused'
       ? 'paused'
       : isUploading || status === 'syncing'
-      ? 'syncing'
-      : status;
+        ? 'syncing'
+        : status;
   const startBusy =
     controlStatus === 'paused' ? false : isStartControlPending || isUploading;
 

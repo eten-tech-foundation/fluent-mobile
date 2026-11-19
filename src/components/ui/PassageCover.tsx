@@ -14,12 +14,7 @@ import type { CoverStyle } from './coverArt/generator';
 const PRESSED_OPACITY = 0.7;
 
 type PassageStatus =
-  | 'none'
-  | 'partial'
-  | 'recorded'
-  | 'waiting'
-  | 'peerCheck'
-  | 'checked';
+  'none' | 'partial' | 'recorded' | 'waiting' | 'peerCheck' | 'checked';
 
 const STATUS_LABELS: Record<PassageStatus, string> = {
   none: 'Not recorded yet',

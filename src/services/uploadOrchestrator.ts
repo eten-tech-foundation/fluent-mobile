@@ -251,7 +251,7 @@ export function startUploadOrchestrator(
     },
     worker:
       overrides && 'worker' in overrides
-        ? workerOverride ?? null
+        ? (workerOverride ?? null)
         : chapterUploadWorker,
     pushPendingClaimsBeforeUpload,
     pushPendingStageAdvancesAfterUpload,

@@ -93,8 +93,7 @@ function executeOn(
   const result = toQueryResult(rows);
   if (/^\s*(?:UPDATE|INSERT|DELETE|REPLACE)\b/i.test(query)) {
     const changes = raw.prepare('SELECT changes() AS count').all()[0] as
-      | { count?: number }
-      | undefined;
+      { count?: number } | undefined;
     result.rowsAffected = Number(changes?.count ?? 0);
   }
   return result;

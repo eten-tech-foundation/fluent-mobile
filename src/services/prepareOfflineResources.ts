@@ -388,8 +388,7 @@ export async function fetchPrepareOfflineManifest(
     ReturnType<typeof FluentAPI.getPrepareOfflineManifest>
   >;
   let sourceAudioResponse:
-    | Awaited<ReturnType<typeof FluentAPI.getSourceAudioManifest>>
-    | undefined;
+    Awaited<ReturnType<typeof FluentAPI.getSourceAudioManifest>> | undefined;
   try {
     [translationResourcesResponse, sourceAudioResponse] = await Promise.all([
       signal

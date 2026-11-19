@@ -362,11 +362,7 @@ export interface VerseRow {
 
 /** Local recording upload lifecycle (`recordings.sync_status`). */
 export type RecordingSyncStatus =
-  | 'pending'
-  | 'uploading'
-  | 'uploaded'
-  | 'failed'
-  | 'conflicted';
+  'pending' | 'uploading' | 'uploaded' | 'failed' | 'conflicted';
 
 export type RecordingGranularity = 'verse' | 'pericope';
 
@@ -478,9 +474,7 @@ export const CHAPTER_ASSIGNMENT_STATUS = {
 } as const;
 
 export type ConnectivityProfile =
-  | 'usually_connected'
-  | 'sometimes_connected'
-  | 'rarely_connected';
+  'usually_connected' | 'sometimes_connected' | 'rarely_connected';
 
 export interface PericopeSet {
   id: number;

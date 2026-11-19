@@ -62,7 +62,7 @@ export function buildManifestContexts(
     // them (#504 review).
     const sorted = [...new Set(chapterNumbers)].sort((a, b) => a - b);
 
-    for (let i = 0; i < sorted.length; ) {
+    for (let i = 0; i < sorted.length;) {
       let last = i;
       while (
         last + 1 < sorted.length &&

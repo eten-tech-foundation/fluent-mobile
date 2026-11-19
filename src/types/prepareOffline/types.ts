@@ -58,11 +58,7 @@ export interface PrepareOfflineResourceManifest {
 }
 
 export type PrepareOfflineResourceStatus =
-  | 'completed'
-  | 'selected'
-  | 'available'
-  | 'downloading'
-  | 'paused';
+  'completed' | 'selected' | 'available' | 'downloading' | 'paused';
 
 export interface PrepareOfflineResourceItem {
   id: string;

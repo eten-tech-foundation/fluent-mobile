@@ -21,7 +21,7 @@ export function takesLine(
   countVerses = false,
 ): string | null {
   const line = countVerses
-    ? versesSummary(passage) ?? takesSummary(passage, [])
+    ? (versesSummary(passage) ?? takesSummary(passage, []))
     : takesSummary(passage, takes);
   if (!passage.waitingToSend) return line;
   return line ? `${line} · Waiting to send` : 'Waiting to send';

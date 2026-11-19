@@ -190,7 +190,7 @@ export async function loadChapterPassages(
   });
   const stageIn = (n: number) => {
     if (n === chapterNumber) return chapter.workflowStage;
-    return stageOf ? stageOf(n) ?? null : chapter.workflowStage;
+    return stageOf ? (stageOf(n) ?? null) : chapter.workflowStage;
   };
   return units.map((unit, i) => {
     const stages = new Map(

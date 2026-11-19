@@ -1,11 +1,5 @@
 export type VerseAudioState =
-  | 'idle'
-  | 'recording'
-  | 'paused'
-  | 'recorded'
-  | 'playing'
-  | 'saving'
-  | 'error';
+  'idle' | 'recording' | 'paused' | 'recorded' | 'playing' | 'saving' | 'error';
 
 export type VerseAudioEvent =
   | { type: 'START' }

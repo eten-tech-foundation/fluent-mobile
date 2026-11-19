@@ -114,7 +114,7 @@ export function VersePages({
   const more = useMemo(
     () => [
       ...(notes?.unplacedAt.get(pageKey) ?? []),
-      ...(index === 0 ? notes?.unplacedAt.get('') ?? [] : []),
+      ...(index === 0 ? (notes?.unplacedAt.get('') ?? []) : []),
     ],
     [notes?.unplacedAt, pageKey, index],
   );

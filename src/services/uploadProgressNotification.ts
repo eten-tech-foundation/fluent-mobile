@@ -189,8 +189,8 @@ function applyEvent(event: UploadSessionEvent): void {
       event.type === 'start'
         ? event.totalChapters
         : event.type === 'progress'
-        ? event.totalChapters
-        : 0;
+          ? event.totalChapters
+          : 0;
     const body = formatUploadProgressBody(completed, total);
     await showOrUpdate(UPLOAD_SYNC_NOTIFICATION_TITLE, body);
   });

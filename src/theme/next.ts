@@ -26,16 +26,16 @@ import {
 type WidenTokens<T> = T extends string
   ? string
   : T extends number
-  ? number
-  : T extends boolean
-  ? boolean
-  : T extends null
-  ? null
-  : T extends readonly (infer U)[]
-  ? readonly WidenTokens<U>[]
-  : T extends object
-  ? { -readonly [K in keyof T]: WidenTokens<T[K]> }
-  : T;
+    ? number
+    : T extends boolean
+      ? boolean
+      : T extends null
+        ? null
+        : T extends readonly (infer U)[]
+          ? readonly WidenTokens<U>[]
+          : T extends object
+            ? { -readonly [K in keyof T]: WidenTokens<T[K]> }
+            : T;
 
 /** Shared theme shape — same keys as Theme, configurable leaves widened. */
 type ThemeShape = WidenTokens<Theme>;

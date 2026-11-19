@@ -46,8 +46,8 @@ export function nextUpStatusLine({ chapter }: NextPassage): string {
     chapter.hasConflict
       ? 'Sync conflict'
       : chapter.syncState === 'deviceOnly'
-      ? 'Upload pending'
-      : null,
+        ? 'Upload pending'
+        : null,
   ]
     .filter(Boolean)
     .join(' · ');

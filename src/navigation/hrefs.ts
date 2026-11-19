@@ -12,7 +12,7 @@ export const hrefs = {
       params: params?.initialEmail
         ? { initialEmail: params.initialEmail }
         : undefined,
-    } as const),
+    }) as const,
   privacyPolicyAuth: '/(auth)/privacy-policy' as const,
   termsOfUseAuth: '/(auth)/terms-of-use' as const,
 
@@ -65,7 +65,7 @@ export const hrefs = {
           ? { focusChapterId: String(params.focusChapterId) }
           : {}),
       },
-    } as const),
+    }) as const,
   verseDetail: (params: {
     chapterId: number;
     chapterName: string;
@@ -88,7 +88,7 @@ export const hrefs = {
           ? { recoverVerse: String(params.recoverVerse) }
           : {}),
       },
-    } as const),
+    }) as const,
   /** Next passage page; a passage is found by its first verse in the chapter. */
   passage: (params: {
     chapterId: number;
@@ -118,13 +118,13 @@ export const hrefs = {
         ...(params.from ? { from: params.from } : {}),
         ...(params.verse !== undefined ? { verse: String(params.verse) } : {}),
       },
-    } as const),
+    }) as const,
   addUser: '/(app)/(stack)/add-user' as const,
   reauth: (params?: { returnTo?: 'home' | 'settings' }) =>
     ({
       pathname: '/(app)/(stack)/reauth' as const,
       params: params?.returnTo ? { returnTo: params.returnTo } : undefined,
-    } as const),
+    }) as const,
   /** Next UI component gallery; only registered when the flag is on. */
   gallery: '/gallery' as const,
   privacyPolicyApp: '/(app)/privacy-policy' as const,
@@ -135,5 +135,5 @@ export const hrefs = {
       params: params?.initialEmail
         ? { initialEmail: params.initialEmail }
         : undefined,
-    } as const),
+    }) as const,
 } as const;

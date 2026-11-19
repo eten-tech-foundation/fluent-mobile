@@ -2014,8 +2014,7 @@ export async function getPericopeForVerse(
       [bookId, chapterNumber, verseNumber, pericopeSetId],
     );
     const numberRow = numberResult.rows?.[0] as
-      | { pericope_number?: string; section?: number | null }
-      | undefined;
+      { pericope_number?: string; section?: number | null } | undefined;
     const pericopeNumber = numberRow?.pericope_number;
     if (!pericopeNumber) return null;
     const section = numberRow?.section ?? null;
@@ -2088,8 +2087,7 @@ export async function isChapterFullyRecordedVerseMode(
       ],
     );
     const row = result.rows?.[0] as
-      | { total: number; recorded: number }
-      | undefined;
+      { total: number; recorded: number } | undefined;
     if (!row || Number(row.total) === 0) return false;
     return Number(row.recorded) === Number(row.total);
   } catch (error) {

@@ -53,8 +53,8 @@ export default function LoginScreen({
     variant === 'addAccount'
       ? 'addAccount'
       : variant === 'reauth'
-      ? 'reauth'
-      : 'login';
+        ? 'reauth'
+        : 'login';
   const { signIn } = useAuthSession();
   const onLoginSuccess = onLoginSuccessProp ?? signIn;
   const router = useRouter();

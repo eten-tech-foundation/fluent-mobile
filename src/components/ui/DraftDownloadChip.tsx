@@ -104,8 +104,8 @@ export function DraftDownloadChip({
               ? 'Draft saved for offline; not yet checked for newer takes'
               : 'Draft download complete'
             : showProgress
-            ? 'Draft download in progress'
-            : 'Download draft for offline'
+              ? 'Draft download in progress'
+              : 'Download draft for offline'
         }
         testID={testID}
         style={styles.pressable}

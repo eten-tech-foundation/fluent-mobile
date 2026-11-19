@@ -27,9 +27,7 @@ export type ObserverDraftUnit = {
  * `undecided` never auto-plays conflict audio and uses neutral unavailable copy.
  */
 export type ObserverUnresolvedConflictPlaybackPolicy =
-  | 'allow'
-  | 'block'
-  | 'undecided';
+  'allow' | 'block' | 'undecided';
 
 export type ObserverDraftUnitAnchor = {
   bibleTextId: number;

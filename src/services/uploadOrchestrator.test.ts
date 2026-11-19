@@ -1905,8 +1905,8 @@ describe('uploadOrchestrator', () => {
           control === 'pause'
             ? 'paused'
             : control === 'offline'
-            ? 'offline'
-            : 'idle',
+              ? 'offline'
+              : 'idle',
         );
 
         if (control === 'pause') {
@@ -2461,9 +2461,9 @@ describe('uploadOrchestrator', () => {
   describe('reusing a confirmed empty queue (#886)', () => {
     const marks = () => {
       let changes = 0;
-      const getQueueWriteMark = jest.fn(
-        async (): Promise<object | null> => ({ changes }),
-      );
+      const getQueueWriteMark = jest.fn(async (): Promise<object | null> => ({
+        changes,
+      }));
       return {
         getQueueWriteMark,
         sameQueueWriteMark: (a: object, b: object) =>

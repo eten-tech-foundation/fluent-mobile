@@ -284,7 +284,7 @@ export async function sha256File(
   }
   try {
     let sliceStarted = Date.now();
-    for (let position = 0; position < size; ) {
+    for (let position = 0; position < size;) {
       checkAbort();
       const length = Math.min(FILE_HASH_READ_BYTES, size - position);
       const bytes = handle.readBytes(length);

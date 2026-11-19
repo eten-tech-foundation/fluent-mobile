@@ -84,8 +84,7 @@ export async function getPrepareOfflineProjectContext(
     );
 
     const row = result?.rows?.[0] as
-      | { project_id?: number; source_language_code?: string | null }
-      | undefined;
+      { project_id?: number; source_language_code?: string | null } | undefined;
     const sourceLanguageCode = row?.source_language_code?.trim();
     if (!row?.project_id || !sourceLanguageCode) {
       return null;

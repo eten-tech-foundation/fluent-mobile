@@ -211,8 +211,8 @@ describe('useNextUp', () => {
       c.id === 1
         ? [passage('1a'), passage('1b')]
         : c.id === 2
-        ? [passage('2a', 'partial')]
-        : [passage('3a', 'recorded'), passage('3b', 'partial')],
+          ? [passage('2a', 'partial')]
+          : [passage('3a', 'recorded'), passage('3b', 'partial')],
     );
 
     const chapters = [first, older, latest];

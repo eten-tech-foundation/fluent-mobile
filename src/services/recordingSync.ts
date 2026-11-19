@@ -843,7 +843,7 @@ async function uploadOneRecording(
           : undefined;
 
       const baseVersionToken = operation
-        ? operation.baseVersionToken ?? undefined
+        ? (operation.baseVersionToken ?? undefined)
         : await getLatestVersionToken(recording.bibleTextId, projectUnitId);
       // Cancellation can arrive while local preflight is awaiting the DB.
       throwIfAborted(signal);

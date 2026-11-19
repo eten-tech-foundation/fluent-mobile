@@ -319,8 +319,7 @@ const sourceDefaults = {
   stop: jest.fn(async () => {}),
   retry: mockRetrySource,
   verseTimestamps: undefined as
-    | { verse: number; startSeconds: number }[]
-    | undefined,
+    { verse: number; startSeconds: number }[] | undefined,
 };
 let mockSource = { ...sourceDefaults };
 const mockUseSourceAudio = jest.fn((_args: unknown) => mockSource);

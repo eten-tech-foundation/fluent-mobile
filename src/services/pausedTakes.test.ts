@@ -132,8 +132,8 @@ describe('pausedTakes (#170)', () => {
           change === 'new session'
             ? 'new'
             : change === 'updated kept session'
-            ? 'kept'
-            : 'orphan',
+              ? 'kept'
+              : 'orphan',
         segments: ['file:///current.aac'],
         elapsedMs: 3500,
         startedAt: 'current',

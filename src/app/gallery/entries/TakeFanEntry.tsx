@@ -268,48 +268,48 @@ function Recorder() {
         official: false,
       }
     : frontTake
-    ? {
-        takeNumber: frontTake.takeNumber,
-        label: label(frontTake.takeNumber),
-        durationMs: frontTake.durationMs,
-        levels: frontTake.levels,
-        progress,
-        recording: false,
-        ...(frontTake.id === pendingId
-          ? { official: false, onUndo: () => setPendingId(null) }
-          : {
-              official: officialId === frontTake.id,
-              onToggleOfficial: () => toggleOfficial(frontTake.id),
-              onSeek: setProgress,
-            }),
-      }
-    : frontCover
-    ? {
-        takeNumber: COVER.takeNumber,
-        label: `Passage take ${COVER.takeNumber} · ${COVER.range}`,
-        durationMs: COVER.durationMs,
-        levels: [],
-        progress,
-        recording: false,
-        official: officialId === COVER.id,
-        onToggleOfficial: () => toggleOfficial(COVER.id),
-        onSeek: setProgress,
-      }
-    : {
-        takeNumber: nextNumber,
-        label: label(nextNumber),
-        durationMs: null,
-        levels: [],
-        progress: 0,
-        recording: false,
-        official: false,
-      };
+      ? {
+          takeNumber: frontTake.takeNumber,
+          label: label(frontTake.takeNumber),
+          durationMs: frontTake.durationMs,
+          levels: frontTake.levels,
+          progress,
+          recording: false,
+          ...(frontTake.id === pendingId
+            ? { official: false, onUndo: () => setPendingId(null) }
+            : {
+                official: officialId === frontTake.id,
+                onToggleOfficial: () => toggleOfficial(frontTake.id),
+                onSeek: setProgress,
+              }),
+        }
+      : frontCover
+        ? {
+            takeNumber: COVER.takeNumber,
+            label: `Passage take ${COVER.takeNumber} · ${COVER.range}`,
+            durationMs: COVER.durationMs,
+            levels: [],
+            progress,
+            recording: false,
+            official: officialId === COVER.id,
+            onToggleOfficial: () => toggleOfficial(COVER.id),
+            onSeek: setProgress,
+          }
+        : {
+            takeNumber: nextNumber,
+            label: label(nextNumber),
+            durationMs: null,
+            levels: [],
+            progress: 0,
+            recording: false,
+            official: false,
+          };
   const blockedReason =
     held === 'paused'
       ? RECORD_PAUSED_TAKE
       : !inTake && atCap
-      ? RECORD_MAX_TAKES
-      : null;
+        ? RECORD_MAX_TAKES
+        : null;
 
   return (
     <View style={styles.demo}>
@@ -348,8 +348,8 @@ function Recorder() {
               recording
                 ? 'Pause recording'
                 : held === 'paused'
-                ? 'Resume recording'
-                : 'Record'
+                  ? 'Resume recording'
+                  : 'Record'
             }
             announceLatched={false}
             active={recording}

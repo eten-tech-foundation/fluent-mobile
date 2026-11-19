@@ -395,8 +395,7 @@ export async function getDownloadQueueSnapshot(): Promise<DownloadQueueSnapshot>
      WHERE status != 'cancelled'`,
   );
   const counts = countResult.rows?.[0] as
-    | { total: number; completed: number }
-    | undefined;
+    { total: number; completed: number } | undefined;
   const totalCount = Number(counts?.total ?? 0);
   const completedCount = Number(counts?.completed ?? 0);
 

@@ -36,8 +36,7 @@ let capturedRecordTabHandlers: {
   ) => void;
   onRegisterDraftPlayback?: (
     controls:
-      | import('../../types/draftPlaybackControls').DraftPlaybackControls
-      | null,
+      import('../../types/draftPlaybackControls').DraftPlaybackControls | null,
   ) => void;
 } | null = null;
 let capturedHeaderHandlers: {

@@ -26,11 +26,7 @@ function defaultSchedule(callback: () => void, delayMs: number): () => void {
 }
 
 export type UploadPhase =
-  | 'idle'
-  | 'syncing'
-  | 'paused'
-  | 'waiting_wifi'
-  | 'offline';
+  'idle' | 'syncing' | 'paused' | 'waiting_wifi' | 'offline';
 
 /** Per-take progress inside one chapter pass (#886). */
 export type TakeProgressListener = (progress: {

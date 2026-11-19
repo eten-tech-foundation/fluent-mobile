@@ -346,13 +346,13 @@ export function useRecorder({
   // Legacy's stitched row does, while no passage take is the draft.
   const stitched = verseMode
     ? null
-    : (buildCrossGranularityRows({
+    : ((buildCrossGranularityRows({
         draftingUnit: 'pericope',
         // The whole passage, so one crossing a chapter plays and counts all.
         pericopeVerses: passage.verses,
         takes: verseAudio.takes.filter(t => !deletion.hiddenIds.has(t.id)),
       }).find(row => row.kind === 'stitched') as StitchedTakeRow | undefined) ??
-      null;
+      null);
   const verseDraft =
     stitched && !passageTakes.some(t => t.isSelected) ? stitched : null;
   const versesSelected =
@@ -389,13 +389,13 @@ export function useRecorder({
   const pickedTake =
     passageTakes.find(t => t.id === verseAudio.selectedTake?.id) ??
     // A passage take picked over the verse leads instead of its last take.
-    (coveringTake ? null : passageTakes[passageTakes.length - 1] ?? null);
+    (coveringTake ? null : (passageTakes[passageTakes.length - 1] ?? null));
   const leadTake = passageTakes.find(t => t.id === leadId) ?? null;
   // A pending delete's undo leads, then a tile tapped forward.
   const shownCover =
     verseMode && !held && !overrideId
-      ? coverTakes.find(t => t.id === viewId) ??
-        (pickedTake || leadTake ? null : coveringTake)
+      ? (coverTakes.find(t => t.id === viewId) ??
+        (pickedTake || leadTake ? null : coveringTake))
       : null;
   const fan: FanTake[] = coverTakes.map(t => ({
     id: t.id,
@@ -432,7 +432,7 @@ export function useRecorder({
     });
   }
   const frontTake =
-    held || shownCover ? null : leadTake ?? (verseDraft ? null : pickedTake);
+    held || shownCover ? null : (leadTake ?? (verseDraft ? null : pickedTake));
   const frontVerses = !held && !frontTake ? verseDraft : null;
   // A passage take over the verse on the card: the one picked when the verse
   // has no take of its own, or a tile tapped forward.
@@ -450,7 +450,7 @@ export function useRecorder({
   const frontDeleted = frontTake !== null && frontTake.id === pendingId;
   const frontId = held
     ? 'recording'
-    : frontTake?.id ?? frontCover?.id ?? 'placeholder';
+    : (frontTake?.id ?? frontCover?.id ?? 'placeholder');
   const playingFront =
     frontTake !== null && verseAudio.playingTakeId === frontTake.id;
   // Where Play picks up the front take: where it was paused or scrubbed to.
@@ -474,90 +474,90 @@ export function useRecorder({
         official: false,
       }
     : frontTake
-    ? {
-        takeNumber: frontTake.takeNumber,
-        label: takeLabel(frontTake.takeNumber),
-        durationMs: frontTake.durationMs ?? null,
-        levels: levelsByTake.current.get(frontTake.id) ?? [],
-        progress:
-          playingFront && verseAudio.durationMs > 0
-            ? verseAudio.positionMs / verseAudio.durationMs
-            : frontLength > 0
-            ? parkedMs / frontLength
-            : 0,
-        onSeek:
-          frontDeleted || frontLength <= 0
-            ? undefined
-            : p => void scrubFront(p),
-        recording: false,
-        ...(frontDeleted
-          ? { official: false, onUndo: () => undoDelete() }
-          : {
-              official: inUse(frontTake),
-              // Someone else's official take isn't taken over unseen.
+      ? {
+          takeNumber: frontTake.takeNumber,
+          label: takeLabel(frontTake.takeNumber),
+          durationMs: frontTake.durationMs ?? null,
+          levels: levelsByTake.current.get(frontTake.id) ?? [],
+          progress:
+            playingFront && verseAudio.durationMs > 0
+              ? verseAudio.positionMs / verseAudio.durationMs
+              : frontLength > 0
+                ? parkedMs / frontLength
+                : 0,
+          onSeek:
+            frontDeleted || frontLength <= 0
+              ? undefined
+              : p => void scrubFront(p),
+          recording: false,
+          ...(frontDeleted
+            ? { official: false, onUndo: () => undoDelete() }
+            : {
+                official: inUse(frontTake),
+                // Someone else's official take isn't taken over unseen.
+                onToggleOfficial:
+                  session.stageLocked || othersOfficial
+                    ? undefined
+                    : () => void chooseTake(frontTake),
+              }),
+        }
+      : frontVerses
+        ? {
+            takeNumber: frontVerses.takeNumber,
+            label:
+              frontVerses.segments.length >= passage.verses.length
+                ? RECORD_VERSE_BY_VERSE
+                : recordedOnTheirOwn(
+                    frontVerses.segments.length,
+                    passage.verses.length,
+                  ),
+            durationMs: frontVerses.durationMs,
+            levels: [],
+            progress:
+              playingVerses && versesLength > 0
+                ? Math.min(1, verseAudio.stitchPositionMs / versesLength)
+                : 0,
+            onSeek:
+              versesLength > 0
+                ? p =>
+                    void verseAudio.seekStitched(
+                      frontVerses,
+                      Math.round(p * versesLength),
+                    )
+                : undefined,
+            recording: false,
+            official: false,
+          }
+        : frontCover
+          ? {
+              takeNumber: frontCover.takeNumber,
+              label: `Passage take ${frontCover.takeNumber} · ${coverRange(
+                frontCover,
+              )}`,
+              durationMs: frontCover.durationMs ?? null,
+              levels: [],
+              progress:
+                playingCover && verseAudio.durationMs > 0
+                  ? verseAudio.positionMs / verseAudio.durationMs
+                  : coverLength > 0
+                    ? coverParkedMs / coverLength
+                    : 0,
+              onSeek: coverLength > 0 ? p => void scrubCover(p) : undefined,
+              recording: false,
+              official: inUse(frontCover),
               onToggleOfficial:
                 session.stageLocked || othersOfficial
                   ? undefined
-                  : () => void chooseTake(frontTake),
-            }),
-      }
-    : frontVerses
-    ? {
-        takeNumber: frontVerses.takeNumber,
-        label:
-          frontVerses.segments.length >= passage.verses.length
-            ? RECORD_VERSE_BY_VERSE
-            : recordedOnTheirOwn(
-                frontVerses.segments.length,
-                passage.verses.length,
-              ),
-        durationMs: frontVerses.durationMs,
-        levels: [],
-        progress:
-          playingVerses && versesLength > 0
-            ? Math.min(1, verseAudio.stitchPositionMs / versesLength)
-            : 0,
-        onSeek:
-          versesLength > 0
-            ? p =>
-                void verseAudio.seekStitched(
-                  frontVerses,
-                  Math.round(p * versesLength),
-                )
-            : undefined,
-        recording: false,
-        official: false,
-      }
-    : frontCover
-    ? {
-        takeNumber: frontCover.takeNumber,
-        label: `Passage take ${frontCover.takeNumber} · ${coverRange(
-          frontCover,
-        )}`,
-        durationMs: frontCover.durationMs ?? null,
-        levels: [],
-        progress:
-          playingCover && verseAudio.durationMs > 0
-            ? verseAudio.positionMs / verseAudio.durationMs
-            : coverLength > 0
-            ? coverParkedMs / coverLength
-            : 0,
-        onSeek: coverLength > 0 ? p => void scrubCover(p) : undefined,
-        recording: false,
-        official: inUse(frontCover),
-        onToggleOfficial:
-          session.stageLocked || othersOfficial
-            ? undefined
-            : () => void chooseTake(frontCover),
-      }
-    : {
-        takeNumber: 1,
-        durationMs: null,
-        levels: [],
-        progress: 0,
-        recording: false,
-        official: false,
-      };
+                  : () => void chooseTake(frontCover),
+            }
+          : {
+              takeNumber: 1,
+              durationMs: null,
+              levels: [],
+              progress: 0,
+              recording: false,
+              official: false,
+            };
   // A take waiting on undo is deleted first when Record is pressed.
   const atCap =
     !held &&
@@ -575,27 +575,27 @@ export function useRecorder({
     (session.isTaken
       ? RECORD_TAKEN_CHAPTER_WARNING
       : session.stageLocked || session.drafterCaptureBlocked
-      ? RECORD_NOT_OPEN
-      : observerOnly
-      ? RECORD_OBSERVER
-      : classicReason);
+        ? RECORD_NOT_OPEN
+        : observerOnly
+          ? RECORD_OBSERVER
+          : classicReason);
   const blockedReason = recovered
     ? RECORD_RECOVERED_TAKE
     : paused
-    ? RECORD_PAUSED_TAKE
-    : cannotRecord ??
-      (atCap && (verseMode || session.activeRecordingUnit !== null)
-        ? // The cap is per verse, so verse-by-verse takes count too.
-          passageTakes.length >= MAX_RECORDING_TAKES
-          ? RECORD_MAX_TAKES
-          : verseMode
-          ? passageTakes.length === 0
-            ? RECORD_MAX_IN_PASSAGE_TAKES
-            : RECORD_MAX_WITH_PASSAGE_TAKES
-          : RECORD_MAX_VERSE_TAKES
-        : coveringTake && passageTakes.length === 0
-        ? recordInPassageTake(coveringTake.takeNumber)
-        : null);
+      ? RECORD_PAUSED_TAKE
+      : (cannotRecord ??
+        (atCap && (verseMode || session.activeRecordingUnit !== null)
+          ? // The cap is per verse, so verse-by-verse takes count too.
+            passageTakes.length >= MAX_RECORDING_TAKES
+            ? RECORD_MAX_TAKES
+            : verseMode
+              ? passageTakes.length === 0
+                ? RECORD_MAX_IN_PASSAGE_TAKES
+                : RECORD_MAX_WITH_PASSAGE_TAKES
+              : RECORD_MAX_VERSE_TAKES
+          : coveringTake && passageTakes.length === 0
+            ? recordInPassageTake(coveringTake.takeNumber)
+            : null));
 
   const notices: RecordNotice[] = [];
   if (hasConflict) {
@@ -704,27 +704,27 @@ export function useRecorder({
     const ask = t.isSelected
       ? null
       : isCover && coveringTake
-      ? // Swapping passage takes: the one picked over the verse goes.
-        ([
-          pickOverVersesTitle(t.takeNumber, coverRange(t)),
-          swapPassageMessage(coveringTake),
-        ] as const)
-      : isCover || versesSelected
-      ? // Picking a passage take deselects the verses recorded on their own.
-        ([
-          pickOverVersesTitle(
-            t.takeNumber,
-            verseMode ? coverRange(t) : undefined,
-          ),
-          RECORD_OVER_VERSES_MESSAGE,
-        ] as const)
-      : coveringTake
-      ? // Picking a verse take deselects the passage take over it.
-        ([
-          pickOverPassageTitle(t.takeNumber, verse),
-          recordOverPassageMessage(coveringTake),
-        ] as const)
-      : null;
+        ? // Swapping passage takes: the one picked over the verse goes.
+          ([
+            pickOverVersesTitle(t.takeNumber, coverRange(t)),
+            swapPassageMessage(coveringTake),
+          ] as const)
+        : isCover || versesSelected
+          ? // Picking a passage take deselects the verses recorded on their own.
+            ([
+              pickOverVersesTitle(
+                t.takeNumber,
+                verseMode ? coverRange(t) : undefined,
+              ),
+              RECORD_OVER_VERSES_MESSAGE,
+            ] as const)
+          : coveringTake
+            ? // Picking a verse take deselects the passage take over it.
+              ([
+                pickOverPassageTitle(t.takeNumber, verse),
+                recordOverPassageMessage(coveringTake),
+              ] as const)
+            : null;
     if (
       ask &&
       !(await confirmRecordOver(ask[0], ask[1], PICK_OVER_VERSES_CONFIRM))
@@ -970,7 +970,7 @@ export function useRecorder({
   const footer: RecordStatus = {
     blockedReason: live ? null : blockedReason,
     take,
-    firstVerse: verseMode ? verse : first?.verseNumber ?? 1,
+    firstVerse: verseMode ? verse : (first?.verseNumber ?? 1),
   };
   const verseSteps: VerseSteps | null = verseMode
     ? {

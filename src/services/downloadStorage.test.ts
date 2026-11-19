@@ -177,7 +177,7 @@ describe('downloadStorage', () => {
             },
             pauseAsync: async () => {},
             resumeAsync: async () => ({ uri: dest }),
-          } as unknown as FileSystem.DownloadResumable),
+          }) as unknown as FileSystem.DownloadResumable,
       );
 
       const onProgress = jest.fn();

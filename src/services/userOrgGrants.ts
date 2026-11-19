@@ -21,8 +21,7 @@ const log = logger.create('UserOrgGrants');
 export const PROJECT_OBSERVER_ROLE_NAME = 'Project Observer';
 
 export type UserOrgGrantsSnapshot =
-  | { status: 'known'; grants: readonly ApiOrgGrant[] }
-  | { status: 'unknown' };
+  { status: 'known'; grants: readonly ApiOrgGrant[] } | { status: 'unknown' };
 
 const grantSnapshotKey = (userId: string) => `${userId}:org_grant_snapshot`;
 

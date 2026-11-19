@@ -176,7 +176,7 @@ export async function chooseLocalTakeAfterUnresolvedActivation(
   const operation = readUploadOperation(recordingId);
   const observed =
     operation?.phase === 'unresolved'
-      ? operation.observedVersionToken ?? null
+      ? (operation.observedVersionToken ?? null)
       : null;
   return reassertRecordingActivation(recordingId, observed);
 }

@@ -32,8 +32,7 @@ const ACTIVE_DOWNLOAD_STATUSES = new Set([
 ]);
 
 export type DownloadTransferResult =
-  | { ok: true }
-  | { ok: false; gate: TransportGate };
+  { ok: true } | { ok: false; gate: TransportGate };
 
 const log = logger.create('useDownloadQueue');
 

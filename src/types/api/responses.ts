@@ -91,8 +91,7 @@ export interface SignOutResponse {
 export type BibleTextsResponse = ApiDataResponse<ApiBook[]>;
 
 export type ChapterAssignmentsResponse =
-  | ApiDataResponse<ApiChapterAssignment[]>
-  | ApiChapterAssignment[];
+  ApiDataResponse<ApiChapterAssignment[]> | ApiChapterAssignment[];
 
 export type UserChapterAssignmentsResponse = ApiUserChapterAssignmentsByUser;
 
@@ -112,8 +111,7 @@ export interface ApiMilestone {
 }
 
 export type UserMilestonesResponse =
-  | ApiDataResponse<ApiMilestone[]>
-  | ApiMilestone[];
+  ApiDataResponse<ApiMilestone[]> | ApiMilestone[];
 
 /** Normalizes list endpoints that return either `{ data: T }` or a bare array. */
 export function unwrapApiListResponse<T>(response: ApiDataResponse<T> | T): T {
@@ -136,5 +134,4 @@ export interface ApiPericopeSet {
 }
 
 export type PericopeSetsResponse =
-  | ApiDataResponse<ApiPericopeSet[]>
-  | ApiPericopeSet[];
+  ApiDataResponse<ApiPericopeSet[]> | ApiPericopeSet[];

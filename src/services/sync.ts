@@ -1707,8 +1707,8 @@ export async function syncBibleTexts(
           knownUserIds.length > 0
             ? knownUserIds
             : activeRaw !== ''
-            ? [activeRaw]
-            : [];
+              ? [activeRaw]
+              : [];
         catalogueEligibleUserIds = idsForRemap
           .map(id => Number(id))
           .filter(id => Number.isFinite(id));
@@ -2493,8 +2493,8 @@ export async function syncAllUsers(): Promise<void> {
           knownUserIds.length > 0
             ? knownUserIds
             : currentActiveUserId
-            ? [currentActiveUserId]
-            : [];
+              ? [currentActiveUserId]
+              : [];
 
         if (userIdsToSync.length === 0) {
           throw new Error('No users to sync');
@@ -3114,10 +3114,7 @@ export function __resetMetadataRefreshFreshnessForTests(): void {
 let masterDataBackfilledThisSession = false;
 
 export type RefreshPrepareOfflineReferencedParentsResult =
-  | 'ok'
-  | 'offline'
-  | 'skipped'
-  | 'failed';
+  'ok' | 'offline' | 'skipped' | 'failed';
 
 function classifyPrepareOfflineParentRefreshFailure(error: unknown): {
   classification: 'auth' | 'api' | 'type' | 'error' | 'unknown';

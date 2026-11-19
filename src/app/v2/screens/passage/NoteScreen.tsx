@@ -166,8 +166,8 @@ export function NoteScreen({
         duration: reduceMotion
           ? motion.releaseMs
           : closing
-          ? CLOSE_MS
-          : OPEN_MS,
+            ? CLOSE_MS
+            : OPEN_MS,
         easing: Easing.bezier(x1, y1, x2, y2),
       },
       done,

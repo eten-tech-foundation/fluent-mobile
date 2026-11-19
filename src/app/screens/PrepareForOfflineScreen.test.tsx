@@ -16,7 +16,7 @@ const mockHandleDownload = jest.fn();
 
 const mockPush = jest.fn();
 const mockGoBack = jest.fn();
-const mockUseLocalSearchParams = jest.fn(() => ({} as { projectId?: string }));
+const mockUseLocalSearchParams = jest.fn(() => ({}) as { projectId?: string });
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({

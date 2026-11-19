@@ -26,16 +26,13 @@ export function isMissingNativeDownloadObjectError(error: unknown): boolean {
     error instanceof Error
       ? error.message
       : typeof error === 'string'
-      ? error
-      : '';
+        ? error
+        : '';
   return /No download object available/i.test(message);
 }
 
 export type WorkerSessionState =
-  | 'idle'
-  | 'downloading'
-  | 'paused'
-  | 'cancelled';
+  'idle' | 'downloading' | 'paused' | 'cancelled';
 
 /** Distinguishes intentional UI pause from transport-loss pause (#619). */
 export type DownloadPauseReason = 'user' | 'transport';

@@ -122,8 +122,8 @@ export function SourceAudioPlayerBar({
   const playAccessibilityLabel = isLoadingAudio
     ? 'Loading audio'
     : isPlaying
-    ? 'Pause source audio'
-    : 'Play source audio';
+      ? 'Pause source audio'
+      : 'Play source audio';
 
   return (
     <View style={styles.bar} testID="source-audio-bar">

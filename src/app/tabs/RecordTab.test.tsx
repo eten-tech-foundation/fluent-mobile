@@ -129,12 +129,10 @@ jest.mock('../../db/repository', () => ({
 
 type DraftingUnitApi = ReturnType<typeof useDraftingUnit>;
 
-const mockUseDraftingUnit = jest.fn(
-  (): DraftingUnitApi => ({
-    draftingUnit: 'verse',
-    setDraftingUnit: jest.fn(),
-  }),
-);
+const mockUseDraftingUnit = jest.fn((): DraftingUnitApi => ({
+  draftingUnit: 'verse',
+  setDraftingUnit: jest.fn(),
+}));
 
 jest.mock('../../hooks/useDraftingUnit', () => ({
   useDraftingUnit: () => mockUseDraftingUnit(),
@@ -260,8 +258,7 @@ type RenderTabOptions = {
   ) => void;
   onRegisterDraftPlayback?: (
     controls:
-      | import('../../types/draftPlaybackControls').DraftPlaybackControls
-      | null,
+      import('../../types/draftPlaybackControls').DraftPlaybackControls | null,
   ) => void;
 };
 
@@ -953,8 +950,7 @@ describe('RecordTab', () => {
     /** Capture the controls RecordTab registers while a capture is active. */
     function renderCapturingTab() {
       let controls:
-        | import('../../types/captureControls').CaptureControls
-        | null = null;
+        import('../../types/captureControls').CaptureControls | null = null;
       mockUseVerseAudio.mockReturnValue({
         ...idleAudio,
         state: 'paused',

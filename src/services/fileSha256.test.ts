@@ -145,19 +145,19 @@ describe('sha256File', () => {
     jest.spyOn(Date, 'now').mockImplementation(() => (clock += 20));
     const realOpen = File.prototype.open;
     let bytesRead = 0;
-    jest
-      .spyOn(File.prototype, 'open')
-      .mockImplementation(function (this: File) {
-        const handle = realOpen.call(this);
-        return {
-          ...handle,
-          close: () => handle.close(),
-          readBytes: (length: number) => {
-            bytesRead += length;
-            return handle.readBytes(length);
-          },
-        } as FileHandle;
-      });
+    jest.spyOn(File.prototype, 'open').mockImplementation(function (
+      this: File,
+    ) {
+      const handle = realOpen.call(this);
+      return {
+        ...handle,
+        close: () => handle.close(),
+        readBytes: (length: number) => {
+          bytesRead += length;
+          return handle.readBytes(length);
+        },
+      } as FileHandle;
+    });
     let checks = 0;
     await expect(
       sha256File(uri, {

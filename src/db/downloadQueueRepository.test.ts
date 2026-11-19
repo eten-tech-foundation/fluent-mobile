@@ -9,12 +9,7 @@ type Row = {
   source_url: string | null;
   file_ext: string | null;
   status:
-    | 'queued'
-    | 'downloading'
-    | 'paused'
-    | 'cancelled'
-    | 'completed'
-    | 'failed';
+    'queued' | 'downloading' | 'paused' | 'cancelled' | 'completed' | 'failed';
   progress: number;
   bytes_total: number | null;
   local_file_path: string | null;

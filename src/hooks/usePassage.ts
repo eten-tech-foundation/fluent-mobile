@@ -126,14 +126,14 @@ async function loadPassage(
     unitVerses.every(v => textOf.get(`${v.chapterNumber}:${v.verseNumber}`));
 
   const reference = group
-    ? buildBibleUnits({
+    ? (buildBibleUnits({
         draftingUnit: 'pericope',
         verses: [],
         pericopes: [group],
         chapterNumber,
         chapterName,
         bookName,
-      })[0]?.title ?? chapterName
+      })[0]?.title ?? chapterName)
     : chapterName;
 
   const coverages = await getSelectedTakeCoverages(
@@ -151,8 +151,8 @@ async function loadPassage(
       recorded: !cover
         ? null
         : cover.granularity === 'pericope'
-        ? 'passage'
-        : 'verse',
+          ? 'passage'
+          : 'verse',
     };
   });
   const first = unitVerses[0];

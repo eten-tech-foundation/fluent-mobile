@@ -44,10 +44,7 @@ import {
 const log = logger.create('usePrepareOfflineDownload');
 
 export type PrepareOfflineDownloadSession =
-  | 'idle'
-  | 'downloading'
-  | 'paused'
-  | 'complete';
+  'idle' | 'downloading' | 'paused' | 'complete';
 
 type PendingSessionAction = 'pause' | 'resume' | 'cancel';
 
@@ -151,10 +148,10 @@ export function usePrepareOfflineDownload({
   const transportBlockedMessage = transferConnectivityPending
     ? undefined
     : transportBlocked
-    ? !isLinkOnline
-      ? TRANSFER_OFFLINE_MESSAGE
-      : TRANSFER_WAITING_WIFI_MESSAGE
-    : undefined;
+      ? !isLinkOnline
+        ? TRANSFER_OFFLINE_MESSAGE
+        : TRANSFER_WAITING_WIFI_MESSAGE
+      : undefined;
 
   const [downloadTransportError, setDownloadTransportError] = useState<
     string | null

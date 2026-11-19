@@ -129,7 +129,7 @@ function spyResumable(overrides: Record<string, unknown> = {}) {
           return okResumed(dest);
         }),
         ...overrides,
-      } as unknown as FileSystem.DownloadResumable),
+      }) as unknown as FileSystem.DownloadResumable,
   );
 }
 
@@ -192,7 +192,7 @@ describe('DownloadQueueWorker', () => {
             }),
             pauseAsync: jest.fn(),
             resumeAsync: jest.fn(),
-          } as unknown as FileSystem.DownloadResumable),
+          }) as unknown as FileSystem.DownloadResumable,
       );
 
     const worker = new DownloadQueueWorker(async () => ({
@@ -339,7 +339,7 @@ describe('DownloadQueueWorker', () => {
             resumeData: 'resume-token',
           }),
           resumeAsync: jest.fn(),
-        } as unknown as FileSystem.DownloadResumable),
+        }) as unknown as FileSystem.DownloadResumable,
     );
 
     const startPromise = worker.start([
@@ -582,7 +582,7 @@ describe('DownloadQueueWorker', () => {
             }),
             pauseAsync: jest.fn(),
             resumeAsync: jest.fn(),
-          } as unknown as FileSystem.DownloadResumable),
+          }) as unknown as FileSystem.DownloadResumable,
       );
 
       const worker = new DownloadQueueWorker(async () => ({
@@ -775,7 +775,7 @@ describe('DownloadQueueWorker', () => {
                 resumeData: 'r',
               }),
               resumeAsync: jest.fn(),
-            } as unknown as FileSystem.DownloadResumable),
+            }) as unknown as FileSystem.DownloadResumable,
         );
       const worker = new DownloadQueueWorker(async () => ({
         url: 'https://example.com/x.mp3',

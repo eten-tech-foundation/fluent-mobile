@@ -1937,8 +1937,7 @@ export async function userNeedsAssigneeRepair(
     [userId],
   );
   const row = result.rows?.[0] as
-    | { total: number; with_role: number }
-    | undefined;
+    { total: number; with_role: number } | undefined;
   const total = Number(row?.total ?? 0);
   const withRole = Number(row?.with_role ?? 0);
   return total > 0 && withRole === 0;

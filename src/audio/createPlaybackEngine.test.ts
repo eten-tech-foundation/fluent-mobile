@@ -70,8 +70,8 @@ function makeFakePlayer(options?: {
         typeof source === 'string'
           ? source
           : source && typeof source === 'object'
-          ? source.uri
-          : null;
+            ? source.uri
+            : null;
       state.uri = uri;
       state.time = 0;
       state.playing = false;

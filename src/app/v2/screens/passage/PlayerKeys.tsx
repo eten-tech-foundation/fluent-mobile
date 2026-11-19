@@ -131,8 +131,8 @@ export function PlayerKeys({
               record.recording
                 ? 'Pause recording'
                 : record.paused
-                ? 'Resume recording'
-                : 'Record'
+                  ? 'Resume recording'
+                  : 'Record'
             }
             announceLatched={false}
             active={record.recording}

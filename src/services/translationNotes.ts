@@ -112,8 +112,8 @@ export function parseTranslationNotesItem(
     const title = useResourceTitle
       ? resourceTitle
       : firstLine.length > 0 && firstLine.length <= 120
-      ? firstLine
-      : resourceTitle || `Note ${index + 1}`;
+        ? firstLine
+        : resourceTitle || `Note ${index + 1}`;
 
     const noteBody =
       !useResourceTitle && title === firstLine && body.startsWith(firstLine)

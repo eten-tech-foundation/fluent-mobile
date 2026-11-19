@@ -82,7 +82,7 @@ export default function DraftingScreen() {
   recoverVerseRef.current = recoverVerse;
 
   const [activeTab, setActiveTabState] = useState<DraftingTab>(() =>
-    recoverSessionKey ? 'record' : getLastActiveTab(chapterId) ?? 'bible',
+    recoverSessionKey ? 'record' : (getLastActiveTab(chapterId) ?? 'bible'),
   );
   const bibleTextEnsureForChapterRef = useRef<number | null>(null);
   const isoProjectIdRef = useRef<number | null>(null);

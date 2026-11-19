@@ -1660,8 +1660,7 @@ describe('recordingSync', () => {
     ]);
     registerRecordingUploadWorker();
     const worker = mockSetChapterUploadWorker.mock.calls.at(-1)?.[0] as
-      | ChapterUploadWorker
-      | undefined;
+      ChapterUploadWorker | undefined;
     expect(worker?.uploadChapter).toEqual(expect.any(Function));
 
     const events: UploadSessionEvent[] = [];

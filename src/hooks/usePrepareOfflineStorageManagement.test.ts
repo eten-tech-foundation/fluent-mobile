@@ -248,11 +248,9 @@ describe('usePrepareOfflineStorageManagement', () => {
 
   it('ignores stale reload results when a newer reload finishes first', async () => {
     let resolveFirstSummary:
-      | ((value: typeof summaryFixture) => void)
-      | undefined;
+      ((value: typeof summaryFixture) => void) | undefined;
     let resolveSecondSummary:
-      | ((value: typeof summaryFixture) => void)
-      | undefined;
+      ((value: typeof summaryFixture) => void) | undefined;
     let firstInventoryCall = 0;
 
     mockGetDeviceStorageSummary

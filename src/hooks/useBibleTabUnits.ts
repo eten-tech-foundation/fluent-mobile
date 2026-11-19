@@ -227,10 +227,10 @@ export function useBibleTabUnits(args: {
 
   const boundaryVerses =
     effectiveUnit === 'pericope'
-      ? units[activeIndex]?.verses
+      ? (units[activeIndex]?.verses
           .filter(v => v.chapterNumber === args.chapterNumber)
           .slice(1)
-          .map(v => v.verseNumber) ?? []
+          .map(v => v.verseNumber) ?? [])
       : [];
 
   return {

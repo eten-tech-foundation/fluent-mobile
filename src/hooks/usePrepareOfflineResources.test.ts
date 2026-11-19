@@ -79,8 +79,8 @@ function manifestItem(
       kind === 'audio'
         ? AUDIO_BYTES
         : kind === 'image'
-        ? IMAGE_BYTES
-        : TEXT_BYTES,
+          ? IMAGE_BYTES
+          : TEXT_BYTES,
     fileExt: kind === 'audio' ? 'mp3' : kind === 'image' ? 'png' : 'json',
     languageCode: 'eng',
   };
