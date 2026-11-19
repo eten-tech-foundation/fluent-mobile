@@ -52,13 +52,20 @@ import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
 import { type Ready } from './ready';
+import { ResourcesCard } from './ResourcesCard';
 import { useScriptMetrics } from './scriptMetrics';
 import { sourceWindow, windowProgress, windowSeekMs } from './sourceWindow';
 import { TakeFan } from './TakeFan';
 import { TitleSheet } from './TitleSheet';
+import { usePassageImages } from './usePassageImages';
 import { usePassageNotes } from './usePassageNotes';
 import { useRecorder } from './useRecorder';
 import { VerseList } from './VerseList';
+
+/** Previews on the docked Resources card, and how many verses they search. */
+const PREVIEW_COUNT = 3;
+/** Lets the page's arrival paint before the previews ask for anything. */
+const PREVIEW_DELAY_MS = 600;
 
 /** How far the hero drags before a release opens or closes it. */
 const SNAP_AT = 0.35;
@@ -329,6 +336,67 @@ export function Sheet({
   const { isOnline, hasResolved } = useConnectivity();
   const [playingVerse, setPlayingVerse] = useState<number | null>(null);
   const steps = recorder.verse;
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  // The full list loads the first time the card opens, or in the background
+  // once the previews settle, then stays.
+  const [resourcesAsked, setResourcesAsked] = useState(false);
+  const [prefetchAsked, setPrefetchAsked] = useState(false);
+  const [peekHeight, setPeekHeight] = useState(0);
+  const images = usePassageImages({
+    passage,
+    userId,
+    enabled: resourcesAsked || prefetchAsked,
+  });
+  // A background load that failed tries again when the card opens, as the
+  // card's first open used to.
+  const imagesRef = useRef(images);
+  useEffect(() => {
+    imagesRef.current = images;
+  });
+  useEffect(() => {
+    if (resourcesOpen && imagesRef.current.state.status === 'failed') {
+      void imagesRef.current.retry();
+    }
+  }, [resourcesOpen]);
+  // A few previews for the docked card, from the first verses only, once
+  // the page has arrived. The full list follows in the background once the
+  // previews settle, so it's usually in by the time the card opens, without
+  // holding up the page or the previews.
+  const [previewsAsked, setPreviewsAsked] = useState(false);
+  useEffect(() => {
+    const wait = setTimeout(() => setPreviewsAsked(true), PREVIEW_DELAY_MS);
+    return () => clearTimeout(wait);
+  }, []);
+  const firstImages = usePassageImages({
+    passage,
+    userId,
+    enabled: previewsAsked,
+    firstVerses: PREVIEW_COUNT,
+  });
+  const previewsSettled =
+    previewsAsked && firstImages.state.status !== 'loading';
+  useEffect(() => {
+    if (previewsSettled) setPrefetchAsked(true);
+  }, [previewsSettled]);
+  // The full list once it's in, else the first verses'. All of them, so
+  // the card can skip a thumbnail that won't load.
+  const previewSource = images.state.status === 'ready' ? images : firstImages;
+  const previews =
+    previewSource.state.status === 'ready' ? previewSource.state.items : [];
+  const previewsScope = `${previewSource === images ? 'all' : 'first'}:${
+    previewSource.scope
+  }:${previewSource.state.status}`;
+  useEffect(() => {
+    if (!focused || expanded) setResourcesOpen(false);
+  }, [focused, expanded]);
+  useEffect(() => {
+    if (!resourcesOpen || !focused) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setResourcesOpen(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [resourcesOpen, focused]);
   // Until the text is in, the script shows why instead.
   const versePages =
     steps !== null && expanded && passage.downloaded && steps.verses.length > 0;
@@ -627,8 +695,25 @@ export function Sheet({
             reachedPlayAt.current = false;
             setPlayAt(verseNumber);
           }}
+          bottomInset={peekHeight}
         />
       ) : null}
+      {/* The page's own mode, like the Verses list it floats over. */}
+      <ResourcesCard
+        shown={!expanded}
+        open={resourcesOpen}
+        onOpenChange={to => {
+          if (to) setResourcesAsked(true);
+          setResourcesOpen(to);
+        }}
+        maxHeight={container - headerBottom - spacing.sm}
+        player={progress}
+        onPeekHeight={setPeekHeight}
+        images={images}
+        previews={previews}
+        previewsScope={previewsScope}
+        onRetryImages={() => void images.retry()}
+      />
       <ColorModeScope value="hardware">
         <TitleSheet
           visible={titleSheetOpen}
