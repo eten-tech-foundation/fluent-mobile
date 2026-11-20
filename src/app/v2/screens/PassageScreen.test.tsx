@@ -43,6 +43,7 @@ const publishedControls = {
   discardCapture: mockDiscard,
 };
 const mockEnsureMic = jest.fn(async () => true);
+const mockRetryTakesLoad = jest.fn();
 const mockPlayTake = jest.fn(async () => {});
 const mockPlayStitched = jest.fn(async (_row: unknown) => {});
 const mockPauseTake = jest.fn(async () => {});
@@ -75,6 +76,7 @@ const sessionDefaults = {
   captureDisabled: false,
   drafterCaptureBlocked: false,
   canRecordNewTake: true,
+  takesLoaded: true,
   pericopeUnavailable: false,
   takes: [] as MockTake[],
   allTakes: [] as Record<string, unknown>[],
@@ -150,12 +152,15 @@ jest.mock('../../../hooks/useRecordSession', () => {
         verseAudio: {
           state: mockSession.state,
           takes: mockSession.takes,
+          takesLoaded: mockSession.takesLoaded,
+          retryTakesLoad: mockRetryTakesLoad,
           deleteTake: mockDeleteTake,
           playingTakeId: mockSession.playingTakeId,
           positionMs: mockSession.positionMs,
           selectedTake: mockSession.takes.find(t => t.isSelected) ?? null,
           start: mockStart,
           stop: mockStop,
+          isStopPending: () => false,
           pause: mockPause,
           resume: mockResume,
           discardCapture: mockDiscard,
@@ -1324,6 +1329,60 @@ describe('PassageScreen', () => {
     expect(mockStart).toHaveBeenCalled();
   });
 
+  it('does not start if pericope take hydration begins during the mic request', async () => {
+    let grantMic!: (granted: boolean) => void;
+    mockEnsureMic.mockImplementationOnce(
+      () => new Promise<boolean>(resolve => (grantMic = resolve)),
+    );
+    const { rerender } = render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(mockEnsureMic).toHaveBeenCalledTimes(1);
+
+    // Resolving the pericope unit starts its wider take query while permission
+    // is still pending. The active query is no longer hydrated.
+    mockSession = { ...mockSession, takesLoaded: false };
+    await act(async () => rerender(<PassageScreen />));
+    await act(async () => grantMic(true));
+
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('does not start on a replacement the user has not confirmed once the mic request ends (#979)', async () => {
+    let grantMic!: (granted: boolean) => void;
+    mockEnsureMic.mockImplementationOnce(
+      () => new Promise<boolean>(resolve => (grantMic = resolve)),
+    );
+    const { rerender } = render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(mockEnsureMic).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('passage-confirm')).toBeNull();
+
+    // A wider take query lists a selected verse take during the prompt. Saving
+    // would deselect it, and the user was never asked.
+    mockSession = {
+      ...mockSession,
+      takes: [{ ...take(1), granularity: 'verse', isSelected: true }],
+    };
+    await act(async () => rerender(<PassageScreen />));
+    await act(async () => grantMic(true));
+    expect(mockStart).not.toHaveBeenCalled();
+
+    // The next Record tap asks first.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('passage-key-record'));
+    });
+    expect(screen.getByTestId('passage-confirm')).toBeTruthy();
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
   describe('when Record setup fails', () => {
     let alert: jest.SpyInstance;
     beforeEach(() => {
@@ -1444,6 +1503,44 @@ describe('PassageScreen', () => {
     expect(mockPause).toHaveBeenCalled();
     expect(mockStop).not.toHaveBeenCalled();
     expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('keeps the take tile and its number while the saved take joins the list (#979)', () => {
+    mockSession = {
+      ...mockSession,
+      state: 'recording',
+      captureActive: true,
+      takes: [take(1)],
+    };
+    const { rerender } = render(<PassageScreen />);
+    fireEvent.press(screen.getByTestId('passage-record'));
+    expect(screen.getByLabelText('Take 2, recording')).toBeTruthy();
+
+    // Saving starts with the earlier takes, then the new take joins the list
+    // before saving settles. Its own tile must not double beside the held one,
+    // nor push the held one's number to 3.
+    mockSession = {
+      ...mockSession,
+      state: 'saving',
+      captureActive: false,
+      takes: [take(1)],
+    };
+    rerender(<PassageScreen />);
+    const saved = { ...take(2), isSelected: true };
+    mockSession = { ...mockSession, takes: [take(1), saved] };
+    rerender(<PassageScreen />);
+    expect(screen.getAllByTestId('passage-fan-2', hidden)).toHaveLength(1);
+    expect(screen.queryByTestId('passage-fan-3', hidden)).toBeNull();
+    // Still the held tile (no status, not selected), not the saved take early.
+    expect(screen.getByLabelText('Take 2')).toBeTruthy();
+    expect(screen.queryByLabelText('Take 2, selected')).toBeNull();
+
+    // SAVED: the saved take replaces the held tile.
+    mockSession = { ...mockSession, state: 'recorded' };
+    rerender(<PassageScreen />);
+    expect(screen.getAllByTestId('passage-fan-2', hidden)).toHaveLength(1);
+    expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();
+    expect(screen.queryByLabelText('Take 2')).toBeNull();
   });
 
   it('keeps going on the paused take from Record', async () => {

@@ -18,5 +18,6 @@ export type RecorderApi = {
   start(): Promise<void>;
   pause(): Promise<PauseResult | null>;
   resume(): Promise<void>;
-  stop(): Promise<StopResult>;
+  /** Resolves null when the recorder finished without writing a file (#979). */
+  stop(): Promise<StopResult | null>;
 };

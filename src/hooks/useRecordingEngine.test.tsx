@@ -8,6 +8,24 @@ import {
 } from '../test/mocks/expo-audio';
 import { useRecordingEngine } from './useRecordingEngine';
 import { isMicActive, setMicActive } from '../audio/micActivity';
+import { MIN_RECORDING_MS } from '../audio/createRecordingEngine';
+
+let mockMinRecordingMs = 0;
+jest.mock('../audio/createRecordingEngine', () => {
+  const actual = jest.requireActual<
+    typeof import('../audio/createRecordingEngine')
+  >('../audio/createRecordingEngine');
+  return {
+    ...actual,
+    createRecordingEngine: (
+      deps: Parameters<typeof actual.createRecordingEngine>[0],
+    ) =>
+      actual.createRecordingEngine({
+        minRecordingMs: mockMinRecordingMs,
+        ...deps,
+      }),
+  };
+});
 
 describe('useRecordingEngine', () => {
   let recorder: AudioRecorder;
@@ -15,6 +33,7 @@ describe('useRecordingEngine', () => {
   let stopSpy: jest.SpiedFunction<AudioRecorder['stop']>;
 
   beforeEach(() => {
+    mockMinRecordingMs = 0;
     setMicActive('recording-engine', false);
     resetAudioMock();
     recorder = new AudioRecorder();
@@ -53,7 +72,7 @@ describe('useRecordingEngine', () => {
     });
     expect(result.current.status).toBe('recording');
 
-    let stopResult: { uri: string; durationMs: number } | undefined;
+    let stopResult: { uri: string; durationMs: number } | null | undefined;
     await act(async () => {
       stopResult = await result.current.stop();
     });
@@ -216,6 +235,29 @@ describe('useRecordingEngine', () => {
       playsInSilentMode: true,
       allowsRecording: false,
     });
+  });
+
+  it('stops a take still inside the minimum-run hold at once on unmount (#979)', async () => {
+    mockMinRecordingMs = MIN_RECORDING_MS;
+    // Frozen time: a slow test process cannot let the minimum elapse, so this
+    // only passes when teardown skips the hold with `immediate: true`.
+    jest.useFakeTimers();
+    try {
+      const { result, unmount } = renderHook(() => useRecordingEngine());
+      await act(async () => {
+        await result.current.start();
+      });
+      stopSpy.mockClear();
+
+      await act(async () => {
+        unmount();
+      });
+
+      expect(stopSpy).toHaveBeenCalledTimes(1);
+      expect(isMicActive()).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('uses the latest host background-pause callback without resubscribing or duplicating native pause', async () => {
