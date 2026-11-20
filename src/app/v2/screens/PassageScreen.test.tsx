@@ -160,6 +160,7 @@ jest.mock('../../../hooks/useRecordSession', () => {
           selectedTake: mockSession.takes.find(t => t.isSelected) ?? null,
           start: mockStart,
           stop: mockStop,
+          isStopPending: () => false,
           pause: mockPause,
           resume: mockResume,
           discardCapture: mockDiscard,

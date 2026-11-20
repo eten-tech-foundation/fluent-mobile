@@ -407,6 +407,12 @@ export function useVerseAudio({
   const [loadedTakeId, setLoadedTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const capturePersistRef = useRef<CapturePersistSnapshot | null>(null);
+  // The Stop in flight, from the press until it has saved or dropped the take.
+  // Set synchronously, because Stop clears `capturePersistRef` at once while the
+  // reducer still reads `recording`, so a verse step in that gap would offer a
+  // Discard that does nothing and then publish the old verse's rows (#979).
+  const stopInFlightRef = useRef<Promise<void> | null>(null);
+  const isStopPending = useCallback(() => stopInFlightRef.current !== null, []);
   const [recoveredElapsedMs, setRecoveredElapsedMs] = useState(0);
   const recoveredSegmentsRef = useRef<string[]>([]);
   const recoveredElapsedMsRef = useRef(0);
@@ -914,6 +920,14 @@ export function useVerseAudio({
    * paused segments and their marker (#567): `start()` no longer does.
    */
   const discardCapture = useCallback(async () => {
+    // A Stop already took the capture. Let it finish (the take is saved, not
+    // discarded) so a caller that navigates after this resolves does so only once
+    // Stop has settled, never while it can still publish into the next view (#979).
+    const stopping = stopInFlightRef.current;
+    if (stopping !== null) {
+      await stopping;
+      return;
+    }
     if (state === 'saving') return;
     if (capturePersistRef.current === null) return;
     try {
@@ -967,10 +981,24 @@ export function useVerseAudio({
     }
   }, [recording, sessionKey, state]);
 
-  const stop = useCallback(async () => {
+  const runStop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
     if (snapshot === null) return;
     capturePersistRef.current = null;
+    // The take query this Stop began on. The persisted take always belongs to
+    // `snapshot`, but the hook's refs, rows and reducer belong to whichever query
+    // is active now: once it differs, finishing must not publish into it (#979).
+    const stopKey = takesLoadKeyRef.current;
+    const isCurrent = () => takesLoadKeyRef.current === stopKey;
+    // The reducer outlives a verse change and ignores REHYDRATE while recording
+    // or saving. Leave those states the same way a finished capture would, so a
+    // stale Stop cannot strand the new view in `saving`. Nothing else is
+    // touched: the refs belong to the new query now (#979).
+    const settleAbandoned = () => {
+      dispatch({ type: 'DISCARD' }); // recording / paused -> idle
+      dispatch({ type: 'SAVED' }); // saving -> recorded
+      dispatch({ type: 'REHYDRATE', hasTake: takesRef.current.length > 0 });
+    };
     try {
       const recoveredOnly =
         recording.status === 'idle' && recoveredSegmentsRef.current.length > 0;
@@ -986,6 +1014,10 @@ export function useVerseAudio({
         if (stopped === null && recoveredSegmentsRef.current.length === 0) {
           // The recorder wrote no file and nothing was saved before it: there
           // is no take. Drop it like a discard, with no error or alert (#979).
+          if (!isCurrent()) {
+            settleAbandoned();
+            return;
+          }
           recoveredElapsedMsRef.current = 0;
           setRecoveredElapsedMs(0);
           if (sessionKey !== null) {
@@ -1007,7 +1039,9 @@ export function useVerseAudio({
           tempUris = appendSegment(recoveredSegmentsRef.current, uri);
         }
       }
-      dispatch({ type: 'STOP' });
+      // Persisting still happens for the old verse; only the saving state is
+      // skipped when another query owns the reducer now (#979).
+      if (isCurrent()) dispatch({ type: 'STOP' });
       const persistMeta = {
         ...snapshot,
         tempUri: uri,
@@ -1038,6 +1072,13 @@ export function useVerseAudio({
             verseNumber,
             capture: toMarkerCapture(snapshot),
           });
+        }
+        // The marker above is keyed to the old verse, so recovery finds this take
+        // when the user returns. The refs and reducer now belong to another
+        // query; writing the old snapshot into them would plant it there (#979).
+        if (!isCurrent()) {
+          settleAbandoned();
+          return;
         }
         // Keep everything needed to retry Stop (or Resume) and stay paused,
         // like a failed recovered-resume. Do NOT dispatch ERROR: it drops the
@@ -1109,14 +1150,32 @@ export function useVerseAudio({
       notifyPendingUploads();
 
       const rows = await loadTakesFn(snapshot.viewBibleTextId);
+      // The take is saved either way. If the view changed meanwhile, `rows` are
+      // the old verse's: leave the new query's rows, refs and state to its own
+      // load (#979).
+      if (!isCurrent()) {
+        settleAbandoned();
+        return;
+      }
       setTakes(rows);
       await refreshAllTakes(snapshot.viewBibleTextId);
+      if (!isCurrent()) {
+        settleAbandoned();
+        return;
+      }
       recoveredSegmentsRef.current = [];
       recoveredElapsedMsRef.current = 0;
       setRecoveredElapsedMs(0);
       capturePersistRef.current = null;
       dispatch({ type: 'SAVED' });
     } catch (error) {
+      if (!isCurrent()) {
+        log.warn('stop failed after the view changed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        settleAbandoned();
+        return;
+      }
       capturePersistRef.current = null;
       recoveredSegmentsRef.current = [];
       recoveredElapsedMsRef.current = 0;
@@ -1137,6 +1196,19 @@ export function useVerseAudio({
     verseNumber,
     refreshAllTakes,
   ]);
+
+  // Marks Stop pending in the same tick as the press, before the first await, so
+  // a verse step right after it sees the flag. A second Stop joins the first (#979).
+  const stop = useCallback((): Promise<void> => {
+    const inFlight = stopInFlightRef.current;
+    if (inFlight !== null) return inFlight;
+    if (capturePersistRef.current === null) return Promise.resolve();
+    const run: Promise<void> = runStop().finally(() => {
+      if (stopInFlightRef.current === run) stopInFlightRef.current = null;
+    });
+    stopInFlightRef.current = run;
+    return run;
+  }, [runStop]);
 
   /** File checks + engine play, shared by single takes and stitched segments. */
   const playUri = useCallback(
@@ -1742,6 +1814,7 @@ export function useVerseAudio({
     pause,
     resume,
     stop,
+    isStopPending,
     discardCapture,
     playTake,
     playStitched,

@@ -1079,6 +1079,118 @@ describe('useVerseAudio', () => {
     });
   });
 
+  describe('a Stop that is still settling (#979)', () => {
+    /** Holds the native stop open, as the minimum-run hold does. */
+    const deferredStop = () => {
+      let finish!: () => void;
+      mockRecordingStop.mockImplementation(
+        () =>
+          new Promise<{ uri: string; durationMs: number }>(resolve => {
+            finish = () => {
+              mockRecordingState.status = 'idle';
+              resolve({ uri: 'file:///tmp/take.m4a', durationMs: 500 });
+            };
+          }),
+      );
+      return () => finish();
+    };
+
+    it('keeps the old verse rows out of the new view when Stop, Next and Discard overlap', async () => {
+      const oldRow = makeTake({ id: 'rec_old', bibleTextId: 42 });
+      const newRow = makeTake({ id: 'rec_next_verse', bibleTextId: 43 });
+      loadTakes.mockImplementation(async (id: number) =>
+        id === 42 ? [] : [newRow],
+      );
+      const finishStop = deferredStop();
+      const { result, rerender } = renderHook(
+        ({ id }: { id: number }) =>
+          useVerseAudio({ ...verseAudioArgs(), bibleTextId: id }),
+        { initialProps: { id: 42 } },
+      );
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+      await act(async () => {
+        await result.current.start();
+      });
+      expect(result.current.state).toBe('recording');
+
+      let stopping!: Promise<void>;
+      act(() => {
+        stopping = result.current.stop();
+      });
+      // Pending from the press, before the reducer has left `recording`.
+      expect(result.current.isStopPending()).toBe(true);
+      expect(result.current.state).toBe('recording');
+
+      // Discard from the leave prompt must not resolve, and so must not let a
+      // navigation continue, while Stop is still pending.
+      let discardSettled = false;
+      let discarding!: Promise<void>;
+      act(() => {
+        discarding = result.current.discardCapture().then(() => {
+          discardSettled = true;
+        });
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(discardSettled).toBe(false);
+      expect(mockRecordingStop).toHaveBeenCalledTimes(1);
+
+      // The view moves on while Stop is still pending.
+      rerender({ id: 43 });
+      await waitFor(() => expect(result.current.takes).toEqual([newRow]));
+      // Once saved, the old verse's own read returns its new take.
+      loadTakes.mockImplementation(async (id: number) =>
+        id === 42 ? [oldRow] : [newRow],
+      );
+
+      await act(async () => {
+        finishStop();
+        await stopping;
+        await discarding;
+      });
+
+      expect(persistTake).toHaveBeenCalledTimes(1);
+      expect(persistTake).toHaveBeenCalledWith(
+        expect.objectContaining({ viewBibleTextId: 42 }),
+      );
+      expect(discardSettled).toBe(true);
+      // The new view keeps its own rows, and is not left in `saving`.
+      expect(result.current.takes).toEqual([newRow]);
+      expect(result.current.state).toBe('recorded');
+      expect(result.current.errorMessage).toBeNull();
+      expect(result.current.isStopPending()).toBe(false);
+    });
+
+    it('joins a second Stop and a Discard onto the Stop in flight', async () => {
+      const finishStop = deferredStop();
+      const { result } = renderHook(() => useVerseAudio(verseAudioArgs()));
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
+      await act(async () => {
+        await result.current.start();
+      });
+
+      let first!: Promise<void>;
+      let second!: Promise<void>;
+      let discarding!: Promise<void>;
+      act(() => {
+        first = result.current.stop();
+        second = result.current.stop();
+        discarding = result.current.discardCapture();
+      });
+      await act(async () => {
+        finishStop();
+        await Promise.all([first, second, discarding]);
+      });
+
+      expect(mockRecordingStop).toHaveBeenCalledTimes(1);
+      expect(persistTake).toHaveBeenCalledTimes(1);
+      expect(mockDeleteFile).not.toHaveBeenCalled();
+      expect(result.current.state).toBe('recorded');
+      expect(result.current.isStopPending()).toBe(false);
+    });
+  });
+
   it('does not publish a delete reload once the verse has changed', async () => {
     const takeA = makeTake({ id: 'rec_a' });
     const takeB = makeTake({ id: 'rec_b' });

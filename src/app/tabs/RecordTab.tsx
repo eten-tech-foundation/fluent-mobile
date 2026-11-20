@@ -209,6 +209,7 @@ export function RecordTab({
     onChange: setSelectedVerse,
     audioState: verseAudio.state,
     discardCapture: verseAudio.discardCapture,
+    isStopPending: verseAudio.isStopPending,
     resetCapture,
   });
   const verseIndex = verseStep.index;

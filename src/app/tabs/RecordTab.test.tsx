@@ -198,6 +198,7 @@ const idleAudio: VerseAudioApi = {
   pause: jest.fn(),
   resume: jest.fn(),
   stop: jest.fn(),
+  isStopPending: jest.fn(() => false),
   discardCapture: jest.fn().mockResolvedValue(undefined),
   playTake: jest.fn(),
   playStitched: jest.fn(),

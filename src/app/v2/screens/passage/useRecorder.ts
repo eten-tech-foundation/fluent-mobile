@@ -178,6 +178,7 @@ export function useRecorder({
     onChange: setVerse,
     audioState: verseAudio.state,
     discardCapture: verseAudio.discardCapture,
+    isStopPending: verseAudio.isStopPending,
     resetCapture: session.resetCapture,
   });
   // The passage's own assignment row, reloaded with it on focus and sync.
