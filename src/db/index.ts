@@ -2,20 +2,15 @@ import { open, DB } from '@op-engineering/op-sqlite';
 import { runMigrations } from './migrations';
 import { logger } from '../utils/logger';
 import { markStartup } from '../utils/startupTrace';
-import { setDatabase, getDatabase } from './db';
+import { setDatabase, hasDatabase } from './db';
 
 const log = logger.create('Database');
 const DB_NAME = 'fluent.db';
 
 export async function initializeDatabase(): Promise<void> {
-  try {
-    const existing = getDatabase();
-    if (existing) {
-      log.info('Database already initialized, skipping open');
-      return;
-    }
-  } catch {
-    log.warn('Error accessing existing database, attempting to open a new one');
+  if (hasDatabase()) {
+    log.info('Database already initialized, skipping open');
+    return;
   }
 
   try {
