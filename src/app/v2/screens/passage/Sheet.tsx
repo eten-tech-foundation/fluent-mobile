@@ -57,6 +57,7 @@ import { sourceWindow, windowProgress, windowSeekMs } from './sourceWindow';
 import { TakeFan } from './TakeFan';
 import { TitleSheet } from './TitleSheet';
 import { usePassageNotes } from './usePassageNotes';
+import { usePeerCheckSend } from './usePeerCheckSend';
 import { useRecorder } from './useRecorder';
 import { VerseList } from './VerseList';
 
@@ -513,9 +514,15 @@ export function Sheet({
         onCancel: () => setLeaving(false),
       }
     : null;
+  const send = usePeerCheckSend({
+    passage,
+    userId,
+    capturing,
+    onSent: onReload,
+  });
   // One question at a time, drawn as the Next dialog. The last one stays
   // while it fades out.
-  const asked = leaveDialog ?? recorder.confirm;
+  const asked = leaveDialog ?? recorder.confirm ?? send.dialog;
   const lastAsked = useRef(asked);
   if (asked) lastAsked.current = asked;
 
@@ -635,6 +642,8 @@ export function Sheet({
           title={title}
           chapterName={chapterName}
           milestoneName={milestoneName}
+          send={send.row}
+          onSend={send.open}
           onClose={() => setTitleSheetOpen(false)}
           onOpenBook={() => {
             recorder.releaseReview();
