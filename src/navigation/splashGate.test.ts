@@ -145,6 +145,16 @@ describe('splashGate', () => {
     expect(mockHide).toHaveBeenCalledTimes(1);
   });
 
+  it('does not clear the launch overlay when Home blurs under a pushed screen', () => {
+    hideSplash('home:blurred');
+
+    expect(mockHide).toHaveBeenCalledTimes(1);
+    expect(isLaunchOverlayVisible()).toBe(true);
+
+    hideSplash('home:content');
+    expect(isLaunchOverlayVisible()).toBe(false);
+  });
+
   it('clears the launch overlay on the hard cap when no screen reports a paint', () => {
     jest.advanceTimersByTime(LAUNCH_OVERLAY_CAP_MS - 1);
     expect(isLaunchOverlayVisible()).toBe(true);

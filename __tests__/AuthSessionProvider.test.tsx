@@ -3,8 +3,19 @@
  */
 
 import React from 'react';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  configure,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react-native';
 import { Text, TouchableOpacity } from 'react-native';
+
+// The children sit under the launch overlay and are hidden from accessibility
+// while it is up. These tests exercise session wiring, not accessibility, so
+// they query hidden elements by default; the a11y case opts back in explicitly.
+configure({ defaultIncludeHiddenElements: true });
 
 const mockHideSplash = jest.fn();
 const mockHoldSplashForFirstPaint = jest.fn();
@@ -175,6 +186,33 @@ describe('AuthSessionProvider', () => {
     });
     return utils;
   }
+
+  it('hides the children from accessibility while the launch overlay covers them', async () => {
+    const { hideSplash } = jest.requireMock('../src/navigation/splashGate') as {
+      hideSplash: (reason: string) => void;
+    };
+    const { getByTestId, queryByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('auth-session-loading')).toBeNull();
+    });
+    expect(getByTestId('launch-overlay')).toBeTruthy();
+    expect(
+      queryByTestId('auth-flag', { includeHiddenElements: false }),
+    ).toBeNull();
+
+    await act(async () => {
+      hideSplash('home:content');
+    });
+
+    expect(
+      queryByTestId('auth-flag', { includeHiddenElements: false }),
+    ).toBeTruthy();
+  });
 
   it('bootstraps session, then renders children', async () => {
     const { getByTestId, getByText, queryByTestId } = render(

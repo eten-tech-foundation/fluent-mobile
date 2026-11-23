@@ -8,7 +8,7 @@ import React, {
   useSyncExternalStore,
   type PropsWithChildren,
 } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { logger } from '../utils/logger';
 import { markStartup } from '../utils/startupTrace';
 import { initializeDatabase } from '../db/index';
@@ -70,6 +70,8 @@ export type AuthSessionContextValue = {
 };
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
+
+const styles = StyleSheet.create({ content: { flex: 1 } });
 
 /**
  * Covers the tree until a screen reports a paint. It is mounted with the
@@ -313,7 +315,16 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
             <Text style={appStyles.loadingTextAppInit}>Initializing...</Text>
           </View>
         ) : (
-          children
+          // Kept mounted under the overlay so its paint callbacks can still
+          // dismiss it; hidden from TalkBack so covered controls are not focusable.
+          <View
+            style={styles.content}
+            importantForAccessibility={
+              launchOverlayVisible ? 'no-hide-descendants' : 'auto'
+            }
+          >
+            {children}
+          </View>
         )}
         {launchOverlayVisible ? <LaunchOverlay /> : null}
       </View>

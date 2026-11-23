@@ -90,7 +90,9 @@ function armOverlayCap(): void {
 export function hideSplash(reason: SplashHideReason): void {
   // A real paint still clears the overlay after the native fallback already
   // hid the splash. The fallback itself must not: nothing is committed yet.
-  if (reason !== 'fallback') reportFirstPaint();
+  // Home blurring means a screen was pushed over it; that screen reports its
+  // own paint, so Home's blur must not clear the overlay early.
+  if (reason !== 'fallback' && reason !== 'home:blurred') reportFirstPaint();
   if (hideRequested) return;
   hideRequested = true;
   if (fallback !== null) {
