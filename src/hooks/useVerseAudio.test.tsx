@@ -636,6 +636,36 @@ describe('useVerseAudio', () => {
     expect(mockRecordingStart).not.toHaveBeenCalled();
   });
 
+  it('lets go of a recovered take when the account changes, leaving it for its owner', async () => {
+    mockPausedMarkers.push({ ...recoveredMarker(), userId: 12 });
+
+    const { result, rerender } = renderHook(
+      ({ userId }: { userId: number }) =>
+        useVerseAudio({ ...recoveryArgs(), userId }),
+      { initialProps: { userId: 12 } },
+    );
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+
+    rerender({ userId: 13 });
+    await waitFor(() => expect(result.current.state).not.toBe('paused'));
+
+    expect(result.current.recoveredElapsedMs).toBe(0);
+    // Nothing of the first account's is saved, resumed, discarded or deleted.
+    await act(async () => {
+      await result.current.stop();
+      await result.current.discardCapture();
+    });
+    expect(persistTake).not.toHaveBeenCalled();
+    expect(mockClearPausedTake).not.toHaveBeenCalled();
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+    expect(mockPausedMarkers).toEqual([{ ...recoveredMarker(), userId: 12 }]);
+
+    // And their own take comes back for them.
+    rerender({ userId: 12 });
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+    expect(result.current.recoveredElapsedMs).toBe(1000);
+  });
+
   it('resumes a recovered take into a new segment and persists all segments on stop', async () => {
     const saved = makeTake({ id: 'rec_new', isSelected: true });
     mockPausedMarkers.push(recoveredMarker());

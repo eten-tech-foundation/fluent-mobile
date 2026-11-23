@@ -3,6 +3,7 @@ import { Alert, InteractionManager } from 'react-native';
 import { launchRecoveryGate } from './launchRecoveryGate';
 import { collectLaunchRecoveries } from './pausedTakeLaunchRecovery';
 import { clearPausedTake, type PausedTakeMarker } from './pausedTakes';
+import { isPausedTakeForeign } from './pausedTakeOwner';
 import { deleteFile } from '../utils/audioStorage';
 import { parseUserId } from '../utils/parseUserId';
 import { logger } from '../utils/logger';
@@ -58,7 +59,13 @@ export function useLaunchRecoveryPrompt({
         return;
       }
 
+      // The account can change between the scan and an answer; a take that
+      // isn't the signed-in account's is neither offered nor deleted.
+      const isMine = (marker: PausedTakeMarker) =>
+        !isPausedTakeForeign(marker, parseUserId());
+
       const discard = (marker: PausedTakeMarker) => {
+        if (!isMine(marker)) return;
         clearPausedTake(marker.sessionKey);
         void Promise.all(
           marker.segments.map(uri =>
@@ -73,6 +80,10 @@ export function useLaunchRecoveryPrompt({
         const marker = queue[index];
         if (!marker) {
           launchRecoveryGate.settle();
+          return;
+        }
+        if (!isMine(marker)) {
+          showNext(index + 1);
           return;
         }
         Alert.alert(

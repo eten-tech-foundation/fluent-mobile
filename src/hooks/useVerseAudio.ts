@@ -531,6 +531,28 @@ export function useVerseAudio({
     [loadAllTakesFn, checkMultipleRecordersFn],
   );
 
+  // Recovered audio belongs to the account that paused it. If the account
+  // changes under a mounted hook, let go of it so resume, discard, pause and
+  // save can't act on it. Its marker and files stay for their owner. Declared
+  // before the take load so that run hydrates the new account's own marker.
+  const heldForUserIdRef = useRef(userId);
+  const recordingIdleRef = useRef(false);
+  recordingIdleRef.current = recording.status === 'idle';
+  useEffect(() => {
+    if (heldForUserIdRef.current === userId) return;
+    heldForUserIdRef.current = userId;
+    // A live native recorder is not recovered audio; the app blocks account
+    // switches while one runs.
+    if (!recordingIdleRef.current) return;
+    if (recoveredSegmentsRef.current.length === 0) return;
+    recoveredSegmentsRef.current = [];
+    recoveredElapsedMsRef.current = 0;
+    setRecoveredElapsedMs(0);
+    capturePersistRef.current = null;
+    setErrorMessage(null);
+    dispatch({ type: 'DISCARD' });
+  }, [userId]);
+
   useEffect(() => {
     let cancelled = false;
     // `activeBibleTextIdRef` is assigned synchronously below, so a newer run

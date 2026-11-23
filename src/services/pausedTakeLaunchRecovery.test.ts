@@ -139,6 +139,21 @@ describe('collectLaunchRecoveries', () => {
     expect(mockDeleteFile).not.toHaveBeenCalled();
   });
 
+  it("doesn't clean up another account's unrecoverable takes", async () => {
+    mockExisting.add('file:///a.aac');
+    // Orphaned (no verse) with files, and recoverable-looking with none left.
+    upsertPausedTake(marker({ verseNumber: undefined, userId: 8 }));
+    upsertPausedTake(
+      marker({ sessionKey: '7:4', segments: ['file:///gone.aac'], userId: 8 }),
+    );
+
+    const result = await collectLaunchRecoveries(7);
+
+    expect(result).toEqual([]);
+    expect(listPausedTakes().map(m => m.sessionKey)).toEqual(['7:3', '7:4']);
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+  });
+
   it('still clears the marker when deleting a file fails', async () => {
     mockDeleteFile.mockRejectedValue(new Error('disk'));
     upsertPausedTake(marker({ verseNumber: undefined }));
