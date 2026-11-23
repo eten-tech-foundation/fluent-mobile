@@ -3,6 +3,7 @@ jest.mock('./storage', () => ({
   getUserEmail: (userId: string) => mockAccounts.emails[userId] ?? '',
 }));
 
+import { uuid } from 'expo-modules-core';
 import { resetSecureStoreMock } from '../test/mocks/expo-secure-store';
 import { clearCredentials, saveCredentials } from './keychain';
 import { getPasswordVerifierRecord } from './keychain';
@@ -23,11 +24,57 @@ const mockAccounts: {
 
 describe('passwordVerifier', () => {
   beforeEach(async () => {
+    jest
+      .spyOn(uuid, 'v4')
+      .mockReturnValue('00112233-4455-4677-8899-aabbccddeeff');
     resetSecureStoreMock();
     resetOfflineSignInAttempts();
     mockAccounts.ids = ['7'];
     mockAccounts.emails = { '7': 'person@example.com' };
     await saveCredentials('stored-token', '7');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('saves and checks a verifier without Web Crypto on the native runtime', async () => {
+    const cryptoDescriptor = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'crypto',
+    );
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: undefined,
+    });
+    try {
+      await savePasswordVerifier('7', 'correct horse', { iterations: 4 });
+      expect(uuid.v4).toHaveBeenCalledTimes(1);
+      const record = JSON.parse((await getPasswordVerifierRecord('7')) ?? '{}');
+      expect(record.salt).toBe('00112233445546778899aabbccddeeff');
+      await expect(
+        restoreOfflineSession('person@example.com', 'correct horse'),
+      ).resolves.toEqual({ ok: true, userId: '7' });
+      await expect(
+        restoreOfflineSession('person@example.com', 'wrong'),
+      ).resolves.toEqual({ ok: false, reason: 'mismatch' });
+    } finally {
+      if (cryptoDescriptor) {
+        Object.defineProperty(globalThis, 'crypto', cryptoDescriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'crypto');
+      }
+    }
+  });
+
+  it('does not save a verifier if native randomness fails', async () => {
+    jest.mocked(uuid.v4).mockImplementationOnce(() => {
+      throw new Error('Native random source unavailable');
+    });
+    await expect(savePasswordVerifier('7', 'correct horse')).rejects.toThrow(
+      'Native random source unavailable',
+    );
+    expect(await getPasswordVerifierRecord('7')).toBeNull();
   });
 
   it('stores the production iteration count', async () => {

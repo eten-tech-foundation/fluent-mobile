@@ -1,6 +1,7 @@
 import { pbkdf2Async } from '@noble/hashes/pbkdf2.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { bytesToHex, hexToBytes, randomBytes } from '@noble/hashes/utils.js';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
+import { uuid } from 'expo-modules-core';
 import { logger } from '../utils/logger';
 import {
   getCredentials,
@@ -19,7 +20,6 @@ const log = logger.create('PasswordVerifier');
  */
 export const PASSWORD_VERIFIER_ITERATIONS = 10_000;
 const DERIVED_KEY_BYTES = 32;
-const SALT_BYTES = 16;
 const FAILURES_BEFORE_LOCKOUT = 5;
 const LOCKOUT_BASE_MS = 1000;
 const LOCKOUT_MAX_STEPS = 6;
@@ -129,7 +129,10 @@ export async function savePasswordVerifier(
   options?: { iterations?: number },
 ): Promise<void> {
   const iterations = options?.iterations ?? PASSWORD_VERIFIER_ITERATIONS;
-  const salt = randomBytes(SALT_BYTES);
+  // Expo's native UUID v4 uses Android's secure random source, even when
+  // Hermes has no Web Crypto. Its 122 random bits fit the existing 16-byte
+  // salt format; old verifiers continue to use their stored salt unchanged.
+  const salt = hexToBytes(uuid.v4().replace(/-/g, ''));
   const hash = await derive(password, salt, iterations);
   const record: StoredVerifier = {
     v: 1,
