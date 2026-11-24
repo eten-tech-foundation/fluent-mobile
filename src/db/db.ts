@@ -6,6 +6,10 @@ export function setDatabase(instance: DB) {
   db = instance;
 }
 
+export function hasDatabase(): boolean {
+  return db !== null;
+}
+
 export function getDatabase(): DB {
   if (!db) {
     throw new Error('Database not initialized');

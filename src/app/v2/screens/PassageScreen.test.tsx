@@ -81,8 +81,10 @@ const sessionDefaults = {
   captureBibleTextId: 1022 as number | null,
   playingTakeId: null as string | null,
   positionMs: 0,
+  hasMultipleRecorders: false,
 };
 let mockSession = { ...sessionDefaults };
+const mockSeekTake = jest.fn(async () => {});
 const take = (n: number): MockTake => ({
   id: `t${n}`,
   takeNumber: n,
@@ -170,6 +172,11 @@ jest.mock('../../../hooks/useRecordSession', () => {
           blockUnsupportedReplacement: mockBlockReplacement,
           ownCanonicalTakeId: null,
           allTakes: mockSession.allTakes,
+          hasMultipleRecorders: mockSession.hasMultipleRecorders,
+          loadedTakeId: null,
+          playbackStatus: 'idle',
+          durationMs: 0,
+          seek: mockSeekTake,
           getMetering: () => null,
           canRecordNewTake: mockSession.canRecordNewTake,
         },
@@ -193,6 +200,13 @@ jest.mock('../../../hooks/useRecordSession', () => {
 });
 
 jest.mock('../../../utils/parseUserId', () => ({ parseUserId: () => 7 }));
+
+const mockMissingAudio = new Set<string>();
+jest.mock('../../../utils/audioStorage', () => ({
+  ...jest.requireActual('../../../utils/audioStorage'),
+  fileExists: async (path: string) => !mockMissingAudio.has(path),
+  fileSize: async () => 1000,
+}));
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -452,6 +466,7 @@ describe('PassageScreen', () => {
     jest.clearAllMocks();
     resetRecordCaptureGateForTests();
     mockSession = { ...sessionDefaults };
+    mockMissingAudio.clear();
     mockParams = { ...baseParams };
     mockPassage = ready;
     mockDownloadState = 'idle';
@@ -3539,6 +3554,180 @@ describe('PassageScreen', () => {
       await openTitleSheet();
       expect(screen.getByTestId('passage-send-sent')).toBeTruthy();
       expect(screen.queryByTestId('passage-send-queued')).toBeNull();
+    });
+  });
+
+  describe("everyone's takes", () => {
+    const owned = (
+      id: string,
+      owner: number,
+      name: string,
+      over: Record<string, unknown> = {},
+    ) => ({
+      id,
+      bibleTextId: 1022,
+      recordedByUserId: owner,
+      ownerDisplayName: name,
+      localFilePath: `file:///${id}.m4a`,
+      durationMs: 12000,
+      takeNumber: 1,
+      isSelected: false,
+      isCanonical: false,
+      syncStatus: 'uploaded',
+      granularity: 'pericope',
+      startChapter: 14,
+      startVerse: 22,
+      endChapter: 14,
+      endVerse: 25,
+      ...over,
+    });
+    const others = () => {
+      mockSession = {
+        ...mockSession,
+        hasMultipleRecorders: true,
+        allTakes: [
+          owned('m1', 7, 'Me Drafter', { isSelected: true }),
+          owned('o1', 9, 'Ruth Reader', { isCanonical: true }),
+          owned('o2', 9, 'Ruth Reader', {
+            takeNumber: 2,
+            granularity: 'verse',
+            startVerse: 23,
+            endVerse: 23,
+          }),
+        ],
+      };
+    };
+    function openReview() {
+      renderSettled();
+      fireEvent.press(screen.getByTestId('passage-title'));
+      settle();
+      fireEvent.press(screen.getByTestId('passage-open-review'));
+      settle();
+    }
+
+    it('keeps Send and take review available together after integration', async () => {
+      others();
+      mockPeerCheck = {
+        chapter: {},
+        visibility: {
+          visible: true,
+          disabled: false,
+          destination: { nextStatus: 'peer_check' },
+        },
+        hasConflict: false,
+        hasUnuploadableTakes: false,
+      };
+      mockPassage = {
+        ...ready,
+        assignment: { ...ready.assignment, bookName: 'Mark', status: 'draft' },
+      };
+      renderSettled();
+      await act(async () => {});
+      fireEvent.press(screen.getByTestId('passage-title'));
+      settle();
+      expect(screen.getByTestId('passage-send')).toBeTruthy();
+      expect(screen.getByTestId('passage-open-review')).toBeTruthy();
+      expect(
+        within(screen.getByTestId('passage-classic')).getByText('Resources'),
+      ).toBeTruthy();
+
+      fireEvent.press(screen.getByTestId('passage-send'));
+      settle();
+      expect(screen.getByTestId('passage-confirm')).toBeTruthy();
+      expect(screen.queryByTestId('passage-review')).toBeNull();
+      fireEvent.press(screen.getByTestId('passage-confirm-cancel'));
+      settle();
+      fireEvent.press(screen.getByTestId('passage-title'));
+      settle();
+      fireEvent.press(screen.getByTestId('passage-open-review'));
+      settle();
+      expect(screen.getByTestId('passage-review')).toBeTruthy();
+      expect(mockSendToPeerCheck).not.toHaveBeenCalled();
+    });
+
+    it('is not offered when no one else has takes here', () => {
+      renderSettled();
+      fireEvent.press(screen.getByTestId('passage-title'));
+      settle();
+      expect(screen.queryByTestId('passage-open-review')).toBeNull();
+      expect(screen.getByTestId('passage-classic')).toBeTruthy();
+    });
+
+    it('groups every take by owner, with range and official state', () => {
+      others();
+      openReview();
+
+      const sheet = screen.getByTestId('passage-review');
+      expect(within(sheet).getByText('Me Drafter (you)')).toBeTruthy();
+      const theirs = within(sheet).getByTestId('passage-review-owner-9');
+      expect(within(theirs).getByText('Ruth Reader')).toBeTruthy();
+      expect(
+        within(theirs).getByText('Take 1 - Pericope - vv. 22-25'),
+      ).toBeTruthy();
+      expect(within(theirs).getByText('Take 2 - Verse - v. 23')).toBeTruthy();
+      expect(
+        within(screen.getByTestId('passage-review-take-o1')).getByText(
+          'Official',
+        ),
+      ).toBeTruthy();
+      expect(
+        within(screen.getByTestId('passage-review-take-o2')).queryByText(
+          'Official',
+        ),
+      ).toBeNull();
+    });
+
+    it("plays another owner's take without picking, deleting or making it official", async () => {
+      others();
+      openReview();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-review-play-o2'));
+      });
+
+      expect(mockPlayTake).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'o2' }),
+      );
+      expect(mockSelectTake).not.toHaveBeenCalled();
+      expect(mockSetCanonical).not.toHaveBeenCalled();
+      expect(mockDeleteTake).not.toHaveBeenCalled();
+      expect(mockBlockReplacement).not.toHaveBeenCalled();
+    });
+
+    it('explains a take whose audio is not on this phone', async () => {
+      others();
+      mockMissingAudio.add('file:///o1.m4a');
+      openReview();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-review-play-o1'));
+      });
+
+      expect(mockPlayTake).not.toHaveBeenCalled();
+      expect(
+        within(screen.getByTestId('passage-review-take-o1')).getByText(
+          "This take's audio isn't on this phone.",
+        ),
+      ).toBeTruthy();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('closes when the passage loses focus', () => {
+      others();
+      openReview();
+      expect(screen.getByTestId('passage-review')).toBeTruthy();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      settle();
+      expect(screen.queryByTestId('passage-review')).toBeNull();
+    });
+
+    it("isn't offered during a take in progress", () => {
+      others();
+      mockSession = { ...mockSession, state: 'recording', captureActive: true };
+      renderSettled();
+      fireEvent.press(screen.getByTestId('passage-title'));
+      settle();
+      expect(screen.queryByTestId('passage-open-review')).toBeNull();
     });
   });
 });
