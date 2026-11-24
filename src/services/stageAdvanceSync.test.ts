@@ -86,7 +86,12 @@ describe('syncPendingStageAdvances', () => {
       blocked: 0,
     });
 
-    expect(hasPendingUploads).toHaveBeenCalledWith(7, 9);
+    // Only takes recorded before the stage advance hold it (#854).
+    expect(hasPendingUploads).toHaveBeenCalledWith(
+      7,
+      9,
+      draftToPeerCheck.createdAt,
+    );
     expect(submitAssignment).not.toHaveBeenCalled();
     expect(deleteRow).not.toHaveBeenCalled();
   });
@@ -451,6 +456,35 @@ describe('syncPendingStageAdvances', () => {
     expect(firstResult.synced).toBe(1);
   });
 
+  it("runs the joiner's follow-up pass with the joiner's newer token", async () => {
+    hasPendingUploads
+      .mockResolvedValueOnce(true) // first pass: takes still uploading
+      .mockResolvedValue(false);
+    getAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      projectId: 1,
+      projectUnitId: 1,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 4,
+      status: 'draft',
+    });
+    let releaseList!: () => void;
+    listPending.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          releaseList = () => resolve([draftToPeerCheck]);
+        }),
+    );
+
+    const first = syncPendingStageAdvances(9, 'old-token');
+    const second = syncPendingStageAdvances(9, 'new-token');
+    releaseList();
+    await Promise.all([first, second]);
+
+    expect(submitAssignment).toHaveBeenCalledWith(7, 'new-token');
+  });
+
   it('runs overlapping drains for different users one after another, never at once (#854)', async () => {
     const userTwo = {
       id: 2,
@@ -654,7 +688,7 @@ describe('stage advances from several accounts on one device (#854)', () => {
           [9, 'token-9'],
           [2, 'token-2'],
         ]),
-        jest.fn(),
+        jest.fn(() => true),
       ),
     ).resolves.toEqual({ synced: 2, dropped: 0, failed: 0, blocked: 0 });
 
@@ -663,15 +697,18 @@ describe('stage advances from several accounts on one device (#854)', () => {
       [7, 'token-2'],
     ]);
     expect(hasPendingUploads.mock.calls).toEqual([
-      [7, 9],
-      [7, 2],
+      [7, 9, aToPeerCheck.createdAt],
+      [7, 2, bToCommunityReview.createdAt],
     ]);
     expect(deleteRow.mock.calls).toEqual([[1], [2]]);
   });
 
   it("holds B's advance while A has no stored session, without failing it", async () => {
     await expect(
-      drainStageAdvancesForAccounts(new Map([[2, 'token-2']]), jest.fn()),
+      drainStageAdvancesForAccounts(
+        new Map([[2, 'token-2']]),
+        jest.fn(() => true),
+      ),
     ).resolves.toEqual({ synced: 0, dropped: 0, failed: 0, blocked: 1 });
 
     expect(getAssignment).not.toHaveBeenCalled();
@@ -689,7 +726,7 @@ describe('stage advances from several accounts on one device (#854)', () => {
           [9, 'token-9'],
           [2, 'token-2'],
         ]),
-        jest.fn(),
+        jest.fn(() => true),
       ),
     ).resolves.toEqual({ synced: 0, dropped: 0, failed: 0, blocked: 0 });
 
@@ -719,7 +756,7 @@ describe('stage advances from several accounts on one device (#854)', () => {
       ...assignment('peer_check'),
       chapterAssignmentId: 8,
     });
-    const onOwnerAuthFailure = jest.fn();
+    const onOwnerAuthFailure = jest.fn(() => true);
 
     await expect(
       drainStageAdvancesForAccounts(
@@ -753,7 +790,7 @@ describe('stage advances from several accounts on one device (#854)', () => {
           [9, 'token-9'],
           [2, 'token-2'],
         ]),
-        jest.fn(),
+        jest.fn(() => true),
       ),
     ).resolves.toEqual({ synced: 0, dropped: 0, failed: 0, blocked: 1 });
 
@@ -788,11 +825,31 @@ describe('stage advances from several accounts on one device (#854)', () => {
     const first = syncPendingStageAdvances(9, 'token-9');
     const second = syncPendingStageAdvances(2, 'token-2');
     await flush();
+    // User 9's GET is in flight and user 2's drain is still waiting its turn.
+    expect(getAssignment.mock.calls).toEqual([[7, 'token-9']]);
     rejectFirst(new AuthError('expired', 'TOKEN_EXPIRED'));
 
     await expect(first).rejects.toBeInstanceOf(AuthError);
     await expect(second).resolves.toMatchObject({ synced: 1 });
     expect(submitAssignment).toHaveBeenCalledWith(8, 'token-2');
+  });
+
+  it("rethrows the active account's rejected token from a multi-account drain", async () => {
+    listPending.mockResolvedValue([aToPeerCheck, bToCommunityReview]);
+    getAssignment.mockRejectedValue(new AuthError('expired', 'TOKEN_EXPIRED'));
+    // The callback answers false for the active account (9).
+    const onOwnerAuthFailure = jest.fn((userId: number) => userId !== 9);
+
+    await expect(
+      drainStageAdvancesForAccounts(
+        new Map([
+          [9, 'token-9'],
+          [2, 'token-2'],
+        ]),
+        onOwnerAuthFailure,
+      ),
+    ).rejects.toBeInstanceOf(AuthError);
+    expect(onOwnerAuthFailure).toHaveBeenCalledWith(9);
   });
 
   it('still rethrows a rejected token from a single-user drain', async () => {

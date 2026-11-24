@@ -98,6 +98,12 @@ export interface UploadResult {
    * Callers must treat this like `failed`: the pass is not complete.
    */
   deletionsFailed: number;
+  /**
+   * Set when project membership could not be confirmed for this pass (the
+   * refresh or reconcile failed, or an owner could not be verified). The pass
+   * is not complete even when no take was left to defer (#855).
+   */
+  membershipUnconfirmed?: true;
 }
 
 /** Terminal outcome of one queued take delete (#886). */
@@ -118,6 +124,12 @@ export type DeletePassResult = {
    * logged, instead of blocking the active user's `complete` forever.
    */
   failedForActiveUser: number;
+  /**
+   * Rows left queued because their account must sign in again (no stored
+   * session, or its token was rejected). Not failures, but the pass is not
+   * complete while any remain (#854).
+   */
+  deferred: number;
 };
 
 export type RecordingSyncOptions = {
@@ -315,7 +327,14 @@ function createPassOwnerTokens() {
       const key =
         owner !== null && Number.isFinite(owner) ? String(owner) : null;
       const cached = key === null ? undefined : tokens.get(key);
-      if (cached && cached.version === getCredentialsVersion()) {
+      // Setting the sign-in flag does not change the credentials version, so
+      // check it here too: another account's rejected token is never reused
+      // from the cache (#854).
+      if (
+        cached &&
+        cached.version === getCredentialsVersion() &&
+        !(key !== getActiveUserId() && isReauthRequired(key!))
+      ) {
         return cached.resolution;
       }
       const version = getCredentialsVersion();
@@ -1288,6 +1307,7 @@ async function runDeletePass(
     deleted: 0,
     failed: 0,
     failedForActiveUser: 0,
+    deferred: 0,
   };
   if (pending.length === 0) {
     return result;
@@ -1309,6 +1329,7 @@ async function runDeletePass(
     );
     if (resolution.token === null) {
       // Stays queued until its account signs in again (#854).
+      result.deferred += 1;
       continue;
     }
     const { token: deleteToken, userId: tokenUserId } = resolution;
@@ -1324,6 +1345,7 @@ async function runDeletePass(
     } catch (error) {
       // Another account's rejected session keeps its delete queued (#854).
       if (!isOtherAccountAuthFailure(error, tokenUserId)) throw error;
+      result.deferred += 1;
       continue;
     }
     if (outcome.kind === 'failed') {
@@ -1385,7 +1407,13 @@ async function runUploadPass(
           delay,
           maxAttempts,
         })
-      : { attempted: 0, deleted: 0, failed: 0, failedForActiveUser: 0 };
+      : {
+          attempted: 0,
+          deleted: 0,
+          failed: 0,
+          failedForActiveUser: 0,
+          deferred: 0,
+        };
 
   // #855: before evaluating any pending take, establish fresh project
   // membership for the active account. Recordings whose owner lost
@@ -1594,6 +1622,7 @@ async function runUploadPass(
         failed > 0 ||
         deferred > 0 ||
         deletionsFailed > 0 ||
+        deletePass.deferred > 0 ||
         reconcileFailed ||
         gateFailed
           ? 'idle'
@@ -1607,7 +1636,16 @@ async function runUploadPass(
       deletionsFailed,
       deletionsDone: deletePass.deleted,
     });
-    return { uploaded, conflicted, failed, deferred, deletionsFailed };
+    return {
+      uploaded,
+      conflicted,
+      failed,
+      deferred,
+      deletionsFailed,
+      ...(reconcileFailed || gateFailed
+        ? { membershipUnconfirmed: true as const }
+        : {}),
+    };
   } catch (error) {
     if (isAbortError(error) || options.signal?.aborted) {
       emitPassEvent({ type: 'cancelled' });
@@ -1674,11 +1712,15 @@ function throwIfChapterPassIncomplete(result: UploadResult): void {
   if (result.failed > 0) {
     throw new Error(`Chapter upload failed for ${result.failed} recording(s)`);
   }
-  if (result.deferred > 0) {
+  if (result.deferred > 0 || result.membershipUnconfirmed) {
     // Not a hard failure: the orchestrator keeps going with other chapters
     // (another account's takes may still be eligible) and fails afterwards.
+    // An unconfirmed membership defers too, even with nothing left to defer
+    // in this chapter, so the session does not report `complete` (#855).
     throw new ChapterUploadDeferredError(
-      `Chapter upload deferred ${result.deferred} recording(s)`,
+      result.deferred > 0
+        ? `Chapter upload deferred ${result.deferred} recording(s)`
+        : 'Chapter upload deferred: project membership unconfirmed',
     );
   }
 }
@@ -1709,7 +1751,7 @@ export function createChapterUploadWorker(
         throw new Error('No auth token available for take delete drain');
       }
       const result = await drainPendingRecordingDeletions(token, { signal });
-      return { failed: result.failedForActiveUser };
+      return { failed: result.failedForActiveUser, deferred: result.deferred };
     },
   };
 }

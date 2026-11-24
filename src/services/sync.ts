@@ -1225,10 +1225,19 @@ export async function syncPendingStageAdvancesForAccounts(
 
   try {
     const result = await drainStageAdvancesForAccounts(tokens, userId => {
+      // Only another account's 401 is absorbed; the active account's still
+      // ends the session into its sign-in path, as before #854.
+      if (String(userId) === getActiveUserId()) return false;
       void handleSyncAuthFailure(String(userId));
+      return true;
     });
     return { ...result, deferred: 0 };
   } catch (error) {
+    if (isAuthError(error)) {
+      const activeUserId = getActiveUserId();
+      if (activeUserId) await handleSyncAuthFailure(activeUserId);
+      throw error;
+    }
     log.warn('Stage-advance sync failed; leaving rows pending', {
       error: getErrorMessage(error),
     });

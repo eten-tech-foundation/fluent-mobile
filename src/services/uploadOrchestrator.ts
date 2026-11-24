@@ -12,6 +12,7 @@ import {
 } from '../db/repositories/heldRecordingsRepository';
 import {
   getVerifiedMembershipOwners,
+  invalidateVerifiedMembershipOwners,
   refreshMembershipForOwners,
 } from './projectMembership';
 import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
@@ -112,8 +113,12 @@ function distinctOwners(rows: ReadonlyArray<{ userId: number }>): number[] {
 /**
  * Push every account's queued offline claims before any take, each with that
  * account's own token: the claim endpoint assigns to the bearer (#886, #854).
+ * Once `signal` aborts (cancel / pause), no further account's drain starts; a
+ * request already sent may still settle.
  */
-async function pushPendingClaimsBeforeUpload(): Promise<void> {
+async function pushPendingClaimsBeforeUpload(
+  signal?: AbortSignal,
+): Promise<void> {
   let owners: number[];
   try {
     owners = distinctOwners(await getPendingChapterClaims());
@@ -130,7 +135,9 @@ async function pushPendingClaimsBeforeUpload(): Promise<void> {
   let deferred = 0;
   let failed = 0;
   for (const userId of owners) {
+    if (signal?.aborted) return;
     const token = await storedOwnerToken(userId);
+    if (signal?.aborted) return;
     if (!token) {
       ownerNeedsSignIn(userId);
       continue;
@@ -222,12 +229,20 @@ async function refreshMembershipBeforeUpload(): Promise<void> {
   if (!Number.isFinite(activeUserId) || activeUserId <= 0) {
     return;
   }
-  const owners = await getRecordingOwnerIds(activeUserId);
-  const verified = await refreshMembershipForOwners(owners);
-  if (verified.size === 0) {
-    throw new Error(
-      'Project membership could not be confirmed for any account',
-    );
+  try {
+    const owners = await getRecordingOwnerIds(activeUserId);
+    const verified = await refreshMembershipForOwners(owners);
+    if (verified.size === 0) {
+      throw new Error(
+        'Project membership could not be confirmed for any account',
+      );
+    }
+  } catch (error) {
+    // The session goes on with claims and stage advances (#855). Chapter
+    // passes read the confirmed-owner set, so clear it: an earlier session's
+    // answer must not let a take upload this time.
+    invalidateVerifiedMembershipOwners();
+    throw error;
   }
 }
 

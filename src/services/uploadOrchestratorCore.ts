@@ -55,8 +55,12 @@ export type ChapterUploadWorker = {
    * without `complete` so the bounded retry re-drains. Other owners' stuck
    * rows are logged and stay queued without blocking this user's session.
    * Throws on abort, network interruption and auth failure like `uploadChapter`.
+   * `deferred`: rows left queued because their account must sign in again;
+   * the session does not report `complete` while any remain (#854).
    */
-  drainPendingDeletions?: (signal: AbortSignal) => Promise<{ failed: number }>;
+  drainPendingDeletions?: (
+    signal: AbortSignal,
+  ) => Promise<{ failed: number; deferred?: number }>;
 };
 
 /** What one stage-advance push did, for the session's next round (#854). */
@@ -124,8 +128,10 @@ export type UploadOrchestratorDeps = {
   /**
    * Push offline chapter claims before uploading takes (#611).
    * Soft-fail / auth behavior is owned by the injected implementation.
+   * `signal` aborts with the session: no further account's claims start
+   * after a cancel or pause (#854).
    */
-  pushPendingClaimsBeforeUpload?: () => Promise<void>;
+  pushPendingClaimsBeforeUpload?: (signal?: AbortSignal) => Promise<void>;
   /**
    * Push queued stage advances after takes finish (#257). Peer Check PATCH
    * before verse-audio upload 404s ("Verse audio recording not found").
@@ -430,36 +436,53 @@ export function createUploadOrchestrator(
     const sessionResult: { followUp: 'none' | 'retry' } = { followUp: 'none' };
     let heldRecordingsChecked = false;
     let membershipChecked = false;
-    const reconcileHeld = async (): Promise<boolean> => {
+    /**
+     * The membership refresh or held reconcile failed this session. Only the
+     * take uploads that need it are deferred; claims, deletes and stage
+     * advances still run, and the session fails at the end so the bounded
+     * retry checks membership again (#855).
+     */
+    let membershipError: unknown = null;
+    const transportAllowsNow = (): boolean =>
+      transportAllowsTransfer({
+        isOnline,
+        isWifi,
+        connectionType,
+        uploadOverCellular: deps.getUploadOverCellular(),
+      }) === 'ok';
+    const reconcileHeld = async (): Promise<void> => {
       // No take for membership to affect: no request, no reconcile.
       if (!heldRecordingsChecked && deps.hasRecordingsAffectedByMembership) {
         const affected = await deps
           .hasRecordingsAffectedByMembership()
           .catch(() => true);
-        if (!affected) return false;
+        if (!affected) return;
       }
       // Membership first, once per session: reconciliation can only compare
       // against cached `user_projects`, so a removal that happened offline is
       // invisible until the server answers (#848).
       if (!membershipChecked) {
+        // The connection may have changed during the lookup above (e.g. to
+        // cellular with cellular uploads off): do not start the request then.
+        // A later call on an allowed connection still runs it.
+        if (!transportAllowsNow()) return;
         membershipChecked = true;
         if (deps.refreshMembershipBeforeUpload) {
           try {
             await deps.refreshMembershipBeforeUpload();
           } catch (error) {
-            log.warn('Project membership refresh failed; deferring uploads', {
+            log.warn('Project membership refresh failed; deferring takes', {
               error,
             });
-            // Same contract as a failed reconcile: count the attempt and ask
-            // the `finally` for a retry. Nothing is uploaded against a cache
-            // we could not verify.
-            sessionFailures += 1;
-            sessionResult.followUp = 'retry';
-            return true;
+            // Nothing is uploaded against a cache we could not verify, and
+            // there is nothing fresh to reconcile against.
+            membershipError = error;
+            heldRecordingsChecked = true;
+            return;
           }
         }
       }
-      if (!deps.reconcileHeldBeforeUpload) return false;
+      if (!deps.reconcileHeldBeforeUpload) return;
       heldRecordingsChecked = true;
       try {
         const outcome = await deps.reconcileHeldBeforeUpload();
@@ -471,18 +494,20 @@ export function createUploadOrchestrator(
           });
         }
       } catch (error) {
-        log.warn('Held-recording membership reconcile failed; holding', {
-          error,
-        });
-        // Match the other failure paths: count the attempt and ask the
-        // `finally` below for a retry. Counting matters because
-        // `sessionRetryDelayMs(0)` is 0ms, so an uncounted retry would
-        // re-enter this session immediately and loop on a persistent failure.
-        sessionFailures += 1;
-        sessionResult.followUp = 'retry';
-        return true;
+        log.warn(
+          'Held-recording membership reconcile failed; deferring takes',
+          {
+            error,
+          },
+        );
+        membershipError = error;
       }
-      return false;
+    };
+    /** An early exit with membership unconfirmed still asks for a retry. */
+    const retryIfMembershipFailed = (): void => {
+      if (membershipError === null) return;
+      sessionFailures += 1;
+      sessionResult.followUp = 'retry';
     };
 
     try {
@@ -508,7 +533,8 @@ export function createUploadOrchestrator(
         // them for this same automatic session. `evaluateAuto` has already
         // checked the transport gate, and `reconcileHeld` makes no request
         // when no take exists for membership to affect.
-        if (await reconcileHeld()) return;
+        await reconcileHeld();
+        if (!started || version !== lifecycleVersion) return;
         // Nothing queued means nothing for `/health` to gate. A clean empty
         // answer holds while no row is written and no work is announced.
         // Work that is queued is re-read after the probe below, as before.
@@ -549,6 +575,7 @@ export function createUploadOrchestrator(
           phase = 'idle';
           clearSessionCounts();
           deps.emit({ type: 'idle' });
+          retryIfMembershipFailed();
           return;
         }
       }
@@ -590,7 +617,7 @@ export function createUploadOrchestrator(
       // either step fails, so a user removed while offline cannot reach an
       // upload attempt and a terminal failure (database lock / failed
       // transaction) cannot delete or fail those takes here.
-      if (!heldRecordingsChecked && (await reconcileHeld())) return;
+      if (!heldRecordingsChecked) await reconcileHeld();
       if (!started || version !== lifecycleVersion) return;
 
       const [chapters, hasStageWork, hasClaimWork] = await readPendingWork();
@@ -628,6 +655,7 @@ export function createUploadOrchestrator(
         phase = 'idle';
         clearSessionCounts();
         deps.emit({ type: 'idle' });
+        retryIfMembershipFailed();
         return;
       }
 
@@ -708,7 +736,7 @@ export function createUploadOrchestrator(
           let claimPushError: unknown = null;
           if (deps.pushPendingClaimsBeforeUpload) {
             try {
-              await raceAbort(deps.pushPendingClaimsBeforeUpload());
+              await raceAbort(deps.pushPendingClaimsBeforeUpload(abort.signal));
             } catch (error) {
               if (abort.signal.aborted) {
                 return;
@@ -738,12 +766,19 @@ export function createUploadOrchestrator(
           // delete failure must not starve the chapters below: remember it
           // and fail the session only after they have had their turn.
           let deletionsFailed = 0;
+          let deletionsDeferred = 0;
           let deferredChapterError: unknown = null;
+          // A chapter that failed (not just deferred) must not stop later
+          // chapters, which may belong to another account (#854). Remember the
+          // first failure and rethrow it after the round, so the retry budget
+          // still applies.
+          let failedChapterError: unknown = null;
           if (!stageOnly && deps.worker!.drainPendingDeletions) {
             const drained = await deps.worker!.drainPendingDeletions(
               abort.signal,
             );
             deletionsFailed = drained.failed;
+            deletionsDeferred = drained.deferred ?? 0;
           }
           if (abort.signal.aborted) {
             return;
@@ -753,7 +788,11 @@ export function createUploadOrchestrator(
           // the first account's stage advance is queued; once that advance
           // lands, the next round uploads them. A round runs only after an
           // advance landed, so this cannot spin.
-          let roundChapters = chapters;
+          // Membership unconfirmed: defer every take this session; claims,
+          // deletes and stage advances still run. Stage advances keep their
+          // per-chapter guard (an account's advance waits for its own pending
+          // takes), so none can overtake a deferred take (#855).
+          let roundChapters = membershipError === null ? chapters : [];
           let stageBlocked = 0;
           for (let round = 1; ; round += 1) {
             deferredChapterError = null;
@@ -793,10 +832,24 @@ export function createUploadOrchestrator(
                 // must not starve other accounts' chapters. Remember it and fail
                 // the session after every chapter has had its turn, as for
                 // `deletionsFailed` (#855).
-                if (!isChapterUploadDeferredError(error)) {
+                if (isChapterUploadDeferredError(error)) {
+                  deferredChapterError ??= error;
+                } else if (
+                  abort.signal.aborted ||
+                  isUploadNetworkInterruptedError(error) ||
+                  isAuthError(error)
+                ) {
+                  // Abort, a dropped link and the active account's 401 still
+                  // end the session at once.
                   throw error;
+                } else {
+                  log.warn('Chapter upload failed; continuing with the rest', {
+                    bookId: chapter.bookId,
+                    chapterNumber: chapter.chapterNumber,
+                    error,
+                  });
+                  failedChapterError ??= error;
                 }
-                deferredChapterError ??= error;
               } finally {
                 currentChapter = null;
               }
@@ -867,8 +920,21 @@ export function createUploadOrchestrator(
               `Upload session left ${deletionsFailed} take delete(s) pending`,
             );
           }
+          if (failedChapterError !== null) {
+            throw failedChapterError;
+          }
           if (deferredChapterError !== null) {
             throw deferredChapterError;
+          }
+          if (membershipError !== null) {
+            throw membershipError;
+          }
+          if (deletionsDeferred > 0) {
+            // Another account's delete waits for it to sign in again: pending,
+            // not failed, but not `complete` either (#854).
+            throw new Error(
+              `Upload session left ${deletionsDeferred} take delete(s) waiting for sign-in`,
+            );
           }
           if (stageBlocked > 0) {
             // Stage advances still waiting on an earlier one from this device

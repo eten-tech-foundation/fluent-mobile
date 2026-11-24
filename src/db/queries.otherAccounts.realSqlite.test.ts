@@ -10,6 +10,7 @@ import type { DB } from '@op-engineering/op-sqlite';
 import { setDatabase } from './db';
 import { runMigrations } from './migrations';
 import {
+  assignmentHasPendingUploads,
   getDevicePendingUploadChapters,
   getOtherAccountsPendingSummary,
   getTakeIdsWaitingOnOtherAccounts,
@@ -185,6 +186,43 @@ describeReal('other accounts on the device (#854)', () => {
       await expect(waiting(['b-after'], [B])).resolves.toEqual(
         new Set(['b-after']),
       );
+    });
+  });
+
+  describe('assignmentHasPendingUploads with a cutoff', () => {
+    it("holds A's stage advance for A's earlier take, not a later one", async () => {
+      await saveTake(db, 'a-after', A, AFTER);
+
+      // No cutoff: any pending take of A's holds the advance, as before.
+      await expect(assignmentHasPendingUploads(10, A)).resolves.toBe(true);
+      // A take recorded after the advance was queued does not hold it.
+      await expect(
+        assignmentHasPendingUploads(10, A, ADVANCED_AT),
+      ).resolves.toBe(false);
+
+      await saveTake(db, 'a-before', A, BEFORE, { bibleTextId: 1 });
+      await expect(
+        assignmentHasPendingUploads(10, A, ADVANCED_AT),
+      ).resolves.toBe(true);
+    });
+
+    it('applies the cutoff to queued deletes too', async () => {
+      const queueDelete = (createdAt: string) =>
+        db.execute(
+          `INSERT INTO recording_deletions(id, project_unit_id, bible_text_id,
+             server_take_id, recorded_by_user_id, created_at)
+           VALUES (?, 12, 1, 55, ?, ?)`,
+          [`del-${createdAt}`, A, createdAt],
+        );
+      await queueDelete(AFTER);
+      await expect(
+        assignmentHasPendingUploads(10, A, ADVANCED_AT),
+      ).resolves.toBe(false);
+
+      await queueDelete(BEFORE);
+      await expect(
+        assignmentHasPendingUploads(10, A, ADVANCED_AT),
+      ).resolves.toBe(true);
     });
   });
 

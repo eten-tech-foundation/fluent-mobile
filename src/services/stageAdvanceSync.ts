@@ -33,22 +33,30 @@ export type SyncPendingStageAdvancesResult = {
 type DrainOptions = {
   /**
    * Multi-account drains only: called when an account's token is rejected.
-   * That account's rows stay pending instead of the 401 ending the drain for
-   * every other account (#854).
+   * Returning true absorbs the 401: that account's rows stay pending while
+   * the other accounts keep draining (#854). Returning false (the active
+   * account) rethrows it, so its session fails into the sign-in path.
    */
-  onOwnerAuthFailure?: (userId: number) => void;
+  onOwnerAuthFailure?: (userId: number) => boolean;
 };
 
 const inFlight = new Map<string, Promise<SyncPendingStageAdvancesResult>>();
 // A call that joins a pass already in flight may have been triggered after that
 // pass read its state (e.g. takes just finished uploading). Run one more pass.
 const rerunRequested = new Set<string>();
+/**
+ * The newest token map a joining caller brought, so the follow-up pass it
+ * requested uses it (an account may have signed in again since the pass
+ * started).
+ */
+const latestTokens = new Map<string, ReadonlyMap<number, string | undefined>>();
 /** Settles when the last queued drain finishes; null when none is running. */
 let drainLock: Promise<unknown> | null = null;
 
 export function __resetStageAdvanceSyncForTests(): void {
   inFlight.clear();
   rerunRequested.clear();
+  latestTokens.clear();
   drainLock = null;
 }
 
@@ -109,7 +117,7 @@ export async function syncPendingStageAdvances(
  */
 export async function drainStageAdvancesForAccounts(
   tokens: ReadonlyMap<number, string>,
-  onOwnerAuthFailure: (userId: number) => void,
+  onOwnerAuthFailure: (userId: number) => boolean,
 ): Promise<SyncPendingStageAdvancesResult> {
   return runSingleFlight(tokens, { onOwnerAuthFailure });
 }
@@ -127,6 +135,7 @@ function runSingleFlight(
     .join(',')}`;
   const existing = inFlight.get(key);
   if (existing) {
+    latestTokens.set(key, tokens);
     rerunRequested.add(key);
     return existing;
   }
@@ -137,6 +146,7 @@ function runSingleFlight(
   const run = () => runDrainPasses(key, tokens, options);
   const pass = (drainLock ? drainLock.then(run) : run()).finally(() => {
     rerunRequested.delete(key);
+    latestTokens.delete(key);
     inFlight.delete(key);
     if (drainLock === settled) drainLock = null;
   });
@@ -153,7 +163,10 @@ async function runDrainPasses(
 ): Promise<SyncPendingStageAdvancesResult> {
   let total = await drainStageAdvances(tokens, options);
   while (rerunRequested.delete(key)) {
-    const next = await drainStageAdvances(tokens, options);
+    const next = await drainStageAdvances(
+      latestTokens.get(key) ?? tokens,
+      options,
+    );
     total = {
       synced: total.synced + next.synced,
       dropped: total.dropped + next.dropped,
@@ -313,10 +326,17 @@ async function drainStageAdvances(
         // takes upload moved it to draft). Continue to the PATCH from there.
       }
 
-      // Only this row's own account's takes hold it: holding on every
-      // account's takes would deadlock with takes waiting on this row (#854).
+      // Only this row's own account's takes and deletes, recorded before it
+      // was queued, hold it. Holding on every account's takes, or on this
+      // account's later takes, could deadlock with takes that wait on another
+      // account's later stage advance (#854): the order is the order the
+      // work happened.
       if (
-        await assignmentHasPendingUploads(row.chapterAssignmentId, row.userId)
+        await assignmentHasPendingUploads(
+          row.chapterAssignmentId,
+          row.userId,
+          row.createdAt,
+        )
       ) {
         log.info('Holding stage advance until chapter uploads finish', {
           chapterAssignmentId: row.chapterAssignmentId,
@@ -407,8 +427,9 @@ async function drainStageAdvances(
       // Multi-account drains absorb one owner's 401 so the other accounts
       // still drain; that owner's rows (and later rows on the same chapter)
       // stay pending until it signs in again (#854).
-      if (!isAuthError(error) || !options.onOwnerAuthFailure) throw error;
-      options.onOwnerAuthFailure(row.userId);
+      if (!isAuthError(error) || !options.onOwnerAuthFailure?.(row.userId)) {
+        throw error;
+      }
       signInRequiredOwners.add(row.userId);
       blockedAssignmentIds.add(row.chapterAssignmentId);
     }

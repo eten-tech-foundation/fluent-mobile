@@ -1,3 +1,7 @@
+import { logger } from '../utils/logger';
+
+const log = logger.create('SyncEvents');
+
 type SyncListener = () => void;
 type SyncStartListener = (isFull: boolean) => void;
 type AuthReauthRequiredListener = (userId: string) => void;
@@ -82,8 +86,20 @@ export function onHeldRecordingsChanged(fn: SyncListener): () => void {
   };
 }
 
+/**
+ * Each listener runs on its own: one that throws must not skip the others or
+ * reach the caller, which has already committed the hold or release.
+ */
 export function emitHeldRecordingsChanged(): void {
-  [...heldChangedListeners].forEach(fn => fn());
+  [...heldChangedListeners].forEach(fn => {
+    try {
+      fn();
+    } catch (error) {
+      log.error('Held recordings listener failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
 }
 
 /** Recording-upload session events (distinct from metadata sync). */

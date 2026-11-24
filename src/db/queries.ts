@@ -1863,8 +1863,20 @@ export async function getPendingUploadChapters(
 export async function assignmentHasPendingUploads(
   chapterAssignmentId: number,
   userId: number,
+  /**
+   * Only count work recorded at or before this time (ISO). A stage advance
+   * waits for the takes and deletes that came before it, never for ones
+   * recorded after it was queued (#854): those may themselves be waiting on
+   * another account's later stage advance.
+   */
+  recordedBefore?: string,
 ): Promise<boolean> {
   const db = getDatabase();
+  const takeCutoff =
+    recordedBefore === undefined ? '' : 'AND r.created_at <= ?';
+  const deleteCutoff =
+    recordedBefore === undefined ? '' : 'AND d.created_at <= ?';
+  const cutoffParams = recordedBefore === undefined ? [] : [recordedBefore];
   try {
     const result = await db.execute(
       `SELECT (
@@ -1878,6 +1890,7 @@ export async function assignmentHasPendingUploads(
           AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)
          WHERE ca.id = ?
            AND ${uploadablePendingWhere(userId)}
+           ${takeCutoff}
        ) + (
          SELECT COUNT(*)
          FROM recording_deletions d
@@ -1889,8 +1902,16 @@ export async function assignmentHasPendingUploads(
           AND d.project_unit_id = ca.project_unit_id
          WHERE ca.id = ?
            AND ${pendingDeletionWhere(userId)}
+           ${deleteCutoff}
        ) AS count`,
-      [chapterAssignmentId, userId, chapterAssignmentId, userId],
+      [
+        chapterAssignmentId,
+        userId,
+        ...cutoffParams,
+        chapterAssignmentId,
+        userId,
+        ...cutoffParams,
+      ],
     );
     return Number(result.rows?.[0]?.count ?? 0) > 0;
   } catch (error) {

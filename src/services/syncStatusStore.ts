@@ -346,7 +346,11 @@ async function readIntoStore(writes?: DatabaseWriteMark | null): Promise<void> {
     const clean =
       !loaderFailed &&
       !chaptersFailed &&
-      [pending, chapters, unuploadable].every(r => r.status === 'fulfilled');
+      // A failed other-accounts read keeps its last values but is not a
+      // clean read, so the next status check reads it again (#854).
+      [pending, chapters, unuploadable, others].every(
+        r => r.status === 'fulfilled',
+      );
     if (!clean) {
       cleanRead = null;
     } else if (writes) {

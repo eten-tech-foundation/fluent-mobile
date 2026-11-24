@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { CircleAlert } from 'lucide-react-native';
 import { theme } from '../../theme';
@@ -97,6 +103,9 @@ export function HeldRecordingsSection({
   const playback = usePlaybackEngine();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
+  // The engine resolves a superseded play() without playing it. Only the
+  // latest request may publish the selection or an error.
+  const latestPlayRef = useRef(0);
 
   const groups = useMemo(() => groupHeldRecordings(recordings), [recordings]);
 
@@ -110,6 +119,7 @@ export function HeldRecordingsSection({
   // audio so it does not keep playing with no row to control it.
   useEffect(() => {
     if (playingId !== null && !recordings.some(r => r.id === playingId)) {
+      latestPlayRef.current += 1;
       void playback.pause();
       setPlayingId(null);
     }
@@ -119,14 +129,18 @@ export function HeldRecordingsSection({
     async (recording: HeldRecording) => {
       setPlaybackError(null);
       if (playingId === recording.id) {
+        // A play still pending must not re-select after this pause.
+        latestPlayRef.current += 1;
         await playback.pause();
         setPlayingId(null);
         return;
       }
+      const request = ++latestPlayRef.current;
       try {
         await playback.play(recording.localFilePath);
-        setPlayingId(recording.id);
+        if (request === latestPlayRef.current) setPlayingId(recording.id);
       } catch {
+        if (request !== latestPlayRef.current) return;
         setPlayingId(null);
         setPlaybackError(
           'Could not play this recording. The file may be missing from this device.',

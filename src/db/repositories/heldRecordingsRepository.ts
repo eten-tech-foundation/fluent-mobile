@@ -56,6 +56,10 @@ export async function hasRecordingsAffectedByMembership(): Promise<boolean> {
 /**
  * Accounts that own work this reconcile could touch, plus the active account.
  * Legacy rows without an owner belong to the active account.
+ *
+ * Accounts whose only queued work is a stage advance are included too (#854):
+ * their membership decides whether that advance can still land, and so whether
+ * another account's takes on the same chapter must wait for it.
  */
 export async function getRecordingOwnerIds(
   activeUserId: number | null,
@@ -66,11 +70,15 @@ export async function getRecordingOwnerIds(
   }
   const db = getDatabase();
   const result = await db.execute(
-    `SELECT DISTINCT COALESCE(recorded_by_user_id, ?) AS owner_id
+    `SELECT COALESCE(recorded_by_user_id, ?) AS owner_id
      FROM recordings
      WHERE sync_status IN ('pending', 'failed', 'uploading', 'held')
        AND IFNULL(granularity, 'verse') IN ('verse', 'pericope')
-       AND bible_text_id > 0`,
+       AND bible_text_id > 0
+     UNION
+     SELECT user_id AS owner_id
+     FROM stage_advance_queue
+     WHERE sync_status = 'pending'`,
     [activeUserId],
   );
   for (const row of result.rows ?? []) {
@@ -148,18 +156,7 @@ export async function reconcileHeldRecordings(
         [now, activeUserId, activeUserId, ...verifiedOwnerIds],
       );
 
-      const held = await tx.execute(
-        `UPDATE recordings
-         SET sync_status = 'held',
-             project_unit_id = (
-               SELECT ${unit}
-               FROM bible_texts bt
-               WHERE bt.id = recordings.bible_text_id
-             ),
-             recorded_by_user_id = COALESCE(recorded_by_user_id, ?),
-             upload_error = NULL,
-             updated_at = ?
-         WHERE sync_status IN ('pending', 'failed', 'uploading')
+      const holdWhere = `sync_status IN ('pending', 'failed', 'uploading')
            AND IFNULL(granularity, 'verse') IN ('verse', 'pericope')
            AND bible_text_id > 0
            AND EXISTS (
@@ -174,9 +171,40 @@ export async function reconcileHeldRecordings(
                    AND up.user_id = COALESCE(recordings.recorded_by_user_id, ?)
                )
            )
-           ${ownerFilter}`,
-        [activeUserId, now, activeUserId, activeUserId, ...verifiedOwnerIds],
+           ${ownerFilter}`;
+      const holdParams = [activeUserId, activeUserId, ...verifiedOwnerIds];
+
+      // Pinning a legacy take's unit and owner below fires the upload-intent
+      // trigger, but the take's effective scope is unchanged: the upload
+      // resolves the same unit and owner. Keep each take's generation so a
+      // dispatched activation is still reconciled under its original
+      // precondition instead of being replaced by a fresh PUT.
+      const generations = await tx.execute(
+        `SELECT id, upload_intent_version FROM recordings WHERE ${holdWhere}`,
+        holdParams,
       );
+
+      const held = await tx.execute(
+        `UPDATE recordings
+         SET sync_status = 'held',
+             project_unit_id = (
+               SELECT ${unit}
+               FROM bible_texts bt
+               WHERE bt.id = recordings.bible_text_id
+             ),
+             recorded_by_user_id = COALESCE(recorded_by_user_id, ?),
+             upload_error = NULL,
+             updated_at = ?
+         WHERE ${holdWhere}`,
+        [activeUserId, now, ...holdParams],
+      );
+
+      for (const row of generations.rows ?? []) {
+        await tx.execute(
+          `UPDATE recordings SET upload_intent_version = ? WHERE id = ?`,
+          [Number(row.upload_intent_version ?? 0), String(row.id)],
+        );
+      }
 
       outcome.held = Number(held.rowsAffected ?? 0);
       outcome.released = Number(released.rowsAffected ?? 0);
@@ -235,7 +263,7 @@ export async function getHeldRecordings(
        WHERE r.sync_status = 'held'
          AND COALESCE(r.recorded_by_user_id, ?) = ?
        ORDER BY p.name, bt.book_id, bt.chapter_number, bt.verse_number,
-                r.created_at`,
+                r.created_at, r.take_number, r.id`,
       [userId, userId],
     );
 

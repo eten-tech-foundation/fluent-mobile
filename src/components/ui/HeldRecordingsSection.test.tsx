@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -12,7 +13,7 @@ import {
   HeldRecordingsSection,
 } from './HeldRecordingsSection';
 
-const mockPlay = jest.fn(async () => undefined);
+const mockPlay = jest.fn(async (_uri: string): Promise<undefined> => undefined);
 const mockPause = jest.fn(async () => undefined);
 
 jest.mock('../../hooks/usePlaybackEngine', () => ({
@@ -67,6 +68,7 @@ function held(overrides: Partial<HeldRecording> = {}): HeldRecording {
 describe('HeldRecordingsSection (#855)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPlay.mockImplementation(async () => undefined);
   });
 
   it('labels verse and pericope takes', () => {
@@ -170,6 +172,35 @@ describe('HeldRecordingsSection (#855)', () => {
     rerender(<HeldRecordingsSection recordings={[held()]} />);
 
     expect(mockPause).not.toHaveBeenCalled();
+  });
+
+  it('keeps the newest row selected when an older play resolves after it', async () => {
+    const releases = new Map<string, () => void>();
+    mockPlay.mockImplementation(
+      (uri: string) =>
+        new Promise<undefined>(resolve => {
+          releases.set(uri, () => resolve(undefined));
+        }),
+    );
+    const second = held({
+      id: 'held-2',
+      localFilePath: 'file:///mock-document/held-2.m4a',
+    });
+    render(<HeldRecordingsSection recordings={[held(), second]} />);
+
+    fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    fireEvent.press(screen.getByTestId('record-play-button-held-2'));
+    await waitFor(() => expect(mockPlay).toHaveBeenCalledTimes(2));
+    // The newer play finishes first; the superseded one resolves after it.
+    await act(async () => {
+      releases.get('file:///mock-document/held-2.m4a')!();
+      releases.get('file:///mock-document/held-1.m4a')!();
+    });
+
+    // Row 2 is still the selected one: pressing it pauses, it does not replay.
+    fireEvent.press(screen.getByTestId('record-play-button-held-2'));
+    await waitFor(() => expect(mockPause).toHaveBeenCalledTimes(1));
+    expect(mockPlay).toHaveBeenCalledTimes(2);
   });
 
   it('renders nothing when there are no held recordings', () => {

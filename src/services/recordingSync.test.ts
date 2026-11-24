@@ -864,6 +864,7 @@ describe('recordingSync', () => {
 
       await expect(worker.drainPendingDeletions!(signal)).resolves.toEqual({
         failed: 0,
+        deferred: 0,
       });
       expect(mockGetPendingRecordingDeletions).toHaveBeenCalledTimes(1);
       expect(mockDeleteVerseAudioTake).toHaveBeenCalledWith(
@@ -896,6 +897,7 @@ describe('recordingSync', () => {
         deleted: 1,
         failed: 1,
         failedForActiveUser: 1,
+        deferred: 0,
       });
 
       expect(mockDeleteVerseAudioTake).toHaveBeenCalledTimes(
@@ -926,11 +928,12 @@ describe('recordingSync', () => {
         deleted: 1,
         failed: 2,
         failedForActiveUser: 0,
+        deferred: 0,
       });
       const worker = createChapterUploadWorker(() => 'worker-tok');
       await expect(
         worker.drainPendingDeletions!(new AbortController().signal),
-      ).resolves.toEqual({ failed: 0 });
+      ).resolves.toEqual({ failed: 0, deferred: 0 });
     });
 
     it('drainPendingDeletions surfaces network interruption like takes', async () => {
@@ -993,6 +996,25 @@ describe('recordingSync', () => {
       // The active account's take still uploads after the other account's 401.
       expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
       expect(result).toMatchObject({ uploaded: 1, deletionsFailed: 0 });
+    });
+
+    it("does not report complete while another account's delete waits for sign-in (#854)", async () => {
+      mockGetPendingRecordings.mockResolvedValue([]);
+      mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
+      mockGetCredentials.mockResolvedValue(null);
+
+      const drained = await drainPendingRecordingDeletions('tok-1', { delay });
+      expect(drained).toMatchObject({ deferred: 1, failed: 0 });
+
+      __resetRecordingSyncForTests();
+      mockEmitUploadSessionEvent.mockClear();
+      await syncPendingRecordings('tok-1', { delay });
+      expect(mockEmitUploadSessionEvent).not.toHaveBeenCalledWith({
+        type: 'complete',
+      });
+      expect(mockEmitUploadSessionEvent).toHaveBeenLastCalledWith({
+        type: 'idle',
+      });
     });
 
     it('skips a delete whose other-account owner is already flagged for sign-in (#854)', async () => {
@@ -1954,6 +1976,23 @@ describe('recordingSync', () => {
 
     expect(isChapterUploadDeferredError(error)).toBe(false);
     expect((error as Error).message).toMatch(/Chapter upload failed/);
+  });
+
+  it('createChapterUploadWorker defers a chapter when membership is unconfirmed, even with nothing left to defer (#855)', async () => {
+    // Owner 9 could not be verified; this chapter only has nothing pending.
+    mockGetRecordingOwnerIds.mockResolvedValue([2, 9]);
+    mockGetVerifiedMembershipOwners.mockReturnValue(new Set([2]));
+    mockGetPendingRecordings.mockResolvedValue([]);
+    const worker = createChapterUploadWorker(() => 'worker-tok');
+
+    const error = await worker
+      .uploadChapter(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      )
+      .catch(caught => caught);
+
+    expect(isChapterUploadDeferredError(error)).toBe(true);
   });
 
   it('createChapterUploadWorker does not treat conflicts as chapter failures (#600)', async () => {

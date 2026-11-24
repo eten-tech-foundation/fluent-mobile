@@ -7,6 +7,7 @@ import {
 } from '../db/repository';
 import { getCredentials } from './keychain';
 import { AuthError } from './authError';
+import { isApiError } from '../types/api/errors';
 import { getActiveUserId, setReauthRequired } from './storage';
 import { emitAuthReauthRequired } from './syncEvents';
 import { logger } from '../utils/logger';
@@ -18,6 +19,12 @@ export const OWNER_CREDENTIALS_MISSING = 'OWNER_CREDENTIALS_MISSING';
 
 /** Owners whose membership the latest refresh confirmed with the server. */
 let verifiedOwners: ReadonlySet<number> = new Set();
+/**
+ * Bumped by every refresh (and by `invalidateVerifiedMembershipOwners`). Only
+ * the latest refresh may publish its result, so a slow older refresh cannot
+ * overwrite the owner set a newer session relies on.
+ */
+let membershipRefreshGeneration = 0;
 
 /**
  * Owners confirmed by the most recent `refreshMembershipForOwners`. Chapter
@@ -117,15 +124,19 @@ export async function refreshProjectMembership(
 export async function refreshMembershipForOwners(
   ownerIds: readonly number[],
 ): Promise<Set<number>> {
+  const generation = ++membershipRefreshGeneration;
   const verified = new Set<number>();
   for (const ownerId of new Set(ownerIds)) {
     try {
       await refreshProjectMembership(ownerId);
       verified.add(ownerId);
     } catch (error) {
+      // Status and code only: the error can carry the raw response body or
+      // message, which must not reach the logs.
       log.warn('Membership refresh failed for owner; deferring their takes', {
         userId: ownerId,
-        error,
+        status: isApiError(error) ? error.status : undefined,
+        code: isApiError(error) ? error.code : undefined,
       });
       // `AuthError` is always a 401: the stored credentials are gone
       // (`OWNER_CREDENTIALS_MISSING`) or the server rejected the token, so the
@@ -139,6 +150,18 @@ export async function refreshMembershipForOwners(
       }
     }
   }
-  verifiedOwners = verified;
+  if (generation === membershipRefreshGeneration) {
+    verifiedOwners = verified;
+  }
   return verified;
+}
+
+/**
+ * Forget every confirmed owner, for a session whose membership refresh could
+ * not run at all. Chapter passes then defer every take instead of trusting an
+ * earlier session's answer.
+ */
+export function invalidateVerifiedMembershipOwners(): void {
+  membershipRefreshGeneration += 1;
+  verifiedOwners = new Set();
 }

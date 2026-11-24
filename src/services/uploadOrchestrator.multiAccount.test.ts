@@ -151,15 +151,21 @@ describe('upload session across accounts on one device (#854)', () => {
     const worker: ChapterUploadWorker = {
       uploadChapter: async () => undefined,
     };
-    const h = harness(
-      worker,
-      () => false,
-      async () => ({ progressed: false, blocked: 1 }),
+    const pushStages = jest.fn(
+      async (): Promise<StagePushOutcome> => ({
+        progressed: false,
+        blocked: 1,
+      }),
     );
+    const h = harness(worker, () => false, pushStages);
 
     h.connect();
     await settle();
 
+    // The drain ran, left a row blocked, and the session scheduled its retry
+    // instead of completing.
+    expect(pushStages).toHaveBeenCalledTimes(1);
+    expect(h.timers).toHaveLength(1);
     expect(h.events.map(event => event.type)).not.toContain('complete');
     h.stop();
   });

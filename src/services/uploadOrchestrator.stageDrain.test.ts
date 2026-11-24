@@ -549,7 +549,51 @@ describe('queued work from other accounts on this device (#854)', () => {
   });
 });
 
+describe('cancelling during the claim push (#854)', () => {
+  it("does not start another account's claims after a cancel", async () => {
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: `token-${id}`,
+    }));
+    mockGetPendingChapterClaims.mockResolvedValue([
+      { id: 1, userId: 10 },
+      { id: 2, userId: 20 },
+    ]);
+    let releaseActive!: () => void;
+    mockClaimsDrain.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          releaseActive = () =>
+            resolve({ synced: 1, conflicts: 0, failed: 0, deferred: 0 });
+        }),
+    );
+    const orchestrator = startUploadOrchestrator({
+      schedule,
+      worker: stubWorker,
+    });
+
+    connect();
+    await waitFor(() => mockClaimsDrain.mock.calls.length === 1);
+    await orchestrator.cancel();
+    releaseActive();
+    await settle();
+
+    expect(mockOtherAccountClaimsDrain).not.toHaveBeenCalled();
+    expect(mockDrain).not.toHaveBeenCalled();
+  });
+});
+
 describe('another account whose stored session was rejected (#854)', () => {
+  it("does not complete when the active account's stage advance is rejected", async () => {
+    mockDrain.mockRejectedValue(new AuthError('expired', 'TOKEN_EXPIRED'));
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => mockDrain.mock.calls.length === 1);
+    await settle();
+
+    expect(eventTypes()).not.toContain('complete');
+  });
+
   it('is not sent again, and does not keep the active account from completing', async () => {
     mockGetCredentials.mockImplementation(async (id: string) => ({
       token: `token-${id}`,

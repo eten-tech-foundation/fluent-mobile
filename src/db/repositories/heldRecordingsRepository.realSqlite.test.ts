@@ -1,5 +1,8 @@
 import type { DB } from '@op-engineering/op-sqlite';
-import { createTableQueries } from '../schema';
+import {
+  createTableQueries,
+  RECORDING_UPLOAD_INTENT_TRIGGER_SQL,
+} from '../schema';
 import {
   createRealSqliteDb,
   isNodeSqliteAvailable,
@@ -335,6 +338,54 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
     await expect(hasRecordingsAffectedByMembership()).resolves.toBe(true);
   });
 
+  it("keeps a legacy take's upload generation when holding pins its unit and owner", async () => {
+    // Production installs this trigger by migration; it bumps the generation
+    // whenever the unit or owner changes.
+    await mockDb.execute(RECORDING_UPLOAD_INTENT_TRIGGER_SQL);
+    await mockDb.execute(
+      `UPDATE recordings
+       SET upload_intent_version = 3, recorded_by_user_id = NULL
+       WHERE id = ?`,
+      ['beta-resolved-unit'],
+    );
+    const generation = async () =>
+      Number(
+        (
+          await mockDb.execute(
+            'SELECT upload_intent_version FROM recordings WHERE id = ?',
+            ['beta-resolved-unit'],
+          )
+        ).rows[0]?.upload_intent_version,
+      );
+    // Setting up the legacy row itself bumped it; start from that value.
+    const before = await generation();
+
+    await reconcileHeldRecordings(1, [1, 2]);
+
+    const pinned = await mockDb.execute(
+      'SELECT sync_status, project_unit_id, recorded_by_user_id FROM recordings WHERE id = ?',
+      ['beta-resolved-unit'],
+    );
+    expect(pinned.rows[0]).toMatchObject({
+      sync_status: 'held',
+      project_unit_id: 20,
+      recorded_by_user_id: 1,
+    });
+    await expect(generation()).resolves.toBe(before);
+
+    // Released again with the same generation, so a dispatched activation is
+    // still reconciled under its original precondition.
+    await mockDb.execute(
+      'INSERT INTO user_projects (user_id, project_id) VALUES (?, ?)',
+      [1, 200],
+    );
+    await reconcileHeldRecordings(1, [1, 2]);
+    await expect(statusOf(mockDb, 'beta-resolved-unit')).resolves.toBe(
+      'pending',
+    );
+    await expect(generation()).resolves.toBe(before);
+  });
+
   it('persists the resolved project unit when a take is held', async () => {
     await reconcileHeldRecordings(1, [1, 2]);
 
@@ -354,5 +405,14 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
     );
     await expect(getRecordingOwnerIds(1)).resolves.toEqual([1]);
     await expect(getRecordingOwnerIds(null)).resolves.toEqual([1]);
+    // An account whose only queued work is a stage advance is refreshed too
+    // (#854), so a removal can be confirmed for it.
+    await mockDb.execute(
+      `INSERT INTO stage_advance_queue
+         (chapter_assignment_id, user_id, from_status, to_status, created_at)
+       VALUES (500, 2, 'draft', 'peer_check', '2024-01-02')`,
+    );
+    const withStage = await getRecordingOwnerIds(1);
+    expect([...withStage].sort()).toEqual([1, 2]);
   });
 });
