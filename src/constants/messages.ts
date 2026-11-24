@@ -110,24 +110,30 @@ export const RECORD_TAKEN_CHAPTER_WARNING =
 export const RECORD_AUDIO_CONFLICT_WARNING =
   'Unresolved audio take conflict on this chapter/pericope.';
 
-/** Next passage's Send to Peer Check (#908). */
-export const PEER_CHECK_SEND_LABEL = 'Send to Peer Check';
-export const PEER_CHECK_SEND_CONFIRM = 'Send';
-export const PEER_CHECK_SEND_SENDING = 'Sending…';
-export const PEER_CHECK_SEND_RETRY = 'Try again';
-export const PEER_CHECK_SEND_CANCEL = 'Cancel';
-export const PEER_CHECK_SEND_OK = 'OK';
-export const PEER_CHECK_SEND_CAPTURING = 'Finish the take in progress first.';
-export const PEER_CHECK_SEND_FAILED =
+/** Next passage's Send to Peer Check (#908) and later stages (#909). */
+export const STAGE_SEND_CONFIRM = 'Send';
+export const STAGE_SEND_SENDING = 'Sending…';
+export const STAGE_SEND_RETRY = 'Try again';
+export const STAGE_SEND_CANCEL = 'Cancel';
+export const STAGE_SEND_OK = 'OK';
+export const STAGE_SEND_CAPTURING = 'Finish the take in progress first.';
+export const STAGE_SEND_FAILED =
   "Couldn't send this chapter. Nothing changed. Try again.";
-export const PEER_CHECK_SEND_BLOCKED =
-  "This chapter can't be sent to Peer Check right now. Nothing changed.";
-export const PEER_CHECK_QUEUED_TITLE = 'Waiting to send to Peer Check';
-export const PEER_CHECK_QUEUED_DETAIL =
-  "Saved on this phone. It sends when you're online.";
+export const STAGE_SEND_COMPLETE_FAILED =
+  "The server hasn't confirmed Complete, so this chapter isn't Complete yet. Try again.";
+export function stageSendBlocked(destinationLabel: string): string {
+  return `This chapter can't be sent to ${destinationLabel} right now. Nothing changed.`;
+}
+export function stageQueuedTitle(destinationLabel?: string): string {
+  return destinationLabel
+    ? `Waiting to send to ${destinationLabel}`
+    : 'Waiting to send';
+}
+export const STAGE_QUEUED_DETAIL =
+  "Saved on this phone. The server doesn't have it yet.";
 export const PEER_CHECK_SENT_TITLE = 'Sent to Peer Check';
 export const PEER_CHECK_SENT_DETAIL = 'The server has it.';
-export function peerCheckSendKept(chapterName: string): string {
+export function stageSendKept(chapterName: string): string {
   return `The server kept ${chapterName} where it was, so it wasn't sent.`;
 }
 

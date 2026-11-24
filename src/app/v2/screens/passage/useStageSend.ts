@@ -1,56 +1,65 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DialogProps } from '../../../../components/ui/Dialog';
 import {
-  PEER_CHECK_SEND_BLOCKED,
-  PEER_CHECK_SEND_CANCEL,
-  PEER_CHECK_SEND_CAPTURING,
-  PEER_CHECK_SEND_CONFIRM,
-  PEER_CHECK_SEND_FAILED,
-  PEER_CHECK_SEND_LABEL,
-  PEER_CHECK_SEND_OK,
-  PEER_CHECK_SEND_RETRY,
-  PEER_CHECK_SEND_SENDING,
   RECORD_AUDIO_CONFLICT_WARNING,
   RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING,
-  peerCheckSendKept,
+  STAGE_SEND_CANCEL,
+  STAGE_SEND_CAPTURING,
+  STAGE_SEND_COMPLETE_FAILED,
+  STAGE_SEND_CONFIRM,
+  STAGE_SEND_FAILED,
+  STAGE_SEND_OK,
+  STAGE_SEND_RETRY,
+  STAGE_SEND_SENDING,
+  stageQueuedTitle,
+  stageSendBlocked,
+  stageSendKept,
 } from '../../../../constants/messages';
 import { useDraftingUnit } from '../../../../hooks/useDraftingUnit';
 import { normalizeChapterStatus } from '../../../../services/mapChapterAssignment';
 import {
-  PeerCheckSendBlockedError,
-  readPeerCheckSend,
-  sendChapterToPeerCheck,
-  type PeerCheckSendCheck,
-} from '../../../../services/peerCheckSend';
+  StageSendBlockedError,
+  readStageSend,
+  sendChapterToStage,
+  type StageSendCheck,
+} from '../../../../services/stageSend';
+import { CHAPTER_ASSIGNMENT_STATUS } from '../../../../types/db/types';
 import { logger } from '../../../../utils/logger';
-import { stageAdvanceConfirmBody } from '../../../../utils/stageAdvancement';
+import {
+  stageAdvanceConfirmBody,
+  type StageAdvanceDestination,
+} from '../../../../utils/stageAdvancement';
+import { isStageAhead } from '../../../../utils/workflowStage';
 import type { Ready } from './ready';
 
-const log = logger.create('usePeerCheckSend');
+const log = logger.create('useStageSend');
 
 /** The title sheet's Send row, by what the chapter's send has come to. */
-export type PeerCheckRow =
-  | { kind: 'send'; disabled: boolean; detail: string }
+export type StageSendRow =
+  /** e.g. "Send to Community Review". */
+  | { kind: 'send'; label: string; disabled: boolean; detail: string }
   /** Queued on this phone; the server doesn't have it yet. */
-  | { kind: 'queued' }
-  /** The server has it in Peer Check. */
+  | { kind: 'queued'; title: string }
+  /** The drafter's send: the server has it in Peer Check. */
   | { kind: 'sent' };
 
 type Asking = {
   scope: string;
+  /** What the dialog asked about; a different next stage isn't sent. */
+  destination: StageAdvanceDestination;
   /** `kept`: nothing to retry; the server decided. */
   phase: 'confirm' | 'sending' | 'failed' | 'kept';
   message?: string;
 };
 
 /**
- * Send to Peer Check for the passage's chapter, with the Record tab's gate
- * and queue. Only the chapter the passage is recorded under is sent, never
- * another chapter a passage runs into. A send is bound to the account and
- * chapter that started it; a result that lands after either changed is
- * dropped.
+ * Sends the passage's chapter on to its next stage, from Draft through
+ * Complete, with the Record tab's gate and queue. Only the chapter the
+ * passage is recorded under is sent, never another chapter a passage runs
+ * into. A send is bound to the account and chapter that started it; a result
+ * that lands after either changed is dropped.
  */
-export function usePeerCheckSend({
+export function useStageSend({
   passage,
   userId,
   capturing,
@@ -83,18 +92,18 @@ export function usePeerCheckSend({
 
   const [check, setCheck] = useState<{
     scope: string;
-    value: PeerCheckSendCheck | null;
+    value: StageSendCheck | null;
   } | null>(null);
   // Re-read whenever the passage reloads: a take, a sync or a send.
   useEffect(() => {
     if (userId === null || scope === null) return;
     let cancelled = false;
-    readPeerCheckSend({ chapterAssignmentId, userId, draftingUnit })
+    readStageSend({ chapterAssignmentId, userId, draftingUnit })
       .then(value => {
         if (!cancelled) setCheck({ scope, value });
       })
       .catch(error => {
-        log.warn('Peer Check send check failed', {
+        log.warn('Stage send check failed', {
           chapterAssignmentId,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -106,20 +115,27 @@ export function usePeerCheckSend({
   }, [scope, userId, chapterAssignmentId, draftingUnit, passage]);
 
   const current = check && check.scope === scope ? check.value : null;
-  // Only this drafter's send lands at Peer Check; a later stage's queued
-  // advance (#909) is not one.
-  const sentByMe =
-    normalizeChapterStatus(assignment.status) === 'peer_check' &&
-    assignment.assignedUserId === userId;
-  let row: PeerCheckRow | null = null;
-  if (sentByMe) {
-    row = passage.waitingToSend ? { kind: 'queued' } : { kind: 'sent' };
-  } else if (current?.visibility.visible) {
+  const status = normalizeChapterStatus(assignment.status);
+  const destination = current?.visibility.visible
+    ? current.visibility.destination
+    : null;
+  let row: StageSendRow | null = null;
+  if (passage.waitingToSend) {
+    // A queued send already moved the local stage; one at a time.
+    const label: string | undefined =
+      CHAPTER_ASSIGNMENT_STATUS[
+        status as keyof typeof CHAPTER_ASSIGNMENT_STATUS
+      ];
+    row = { kind: 'queued', title: stageQueuedTitle(label) };
+  } else if (status === 'peer_check' && assignment.assignedUserId === userId) {
+    row = { kind: 'sent' };
+  } else if (current && destination) {
     row = {
       kind: 'send',
+      label: destination.buttonLabel,
       disabled: current.visibility.disabled || capturing,
       detail: capturing
-        ? PEER_CHECK_SEND_CAPTURING
+        ? STAGE_SEND_CAPTURING
         : current.hasConflict
         ? RECORD_AUDIO_CONFLICT_WARNING
         : current.hasUnuploadableTakes
@@ -127,27 +143,46 @@ export function usePeerCheckSend({
         : chapterName,
     };
   }
-  const canSend = row?.kind === 'send' && !row.disabled;
+  const sendTo =
+    row?.kind === 'send' && !row.disabled ? destination?.nextStatus : null;
 
   const [asking, setAsking] = useState<Asking | null>(null);
   const sendingRef = useRef(false);
   const open = useCallback(() => {
-    if (!canSend || scope === null) return;
-    setAsking({ scope, phase: 'confirm' });
-  }, [canSend, scope]);
+    if (!sendTo || !destination || scope === null) return;
+    setAsking({ scope, destination, phase: 'confirm' });
+  }, [sendTo, destination, scope]);
   const cancel = useCallback(() => {
     if (sendingRef.current) return;
     setAsking(null);
   }, []);
+  // An unanswered question about a stage the chapter has left isn't asked,
+  // and a failure isn't retried once the chapter has reached that stage.
+  const reached = (to: StageAdvanceDestination) =>
+    status === to.nextStatus || isStageAhead(status, to.nextStatus);
+  const shown =
+    asking &&
+    asking.scope === scope &&
+    (asking.phase === 'confirm'
+      ? asking.destination.nextStatus === sendTo
+      : asking.phase === 'sending' || !reached(asking.destination))
+      ? asking
+      : null;
+  // Dropped for good: it doesn't come back if the stage or account does.
+  const dropped = asking !== null && !shown && asking.phase !== 'sending';
+  useEffect(() => {
+    if (dropped) setAsking(null);
+  }, [dropped]);
   const confirm = useCallback(() => {
     if (sendingRef.current || userId === null || scope === null) return;
-    if (!asking || asking.scope !== scope || asking.phase === 'sending') return;
-    if (asking.phase === 'kept') {
+    if (!shown || shown.phase === 'sending') return;
+    if (shown.phase === 'kept') {
       setAsking(null);
       return;
     }
     sendingRef.current = true;
     const started = scope;
+    const to = shown.destination;
     const stale = () => {
       if (mountedRef.current && scopeRef.current === started) return false;
       if (mountedRef.current) {
@@ -155,41 +190,51 @@ export function usePeerCheckSend({
       }
       return true;
     };
-    setAsking({ scope, phase: 'sending' });
-    sendChapterToPeerCheck({ chapterAssignmentId, userId, draftingUnit })
+    setAsking({ scope, destination: to, phase: 'sending' });
+    sendChapterToStage({
+      chapterAssignmentId,
+      userId,
+      draftingUnit,
+      to: to.nextStatus,
+    })
       .then(result => {
         if (stale()) return;
         setAsking(
           result === 'kept'
             ? {
                 scope: started,
+                destination: to,
                 phase: 'kept',
-                message: peerCheckSendKept(chapterName),
+                message: stageSendKept(chapterName),
               }
             : null,
         );
         onSent();
       })
       .catch(error => {
-        log.warn('Peer Check send failed', {
+        log.warn('Stage send failed', {
           chapterAssignmentId,
+          to: to.nextStatus,
           error: error instanceof Error ? error.message : String(error),
         });
         if (stale()) return;
         setAsking({
           scope: started,
+          destination: to,
           phase: 'failed',
           message:
-            error instanceof PeerCheckSendBlockedError
-              ? PEER_CHECK_SEND_BLOCKED
-              : PEER_CHECK_SEND_FAILED,
+            error instanceof StageSendBlockedError
+              ? stageSendBlocked(to.destinationLabel)
+              : to.nextStatus === 'complete'
+              ? STAGE_SEND_COMPLETE_FAILED
+              : STAGE_SEND_FAILED,
         });
       })
       .finally(() => {
         sendingRef.current = false;
       });
   }, [
-    asking,
+    shown,
     scope,
     userId,
     chapterAssignmentId,
@@ -198,21 +243,24 @@ export function usePeerCheckSend({
     onSent,
   ]);
 
-  const shown = asking && asking.scope === scope ? asking : null;
   const dialog: Omit<DialogProps, 'visible'> | null = shown
     ? {
-        title: `${PEER_CHECK_SEND_LABEL}?`,
+        title: `${shown.destination.buttonLabel}?`,
         message:
-          shown.message ?? stageAdvanceConfirmBody(chapterName, 'Peer Check'),
+          shown.message ??
+          stageAdvanceConfirmBody(
+            chapterName,
+            shown.destination.destinationLabel,
+          ),
         confirmLabel:
           shown.phase === 'sending'
-            ? PEER_CHECK_SEND_SENDING
+            ? STAGE_SEND_SENDING
             : shown.phase === 'failed'
-            ? PEER_CHECK_SEND_RETRY
+            ? STAGE_SEND_RETRY
             : shown.phase === 'kept'
-            ? PEER_CHECK_SEND_OK
-            : PEER_CHECK_SEND_CONFIRM,
-        cancelLabel: PEER_CHECK_SEND_CANCEL,
+            ? STAGE_SEND_OK
+            : STAGE_SEND_CONFIRM,
+        cancelLabel: STAGE_SEND_CANCEL,
         onConfirm: confirm,
         onCancel: cancel,
       }

@@ -23,6 +23,7 @@ import {
   setRecordCaptureGate,
 } from '../../../navigation/recordCaptureGate';
 import { logger } from '../../../utils/logger';
+import { getStageAdvanceDestination } from '../../../utils/stageAdvancement';
 
 const mockAddListener = jest.fn(
   (
@@ -280,12 +281,12 @@ jest.mock('../../../db/queries', () => ({
   chapterHasUnuploadableSelectedTakes: () => mockUnuploadable(),
 }));
 
-let mockPeerCheck: unknown = null;
-const mockSendToPeerCheck = jest.fn();
-jest.mock('../../../services/peerCheckSend', () => ({
-  PeerCheckSendBlockedError: class extends Error {},
-  readPeerCheckSend: async () => mockPeerCheck,
-  sendChapterToPeerCheck: (...args: unknown[]) => mockSendToPeerCheck(...args),
+let mockStageSend: unknown = null;
+const mockSendToStage = jest.fn();
+jest.mock('../../../services/stageSend', () => ({
+  StageSendBlockedError: class extends Error {},
+  readStageSend: async () => mockStageSend,
+  sendChapterToStage: (...args: unknown[]) => mockSendToStage(...args),
 }));
 
 let mockObserverGrant = false;
@@ -506,7 +507,7 @@ describe('PassageScreen', () => {
     mockObserverGrant = false;
     mockTranslatorGrant = false;
     mockLoadImages.mockImplementation(loadNever);
-    mockPeerCheck = null;
+    mockStageSend = null;
     mockStoredMarkers = [];
   });
 
@@ -3890,13 +3891,13 @@ describe('PassageScreen', () => {
     });
   });
 
-  describe('Send to Peer Check', () => {
+  describe('Send to the next stage', () => {
     const sendable = {
       chapter: {},
       visibility: {
         visible: true,
         disabled: false,
-        destination: { nextStatus: 'peer_check' },
+        destination: getStageAdvanceDestination('draft'),
       },
       hasConflict: false,
       hasUnuploadableTakes: false,
@@ -3914,27 +3915,90 @@ describe('PassageScreen', () => {
     }
 
     it("sends this passage's chapter from the title's sheet after confirming", async () => {
-      mockPeerCheck = sendable;
+      mockStageSend = sendable;
       mockPassage = withAssignment({ bookName: 'Mark', status: 'draft' });
-      mockSendToPeerCheck.mockResolvedValue('confirmed');
+      mockSendToStage.mockResolvedValue('confirmed');
       await openTitleSheet();
 
       fireEvent.press(screen.getByTestId('passage-send'));
       settle();
       const dialog = screen.getByTestId('passage-confirm');
       expect(within(dialog).getByText(/Mark 14/)).toBeTruthy();
-      expect(mockSendToPeerCheck).not.toHaveBeenCalled();
+      expect(mockSendToStage).not.toHaveBeenCalled();
 
       mockReload.mockClear();
       await act(async () => {
         fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
       });
-      expect(mockSendToPeerCheck).toHaveBeenCalledWith({
+      expect(mockSendToStage).toHaveBeenCalledWith({
         chapterAssignmentId: 5,
         userId: 7,
         draftingUnit: 'pericope',
+        to: 'peer_check',
       });
       expect(mockReload).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends a reviewed chapter on to Complete without leaving Next (#909)', async () => {
+      mockStageSend = {
+        ...sendable,
+        visibility: {
+          ...sendable.visibility,
+          destination: getStageAdvanceDestination('consultant_check'),
+        },
+      };
+      mockPassage = withAssignment({
+        bookName: 'Mark',
+        status: 'consultant_check',
+        assignedUserId: 9,
+      });
+      let confirm!: (v: string) => void;
+      mockSendToStage.mockReturnValue(new Promise(r => (confirm = r)));
+      await openTitleSheet();
+
+      const row = screen.getByTestId('passage-send');
+      expect(within(row).getByText('Send to Complete')).toBeTruthy();
+      fireEvent.press(row);
+      settle();
+      expect(
+        within(screen.getByTestId('passage-confirm')).getByText(
+          'Send to Complete?',
+        ),
+      ).toBeTruthy();
+
+      mockReload.mockClear();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('passage-confirm-confirm'));
+      });
+      expect(mockSendToStage).toHaveBeenCalledWith(
+        expect.objectContaining({ chapterAssignmentId: 5, to: 'complete' }),
+      );
+      expect(mockReload).not.toHaveBeenCalled();
+
+      await act(async () => confirm('confirmed'));
+      expect(mockReload).toHaveBeenCalledTimes(1);
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('shows a queued later stage as waiting to send, offering nothing more', async () => {
+      mockStageSend = {
+        ...sendable,
+        visibility: {
+          ...sendable.visibility,
+          destination: getStageAdvanceDestination('linguist_check'),
+        },
+      };
+      mockPassage = withAssignment(
+        { status: 'linguist_check', assignedUserId: 9 },
+        true,
+      );
+      await openTitleSheet();
+      expect(
+        within(screen.getByTestId('passage-send-queued')).getByText(
+          'Waiting to send to Linguist Check',
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByTestId('passage-send')).toBeNull();
     });
 
     it('offers no Send where the gate does not', async () => {
@@ -4011,12 +4075,12 @@ describe('PassageScreen', () => {
 
     it('keeps Send and take review available together after integration', async () => {
       others();
-      mockPeerCheck = {
+      mockStageSend = {
         chapter: {},
         visibility: {
           visible: true,
           disabled: false,
-          destination: { nextStatus: 'peer_check' },
+          destination: getStageAdvanceDestination('draft'),
         },
         hasConflict: false,
         hasUnuploadableTakes: false,
@@ -4046,7 +4110,7 @@ describe('PassageScreen', () => {
       fireEvent.press(screen.getByTestId('passage-open-review'));
       settle();
       expect(screen.getByTestId('passage-review')).toBeTruthy();
-      expect(mockSendToPeerCheck).not.toHaveBeenCalled();
+      expect(mockSendToStage).not.toHaveBeenCalled();
     });
 
     it('is not offered when no one else has takes here', () => {

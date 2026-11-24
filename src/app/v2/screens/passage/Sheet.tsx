@@ -62,8 +62,8 @@ import { TakeReview } from './TakeReview';
 import { TitleSheet } from './TitleSheet';
 import { usePassageImages } from './usePassageImages';
 import { usePassageNotes } from './usePassageNotes';
-import { usePeerCheckSend } from './usePeerCheckSend';
 import { useRecorder } from './useRecorder';
+import { useStageSend } from './useStageSend';
 import { useTakeReview } from './useTakeReview';
 import { VerseList } from './VerseList';
 
@@ -595,7 +595,7 @@ export function Sheet({
         onCancel: () => setLeaving(false),
       }
     : null;
-  const send = usePeerCheckSend({
+  const send = useStageSend({
     passage,
     userId,
     capturing,
