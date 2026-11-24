@@ -8,6 +8,7 @@ import {
   type UploadOrchestratorSnapshot,
 } from '../services/uploadOrchestrator';
 import type { UploadPhase } from '../services/uploadOrchestratorCore';
+import { afterFirstPaint } from '../navigation/splashGate';
 import {
   onUploadSessionEvent,
   type UploadTakeProgress,
@@ -83,10 +84,20 @@ export function useUploadSessionState({
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     refreshSnapshot();
-    return onUploadSessionEvent(() => {
+    // On a cold start the orchestrator starts after the first paint (#1002)
+    // and its start sends no event; read again once it is up.
+    afterFirstPaint(() => {
+      if (!cancelled) refreshSnapshot();
+    });
+    const unsubscribe = onUploadSessionEvent(() => {
       refreshSnapshot();
     });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [refreshSnapshot]);
 
   useEffect(() => {

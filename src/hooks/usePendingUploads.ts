@@ -54,6 +54,7 @@ export function usePendingUploads(refreshKey = 0): SyncStatusSnapshot & {
     unuploadableCount: snapshot.unuploadableCount,
     failedErrorText: snapshot.failedErrorText,
     countsUnknown: snapshot.countsUnknown,
+    countsRead: snapshot.countsRead,
     hasPendingUploads: snapshot.pendingCount > 0,
     hasFailedUploads: snapshot.failedCount > 0,
     hasUnuploadablePending: snapshot.unuploadableCount > 0,

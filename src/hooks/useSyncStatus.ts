@@ -34,6 +34,7 @@ export function useSyncStatus({
     hasPendingUploads,
     hasFailedUploads,
     countsUnknown,
+    countsRead,
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
@@ -78,17 +79,21 @@ export function useSyncStatus({
     !hasResolved || (isOnline && !hasTransferResolved);
 
   return {
-    status: deriveSyncStatus({
-      isOnline: effectivelyOnline,
-      connectivityPending,
-      isSyncing,
-      hasPendingUploads: hasPendingUploads || countsUnknown,
-      isUploading,
-      hasFailedUploads,
-      needsDownloadSync,
-      hasSyncRetryWork,
-      needsTextSync,
-    }),
+    // Before the first count read (held until Home paints on launch, #1002)
+    // zero pending is not an answer; stay neutral rather than "synced".
+    status: !countsRead
+      ? 'checking'
+      : deriveSyncStatus({
+          isOnline: effectivelyOnline,
+          connectivityPending,
+          isSyncing,
+          hasPendingUploads: hasPendingUploads || countsUnknown,
+          isUploading,
+          hasFailedUploads,
+          needsDownloadSync,
+          hasSyncRetryWork,
+          needsTextSync,
+        }),
     isOnline: effectivelyOnline,
     pendingCount,
     failedCount,

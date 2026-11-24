@@ -144,6 +144,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
 
     expect(mockGetPendingUploadCount).not.toHaveBeenCalled();
     expect(result.current.pendingCount).toBe(0);
+    expect(result.current.countsRead).toBe(false);
 
     act(() => {
       for (const run of mockPaintQueue.splice(0)) run();
@@ -152,7 +153,22 @@ describe('usePendingUploads (shared sync-status store)', () => {
     await waitFor(() => {
       expect(result.current.pendingCount).toBe(2);
     });
+    expect(result.current.countsRead).toBe(true);
     expect(mockGetPendingUploadCount).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks counts read even when every count is zero, and unread after a reset', async () => {
+    const { result } = renderHook(() => usePendingUploads(0));
+    await waitFor(() => {
+      expect(result.current.countsRead).toBe(true);
+    });
+    expect(result.current.pendingCount).toBe(0);
+
+    act(() => {
+      resetSyncStatusStore();
+    });
+
+    expect(result.current.countsRead).toBe(false);
   });
 
   it('re-reads when a take is saved (recording data changed)', async () => {

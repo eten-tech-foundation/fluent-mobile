@@ -400,12 +400,23 @@ describe('AuthSessionProvider', () => {
     expect(mockStartUploadProgressNotification).toHaveBeenCalled();
     expect(mockStartUploadOrchestrator).not.toHaveBeenCalled();
     expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
+    expect(mockRefreshSyncStatusStore).not.toHaveBeenCalled();
 
     act(() => {
       mockAfterFirstPaint.mock.calls[0][0]();
     });
     expect(mockStartUploadOrchestrator).toHaveBeenCalled();
     expect(mockStartDownloadQueueAutoResume).toHaveBeenCalled();
+    expect(mockRefreshSyncStatusStore).toHaveBeenCalledTimes(1);
+
+    const stopAutoResume =
+      mockStartDownloadQueueAutoResume.mock.results[0].value;
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-out'));
+    });
+    expect(mockStopDownloadQueueAutoResume).toHaveBeenCalledWith(
+      stopAutoResume,
+    );
   });
 
   it('does not start the orchestrator when the provider unmounts before the first paint (#1002)', async () => {
@@ -428,6 +439,7 @@ describe('AuthSessionProvider', () => {
 
     expect(mockStartUploadOrchestrator).not.toHaveBeenCalled();
     expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
+    expect(mockRefreshSyncStatusStore).not.toHaveBeenCalled();
   });
 
   it('E2E upload hold leaves the orchestrator stopped; downloads and sync unaffected', async () => {

@@ -15,9 +15,20 @@ jest.mock('../services/uploadOrchestrator', () => ({
   syncNowUploads: (...args: unknown[]) => mockSyncNowUploads(...args),
 }));
 
+let mockPainted = true;
+const mockPaintQueue: Array<() => void> = [];
+jest.mock('../navigation/splashGate', () => ({
+  afterFirstPaint: (fn: () => void) => {
+    if (mockPainted) fn();
+    else mockPaintQueue.push(fn);
+  },
+}));
+
 describe('useUploadSessionState', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPainted = true;
+    mockPaintQueue.length = 0;
     mockGetUploadSessionSnapshot.mockReturnValue({
       phase: 'idle',
       completedChapters: 0,
@@ -50,6 +61,34 @@ describe('useUploadSessionState', () => {
       expect(result.current.progressUploaded).toBe(1);
       expect(result.current.progressTotal).toBe(3);
     });
+  });
+
+  it('reads the orchestrator again once it starts after the first paint (#1002)', async () => {
+    mockPainted = false;
+    mockGetUploadSessionSnapshot.mockImplementation(() => {
+      throw new Error('Upload orchestrator not started');
+    });
+    const { result } = renderHook(() =>
+      useUploadSessionState({
+        hasPendingUploads: true,
+        hasFailedUploads: false,
+        uploadProgress: null,
+      }),
+    );
+    expect(result.current.nextRetryAt).toBeUndefined();
+
+    mockGetUploadSessionSnapshot.mockReturnValue({
+      phase: 'paused',
+      completedChapters: 0,
+      totalChapters: 2,
+      pausedUntilMs: 5_000,
+    });
+    act(() => {
+      for (const run of mockPaintQueue.splice(0)) run();
+    });
+
+    expect(result.current.pageStatus).toBe('paused');
+    expect(result.current.nextRetryAt).toEqual(new Date(5_000));
   });
 
   it('prefers live uploadProgress over snapshot counts', async () => {
