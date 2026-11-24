@@ -43,6 +43,11 @@ jest.mock('../services/sync', () => ({
   refreshChapterMetadataIfOnline: jest.fn(),
 }));
 
+const mockAfterFirstPaint = jest.fn((fn: () => void) => fn());
+jest.mock('../navigation/splashGate', () => ({
+  afterFirstPaint: (fn: () => void) => mockAfterFirstPaint(fn),
+}));
+
 jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(),
 }));
@@ -155,6 +160,42 @@ describe('useHomeBooks', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.books).toEqual([]);
     expect(mockGetHomeBookSummaries).not.toHaveBeenCalled();
+  });
+
+  it('defers the first-focus metadata refresh until the first paint', async () => {
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { result } = renderHook(() => useHomeBooks());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(mockRefresh).not.toHaveBeenCalled();
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockRefresh).toHaveBeenCalledWith(7);
+  });
+
+  it('skips the deferred refresh when the user signed out before the paint', async () => {
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { result } = renderHook(() => useHomeBooks());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockGetActiveUserId.mockReturnValue('');
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
+  it('drops the deferred refresh when the hook unmounts before the paint', async () => {
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { result, unmount } = renderHook(() => useHomeBooks());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    unmount();
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockRefresh).not.toHaveBeenCalled();
   });
 
   it('reads once on mount, leaving the metadata refresh to the refresh key', async () => {

@@ -11,6 +11,8 @@ export type StartupMark =
   | 'migrations_done'
   | 'paused_takes_cleared'
   | 'session_restored'
+  | 'app_tree_render'
+  | 'route_group_mounted'
   | 'splash_hide_requested'
   | 'splash_hidden'
   | 'home_mount'

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -25,6 +25,7 @@ import {
   classifyRouteGroups,
   getAuthGateDecision,
 } from '../navigation/authGate';
+import { markStartup } from '../utils/startupTrace';
 
 const LAUNCH_ENTRY_OPTIONS = { animation: 'none' } as const;
 
@@ -45,6 +46,10 @@ function RootNavigator() {
     inAuthGroup,
     inAppGroup,
   });
+
+  useEffect(() => {
+    if (decision.action === 'allow') markStartup('app_tree_render');
+  }, [decision.action]);
 
   if (decision.action === 'wait') {
     return null;
