@@ -65,6 +65,9 @@ async function writeCount(db: DB): Promise<number> {
   return Number(result.rows?.[0]?.changes);
 }
 
+/** Status queries one refresh runs, including other accounts' work (#854). */
+const READS_PER_REFRESH = 6;
+
 const isWriteMark = (sql: unknown) => String(sql).includes('total_changes()');
 
 describe('sync status refresh against real SQLite', () => {
@@ -91,7 +94,7 @@ describe('sync status refresh against real SQLite', () => {
       refreshSyncStatusStore(),
     ]);
 
-    expect(execute).toHaveBeenCalledTimes(5);
+    expect(execute).toHaveBeenCalledTimes(READS_PER_REFRESH);
     expect(getSyncStatusSnapshot()).toMatchObject({
       pendingCount: 1,
       pendingChapterCount: 1,
@@ -108,7 +111,7 @@ describe('sync status refresh against real SQLite', () => {
     expect(getSyncStatusSnapshot().pendingCount).toBe(2);
     expect(
       execute.mock.calls.filter(([sql]) => /^\s*SELECT/i.test(sql)),
-    ).toHaveLength(10);
+    ).toHaveLength(2 * READS_PER_REFRESH);
   });
 
   describe('only when something changed', () => {
@@ -135,7 +138,7 @@ describe('sync status refresh against real SQLite', () => {
       expect(
         execute.mock.calls.filter(([sql]) => isWriteMark(sql)),
       ).toHaveLength(1);
-      expect(statusReads()).toBe(5);
+      expect(statusReads()).toBe(READS_PER_REFRESH);
     });
 
     it('reads again after a take is saved', async () => {
@@ -145,7 +148,7 @@ describe('sync status refresh against real SQLite', () => {
 
       await refreshSyncStatusStoreIfChanged();
 
-      expect(statusReads()).toBe(5);
+      expect(statusReads()).toBe(READS_PER_REFRESH);
       expect(getSyncStatusSnapshot().pendingCount).toBe(2);
     });
 
@@ -156,7 +159,7 @@ describe('sync status refresh against real SQLite', () => {
 
       await refreshSyncStatusStoreIfChanged();
 
-      expect(statusReads()).toBe(5);
+      expect(statusReads()).toBe(READS_PER_REFRESH);
       expect(getSyncStatusSnapshot().pendingCount).toBe(0);
     });
 
@@ -167,7 +170,7 @@ describe('sync status refresh against real SQLite', () => {
 
       await refreshSyncStatusStoreIfChanged();
 
-      expect(statusReads()).toBe(5);
+      expect(statusReads()).toBe(READS_PER_REFRESH);
       expect(getSyncStatusSnapshot().pendingCount).toBe(1);
     });
 
@@ -186,7 +189,7 @@ describe('sync status refresh against real SQLite', () => {
 
       await refreshSyncStatusStoreIfChanged();
 
-      expect(statusReads()).toBe(5);
+      expect(statusReads()).toBe(READS_PER_REFRESH);
       expect(getSyncStatusSnapshot().countsUnknown).toBe(false);
     });
 
@@ -201,7 +204,7 @@ describe('sync status refresh against real SQLite', () => {
 
       await refreshSyncStatusStoreIfChanged();
 
-      expect(statusReads()).toBe(5);
+      expect(statusReads()).toBe(READS_PER_REFRESH);
       expect(getSyncStatusSnapshot().pendingCount).toBe(0);
       await previous.close();
     });
@@ -219,7 +222,7 @@ describe('sync status refresh against real SQLite', () => {
       execute.mockClear();
       emitUploadSessionEvent({ type: 'idle' });
       await settle();
-      expect(statusReads()).toBe(5);
+      expect(statusReads()).toBe(READS_PER_REFRESH);
       expect(getSyncStatusSnapshot().pendingCount).toBe(2);
       unsubscribe();
     });
@@ -235,7 +238,7 @@ describe('sync status refresh against real SQLite', () => {
       emitUploadSessionEvent({ type: 'idle' });
       await settle();
 
-      expect(statusReads()).toBe(5);
+      expect(statusReads()).toBe(READS_PER_REFRESH);
       expect(getSyncStatusSnapshot().isUploading).toBe(false);
       unsubscribe();
     });
@@ -248,7 +251,7 @@ describe('sync status refresh against real SQLite', () => {
       emitUploadSessionEvent({ type: 'paused', reason: 'user' });
       await settle();
 
-      expect(statusReads()).toBe(5);
+      expect(statusReads()).toBe(READS_PER_REFRESH);
       unsubscribe();
     });
 
@@ -281,7 +284,7 @@ describe('sync status refresh against real SQLite', () => {
 
         await refreshSyncStatusStoreIfChanged();
 
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         expect(getSyncStatusSnapshot().pendingCount).toBe(2);
       });
 
@@ -293,7 +296,7 @@ describe('sync status refresh against real SQLite', () => {
         mockUserId = '8';
         execute.mockClear();
         await refreshSyncStatusStoreIfChanged();
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         expect(getSyncStatusSnapshot().pendingCount).toBe(0);
 
         release();
@@ -306,7 +309,7 @@ describe('sync status refresh against real SQLite', () => {
 
         mockUserId = '7';
         await refreshSyncStatusStoreIfChanged();
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         expect(getSyncStatusSnapshot().pendingCount).toBe(1);
       });
 
@@ -333,7 +336,7 @@ describe('sync status refresh against real SQLite', () => {
         mockUserId = '7';
         execute.mockClear();
         await refreshSyncStatusStoreIfChanged();
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         expect(getSyncStatusSnapshot().pendingCount).toBe(1);
       });
     });
@@ -382,7 +385,7 @@ describe('sync status refresh against real SQLite', () => {
         await refreshSyncStatusStoreIfChanged();
 
         expect(await writeCount(mockDb)).toBe(writesBefore);
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         expect(getSyncStatusSnapshot()).toMatchObject({
           pendingChapterCount: 1,
           countsUnknown: false,
@@ -405,7 +408,7 @@ describe('sync status refresh against real SQLite', () => {
 
         await refreshSyncStatusStoreIfChanged();
 
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         expect(getSyncStatusSnapshot()).toMatchObject({
           pendingCount: 1,
           pendingChapterCount: 1,
@@ -426,7 +429,7 @@ describe('sync status refresh against real SQLite', () => {
         execute.mockClear();
 
         await refreshSyncStatusStoreIfChanged();
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         expect(getSyncStatusSnapshot()).toMatchObject({
           pendingChapterCount: 0,
           countsUnknown: false,
@@ -450,7 +453,7 @@ describe('sync status refresh against real SQLite', () => {
 
         await refreshSyncStatusStore();
 
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         expect(getSyncStatusSnapshot().countsUnknown).toBe(false);
       });
 
@@ -476,7 +479,7 @@ describe('sync status refresh against real SQLite', () => {
 
         await refreshSyncStatusStoreIfChanged();
 
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         expect(getSyncStatusSnapshot()).toMatchObject({
           failedCount: 1,
           countsUnknown: false,
@@ -492,7 +495,7 @@ describe('sync status refresh against real SQLite', () => {
         execute.mockClear();
 
         await refreshSyncStatusStoreIfChanged();
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
 
         const replacement = await fixtureDb(8);
         const previous = mockDb;
@@ -500,7 +503,7 @@ describe('sync status refresh against real SQLite', () => {
         mockDb = replacement;
         execute = jest.spyOn(mockDb, 'execute');
         await refreshSyncStatusStoreIfChanged();
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         await previous.close();
       });
 
@@ -541,7 +544,7 @@ describe('sync status refresh against real SQLite', () => {
 
       it('costs the same five reads on success as before', async () => {
         await refreshSyncStatusStoreIfChanged();
-        expect(statusReads()).toBe(5);
+        expect(statusReads()).toBe(READS_PER_REFRESH);
         execute.mockClear();
         await refreshSyncStatusStoreIfChanged();
         expect(execute).toHaveBeenCalledTimes(1);

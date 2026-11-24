@@ -41,6 +41,7 @@ jest.mock('../db/db', () => ({ getDatabase: () => mockDb }));
 jest.mock('./storage', () => ({
   getActiveUserId: () => mockActiveUserId,
   setReauthRequired: jest.fn(),
+  isReauthRequired: () => false,
   kvStorage: {
     getItemSync: (key: string) => {
       if (mockKvReadFailures.delete(key)) {
@@ -294,6 +295,9 @@ describe('activation upload reconciliation (real worker + SQLite, #886)', () => 
     mockKv.clear();
     mockKvReadFailures.clear();
     mockCredentials.clear();
+    // The owner (7) is the active account, so its stored session is the
+    // pass token. Uploads never borrow another account's token (#854).
+    mockCredentials.set('7', { token: 'pass-token' });
     mockActiveUserId = '7';
     __resetRecordingSyncForTests();
     resetFileSystemMock();

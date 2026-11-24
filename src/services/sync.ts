@@ -60,7 +60,10 @@ import {
   syncPendingChapterClaims,
   type SyncPendingChapterClaimsResult,
 } from './chapterClaimSync';
-import { syncPendingStageAdvances } from './stageAdvanceSync';
+import {
+  drainStageAdvancesForAccounts,
+  syncPendingStageAdvances,
+} from './stageAdvanceSync';
 import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   getObserverProjectIds,
@@ -1140,6 +1143,8 @@ export interface StageAdvanceDrainResult {
    * pending count itself cannot be read.
    */
   deferred: number;
+  /** Rows held behind an earlier stage change still pending on this device (#854). */
+  blocked: number;
 }
 
 export async function syncPendingStageAdvancesForUser(
@@ -1160,7 +1165,7 @@ export async function syncPendingStageAdvancesForUser(
     });
   }
   if (pendingCount === 0) {
-    return { synced: 0, dropped: 0, failed: 0, deferred: 0 };
+    return { synced: 0, dropped: 0, failed: 0, deferred: 0, blocked: 0 };
   }
 
   const { isOnline } = await getConnectivitySnapshot({
@@ -1169,7 +1174,7 @@ export async function syncPendingStageAdvancesForUser(
   if (!isOnline) {
     const deferred = pendingCount ?? 1;
     log.info('Stage-advance drain deferred: offline', { userId, deferred });
-    return { synced: 0, dropped: 0, failed: 0, deferred };
+    return { synced: 0, dropped: 0, failed: 0, deferred, blocked: 0 };
   }
 
   try {
@@ -1183,7 +1188,51 @@ export async function syncPendingStageAdvancesForUser(
       userId,
       error: getErrorMessage(error),
     });
-    return { synced: 0, dropped: 0, failed: 1, deferred: 0 };
+    return { synced: 0, dropped: 0, failed: 1, deferred: 0, blocked: 0 };
+  }
+}
+
+/**
+ * Drain every account's queued stage advances in queue order, each with its
+ * own token (#854). `tokens` holds the accounts with a stored session; rows
+ * from any other account stay pending and hold later rows on their chapter.
+ * An account whose token is rejected is flagged for sign-in and skipped
+ * without stopping the others.
+ */
+export async function syncPendingStageAdvancesForAccounts(
+  tokens: ReadonlyMap<number, string>,
+): Promise<StageAdvanceDrainResult> {
+  let pendingCount: number | null = null;
+  try {
+    pendingCount = (await getPendingStageAdvances()).length;
+  } catch (error) {
+    log.warn('Could not count pending stage advances', {
+      error: getErrorMessage(error),
+    });
+  }
+  if (pendingCount === 0) {
+    return { synced: 0, dropped: 0, failed: 0, deferred: 0, blocked: 0 };
+  }
+
+  const { isOnline } = await getConnectivitySnapshot({
+    maxAgeMs: SERVER_REACHABILITY_FRESH_MS,
+  });
+  if (!isOnline) {
+    const deferred = pendingCount ?? 1;
+    log.info('Stage-advance drain deferred: offline', { deferred });
+    return { synced: 0, dropped: 0, failed: 0, deferred, blocked: 0 };
+  }
+
+  try {
+    const result = await drainStageAdvancesForAccounts(tokens, userId => {
+      void handleSyncAuthFailure(String(userId));
+    });
+    return { ...result, deferred: 0 };
+  } catch (error) {
+    log.warn('Stage-advance sync failed; leaving rows pending', {
+      error: getErrorMessage(error),
+    });
+    return { synced: 0, dropped: 0, failed: 1, deferred: 0, blocked: 0 };
   }
 }
 
@@ -1615,6 +1664,8 @@ async function syncRequiredStageAdvances(
   token?: string,
 ): Promise<void> {
   const result = await syncPendingStageAdvancesForUser(userId, token);
+  // `blocked` rows wait on another account's earlier stage change; the upload
+  // session sends them once it lands (#854). They are not missing coverage.
   if (result.failed > 0 || result.deferred > 0) {
     throw new Error(
       'Stage advances are still pending; sync coverage is incomplete',
@@ -3462,6 +3513,9 @@ export async function refreshChapterMetadataIfOnline(
       }
       // Only a clean pass arms the freshness window: soft-failed drains or an
       // incomplete refresh must stay retryable on the next focus (#886).
+      // `stageResult.blocked` rows wait on another account's earlier stage
+      // change on this device. The upload session sends them once that lands
+      // (#854), so they do not make this refresh incomplete.
       const drainsClean =
         claimsResult.failed === 0 &&
         (claimsResult.deferred ?? 0) === 0 &&

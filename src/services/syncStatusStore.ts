@@ -2,6 +2,7 @@ import {
   getDatabaseWriteMark,
   getFailedUploadCount,
   getFailedUploadErrorSummary,
+  getOtherAccountsPendingSummary,
   getPendingUploadChapters,
   getPendingUploadCount,
   getUnuploadablePendingSummary,
@@ -47,6 +48,14 @@ export interface SyncStatusSnapshot {
   countsUnknown: boolean;
   isUploading: boolean;
   uploadProgress: UploadProgress | null;
+  /**
+   * Uploads queued on this device by accounts other than the active one
+   * (#854). The upload session sends them as their own accounts; the Sync page
+   * counts them separately and never names those accounts.
+   */
+  otherAccountsPendingCount: number;
+  /** Those accounts' ids, for the Sync page's sign-in check. Never displayed. */
+  otherAccountOwnerIds: readonly number[];
 }
 
 export const EMPTY_SYNC_STATUS_SNAPSHOT: SyncStatusSnapshot = {
@@ -58,6 +67,8 @@ export const EMPTY_SYNC_STATUS_SNAPSHOT: SyncStatusSnapshot = {
   countsUnknown: false,
   isUploading: false,
   uploadProgress: null,
+  otherAccountsPendingCount: 0,
+  otherAccountOwnerIds: [],
 };
 
 let snapshot: SyncStatusSnapshot = EMPTY_SYNC_STATUS_SNAPSHOT;
@@ -94,6 +105,8 @@ function snapshotEquals(a: SyncStatusSnapshot, b: SyncStatusSnapshot): boolean {
     a.failedErrorText === b.failedErrorText &&
     a.countsUnknown === b.countsUnknown &&
     a.isUploading === b.isUploading &&
+    a.otherAccountsPendingCount === b.otherAccountsPendingCount &&
+    a.otherAccountOwnerIds.join(',') === b.otherAccountOwnerIds.join(',') &&
     a.uploadProgress?.completed === b.uploadProgress?.completed &&
     a.uploadProgress?.total === b.uploadProgress?.total &&
     a.uploadProgress?.currentChapter?.bookId ===
@@ -308,7 +321,7 @@ async function readIntoStore(writes?: DatabaseWriteMark | null): Promise<void> {
   let failedCountFailed = false;
   let failedTextFailed = false;
   try {
-    const [pending, failed, failedError, chapters, unuploadable] =
+    const [pending, failed, failedError, chapters, unuploadable, others] =
       await Promise.allSettled([
         getPendingUploadCount(),
         loadFailedUploadCount(() => {
@@ -323,6 +336,9 @@ async function readIntoStore(writes?: DatabaseWriteMark | null): Promise<void> {
           chaptersFailed = true;
         }),
         getUnuploadablePendingSummary(),
+        // Informational (#854): a failure here keeps the last answer and
+        // must never fail the counts above, even if the call throws.
+        Promise.resolve().then(() => getOtherAccountsPendingSummary(userId)),
       ]);
     if (generation !== refreshGeneration) {
       return;
@@ -370,6 +386,16 @@ async function readIntoStore(writes?: DatabaseWriteMark | null): Promise<void> {
         failedCountFailed,
       isUploading: pendingFinalRefresh ? false : snapshot.isUploading,
       uploadProgress: snapshot.uploadProgress,
+      // A failed read keeps the last answer: these lines are informational
+      // and must not flicker away mid-upload.
+      otherAccountsPendingCount:
+        others.status === 'fulfilled'
+          ? others.value.count
+          : snapshot.otherAccountsPendingCount,
+      otherAccountOwnerIds:
+        others.status === 'fulfilled'
+          ? others.value.ownerIds
+          : snapshot.otherAccountOwnerIds,
     });
     pendingFinalRefresh = false;
   } catch (error) {

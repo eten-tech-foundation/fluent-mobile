@@ -54,5 +54,7 @@ export function usePendingUploads(refreshKey = 0): SyncStatusSnapshot & {
     hasUnuploadablePending: snapshot.unuploadableCount > 0,
     isUploading: snapshot.isUploading,
     uploadProgress: snapshot.uploadProgress,
+    otherAccountsPendingCount: snapshot.otherAccountsPendingCount,
+    otherAccountOwnerIds: snapshot.otherAccountOwnerIds,
   };
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { usePendingUploads } from '../../hooks/usePendingUploads';
+import { useOtherAccountNeedsSignIn } from '../../hooks/useOtherAccountNeedsSignIn';
 import { useUploadSessionState } from '../../hooks/useUploadSessionState';
 import { useHeldRecordings } from '../../hooks/useHeldRecordings';
 import { useMetadataSyncActive } from '../../hooks/useMetadataSyncActive';
@@ -34,6 +35,7 @@ import { hideSplash } from '../../navigation/splashGate';
 import { SyncPageStatus } from '../../types/sync/types';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HeldRecordingsSection } from '../../components/ui/HeldRecordingsSection';
+import { OtherAccountsUploadNotice } from '../../components/ui/OtherAccountsUploadNotice';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
 
@@ -71,7 +73,16 @@ export default function SyncScreen() {
     countsUnknown,
     isUploading,
     uploadProgress,
+    otherAccountsPendingCount,
+    otherAccountOwnerIds,
   } = usePendingUploads(refreshKey);
+  const otherAccountNeedsSignIn = useOtherAccountNeedsSignIn(
+    otherAccountOwnerIds,
+    refreshKey,
+  );
+  // Other accounts' queued work uploads in this account's session (#854), so
+  // it keeps the page out of "all synced" and Sync Now on screen.
+  const hasOtherAccountsPending = otherAccountsPendingCount > 0;
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {
@@ -96,7 +107,7 @@ export default function SyncScreen() {
     cancel,
     syncNowUploads,
   } = useUploadSessionState({
-    hasPendingUploads,
+    hasPendingUploads: hasPendingUploads || hasOtherAccountsPending,
     hasFailedUploads,
     hasUnuploadablePending,
     countsUnknown,
@@ -253,7 +264,9 @@ export default function SyncScreen() {
           <SyncStatusIndicator
             status={status}
             isOnline={effectivelyOnline}
-            hasPendingUploads={hasPendingUploads || countsUnknown}
+            hasPendingUploads={
+              hasPendingUploads || hasOtherAccountsPending || countsUnknown
+            }
             hasFailedUploads={hasFailedUploads}
             isUploading={isUploading}
             isMetadataSyncing={metadataOnlySyncing}
@@ -272,7 +285,13 @@ export default function SyncScreen() {
             countsUnknown,
             heldRecordingsVisible ? heldRecordings.length : 0,
             metadataOnlySyncing,
+            hasOtherAccountsPending,
+            otherAccountNeedsSignIn,
           )}
+          <OtherAccountsUploadNotice
+            pendingCount={otherAccountsPendingCount}
+            needsSignIn={otherAccountNeedsSignIn}
+          />
 
           {pendingChapterCount === 0 &&
           (hasUnuploadablePending || hasPendingUploads) ? (
@@ -372,6 +391,8 @@ function renderStatusLine(
   countsUnknown: boolean,
   heldCount: number,
   metadataOnlySyncing: boolean,
+  hasOtherAccountsPending: boolean,
+  otherAccountNeedsSignIn: boolean,
 ) {
   // Paused wins over a lingering take-upload flag so the status line, the
   // progress card, and the controls all describe the same state (#600).
@@ -488,6 +509,27 @@ function renderStatusLine(
           These recordings stay on this device until they can be uploaded.
         </Text>
         {!isOnline && <CantReachFluentPill hasPendingUploads={false} />}
+      </>
+    );
+  }
+
+  if (hasOtherAccountsPending) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>
+          {isOnline ? 'Online · upload pending' : 'Offline · upload pending'}
+        </Text>
+        <Text
+          style={styles.statusSubtitle}
+          testID="sync-other-accounts-subtitle"
+        >
+          {!isOnline
+            ? 'Saved on this device. Will sync when Fluent is reachable.'
+            : otherAccountNeedsSignIn
+            ? 'Saved on this device. Uploads when that account signs in again.'
+            : 'Work from other accounts on this device will upload shortly.'}
+        </Text>
+        {!isOnline && <CantReachFluentPill hasPendingUploads />}
       </>
     );
   }

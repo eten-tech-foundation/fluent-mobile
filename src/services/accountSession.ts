@@ -1,11 +1,12 @@
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
-import { clearCredentials, getCredentials } from './keychain';
+import { clearCredentials, getCredentials, hasCredentials } from './keychain';
 import { clearDraftListingSnapshotsForUser } from './draftListingSnapshot';
 import { signOut, resolveReauthForUser } from './authSession';
 import {
   getActiveUserId,
   getKnownUserIds,
+  isReauthRequired,
   kvStorage,
   KV_KEYS,
   switchActiveUser,
@@ -84,4 +85,20 @@ export async function signOutCurrentDeviceAccount(): Promise<SignOutDeviceAccoun
 
   signOut();
   return { kind: 'signed_out' };
+}
+
+/**
+ * True when any of these device accounts cannot upload its queued work until
+ * it signs in again: flagged for re-auth, or no stored session at all (signed
+ * out on this device) (#854). `hasCredentials` answers false on a read error,
+ * which counts as needing sign-in.
+ */
+export async function anyDeviceAccountNeedsSignIn(
+  userIds: readonly number[],
+): Promise<boolean> {
+  for (const userId of userIds) {
+    const id = String(userId);
+    if (isReauthRequired(id) || !(await hasCredentials(id))) return true;
+  }
+  return false;
 }

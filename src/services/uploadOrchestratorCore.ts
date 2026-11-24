@@ -59,6 +59,28 @@ export type ChapterUploadWorker = {
   drainPendingDeletions?: (signal: AbortSignal) => Promise<{ failed: number }>;
 };
 
+/** What one stage-advance push did, for the session's next round (#854). */
+export type StagePushOutcome = {
+  /** At least one queued stage advance landed (or resolved) on the server. */
+  progressed: boolean;
+  /** Rows left pending behind an earlier stage change or a needed sign-in. */
+  blocked: number;
+};
+
+/**
+ * Rounds of takes → stage advances in one session. Each extra round runs only
+ * after a stage advance landed, which releases takes recorded after it by
+ * another account (#854); the cap is a guard, not an expected limit.
+ */
+export const MAX_SESSION_ROUNDS = 10;
+
+export class StageAdvancesBlockedError extends Error {
+  constructor(blocked: number) {
+    super(`Stage-advance drain left ${blocked} row(s) waiting on this device`);
+    this.name = 'StageAdvancesBlockedError';
+  }
+}
+
 export type UploadOrchestratorDeps = {
   subscribeToConnectivity: (
     onChange: (
@@ -109,8 +131,10 @@ export type UploadOrchestratorDeps = {
    * before verse-audio upload 404s ("Verse audio recording not found").
    * A rejection (including a drain that left rows pending) fails the session:
    * no `complete`, and the bounded retry re-drains the stage-only remainder.
+   * The outcome lets the session upload takes another account's stage
+   * advance was holding back (#854); `void` means nothing to report.
    */
-  pushPendingStageAdvancesAfterUpload?: () => Promise<void>;
+  pushPendingStageAdvancesAfterUpload?: () => Promise<StagePushOutcome | void>;
   /**
    * True when the active user has a pending stage-advance row. Reconnect with
    * no takes still drains those rows (#257 Sync on Reconnect).
@@ -655,7 +679,7 @@ export function createUploadOrchestrator(
       }
 
       const work = (async () => {
-        const raceAbort = (task: Promise<void>): Promise<void> =>
+        const raceAbort = <T>(task: Promise<T>): Promise<T> =>
           Promise.race([
             task,
             new Promise<never>((_, reject) => {
@@ -724,85 +748,117 @@ export function createUploadOrchestrator(
           if (abort.signal.aborted) {
             return;
           }
-          for (const chapter of chapters) {
-            if (abort.signal.aborted) {
-              return;
-            }
-            // Per-take progress inside this chapter (#886). Chapter
-            // counts stay the headline; the worker reports after each take.
-            let sawTakeProgress = false;
-            const onTakeProgress: TakeProgressListener = progress => {
-              if (abort.signal.aborted || version !== lifecycleVersion) {
-                return;
-              }
-              sawTakeProgress = true;
-              currentChapter = {
-                bookId: chapter.bookId,
-                chapterNumber: chapter.chapterNumber,
-                ...progress,
-              };
-              deps.emit({
-                type: 'progress',
-                completedChapters,
-                totalChapters,
-                currentChapter,
-              });
-            };
-            try {
-              await deps.worker!.uploadChapter(
-                chapter,
-                abort.signal,
-                onTakeProgress,
-              );
-            } catch (error) {
-              // Takes held back (an account whose membership is unconfirmed)
-              // must not starve other accounts' chapters. Remember it and fail
-              // the session after every chapter has had its turn, as for
-              // `deletionsFailed` (#855).
-              if (!isChapterUploadDeferredError(error)) {
-                throw error;
-              }
-              deferredChapterError ??= error;
-            } finally {
-              currentChapter = null;
-            }
-            if (abort.signal.aborted) {
-              return;
-            }
-            const pending = await deps.getPendingUploadChapters();
-            if (abort.signal.aborted || version !== lifecycleVersion) {
-              return;
-            }
-            const before = completedChapters;
-            applyPendingChapters(pending);
-            // Also emit when take progress was shown so listeners drop the
-            // per-take detail at the chapter boundary (#886).
-            if (completedChapters > before || sawTakeProgress) {
-              deps.emit({
-                type: 'progress',
-                completedChapters,
-                totalChapters,
-              });
-            }
-          }
-          if (abort.signal.aborted) {
-            return;
-          }
-          // Takes first, then Peer Check — PATCH-before-upload 404s (#257).
-          if (deps.pushPendingStageAdvancesAfterUpload) {
-            try {
-              await raceAbort(deps.pushPendingStageAdvancesAfterUpload());
-            } catch (error) {
+          // Rounds of takes → stage advances (#854). When two accounts worked
+          // the same chapter, the second account's takes wait (deferred) while
+          // the first account's stage advance is queued; once that advance
+          // lands, the next round uploads them. A round runs only after an
+          // advance landed, so this cannot spin.
+          let roundChapters = chapters;
+          let stageBlocked = 0;
+          for (let round = 1; ; round += 1) {
+            deferredChapterError = null;
+            let stageOutcome: StagePushOutcome | null = null;
+            for (const chapter of roundChapters) {
               if (abort.signal.aborted) {
                 return;
               }
-              // Takes are already uploaded; surface the failure so the session
-              // does not emit `complete` and the bounded retry re-drains the
-              // stage (#257). Retry sessions run stage-only. My Work stays
-              // yellow meanwhile (the row is held by the pending stage), so
-              // skipping the refresh here is intentional.
-              throw error;
+              // Per-take progress inside this chapter (#886). Chapter
+              // counts stay the headline; the worker reports after each take.
+              let sawTakeProgress = false;
+              const onTakeProgress: TakeProgressListener = progress => {
+                if (abort.signal.aborted || version !== lifecycleVersion) {
+                  return;
+                }
+                sawTakeProgress = true;
+                currentChapter = {
+                  bookId: chapter.bookId,
+                  chapterNumber: chapter.chapterNumber,
+                  ...progress,
+                };
+                deps.emit({
+                  type: 'progress',
+                  completedChapters,
+                  totalChapters,
+                  currentChapter,
+                });
+              };
+              try {
+                await deps.worker!.uploadChapter(
+                  chapter,
+                  abort.signal,
+                  onTakeProgress,
+                );
+              } catch (error) {
+                // Takes held back (an account whose membership is unconfirmed)
+                // must not starve other accounts' chapters. Remember it and fail
+                // the session after every chapter has had its turn, as for
+                // `deletionsFailed` (#855).
+                if (!isChapterUploadDeferredError(error)) {
+                  throw error;
+                }
+                deferredChapterError ??= error;
+              } finally {
+                currentChapter = null;
+              }
+              if (abort.signal.aborted) {
+                return;
+              }
+              const pending = await deps.getPendingUploadChapters();
+              if (abort.signal.aborted || version !== lifecycleVersion) {
+                return;
+              }
+              const before = completedChapters;
+              applyPendingChapters(pending);
+              // Also emit when take progress was shown so listeners drop the
+              // per-take detail at the chapter boundary (#886).
+              if (completedChapters > before || sawTakeProgress) {
+                deps.emit({
+                  type: 'progress',
+                  completedChapters,
+                  totalChapters,
+                });
+              }
             }
+            if (abort.signal.aborted) {
+              return;
+            }
+            // Takes first, then Peer Check — PATCH-before-upload 404s (#257).
+            if (deps.pushPendingStageAdvancesAfterUpload) {
+              try {
+                stageOutcome =
+                  (await raceAbort(
+                    deps.pushPendingStageAdvancesAfterUpload(),
+                  )) ?? null;
+              } catch (error) {
+                if (abort.signal.aborted) {
+                  return;
+                }
+                // Takes are already uploaded; surface the failure so the session
+                // does not emit `complete` and the bounded retry re-drains the
+                // stage (#257). Retry sessions run stage-only. My Work stays
+                // yellow meanwhile (the row is held by the pending stage), so
+                // skipping the refresh here is intentional.
+                throw error;
+              }
+            }
+            stageBlocked = stageOutcome?.blocked ?? 0;
+            if (
+              deferredChapterError === null ||
+              !stageOutcome?.progressed ||
+              !deps.worker ||
+              round >= MAX_SESSION_ROUNDS
+            ) {
+              break;
+            }
+            roundChapters = await deps.getPendingUploadChapters();
+            if (abort.signal.aborted || version !== lifecycleVersion) {
+              return;
+            }
+            if (roundChapters.length === 0) break;
+            log.info('Uploading takes released by a stage advance', {
+              round: round + 1,
+              chapters: roundChapters.length,
+            });
           }
           if (deletionsFailed > 0) {
             // Honest terminal summary: work remains, so no `complete` and no
@@ -813,6 +869,12 @@ export function createUploadOrchestrator(
           }
           if (deferredChapterError !== null) {
             throw deferredChapterError;
+          }
+          if (stageBlocked > 0) {
+            // Stage advances still waiting on an earlier one from this device
+            // (another account that must sign in, or one not yet sent): pending,
+            // not failed, but not `complete` either (#854).
+            throw new StageAdvancesBlockedError(stageBlocked);
           }
           if (claimPushError !== null) {
             throw claimPushError;

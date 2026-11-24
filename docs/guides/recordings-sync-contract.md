@@ -49,6 +49,12 @@ JSON matching `verseAudioResponseSchema`: `id`, `projectUnitId`, `bibleTextId`, 
 - Takes uploaded before #716 have no `server_take_id`; deleting them locally does not delete the server copy.
 - Deploy gate is [fluent-api#467](https://github.com/eten-tech-foundation/fluent-api/pull/467), which implements fluent-api#465. Older APIs ignore `activate` and would make every uploaded take active.
 
+### Every account on the device (#854)
+
+- The upload session drains every device account's takes, take deletes, offline claims and stage changes, each with that account's own token, while the active account stays on screen.
+- Order is per chapter, in the order the work happened: a take recorded after another account's still-queued stage change on the same chapter waits (stays pending) until that change lands, and a stage change never goes ahead of an earlier one from this device. Stage drains run one at a time. This fixes #847, where the second account's takes reached the server while the chapter was still in Draft and 404'd.
+- The Sync page counts other accounts' uploads separately ("from other accounts on this device") and never shows their names.
+
 ### Errors → client (#100)
 
 | Status | Body shape | Client |
@@ -106,7 +112,7 @@ An activating `PUT` is not idempotent across a lost response, and the API has no
 | Capture | `addRecordingTake` sets the column from `getActiveUserId()` |
 | Latest / takes | Scoped per `(bible_text_id, recorded_by_user_id)` so shared devices keep separate take stacks |
 | Aggregates | Project / My Work joins filter `r.recorded_by_user_id = ?` for the active user |
-| Upload | `recordingSync` prefers `getCredentials(recordedByUserId)` for each pending row; falls back to the pass token when owner credentials are missing or the row is unattributed (pre-v5) |
+| Upload | `recordingSync` uses `getCredentials(recordedByUserId)` for each pending row, so each account uploads as itself (#854). If the owner has no stored session, or another account is flagged for re-auth, the row stays pending (never failed, never sent with the active token) and the Sync page asks that account to sign in. Unattributed (pre-v5) rows use the active pass token |
 
 Server identity still comes from the Bearer token on `PUT /verse-audio/...`. Local attribution ensures the **correct** token is selected when multiple accounts share a device.
 
