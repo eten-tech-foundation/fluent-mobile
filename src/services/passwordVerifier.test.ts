@@ -74,7 +74,7 @@ describe('passwordVerifier', () => {
       expect(record.salt).toBe('00112233445566778899aabbccddeeff');
       await expect(
         restoreOfflineSession('person@example.com', 'correct horse'),
-      ).resolves.toEqual({ ok: true, userId: '7' });
+      ).resolves.toEqual({ ok: true, userId: '7', token: 'stored-token' });
       await expect(
         restoreOfflineSession('person@example.com', 'wrong'),
       ).resolves.toEqual({ ok: false, reason: 'mismatch' });
@@ -130,7 +130,7 @@ describe('passwordVerifier', () => {
 
     await expect(
       restoreOfflineSession('person@example.com', 'new password'),
-    ).resolves.toEqual({ ok: true, userId: '7' });
+    ).resolves.toEqual({ ok: true, userId: '7', token: 'new-token' });
     await expect(
       restoreOfflineSession('person@example.com', 'old password'),
     ).resolves.toEqual({ ok: false, reason: 'mismatch' });
@@ -161,7 +161,8 @@ describe('passwordVerifier', () => {
   });
 
   it('finishes a cleanup an earlier account removal left behind', async () => {
-    await savePasswordVerifierRecord('9', '{"v":2}');
+    await saveCredentials('token-9', '9');
+    await savePasswordVerifierRecord('9', '{"v":2}', 'token-9');
     mockPendingCleanup.add('9');
 
     await savePasswordVerifier('7', 'correct horse', 'stored-token', {
@@ -185,14 +186,14 @@ describe('passwordVerifier', () => {
 
     await expect(
       restoreOfflineSession('Person@Example.com', 'correct horse'),
-    ).resolves.toEqual({ ok: true, userId: '7' });
+    ).resolves.toEqual({ ok: true, userId: '7', token: 'stored-token' });
 
     await expect(
       restoreOfflineSession('person@example.com', 'wrong'),
     ).resolves.toEqual({ ok: false, reason: 'mismatch' });
     await expect(
       restoreOfflineSession('person@example.com', 'correct horse'),
-    ).resolves.toEqual({ ok: true, userId: '7' });
+    ).resolves.toEqual({ ok: true, userId: '7', token: 'stored-token' });
   });
 
   it('reports no verifier when this device has never signed in online', async () => {
@@ -231,7 +232,7 @@ describe('passwordVerifier', () => {
     now.mockReturnValue(1_000_000 + 60_000);
     await expect(
       restoreOfflineSession('person@example.com', 'correct horse'),
-    ).resolves.toEqual({ ok: true, userId: '7' });
+    ).resolves.toEqual({ ok: true, userId: '7', token: 'stored-token' });
     now.mockRestore();
   });
 });

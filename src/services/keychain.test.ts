@@ -84,7 +84,7 @@ describe('keychain (expo-secure-store)', () => {
 
   it('clears the password verifier with the credentials', async () => {
     await saveCredentials('token-a', '1');
-    await savePasswordVerifierRecord('1', '{"v":2}');
+    await savePasswordVerifierRecord('1', '{"v":2}', 'token-a');
 
     await expect(clearCredentials('1')).resolves.toEqual({
       verifierCleared: true,
@@ -110,7 +110,7 @@ describe('keychain (expo-secure-store)', () => {
 
   it('reports a verifier that could not be deleted, still deletes the token, and retries later', async () => {
     await saveCredentials('token-a', '1');
-    await savePasswordVerifierRecord('1', '{"v":2}');
+    await savePasswordVerifierRecord('1', '{"v":2}', 'token-a');
     const realDelete = SecureStore.deleteItemAsync;
     const deleteSpy = jest
       .spyOn(SecureStore, 'deleteItemAsync')
@@ -133,7 +133,8 @@ describe('keychain (expo-secure-store)', () => {
   });
 
   it('retries a queued cleanup when another account is removed', async () => {
-    await savePasswordVerifierRecord('1', '{"v":2}');
+    await saveCredentials('token-a', '1');
+    await savePasswordVerifierRecord('1', '{"v":2}', 'token-a');
     mockPendingCleanup.add('1');
     await saveCredentials('token-b', '2');
 
@@ -144,11 +145,101 @@ describe('keychain (expo-secure-store)', () => {
   });
 
   it('does not let a queued cleanup delete a verifier saved afterwards', async () => {
+    await saveCredentials('token-a', '1');
     mockPendingCleanup.add('1');
-    await savePasswordVerifierRecord('1', '{"v":2}');
+    await savePasswordVerifierRecord('1', '{"v":2}', 'token-a');
 
     await retryPendingVerifierCleanup();
     await expect(getPasswordVerifierRecord('1')).resolves.toBe('{"v":2}');
+  });
+
+  it('does not save a verifier for a token that is no longer stored', async () => {
+    await saveCredentials('token-b', '1');
+
+    await expect(
+      savePasswordVerifierRecord('1', '{"v":2}', 'token-a'),
+    ).resolves.toBe(false);
+    await expect(getPasswordVerifierRecord('1')).resolves.toBeNull();
+  });
+
+  it('orders a verifier write and an account removal so no verifier is left', async () => {
+    await saveCredentials('token-a', '1');
+    const realGet = SecureStore.getItemAsync;
+    let releaseTokenRead: () => void = () => {};
+    let markTokenRead: () => void = () => {};
+    const tokenRead = new Promise<void>(resolve => {
+      markTokenRead = resolve;
+    });
+    jest
+      .spyOn(SecureStore, 'getItemAsync')
+      .mockImplementationOnce(async key => {
+        // The read sees the token, then is held while a removal starts.
+        const value = await realGet(key);
+        markTokenRead();
+        await new Promise<void>(resolve => {
+          releaseTokenRead = resolve;
+        });
+        return value;
+      });
+
+    const saving = savePasswordVerifierRecord('1', '{"v":2}', 'token-a');
+    await tokenRead;
+    const removing = clearCredentials('1');
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 0));
+    releaseTokenRead();
+    await Promise.all([saving, removing]);
+
+    await expect(getPasswordVerifierRecord('1')).resolves.toBeNull();
+    await expect(getCredentials('1')).resolves.toBeNull();
+  });
+
+  function holdNextDelete() {
+    const realDelete = SecureStore.deleteItemAsync;
+    let release: () => void = () => {};
+    let markRequested: () => void = () => {};
+    const requested = new Promise<void>(resolve => {
+      markRequested = resolve;
+    });
+    jest
+      .spyOn(SecureStore, 'deleteItemAsync')
+      .mockImplementationOnce(async key => {
+        markRequested();
+        await new Promise<void>(resolve => {
+          release = resolve;
+        });
+        return realDelete(key);
+      });
+    return { requested, release: () => release() };
+  }
+
+  it('does not let a running cleanup delete a verifier saved after the queue was read', async () => {
+    await saveCredentials('token-b', '2');
+    mockPendingCleanup.add('1');
+    mockPendingCleanup.add('2');
+    const held = holdNextDelete();
+
+    const retrying = retryPendingVerifierCleanup();
+    await held.requested;
+    await savePasswordVerifierRecord('2', '{"v":2}', 'token-b');
+    held.release();
+    await retrying;
+
+    await expect(getPasswordVerifierRecord('2')).resolves.toBe('{"v":2}');
+  });
+
+  it('holds a verifier write until a running cleanup of that account finishes', async () => {
+    await saveCredentials('token-b', '2');
+    mockPendingCleanup.add('2');
+    const held = holdNextDelete();
+
+    const retrying = retryPendingVerifierCleanup();
+    await held.requested;
+    const saving = savePasswordVerifierRecord('2', '{"v":2}', 'token-b');
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 0));
+    held.release();
+    await Promise.all([retrying, saving]);
+
+    await expect(getPasswordVerifierRecord('2')).resolves.toBe('{"v":2}');
   });
 
   it('returns known user IDs from the KV index', async () => {

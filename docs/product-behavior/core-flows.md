@@ -76,7 +76,7 @@ Full table: [README QA evidence](./README.md#qa-device-evidence-assignment-484--
 | --- | --- |
 | **Preconditions** | Pending takes and/or claims; connectivity |
 | **Expected** | Home sync icon → Sync screen; Sync Now uploads; audio `hasConflict` ≠ claim `hasClaimConflict` |
-| **Denied** | 401 sets reauth and skips further sync calls until an online sign-in; it does not wipe cached grants. 403 projects → fail, not empty success ([sync.auth.test.ts](../../src/services/sync.auth.test.ts)) |
+| **Denied** | 401 sets reauth; the background metadata refresh then skips the network until an online sign-in (manual Sync and uploads still try, and report the 401). It does not wipe cached grants. 403 projects → fail, not empty success ([sync.auth.test.ts](../../src/services/sync.auth.test.ts)) |
 | **Offline** | Queue uploads/claims; reconnect |
 | **Known deviation (QA)** | [#721](https://github.com/eten-tech-foundation/fluent-mobile/issues/721) — Sync one-press failed to open Sync screen (**before** tabs 484 PASS). Bug, not role cause. Agent debug ≠ Nightly signoff |
 | **Labels** | Inferred. #391 audio; #390 open PR ≠ pinned `main`. Dev Account B Sync FAIL is historical Dev only |

@@ -20,6 +20,7 @@ const mockHomeFlags = {
   hasPendingUploads: false,
   claimsPending: false,
   advancesPending: false,
+  advancesReadFails: false,
 };
 
 jest.mock('./useConnectivity', () => ({
@@ -84,7 +85,9 @@ jest.mock('../db/queries', () => ({
   hasPendingChapterClaimsForUser: () =>
     Promise.resolve(mockHomeFlags.claimsPending),
   hasPendingStageAdvancesForUser: () =>
-    Promise.resolve(mockHomeFlags.advancesPending),
+    mockHomeFlags.advancesReadFails
+      ? Promise.reject(new Error('db unavailable'))
+      : Promise.resolve(mockHomeFlags.advancesPending),
 }));
 
 jest.mock('../utils/parseUserId', () => ({
@@ -100,6 +103,7 @@ describe('useHomeSyncState', () => {
     mockHomeFlags.hasPendingUploads = false;
     mockHomeFlags.claimsPending = false;
     mockHomeFlags.advancesPending = false;
+    mockHomeFlags.advancesReadFails = false;
   });
 
   it('bumps the re-read in the render where the post-login sync ends', () => {
@@ -148,6 +152,20 @@ describe('useHomeSyncState', () => {
   it('shows the session banner when online and a stage advance is waiting', async () => {
     mockHomeFlags.reauthRequired = true;
     mockHomeFlags.advancesPending = true;
+    const hook = renderHook(
+      () =>
+        useHomeSyncState({ postLoginSyncActive: false, userSwitchEpoch: 0 }),
+      { initialProps: undefined },
+    );
+    await waitFor(() => {
+      expect(hook.result.current.showSessionExpiredBanner).toBe(true);
+    });
+  });
+
+  it('keeps a waiting claim visible when the stage-advance read fails', async () => {
+    mockHomeFlags.reauthRequired = true;
+    mockHomeFlags.claimsPending = true;
+    mockHomeFlags.advancesReadFails = true;
     const hook = renderHook(
       () =>
         useHomeSyncState({ postLoginSyncActive: false, userSwitchEpoch: 0 }),

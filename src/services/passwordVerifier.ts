@@ -40,7 +40,8 @@ type FailureState = { count: number; lockedUntil: number };
 const failuresByEmail = new Map<string, FailureState>();
 
 export type OfflineRestoreResult =
-  | { ok: true; userId: string }
+  /** `token` is the stored token the password was checked against. */
+  | { ok: true; userId: string; token: string }
   | {
       ok: false;
       reason: 'no-account' | 'no-verifier' | 'no-token' | 'mismatch' | 'locked';
@@ -145,15 +146,6 @@ export async function savePasswordVerifier(
   // The async variant never falls back to Math.random in development.
   const salt = await getRandomBytesAsync(SALT_BYTES);
   const hash = await derive(password, salt, iterations);
-  // The hash takes about a second. The account may have been removed, or
-  // signed in again, meanwhile; don't leave a hash behind for either.
-  const current = await getCredentials(userId);
-  if (current?.token !== token) {
-    log.info('Password verifier skipped: session changed during save', {
-      userId,
-    });
-    return;
-  }
   const record: StoredVerifier = {
     v: 2,
     c: iterations,
@@ -161,7 +153,9 @@ export async function savePasswordVerifier(
     hash: bytesToHex(hash),
     token: tokenFingerprint(token),
   };
-  await savePasswordVerifierRecord(userId, JSON.stringify(record));
+  // The hash takes about a second. The account may have been removed, or
+  // signed in again, meanwhile; the write is skipped in either case.
+  await savePasswordVerifierRecord(userId, JSON.stringify(record), token);
 }
 
 /**
@@ -208,5 +202,5 @@ export async function restoreOfflineSession(
   }
 
   failuresByEmail.delete(emailKey);
-  return { ok: true, userId };
+  return { ok: true, userId, token: credentials.token };
 }

@@ -225,7 +225,11 @@ describe('useLogin', () => {
     jest
       .mocked(FluentAPI.signIn)
       .mockRejectedValue(new ApiError(0, 'Network request failed'));
-    mockRestoreOfflineSession.mockResolvedValue({ ok: true, userId: '42' });
+    mockRestoreOfflineSession.mockResolvedValue({
+      ok: true,
+      userId: '42',
+      token: 'stored-token',
+    });
 
     const { result } = renderHook(() => useLogin(onLoginSuccess), {
       wrapper: QueryClientTestWrapper,
@@ -246,7 +250,10 @@ describe('useLogin', () => {
       });
     });
 
-    expect(mockSwitchToDeviceAccount).toHaveBeenCalledWith('42');
+    expect(mockSwitchToDeviceAccount).toHaveBeenCalledWith(
+      '42',
+      'stored-token',
+    );
     expect(beginLoginSession).not.toHaveBeenCalled();
     expect(mockSavePasswordVerifier).not.toHaveBeenCalled();
   });

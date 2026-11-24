@@ -102,19 +102,51 @@ export async function clearTempCredentials(): Promise<void> {
   }
 }
 
-export async function savePasswordVerifierRecord(
+const accountLocks = new Map<string, Promise<unknown>>();
+
+/**
+ * Runs verifier writes, account removal and cleanup retries for one account
+ * in order, so a token check and the write that depends on it cannot
+ * interleave with a removal.
+ */
+function withAccountLock<T>(userId: string, task: () => Promise<T>) {
+  const prior = accountLocks.get(userId) ?? Promise.resolve();
+  const run = prior.then(task, task);
+  const settled = run.catch(() => undefined);
+  accountLocks.set(userId, settled);
+  void settled.then(() => {
+    if (accountLocks.get(userId) === settled) accountLocks.delete(userId);
+  });
+  return run;
+}
+
+/**
+ * Saves the verifier only while `token` is still this account's stored
+ * token. Returns false, and writes nothing, when the account was removed or
+ * signed in again since.
+ */
+export function savePasswordVerifierRecord(
   userId: string,
   record: string,
-): Promise<void> {
-  try {
-    await SecureStore.setItemAsync(verifierKey(userId), record);
-    // A fresh record must not be deleted by an older cleanup retry.
-    setVerifierCleanupPending(userId, false);
-    log.info('Password verifier saved', { userId });
-  } catch (error) {
-    log.error('Failed to save password verifier', { error });
-    throw error;
-  }
+  token: string,
+): Promise<boolean> {
+  return withAccountLock(userId, async () => {
+    const current = await getCredentials(userId);
+    if (current?.token !== token) {
+      log.info('Password verifier skipped: session changed', { userId });
+      return false;
+    }
+    try {
+      await SecureStore.setItemAsync(verifierKey(userId), record);
+      // A fresh record must not be deleted by an older cleanup retry.
+      setVerifierCleanupPending(userId, false);
+      log.info('Password verifier saved', { userId });
+      return true;
+    } catch (error) {
+      log.error('Failed to save password verifier', { error });
+      throw error;
+    }
+  });
 }
 
 export async function getPasswordVerifierRecord(
@@ -133,7 +165,7 @@ export async function getPasswordVerifierRecord(
  * confirmed missing by a read after the delete failed. A false result is
  * queued and retried by {@link retryPendingVerifierCleanup}.
  */
-export async function clearPasswordVerifier(userId: string): Promise<boolean> {
+async function clearPasswordVerifier(userId: string): Promise<boolean> {
   let cleared: boolean;
   try {
     await SecureStore.deleteItemAsync(verifierKey(userId));
@@ -159,7 +191,12 @@ export async function clearPasswordVerifier(userId: string): Promise<boolean> {
 /** Retries verifier deletions that an earlier account removal left behind. */
 export async function retryPendingVerifierCleanup(): Promise<void> {
   for (const userId of getPendingVerifierCleanupUserIds()) {
-    await clearPasswordVerifier(userId);
+    await withAccountLock(userId, async () => {
+      // A verifier saved since the queue was read is no longer pending.
+      if (getPendingVerifierCleanupUserIds().includes(userId)) {
+        await clearPasswordVerifier(userId);
+      }
+    });
   }
 }
 
@@ -172,18 +209,22 @@ export async function clearCredentials(
   userId: string,
 ): Promise<ClearCredentialsResult> {
   credentialsVersion += 1;
+  let result: ClearCredentialsResult;
   try {
-    const verifierCleared = await clearPasswordVerifier(userId);
-    await SecureStore.deleteItemAsync(storageKey(userId));
-    log.info('Credentials cleared', { userId, verifierCleared });
-    await retryPendingVerifierCleanup();
-    return { verifierCleared };
+    result = await withAccountLock(userId, async () => {
+      const verifierCleared = await clearPasswordVerifier(userId);
+      await SecureStore.deleteItemAsync(storageKey(userId));
+      log.info('Credentials cleared', { userId, verifierCleared });
+      return { verifierCleared };
+    });
   } catch (error) {
     log.error('Failed to clear credentials', { error });
     throw error;
   } finally {
     credentialsVersion += 1;
   }
+  await retryPendingVerifierCleanup();
+  return result;
 }
 
 export async function hasCredentials(userId: string): Promise<boolean> {

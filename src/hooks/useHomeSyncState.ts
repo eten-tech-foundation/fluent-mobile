@@ -341,16 +341,18 @@ export function useHomeSyncState({
     const userId = parseUserId();
     if (!userId) return;
     let cancelled = false;
-    void Promise.all([
+    // One failed read must not hide work the other read found.
+    void Promise.allSettled([
       hasPendingChapterClaimsForUser(userId),
       hasPendingStageAdvancesForUser(userId),
-    ])
-      .then(([hasClaims, hasAdvances]) => {
-        if (!cancelled) setHasQueuedSyncWork(hasClaims || hasAdvances);
-      })
-      .catch(() => {
-        if (!cancelled) setHasQueuedSyncWork(false);
-      });
+    ]).then(results => {
+      if (cancelled) return;
+      setHasQueuedSyncWork(
+        results.some(
+          result => result.status === 'fulfilled' && result.value === true,
+        ),
+      );
+    });
     return () => {
       cancelled = true;
     };

@@ -39,7 +39,7 @@ export type LoginSuccessMeta = { offline?: boolean };
 type OnlineSignIn = Awaited<ReturnType<typeof FluentAPI.signIn>>;
 type LoginMutationResult =
   | { kind: 'online'; response: OnlineSignIn }
-  | { kind: 'offline'; userId: string };
+  | { kind: 'offline'; userId: string; token: string };
 
 export function useLogin(
   onLoginSuccess: (
@@ -85,7 +85,11 @@ export function useLogin(
           trimmedPassword,
         );
         if (restored.ok) {
-          return { kind: 'offline', userId: restored.userId };
+          return {
+            kind: 'offline',
+            userId: restored.userId,
+            token: restored.token,
+          };
         }
         if (restored.reason === 'mismatch') {
           throw new Error('Incorrect email or password.');
@@ -99,8 +103,9 @@ export function useLogin(
     onSuccess: async (result, variables) => {
       if (result.kind === 'offline') {
         // Restores the stored device session. Does not clear reauth and
-        // does not tell the server the session was renewed.
-        await switchToDeviceAccount(result.userId);
+        // does not tell the server the session was renewed. Activates only
+        // the token the password was checked against.
+        await switchToDeviceAccount(result.userId, result.token);
         onLoginSuccess(variables.email, undefined, { offline: true });
         return;
       }
