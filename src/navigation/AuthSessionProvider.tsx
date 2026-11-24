@@ -5,9 +5,10 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type PropsWithChildren,
 } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { logger } from '../utils/logger';
 import { markStartup } from '../utils/startupTrace';
 import { initializeDatabase } from '../db/index';
@@ -39,10 +40,14 @@ import { isE2eUploadHoldEnabled } from '../config/e2eUploadHoldGuard';
 import { ApiUser } from '../types/api/responses';
 import { appStyles } from '../app/appStyles';
 import { theme } from '../theme';
+import { useTheme, useThemedStyles } from '../theme/useTheme';
 import {
   armSplashGate,
   hideSplash,
   holdSplashForFirstPaint,
+  isLaunchOverlayVisible,
+  LAUNCH_OVERLAY_STILL_MS,
+  subscribeLaunchOverlay,
 } from './splashGate';
 
 const log = logger.create('AuthSession');
@@ -65,6 +70,53 @@ export type AuthSessionContextValue = {
 };
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
+
+const styles = StyleSheet.create({ content: { flex: 1 } });
+
+/**
+ * Covers the tree until a screen reports a paint. It is mounted with the
+ * provider, so it is already drawn when the native splash falls back and
+ * Home is still evaluating (#1000).
+ */
+function LaunchOverlay() {
+  const theme = useTheme();
+  const styles = useThemedStyles(t => ({
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: t.colors.background,
+      zIndex: 2,
+    },
+  }));
+  const [stillLoading, setStillLoading] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setStillLoading(true),
+      LAUNCH_OVERLAY_STILL_MS,
+    );
+    return () => clearTimeout(timer);
+  }, []);
+
+  const message = stillLoading ? 'Still loading…' : 'Loading your work…';
+  return (
+    <View
+      style={styles.overlay}
+      pointerEvents="auto"
+      accessibilityRole="progressbar"
+      accessibilityLabel={message}
+      testID="launch-overlay"
+    >
+      <ActivityIndicator size="large" color={theme.colors.primary} />
+      <Text style={appStyles.loadingTextAppInit}>{message}</Text>
+    </View>
+  );
+}
 
 export function useAuthSession(): AuthSessionContextValue {
   const value = useContext(AuthSessionContext);
@@ -212,6 +264,12 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     setUserSwitchEpoch(epoch => epoch + 1);
   }, []);
 
+  const launchOverlayVisible = useSyncExternalStore(
+    subscribeLaunchOverlay,
+    isLaunchOverlayVisible,
+    isLaunchOverlayVisible,
+  );
+
   const value = useMemo<AuthSessionContextValue>(
     () => ({
       isLoading,
@@ -239,22 +297,37 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   return (
     <AuthSessionContext.Provider value={value}>
-      {error ? (
-        <View
-          style={appStyles.containerAppInit}
-          onLayout={() => hideSplash('init-error')}
-          testID="auth-session-error"
-        >
-          <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
-        </View>
-      ) : isLoading ? (
-        <View style={appStyles.containerAppInit} testID="auth-session-loading">
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={appStyles.loadingTextAppInit}>Initializing...</Text>
-        </View>
-      ) : (
-        children
-      )}
+      <View style={appStyles.appRoot}>
+        {error ? (
+          <View
+            style={appStyles.containerAppInit}
+            onLayout={() => hideSplash('init-error')}
+            testID="auth-session-error"
+          >
+            <Text style={appStyles.errorTextAppInit}>Error: {error}</Text>
+          </View>
+        ) : isLoading ? (
+          <View
+            style={appStyles.containerAppInit}
+            testID="auth-session-loading"
+          >
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={appStyles.loadingTextAppInit}>Initializing...</Text>
+          </View>
+        ) : (
+          // Kept mounted under the overlay so its paint callbacks can still
+          // dismiss it; hidden from TalkBack so covered controls are not focusable.
+          <View
+            style={styles.content}
+            importantForAccessibility={
+              launchOverlayVisible ? 'no-hide-descendants' : 'auto'
+            }
+          >
+            {children}
+          </View>
+        )}
+        {launchOverlayVisible ? <LaunchOverlay /> : null}
+      </View>
     </AuthSessionContext.Provider>
   );
 }

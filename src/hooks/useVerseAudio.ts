@@ -1450,9 +1450,13 @@ export function useVerseAudio({
         selectedTake;
       if (!take?.localFilePath) return;
       playbackLoadInFlightRef.current = true;
+      // A stop while the file loads (leave, account switch) wins over the scrub.
+      let generation = stitchPlaybackGenerationRef.current;
+      const isStale = () => generation !== stitchPlaybackGenerationRef.current;
       try {
         const path = take.localFilePath;
         const exists = await fileExists(path);
+        if (isStale()) return;
         if (!exists) {
           throw new Error(
             'Take file is missing on disk. Re-record this verse.',
@@ -1460,8 +1464,10 @@ export function useVerseAudio({
         }
         // Scrubbing a real row abandons a stitched row's remaining segments.
         clearStitchQueue();
+        generation = stitchPlaybackGenerationRef.current;
         setErrorMessage(null);
         await playback.load(path);
+        if (isStale()) return;
         setPlayingTakeId(take.id);
         setLoadedTakeId(take.id);
         const capped =
@@ -1470,12 +1476,15 @@ export function useVerseAudio({
             : Math.max(0, ms);
         await playback.seek(capped);
       } catch (error) {
+        if (isStale()) return;
         const message = error instanceof Error ? error.message : 'seek failed';
         setErrorMessage(message);
         dispatch({ type: 'ERROR', message });
       } finally {
-        playbackLoadInFlightRef.current = false;
-        setPlaybackLoadGate(n => n + 1);
+        if (!isStale()) {
+          playbackLoadInFlightRef.current = false;
+          setPlaybackLoadGate(n => n + 1);
+        }
       }
     },
     [allTakes, clearStitchQueue, loadedTakeId, playback, selectedTake, takes],

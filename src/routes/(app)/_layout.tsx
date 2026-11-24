@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { resolveRecoveryHref } from '../../navigation/recoveryHref';
 import { useWindowDimensions, type ColorValue } from 'react-native';
@@ -15,6 +15,7 @@ import {
 } from '../../components/ui/UserSettingsMenu';
 import { useTheme, useUiVersion } from '../../theme/useTheme';
 import { logger } from '../../utils/logger';
+import { markStartup } from '../../utils/startupTrace';
 
 const log = logger.create('AppDrawerLayout');
 
@@ -36,6 +37,12 @@ function drawerIcon(name: React.ComponentProps<typeof Ionicons>['name']) {
 }
 
 export default function AppDrawerLayout() {
+  // Signed-in app group only. A signed-out launch records this at the later
+  // sign-in that first mounts the group, not at cold start (#971).
+  useEffect(() => {
+    markStartup('route_group_mounted');
+  }, []);
+
   const { width } = useWindowDimensions();
   const theme = useTheme();
   const drawerLabelStyles = useDrawerMenuLabelStyles();
