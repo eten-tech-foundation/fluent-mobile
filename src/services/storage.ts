@@ -12,6 +12,8 @@ export const KV_KEYS = {
   USER_EMAIL: 'userEmail',
   ACTIVE_USER_ID: 'active_user_id',
   KNOWN_USER_IDS: 'known_user_ids',
+  /** Accounts whose SecureStore password verifier could not be deleted. */
+  PENDING_VERIFIER_CLEANUP_USER_IDS: 'pending_verifier_cleanup_user_ids',
   LAST_ASSIGNMENT_SYNC_AT: 'last_assignment_sync_at',
   LAST_SYNCED_AT: 'last_synced_at',
   /**
@@ -203,6 +205,28 @@ export function addKnownUserId(userId: string) {
   }
 }
 
+export function getPendingVerifierCleanupUserIds(): string[] {
+  const raw =
+    kvStorage.getItemSync(KV_KEYS.PENDING_VERIFIER_CLEANUP_USER_IDS) ?? '';
+  return raw ? raw.split(',').filter(Boolean) : [];
+}
+
+export function setVerifierCleanupPending(
+  userId: string,
+  pending: boolean,
+): void {
+  const others = getPendingVerifierCleanupUserIds().filter(id => id !== userId);
+  const next = pending ? [...others, userId] : others;
+  if (next.length > 0) {
+    kvStorage.setItemSync(
+      KV_KEYS.PENDING_VERIFIER_CLEANUP_USER_IDS,
+      next.join(','),
+    );
+  } else {
+    kvStorage.removeItemSync(KV_KEYS.PENDING_VERIFIER_CLEANUP_USER_IDS);
+  }
+}
+
 /** Registers a device account without changing the active session pointer. */
 export function registerKnownUser(userId: string, userEmail: string) {
   addKnownUserId(userId);
@@ -219,10 +243,15 @@ export function setUserEmail(userId: string, email: string) {
 
 const reauthRequiredKey = (userId: string) => `${userId}:reauth_required`;
 
-export function setReauthRequired(userId: string): void {
+/** Returns false when the flag was already set, so callers log and emit once. */
+export function setReauthRequired(userId: string): boolean {
+  if (isReauthRequired(userId)) {
+    return false;
+  }
   clearCatalogueQuietSince(userId);
   kvStorage.setItemSync(reauthRequiredKey(userId), 'true');
   log.info('Reauth required flag set', { userId });
+  return true;
 }
 
 export function clearReauthRequired(userId: string): void {

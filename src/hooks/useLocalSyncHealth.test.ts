@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import {
   resetLocalSyncHealthForTests,
   useLocalSyncHealth,
@@ -25,6 +25,15 @@ jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(),
 }));
 
+let mockPainted = true;
+const mockPaintQueue: Array<() => void> = [];
+jest.mock('../navigation/splashGate', () => ({
+  afterFirstPaint: (fn: () => void) => {
+    if (mockPainted) fn();
+    else mockPaintQueue.push(fn);
+  },
+}));
+
 const mockUserNeedsAssigneeRepair = userNeedsAssigneeRepair as jest.Mock;
 const mockCountChaptersMissingBibleText =
   countChaptersMissingBibleText as jest.Mock;
@@ -35,6 +44,8 @@ const mockSameWrites = sameDatabaseWrites as jest.Mock;
 describe('useLocalSyncHealth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPainted = true;
+    mockPaintQueue.length = 0;
     resetLocalSyncHealthForTests();
     mockWriteMark.mockResolvedValue(null);
     mockSameWrites.mockReturnValue(false);
@@ -54,6 +65,41 @@ describe('useLocalSyncHealth', () => {
 
     expect(result.current.needsDownloadSync).toBe(true);
     expect(mockUserNeedsAssigneeRepair).toHaveBeenCalledWith(241);
+  });
+
+  it('holds the launch check until the first paint (#1002)', async () => {
+    mockPainted = false;
+    mockUserNeedsAssigneeRepair.mockResolvedValue(true);
+
+    const { result } = renderHook(() => useLocalSyncHealth());
+    await act(async () => {});
+
+    expect(mockWriteMark).not.toHaveBeenCalled();
+    expect(mockUserNeedsAssigneeRepair).not.toHaveBeenCalled();
+    expect(result.current.checking).toBe(true);
+
+    act(() => {
+      for (const run of mockPaintQueue.splice(0)) run();
+    });
+
+    await waitFor(() => {
+      expect(result.current.checking).toBe(false);
+    });
+    expect(result.current.needsDownloadSync).toBe(true);
+  });
+
+  it('skips the held check when unmounted before the first paint', async () => {
+    mockPainted = false;
+
+    const { unmount } = renderHook(() => useLocalSyncHealth());
+    unmount();
+    act(() => {
+      for (const run of mockPaintQueue.splice(0)) run();
+    });
+    await act(async () => {});
+
+    expect(mockWriteMark).not.toHaveBeenCalled();
+    expect(mockUserNeedsAssigneeRepair).not.toHaveBeenCalled();
   });
 
   it('reports healthy when assignee repair is not required', async () => {

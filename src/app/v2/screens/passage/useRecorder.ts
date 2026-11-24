@@ -55,6 +55,7 @@ import type { FrontTake } from './TakeCard';
 import type { RecordKeys } from './PlayerKeys';
 import type { FanTake } from './TakeFan';
 import type { Ready } from './ready';
+import type { ReviewAudio } from './useTakeReview';
 
 const log = logger.create('useRecorder');
 
@@ -1058,5 +1059,24 @@ export function useRecorder({
     /** Stops review before leaving for another screen, e.g. Book. */
     releaseReview,
     discardCapture: verseAudio.discardCapture,
+    /** Everyone's takes on this verse or passage, for review only. */
+    review: {
+      allTakes: verseAudio.allTakes,
+      hasMultipleRecorders: verseAudio.hasMultipleRecorders,
+      playingTakeId: verseAudio.playingTakeId,
+      loadedTakeId: verseAudio.loadedTakeId,
+      state: verseAudio.state,
+      playbackStatus: verseAudio.playbackStatus,
+      positionMs: verseAudio.positionMs,
+      durationMs: verseAudio.durationMs,
+      playTake: verseAudio.playTake,
+      pausePlayback: verseAudio.pausePlayback,
+      seek: verseAudio.seek,
+      stopPlayback: verseAudio.stopPlayback,
+      errorMessage: verseAudio.errorMessage,
+      scope: `${userId}:${assignment.id}:${unit}:${
+        verseMode ? verse : 'passage'
+      }`,
+    } satisfies ReviewAudio,
   };
 }

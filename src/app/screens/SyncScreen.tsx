@@ -68,6 +68,7 @@ export default function SyncScreen() {
     unuploadableCount,
     hasUnuploadablePending,
     countsUnknown,
+    countsRead,
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
@@ -207,17 +208,20 @@ export default function SyncScreen() {
   const startBusy =
     controlStatus === 'paused' ? false : isStartControlPending || isUploading;
 
-  const secondaryContent = renderSecondaryContent(
-    status,
-    progressUploaded,
-    progressTotal,
-    nextRetryAt,
-    isUploading,
-    pendingChapterCount,
-    hasPendingUploads,
-    hasFailedUploads,
-    progressCurrentChapter,
-  );
+  // Zero unread counts derive "All synced"; see the status section below.
+  const secondaryContent = countsRead
+    ? renderSecondaryContent(
+        status,
+        progressUploaded,
+        progressTotal,
+        nextRetryAt,
+        isUploading,
+        pendingChapterCount,
+        hasPendingUploads,
+        hasFailedUploads,
+        progressCurrentChapter,
+      )
+    : null;
 
   return (
     <ScreenContainer>
@@ -234,27 +238,34 @@ export default function SyncScreen() {
         onLayout={() => hideSplash('sync')}
       >
         <View style={styles.statusSection}>
-          <SyncStatusIndicator
-            status={status}
-            isOnline={effectivelyOnline}
-            hasPendingUploads={hasPendingUploads || countsUnknown}
-            hasFailedUploads={hasFailedUploads}
-            isUploading={isUploading}
-            isMetadataSyncing={isMetadataSyncing}
-          />
+          {/* A cold open from the upload notification reads the counts after
+              this screen's first paint (#1002); until then there is no
+              answer to show, and zero would read as "all synced". */}
+          {countsRead ? (
+            <>
+              <SyncStatusIndicator
+                status={status}
+                isOnline={effectivelyOnline}
+                hasPendingUploads={hasPendingUploads || countsUnknown}
+                hasFailedUploads={hasFailedUploads}
+                isUploading={isUploading}
+                isMetadataSyncing={isMetadataSyncing}
+              />
 
-          {renderStatusLine(
-            status,
-            effectivelyOnline,
-            hasPendingUploads,
-            hasFailedUploads,
-            failedCount,
-            isUploading,
-            hasUnuploadablePending,
-            pendingChapterCount,
-            countsUnknown,
-            isMetadataSyncing,
-          )}
+              {renderStatusLine(
+                status,
+                effectivelyOnline,
+                hasPendingUploads,
+                hasFailedUploads,
+                failedCount,
+                isUploading,
+                hasUnuploadablePending,
+                pendingChapterCount,
+                countsUnknown,
+                isMetadataSyncing,
+              )}
+            </>
+          ) : null}
           {pendingChapterCount === 0 &&
           (hasUnuploadablePending || hasPendingUploads) ? (
             <Text style={styles.errorText} testID="sync-unuploadable-error">

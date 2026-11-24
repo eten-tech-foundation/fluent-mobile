@@ -3,16 +3,52 @@
  */
 
 import React from 'react';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  configure,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react-native';
 import { Text, TouchableOpacity } from 'react-native';
+
+// The children sit under the launch overlay and are hidden from accessibility
+// while it is up. These tests exercise session wiring, not accessibility, so
+// they query hidden elements by default; the a11y case opts back in explicitly.
+configure({ defaultIncludeHiddenElements: true });
 
 const mockHideSplash = jest.fn();
 const mockHoldSplashForFirstPaint = jest.fn();
 const mockArmSplashGate = jest.fn();
+let mockLaunchOverlayVisible = true;
+const mockLaunchOverlayListeners = new Set<() => void>();
+
+function mockSetLaunchOverlayVisible(next: boolean) {
+  if (mockLaunchOverlayVisible === next) return;
+  mockLaunchOverlayVisible = next;
+  for (const listener of mockLaunchOverlayListeners) listener();
+}
+
+const mockAfterFirstPaint = jest.fn((fn: () => void) => fn());
 jest.mock('../src/navigation/splashGate', () => ({
-  armSplashGate: () => mockArmSplashGate(),
-  hideSplash: (...args: unknown[]) => mockHideSplash(...args),
+  afterFirstPaint: (fn: () => void) => mockAfterFirstPaint(fn),
+  armSplashGate: () => {
+    mockArmSplashGate();
+    mockSetLaunchOverlayVisible(true);
+  },
+  hideSplash: (reason: unknown) => {
+    mockHideSplash(reason);
+    if (reason !== 'fallback') mockSetLaunchOverlayVisible(false);
+  },
   holdSplashForFirstPaint: () => mockHoldSplashForFirstPaint(),
+  isLaunchOverlayVisible: () => mockLaunchOverlayVisible,
+  subscribeLaunchOverlay: (listener: () => void) => {
+    mockLaunchOverlayListeners.add(listener);
+    return () => {
+      mockLaunchOverlayListeners.delete(listener);
+    };
+  },
+  LAUNCH_OVERLAY_STILL_MS: 4_000,
 }));
 
 const mockLogWarn = jest.fn();
@@ -133,6 +169,7 @@ function AuthProbe() {
 describe('AuthSessionProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLaunchOverlayVisible = true;
     mockRestoreSession.mockResolvedValue({ authenticated: false });
     mockSyncAllData.mockResolvedValue(undefined);
     mockIsE2eUploadHoldEnabled.mockReturnValue(false);
@@ -152,8 +189,35 @@ describe('AuthSessionProvider', () => {
     return utils;
   }
 
-  it('bootstraps session, then renders children', async () => {
+  it('hides the children from accessibility while the launch overlay covers them', async () => {
+    const { hideSplash } = jest.requireMock('../src/navigation/splashGate') as {
+      hideSplash: (reason: string) => void;
+    };
     const { getByTestId, queryByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('auth-session-loading')).toBeNull();
+    });
+    expect(getByTestId('launch-overlay')).toBeTruthy();
+    expect(
+      queryByTestId('auth-flag', { includeHiddenElements: false }),
+    ).toBeNull();
+
+    await act(async () => {
+      hideSplash('home:content');
+    });
+
+    expect(
+      queryByTestId('auth-flag', { includeHiddenElements: false }),
+    ).toBeTruthy();
+  });
+
+  it('bootstraps session, then renders children', async () => {
+    const { getByTestId, getByText, queryByTestId } = render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -171,6 +235,51 @@ describe('AuthSessionProvider', () => {
     // The splash waits for the first screen's paint (bounded), not for this.
     expect(mockHoldSplashForFirstPaint).toHaveBeenCalledTimes(1);
     expect(mockHideSplash).not.toHaveBeenCalled();
+    // Session known is not a paint: the overlay stays until a screen reports.
+    expect(getByTestId('launch-overlay')).toBeTruthy();
+    expect(getByText('Loading your work…')).toBeTruthy();
+  });
+
+  it('keeps the launch overlay up after the session is known until a screen paints', async () => {
+    const { hideSplash } = jest.requireMock('../src/navigation/splashGate') as {
+      hideSplash: (reason: string) => void;
+    };
+    const { getByTestId, queryByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('auth-session-loading')).toBeNull();
+    });
+    expect(getByTestId('launch-overlay')).toBeTruthy();
+    expect(getByTestId('auth-flag')).toBeTruthy();
+
+    await act(async () => {
+      hideSplash('home:content');
+    });
+    expect(queryByTestId('launch-overlay')).toBeNull();
+  });
+
+  it('says it is still loading after the overlay has been up for 4 seconds', async () => {
+    jest.useFakeTimers();
+    const { getByText, unmount } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getByText('Loading your work…')).toBeTruthy();
+    await act(async () => {
+      jest.advanceTimersByTime(4_000);
+    });
+    expect(getByText('Still loading…')).toBeTruthy();
+    unmount();
+    jest.useRealTimers();
   });
 
   it('opens the database and restores the session together, then cleans up paused takes (#973)', async () => {
@@ -274,6 +383,63 @@ describe('AuthSessionProvider', () => {
     expect(mockStartUploadOrchestrator).toHaveBeenCalled();
     expect(mockStartUploadProgressNotification).toHaveBeenCalled();
     expect(mockStartDownloadQueueAutoResume).toHaveBeenCalled();
+  });
+
+  it('holds the upload orchestrator and auto-resume until the first paint (#1002)', async () => {
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { getByTestId } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    expect(mockStartUploadProgressNotification).toHaveBeenCalled();
+    expect(mockStartUploadOrchestrator).not.toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
+    expect(mockRefreshSyncStatusStore).not.toHaveBeenCalled();
+
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockStartUploadOrchestrator).toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).toHaveBeenCalled();
+    expect(mockRefreshSyncStatusStore).toHaveBeenCalledTimes(1);
+
+    const stopAutoResume =
+      mockStartDownloadQueueAutoResume.mock.results[0].value;
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-out'));
+    });
+    expect(mockStopDownloadQueueAutoResume).toHaveBeenCalledWith(
+      stopAutoResume,
+    );
+  });
+
+  it('does not start the orchestrator when the provider unmounts before the first paint (#1002)', async () => {
+    mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { getByTestId, unmount } = render(
+      <AuthSessionProvider>
+        <AuthProbe />
+      </AuthSessionProvider>,
+    );
+    await waitFor(() => {
+      expect(getByTestId('auth-flag').props.children).toBe('yes');
+    });
+    const deferredStart = mockAfterFirstPaint.mock.calls[0][0];
+
+    unmount();
+    act(() => {
+      deferredStart();
+    });
+
+    expect(mockStartUploadOrchestrator).not.toHaveBeenCalled();
+    expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
+    expect(mockRefreshSyncStatusStore).not.toHaveBeenCalled();
   });
 
   it('E2E upload hold leaves the orchestrator stopped; downloads and sync unaffected', async () => {

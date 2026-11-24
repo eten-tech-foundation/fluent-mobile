@@ -10,6 +10,9 @@ let mockPendingCount = 2;
 let mockOrchestrator: ReturnType<typeof createUploadOrchestrator>;
 
 jest.mock('expo-router', () => ({ useFocusEffect: jest.fn() }));
+jest.mock('../navigation/splashGate', () => ({
+  afterFirstPaint: (fn: () => void) => fn(),
+}));
 jest.mock('../utils/parseUserId', () => ({ parseUserId: jest.fn(() => 7) }));
 jest.mock('../db/queries', () => ({
   getDatabaseWriteMark: jest.fn(() => Promise.resolve(null)),

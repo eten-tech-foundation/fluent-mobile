@@ -52,6 +52,11 @@ jest.mock('../services/sync', () => ({
   refreshChapterMetadataIfOnline: jest.fn(),
 }));
 
+const mockAfterFirstPaint = jest.fn((fn: () => void) => fn());
+jest.mock('../navigation/splashGate', () => ({
+  afterFirstPaint: (fn: () => void) => mockAfterFirstPaint(fn),
+}));
+
 jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(),
 }));
@@ -224,6 +229,42 @@ describe('useMyWorkChapters Observer grants', () => {
     await waitFor(() =>
       expect(result.current.chapters).toEqual([observerChapter]),
     );
+  });
+
+  it('defers the first-focus metadata refresh until the first paint (#1002)', async () => {
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { result } = renderHook(() => useMyWorkChapters());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(mockRefreshChapterMetadataIfOnline).not.toHaveBeenCalled();
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledWith(7);
+  });
+
+  it('skips the deferred refresh when the user signed out before the paint (#1002)', async () => {
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { result } = renderHook(() => useMyWorkChapters());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockGetActiveUserId.mockReturnValue('');
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockRefreshChapterMetadataIfOnline).not.toHaveBeenCalled();
+  });
+
+  it('drops the deferred refresh when the hook unmounts before the paint (#1002)', async () => {
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { result, unmount } = renderHook(() => useMyWorkChapters());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    unmount();
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockRefreshChapterMetadataIfOnline).not.toHaveBeenCalled();
   });
 
   it('shows saved rows while the mount metadata refresh is out, and does not re-read when it lands (#886)', async () => {
