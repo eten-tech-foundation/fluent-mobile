@@ -255,6 +255,18 @@ describe('useMyWorkChapters Observer grants', () => {
     expect(mockRefreshChapterMetadataIfOnline).not.toHaveBeenCalled();
   });
 
+  it('drops the deferred refresh when the hook unmounts before the paint (#1002)', async () => {
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { result, unmount } = renderHook(() => useMyWorkChapters());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    unmount();
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockRefreshChapterMetadataIfOnline).not.toHaveBeenCalled();
+  });
+
   it('shows saved rows while the mount metadata refresh is out, and does not re-read when it lands (#886)', async () => {
     const mountMetadata = deferred<void>();
     mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(

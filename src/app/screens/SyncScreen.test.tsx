@@ -564,11 +564,13 @@ describe('SyncScreen', () => {
 
     expect(screen.queryByText('Online · all synced')).toBeNull();
     expect(screen.queryByText('Offline · nothing pending')).toBeNull();
+    expect(screen.queryByText('All synced')).toBeNull();
 
     mockPendingUploads = { ...mockPendingUploads, countsRead: true };
     rerender(<SyncScreen />);
 
     expect(screen.getByText('Online · all synced')).toBeTruthy();
+    expect(screen.getByText('All synced')).toBeTruthy();
   });
 
   it('does not show All synced when pending counts are unknown', () => {

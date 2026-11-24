@@ -208,17 +208,20 @@ export default function SyncScreen() {
   const startBusy =
     controlStatus === 'paused' ? false : isStartControlPending || isUploading;
 
-  const secondaryContent = renderSecondaryContent(
-    status,
-    progressUploaded,
-    progressTotal,
-    nextRetryAt,
-    isUploading,
-    pendingChapterCount,
-    hasPendingUploads,
-    hasFailedUploads,
-    progressCurrentChapter,
-  );
+  // Zero unread counts derive "All synced"; see the status section below.
+  const secondaryContent = countsRead
+    ? renderSecondaryContent(
+        status,
+        progressUploaded,
+        progressTotal,
+        nextRetryAt,
+        isUploading,
+        pendingChapterCount,
+        hasPendingUploads,
+        hasFailedUploads,
+        progressCurrentChapter,
+      )
+    : null;
 
   return (
     <ScreenContainer>

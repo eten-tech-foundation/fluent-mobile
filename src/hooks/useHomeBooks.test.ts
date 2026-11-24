@@ -186,6 +186,18 @@ describe('useHomeBooks', () => {
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
+  it('drops the deferred refresh when the hook unmounts before the paint', async () => {
+    mockAfterFirstPaint.mockImplementationOnce(() => {});
+    const { result, unmount } = renderHook(() => useHomeBooks());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    unmount();
+    act(() => {
+      mockAfterFirstPaint.mock.calls[0][0]();
+    });
+    expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
   it('reads once on mount, leaving the metadata refresh to the refresh key', async () => {
     const mountMetadata = deferred();
     mockRefresh.mockReturnValueOnce(mountMetadata.promise);

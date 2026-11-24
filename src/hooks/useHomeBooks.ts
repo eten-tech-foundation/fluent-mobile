@@ -144,15 +144,19 @@ export function useHomeBooks(refreshKey = 0) {
       if (focusedBeforeRef.current) void loadBooksIfChanged();
       focusedBeforeRef.current = true;
       if (!getActiveUserId()) return;
+      let focused = true;
       const refreshMetadata = () => {
         const activeUserId = getActiveUserId();
-        if (!activeUserId) return;
+        if (!focused || !activeUserId) return;
         void refreshChapterMetadataIfOnline(Number(activeUserId));
       };
       // The first focus waits for Home's first paint (#1002); later focuses
-      // refresh at once.
+      // refresh at once. A blur or unmount before the paint drops it.
       if (firstFocus) afterFirstPaint(refreshMetadata);
       else refreshMetadata();
+      return () => {
+        focused = false;
+      };
     }, [loadBooksIfChanged]),
   );
 
