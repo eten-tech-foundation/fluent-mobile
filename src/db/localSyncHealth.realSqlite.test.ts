@@ -12,6 +12,10 @@ jest.mock('../services/storage', () => ({
   getActiveUserId: () => mockUserId,
 }));
 
+jest.mock('../navigation/splashGate', () => ({
+  afterFirstPaint: (fn: () => void) => fn(),
+}));
+
 import type { DB } from '@op-engineering/op-sqlite';
 import { renderHook, waitFor } from '@testing-library/react-native';
 import {

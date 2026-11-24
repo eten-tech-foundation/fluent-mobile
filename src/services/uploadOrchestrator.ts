@@ -56,8 +56,10 @@ async function capturedQueueOwnerToken(
   // owner's queue with the mutable global bearer after an account switch.
   if (!(await hasPending().catch(() => true))) return null;
   const ownerId = String(userId);
-  setReauthRequired(ownerId);
-  if (getActiveUserId() === ownerId) emitAuthReauthRequired(ownerId);
+  const changed = setReauthRequired(ownerId);
+  if (changed !== false && getActiveUserId() === ownerId) {
+    emitAuthReauthRequired(ownerId);
+  }
   throw new AuthError(
     'Queued owner credentials are missing',
     'OWNER_CREDENTIALS_MISSING',

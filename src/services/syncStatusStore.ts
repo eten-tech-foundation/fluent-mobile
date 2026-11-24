@@ -45,6 +45,12 @@ export interface SyncStatusSnapshot {
    * not present them as "All synced".
    */
   countsUnknown: boolean;
+  /**
+   * False until the first read for this user lands. On launch that read waits
+   * for Home's first paint (#1002), so the zero counts before it are not an
+   * answer and must not read as "All synced".
+   */
+  countsRead: boolean;
   isUploading: boolean;
   uploadProgress: UploadProgress | null;
 }
@@ -56,6 +62,7 @@ export const EMPTY_SYNC_STATUS_SNAPSHOT: SyncStatusSnapshot = {
   unuploadableCount: 0,
   failedErrorText: null,
   countsUnknown: false,
+  countsRead: false,
   isUploading: false,
   uploadProgress: null,
 };
@@ -93,6 +100,7 @@ function snapshotEquals(a: SyncStatusSnapshot, b: SyncStatusSnapshot): boolean {
     a.unuploadableCount === b.unuploadableCount &&
     a.failedErrorText === b.failedErrorText &&
     a.countsUnknown === b.countsUnknown &&
+    a.countsRead === b.countsRead &&
     a.isUploading === b.isUploading &&
     a.uploadProgress?.completed === b.uploadProgress?.completed &&
     a.uploadProgress?.total === b.uploadProgress?.total &&
@@ -368,6 +376,7 @@ async function readIntoStore(writes?: DatabaseWriteMark | null): Promise<void> {
         unuploadable.status === 'rejected' ||
         chaptersFailed ||
         failedCountFailed,
+      countsRead: true,
       isUploading: pendingFinalRefresh ? false : snapshot.isUploading,
       uploadProgress: snapshot.uploadProgress,
     });
