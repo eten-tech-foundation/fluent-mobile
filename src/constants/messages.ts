@@ -239,3 +239,22 @@ export const RECORD_PAUSED_TAKE = 'Paused. Eject finishes the take.';
 export const RECORD_SETUP_FAILED_TITLE = "Couldn't start recording";
 export const RECORD_SETUP_FAILED_MESSAGE =
   'Something went wrong getting ready to record. Try Record again.';
+
+/** Next passage Resources (#912). */
+export const PASSAGE_RESOURCES_TITLE = 'Resources';
+export const PASSAGE_RESOURCES_COLLAPSE = 'Collapse resources';
+export const PASSAGE_IMAGES_TITLE = 'Images and maps';
+export const PASSAGE_IMAGES_LOADING = 'Loading images and maps';
+export const PASSAGE_IMAGES_EMPTY = 'No images or maps here.';
+export const PASSAGE_IMAGES_UNPREPARED =
+  "Images and maps aren't on this phone yet. Download them from Prepare for Offline while you're online.";
+export const PASSAGE_IMAGES_NONE_OFFLINE =
+  'No images or maps for this chapter are on this phone.';
+export const PASSAGE_IMAGES_NO_TEXT =
+  "Images and maps show once this chapter's text is on the phone.";
+export const PASSAGE_IMAGES_FAILED = "Images and maps couldn't load.";
+export const PASSAGE_IMAGES_RETRY = 'Retry';
+export const PASSAGE_IMAGES_RETRY_LABEL = 'Retry loading images and maps';
+export const PASSAGE_IMAGE_UNAVAILABLE = 'Image unavailable';
+export const PASSAGE_IMAGE_GROW_HINT = 'Shows the whole image';
+export const PASSAGE_IMAGE_SHRINK_HINT = 'Shows it smaller';

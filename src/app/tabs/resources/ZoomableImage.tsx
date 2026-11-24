@@ -7,7 +7,12 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  Gesture,
+  GestureDetector,
+  type GestureStateManager,
+  type GestureTouchEvent,
+} from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -19,6 +24,8 @@ import { theme } from '../../../theme';
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const RESET_EPSILON = 0.01;
+/** How far a finger can move and still be a tap. */
+const TAP_SLOP = 10;
 
 type ZoomableImageProps = {
   uri: string;
@@ -27,7 +34,8 @@ type ZoomableImageProps = {
   contentFit?: 'cover' | 'contain';
   testID?: string;
   onLoadError?: () => void;
-  onLoad?: () => void;
+  /** Gets the image's own size, for callers that fit to its shape. */
+  onLoad?: (size: { width: number; height: number }) => void;
   /** Invoked on a clean single tap (not a pinch/pan/double-tap). */
   onPress?: () => void;
   /**
@@ -37,7 +45,14 @@ type ZoomableImageProps = {
   hostBackgroundColor?: string;
 };
 
-function clampTranslate(
+/** Pinch scale held to 1x–4x. */
+export function clampScale(savedScale: number, pinchScale: number) {
+  'worklet';
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, savedScale * pinchScale));
+}
+
+/** Keeps a zoomed image's edges from panning inside the viewport. */
+export function clampTranslate(
   x: number,
   y: number,
   scaleValue: number,
@@ -98,10 +113,7 @@ export function ZoomableImage({
 
   const pinch = Gesture.Pinch()
     .onUpdate(event => {
-      const next = Math.min(
-        MAX_SCALE,
-        Math.max(MIN_SCALE, savedScale.value * event.scale),
-      );
+      const next = clampScale(savedScale.value, event.scale);
       scale.value = next;
       const clamped = clampTranslate(
         translateX.value,
@@ -149,15 +161,32 @@ export function ZoomableImage({
       savedTranslateY.value = translateY.value;
     });
 
+  // Taps are one still finger: a second finger (a pinch starting) or a
+  // finger that moves fails them, so a quick pinch or a drag never taps,
+  // and two quick pinches never read as a double tap that resets the zoom.
+  const failOnSecondFinger = (
+    event: GestureTouchEvent,
+    manager: GestureStateManager,
+  ) => {
+    'worklet';
+    if (event.numberOfTouches > 1) manager.fail();
+  };
+
   const doubleTap = Gesture.Tap()
+    .withTestId('zoomable-image-double-tap')
     .numberOfTaps(2)
+    .maxDistance(TAP_SLOP)
+    .onTouchesDown(failOnSecondFinger)
     .onEnd(() => {
       resetZoom();
     });
 
   const singleTap = onPress
     ? Gesture.Tap()
+        .withTestId('zoomable-image-tap')
         .numberOfTaps(1)
+        .maxDistance(TAP_SLOP)
+        .onTouchesDown(failOnSecondFinger)
         .onEnd(() => {
           scheduleOnRN(onPress);
         })
@@ -190,7 +219,12 @@ export function ZoomableImage({
             contentFit={contentFit}
             accessibilityLabel={accessibilityLabel}
             onError={onLoadError}
-            onLoad={onLoad}
+            onLoad={
+              onLoad
+                ? e =>
+                    onLoad({ width: e.source.width, height: e.source.height })
+                : undefined
+            }
             cachePolicy="memory-disk"
           />
         </Animated.View>

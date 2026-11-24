@@ -170,4 +170,41 @@ describe('useImagesMapsForUnit', () => {
     }
     expect(result.current.state.items).toEqual([]);
   });
+
+  it.each([
+    ['account', { userId: 6 }],
+    ['language', { languageCode: 'spa' }],
+    ['connectivity', { isOnline: true }],
+  ])(
+    "never renders the previous %s's images after a switch",
+    async (_name, change) => {
+      mockLoad.mockResolvedValueOnce(SAMPLE_ITEMS);
+      const rendered: string[] = [];
+      const base = {
+        projectId: 7,
+        userId: 5 as number | null,
+        languageCode: 'eng',
+        isOnline: false as boolean,
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 2,
+      };
+      const { result, rerender } = renderHook(
+        (props: typeof base) => {
+          const hook = useImagesMapsForUnit(props);
+          rendered.push(hook.state.status);
+          return hook;
+        },
+        { initialProps: base },
+      );
+      await waitFor(() => {
+        expect(result.current.state.status).toBe('ready');
+      });
+
+      mockLoad.mockReturnValueOnce(new Promise(() => {}));
+      const from = rendered.length;
+      rerender({ ...base, ...change });
+      expect(rendered.slice(from)).not.toContain('ready');
+    },
+  );
 });
