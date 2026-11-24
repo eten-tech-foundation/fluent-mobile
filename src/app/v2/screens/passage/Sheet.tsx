@@ -37,6 +37,7 @@ import { useDraftingUnit } from '../../../../hooks/useDraftingUnit';
 import { useHaptics } from '../../../../hooks/useHaptics';
 import type { HeaderSync } from '../../../../hooks/useHeaderSync';
 import type { usePassage } from '../../../../hooks/usePassage';
+import type { PassageRecovery } from '../../../../navigation/passageRecovery';
 import {
   hasVerseStart,
   verseStartMs,
@@ -175,6 +176,7 @@ export function Sheet({
   onReload,
   anchorVerse,
   openVerse,
+  recovery,
   chapterName,
   milestoneName,
   onBack,
@@ -194,6 +196,8 @@ export function Sheet({
   anchorVerse: number;
   /** In verse mode, the verse Record opens on, e.g. a recovered take's. */
   openVerse?: number;
+  /** A paused take this page was opened to pick back up, as it was saved. */
+  recovery?: PassageRecovery | null;
   /** e.g. "Mark 14"; the title's sheet links it up to the book page. */
   chapterName: string;
   milestoneName: string;
@@ -238,14 +242,16 @@ export function Sheet({
   const collapsed = actionsTop + actions + spacing.xl;
   const range = Math.max(1, container - collapsed);
   const fullScript = Math.max(preview, container - headerBottom - panel);
-  // Settings picks the unit; a chapter without pericopes is verse by verse.
+  // Settings picks the unit, or a recovered take's own; a chapter without
+  // pericopes is verse by verse.
   const { draftingUnit } = useDraftingUnit();
-  const unit = passage.wholeChapter ? 'verse' : draftingUnit;
+  const unit = passage.wholeChapter ? 'verse' : recovery?.unit ?? draftingUnit;
   const recorder = useRecorder({
     passage,
     userId,
     unit,
     openVerse,
+    sessionVerse: recovery?.verse,
     showing: expanded && recordMode,
     focused,
     downloading: downloadState === 'downloading',

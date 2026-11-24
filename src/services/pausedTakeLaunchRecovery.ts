@@ -5,6 +5,7 @@ import {
   listPausedTakes,
   type PausedTakeMarker,
 } from './pausedTakes';
+import { isPausedTakeForeign } from './pausedTakeOwner';
 import { decideRecovery } from './pausedTakeRecovery';
 
 const log = logger.create('pausedTakeLaunchRecovery');
@@ -14,12 +15,17 @@ const log = logger.create('pausedTakeLaunchRecovery');
  *
  * Returns the markers worth prompting for (carrying only surviving segments).
  * Orphaned markers and markers with no surviving segment files are removed along
- * with their files, keeping the #170 cleanup behavior.
+ * with their files, keeping the #170 cleanup behavior. Another account's takes
+ * are skipped before anything is read or removed: that account answers them,
+ * or cleans them up, when it launches.
  */
-export async function collectLaunchRecoveries(): Promise<PausedTakeMarker[]> {
+export async function collectLaunchRecoveries(
+  userId: number | null,
+): Promise<PausedTakeMarker[]> {
   const prompts: PausedTakeMarker[] = [];
 
   for (const marker of listPausedTakes()) {
+    if (isPausedTakeForeign(marker, userId)) continue;
     const existing = new Set<string>();
     await Promise.all(
       marker.segments.map(async uri => {
