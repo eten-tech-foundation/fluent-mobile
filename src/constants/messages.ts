@@ -243,6 +243,9 @@ export const TAKE_REVIEW_YOU = '(you)';
 /** One line on the take card, so these stay short. */
 export const RECORD_RECOVERED_TAKE = 'Take recovered. Eject finishes it.';
 export const RECORD_PAUSED_TAKE = 'Paused. Eject finishes the take.';
+/** Alert when Record would replace another account's paused take. */
+export const RECORD_FOREIGN_PAUSED_TAKE =
+  'Another account has a paused recording here. Switch to it to finish or discard it.';
 /** Record couldn't get ready (mic request or take count failed); retryable. */
 export const RECORD_SETUP_FAILED_TITLE = "Couldn't start recording";
 export const RECORD_SETUP_FAILED_MESSAGE =

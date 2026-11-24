@@ -93,7 +93,8 @@ export const hrefs = {
   passage: (params: {
     chapterId: number;
     anchorVerse: number;
-    projectId: number;
+    /** Null on a chapter row without one; the page then has no book link. */
+    projectId: number | null;
     projectUnitId: number;
     chapterName: string;
     projectName: string;
@@ -103,13 +104,17 @@ export const hrefs = {
     from?: 'book';
     /** Verse mode opens Record here, e.g. on a recovered verse take. */
     verse?: number;
+    /** A paused take to pick back up, as it was saved (#914). */
+    recover?: { sessionKey: string; verse: number };
   }) =>
     ({
       pathname: '/(app)/(stack)/passage' as const,
       params: {
         chapterId: String(params.chapterId),
         anchorVerse: String(params.anchorVerse),
-        projectId: String(params.projectId),
+        ...(params.projectId !== null
+          ? { projectId: String(params.projectId) }
+          : {}),
         projectUnitId: String(params.projectUnitId),
         chapterName: params.chapterName,
         projectName: params.projectName,
@@ -117,6 +122,12 @@ export const hrefs = {
         language: params.language,
         ...(params.from ? { from: params.from } : {}),
         ...(params.verse !== undefined ? { verse: String(params.verse) } : {}),
+        ...(params.recover
+          ? {
+              recoverSessionKey: params.recover.sessionKey,
+              recoverVerse: String(params.recover.verse),
+            }
+          : {}),
       },
     } as const),
   addUser: '/(app)/(stack)/add-user' as const,
