@@ -6,8 +6,14 @@ import { usePendingUploads } from './usePendingUploads';
 import { useReauthRequired } from './useReauthRequired';
 import { onSyncComplete } from '../services/syncEvents';
 import { hasPersistedMetadataSyncErrors } from '../utils/metadataSyncErrors';
-import { deriveSyncStatus } from '../utils/syncStatusState';
+import { deriveSyncStatus, type SyncStatus } from '../utils/syncStatusState';
 import { isEffectivelyOnlineForTransfer } from '../utils/transportPolicy';
+
+const STATUSES_PENDING_COULD_OUTRANK: ReadonlySet<SyncStatus> = new Set([
+  'online_synced',
+  'online_needs_sync',
+  'offline_synced',
+]);
 
 interface UseSyncStatusOptions {
   isSyncing: boolean;
@@ -34,6 +40,7 @@ export function useSyncStatus({
     hasPendingUploads,
     hasFailedUploads,
     countsUnknown,
+    countsRead,
     isUploading,
     uploadProgress,
   } = usePendingUploads(refreshKey);
@@ -77,18 +84,27 @@ export function useSyncStatus({
   const connectivityPending =
     !hasResolved || (isOnline && !hasTransferResolved);
 
+  const derivedStatus = deriveSyncStatus({
+    isOnline: effectivelyOnline,
+    connectivityPending,
+    isSyncing,
+    hasPendingUploads: hasPendingUploads || countsUnknown,
+    isUploading,
+    hasFailedUploads,
+    needsDownloadSync,
+    hasSyncRetryWork,
+    needsTextSync,
+  });
+  // Before the first count read (held until Home paints on launch, #1002)
+  // zero pending is not an answer: stay neutral instead of a state that
+  // pending uploads would have outranked.
+  const status =
+    !countsRead && STATUSES_PENDING_COULD_OUTRANK.has(derivedStatus)
+      ? 'checking'
+      : derivedStatus;
+
   return {
-    status: deriveSyncStatus({
-      isOnline: effectivelyOnline,
-      connectivityPending,
-      isSyncing,
-      hasPendingUploads: hasPendingUploads || countsUnknown,
-      isUploading,
-      hasFailedUploads,
-      needsDownloadSync,
-      hasSyncRetryWork,
-      needsTextSync,
-    }),
+    status,
     isOnline: effectivelyOnline,
     pendingCount,
     failedCount,

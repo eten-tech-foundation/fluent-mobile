@@ -43,6 +43,7 @@ import { appStyles } from '../app/appStyles';
 import { theme } from '../theme';
 import { useTheme, useThemedStyles } from '../theme/useTheme';
 import {
+  afterFirstPaint,
   armSplashGate,
   hideSplash,
   holdSplashForFirstPaint,
@@ -200,22 +201,30 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     }
 
     startUploadProgressNotification();
-    // E2E holds (DEV + E2E mode + QA API only). Upload hold: with no
-    // orchestrator, notifyPendingUploads is a no-op and Sync-page upload
-    // controls report "not started". Download hold: auto-resume only.
-    if (isE2eUploadHoldEnabled()) {
-      log.info('E2E upload hold: leaving upload orchestrator stopped');
-    } else {
-      startUploadOrchestrator();
-    }
+    // Upload orchestration, download auto-resume, and the first sync-status
+    // read wait for Home's first paint (#1002). A cleanup before the paint
+    // cancels them, so they never start for a session that already ended.
+    let cancelled = false;
     let stopAutoResume: (() => void) | null = null;
-    if (isE2eDownloadAutoResumeHoldEnabled()) {
-      log.info('E2E download hold: skipping download queue auto-resume');
-    } else {
-      stopAutoResume = startDownloadQueueAutoResume();
-    }
-    void refreshSyncStatusStoreIfChanged();
+    afterFirstPaint(() => {
+      if (cancelled) return;
+      // E2E holds (DEV + E2E mode + QA API only). Upload hold: with no
+      // orchestrator, notifyPendingUploads is a no-op and Sync-page upload
+      // controls report "not started". Download hold: auto-resume only.
+      if (isE2eUploadHoldEnabled()) {
+        log.info('E2E upload hold: leaving upload orchestrator stopped');
+      } else {
+        startUploadOrchestrator();
+      }
+      if (isE2eDownloadAutoResumeHoldEnabled()) {
+        log.info('E2E download hold: skipping download queue auto-resume');
+      } else {
+        stopAutoResume = startDownloadQueueAutoResume();
+      }
+      void refreshSyncStatusStoreIfChanged();
+    });
     return () => {
+      cancelled = true;
       stopUploadProgressNotification();
       stopUploadOrchestrator();
       stopDownloadQueueAutoResume(stopAutoResume);
