@@ -622,4 +622,26 @@ describe('useSyncStatus before reachability is known', () => {
       expect(result.current.status).toMatch(/_pending$/);
     },
   );
+
+  it('still shows a running sync while the counts are unread (#1002)', () => {
+    mockUseConnectivity.mockReturnValue(resolved({ isLinkOnline: true }));
+    mockUsePendingUploads.mockReturnValue({
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      failedCount: 0,
+      unuploadableCount: 0,
+      hasPendingUploads: false,
+      hasFailedUploads: false,
+      hasUnuploadablePending: false,
+      countsUnknown: false,
+      countsRead: false,
+      failedErrorText: null,
+      isUploading: false,
+      uploadProgress: null,
+    });
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: true, refreshKey: 0 }),
+    );
+    expect(result.current.status).toBe('online_syncing');
+  });
 });
