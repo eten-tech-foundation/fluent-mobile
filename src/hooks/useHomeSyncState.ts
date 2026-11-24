@@ -17,7 +17,16 @@ import {
 import { getPrepareOfflineDownloadStarted } from '../services/storage';
 import { isEffectivelyOnlineForTransfer } from '../utils/transportPolicy';
 import { createPrepareOfflineAutoPromptController } from '../utils/prepareOfflineAutoPrompt';
-import { getProjectsWithSummary, isUserAssignedToProject } from '../db/queries';
+import {
+  getProjectsWithSummary,
+  hasPendingChapterClaimsForUser,
+  hasPendingStageAdvancesForUser,
+  isUserAssignedToProject,
+} from '../db/queries';
+import {
+  shouldShowSessionExpiredBanner,
+  signInToSyncAccessibilityLabel,
+} from '../utils/sessionExpiredPrompt';
 import { hrefs } from '../navigation/hrefs';
 import { parseOptionalBoolean } from '../navigation/routeParams';
 import type { SyncStatus } from '../utils/syncStatusState';
@@ -31,6 +40,12 @@ export interface HomeSyncState {
   syncStatus: SyncStatus;
   failedErrorText: string | null;
   reauthRequired: boolean;
+  /** Banner only when online and a sync is blocked on a sign-in. */
+  showSessionExpiredBanner: boolean;
+  /** Spoken cloud label while online and a sign-in is needed to sync. */
+  signInToSyncLabel: string | null;
+  /** Remember a Sync tap so the banner can appear once the device is online. */
+  noteSyncOpened: () => void;
 }
 
 /**
@@ -52,8 +67,16 @@ export function useHomeSyncState({
     () => parseOptionalBoolean(params.newUserLoading) === true,
   );
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
-  const { isLinkOnline, isWifi, connectionType, hasTransferResolved } =
-    useConnectivity();
+  const {
+    isOnline,
+    hasResolved,
+    isLinkOnline,
+    isWifi,
+    connectionType,
+    hasTransferResolved,
+  } = useConnectivity();
+  // `isOnline` starts true until the first `/health` answer.
+  const isFluentReachable = hasResolved && isOnline;
   const { uploadOverCellular } = usePreferences();
   const isFocused = useIsFocused();
 
@@ -147,6 +170,7 @@ export function useHomeSyncState({
     needsDownloadSync,
     isOnline: syncIsOnline,
     failedErrorText,
+    hasPendingUploads,
   } = useSyncStatus({
     isSyncing: isSyncing || isSyncingGlobal,
     refreshKey,
@@ -300,6 +324,54 @@ export function useHomeSyncState({
   const { reauthRequired, refreshReauthRequired } = useReauthRequired({
     refreshOnFocus: true,
   });
+  const [syncOpenedWhileReauth, setSyncOpenedWhileReauth] = useState(false);
+  const [hasQueuedSyncWork, setHasQueuedSyncWork] = useState(false);
+
+  const noteSyncOpened = useCallback(() => {
+    // A Sync tap before this session needed a sign-in must not count.
+    if (reauthRequired) setSyncOpenedWhileReauth(true);
+  }, [reauthRequired]);
+
+  useEffect(() => {
+    if (!reauthRequired) {
+      setSyncOpenedWhileReauth(false);
+      setHasQueuedSyncWork(false);
+      return;
+    }
+    const userId = parseUserId();
+    if (!userId) return;
+    let cancelled = false;
+    // One failed read must not hide work the other read found.
+    void Promise.allSettled([
+      hasPendingChapterClaimsForUser(userId),
+      hasPendingStageAdvancesForUser(userId),
+    ]).then(results => {
+      if (cancelled) return;
+      setHasQueuedSyncWork(
+        results.some(
+          result => result.status === 'fulfilled' && result.value === true,
+        ),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reauthRequired, userSwitchEpoch, refreshKey, isFocused, syncIsOnline]);
+
+  const showSessionExpiredBanner = shouldShowSessionExpiredBanner({
+    reauthRequired,
+    // Fluent `/health` reachability, not the NetInfo link or the cellular
+    // upload policy: a sign-in can only complete when the server answers,
+    // and a Wi-Fi-only upload setting must not hide "sign in to sync".
+    // Pending take deletions are already inside hasPendingUploads.
+    isOnline: isFluentReachable,
+    hasPendingSyncWork: hasPendingUploads || hasQueuedSyncWork,
+    syncOpened: syncOpenedWhileReauth,
+  });
+  const signInToSyncLabel = signInToSyncAccessibilityLabel({
+    reauthRequired,
+    isOnline: isFluentReachable,
+  });
 
   // The lists read on mount by themselves. Homes remount per account
   // (`key={userSwitchEpoch}`); the bump only covers a caller that doesn't.
@@ -324,5 +396,8 @@ export function useHomeSyncState({
     syncStatus,
     failedErrorText,
     reauthRequired,
+    showSessionExpiredBanner,
+    signInToSyncLabel,
+    noteSyncOpened,
   };
 }
