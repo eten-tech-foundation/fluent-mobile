@@ -19,6 +19,7 @@ import {
   BIBLE_TEXT_CURSOR_OVERLAP_MS,
   CATALOGUE_REFRESH_QUIET_MS,
   METADATA_REFRESH_FRESH_MS,
+  handleSyncAuthFailure,
   refreshChapterMetadataIfOnline,
   refreshPrepareOfflineReferencedParents,
   syncAllData,
@@ -555,6 +556,9 @@ describe('refreshChapterMetadataIfOnline', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (
+      jest.requireMock('./storage').isReauthRequired as jest.Mock
+    ).mockReturnValue(false);
+    (
       jest.requireMock('./storage').getBibleTextChapterSyncedAt as jest.Mock
     ).mockReturnValue('2026-01-01T00:00:00.000Z');
 
@@ -606,6 +610,41 @@ describe('refreshChapterMetadataIfOnline', () => {
     (selectExistingIds as jest.Mock).mockImplementation(
       async (_table: string, ids: number[]) => new Set(ids),
     );
+  });
+
+  it('does not call the API when this user already needs to sign in', async () => {
+    const isReauth = jest.requireMock('./storage')
+      .isReauthRequired as jest.Mock;
+    isReauth.mockReturnValue(true);
+    try {
+      await refreshChapterMetadataIfOnline(2);
+
+      expect(FluentAPI.getChapterAssignments).not.toHaveBeenCalled();
+      expect(FluentAPI.getUserChapterAssignments).not.toHaveBeenCalled();
+      expect(FluentAPI.getUserProjects).not.toHaveBeenCalled();
+    } finally {
+      // clearAllMocks resets the call index and would replay a Once value.
+      isReauth.mockReset();
+    }
+  });
+
+  it('emits reauth only when the flag newly changes', async () => {
+    const emit = jest.spyOn(syncEvents, 'emitAuthReauthRequired');
+    const setFlag = setReauthRequired as jest.Mock;
+    (getActiveUserId as jest.Mock).mockReturnValue('2');
+    try {
+      setFlag.mockReturnValue(false);
+      await handleSyncAuthFailure('2');
+      expect(emit).not.toHaveBeenCalled();
+
+      setFlag.mockReturnValue(true);
+      await handleSyncAuthFailure('2');
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith('2');
+    } finally {
+      emit.mockRestore();
+      setFlag.mockReset();
+    }
   });
 
   it('seeds project/assignment language+bible parents by id without catalogue cursors', async () => {

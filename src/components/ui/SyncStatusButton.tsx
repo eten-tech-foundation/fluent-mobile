@@ -48,6 +48,8 @@ export interface SyncStatusButtonProps {
   failedErrorText?: string | null;
   /** Pending uploads are waiting for drafting to end: a visible word + label. */
   heldForDrafting?: boolean;
+  /** Online, and a sign-in is required before the next sync. */
+  signInToSyncLabel?: string | null;
   /** Opens the Sync page; the spoken status says so only when it's given. */
   onPress?: () => void;
   /** Flat on a dark hero, like its Back. */
@@ -64,6 +66,7 @@ export function SyncStatusButton({
   status,
   failedErrorText,
   heldForDrafting,
+  signInToSyncLabel,
   onPress,
   variant,
   style,
@@ -76,9 +79,10 @@ export function SyncStatusButton({
       icon={STATUS_ICONS[status]}
       label={held ? SYNC_STATUS_HELD_FOR_DRAFTING_SHORT : undefined}
       accessibilityLabel={
-        onPress
+        signInToSyncLabel ??
+        (onPress
           ? formatSyncStatusLabel(status, { failedErrorText, heldForDrafting })
-          : statusName(status, failedErrorText, heldForDrafting)
+          : statusName(status, failedErrorText, heldForDrafting))
       }
       onPress={onPress}
       style={style}
