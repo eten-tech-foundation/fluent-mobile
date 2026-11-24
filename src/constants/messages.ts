@@ -48,6 +48,14 @@ export const IMAGES_MAPS_LOAD_ERROR = 'Images unavailable';
 
 export const TRANSLATION_NOTES_LOAD_ERROR = 'Unable to load Translation Notes.';
 
+/** Next player's notes status, under the waveform in Listen (#902). */
+export const PASSAGE_NOTES_LOADING = 'Loading translation notes…';
+export const PASSAGE_NOTES_RETRYING = 'Trying translation notes again…';
+export const PASSAGE_NOTES_EMPTY = 'No translation notes for this passage.';
+export const PASSAGE_NOTES_PARTIAL = "Some translation notes didn't load.";
+export const PASSAGE_NOTES_OFFLINE =
+  "Some translation notes aren't on this phone. Connect to the internet to load them.";
+
 export const TRANSLATION_NOTE_EMPTY_BODY = 'No note text available.';
 
 export const TRANSLATION_QUESTIONS_LOAD_ERROR =
@@ -242,3 +250,22 @@ export const RECORD_FOREIGN_PAUSED_TAKE =
 export const RECORD_SETUP_FAILED_TITLE = "Couldn't start recording";
 export const RECORD_SETUP_FAILED_MESSAGE =
   'Something went wrong getting ready to record. Try Record again.';
+
+/** Next passage Resources (#912). */
+export const PASSAGE_RESOURCES_TITLE = 'Resources';
+export const PASSAGE_RESOURCES_COLLAPSE = 'Collapse resources';
+export const PASSAGE_IMAGES_TITLE = 'Images and maps';
+export const PASSAGE_IMAGES_LOADING = 'Loading images and maps';
+export const PASSAGE_IMAGES_EMPTY = 'No images or maps here.';
+export const PASSAGE_IMAGES_UNPREPARED =
+  "Images and maps aren't on this phone yet. Download them from Prepare for Offline while you're online.";
+export const PASSAGE_IMAGES_NONE_OFFLINE =
+  'No images or maps for this chapter are on this phone.';
+export const PASSAGE_IMAGES_NO_TEXT =
+  "Images and maps show once this chapter's text is on the phone.";
+export const PASSAGE_IMAGES_FAILED = "Images and maps couldn't load.";
+export const PASSAGE_IMAGES_RETRY = 'Retry';
+export const PASSAGE_IMAGES_RETRY_LABEL = 'Retry loading images and maps';
+export const PASSAGE_IMAGE_UNAVAILABLE = 'Image unavailable';
+export const PASSAGE_IMAGE_GROW_HINT = 'Shows the whole image';
+export const PASSAGE_IMAGE_SHRINK_HINT = 'Shows it smaller';

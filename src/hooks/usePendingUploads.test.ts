@@ -18,6 +18,15 @@ jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),
 }));
 
+let mockPainted = true;
+const mockPaintQueue: Array<() => void> = [];
+jest.mock('../navigation/splashGate', () => ({
+  afterFirstPaint: (fn: () => void) => {
+    if (mockPainted) fn();
+    else mockPaintQueue.push(fn);
+  },
+}));
+
 jest.mock('../utils/parseUserId', () => ({ parseUserId: jest.fn(() => 7) }));
 jest.mock('../db/queries', () => ({
   getDatabaseWriteMark: jest.fn(() => Promise.resolve(null)),
@@ -81,6 +90,8 @@ function deferred<T>() {
 describe('usePendingUploads (shared sync-status store)', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    mockPainted = true;
+    mockPaintQueue.length = 0;
     resetSyncStatusStoreForTests();
     mockGetPendingUploadCount.mockResolvedValue(0);
     mockGetFailedUploadCount.mockResolvedValue(0);
@@ -121,6 +132,43 @@ describe('usePendingUploads (shared sync-status store)', () => {
       expect(result.current.hasFailedUploads).toBe(true);
       expect(result.current.failedErrorText).toBeNull();
     });
+  });
+
+  it('holds the launch read until the first paint (#1002)', async () => {
+    mockPainted = false;
+    mockGetPendingUploadCount.mockResolvedValue(2);
+
+    const { result } = renderHook(() => usePendingUploads(0));
+    fireFocusEffect();
+    await act(async () => {});
+
+    expect(mockGetPendingUploadCount).not.toHaveBeenCalled();
+    expect(result.current.pendingCount).toBe(0);
+    expect(result.current.countsRead).toBe(false);
+
+    act(() => {
+      for (const run of mockPaintQueue.splice(0)) run();
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingCount).toBe(2);
+    });
+    expect(result.current.countsRead).toBe(true);
+    expect(mockGetPendingUploadCount).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks counts read even when every count is zero, and unread after a reset', async () => {
+    const { result } = renderHook(() => usePendingUploads(0));
+    await waitFor(() => {
+      expect(result.current.countsRead).toBe(true);
+    });
+    expect(result.current.pendingCount).toBe(0);
+
+    act(() => {
+      resetSyncStatusStore();
+    });
+
+    expect(result.current.countsRead).toBe(false);
   });
 
   it('re-reads when a take is saved (recording data changed)', async () => {
