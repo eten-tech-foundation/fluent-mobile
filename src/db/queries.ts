@@ -1871,6 +1871,10 @@ export async function assignmentHasPendingUploads(
    */
   recordedBefore?: string,
 ): Promise<boolean> {
+  // The account's own held takes count too (#855). A held take is earlier
+  // work still waiting for membership, not work that will never upload: if
+  // the advance went first, the take would reach a chapter that had already
+  // moved on once it is released, and be rejected.
   const db = getDatabase();
   const takeCutoff =
     recordedBefore === undefined ? '' : 'AND r.created_at <= ?';
@@ -1903,8 +1907,26 @@ export async function assignmentHasPendingUploads(
          WHERE ca.id = ?
            AND ${pendingDeletionWhere(userId)}
            ${deleteCutoff}
+       ) + (
+         SELECT COUNT(*)
+         FROM recordings r
+         JOIN bible_texts bt ON bt.id = r.bible_text_id
+         JOIN chapter_assignments ca
+           ON ca.bible_id = bt.bible_id
+          AND ca.book_id = bt.book_id
+          AND ca.chapter_number = bt.chapter_number
+          AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)
+         WHERE ca.id = ?
+           AND r.sync_status = 'held'
+           AND r.recorded_by_user_id = ?
+           AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
+           AND r.bible_text_id > 0
+           ${takeCutoff}
        ) AS count`,
       [
+        chapterAssignmentId,
+        userId,
+        ...cutoffParams,
         chapterAssignmentId,
         userId,
         ...cutoffParams,

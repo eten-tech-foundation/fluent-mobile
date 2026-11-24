@@ -11,6 +11,7 @@ import {
   reconcileHeldRecordings,
 } from '../db/repositories/heldRecordingsRepository';
 import {
+  beginMembershipCheck,
   getVerifiedMembershipOwners,
   invalidateVerifiedMembershipOwners,
   refreshMembershipForOwners,
@@ -229,9 +230,19 @@ async function refreshMembershipBeforeUpload(): Promise<void> {
   if (!Number.isFinite(activeUserId) || activeUserId <= 0) {
     return;
   }
+  // One generation covers the owner lookup and the refresh, so a failure in
+  // either only clears the set while no newer session has checked since.
+  const generation = beginMembershipCheck();
   try {
-    const owners = await getRecordingOwnerIds(activeUserId);
-    const verified = await refreshMembershipForOwners(owners);
+    // Accounts whose only queued work is a stage advance are checked too
+    // (#854): their membership decides whether that advance can still land,
+    // and so whether another account's later takes on the chapter must wait
+    // for it. They are not part of the take owners an upload pass gates on.
+    const owners = new Set(await getRecordingOwnerIds(activeUserId));
+    for (const owner of distinctOwners(await getPendingStageAdvances())) {
+      owners.add(owner);
+    }
+    const verified = await refreshMembershipForOwners([...owners], generation);
     if (verified.size === 0) {
       throw new Error(
         'Project membership could not be confirmed for any account',
@@ -240,8 +251,9 @@ async function refreshMembershipBeforeUpload(): Promise<void> {
   } catch (error) {
     // The session goes on with claims and stage advances (#855). Chapter
     // passes read the confirmed-owner set, so clear it: an earlier session's
-    // answer must not let a take upload this time.
-    invalidateVerifiedMembershipOwners();
+    // answer must not let a take upload this time. A newer session's answer
+    // is left alone.
+    invalidateVerifiedMembershipOwners(generation);
     throw error;
   }
 }

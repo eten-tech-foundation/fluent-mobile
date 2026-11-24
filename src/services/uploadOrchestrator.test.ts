@@ -2787,6 +2787,85 @@ describe('uploadOrchestrator', () => {
     expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([500]);
   });
 
+  describe('session stopped during the membership lookup (#855)', () => {
+    const blockedLookup = () => {
+      const gate: { release: () => void } = { release: () => undefined };
+      const lookup = jest.fn(
+        () =>
+          new Promise<boolean>(resolve => {
+            gate.release = () => resolve(true);
+          }),
+      );
+      return { gate, lookup };
+    };
+
+    it.each([
+      [
+        'cancelled',
+        (h: ReturnType<typeof createHarness>) => h.orchestrator.cancel(),
+      ],
+      [
+        'paused',
+        (h: ReturnType<typeof createHarness>) => h.orchestrator.pause(),
+      ],
+      [
+        'stopped',
+        async (h: ReturnType<typeof createHarness>) => {
+          h.orchestrator.stop();
+        },
+      ],
+    ])(
+      'does not start the membership request when the session is %s mid-lookup',
+      async (_label, interrupt) => {
+        const refresh = jest.fn(async () => undefined);
+        const reconcile = jest.fn(async () => ({ held: 0, released: 0 }));
+        const { gate, lookup } = blockedLookup();
+        const h = createHarness({
+          refreshMembershipBeforeUpload: refresh,
+          reconcileHeldBeforeUpload: reconcile,
+          hasRecordingsAffectedByMembership: lookup,
+        });
+
+        h.emitConnectivity(true, true);
+        await h.waitFor(() => lookup.mock.calls.length === 1);
+        await interrupt(h);
+        gate.release();
+        await h.flush();
+        await h.flush();
+
+        expect(refresh).not.toHaveBeenCalled();
+        expect(reconcile).not.toHaveBeenCalled();
+        expect(h.uploaded).toEqual([]);
+      },
+    );
+
+    it('does not reconcile held takes when the session is cancelled during the refresh', async () => {
+      const gate: { release: () => void } = { release: () => undefined };
+      const refresh = jest.fn(
+        () =>
+          new Promise<void>(resolve => {
+            gate.release = resolve;
+          }),
+      );
+      const reconcile = jest.fn(async () => ({ held: 0, released: 0 }));
+      const h = createHarness({
+        refreshMembershipBeforeUpload: refresh,
+        reconcileHeldBeforeUpload: reconcile,
+        hasRecordingsAffectedByMembership: async () => true,
+      });
+
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => refresh.mock.calls.length === 1);
+      await h.orchestrator.cancel();
+      gate.release();
+      await h.flush();
+      await h.flush();
+
+      expect(reconcile).not.toHaveBeenCalled();
+      expect(h.uploaded).toEqual([]);
+    });
+  });
+
   it('does not start the membership request after the link switches to cellular mid-check (#855)', async () => {
     const refresh = jest.fn(async () => undefined);
     const link = { switchToCellular: (): void => undefined };

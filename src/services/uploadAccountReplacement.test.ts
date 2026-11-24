@@ -58,6 +58,10 @@ jest.mock('./projectMembership', () => {
       return verified;
     },
     getVerifiedMembershipOwners: () => verified,
+    beginMembershipCheck: () => 1,
+    invalidateVerifiedMembershipOwners: () => {
+      verified = new Set();
+    },
   };
 });
 jest.mock('../db/repository', () => ({

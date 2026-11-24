@@ -450,6 +450,20 @@ export function createUploadOrchestrator(
         connectionType,
         uploadOverCellular: deps.getUploadOverCellular(),
       }) === 'ok';
+    /**
+     * The session may be stopped (account switch), cancelled or paused while
+     * it waits. Checked after every await in the membership preflight, before
+     * any further request or write (#855). Cancel sets
+     * `suppressAutoUntilOnlineEdge` and Sync Now clears it on entry, so it
+     * stops either kind of session; the drafting hold only applies to
+     * automatic ones.
+     */
+    const sessionStillWanted = (): boolean =>
+      started &&
+      version === lifecycleVersion &&
+      !isUserPaused() &&
+      !suppressAutoUntilOnlineEdge &&
+      !(reason === 'auto' && draftingHold);
     const reconcileHeld = async (): Promise<void> => {
       // No take for membership to affect: no request, no reconcile.
       if (!heldRecordingsChecked && deps.hasRecordingsAffectedByMembership) {
@@ -457,6 +471,7 @@ export function createUploadOrchestrator(
           .hasRecordingsAffectedByMembership()
           .catch(() => true);
         if (!affected) return;
+        if (!sessionStillWanted()) return;
       }
       // Membership first, once per session: reconciliation can only compare
       // against cached `user_projects`, so a removal that happened offline is
@@ -470,6 +485,8 @@ export function createUploadOrchestrator(
         if (deps.refreshMembershipBeforeUpload) {
           try {
             await deps.refreshMembershipBeforeUpload();
+            // Do not hold or release takes for a session that no longer runs.
+            if (!sessionStillWanted()) return;
           } catch (error) {
             log.warn('Project membership refresh failed; deferring takes', {
               error,

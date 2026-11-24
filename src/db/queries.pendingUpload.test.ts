@@ -164,7 +164,11 @@ describe('pending upload queries (#545)', () => {
     expect(sql).toContain('FROM recordings r');
     expect(sql).toContain('FROM recording_deletions d');
     expect(sql).toContain('r.project_unit_id = ca.project_unit_id');
-    expect(mockExecute.mock.calls[0]?.[1]).toEqual([41863, 7, 41863, 7]);
+    // The account's own held takes count too (#855).
+    expect(sql).toContain("r.sync_status = 'held'");
+    expect(mockExecute.mock.calls[0]?.[1]).toEqual([
+      41863, 7, 41863, 7, 41863, 7,
+    ]);
   });
 
   it('assignmentHasPendingUploads is false when the assignment has no upload work', async () => {

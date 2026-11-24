@@ -54,12 +54,13 @@ export async function hasRecordingsAffectedByMembership(): Promise<boolean> {
 }
 
 /**
- * Accounts that own work this reconcile could touch, plus the active account.
+ * Accounts that own takes this reconcile could touch, plus the active account.
  * Legacy rows without an owner belong to the active account.
  *
- * Accounts whose only queued work is a stage advance are included too (#854):
- * their membership decides whether that advance can still land, and so whether
- * another account's takes on the same chapter must wait for it.
+ * Takes only: an upload pass treats any of these it cannot confirm as
+ * unverified membership. Accounts whose only queued work is a stage advance
+ * are added to the session's refresh instead (`uploadOrchestrator`), so a
+ * signed-out one does not keep every pass from completing (#854).
  */
 export async function getRecordingOwnerIds(
   activeUserId: number | null,
@@ -70,15 +71,11 @@ export async function getRecordingOwnerIds(
   }
   const db = getDatabase();
   const result = await db.execute(
-    `SELECT COALESCE(recorded_by_user_id, ?) AS owner_id
+    `SELECT DISTINCT COALESCE(recorded_by_user_id, ?) AS owner_id
      FROM recordings
      WHERE sync_status IN ('pending', 'failed', 'uploading', 'held')
        AND IFNULL(granularity, 'verse') IN ('verse', 'pericope')
-       AND bible_text_id > 0
-     UNION
-     SELECT user_id AS owner_id
-     FROM stage_advance_queue
-     WHERE sync_status = 'pending'`,
+       AND bible_text_id > 0`,
     [activeUserId],
   );
   for (const row of result.rows ?? []) {

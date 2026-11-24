@@ -20,11 +20,23 @@ export const OWNER_CREDENTIALS_MISSING = 'OWNER_CREDENTIALS_MISSING';
 /** Owners whose membership the latest refresh confirmed with the server. */
 let verifiedOwners: ReadonlySet<number> = new Set();
 /**
- * Bumped by every refresh (and by `invalidateVerifiedMembershipOwners`). Only
- * the latest refresh may publish its result, so a slow older refresh cannot
- * overwrite the owner set a newer session relies on.
+ * Bumped by every membership check. Only the latest check may publish its
+ * result or clear the set, so a slow older check (a session that was replaced
+ * by an account switch, say) cannot overwrite or wipe the owner set a newer
+ * session relies on.
  */
 let membershipRefreshGeneration = 0;
+
+/**
+ * Claim a generation for one membership check, before its owner lookup. Pass
+ * it to `refreshMembershipForOwners` and, on failure, to
+ * `invalidateVerifiedMembershipOwners`: both only act while it is still the
+ * latest check.
+ */
+export function beginMembershipCheck(): number {
+  membershipRefreshGeneration += 1;
+  return membershipRefreshGeneration;
+}
 
 /**
  * Owners confirmed by the most recent `refreshMembershipForOwners`. Chapter
@@ -123,8 +135,9 @@ export async function refreshProjectMembership(
  */
 export async function refreshMembershipForOwners(
   ownerIds: readonly number[],
+  /** From `beginMembershipCheck`; a fresh one is claimed when omitted. */
+  generation: number = beginMembershipCheck(),
 ): Promise<Set<number>> {
-  const generation = ++membershipRefreshGeneration;
   const verified = new Set<number>();
   for (const ownerId of new Set(ownerIds)) {
     try {
@@ -157,11 +170,12 @@ export async function refreshMembershipForOwners(
 }
 
 /**
- * Forget every confirmed owner, for a session whose membership refresh could
- * not run at all. Chapter passes then defer every take instead of trusting an
- * earlier session's answer.
+ * Forget every confirmed owner, for the check `generation` that failed (its
+ * owner lookup or refresh). Chapter passes then defer every take instead of
+ * trusting an earlier answer. A no-op once a newer check has started: that
+ * check's result, not this failure, is the current answer.
  */
-export function invalidateVerifiedMembershipOwners(): void {
-  membershipRefreshGeneration += 1;
+export function invalidateVerifiedMembershipOwners(generation: number): void {
+  if (generation !== membershipRefreshGeneration) return;
   verifiedOwners = new Set();
 }

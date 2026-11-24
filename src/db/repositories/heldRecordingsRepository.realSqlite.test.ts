@@ -405,14 +405,14 @@ async function uploadErrorOf(db: DB, id: string): Promise<string | null> {
     );
     await expect(getRecordingOwnerIds(1)).resolves.toEqual([1]);
     await expect(getRecordingOwnerIds(null)).resolves.toEqual([1]);
-    // An account whose only queued work is a stage advance is refreshed too
-    // (#854), so a removal can be confirmed for it.
+    // An account whose only queued work is a stage advance is not a take
+    // owner: upload passes gate on this list, so a signed-out one must not be
+    // in it. The session refresh checks it separately (#854).
     await mockDb.execute(
       `INSERT INTO stage_advance_queue
          (chapter_assignment_id, user_id, from_status, to_status, created_at)
        VALUES (500, 2, 'draft', 'peer_check', '2024-01-02')`,
     );
-    const withStage = await getRecordingOwnerIds(1);
-    expect([...withStage].sort()).toEqual([1, 2]);
+    await expect(getRecordingOwnerIds(1)).resolves.toEqual([1]);
   });
 });

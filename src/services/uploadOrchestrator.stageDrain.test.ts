@@ -42,15 +42,21 @@ jest.mock('../db/repositories/heldRecordingsRepository', () => ({
 }));
 // Membership refresh is exercised in projectMembership.test.ts; here it must
 // resolve so these drain sessions still run (#848).
+const mockRefreshOwners = jest.fn();
 jest.mock('./projectMembership', () => {
   let verified = new Set<number>();
   return {
     refreshProjectMembership: async () => undefined,
     refreshMembershipForOwners: async (ids: number[]) => {
+      mockRefreshOwners([...ids].sort((a, b) => a - b));
       verified = new Set(ids);
       return verified;
     },
     getVerifiedMembershipOwners: () => verified,
+    beginMembershipCheck: () => 1,
+    invalidateVerifiedMembershipOwners: () => {
+      verified = new Set();
+    },
   };
 });
 jest.mock('./connectivity', () => ({
@@ -546,6 +552,30 @@ describe('queued work from other accounts on this device (#854)', () => {
 
     expect(eventTypes()).not.toContain('complete');
     expect(mockDrain).not.toHaveBeenCalled();
+  });
+});
+
+describe('membership refresh for stage-advance-only accounts (#854)', () => {
+  it('checks an account whose only queued work is a stage advance', async () => {
+    // Account 20 has no takes on the device, only a queued stage advance.
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: `token-${id}`,
+    }));
+    mockGetPendingStageAdvances.mockResolvedValue([{ id: 1, userId: 20 }]);
+    mockDrain.mockResolvedValue({
+      synced: 1,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+      blocked: 0,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => eventTypes().includes('complete'));
+
+    // The active account (take owners list) plus the stage-only account.
+    expect(mockRefreshOwners).toHaveBeenCalledWith([10, 20]);
   });
 });
 
