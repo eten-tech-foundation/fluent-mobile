@@ -1,11 +1,12 @@
 import { pbkdf2Async } from '@noble/hashes/pbkdf2.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
-import { uuid } from 'expo-modules-core';
+import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
+import { getRandomBytesAsync } from 'expo-crypto';
 import { logger } from '../utils/logger';
 import {
   getCredentials,
   getPasswordVerifierRecord,
+  retryPendingVerifierCleanup,
   savePasswordVerifierRecord,
 } from './keychain';
 import { getKnownUserIds, getUserEmail } from './storage';
@@ -20,15 +21,18 @@ const log = logger.create('PasswordVerifier');
  */
 export const PASSWORD_VERIFIER_ITERATIONS = 10_000;
 const DERIVED_KEY_BYTES = 32;
+const SALT_BYTES = 16;
 const FAILURES_BEFORE_LOCKOUT = 5;
 const LOCKOUT_BASE_MS = 1000;
 const LOCKOUT_MAX_STEPS = 6;
 
 type StoredVerifier = {
-  v: 1;
+  v: 2;
   c: number;
   salt: string;
   hash: string;
+  /** SHA-256 of the session token saved by the same online sign-in. */
+  token: string;
 };
 
 type FailureState = { count: number; lockedUntil: number };
@@ -105,11 +109,12 @@ function parseRecord(raw: string | null): StoredVerifier | null {
   try {
     const parsed = JSON.parse(raw) as StoredVerifier;
     if (
-      parsed?.v !== 1 ||
+      parsed?.v !== 2 ||
       !Number.isInteger(parsed.c) ||
       parsed.c < 1 ||
       typeof parsed.salt !== 'string' ||
-      typeof parsed.hash !== 'string'
+      typeof parsed.hash !== 'string' ||
+      typeof parsed.token !== 'string'
     ) {
       return null;
     }
@@ -119,26 +124,42 @@ function parseRecord(raw: string | null): StoredVerifier | null {
   }
 }
 
+function tokenFingerprint(token: string): string {
+  return bytesToHex(sha256(utf8ToBytes(token)));
+}
+
 /**
- * Stores a salted verifier for this account. Never stores the password.
- * Called after a successful online sign-in. A failure must not undo that sign-in.
+ * Stores a salted verifier for this account, bound to the session token the
+ * same sign-in saved. Never stores the password. Called after a successful
+ * online sign-in. A failure must not undo that sign-in.
  */
 export async function savePasswordVerifier(
   userId: string,
   password: string,
+  token: string,
   options?: { iterations?: number },
 ): Promise<void> {
+  await retryPendingVerifierCleanup();
   const iterations = options?.iterations ?? PASSWORD_VERIFIER_ITERATIONS;
-  // Expo's native UUID v4 uses Android's secure random source, even when
-  // Hermes has no Web Crypto. Its 122 random bits fit the existing 16-byte
-  // salt format; old verifiers continue to use their stored salt unchanged.
-  const salt = hexToBytes(uuid.v4().replace(/-/g, ''));
+  // Hermes has no Web Crypto, so the salt must come from native randomness.
+  // The async variant never falls back to Math.random in development.
+  const salt = await getRandomBytesAsync(SALT_BYTES);
   const hash = await derive(password, salt, iterations);
+  // The hash takes about a second. The account may have been removed, or
+  // signed in again, meanwhile; don't leave a hash behind for either.
+  const current = await getCredentials(userId);
+  if (current?.token !== token) {
+    log.info('Password verifier skipped: session changed during save', {
+      userId,
+    });
+    return;
+  }
   const record: StoredVerifier = {
-    v: 1,
+    v: 2,
     c: iterations,
     salt: bytesToHex(salt),
     hash: bytesToHex(hash),
+    token: tokenFingerprint(token),
   };
   await savePasswordVerifierRecord(userId, JSON.stringify(record));
 }
@@ -164,7 +185,11 @@ export async function restoreOfflineSession(
   if (!credentials?.token) return { ok: false, reason: 'no-token' };
 
   const record = parseRecord(await getPasswordVerifierRecord(userId));
-  if (!record) return { ok: false, reason: 'no-verifier' };
+  // A verifier from an earlier sign-in must not unlock a newer token: its
+  // password may no longer be the account's password.
+  if (!record || record.token !== tokenFingerprint(credentials.token)) {
+    return { ok: false, reason: 'no-verifier' };
+  }
 
   let derived: Uint8Array;
   try {

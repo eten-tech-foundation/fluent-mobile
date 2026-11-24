@@ -77,7 +77,47 @@ describe('useLogin', () => {
       'session-token',
       't@fluent.local',
     );
-    expect(mockSavePasswordVerifier).toHaveBeenCalledWith('42', 'secret');
+    expect(mockSavePasswordVerifier).toHaveBeenCalledWith(
+      '42',
+      'secret',
+      'session-token',
+    );
+  });
+
+  it('keeps an online sign-in successful when the verifier cannot be saved', async () => {
+    jest.mocked(FluentAPI.signIn).mockResolvedValue({
+      token: 'session-token',
+      user: { email: 't@fluent.local' },
+    });
+    mockSavePasswordVerifier.mockRejectedValueOnce(
+      new Error('Native random source unavailable'),
+    );
+
+    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+      wrapper: QueryClientTestWrapper,
+    });
+
+    act(() => {
+      result.current.setEmail('t@fluent.local');
+      result.current.setPassword('secret');
+    });
+
+    act(() => {
+      result.current.handleLogin();
+    });
+
+    await waitFor(() => {
+      expect(onLoginSuccess).toHaveBeenCalledWith('t@fluent.local', {
+        id: 42,
+        email: 't@fluent.local',
+      });
+    });
+    expect(mockSavePasswordVerifier).toHaveBeenCalledWith(
+      '42',
+      'secret',
+      'session-token',
+    );
+    expect(result.current.globalError).toBeNull();
   });
 
   it('uses beginAddAccountSession when sessionMode is addAccount', async () => {
@@ -114,6 +154,11 @@ describe('useLogin', () => {
       'b@example.com',
     );
     expect(beginLoginSession).not.toHaveBeenCalled();
+    expect(mockSavePasswordVerifier).toHaveBeenCalledWith(
+      '247',
+      'secret',
+      'session-token',
+    );
   });
 
   it('surfaces API errors from the mutation', async () => {

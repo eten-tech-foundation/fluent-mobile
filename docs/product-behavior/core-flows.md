@@ -24,7 +24,7 @@ Full table: [README QA evidence](./README.md#qa-device-evidence-assignment-484--
 | **Preconditions** | Valid credentials for that API base; optional second stored account |
 | **Expected** | Sign-in reaches Home; switch activates only target token/user; prior account data does not bleed |
 | **Denied / empty** | Bad password stays on login; missing stored session for switch fails closed |
-| **Offline** | A password verifier saved at the last online sign-in restores that device session with no network (#1001). No verifier, or a removed account, stays on “Unable to connect”. A 401 does not hide cached work. The session-expired banner shows only while online and a sync is waiting or Sync was opened. |
+| **Offline** | A password verifier saved at the last online sign-in restores that device session with no network (#1001). The verifier is bound to that sign-in's token, so a later sign-in whose verifier save failed leaves offline sign-in unavailable rather than accepting the old password. No verifier, or a removed account, stays on “Unable to connect”. A 401 does not hide cached work. The session-expired banner shows only while Fluent is reachable and a sync is waiting or Sync was opened. |
 | **Labels** | Inferred + mock: [accountSession.test.ts](../../src/services/accountSession.test.ts), [sync.auth.test.ts](../../src/services/sync.auth.test.ts). Maestro multi-account file ≠ pass |
 | **Open** | What UI proves signed-in grant after login? |
 

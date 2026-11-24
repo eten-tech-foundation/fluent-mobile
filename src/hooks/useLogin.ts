@@ -21,9 +21,10 @@ const log = logger.create('useLogin');
 async function rememberPasswordVerifier(
   userId: number | string,
   password: string,
+  token: string,
 ): Promise<void> {
   try {
-    await savePasswordVerifier(String(userId), password);
+    await savePasswordVerifier(String(userId), password, token);
   } catch (error) {
     log.warn('Password verifier was not saved', {
       error: error instanceof Error ? error.message : String(error),
@@ -111,15 +112,24 @@ export function useLogin(
         );
         // The hash yields the JS thread. Don't hold the signed-in navigation
         // on it. A failed save leaves the next offline attempt on
-        // "Unable to connect" until the next online sign-in.
-        void rememberPasswordVerifier(user.id, variables.password);
+        // "Unable to connect" until the next online sign-in, because an
+        // older verifier is bound to the token this sign-in replaced.
+        void rememberPasswordVerifier(
+          user.id,
+          variables.password,
+          response.token,
+        );
         onLoginSuccess(response.user.email, user);
       } else {
         const user = await beginLoginSession(
           response.token,
           response.user.email,
         );
-        void rememberPasswordVerifier(user.id, variables.password);
+        void rememberPasswordVerifier(
+          user.id,
+          variables.password,
+          response.token,
+        );
         onLoginSuccess(response.user.email, user);
       }
     },

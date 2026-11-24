@@ -39,6 +39,7 @@ Expo’s documented choice for Expo apps is **[Expo Router](https://docs.expo.de
 | Network reachability | `@react-native-community/netinfo` (already used) or Expo-documented equivalents | Extra net libraries without a ticket |
 | Updates / OTA | `expo-updates` | Custom OTA clients |
 | Password verifier (PBKDF2) | No Expo module | `@noble/hashes` PBKDF2-HMAC-SHA256 (pure JS, no native module). Do not store the password. |
+| Secure random bytes | `expo-crypto` (`getRandomBytesAsync`) | `@noble/hashes` `randomBytes` or other `crypto.getRandomValues` callers (Hermes has no Web Crypto) and global polyfills |
 
 If Expo has no module for the capability, community libraries are fine — still install with `npx expo install` when the package is in the Expo compat set, and run `npm run doctor` after native-impacting bumps.
 

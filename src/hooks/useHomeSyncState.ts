@@ -20,9 +20,9 @@ import { createPrepareOfflineAutoPromptController } from '../utils/prepareOfflin
 import {
   getProjectsWithSummary,
   hasPendingChapterClaimsForUser,
+  hasPendingStageAdvancesForUser,
   isUserAssignedToProject,
 } from '../db/queries';
-import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   shouldShowSessionExpiredBanner,
   signInToSyncAccessibilityLabel,
@@ -67,8 +67,16 @@ export function useHomeSyncState({
     () => parseOptionalBoolean(params.newUserLoading) === true,
   );
   const [isSyncingLocal, setIsSyncingLocal] = useState(false);
-  const { isLinkOnline, isWifi, connectionType, hasTransferResolved } =
-    useConnectivity();
+  const {
+    isOnline,
+    hasResolved,
+    isLinkOnline,
+    isWifi,
+    connectionType,
+    hasTransferResolved,
+  } = useConnectivity();
+  // `isOnline` starts true until the first `/health` answer.
+  const isFluentReachable = hasResolved && isOnline;
   const { uploadOverCellular } = usePreferences();
   const isFocused = useIsFocused();
 
@@ -335,13 +343,10 @@ export function useHomeSyncState({
     let cancelled = false;
     void Promise.all([
       hasPendingChapterClaimsForUser(userId),
-      getPendingStageAdvances(),
+      hasPendingStageAdvancesForUser(userId),
     ])
-      .then(([hasClaims, advances]) => {
-        if (cancelled) return;
-        setHasQueuedSyncWork(
-          hasClaims || advances.some(advance => advance.userId === userId),
-        );
+      .then(([hasClaims, hasAdvances]) => {
+        if (!cancelled) setHasQueuedSyncWork(hasClaims || hasAdvances);
       })
       .catch(() => {
         if (!cancelled) setHasQueuedSyncWork(false);
@@ -353,16 +358,17 @@ export function useHomeSyncState({
 
   const showSessionExpiredBanner = shouldShowSessionExpiredBanner({
     reauthRequired,
-    // Link reachability, not the cellular upload policy. A Wi-Fi-only
-    // upload setting must not hide "sign in to sync" while the server is
-    // reachable. Pending take deletions are already inside hasPendingUploads.
-    isOnline: isLinkOnline,
+    // Fluent `/health` reachability, not the NetInfo link or the cellular
+    // upload policy: a sign-in can only complete when the server answers,
+    // and a Wi-Fi-only upload setting must not hide "sign in to sync".
+    // Pending take deletions are already inside hasPendingUploads.
+    isOnline: isFluentReachable,
     hasPendingSyncWork: hasPendingUploads || hasQueuedSyncWork,
     syncOpened: syncOpenedWhileReauth,
   });
   const signInToSyncLabel = signInToSyncAccessibilityLabel({
     reauthRequired,
-    isOnline: isLinkOnline,
+    isOnline: isFluentReachable,
   });
 
   // The lists read on mount by themselves. Homes remount per account

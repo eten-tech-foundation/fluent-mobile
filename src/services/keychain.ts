@@ -1,6 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
 import { logger } from '../utils/logger';
-import { getKnownUserIds } from './storage';
+import {
+  getKnownUserIds,
+  getPendingVerifierCleanupUserIds,
+  setVerifierCleanupPending,
+} from './storage';
 
 const log = logger.create('Keychain');
 const SERVICE_PREFIX = 'fluent.auth';
@@ -104,6 +108,8 @@ export async function savePasswordVerifierRecord(
 ): Promise<void> {
   try {
     await SecureStore.setItemAsync(verifierKey(userId), record);
+    // A fresh record must not be deleted by an older cleanup retry.
+    setVerifierCleanupPending(userId, false);
     log.info('Password verifier saved', { userId });
   } catch (error) {
     log.error('Failed to save password verifier', { error });
@@ -122,21 +128,56 @@ export async function getPasswordVerifierRecord(
   }
 }
 
-export async function clearPasswordVerifier(userId: string): Promise<void> {
+/**
+ * Deletes the stored verifier. Returns true only when it is gone: deleted, or
+ * confirmed missing by a read after the delete failed. A false result is
+ * queued and retried by {@link retryPendingVerifierCleanup}.
+ */
+export async function clearPasswordVerifier(userId: string): Promise<boolean> {
+  let cleared: boolean;
   try {
     await SecureStore.deleteItemAsync(verifierKey(userId));
-    log.info('Password verifier cleared', { userId });
-  } catch {
-    // Missing key is the steady state after a partial clear.
+    cleared = true;
+  } catch (deleteError) {
+    try {
+      cleared = (await SecureStore.getItemAsync(verifierKey(userId))) === null;
+    } catch {
+      cleared = false;
+    }
+    if (!cleared) {
+      log.error('Password verifier cleanup incomplete', {
+        userId,
+        error: deleteError,
+      });
+    }
+  }
+  setVerifierCleanupPending(userId, !cleared);
+  if (cleared) log.info('Password verifier cleared', { userId });
+  return cleared;
+}
+
+/** Retries verifier deletions that an earlier account removal left behind. */
+export async function retryPendingVerifierCleanup(): Promise<void> {
+  for (const userId of getPendingVerifierCleanupUserIds()) {
+    await clearPasswordVerifier(userId);
   }
 }
 
-export async function clearCredentials(userId: string): Promise<void> {
+export interface ClearCredentialsResult {
+  /** False when the password verifier is still stored; a retry is queued. */
+  verifierCleared: boolean;
+}
+
+export async function clearCredentials(
+  userId: string,
+): Promise<ClearCredentialsResult> {
   credentialsVersion += 1;
   try {
-    await clearPasswordVerifier(userId);
+    const verifierCleared = await clearPasswordVerifier(userId);
     await SecureStore.deleteItemAsync(storageKey(userId));
-    log.info('Credentials cleared', { userId });
+    log.info('Credentials cleared', { userId, verifierCleared });
+    await retryPendingVerifierCleanup();
+    return { verifierCleared };
   } catch (error) {
     log.error('Failed to clear credentials', { error });
     throw error;
