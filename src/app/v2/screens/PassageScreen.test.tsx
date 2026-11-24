@@ -13,6 +13,7 @@ import { getAnimatedStyle } from 'react-native-reanimated';
 import PassageScreen from './PassageScreen';
 import { useAccountActions } from '../../../hooks/useAccountActions';
 import type { TranslationNoteItem } from '../../../types/resources/translationNotes';
+import type { TranslationNotesLoadState } from '../../../hooks/useTranslationNotesForUnit';
 import type { Passage, PassageDownload } from '../../../hooks/usePassage';
 import { UNDO_MS } from '../../../hooks/usePendingDelete';
 import { hrefs } from '../../../navigation/hrefs';
@@ -100,7 +101,13 @@ let mockReduceMotion = false;
 let mockFocused = true;
 let mockNotes: TranslationNoteItem[] = [];
 let mockNotesFailed = false;
-const mockNotesFor = jest.fn((_args: { projectId: number | null }) => {});
+/** Overrides `mockNotes` / `mockNotesFailed` with an exact loader state. */
+let mockNotesState: TranslationNotesLoadState | null = null;
+const mockNotesRetry = jest.fn();
+let mockOnline = true;
+const mockNotesFor = jest.fn(
+  (_args: { projectId: number | null; isOnline?: boolean }) => {},
+);
 const baseParams = {
   chapterId: '5',
   anchorVerse: '22',
@@ -220,6 +227,7 @@ jest.mock('react-native-reanimated', () => ({
 
 jest.mock('react-native-gesture-handler', () => {
   const pan = {
+    withTestId: () => pan,
     enabled: () => pan,
     activeOffsetX: () => pan,
     activeOffsetY: () => pan,
@@ -298,20 +306,47 @@ jest.mock('../../../assets/icons/trash-open.svg', () => {
   return () => MockReact.createElement(View);
 });
 
-jest.mock('../../../hooks/useConnectivity', () => ({
-  useConnectivity: () => ({ isOnline: true, hasResolved: true }),
-}));
-
 jest.mock('../../../hooks/useTranslationNotesForUnit', () => ({
-  useTranslationNotesForUnit: (args: { projectId: number | null }) => {
+  useTranslationNotesForUnit: (args: {
+    projectId: number | null;
+    isOnline?: boolean;
+  }) => {
     mockNotesFor(args);
     return {
-      state: mockNotesFailed
-        ? { status: 'error', message: 'Notes failed' }
-        : { status: 'ready', notes: mockNotes },
-      retry: jest.fn(),
+      state:
+        mockNotesState ??
+        (mockNotesFailed
+          ? { status: 'error', message: 'Notes failed', failedRefs: [] }
+          : {
+              status: 'ready',
+              notes: mockNotes,
+              failedRefs: [],
+              unavailableOfflineRefs: [],
+            }),
+      retry: mockNotesRetry,
     };
   },
+}));
+
+// Outside the Resources tests no image load settles, so the card's previews
+// can't update state after a test ends; those tests opt into results.
+const loadNever = (_args: { projectId: number | null }): Promise<unknown[]> =>
+  new Promise(() => {});
+const loadNoImages = (args: { projectId: number | null }): Promise<unknown[]> =>
+  args.projectId === null ? new Promise(() => {}) : Promise.resolve([]);
+const mockLoadImages = jest.fn(loadNever);
+
+jest.mock('../../../services/imagesMaps', () => ({
+  loadImagesMapsForUnit: (args: { projectId: number | null }) =>
+    mockLoadImages(args),
+}));
+
+jest.mock('../../../hooks/useResourcesInventory', () => ({
+  useResourcesInventory: () => ({
+    inventoryVersion: 0,
+    downloadedSections: [],
+    getResourceStatus: () => 'available',
+  }),
 }));
 
 jest.mock('../../../hooks/usePassage', () => ({
@@ -352,7 +387,7 @@ jest.mock('../../../hooks/useSourceAudio', () => ({
 }));
 
 jest.mock('../../../hooks/useConnectivity', () => ({
-  useConnectivity: () => ({ isOnline: true, hasResolved: true }),
+  useConnectivity: () => ({ isOnline: mockOnline, hasResolved: true }),
 }));
 
 const ready: Extract<Passage, { status: 'ready' }> = {
@@ -454,10 +489,13 @@ describe('PassageScreen', () => {
     mockFocused = true;
     mockNotes = [];
     mockNotesFailed = false;
+    mockNotesState = null;
+    mockOnline = true;
     mockDraftingUnit = 'pericope';
     mockUnuploadable.mockResolvedValue(false);
     mockObserverGrant = false;
     mockTranslatorGrant = false;
+    mockLoadImages.mockImplementation(loadNever);
     mockPeerCheck = null;
   });
 
@@ -1204,6 +1242,218 @@ describe('PassageScreen', () => {
     screen.rerender(<PassageScreen />);
 
     expect(screen.getByLabelText('Translation note: took a cup')).toBeTruthy();
+    expect(screen.getByText('Unable to load Translation Notes.')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Retry loading translation notes' }),
+    ).toBeTruthy();
+  });
+
+  describe('notes status in Listen', () => {
+    const cup: TranslationNoteItem = {
+      id: 'cup',
+      title: 'Mark 14:23',
+      quote: 'took a cup',
+      body: 'The cup held wine.',
+      verse: { chapterNumber: 14, verseNumber: 23 },
+    };
+    const failed: TranslationNotesLoadState = {
+      status: 'error',
+      message: 'Unable to load Translation Notes.',
+      failedRefs: [],
+    };
+    const openListen = () => {
+      jest.useFakeTimers();
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-listen'));
+      settle();
+    };
+    const retryButton = () =>
+      screen.getByRole('button', { name: 'Retry loading translation notes' });
+
+    it('shows a failure that lands after Listen opened, with scripture and playback still usable', async () => {
+      mockNotesState = { status: 'loading' };
+      openListen();
+      expect(screen.getByText('Loading translation notes…')).toBeTruthy();
+      expect(screen.queryByTestId('passage-notes-retry')).toBeNull();
+
+      mockNotesState = failed;
+      screen.rerender(<PassageScreen />);
+
+      expect(
+        screen.getByText('Unable to load Translation Notes.'),
+      ).toBeTruthy();
+      expect(retryButton()).toBeTruthy();
+      expect(screen.getAllByText(/took a cup/, hidden).length).toBeGreaterThan(
+        0,
+      );
+      expect(
+        screen.getByTestId('passage-key-listen').props.accessibilityState,
+      ).toMatchObject({ disabled: false });
+      expect(
+        screen.getByLabelText('Record mode').props.accessibilityState,
+      ).toMatchObject({ disabled: false });
+      fireEvent.press(screen.getByTestId('passage-key-listen'));
+      await act(async () => {});
+      expect(mockPlaySource).toHaveBeenCalled();
+      expect(mockNotesRetry).not.toHaveBeenCalled();
+    });
+
+    it('shows a failure that landed before Listen showed, without retrying on its own', () => {
+      jest.useFakeTimers();
+      render(<PassageScreen />);
+      fireEvent.press(screen.getByTestId('passage-record'));
+      settle();
+      mockNotesState = failed;
+      screen.rerender(<PassageScreen />);
+      // Listen's line; Record keeps its own space.
+      expect(screen.queryByTestId('passage-notes-status')).toBeNull();
+
+      fireEvent.press(screen.getByLabelText('Record mode'));
+      settle();
+
+      expect(
+        screen.getByText('Unable to load Translation Notes.'),
+      ).toBeTruthy();
+      expect(retryButton()).toBeTruthy();
+      expect(mockNotesRetry).not.toHaveBeenCalled();
+
+      fireEvent.press(screen.getByTestId('passage-close'));
+      settle();
+      fireEvent.press(screen.getByTestId('passage-listen'));
+      settle();
+      expect(mockNotesRetry).not.toHaveBeenCalled();
+    });
+
+    it('tells an empty passage apart from a loaded one', () => {
+      openListen();
+      expect(
+        screen.getByText('No translation notes for this passage.'),
+      ).toBeTruthy();
+      expect(screen.queryByTestId('passage-notes-retry')).toBeNull();
+
+      mockNotes = [cup];
+      screen.rerender(<PassageScreen />);
+      settle();
+      expect(screen.queryByTestId('passage-notes-status')).toBeNull();
+      expect(
+        screen.getByLabelText('Translation note: took a cup'),
+      ).toBeTruthy();
+    });
+
+    it('keeps the notes that loaded beside a partial load, and retries in place', () => {
+      mockNotesState = {
+        status: 'ready',
+        notes: [cup],
+        failedRefs: [{ chapterNumber: 14, verseNumber: 22 }],
+        unavailableOfflineRefs: [],
+      };
+      openListen();
+      expect(
+        screen.getByText("Some translation notes didn't load."),
+      ).toBeTruthy();
+      expect(
+        screen.getByLabelText('Translation note: took a cup'),
+      ).toBeTruthy();
+
+      mockNotesRetry.mockImplementation(() => {
+        mockNotesState = { status: 'loading' };
+      });
+      fireEvent.press(retryButton());
+
+      expect(mockNotesRetry).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('Trying translation notes again…')).toBeTruthy();
+      const busy = screen.getByRole('button', {
+        name: 'Retrying translation notes',
+      });
+      expect(busy.props.accessibilityState).toMatchObject({
+        busy: true,
+        disabled: true,
+      });
+      fireEvent.press(busy);
+      expect(mockNotesRetry).toHaveBeenCalledTimes(1);
+      // Listen stays open, with the notes it had.
+      expect(screen.getByTestId('passage-player')).toBeTruthy();
+      expect(screen.getByTestId('passage-key-listen')).toBeTruthy();
+      expect(
+        screen.getByLabelText('Translation note: took a cup'),
+      ).toBeTruthy();
+    });
+
+    it('keeps one message through repeated failed retries, then clears on success', () => {
+      mockNotesState = failed;
+      openListen();
+      mockNotesRetry.mockImplementation(() => {
+        mockNotesState = { status: 'loading' };
+      });
+
+      for (let i = 0; i < 2; i++) {
+        fireEvent.press(retryButton());
+        mockNotesState = failed;
+        screen.rerender(<PassageScreen />);
+        expect(
+          screen.getAllByText('Unable to load Translation Notes.'),
+        ).toHaveLength(1);
+      }
+      expect(mockNotesRetry).toHaveBeenCalledTimes(2);
+
+      fireEvent.press(retryButton());
+      mockNotesState = null;
+      mockNotes = [cup];
+      screen.rerender(<PassageScreen />);
+      settle();
+
+      expect(mockNotesRetry).toHaveBeenCalledTimes(3);
+      expect(screen.queryByTestId('passage-notes-status')).toBeNull();
+      expect(
+        screen.getByLabelText('Translation note: took a cup'),
+      ).toBeTruthy();
+    });
+
+    it('reads prepared notes offline, and says which are not on the phone', () => {
+      mockOnline = false;
+      mockNotes = [cup];
+      openListen();
+      expect(mockNotesFor.mock.calls.at(-1)?.[0].isOnline).toBe(false);
+      expect(screen.queryByTestId('passage-notes-status')).toBeNull();
+      expect(
+        screen.getByLabelText('Translation note: took a cup'),
+      ).toBeTruthy();
+
+      mockNotesState = {
+        status: 'ready',
+        notes: [cup],
+        failedRefs: [],
+        unavailableOfflineRefs: [{ chapterNumber: 14, verseNumber: 22 }],
+      };
+      screen.rerender(<PassageScreen />);
+      expect(
+        screen.getByText(
+          "Some translation notes aren't on this phone. Connect to the internet to load them.",
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByTestId('passage-notes-retry')).toBeNull();
+    });
+
+    it("doesn't carry notes into another passage", () => {
+      mockNotes = [cup];
+      openListen();
+      expect(
+        screen.getByLabelText('Translation note: took a cup'),
+      ).toBeTruthy();
+
+      mockNotesState = { status: 'loading' };
+      mockPassage = {
+        ...ready,
+        assignment: { ...ready.assignment, projectId: 10 },
+      };
+      screen.rerender(<PassageScreen />);
+      settle();
+
+      expect(
+        screen.queryByLabelText('Translation note: took a cup'),
+      ).toBeNull();
+      expect(screen.getByText('Loading translation notes…')).toBeTruthy();
+    });
   });
 
   it('leaves the note chips inert while Record is open', () => {
@@ -3167,6 +3417,300 @@ describe('PassageScreen', () => {
     settle();
 
     expect(screen.queryByTestId('passage-title-sheet')).toBeNull();
+  });
+
+  describe('Resources', () => {
+    beforeEach(() => mockLoadImages.mockImplementation(loadNoImages));
+
+    function openResources() {
+      fireEvent.press(screen.getByRole('button', { name: 'Resources' }));
+      settle();
+    }
+
+    it('preview the first three verses once the page has arrived, then load the rest in the background', async () => {
+      const verses = [22, 23, 24, 25, 26].map(verseNumber => ({
+        ...ready.verses[0],
+        verseNumber,
+      }));
+      mockPassage = { ...ready, verses };
+      mockLoadImages.mockImplementation(async ({ projectId }) =>
+        projectId === null
+          ? new Promise(() => {})
+          : [{ id: 'img-api-1', title: 'Jerusalem', uri: 'file:///1.jpg' }],
+      );
+      const refs = (...nums: number[]) =>
+        nums.map(verseNumber => ({ chapterNumber: 14, verseNumber }));
+      const asked = () =>
+        mockLoadImages.mock.calls
+          .map(
+            ([args]) =>
+              args as { projectId: number | null; verseRefs?: unknown },
+          )
+          .filter(args => args.projectId === 9)
+          .map(args => args.verseRefs);
+      const notesProject = () => mockNotesFor.mock.calls.at(-1)?.[0].projectId;
+      jest.useFakeTimers();
+      render(<PassageScreen />);
+      expect(asked()).toEqual([]);
+
+      // The previews come first, on their own.
+      settle();
+      expect(asked()).toEqual([refs(22, 23, 24)]);
+
+      // Once they're in, the full list loads behind them; the notes still
+      // wait for the player.
+      await act(async () => {});
+      expect(asked()).toEqual([refs(22, 23, 24), refs(22, 23, 24, 25, 26)]);
+      expect(notesProject()).toBeNull();
+      expect(
+        screen.getByTestId('passage-resources-previews', hidden),
+      ).toBeTruthy();
+      expect(screen.queryByTestId('passage-resources')).toBeNull();
+    });
+
+    describe('with five verses', () => {
+      /** Real loads of all five verses (a disabled hook asks with no project). */
+      const fullLoads = () =>
+        mockLoadImages.mock.calls.filter(([args]) => {
+          const { projectId, verseRefs } = args as {
+            projectId: number | null;
+            verseRefs?: unknown[];
+          };
+          return projectId === 9 && verseRefs?.length === 5;
+        }).length;
+      /** Previews are the first three verses; the full list is all five. */
+      const loadImages = (
+        previews: () => Promise<unknown[]>,
+        full: () => Promise<unknown[]>,
+      ) =>
+        mockLoadImages.mockImplementation(async args => {
+          const { projectId, verseRefs } = args as {
+            projectId: number | null;
+            verseRefs?: unknown[];
+          };
+          if (projectId === null) return new Promise(() => {});
+          return verseRefs?.length === 3 ? previews() : full();
+        });
+      beforeEach(() => {
+        mockPassage = {
+          ...ready,
+          verses: [22, 23, 24, 25, 26].map(verseNumber => ({
+            ...ready.verses[0],
+            verseNumber,
+          })),
+        };
+      });
+
+      it('load the full list when the card opens before the previews settle', async () => {
+        loadImages(
+          () => new Promise(() => {}),
+          async () => [],
+        );
+        renderSettled();
+        await act(async () => {});
+        expect(fullLoads()).toBe(0);
+
+        openResources();
+        await act(async () => {});
+        expect(fullLoads()).toBe(1);
+      });
+
+      it('load in the background when the previews fail, too', async () => {
+        loadImages(
+          async () => {
+            throw new Error('offline');
+          },
+          async () => [],
+        );
+        renderSettled();
+        await act(async () => {});
+        expect(fullLoads()).toBe(1);
+        expect(screen.queryByTestId('passage-resources')).toBeNull();
+      });
+
+      it('retry a failed background load when the card opens', async () => {
+        let fail = true;
+        loadImages(
+          async () => [],
+          async () => {
+            if (fail) throw new Error('502');
+            return [];
+          },
+        );
+        renderSettled();
+        await act(async () => {});
+        expect(fullLoads()).toBe(1);
+
+        fail = false;
+        openResources();
+        await act(async () => {});
+        expect(fullLoads()).toBe(2);
+        expect(
+          within(screen.getByTestId('passage-resources')).getByText(
+            'No images or maps here.',
+          ),
+        ).toBeTruthy();
+      });
+    });
+
+    it("open from the peek for the passage's verses, with no classic route", async () => {
+      renderSettled();
+      openResources();
+      await act(async () => {});
+
+      expect(mockLoadImages).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: 9,
+          userId: 7,
+          isOnline: true,
+          bookCode: 'MRK',
+          languageCode: 'tel',
+          verseRefs: ready.verses.map(v => ({
+            chapterNumber: v.chapterNumber,
+            verseNumber: v.verseNumber,
+          })),
+        }),
+      );
+      const sheet = screen.getByTestId('passage-resources');
+      expect(within(sheet).getByText('No images or maps here.')).toBeTruthy();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('retry reloads only the images, and recovers in place', async () => {
+      mockLoadImages.mockImplementation(async ({ projectId }) => {
+        if (projectId !== null) throw new Error('offline');
+        return [];
+      });
+      renderSettled();
+      openResources();
+      await act(async () => {});
+      const sourceRetries = mockRetrySource.mock.calls.length;
+      const loads = mockLoadImages.mock.calls.length;
+
+      mockLoadImages.mockImplementation(loadNoImages);
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Retry loading images and maps' }),
+      );
+      await act(async () => {});
+
+      expect(mockLoadImages).toHaveBeenCalledTimes(loads + 1);
+      expect(
+        within(screen.getByTestId('passage-resources')).getByText(
+          'No images or maps here.',
+        ),
+      ).toBeTruthy();
+      expect(mockRetrySource).toHaveBeenCalledTimes(sourceRetries);
+      expect(mockBack).not.toHaveBeenCalled();
+    });
+
+    it('steps aside while the player is open', () => {
+      renderSettled();
+      const peek = () => screen.getByTestId('passage-resources-peek', hidden);
+      expect(peek().props.pointerEvents).toBe('box-none');
+
+      fireEvent.press(screen.getByTestId('passage-listen'));
+      settle();
+      expect(peek().props.pointerEvents).toBe('none');
+      expect(peek().props.importantForAccessibility).toBe(
+        'no-hide-descendants',
+      );
+
+      fireEvent.press(screen.getByTestId('passage-close'));
+      settle();
+      expect(peek().props.pointerEvents).toBe('box-none');
+    });
+
+    const expanded = () =>
+      screen.getByTestId('passage-resources-open').props.accessibilityState
+        .expanded;
+
+    it('grow in place, and the chevron puts the card back', async () => {
+      renderSettled();
+      expect(expanded()).toBe(false);
+      openResources();
+      await act(async () => {});
+      expect(expanded()).toBe(true);
+      expect(screen.getByTestId('passage-resources')).toBeTruthy();
+
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Collapse resources' }),
+      );
+      settle();
+      expect(expanded()).toBe(false);
+      expect(screen.queryByTestId('passage-resources')).toBeNull();
+    });
+
+    it('strokes the card header while its list is scrolled under it', async () => {
+      renderSettled();
+      openResources();
+      await act(async () => {});
+      const stroke = () =>
+        getAnimatedStyle(
+          screen.getByTestId('passage-resources-header-stroke', hidden),
+        ).opacity;
+      expect(stroke()).toBe(0);
+
+      const scrollTo = (y: number) => {
+        fireEvent.scroll(screen.getByTestId('passage-resources'), {
+          nativeEvent: { contentOffset: { y } },
+        });
+        settle();
+      };
+      scrollTo(40);
+      expect(stroke()).toBe(1);
+      scrollTo(0);
+      expect(stroke()).toBe(0);
+
+      // Put back scrolled, it opens again at the top.
+      scrollTo(40);
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Collapse resources' }),
+      );
+      settle();
+      openResources();
+      expect(stroke()).toBe(0);
+    });
+
+    it('Back puts the card back before it leaves the passage', async () => {
+      type BackListener = Parameters<typeof BackHandler.addEventListener>[1];
+      const handlers: BackListener[] = [];
+      const listen = jest
+        .spyOn(BackHandler, 'addEventListener')
+        .mockImplementation((_event, handler) => {
+          handlers.push(handler);
+          return { remove: jest.fn() };
+        });
+      try {
+        renderSettled();
+        openResources();
+        await act(async () => {});
+        let handled: boolean | null | undefined;
+        act(() => {
+          handled = handlers.at(-1)?.({} as Parameters<BackListener>[0]);
+        });
+        expect(handled).toBe(true);
+        expect(expanded()).toBe(false);
+        expect(mockBack).not.toHaveBeenCalled();
+      } finally {
+        listen.mockRestore();
+      }
+    });
+
+    it('close when another screen covers the passage', async () => {
+      renderSettled();
+      openResources();
+      await act(async () => {});
+      expect(screen.getByTestId('passage-resources')).toBeTruthy();
+
+      mockFocused = false;
+      screen.rerender(<PassageScreen />);
+      settle();
+      mockFocused = true;
+      screen.rerender(<PassageScreen />);
+      settle();
+
+      expect(screen.queryByTestId('passage-resources')).toBeNull();
+    });
   });
 
   describe('Send to Peer Check', () => {
