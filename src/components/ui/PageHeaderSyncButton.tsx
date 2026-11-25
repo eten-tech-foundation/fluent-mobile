@@ -14,6 +14,8 @@ interface PageHeaderSyncButtonProps {
   failedErrorText?: string | null;
   /** Pending uploads are waiting for drafting to end; changes the spoken label. */
   heldForDrafting?: boolean;
+  /** Online, and a sign-in is required before the next sync. */
+  signInToSyncLabel?: string | null;
 }
 
 export function PageHeaderSyncButton({
@@ -23,16 +25,20 @@ export function PageHeaderSyncButton({
   cloudColor,
   failedErrorText,
   heldForDrafting,
+  signInToSyncLabel,
 }: PageHeaderSyncButtonProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
       onPressIn={onPressIn}
       style={styles.syncSlot}
-      accessibilityLabel={formatSyncStatusLabel(syncStatus, {
-        failedErrorText,
-        heldForDrafting,
-      })}
+      accessibilityLabel={
+        signInToSyncLabel ??
+        formatSyncStatusLabel(syncStatus, {
+          failedErrorText,
+          heldForDrafting,
+        })
+      }
       accessibilityRole="button"
       hitSlop={touchHitSlop}
       activeOpacity={0.7}

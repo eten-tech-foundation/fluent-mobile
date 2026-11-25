@@ -16,7 +16,6 @@ import { getObserverDraftDestination } from '../../navigation/observerDraft';
 import { parseOptionalNumber } from '../../navigation/routeParams';
 import { hrefs } from '../../navigation/hrefs';
 import { iconSizes, listIconStrokeWidth, theme } from '../../theme';
-import { UiVersionOverride } from '../../theme/useTheme';
 import { BibleTab } from '../tabs/BibleTab';
 import { ObserverDraftTab } from '../tabs/ObserverDraftTab';
 import { DraftingProvider } from '../context/DraftingContext';
@@ -28,7 +27,8 @@ import { AccountSwitcherPanel } from '../../components/ui/AccountSwitcherPanel';
 type ObserverTab = 'bible' | 'draft';
 
 /**
- * Legacy-only Observer Bible + Draft surface (#452).
+ * Legacy Observer Bible + Draft surface (#452). The observer-draft route
+ * renders it under Legacy only; Next renders `v2/screens/ObserverScreen`.
  *
  * unresolvedConflictPlaybackPolicy is explicitly `undecided` — product has not
  * settled allow/block for unresolved conflict audio. That keeps full #452
@@ -94,175 +94,173 @@ export default function ObserverDraftScreen() {
   const showContent = chapter.hasAccess && assignment !== null;
 
   return (
-    <UiVersionOverride value="legacy">
-      <ScreenContainer>
-        <View style={styles.screen} testID="observer-draft-screen">
-          <DraftingHeader
-            title={chapterTitle}
-            onBack={goBack}
-            syncStatus={syncStatus}
-            failedErrorText={failedErrorText}
-            onSyncPress={handleSyncPress}
-            showAccountIndicator={activeAccount.hasMultipleAccounts}
-            accountFirstName={activeAccount.firstName}
-            accountLastName={activeAccount.lastName}
-            accountEmail={activeAccount.email}
-            onAccountPress={() => setAccountSwitcherVisible(true)}
-          />
+    <ScreenContainer>
+      <View style={styles.screen} testID="observer-draft-screen">
+        <DraftingHeader
+          title={chapterTitle}
+          onBack={goBack}
+          syncStatus={syncStatus}
+          failedErrorText={failedErrorText}
+          onSyncPress={handleSyncPress}
+          showAccountIndicator={activeAccount.hasMultipleAccounts}
+          accountFirstName={activeAccount.firstName}
+          accountLastName={activeAccount.lastName}
+          accountEmail={activeAccount.email}
+          onAccountPress={() => setAccountSwitcherVisible(true)}
+        />
 
-          {chapter.loading ? (
-            <View style={styles.centered} testID="observer-draft-loading">
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-            </View>
-          ) : !showContent ? (
-            <View style={styles.centered} testID="observer-draft-no-access">
-              <Text style={styles.emptyText}>
-                This Observer draft is unavailable for the active account.
-              </Text>
-            </View>
-          ) : (
-            <DraftingProvider
-              verses={chapter.sourceVerses}
-              initialVerse={chapter.sourceVerses[0]?.verseNumber ?? 1}
-              projectId={assignment.projectId}
-              projectUnitId={assignment.projectUnitId}
-              bookName={assignment.bookName ?? ''}
-              chapterName={chapterTitle}
-            >
-              <View style={styles.content}>
-                <View
-                  style={[
-                    styles.tabPane,
-                    activeTab !== 'bible' && styles.tabHidden,
-                  ]}
-                  pointerEvents={activeTab === 'bible' ? 'auto' : 'none'}
-                  testID="observer-draft-bible-pane"
-                >
-                  {/* BibleTab reused unchanged — no Record open path here. */}
-                  <BibleTab />
-                </View>
-                <View
-                  style={[
-                    styles.tabPane,
-                    activeTab !== 'draft' && styles.tabHidden,
-                  ]}
-                  pointerEvents={activeTab === 'draft' ? 'auto' : 'none'}
-                  testID="observer-draft-draft-pane"
-                >
-                  <ObserverDraftTab
-                    units={chapter.draftUnits}
-                    chapterNumber={assignment.chapterNumber}
-                    chapterAssignmentId={assignment.id}
-                    accountId={chapter.accountId}
-                    hasAccess={chapter.hasAccess}
-                    isActive={activeTab === 'draft'}
-                    unresolvedConflictPlaybackPolicy="undecided"
-                  />
-                </View>
-              </View>
-
+        {chapter.loading ? (
+          <View style={styles.centered} testID="observer-draft-loading">
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
+        ) : !showContent ? (
+          <View style={styles.centered} testID="observer-draft-no-access">
+            <Text style={styles.emptyText}>
+              This Observer draft is unavailable for the active account.
+            </Text>
+          </View>
+        ) : (
+          <DraftingProvider
+            verses={chapter.sourceVerses}
+            initialVerse={chapter.sourceVerses[0]?.verseNumber ?? 1}
+            projectId={assignment.projectId}
+            projectUnitId={assignment.projectUnitId}
+            bookName={assignment.bookName ?? ''}
+            chapterName={chapterTitle}
+          >
+            <View style={styles.content}>
               <View
-                style={styles.chapterBrowse}
-                testID="observer-draft-chapter-browse"
+                style={[
+                  styles.tabPane,
+                  activeTab !== 'bible' && styles.tabHidden,
+                ]}
+                pointerEvents={activeTab === 'bible' ? 'auto' : 'none'}
+                testID="observer-draft-bible-pane"
               >
-                <FlatList
-                  horizontal
-                  data={chapter.unitChapters}
-                  keyExtractor={item => String(item.id)}
-                  showsHorizontalScrollIndicator={false}
-                  renderItem={({ item }) => {
-                    const selected = item.id === assignment.id;
-                    return (
-                      <Pressable
-                        onPress={() => {
-                          void handleChapterPress(item.id);
-                        }}
-                        style={[
-                          styles.chapterChip,
-                          selected && styles.chapterChipSelected,
-                        ]}
-                        testID={`observer-draft-chapter-chip-${item.id}`}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                        accessibilityLabel={`${item.book_name} ${item.chapter_number}`}
-                      >
-                        <Text
-                          style={[
-                            styles.chapterChipText,
-                            selected && styles.chapterChipTextSelected,
-                          ]}
-                        >
-                          {item.chapter_number}
-                        </Text>
-                      </Pressable>
-                    );
-                  }}
+                {/* BibleTab reused unchanged — no Record open path here. */}
+                <BibleTab />
+              </View>
+              <View
+                style={[
+                  styles.tabPane,
+                  activeTab !== 'draft' && styles.tabHidden,
+                ]}
+                pointerEvents={activeTab === 'draft' ? 'auto' : 'none'}
+                testID="observer-draft-draft-pane"
+              >
+                <ObserverDraftTab
+                  units={chapter.draftUnits}
+                  chapterNumber={assignment.chapterNumber}
+                  chapterAssignmentId={assignment.id}
+                  accountId={chapter.accountId}
+                  hasAccess={chapter.hasAccess}
+                  isActive={activeTab === 'draft'}
+                  unresolvedConflictPlaybackPolicy="undecided"
                 />
               </View>
+            </View>
 
-              <View style={styles.tabBar} testID="observer-draft-tab-bar">
-                <Pressable
-                  style={styles.tab}
-                  onPress={() => setActiveTab('bible')}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: activeTab === 'bible' }}
-                  accessibilityLabel="Bible"
-                  testID="observer-draft-tab-bible"
+            <View
+              style={styles.chapterBrowse}
+              testID="observer-draft-chapter-browse"
+            >
+              <FlatList
+                horizontal
+                data={chapter.unitChapters}
+                keyExtractor={item => String(item.id)}
+                showsHorizontalScrollIndicator={false}
+                renderItem={({ item }) => {
+                  const selected = item.id === assignment.id;
+                  return (
+                    <Pressable
+                      onPress={() => {
+                        void handleChapterPress(item.id);
+                      }}
+                      style={[
+                        styles.chapterChip,
+                        selected && styles.chapterChipSelected,
+                      ]}
+                      testID={`observer-draft-chapter-chip-${item.id}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`${item.book_name} ${item.chapter_number}`}
+                    >
+                      <Text
+                        style={[
+                          styles.chapterChipText,
+                          selected && styles.chapterChipTextSelected,
+                        ]}
+                      >
+                        {item.chapter_number}
+                      </Text>
+                    </Pressable>
+                  );
+                }}
+              />
+            </View>
+
+            <View style={styles.tabBar} testID="observer-draft-tab-bar">
+              <Pressable
+                style={styles.tab}
+                onPress={() => setActiveTab('bible')}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === 'bible' }}
+                accessibilityLabel="Bible"
+                testID="observer-draft-tab-bible"
+              >
+                <BookOpen
+                  size={iconSizes.headerTab}
+                  color={
+                    activeTab === 'bible'
+                      ? theme.colors.primary
+                      : theme.colors.mutedForeground
+                  }
+                  strokeWidth={listIconStrokeWidth}
+                />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    activeTab === 'bible' && styles.tabLabelActive,
+                  ]}
                 >
-                  <BookOpen
-                    size={iconSizes.headerTab}
-                    color={
-                      activeTab === 'bible'
-                        ? theme.colors.primary
-                        : theme.colors.mutedForeground
-                    }
-                    strokeWidth={listIconStrokeWidth}
-                  />
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      activeTab === 'bible' && styles.tabLabelActive,
-                    ]}
-                  >
-                    Bible
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={styles.tab}
-                  onPress={() => setActiveTab('draft')}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: activeTab === 'draft' }}
-                  accessibilityLabel="Draft"
-                  testID="observer-draft-tab-draft"
+                  Bible
+                </Text>
+              </Pressable>
+              <Pressable
+                style={styles.tab}
+                onPress={() => setActiveTab('draft')}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === 'draft' }}
+                accessibilityLabel="Draft"
+                testID="observer-draft-tab-draft"
+              >
+                <FileText
+                  size={iconSizes.headerTab}
+                  color={
+                    activeTab === 'draft'
+                      ? theme.colors.primary
+                      : theme.colors.mutedForeground
+                  }
+                  strokeWidth={listIconStrokeWidth}
+                />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    activeTab === 'draft' && styles.tabLabelActive,
+                  ]}
                 >
-                  <FileText
-                    size={iconSizes.headerTab}
-                    color={
-                      activeTab === 'draft'
-                        ? theme.colors.primary
-                        : theme.colors.mutedForeground
-                    }
-                    strokeWidth={listIconStrokeWidth}
-                  />
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      activeTab === 'draft' && styles.tabLabelActive,
-                    ]}
-                  >
-                    Draft
-                  </Text>
-                </Pressable>
-              </View>
-            </DraftingProvider>
-          )}
-        </View>
-        <AccountSwitcherPanel
-          visible={accountSwitcherVisible}
-          onClose={() => setAccountSwitcherVisible(false)}
-        />
-      </ScreenContainer>
-    </UiVersionOverride>
+                  Draft
+                </Text>
+              </Pressable>
+            </View>
+          </DraftingProvider>
+        )}
+      </View>
+      <AccountSwitcherPanel
+        visible={accountSwitcherVisible}
+        onClose={() => setAccountSwitcherVisible(false)}
+      />
+    </ScreenContainer>
   );
 }
 

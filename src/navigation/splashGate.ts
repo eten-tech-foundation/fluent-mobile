@@ -38,6 +38,7 @@ let fallback: ReturnType<typeof setTimeout> | null = null;
 let firstPaintReported = false;
 let overlayCap: ReturnType<typeof setTimeout> | null = null;
 const overlayListeners = new Set<() => void>();
+const firstPaintQueue: Array<() => void> = [];
 
 function emitOverlay(): void {
   for (const listener of overlayListeners) listener();
@@ -67,6 +68,32 @@ function reportFirstPaint(): void {
   firstPaintReported = true;
   clearOverlayCap();
   emitOverlay();
+  flushFirstPaintQueue();
+}
+
+function flushFirstPaintQueue(): void {
+  const pending = firstPaintQueue.splice(0);
+  for (const run of pending) {
+    try {
+      run();
+    } catch (error) {
+      log.error('Deferred post-paint work failed', { error: String(error) });
+    }
+  }
+}
+
+/**
+ * Runs `fn` once the first screen has painted, or when the overlay cap gives
+ * up waiting for a paint report. If a paint was already reported, runs now.
+ * Keeps background work (sync, upload, sync-status reads) off the single
+ * SQLite connection while Home is still assembling its first frame (#1002).
+ */
+export function afterFirstPaint(fn: () => void): void {
+  if (firstPaintReported) {
+    fn();
+    return;
+  }
+  firstPaintQueue.push(fn);
 }
 
 function armOverlayCap(): void {
@@ -131,6 +158,7 @@ export function holdSplashForFirstPaint(): void {
 export function armSplashGate(): void {
   hideRequested = false;
   firstPaintReported = false;
+  // Queued work from the last activity still waits for the next paint.
   if (fallback !== null) {
     clearTimeout(fallback);
     fallback = null;
@@ -139,5 +167,8 @@ export function armSplashGate(): void {
   emitOverlay();
 }
 
-/** Test-only. */
-export const __resetSplashGateForTests = armSplashGate;
+/** Test-only. Also drops work queued by `afterFirstPaint`. */
+export function __resetSplashGateForTests(): void {
+  firstPaintQueue.length = 0;
+  armSplashGate();
+}

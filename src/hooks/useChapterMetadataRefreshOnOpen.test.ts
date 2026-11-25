@@ -47,6 +47,10 @@ jest.mock('../services/sync', () => ({
   refreshChapterMetadataIfOnline: jest.fn(),
 }));
 
+jest.mock('../navigation/splashGate', () => ({
+  afterFirstPaint: (fn: () => void) => fn(),
+}));
+
 jest.mock('../utils/parseUserId', () => ({
   parseUserId: jest.fn(),
 }));

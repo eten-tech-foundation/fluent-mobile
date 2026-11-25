@@ -6,6 +6,7 @@ import {
   type DatabaseWriteMark,
 } from '../db/queries';
 import { userNeedsAssigneeRepair } from '../db/repository';
+import { afterFirstPaint } from '../navigation/splashGate';
 import { parseUserId } from '../utils/parseUserId';
 import { logger } from '../utils/logger';
 
@@ -112,7 +113,11 @@ export function useLocalSyncHealth(refreshKey = 0) {
           : null;
     };
 
-    void check();
+    // On launch the check waits for Home's first paint, off the SQLite
+    // connection Home's chapter and Next up reads are using (#1002).
+    afterFirstPaint(() => {
+      if (!cancelled) void check();
+    });
 
     return () => {
       cancelled = true;

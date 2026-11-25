@@ -17,6 +17,7 @@ import { parseUserId } from '../utils/parseUserId';
 import { getActiveUserId } from '../services/storage';
 import { getObserverProjectIds } from '../services/userOrgGrants';
 import { refreshChapterMetadataIfOnline } from '../services/sync';
+import { afterFirstPaint } from '../navigation/splashGate';
 import { getTranslatorProjectIds } from '../utils/myWorkDraftDownload';
 import { logger } from '../utils/logger';
 import { sameRows } from '../utils/sameRows';
@@ -247,11 +248,23 @@ export function useMyWorkChapters(refreshKey = 0) {
   // doesn't match the live bearer token 403s (see #291).
   useFocusEffect(
     useCallback(() => {
+      const firstFocus = !focusedBeforeRef.current;
       if (focusedBeforeRef.current) void loadChaptersIfChanged();
       focusedBeforeRef.current = true;
-      const activeUserId = getActiveUserId();
-      if (!activeUserId) return;
-      void refreshChapterMetadataIfOnline(Number(activeUserId));
+      if (!getActiveUserId()) return;
+      let focused = true;
+      const refreshMetadata = () => {
+        const activeUserId = getActiveUserId();
+        if (!focused || !activeUserId) return;
+        void refreshChapterMetadataIfOnline(Number(activeUserId));
+      };
+      // The first focus waits for Home's first paint (#1002); later focuses
+      // refresh at once. A blur or unmount before the paint drops it.
+      if (firstFocus) afterFirstPaint(refreshMetadata);
+      else refreshMetadata();
+      return () => {
+        focused = false;
+      };
     }, [loadChaptersIfChanged]),
   );
 

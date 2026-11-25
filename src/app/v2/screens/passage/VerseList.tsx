@@ -20,9 +20,12 @@ function verseStatus(recorded: PassageVerse['recorded']) {
 export function VerseList({
   verses,
   onOpen,
+  bottomInset = 0,
 }: {
   verses: PassageVerse[];
   onOpen: (verseNumber: number) => void;
+  /** Room under the last row for what floats over the list's bottom. */
+  bottomInset?: number;
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(t => ({
@@ -53,7 +56,10 @@ export function VerseList({
   return (
     <FlatList
       style={styles.list}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: styles.content.paddingVertical + bottomInset },
+      ]}
       testID="passage-verse-list"
       data={verses}
       keyExtractor={v => String(v.verseNumber)}

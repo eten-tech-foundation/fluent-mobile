@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from '../../../components/ui/icons';
@@ -9,6 +9,7 @@ import { useDraftingUploadHold } from '../../../hooks/useDraftingUploadHold';
 import { useHeaderSync } from '../../../hooks/useHeaderSync';
 import { useRecordCaptureLeaveGuard } from '../../../hooks/useRecordCaptureLeaveGuard';
 import { hrefs } from '../../../navigation/hrefs';
+import { readPassageRecovery } from '../../../navigation/passageRecovery';
 import {
   parseOptionalNumber,
   parseOptionalString,
@@ -39,18 +40,33 @@ export default function PassageScreen() {
     language?: string;
     from?: string;
     verse?: string;
+    recoverSessionKey?: string;
+    recoverVerse?: string;
   }>();
   const chapterId = parseRequiredNumber(raw.chapterId, 'chapterId');
   const anchorVerse = parseRequiredNumber(raw.anchorVerse, 'anchorVerse');
-  const projectId = parseRequiredNumber(raw.projectId, 'projectId');
+  const projectId = parseOptionalNumber(raw.projectId);
   const projectUnitId = parseRequiredNumber(raw.projectUnitId, 'projectUnitId');
   const chapterName = parseRequiredString(raw.chapterName, 'chapterName');
-  const projectName = parseRequiredString(raw.projectName, 'projectName');
-  const milestoneName = parseRequiredString(raw.milestoneName, 'milestoneName');
-  const language = parseRequiredString(raw.language, 'language');
+  // Labels only. A chapter whose project rows lack them still opens (#914).
+  const projectName = parseOptionalString(raw.projectName) ?? '';
+  const milestoneName = parseOptionalString(raw.milestoneName) ?? '';
+  const language = parseOptionalString(raw.language) ?? '';
   const fromBook = parseOptionalString(raw.from) === 'book';
-  const openVerse = parseOptionalNumber(raw.verse);
   const userId = parseUserId();
+  // Read once: finishing the take clears the marker, and the page keeps the
+  // unit it was recovered in rather than switching under the saved take.
+  const [recovery] = useState(() =>
+    readPassageRecovery(
+      {
+        chapterId,
+        sessionKey: parseOptionalString(raw.recoverSessionKey),
+        verse: parseOptionalNumber(raw.recoverVerse),
+      },
+      userId,
+    ),
+  );
+  const openVerse = recovery?.verse ?? parseOptionalNumber(raw.verse);
   const { onCaptureActiveChange, onRegisterCaptureControls, guardAction } =
     useRecordCaptureLeaveGuard();
   useDraftingUploadHold();
@@ -58,6 +74,7 @@ export default function PassageScreen() {
     chapterId,
     anchorVerse,
     projectUnitId,
+    recovery?.unit,
   );
   const sync = useHeaderSync({ onSyncComplete: reload, guard: guardAction });
   const { refresh: refreshSyncStatus } = sync;
@@ -83,9 +100,10 @@ export default function PassageScreen() {
   }));
 
   // From the book page, its copy is already underneath; don't stack another.
+  // Without a project there's no book page to open.
   const openBook = useCallback(() => {
     guardAction(() => {
-      if (fromBook) {
+      if (fromBook || projectId === undefined) {
         router.back();
         return;
       }
@@ -152,6 +170,7 @@ export default function PassageScreen() {
         milestoneName={milestoneName}
         anchorVerse={anchorVerse}
         openVerse={openVerse}
+        recovery={recovery}
         onBack={() => guardAction(() => router.back())}
         onOpenBook={openBook}
         onOpenClassic={openClassic}

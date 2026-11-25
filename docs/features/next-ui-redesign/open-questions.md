@@ -177,8 +177,8 @@ translator hears them all last.
 - **Q22 · Who are the reviewers?** *(product)*. Peer checker, community
   reviewers, Observers (#452), or anyone present? Do seats need accounts, or
   just a name for the round? Meanwhile an Observer's chapter, from Home or the
-  book page, opens Legacy's read-only Observer view (`observer-draft`), never
-  the passage page.
+  book page, opens the Next read-only Observer view (`observer-draft`, #913),
+  never the passage page.
 - **Q23 · How does this relate to the comment tickets?** *(product + design)*.
   #451 specs text and audio comments in a half drawer, one level of threading
   and emoji reactions; #703 adds comment counts to My Work rows. The Review
@@ -250,6 +250,7 @@ Rows marked — were decided before this doc had IDs.
 | Q29 | Where sending a chapter lives | Two places: an `AttentionCard` on Home like `ChangesRequested` (eyebrow "Ready to send", title "Mark 14 is recorded", action "Send to Peer Check"), and a Send button inline with the chapter's header on the book page (`BookScreen`; both on `jskager/feature/next-ui-theme`). Both show only once every verse or pericope in the chapter is recorded, as in Legacy (#542) and web. The server doesn't check that, but the drafter can't change the chapter once it's in Peer Check and the app has no way to send it back, so the rule stays. Not built yet. Still to come with it: the confirm (Dialog, in the gallery), picking the peer checker, sending both chapters of a passage that crosses them (Q27), and, offline, the send waiting in #770's stage-advance queue (on `main`, not yet on `jskager/feature/next-ui-theme`), shown as "Waiting to send" on the passage's cover and page. Until Send
 ships (a separate ticket), the passage page's "Open in classic drafting"
 bridge is how a Next user sends a chapter. A send moves the chapter's stage and saves a copy of its typed text, not its recordings. Who sees Send, and what shows before then, is Q30 | 2026-10-29 | [#859](https://github.com/eten-tech-foundation/fluent-mobile/issues/859) |
+| Q33 | How Next resumes a take paused in a crash | Resume opens the take's passage page with the saved key and verse (`recoverSessionKey`, `recoverVerse`). The page records in the take's saved unit, keyed on that verse, whatever the drafting setting is now and wherever the passage now starts. It keeps that unit until you leave it. A take saved before captures were kept (#567) has no unit, so it comes back verse by verse on the verse it was keyed on. Its audio is never spread over a passage it can't be shown to cover. If the chapter's names can't be read, Resume offers Retry or Discard, and the marker and audio stay. A marker now records the account that paused it. Another account's take isn't offered, opened, cleared or recorded over. Markers from before that are anyone's. Legacy still opens classic drafting on the take | 2026-11-18 | [#914](https://github.com/eten-tech-foundation/fluent-mobile/issues/914) |
 | — | Header progress dots on the Pericope screen | They're a resting waveform: Level wave, short variant | 2026-10-13 | Figma Level wave `2595:772` |
 | — | Speaker grill hole color | `surface/inverse` (was the `bone/800` primitive) | 2026-10-14 | Figma Speaker grill `2409:533` |
 | — | Icon/md size | `theme.controlSizes.icon20` | 2026-10-14 | `jskager/feature/695-hardware-panel` |
