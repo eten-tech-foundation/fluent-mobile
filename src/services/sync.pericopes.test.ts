@@ -122,6 +122,45 @@ describe('syncPericopes', () => {
     );
   });
 
+  it('falls back to GET when the bundled asset read fails', async () => {
+    jest.mocked(getBundledPericopeSetVersion).mockReturnValue('bundled-v1');
+    jest
+      .mocked(loadBundledPericopeSet)
+      .mockRejectedValue(new Error('read failed'));
+    jest.mocked(FluentAPI.getPericopeSet).mockResolvedValue({
+      status: 200,
+      etag: '"etag-mrk"',
+      data: [
+        {
+          bookCode: 'MRK',
+          pericopeNumber: '1',
+          pericopeTitle: 'Title',
+          verses: [{ chapterNumber: 1, verseNumber: 1 }],
+        },
+      ],
+    });
+
+    await syncPericopes();
+
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      1,
+      { bookCode: 'MRK', etag: null },
+      undefined,
+    );
+    expect(upsertPericopeSet).toHaveBeenCalledWith(
+      1,
+      'MRK',
+      expect.arrayContaining([
+        expect.objectContaining({
+          chapterNumber: 1,
+          verseNumber: 1,
+          pericopeNumber: '1',
+        }),
+      ]),
+    );
+    expect(setSyncError).not.toHaveBeenCalled();
+  });
+
   it('hydrates via GET /pericope-sets/{id} for an unbundled set (200)', async () => {
     jest.mocked(getProjectPericopeSetId).mockResolvedValue(99);
     jest.mocked(getBundledPericopeSetVersion).mockReturnValue(null);

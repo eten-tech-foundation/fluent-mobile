@@ -32,7 +32,12 @@ is updated (corrected pericope boundaries, added books, etc.).
    skip the asset read for every other book code.
 3. Run `npm run typecheck && npm test -- pericopeSets` to confirm the
    loader still resolves correctly against the new file.
-4. Note the APK size delta in the PR (`du -sh assets/pericope-sets/`
+4. Export an Android bundle and confirm the refreshed file is under the
+   exported assets and not inside the `.hbc`
+   (`npx expo export --platform android`). A `.json` rename or dropping
+   `pericope` from Metro `assetExts` puts the literals back in the
+   Hermes bundle.
+5. Note the APK size delta in the PR (`du -sh assets/pericope-sets/`
    before/after).
 
 ## Format

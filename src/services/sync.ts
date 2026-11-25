@@ -2308,7 +2308,17 @@ export async function syncPericopes(
               const verses = await loadBundledPericopeSet(
                 pericopeSetId,
                 bookCode,
-              );
+              ).catch((error: unknown) => {
+                log.warn(
+                  'Bundled pericope asset read failed — falling back to GET /pericope-sets/{id}',
+                  {
+                    pericopeSetId,
+                    bookCode,
+                    error: getErrorMessage(error),
+                  },
+                );
+                return null;
+              });
               if (verses) {
                 if (await upsertPericopeSet(pericopeSetId, bookCode, verses)) {
                   setPericopeBookVersion(

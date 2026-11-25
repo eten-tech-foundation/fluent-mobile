@@ -122,9 +122,10 @@ function loadIndex<T extends { book: string }>(
  * Loads bundled pericope verses for a (pericopeSetId, bookCode) pair from
  * the APK-bundled FCBH-All-Books.pericope / FIA-All-Books.pericope
  * (#447). The files are assets, read the first time that set is needed (#1003). No
- * HTTP and no SQLite access. Returns null when the set isn't bundled or
- * the book isn't present in that set's export, so callers (sync.ts, per
- * #438 / #587) can fall through to `FluentAPI.getPericopeSet()`.
+ * HTTP and no SQLite access. Resolves null when the set isn't bundled or
+ * the book isn't present in that set's export. Rejects when the asset
+ * cannot be read or the file is not a JSON array. `syncPericopes` catches
+ * that rejection and falls through to `FluentAPI.getPericopeSet()` (#438 / #587).
  *
  * Filters + normalizes at call time rather than at build time, so the
  * bundled assets stay an unmodified copy of the source exports (matches

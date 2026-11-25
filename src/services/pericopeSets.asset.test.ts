@@ -7,6 +7,7 @@ import {
 
 const mockFcbhUri = 'file:///mock-pericope/fcbh.json';
 const mockFiaUri = 'file:///mock-pericope/fia.json';
+const mockPericopeAsset = { omitLocalUri: false };
 
 jest.mock('../../assets/pericope-sets/FCBH-All-Books.pericope', () => 101);
 jest.mock('../../assets/pericope-sets/FIA-All-Books.pericope', () => 202);
@@ -18,7 +19,7 @@ jest.mock('expo-asset', () => ({
       const asset = {
         localUri: null as string | null,
         downloadAsync: async () => {
-          asset.localUri = localUri;
+          asset.localUri = mockPericopeAsset.omitLocalUri ? null : localUri;
           return asset;
         },
       };
@@ -47,9 +48,14 @@ const fcbhJson = JSON.stringify([
 describe('loadBundledPericopeSet asset read', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPericopeAsset.omitLocalUri = false;
     __resetBundledPericopeCacheForTests();
     resetFileSystemMock();
     await FileSystem.writeAsStringAsync(mockFcbhUri, fcbhJson);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('reads the asset once, then serves the in-memory index', async () => {
@@ -76,7 +82,35 @@ describe('loadBundledPericopeSet asset read', () => {
     ]);
     expect(second).toEqual(first);
     expect(read).toHaveBeenCalledTimes(1);
-    read.mockRestore();
+  });
+
+  it('shares one read between concurrent first calls', async () => {
+    const read = jest.spyOn(FileSystem, 'readAsStringAsync');
+
+    const [first, second] = await Promise.all([
+      loadBundledPericopeSet(1, 'GEN'),
+      loadBundledPericopeSet(1, 'GEN'),
+    ]);
+
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(second).toEqual(first);
+  });
+
+  it('rejects non-array JSON and retries on the next call', async () => {
+    await FileSystem.writeAsStringAsync(mockFcbhUri, '{}');
+    await expect(loadBundledPericopeSet(1, 'GEN')).rejects.toThrow(
+      'not an array',
+    );
+
+    await FileSystem.writeAsStringAsync(mockFcbhUri, fcbhJson);
+    await expect(loadBundledPericopeSet(1, 'GEN')).resolves.toHaveLength(2);
+  });
+
+  it('rejects when the downloaded asset has no local URI', async () => {
+    mockPericopeAsset.omitLocalUri = true;
+    await expect(loadBundledPericopeSet(1, 'GEN')).rejects.toThrow(
+      'no local URI',
+    );
   });
 
   it('retries a failed asset read on the next call', async () => {
@@ -94,6 +128,5 @@ describe('loadBundledPericopeSet asset read', () => {
     const read = jest.spyOn(FileSystem, 'readAsStringAsync');
     await expect(loadBundledPericopeSet(999, 'GEN')).resolves.toBeNull();
     expect(read).not.toHaveBeenCalled();
-    read.mockRestore();
   });
 });
