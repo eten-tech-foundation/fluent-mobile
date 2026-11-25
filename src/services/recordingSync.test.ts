@@ -1978,10 +1978,8 @@ describe('recordingSync', () => {
     expect((error as Error).message).toMatch(/Chapter upload failed/);
   });
 
-  it('createChapterUploadWorker defers a chapter when membership is unconfirmed, even with nothing left to defer (#855)', async () => {
-    // Owner 9 could not be verified; this chapter only has nothing pending.
-    mockGetRecordingOwnerIds.mockResolvedValue([2, 9]);
-    mockGetVerifiedMembershipOwners.mockReturnValue(new Set([2]));
+  it('createChapterUploadWorker defers a chapter when the membership check failed, even with nothing left to defer (#855)', async () => {
+    mockReconcileHeldRecordings.mockRejectedValue(new Error('database locked'));
     mockGetPendingRecordings.mockResolvedValue([]);
     const worker = createChapterUploadWorker(() => 'worker-tok');
 
@@ -1993,6 +1991,32 @@ describe('recordingSync', () => {
       .catch(caught => caught);
 
     expect(isChapterUploadDeferredError(error)).toBe(true);
+  });
+
+  it("completes another account's chapter while a signed-out account is unconfirmed (#854)", async () => {
+    // Owner 9 is signed out (not verified) and has work elsewhere on the
+    // device; this chapter only holds the active account's (2) take.
+    mockGetRecordingOwnerIds.mockResolvedValue([2, 9]);
+    mockGetVerifiedMembershipOwners.mockReturnValue(new Set([2]));
+    mockGetCredentials.mockImplementation(async (id: string) =>
+      id === '2' ? { token: 'owner-2' } : null,
+    );
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'b-take', recordedByUserId: 2 }),
+    ]);
+    const worker = createChapterUploadWorker(() => 'worker-tok');
+
+    await expect(
+      worker.uploadChapter(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      ),
+    ).resolves.toBeUndefined();
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.any(Object),
+      'owner-2',
+      expect.anything(),
+    );
   });
 
   it('createChapterUploadWorker does not treat conflicts as chapter failures (#600)', async () => {

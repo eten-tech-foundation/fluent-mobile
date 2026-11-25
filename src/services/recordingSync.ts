@@ -99,9 +99,11 @@ export interface UploadResult {
    */
   deletionsFailed: number;
   /**
-   * Set when project membership could not be confirmed for this pass (the
-   * refresh or reconcile failed, or an owner could not be verified). The pass
-   * is not complete even when no take was left to defer (#855).
+   * Set when this pass's membership check itself failed (the refresh or the
+   * held reconcile threw). The pass is not complete even when no take was
+   * left to defer (#855). An owner that merely could not be verified (signed
+   * out) does not set it: that owner's takes in this pass are already counted
+   * in `deferred`, so other accounts' chapters still complete (#854).
    */
   membershipUnconfirmed?: true;
 }
@@ -1642,9 +1644,7 @@ async function runUploadPass(
       failed,
       deferred,
       deletionsFailed,
-      ...(reconcileFailed || gateFailed
-        ? { membershipUnconfirmed: true as const }
-        : {}),
+      ...(reconcileFailed ? { membershipUnconfirmed: true as const } : {}),
     };
   } catch (error) {
     if (isAbortError(error) || options.signal?.aborted) {

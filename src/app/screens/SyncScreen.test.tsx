@@ -905,6 +905,31 @@ describe('SyncScreen', () => {
       );
     });
 
+    it('does not say all synced when another account only has a queued claim', () => {
+      mockOtherAccountNeedsSignIn = true;
+      mockPendingUploads = {
+        ...mockPendingUploads,
+        hasPendingUploads: false,
+        pendingCount: 0,
+        pendingChapterCount: 0,
+        // A claim is queued work but not counted as an upload.
+        otherAccountsPendingCount: 0,
+        otherAccountOwnerIds: [20],
+      };
+      render(<SyncScreen />);
+
+      expect(screen.getByTestId('sync-other-accounts-sign-in')).toBeTruthy();
+      expect(screen.getByTestId('sync-other-accounts-subtitle')).toBeTruthy();
+      expect(
+        screen.queryByText('All work has been uploaded to Fluent.'),
+      ).toBeNull();
+      // No "0 uploads" line: the count stays takes, deletes and stage changes.
+      expect(screen.queryByTestId('sync-other-accounts-count')).toBeNull();
+      expect(mockSessionStateInputs.at(-1)).toEqual({
+        hasPendingUploads: true,
+      });
+    });
+
     it('shows nothing extra when no other account has work', () => {
       render(<SyncScreen />);
 

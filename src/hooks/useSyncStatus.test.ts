@@ -615,6 +615,8 @@ describe('useSyncStatus before reachability is known', () => {
         failedErrorText: null,
         isUploading: false,
         uploadProgress: null,
+        otherAccountsPendingCount: 0,
+        otherAccountOwnerIds: [] as number[],
       };
       mockUsePendingUploads.mockReturnValue({
         ...counts,
@@ -650,6 +652,8 @@ describe('useSyncStatus before reachability is known', () => {
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
+      otherAccountsPendingCount: 0,
+      otherAccountOwnerIds: [],
     });
     const { result } = renderHook(() =>
       useSyncStatus({ isSyncing: true, refreshKey: 0 }),

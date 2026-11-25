@@ -82,8 +82,11 @@ export default function SyncScreen() {
     refreshKey,
   );
   // Other accounts' queued work uploads in this account's session (#854), so
-  // it keeps the page out of "all synced" and Sync Now on screen.
-  const hasOtherAccountsPending = otherAccountsPendingCount > 0;
+  // it keeps the page out of "all synced" and Sync Now on screen. The owner
+  // list covers every kind of queued work, including an offline claim, which
+  // the upload count does not include.
+  const hasOtherAccountsPending =
+    otherAccountsPendingCount > 0 || otherAccountOwnerIds.length > 0;
 
   const { triggerSync, isSyncing, displayText, stateType } = useSync({
     onSyncComplete: () => {
