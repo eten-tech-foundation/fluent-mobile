@@ -1,9 +1,13 @@
 # Refreshing bundled pericope sets
 
 fluent-mobile bundles FCBH and FIA pericope boundary data directly in the
-APK for offline-first sync (#447). Source: `FCBH-All-Books.json` /
-`FIA-All-Books.json`, copied unmodified from fluent-api's `data/`
-directory.
+APK for offline-first sync (#447). The bytes are fluent-api's
+`data/FCBH-All-Books.json` and `data/FIA-All-Books.json`, stored here as
+`FCBH-All-Books.pericope` and `FIA-All-Books.pericope`. Metro packages
+that extension as an asset, not as a JavaScript module (#1003). A `.json`
+filename would be emitted as an object literal.
+`loadBundledPericopeSet()` reads the file the first time that set is
+needed and keeps a per-book index in memory.
 
 ## When to refresh
 
@@ -12,8 +16,10 @@ is updated (corrected pericope boundaries, added books, etc.).
 
 ## How to refresh
 
-1. Copy the updated file(s) from fluent-api's `data/` directory into
-   `assets/pericope-sets/`, overwriting the existing file(s).
+1. Copy the updated file(s) from fluent-api's `data/` directory over
+   `assets/pericope-sets/FCBH-All-Books.pericope` and
+   `FIA-All-Books.pericope`. Keep the `.pericope` extension. The contents
+   stay the unmodified JSON export.
 2. Bump the corresponding entry in
    `assets/pericope-sets/pericopeSetVersions.ts`
    (`BUNDLED_PERICOPE_VERSIONS[FCBH_SET_ID]` or `[FIA_SET_ID]`) to a new
@@ -36,8 +42,9 @@ across `fcbh_section` + `fcbh_pericope_number`; FIA has a single
 `fia_pericope_number` and an optional `fia_pericope_title`. Both are
 normalized into a common shape (`chapterNumber`, `verseNumber`,
 `pericopeNumber`, `pericopeTitle`) at read time in
-`src/services/pericopeSets.ts` — the bundled files themselves stay
-untouched copies of the source exports.
+`src/services/pericopeSets.ts`. The bundled files themselves stay
+untouched copies of the source exports. They are not imported as
+JavaScript; the loader opens them from the APK asset.
 
 ## Scope note
 

@@ -78,7 +78,7 @@ describe('syncPericopes', () => {
 
   it('seeds from the bundled asset when the set is bundled', async () => {
     jest.mocked(getBundledPericopeSetVersion).mockReturnValue('bundled-v1');
-    jest.mocked(loadBundledPericopeSet).mockReturnValue([
+    jest.mocked(loadBundledPericopeSet).mockResolvedValue([
       {
         chapterNumber: 1,
         verseNumber: 1,
@@ -139,7 +139,7 @@ describe('syncPericopes', () => {
   it('does not mark a book current when nothing was written (#886)', async () => {
     jest.mocked(upsertPericopeSet).mockResolvedValue(false);
     jest.mocked(getBundledPericopeSetVersion).mockReturnValue('bundled-v1');
-    jest.mocked(loadBundledPericopeSet).mockReturnValue([
+    jest.mocked(loadBundledPericopeSet).mockResolvedValue([
       {
         chapterNumber: 1,
         verseNumber: 1,

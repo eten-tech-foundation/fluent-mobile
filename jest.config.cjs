@@ -1,3 +1,5 @@
+const expoPreset = require('jest-expo/jest-preset');
+
 module.exports = {
   preset: 'jest-expo',
   setupFiles: ['<rootDir>/jest.env.cjs', '<rootDir>/jest.setup.expo-fs.cjs'],
@@ -26,6 +28,12 @@ module.exports = {
     '**/?(*.)+(spec|test).[jt]s?(x)',
     '**/?(*.)+(spec|test).cjs',
   ],
+  // Keep jest-expo's transformers and teach Jest to parse `.pericope`
+  // assets as JSON. On device those files are Metro assets (#1003).
+  transform: {
+    ...expoPreset.transform,
+    '\\.pericope$': '<rootDir>/scripts/jestPericopeTransformer.cjs',
+  },
   moduleNameMapper: {
     '^expo-secure-store$': '<rootDir>/src/test/mocks/expo-secure-store.ts',
     '^expo-file-system$': '<rootDir>/src/test/mocks/expo-file-system.ts',

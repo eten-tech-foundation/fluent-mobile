@@ -1,8 +1,8 @@
 /**
  * Hardcoded version markers for the bundled pericope set assets (#447).
  *
- * Bump the relevant entry whenever FCBH-All-Books.json / FIA-All-Books.json
- * is refreshed from fluent-api's data/ directory -- see
+ * Bump the relevant entry whenever FCBH-All-Books.pericope /
+ * FIA-All-Books.pericope is refreshed from fluent-api's data/ directory -- see
  * docs/guides/pericope-set-bundling.md for the full refresh checklist.
  *
  * #438's sync step compares this against the version already stored

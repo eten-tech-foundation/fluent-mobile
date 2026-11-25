@@ -2303,7 +2303,10 @@ export async function syncPericopes(
               continue;
             }
 
-            const verses = loadBundledPericopeSet(pericopeSetId, bookCode);
+            const verses = await loadBundledPericopeSet(
+              pericopeSetId,
+              bookCode,
+            );
             if (verses) {
               if (await upsertPericopeSet(pericopeSetId, bookCode, verses)) {
                 setPericopeBookVersion(pericopeSetId, bookCode, bundledVersion);
