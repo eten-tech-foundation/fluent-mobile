@@ -24,7 +24,7 @@ Full table: [README QA evidence](./README.md#qa-device-evidence-assignment-484--
 | **Preconditions** | Valid credentials for that API base; optional second stored account |
 | **Expected** | Sign-in reaches Home; switch activates only target token/user; prior account data does not bleed |
 | **Denied / empty** | Bad password stays on login; missing stored session for switch fails closed |
-| **Offline** | Offline login path exists; warm session restore without wipe (#717) |
+| **Offline** | A password verifier saved at the last online sign-in restores that device session with no network (#1001). The verifier is bound to that sign-in's token, so a later sign-in whose verifier save failed leaves offline sign-in unavailable rather than accepting the old password. No verifier, or a removed account, stays on “Unable to connect”. A 401 does not hide cached work. The session-expired banner shows only while Fluent is reachable and a sync is waiting or Sync was opened. |
 | **Labels** | Inferred + mock: [accountSession.test.ts](../../src/services/accountSession.test.ts), [sync.auth.test.ts](../../src/services/sync.auth.test.ts). Maestro multi-account file ≠ pass |
 | **Open** | What UI proves signed-in grant after login? |
 
@@ -76,7 +76,7 @@ Full table: [README QA evidence](./README.md#qa-device-evidence-assignment-484--
 | --- | --- |
 | **Preconditions** | Pending takes and/or claims; connectivity |
 | **Expected** | Home sync icon → Sync screen; Sync Now uploads; audio `hasConflict` ≠ claim `hasClaimConflict` |
-| **Denied** | 401 → reauth; 403 projects → fail, not empty success ([sync.auth.test.ts](../../src/services/sync.auth.test.ts)) |
+| **Denied** | 401 sets reauth; the background metadata refresh then skips the network until an online sign-in (manual Sync and uploads still try, and report the 401). It does not wipe cached grants. 403 projects → fail, not empty success ([sync.auth.test.ts](../../src/services/sync.auth.test.ts)) |
 | **Offline** | Queue uploads/claims; reconnect |
 | **Known deviation (QA)** | [#721](https://github.com/eten-tech-foundation/fluent-mobile/issues/721) — Sync one-press failed to open Sync screen (**before** tabs 484 PASS). Bug, not role cause. Agent debug ≠ Nightly signoff |
 | **Labels** | Inferred. #391 audio; #390 open PR ≠ pinned `main`. Dev Account B Sync FAIL is historical Dev only |

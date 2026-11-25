@@ -86,6 +86,20 @@ describe('accountSession', () => {
       );
       expect(mockSwitchActiveUser).not.toHaveBeenCalled();
     });
+
+    it('refuses a stored token that is not the one the caller checked', async () => {
+      mockGetCredentials.mockResolvedValue({ token: 'newer' });
+
+      await expect(switchToDeviceAccount('other-2', 'checked')).rejects.toThrow(
+        /signed in again/,
+      );
+      expect(mockAuthTokenSet).not.toHaveBeenCalled();
+      expect(mockSwitchActiveUser).not.toHaveBeenCalled();
+
+      mockGetCredentials.mockResolvedValue({ token: 'checked' });
+      await switchToDeviceAccount('other-2', 'checked');
+      expect(mockAuthTokenSet).toHaveBeenCalledWith('checked');
+    });
   });
 
   describe('signOutCurrentDeviceAccount', () => {

@@ -21,6 +21,9 @@ export type ImagesMapsLoadState =
 
 type TrackedLoadState = {
   projectId: number | null;
+  userId: number | null | undefined;
+  languageCode: string | undefined;
+  isOnline: boolean | undefined;
   bookCode: string;
   versesKey: string;
   value: ImagesMapsLoadState;
@@ -48,7 +51,9 @@ function verseNumbersKeySafe(verseNumbers: number[] | undefined): string {
 
 /**
  * Section-scoped Images & Maps loader (#191). Failures stay local.
- * Ignores stale responses when the active unit changes mid-load.
+ * Ignores stale responses when the active unit changes mid-load, and shows
+ * loading rather than another account's or language's images, or an
+ * offline result once back online.
  * Downloaded rows win; fluent-api translation-resources (fluent-api #274)
  * is only hit when nothing usable is downloaded and the device is online.
  * Online pericope units fan out across their verse refs (#593).
@@ -92,6 +97,9 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
 
   const [tracked, setTracked] = useState<TrackedLoadState>({
     projectId,
+    userId,
+    languageCode,
+    isOnline,
     bookCode,
     versesKey,
     value: { status: 'loading' },
@@ -102,6 +110,9 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
     const requestId = ++requestIdRef.current;
     setTracked({
       projectId,
+      userId,
+      languageCode,
+      isOnline,
       bookCode,
       versesKey,
       value: { status: 'loading' },
@@ -122,6 +133,9 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
       }
       setTracked({
         projectId,
+        userId,
+        languageCode,
+        isOnline,
         bookCode,
         versesKey,
         value: { status: 'ready', items },
@@ -138,6 +152,9 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
       });
       setTracked({
         projectId,
+        userId,
+        languageCode,
+        isOnline,
         bookCode,
         versesKey,
         value: {
@@ -167,6 +184,9 @@ export function useImagesMapsForUnit(params: UseImagesMapsForUnitParams) {
 
   const state: ImagesMapsLoadState =
     tracked.projectId === projectId &&
+    tracked.userId === userId &&
+    tracked.languageCode === languageCode &&
+    tracked.isOnline === isOnline &&
     tracked.bookCode === bookCode &&
     tracked.versesKey === versesKey
       ? tracked.value

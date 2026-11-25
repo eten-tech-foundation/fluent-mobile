@@ -37,6 +37,7 @@ import { useDraftingUnit } from '../../../../hooks/useDraftingUnit';
 import { useHaptics } from '../../../../hooks/useHaptics';
 import type { HeaderSync } from '../../../../hooks/useHeaderSync';
 import type { usePassage } from '../../../../hooks/usePassage';
+import type { PassageRecovery } from '../../../../navigation/passageRecovery';
 import {
   hasVerseStart,
   verseStartMs,
@@ -48,20 +49,28 @@ import { ColorModeScope, useTheme } from '../../../../theme/useTheme';
 import { Dialog, type DialogProps } from '../../../../components/ui/Dialog';
 import { Footer } from './Footer';
 import { NoteScreen } from './NoteScreen';
+import { hasNotesStatus, NotesStatus } from './NotesStatus';
 import { PassageHero } from './PassageHero';
 import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
 import { type Ready } from './ready';
+import { ResourcesCard } from './ResourcesCard';
 import { useScriptMetrics } from './scriptMetrics';
 import { sourceWindow, windowProgress, windowSeekMs } from './sourceWindow';
 import { TakeFan } from './TakeFan';
 import { TakeReview } from './TakeReview';
 import { TitleSheet } from './TitleSheet';
+import { usePassageImages } from './usePassageImages';
 import { usePassageNotes } from './usePassageNotes';
-import { usePeerCheckSend } from './usePeerCheckSend';
 import { useRecorder } from './useRecorder';
+import { useStageSend } from './useStageSend';
 import { useTakeReview } from './useTakeReview';
 import { VerseList } from './VerseList';
+
+/** Previews on the docked Resources card, and how many verses they search. */
+const PREVIEW_COUNT = 3;
+/** Lets the page's arrival paint before the previews ask for anything. */
+const PREVIEW_DELAY_MS = 600;
 
 /** How far the hero drags before a release opens or closes it. */
 const SNAP_AT = 0.35;
@@ -167,6 +176,7 @@ export function Sheet({
   onReload,
   anchorVerse,
   openVerse,
+  recovery,
   chapterName,
   milestoneName,
   onBack,
@@ -186,6 +196,8 @@ export function Sheet({
   anchorVerse: number;
   /** In verse mode, the verse Record opens on, e.g. a recovered take's. */
   openVerse?: number;
+  /** A paused take this page was opened to pick back up, as it was saved. */
+  recovery?: PassageRecovery | null;
   /** e.g. "Mark 14"; the title's sheet links it up to the book page. */
   chapterName: string;
   milestoneName: string;
@@ -230,14 +242,16 @@ export function Sheet({
   const collapsed = actionsTop + actions + spacing.xl;
   const range = Math.max(1, container - collapsed);
   const fullScript = Math.max(preview, container - headerBottom - panel);
-  // Settings picks the unit; a chapter without pericopes is verse by verse.
+  // Settings picks the unit, or a recovered take's own; a chapter without
+  // pericopes is verse by verse.
   const { draftingUnit } = useDraftingUnit();
-  const unit = passage.wholeChapter ? 'verse' : draftingUnit;
+  const unit = passage.wholeChapter ? 'verse' : recovery?.unit ?? draftingUnit;
   const recorder = useRecorder({
     passage,
     userId,
     unit,
     openVerse,
+    sessionVerse: recovery?.verse,
     showing: expanded && recordMode,
     focused,
     downloading: downloadState === 'downloading',
@@ -245,15 +259,8 @@ export function Sheet({
     onCaptureActiveChange,
     onRegisterCaptureControls,
   });
+  // A failed load says so in Listen and waits for Retry there.
   const notes = usePassageNotes(passage, userId, playerOpened);
-  // Notes that failed to load try again each time the player opens.
-  const notesRef = useRef(notes);
-  useEffect(() => {
-    notesRef.current = notes;
-  });
-  useEffect(() => {
-    if (expanded && notesRef.current.failed) void notesRef.current.retry();
-  }, [expanded]);
   /** Everyone's takes, over Record so a take playing keeps playing. */
   const [reviewOpen, setReviewOpen] = useState(false);
   const review = useTakeReview({
@@ -343,6 +350,67 @@ export function Sheet({
   const { isOnline, hasResolved } = useConnectivity();
   const [playingVerse, setPlayingVerse] = useState<number | null>(null);
   const steps = recorder.verse;
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  // The full list loads the first time the card opens, or in the background
+  // once the previews settle, then stays.
+  const [resourcesAsked, setResourcesAsked] = useState(false);
+  const [prefetchAsked, setPrefetchAsked] = useState(false);
+  const [peekHeight, setPeekHeight] = useState(0);
+  const images = usePassageImages({
+    passage,
+    userId,
+    enabled: resourcesAsked || prefetchAsked,
+  });
+  // A background load that failed tries again when the card opens, as the
+  // card's first open used to.
+  const imagesRef = useRef(images);
+  useEffect(() => {
+    imagesRef.current = images;
+  });
+  useEffect(() => {
+    if (resourcesOpen && imagesRef.current.state.status === 'failed') {
+      void imagesRef.current.retry();
+    }
+  }, [resourcesOpen]);
+  // A few previews for the docked card, from the first verses only, once
+  // the page has arrived. The full list follows in the background once the
+  // previews settle, so it's usually in by the time the card opens, without
+  // holding up the page or the previews.
+  const [previewsAsked, setPreviewsAsked] = useState(false);
+  useEffect(() => {
+    const wait = setTimeout(() => setPreviewsAsked(true), PREVIEW_DELAY_MS);
+    return () => clearTimeout(wait);
+  }, []);
+  const firstImages = usePassageImages({
+    passage,
+    userId,
+    enabled: previewsAsked,
+    firstVerses: PREVIEW_COUNT,
+  });
+  const previewsSettled =
+    previewsAsked && firstImages.state.status !== 'loading';
+  useEffect(() => {
+    if (previewsSettled) setPrefetchAsked(true);
+  }, [previewsSettled]);
+  // The full list once it's in, else the first verses'. All of them, so
+  // the card can skip a thumbnail that won't load.
+  const previewSource = images.state.status === 'ready' ? images : firstImages;
+  const previews =
+    previewSource.state.status === 'ready' ? previewSource.state.items : [];
+  const previewsScope = `${previewSource === images ? 'all' : 'first'}:${
+    previewSource.scope
+  }:${previewSource.state.status}`;
+  useEffect(() => {
+    if (!focused || expanded) setResourcesOpen(false);
+  }, [focused, expanded]);
+  useEffect(() => {
+    if (!resourcesOpen || !focused) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setResourcesOpen(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [resourcesOpen, focused]);
   // Until the text is in, the script shows why instead.
   const versePages =
     steps !== null && expanded && passage.downloaded && steps.verses.length > 0;
@@ -527,7 +595,7 @@ export function Sheet({
         onCancel: () => setLeaving(false),
       }
     : null;
-  const send = usePeerCheckSend({
+  const send = useStageSend({
     passage,
     userId,
     capturing,
@@ -647,8 +715,25 @@ export function Sheet({
             reachedPlayAt.current = false;
             setPlayAt(verseNumber);
           }}
+          bottomInset={peekHeight}
         />
       ) : null}
+      {/* The page's own mode, like the Verses list it floats over. */}
+      <ResourcesCard
+        shown={!expanded}
+        open={resourcesOpen}
+        onOpenChange={to => {
+          if (to) setResourcesAsked(true);
+          setResourcesOpen(to);
+        }}
+        maxHeight={container - headerBottom - spacing.sm}
+        player={progress}
+        onPeekHeight={setPeekHeight}
+        images={images}
+        previews={previews}
+        previewsScope={previewsScope}
+        onRetryImages={() => void images.retry()}
+      />
       <ColorModeScope value="hardware">
         <TitleSheet
           visible={titleSheetOpen}
@@ -706,6 +791,11 @@ export function Sheet({
               verseChips: steps === null || timed,
             }}
             notices={recorder.notices}
+            notesStatus={
+              hasNotesStatus(notes.status) ? (
+                <NotesStatus status={notes.status} onRetry={notes.retry} />
+              ) : null
+            }
             onOpenClassic={openClassic}
             dimmed={lifted}
           />

@@ -42,7 +42,9 @@ export function HomeScreenBody({
     isSyncingChapters,
     syncStatus,
     failedErrorText,
-    reauthRequired,
+    showSessionExpiredBanner,
+    signInToSyncLabel,
+    noteSyncOpened,
   } = useHomeSyncState({ postLoginSyncActive, userSwitchEpoch });
 
   const handleReauthPress = useCallback(() => {
@@ -77,6 +79,7 @@ export function HomeScreenBody({
   }, [showLoading]);
 
   const handleSyncPress = useCallback(() => {
+    noteSyncOpened();
     log.info('home sync onPress', { showLoading });
     if (syncPushLockRef.current) {
       log.info('home sync push skipped', { reason: 'duplicate' });
@@ -93,7 +96,7 @@ export function HomeScreenBody({
         error: error instanceof Error ? error.message : 'unknown',
       });
     }
-  }, [router, showLoading]);
+  }, [noteSyncOpened, router, showLoading]);
 
   return (
     <ScreenContainer>
@@ -103,6 +106,7 @@ export function HomeScreenBody({
           <PageHeaderSyncButton
             syncStatus={syncStatus}
             failedErrorText={failedErrorText}
+            signInToSyncLabel={signInToSyncLabel}
             onPressIn={handleSyncPressIn}
             onPress={handleSyncPress}
           />
@@ -126,7 +130,7 @@ export function HomeScreenBody({
               <ProjectsTab refreshKey={refreshKey} />
             )}
           </View>
-          {reauthRequired ? (
+          {showSessionExpiredBanner ? (
             <ReauthBanner onSignInAgain={handleReauthPress} />
           ) : null}
         </>

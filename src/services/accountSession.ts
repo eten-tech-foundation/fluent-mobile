@@ -22,12 +22,19 @@ const log = logger.create('accountSession');
  * Updates in-memory auth token and active-user KV only (no sync).
  * Callers should invoke notifyUserSwitched so AuthSessionProvider bumps
  * userSwitchEpoch and scoped screens reload.
- * Throws if credentials are missing or have no token.
+ * Throws if credentials are missing or have no token, or when
+ * `expectedToken` is given and the stored token is no longer that one.
  */
-export async function switchToDeviceAccount(userId: string): Promise<void> {
+export async function switchToDeviceAccount(
+  userId: string,
+  expectedToken?: string,
+): Promise<void> {
   const creds = await getCredentials(userId);
   if (!creds?.token) {
     throw new Error('No usable stored session for this account');
+  }
+  if (expectedToken !== undefined && creds.token !== expectedToken) {
+    throw new Error('This account signed in again. Try signing in once more.');
   }
 
   authToken.set(creds.token);

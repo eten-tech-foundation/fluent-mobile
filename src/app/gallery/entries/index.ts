@@ -11,6 +11,7 @@ import { KeyEntry } from './KeyEntry';
 import { NoteEntry } from './NoteEntry';
 import { PassageCoverEntry } from './PassageCoverEntry';
 import { PassageNoticesEntry } from './PassageNoticesEntry';
+import { ResourcesPeekEntry } from './ResourcesPeekEntry';
 import { RoundButtonEntry } from './RoundButtonEntry';
 import { ScreenHeaderEntry } from './ScreenHeaderEntry';
 import { SwitchEntry } from './SwitchEntry';
@@ -186,6 +187,17 @@ export const galleryEntries: GalleryEntry[] = [
     modes: 'Hardware (Home)',
     pin: 'hardware',
     Component: BottomSheetEntry,
+  },
+  {
+    // No Figma frame yet: the Pericope frame's Resources button
+    // https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2440-28492
+    // as a card docked at the bottom that grows into the resources.
+    id: 'resources-peek',
+    name: 'Resources card',
+    section: 'Sheets and dialogs',
+    modes: 'Hardware (the passage page under the hero)',
+    pin: 'hardware',
+    Component: ResourcesPeekEntry,
   },
   {
     // Figma: Gap / Dialog https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2644-72

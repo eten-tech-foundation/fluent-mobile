@@ -226,8 +226,8 @@ async function assertLocalFileExists(localFilePath: string): Promise<void> {
 }
 
 async function handleUploadAuthFailure(userId: string): Promise<void> {
-  setReauthRequired(userId);
-  if (userId === getActiveUserId()) {
+  const changed = setReauthRequired(userId);
+  if (changed !== false && userId === getActiveUserId()) {
     emitAuthReauthRequired(userId);
   }
 }
@@ -1037,7 +1037,7 @@ async function uploadOneRecording(
         if (tokenUserId) {
           await handleUploadAuthFailure(tokenUserId);
         }
-        log.error('Recording upload auth failure', {
+        log.warn('Recording upload auth failure', {
           recordingId: recording.id,
           tokenUserId,
           error: error.message,
@@ -1244,7 +1244,7 @@ async function deleteOneRecordingTake(
         if (tokenUserId) {
           await handleUploadAuthFailure(tokenUserId);
         }
-        log.error('Recording take delete auth failure', {
+        log.warn('Recording take delete auth failure', {
           deletionId: deletion.id,
           tokenUserId,
           error: error.message,

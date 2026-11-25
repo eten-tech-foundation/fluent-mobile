@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { getPendingUploadCount } from '../db/queries';
+import { afterFirstPaint } from '../navigation/splashGate';
 import {
   getSyncStatusSnapshot,
   refreshSyncStatusStoreIfChanged,
@@ -28,9 +29,13 @@ export function usePendingUploads(refreshKey = 0): SyncStatusSnapshot & {
   );
 
   // Store events re-read on every take and upload change; these mount, focus
-  // and refreshKey reads skip when nothing has been written since.
+  // and refreshKey reads skip when nothing has been written since. On launch
+  // they wait for Home's first paint: the counts share the one SQLite
+  // connection with Home's chapter and Next up reads (#1002).
   const refresh = useCallback(() => {
-    void refreshSyncStatusStoreIfChanged();
+    afterFirstPaint(() => {
+      void refreshSyncStatusStoreIfChanged();
+    });
   }, []);
 
   // Refresh when a screen regains focus (returning from Sync, tab switch).
@@ -49,6 +54,7 @@ export function usePendingUploads(refreshKey = 0): SyncStatusSnapshot & {
     unuploadableCount: snapshot.unuploadableCount,
     failedErrorText: snapshot.failedErrorText,
     countsUnknown: snapshot.countsUnknown,
+    countsRead: snapshot.countsRead,
     hasPendingUploads: snapshot.pendingCount > 0,
     hasFailedUploads: snapshot.failedCount > 0,
     hasUnuploadablePending: snapshot.unuploadableCount > 0,

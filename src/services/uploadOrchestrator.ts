@@ -90,9 +90,13 @@ async function storedOwnerToken(userId: number): Promise<string | null> {
  */
 function ownerNeedsSignIn(userId: number): void {
   const ownerId = String(userId);
-  setReauthRequired(ownerId);
+  const changed = setReauthRequired(ownerId);
   if (getActiveUserId() === ownerId) {
-    emitAuthReauthRequired(ownerId);
+    // Emit only when the flag actually changed, so a repeated drain does not
+    // re-prompt the active account.
+    if (changed !== false) {
+      emitAuthReauthRequired(ownerId);
+    }
     throw new AuthError(
       'Queued owner credentials are missing',
       'OWNER_CREDENTIALS_MISSING',

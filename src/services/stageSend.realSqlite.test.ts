@@ -8,10 +8,10 @@ import { ApiError } from '../types/api/errors';
 import { FluentAPI } from './api';
 import { authToken } from './authToken';
 import {
-  PeerCheckSendBlockedError,
-  readPeerCheckSend,
-  sendChapterToPeerCheck,
-} from './peerCheckSend';
+  StageSendBlockedError,
+  readStageSend,
+  sendChapterToStage,
+} from './stageSend';
 import { __resetStageAdvanceSyncForTests } from './stageAdvanceSync';
 import { syncPendingStageAdvancesForUser } from './sync';
 
@@ -44,6 +44,10 @@ const mockCredentials = jest.fn(async (_userId: string) => ({
 jest.mock('./keychain', () => ({
   getCredentials: (userId: string) => mockCredentials(userId),
 }));
+let mockTranslatorProjects: number[] = [100];
+jest.mock('../utils/myWorkDraftDownload', () => ({
+  getTranslatorProjectIds: () => mockTranslatorProjects,
+}));
 jest.mock('./recordingDataEvents', () => ({
   emitRecordingDataChanged: jest.fn(),
 }));
@@ -72,10 +76,11 @@ const server = (stage: string) => ({
 });
 
 const send = () =>
-  sendChapterToPeerCheck({
+  sendChapterToStage({
     chapterAssignmentId: 7,
     userId: 4,
     draftingUnit: 'verse',
+    to: 'peer_check',
   });
 
 async function status(): Promise<string> {
@@ -109,7 +114,7 @@ async function record(verse: number, syncStatus = 'uploaded') {
   );
 }
 
-describe('Send to Peer Check against real SQLite (#908)', () => {
+describe('Stage send against real SQLite (#908, #909)', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockGet.mockReset();
@@ -120,11 +125,12 @@ describe('Send to Peer Check against real SQLite (#908)', () => {
     __resetStageAdvanceSyncForTests();
     mockActiveUser = '4';
     mockOnline = true;
+    mockTranslatorProjects = [100];
     authToken.set('session-token');
     mockDb = createRealSqliteDb();
     await runMigrations(mockDb);
     await mockDb.execute(`
-      INSERT INTO users (id, email) VALUES (4, 'drafter@example.test'), (5, 'other@example.test');
+      INSERT INTO users (id, email) VALUES (4, 'drafter@example.test'), (5, 'other@example.test'), (6, 'checker@example.test');
       INSERT INTO languages (id, lang_name, script_direction) VALUES (1, 'English', 'ltr');
       INSERT INTO books (id, code, eng_display_name) VALUES (1, 'GEN', 'Genesis');
       INSERT INTO bibles (id, language_id, name, abbreviation) VALUES (1, 1, 'Test Bible', 'TST');
@@ -211,7 +217,7 @@ describe('Send to Peer Check against real SQLite (#908)', () => {
         await mockDb.execute(
           `UPDATE recordings SET granularity = 'stitched', sync_status = 'pending' WHERE id = 'v2'`,
         );
-        const check = await readPeerCheckSend({
+        const check = await readStageSend({
           chapterAssignmentId: 7,
           userId: 4,
           draftingUnit: 'verse',
@@ -245,7 +251,7 @@ describe('Send to Peer Check against real SQLite (#908)', () => {
     await arrange();
     const before = await status();
 
-    await expect(send()).rejects.toBeInstanceOf(PeerCheckSendBlockedError);
+    await expect(send()).rejects.toBeInstanceOf(StageSendBlockedError);
     expect(await status()).toBe(before);
     expect(await queueRows()).toBe(0);
     expect(mockSubmit).not.toHaveBeenCalled();
@@ -255,7 +261,7 @@ describe('Send to Peer Check against real SQLite (#908)', () => {
     await mockDb.execute(
       'UPDATE chapter_assignments SET has_conflict = 1 WHERE id = 7',
     );
-    const check = await readPeerCheckSend({
+    const check = await readStageSend({
       chapterAssignmentId: 7,
       userId: 4,
       draftingUnit: 'verse',
@@ -282,7 +288,7 @@ describe('Send to Peer Check against real SQLite (#908)', () => {
         return real(id);
       });
 
-    await expect(send()).rejects.toBeInstanceOf(PeerCheckSendBlockedError);
+    await expect(send()).rejects.toBeInstanceOf(StageSendBlockedError);
     spy.mockRestore();
     expect(await status()).toBe('draft');
     expect(await queueRows()).toBe(0);
@@ -347,7 +353,7 @@ describe('Send to Peer Check against real SQLite (#908)', () => {
       `);
     });
     const check = (draftingUnit: 'verse' | 'pericope') =>
-      readPeerCheckSend({ chapterAssignmentId: 7, userId: 4, draftingUnit });
+      readStageSend({ chapterAssignmentId: 7, userId: 4, draftingUnit });
 
     it('offers Send once every pericope has a take', async () => {
       expect((await check('pericope'))?.visibility).toMatchObject({
@@ -363,4 +369,285 @@ describe('Send to Peer Check against real SQLite (#908)', () => {
       expect(await check('pericope')).toBeNull();
     });
   });
+
+  describe('after Drafting (#909)', () => {
+    async function atStage(stage: string, peerCheckerId: number | null = null) {
+      await mockDb.execute(
+        'UPDATE chapter_assignments SET status = ?, peer_checker_id = ? WHERE id = 7',
+        [stage, peerCheckerId],
+      );
+    }
+    const sendAs = (userId: number, to: string) => {
+      mockActiveUser = String(userId);
+      return sendChapterToStage({
+        chapterAssignmentId: 7,
+        userId,
+        draftingUnit: 'verse',
+        to: to as Parameters<typeof sendChapterToStage>[0]['to'],
+      });
+    };
+    const offered = async (userId: number) =>
+      (
+        await readStageSend({
+          chapterAssignmentId: 7,
+          userId,
+          draftingUnit: 'verse',
+        })
+      )?.visibility.destination?.nextStatus ?? null;
+    async function queued() {
+      const { rows } = await mockDb.execute(
+        'SELECT to_status, peer_checker_id, user_id FROM stage_advance_queue',
+      );
+      return rows.map(r => ({
+        to: r.to_status,
+        peerCheckerId: r.peer_checker_id,
+        userId: r.user_id,
+      }));
+    }
+    async function peerChecker() {
+      const { rows } = await mockDb.execute(
+        'SELECT peer_checker_id FROM chapter_assignments WHERE id = 7',
+      );
+      return rows[0]?.peer_checker_id ?? null;
+    }
+
+    it.each([
+      // [stage, peer checker, user, offered next stage]
+      ['peer_check', null, 4, null],
+      ['peer_check', null, 5, 'community_review'],
+      ['peer_check', 6, 6, 'community_review'],
+      ['peer_check', 6, 5, null],
+      ['peer_check', 6, 4, null],
+      ['community_review', 6, 5, 'linguist_check'],
+      ['linguist_check', 6, 4, 'theological_check'],
+      ['theological_check', 6, 5, 'consultant_check'],
+      ['consultant_check', 6, 5, 'complete'],
+      ['complete', 6, 5, null],
+      ['complete', 6, 4, null],
+    ])(
+      'at %s with checker %s, user %s is offered %s',
+      async (stage, checker, userId, next) => {
+        await atStage(stage, checker);
+        expect(await offered(userId)).toBe(next);
+      },
+    );
+
+    it.each([
+      // [peer checker, user, offered next stage] with no Translator grant
+      [null, 5, null],
+      [6, 6, 'community_review'],
+    ])(
+      'without a Translator grant, Peer Check with checker %s offers user %s %s',
+      async (checker, userId, next) => {
+        mockTranslatorProjects = [];
+        await atStage('peer_check', checker);
+        expect(await offered(userId)).toBe(next);
+      },
+    );
+
+    it.each([
+      [
+        'the drafter on open Peer Check',
+        'peer_check',
+        null,
+        4,
+        'community_review',
+      ],
+      [
+        "a peer on someone else's Peer Check",
+        'peer_check',
+        6,
+        5,
+        'community_review',
+      ],
+      ['anyone on a Complete chapter', 'complete', 6, 5, 'complete'],
+      [
+        'a peer without a Translator grant on open Peer Check',
+        'peer_check',
+        null,
+        5,
+        'community_review',
+        [] as number[],
+      ],
+    ])(
+      'refuses %s without writing',
+      async (_name, stage, checker, userId, to, translatorProjects = [100]) => {
+        mockTranslatorProjects = translatorProjects;
+        await atStage(stage, checker);
+        await expect(sendAs(userId, to)).rejects.toBeInstanceOf(
+          StageSendBlockedError,
+        );
+        expect(await status()).toBe(stage);
+        expect(await queueRows()).toBe(0);
+        expect(mockGet).not.toHaveBeenCalled();
+        expect(mockSubmit).not.toHaveBeenCalled();
+      },
+    );
+
+    it('assigns the peer who advances open Peer Check', async () => {
+      await atStage('peer_check');
+      mockOnline = false;
+
+      await expect(sendAs(5, 'community_review')).resolves.toBe('queued');
+      expect(await status()).toBe('community_review');
+      expect(await peerChecker()).toBe(5);
+      expect(await queued()).toEqual([
+        { to: 'community_review', peerCheckerId: 5, userId: 5 },
+      ]);
+    });
+
+    it('keeps an assigned peer checker when they advance', async () => {
+      await atStage('peer_check', 6);
+      mockOnline = false;
+
+      await expect(sendAs(6, 'community_review')).resolves.toBe('queued');
+      expect(await peerChecker()).toBe(6);
+      expect(await queued()).toEqual([
+        { to: 'community_review', peerCheckerId: null, userId: 6 },
+      ]);
+    });
+
+    it('queues a later stage offline, then reaches it on reconnect', async () => {
+      await atStage('community_review', 6);
+      mockOnline = false;
+
+      await expect(sendAs(5, 'linguist_check')).resolves.toBe('queued');
+      expect(await status()).toBe('linguist_check');
+      expect(await hasPendingStageAdvance(7)).toBe(true);
+
+      mockOnline = true;
+      mockGet.mockResolvedValue(server('community_review'));
+      mockSubmit.mockResolvedValue(server('linguist_check'));
+      await syncPendingStageAdvancesForUser(5, 'drafter-token');
+      expect(mockSubmit).toHaveBeenCalledTimes(1);
+      expect(await hasPendingStageAdvance(7)).toBe(false);
+      expect(await status()).toBe('linguist_check');
+    });
+
+    it('confirms a later stage the server takes online', async () => {
+      await atStage('theological_check', 6);
+      mockGet.mockResolvedValue(server('theological_check'));
+      mockSubmit.mockResolvedValue(server('consultant_check'));
+
+      await expect(sendAs(5, 'consultant_check')).resolves.toBe('confirmed');
+      expect(await status()).toBe('consultant_check');
+      expect(await queueRows()).toBe(0);
+    });
+
+    it('refuses, writing nothing, once the next stage is not the one confirmed', async () => {
+      await atStage('linguist_check', 6);
+
+      await expect(sendAs(5, 'linguist_check')).rejects.toBeInstanceOf(
+        StageSendBlockedError,
+      );
+      expect(await status()).toBe('linguist_check');
+      expect(await queueRows()).toBe(0);
+    });
+
+    describe('Complete', () => {
+      beforeEach(async () => {
+        await atStage('consultant_check', 6);
+      });
+
+      it('writes Complete only after the server confirms it', async () => {
+        let serverRead!: (v: unknown) => void;
+        mockGet.mockImplementationOnce(
+          () => new Promise(r => (serverRead = r)) as never,
+        );
+        mockSubmit.mockResolvedValue(server('complete'));
+        mockGet.mockResolvedValueOnce(server('complete'));
+
+        const sent = sendAs(5, 'complete');
+        await waitForCall(mockGet);
+        expect(await status()).toBe('consultant_check');
+        expect(mockSubmit).not.toHaveBeenCalled();
+
+        serverRead(server('consultant_check'));
+        await expect(sent).resolves.toBe('confirmed');
+        expect(mockSubmit).toHaveBeenCalledWith(7, 'session-token');
+        expect(await status()).toBe('complete');
+        expect(await queueRows()).toBe(0);
+      });
+
+      it.each([
+        [
+          'offline',
+          () =>
+            mockGet.mockRejectedValue(new TypeError('Network request failed')),
+        ],
+        [
+          'a timeout',
+          () => mockGet.mockRejectedValue(new Error('Request timed out')),
+        ],
+        [
+          'a rejection',
+          () => {
+            mockGet.mockResolvedValue(server('consultant_check'));
+            mockSubmit.mockRejectedValue(new ApiError(403, 'forbidden'));
+          },
+        ],
+        [
+          'a readback that is not Complete',
+          () => {
+            mockGet.mockResolvedValue(server('consultant_check'));
+            mockSubmit.mockResolvedValue(server('consultant_check'));
+          },
+        ],
+        [
+          "another chapter's response",
+          () =>
+            mockGet.mockResolvedValue({
+              ...server('complete'),
+              chapterAssignmentId: 8,
+            }),
+        ],
+        [
+          'a server at an earlier stage',
+          () => mockGet.mockResolvedValue(server('theological_check')),
+        ],
+      ])('never writes Complete after %s', async (_name, arrange) => {
+        arrange();
+
+        await expect(sendAs(5, 'complete')).rejects.not.toBeInstanceOf(
+          StageSendBlockedError,
+        );
+        expect(await status()).toBe('consultant_check');
+        expect(await queueRows()).toBe(0);
+      });
+
+      it('reports a confirmed Complete as confirmed, never queued', async () => {
+        mockGet.mockResolvedValue(server('complete'));
+        const pending = jest
+          .spyOn(queries, 'hasPendingStageAdvance')
+          .mockRejectedValue(new Error('disk'));
+
+        await expect(sendAs(5, 'complete')).resolves.toBe('confirmed');
+        pending.mockRestore();
+        expect(mockSubmit).not.toHaveBeenCalled();
+        expect(await status()).toBe('complete');
+      });
+
+      it('refuses Complete, calling no server, once the account changed', async () => {
+        mockActiveUser = '5';
+
+        await expect(
+          sendChapterToStage({
+            chapterAssignmentId: 7,
+            userId: 4,
+            draftingUnit: 'verse',
+            to: 'complete',
+          }),
+        ).rejects.toBeInstanceOf(StageSendBlockedError);
+        expect(mockGet).not.toHaveBeenCalled();
+        expect(await status()).toBe('consultant_check');
+      });
+    });
+  });
 });
+
+async function waitForCall(fn: jest.Mock): Promise<void> {
+  for (let i = 0; i < 50 && fn.mock.calls.length === 0; i++) {
+    await new Promise<void>(r => setImmediate(r));
+  }
+  expect(fn).toHaveBeenCalled();
+}

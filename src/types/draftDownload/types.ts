@@ -98,3 +98,30 @@ export interface DraftChapterLocalBundle {
   /** Observer-only local snapshot for render bridge; null for peer / missing. */
   sourceScripture: DraftSourceScriptureSnapshot | null;
 }
+
+/** Verified Observer bundle unit projection (render-only; no download/parser). */
+export type ObserverDraftUnit = {
+  bibleTextId: number;
+  verseNumber: number;
+  draftText: string | null;
+  activeTakeId: number | null;
+  localPlaybackUri: string | null;
+  conflictStatus: VerseAudioConflictStatus | null;
+};
+
+/**
+ * Unresolved-conflict playback is not product-settled. Route owners must pass
+ * an explicit policy; Observer presentation does not infer a server rule.
+ * `undecided` never plays conflict audio and uses neutral unavailable copy.
+ */
+export type ObserverUnresolvedConflictPlaybackPolicy =
+  | 'allow'
+  | 'block'
+  | 'undecided';
+
+export type ObserverDraftUnitAnchor = {
+  bibleTextId: number;
+  verseNumber: number;
+  chapterNumber: number;
+  chapterAssignmentId: string | number;
+};

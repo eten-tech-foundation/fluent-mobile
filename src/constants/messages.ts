@@ -48,6 +48,14 @@ export const IMAGES_MAPS_LOAD_ERROR = 'Images unavailable';
 
 export const TRANSLATION_NOTES_LOAD_ERROR = 'Unable to load Translation Notes.';
 
+/** Next player's notes status, under the waveform in Listen (#902). */
+export const PASSAGE_NOTES_LOADING = 'Loading translation notes…';
+export const PASSAGE_NOTES_RETRYING = 'Trying translation notes again…';
+export const PASSAGE_NOTES_EMPTY = 'No translation notes for this passage.';
+export const PASSAGE_NOTES_PARTIAL = "Some translation notes didn't load.";
+export const PASSAGE_NOTES_OFFLINE =
+  "Some translation notes aren't on this phone. Connect to the internet to load them.";
+
 export const TRANSLATION_NOTE_EMPTY_BODY = 'No note text available.';
 
 export const TRANSLATION_QUESTIONS_LOAD_ERROR =
@@ -102,24 +110,30 @@ export const RECORD_TAKEN_CHAPTER_WARNING =
 export const RECORD_AUDIO_CONFLICT_WARNING =
   'Unresolved audio take conflict on this chapter/pericope.';
 
-/** Next passage's Send to Peer Check (#908). */
-export const PEER_CHECK_SEND_LABEL = 'Send to Peer Check';
-export const PEER_CHECK_SEND_CONFIRM = 'Send';
-export const PEER_CHECK_SEND_SENDING = 'Sending…';
-export const PEER_CHECK_SEND_RETRY = 'Try again';
-export const PEER_CHECK_SEND_CANCEL = 'Cancel';
-export const PEER_CHECK_SEND_OK = 'OK';
-export const PEER_CHECK_SEND_CAPTURING = 'Finish the take in progress first.';
-export const PEER_CHECK_SEND_FAILED =
+/** Next passage's Send to Peer Check (#908) and later stages (#909). */
+export const STAGE_SEND_CONFIRM = 'Send';
+export const STAGE_SEND_SENDING = 'Sending…';
+export const STAGE_SEND_RETRY = 'Try again';
+export const STAGE_SEND_CANCEL = 'Cancel';
+export const STAGE_SEND_OK = 'OK';
+export const STAGE_SEND_CAPTURING = 'Finish the take in progress first.';
+export const STAGE_SEND_FAILED =
   "Couldn't send this chapter. Nothing changed. Try again.";
-export const PEER_CHECK_SEND_BLOCKED =
-  "This chapter can't be sent to Peer Check right now. Nothing changed.";
-export const PEER_CHECK_QUEUED_TITLE = 'Waiting to send to Peer Check';
-export const PEER_CHECK_QUEUED_DETAIL =
-  "Saved on this phone. It sends when you're online.";
+export const STAGE_SEND_COMPLETE_FAILED =
+  "The server hasn't confirmed Complete, so this chapter isn't Complete yet. Try again.";
+export function stageSendBlocked(destinationLabel: string): string {
+  return `This chapter can't be sent to ${destinationLabel} right now. Nothing changed.`;
+}
+export function stageQueuedTitle(destinationLabel?: string): string {
+  return destinationLabel
+    ? `Waiting to send to ${destinationLabel}`
+    : 'Waiting to send';
+}
+export const STAGE_QUEUED_DETAIL =
+  "Saved on this phone. The server doesn't have it yet.";
 export const PEER_CHECK_SENT_TITLE = 'Sent to Peer Check';
 export const PEER_CHECK_SENT_DETAIL = 'The server has it.';
-export function peerCheckSendKept(chapterName: string): string {
+export function stageSendKept(chapterName: string): string {
   return `The server kept ${chapterName} where it was, so it wasn't sent.`;
 }
 
@@ -235,7 +249,29 @@ export const TAKE_REVIEW_YOU = '(you)';
 /** One line on the take card, so these stay short. */
 export const RECORD_RECOVERED_TAKE = 'Take recovered. Eject finishes it.';
 export const RECORD_PAUSED_TAKE = 'Paused. Eject finishes the take.';
+/** Alert when Record would replace another account's paused take. */
+export const RECORD_FOREIGN_PAUSED_TAKE =
+  'Another account has a paused recording here. Switch to it to finish or discard it.';
 /** Record couldn't get ready (mic request or take count failed); retryable. */
 export const RECORD_SETUP_FAILED_TITLE = "Couldn't start recording";
 export const RECORD_SETUP_FAILED_MESSAGE =
   'Something went wrong getting ready to record. Try Record again.';
+
+/** Next passage Resources (#912). */
+export const PASSAGE_RESOURCES_TITLE = 'Resources';
+export const PASSAGE_RESOURCES_COLLAPSE = 'Collapse resources';
+export const PASSAGE_IMAGES_TITLE = 'Images and maps';
+export const PASSAGE_IMAGES_LOADING = 'Loading images and maps';
+export const PASSAGE_IMAGES_EMPTY = 'No images or maps here.';
+export const PASSAGE_IMAGES_UNPREPARED =
+  "Images and maps aren't on this phone yet. Download them from Prepare for Offline while you're online.";
+export const PASSAGE_IMAGES_NONE_OFFLINE =
+  'No images or maps for this chapter are on this phone.';
+export const PASSAGE_IMAGES_NO_TEXT =
+  "Images and maps show once this chapter's text is on the phone.";
+export const PASSAGE_IMAGES_FAILED = "Images and maps couldn't load.";
+export const PASSAGE_IMAGES_RETRY = 'Retry';
+export const PASSAGE_IMAGES_RETRY_LABEL = 'Retry loading images and maps';
+export const PASSAGE_IMAGE_UNAVAILABLE = 'Image unavailable';
+export const PASSAGE_IMAGE_GROW_HINT = 'Shows the whole image';
+export const PASSAGE_IMAGE_SHRINK_HINT = 'Shows it smaller';

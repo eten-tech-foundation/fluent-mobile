@@ -118,6 +118,7 @@ describe('useSyncStatus cellular gate', () => {
       hasFailedUploads: false,
       hasUnuploadablePending: false,
       countsUnknown: false,
+      countsRead: true,
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
@@ -205,6 +206,7 @@ describe('useSyncStatus cellular gate', () => {
       hasFailedUploads: false,
       hasUnuploadablePending: false,
       countsUnknown: true,
+      countsRead: true,
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
@@ -293,6 +295,7 @@ describe('useSyncStatus metadata / reauth retry work', () => {
       hasFailedUploads: false,
       hasUnuploadablePending: false,
       countsUnknown: false,
+      countsRead: true,
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
@@ -454,6 +457,7 @@ describe('useSyncStatus before reachability is known', () => {
       hasFailedUploads: false,
       hasUnuploadablePending: false,
       countsUnknown: false,
+      countsRead: true,
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
@@ -550,6 +554,7 @@ describe('useSyncStatus before reachability is known', () => {
       hasFailedUploads: false,
       hasUnuploadablePending: false,
       countsUnknown: false,
+      countsRead: true,
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
@@ -573,6 +578,7 @@ describe('useSyncStatus before reachability is known', () => {
       hasFailedUploads: false,
       hasUnuploadablePending: false,
       countsUnknown: true,
+      countsRead: true,
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
@@ -588,5 +594,66 @@ describe('useSyncStatus before reachability is known', () => {
     rerender({});
     // Unknown counts still never read as all synced.
     expect(result.current.status).toBe('online_pending');
+  });
+
+  it.each([
+    ['online', resolved({ isLinkOnline: true })],
+    ['offline', resolved({ isOnline: false, isLinkOnline: false })],
+  ])(
+    'stays checking while %s until the first count read lands (#1002)',
+    (_label, connectivity) => {
+      mockUseConnectivity.mockReturnValue(connectivity);
+      const counts = {
+        pendingCount: 2,
+        pendingChapterCount: 1,
+        failedCount: 0,
+        unuploadableCount: 0,
+        hasPendingUploads: true,
+        hasFailedUploads: false,
+        hasUnuploadablePending: false,
+        countsUnknown: false,
+        failedErrorText: null,
+        isUploading: false,
+        uploadProgress: null,
+      };
+      mockUsePendingUploads.mockReturnValue({
+        ...counts,
+        pendingCount: 0,
+        pendingChapterCount: 0,
+        hasPendingUploads: false,
+        countsRead: false,
+      });
+      const { result, rerender } = renderHook(() =>
+        useSyncStatus({ isSyncing: false, refreshKey: 0 }),
+      );
+      expect(result.current.status).toBe('checking');
+
+      mockUsePendingUploads.mockReturnValue({ ...counts, countsRead: true });
+      rerender({});
+      expect(result.current.status).not.toBe('checking');
+      expect(result.current.status).toMatch(/_pending$/);
+    },
+  );
+
+  it('still shows a running sync while the counts are unread (#1002)', () => {
+    mockUseConnectivity.mockReturnValue(resolved({ isLinkOnline: true }));
+    mockUsePendingUploads.mockReturnValue({
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      failedCount: 0,
+      unuploadableCount: 0,
+      hasPendingUploads: false,
+      hasFailedUploads: false,
+      hasUnuploadablePending: false,
+      countsUnknown: false,
+      countsRead: false,
+      failedErrorText: null,
+      isUploading: false,
+      uploadProgress: null,
+    });
+    const { result } = renderHook(() =>
+      useSyncStatus({ isSyncing: true, refreshKey: 0 }),
+    );
+    expect(result.current.status).toBe('online_syncing');
   });
 });
