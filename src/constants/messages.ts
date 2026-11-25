@@ -61,6 +61,25 @@ export const TRANSLATION_NOTE_EMPTY_BODY = 'No note text available.';
 export const TRANSLATION_QUESTIONS_LOAD_ERROR =
   'Unable to load Translation Questions.';
 
+export const TRANSLATION_QUESTION_NO_ANSWER =
+  'No answer available for this question.';
+
+/** Next passage Translation Questions (#911). */
+export const PASSAGE_QUESTIONS_TITLE = 'Translation Questions';
+export const PASSAGE_QUESTIONS_OPEN_DETAIL =
+  'Questions and answers to check the meaning';
+export const PASSAGE_QUESTIONS_LOADING = 'Loading Translation Questions';
+export const PASSAGE_QUESTIONS_EMPTY = 'No Translation Questions here.';
+export const PASSAGE_QUESTIONS_UNPREPARED =
+  "Translation Questions aren't on this phone yet. Download them from Prepare for Offline while you're online.";
+export const PASSAGE_QUESTIONS_NO_TEXT =
+  "Translation Questions show once this chapter's text is on the phone.";
+export const PASSAGE_QUESTIONS_RETRY = 'Retry';
+export const TRANSLATION_QUESTIONS_RETRY_LABEL =
+  'Retry loading Translation Questions';
+export const PASSAGE_QUESTION_SHOW_ANSWER = 'Shows the answer';
+export const PASSAGE_QUESTION_HIDE_ANSWER = 'Hides the answer';
+
 /** One label for drawer Sign Out and More Settings Log out (#622). */
 export const ACCOUNT_SIGN_OUT_LABEL = 'Log out';
 
