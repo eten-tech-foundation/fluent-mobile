@@ -1,4 +1,4 @@
-# Home tab switching My Work ↔ Milestones.
+# Next Home: Books and Next up on the same scroll (no My Work / Projects tabs).
 appId: com.eten.fluent
 tags:
   - smoke
@@ -8,22 +8,27 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- tapOn:
-    id: 'home-tab-projects'
-- extendedWaitUntil:
-    visible:
-      id: 'milestone-row-.*'
+- scrollUntilVisible:
+    element:
+      id: 'home-books'
+    direction: DOWN
     timeout: 60000
 - assertVisible:
-    id: 'milestone-row-.*'
-- tapOn:
-    id: 'home-tab-my-work'
-- extendedWaitUntil:
-    visible:
-      id: 'my-work-row-\d+$'
+    id: 'home-book-.*'
+- scrollUntilVisible:
+    element:
+      id: 'home-next-up'
+    direction: DOWN
     timeout: 60000
 - assertVisible:
-    id: 'my-work-row-\d+$'
+    id: 'home-next-up'
+- scrollUntilVisible:
+    element:
+      id: 'home-books'
+    direction: UP
+    timeout: 60000
+- assertVisible:
+    id: 'home-books'

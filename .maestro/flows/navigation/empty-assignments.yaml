@@ -1,4 +1,4 @@
-# Account B (member-without-assignments): Milestones populated, My Work empty.
+# Account B (member-without-assignments): books from membership, nothing to record.
 # Uses MAESTRO_EMAIL_2 / MAESTRO_PASSWORD_2. Not tagged `smoke` (needs second pair).
 appId: com.eten.fluent
 tags:
@@ -9,28 +9,26 @@ tags:
 - runFlow: ../../shared/auth/login-account-b.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 
-# Milestones: membership should surface ≥1 milestone
-- tapOn:
-    id: 'home-tab-projects'
-- extendedWaitUntil:
-    visible:
-      id: 'milestone-row-.*'
+# Membership still surfaces books on Home.
+- scrollUntilVisible:
+    element:
+      id: 'home-books'
+    direction: DOWN
     timeout: 120000
 - assertVisible:
-    id: 'milestone-row-.*'
+    id: 'home-book-.*'
 
-# My Work: empty-assignment copy (no assignee/peer-checker rows)
-- tapOn:
-    id: 'home-tab-my-work'
-- extendedWaitUntil:
-    visible:
-      id: 'my-work-empty'
+# Nothing assigned to record in Next up.
+- scrollUntilVisible:
+    element:
+      id: 'home-next-up-empty'
+    direction: DOWN
     timeout: 60000
 - assertVisible:
-    id: 'my-work-empty'
+    id: 'home-next-up-empty'
 - assertNotVisible:
-    id: 'my-work-row-\d+$'
+    id: 'home-next-.*'

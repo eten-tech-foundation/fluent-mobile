@@ -1,5 +1,6 @@
-# Exact fixture navigation from ALREADY settled Home; no fallback/backtracking.
+# Exact fixture navigation from already settled Next Home; no fallback.
 # Requires MAESTRO_FIXTURE_MILESTONE_ID + MAESTRO_FIXTURE_CHAPTER_ID (positive ints).
+# Milestone id is the project unit id (`home-book-{unitId}:…`).
 # scripts/maestro-fixture-guard.cjs owns the project allowlist/denylist and
 # exact chapter pin checks; this helper does not verify fixture linkage.
 appId: com.eten.fluent
@@ -8,37 +9,40 @@ tags:
 ---
 - assertTrue: ${typeof MAESTRO_FIXTURE_MILESTONE_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_MILESTONE_ID))}
 - assertTrue: ${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID))}
+# Chapter/passage ids interpolate env. Graal runScript does not persist extra
+# output.* keys on Maestro 2.10.0.
 - assertNotVisible:
     id: login-email-input
 - assertVisible:
-    id: home-tab-my-work
-- assertVisible:
-    id: home-tab-projects
-- tapOn:
-    id: home-tab-projects
+    id: home-header
 - scrollUntilVisible:
     element:
-      id: '^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$'
+      id: '^home-book-${MAESTRO_FIXTURE_MILESTONE_ID}:'
     direction: DOWN
     timeout: 15000
 - tapOn:
-    id: '^milestone-row-${MAESTRO_FIXTURE_MILESTONE_ID}$'
+    id: '^home-book-${MAESTRO_FIXTURE_MILESTONE_ID}:'
 - extendedWaitUntil:
     visible:
-      id: chapter-row-.*
+      id: book-header
     timeout: 15000
 - scrollUntilVisible:
     element:
-      id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+      id: '^book-chapter-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+    direction: DOWN
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: '^book-passage-${MAESTRO_FIXTURE_CHAPTER_ID}-'
     direction: DOWN
     timeout: 15000
 - tapOn:
-    id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+    id: '^book-passage-${MAESTRO_FIXTURE_CHAPTER_ID}-'
 - extendedWaitUntil:
     visible:
-      id: drafting-tab-bar
+      id: passage-header|observer-screen
     timeout: 15000
 - assertVisible:
-    id: drafting-tab-bar
+    id: passage-header|observer-screen
 - assertNotVisible:
     id: login-email-input

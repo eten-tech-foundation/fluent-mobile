@@ -109,13 +109,22 @@ describe('fixture chapter row exporters', () => {
     const out = run('fixture-row-values', {}, { fixtureChapterId: '9' });
     assertExact(out.myWorkRowIdRe, 'my-work-row-9');
     assert.ok(!new RegExp(out.myWorkRowIdRe).test('my-work-row-90'));
+    assertExact(out.homeNextIdRe, 'home-next-9:foo');
+    assert.ok(!new RegExp(out.homeNextIdRe).test('home-next-90:foo'));
+    assertExact(out.homeChangesIdRe, 'home-changes-requested-9');
+    assertExact(out.bookChapterIdRe, 'book-chapter-9');
+    assertExact(out.bookPassageIdRe, 'book-passage-9-chapter:1');
+    assert.ok(!new RegExp(out.bookPassageIdRe).test('book-passage-90-x'));
   });
 
   it('fixture-row-values exports empty when the chapter id is missing', () => {
     assert.equal(run('fixture-row-values').myWorkRowIdRe, '');
+    assert.equal(run('fixture-row-values').homeNextIdRe, '');
     for (const fixtureChapterId of [undefined, null, '', '  ']) {
       const out = run('fixture-row-values', {}, { fixtureChapterId });
       assert.equal(out.myWorkRowIdRe, '');
+      assert.equal(out.homeNextIdRe, '');
+      assert.equal(out.bookChapterIdRe, '');
     }
   });
 

@@ -1,12 +1,26 @@
-# On Record tab: fail fast if neither start nor enabled new-take is available (at cap).
+# Fail fast when neither Next Record nor an enabled Legacy start/new-take is
+# available (at cap). Next capacity is asserted in the recording flows; this
+# helper only refuses a dead Record control.
 appId: com.eten.fluent
 ---
 - runFlow:
     when:
-      notVisible:
-        id: 'record-start-button'
-        enabled: true
+      visible:
+        id: 'passage-record'
     commands:
       - assertVisible:
-          id: 'record-new-take-button'
-          enabled: true
+          id: 'passage-record'
+- runFlow:
+    when:
+      notVisible:
+        id: 'passage-record'
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              id: 'record-start-button'
+              enabled: true
+          commands:
+            - assertVisible:
+                id: 'record-new-take-button'
+                enabled: true

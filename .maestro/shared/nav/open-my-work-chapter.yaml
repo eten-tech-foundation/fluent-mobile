@@ -1,22 +1,52 @@
-# Open the fixture chapter by id. Requires MAESTRO_FIXTURE_CHAPTER_ID.
-# Missing id is a failed precondition (runner preflight reports BLOCKED).
-# Anchored ids: chapter 12 must not match my-work-row-123 or my-work-row-title-12.
+# Open the fixture chapter by id into Next Passage. Requires
+# MAESTRO_FIXTURE_CHAPTER_ID. Missing id is a failed precondition (runner
+# preflight reports BLOCKED).
+# Prefer Next up (`home-next-{id}:…`); else Changes requested; else the
+# chapter's book-page covers. Chapter 12 must not match home-next-123.
+# Copy env onto output.fixtureChapterId — YAML ${MAESTRO_FIXTURE_CHAPTER_ID}
+# becomes the literal "undefined" when the key is missing on Maestro 2.10.0.
 appId: com.eten.fluent
 tags:
   - ordered-readonly
 ---
-- assertTrue: ${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID))}
+- evalScript: >-
+    ${output.fixtureChapterId = (typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_ID).trim()}
+- assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId)}
 - runFlow: goto-home.yaml
-- tapOn:
-    id: 'home-tab-my-work'
-- extendedWaitUntil:
-    visible:
-      id: '^my-work-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
-    timeout: 30000
 - runFlow: ../ensure/ensure-no-modal.yaml
-- tapOn:
-    id: '^my-work-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+- runFlow:
+    when:
+      visible:
+        id: '^home-next-${output.fixtureChapterId}:'
+    commands:
+      - tapOn:
+          id: '^home-next-${output.fixtureChapterId}:'
+- runFlow:
+    when:
+      notVisible:
+        id: 'passage-header|observer-screen'
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: '^home-changes-requested-${output.fixtureChapterId}$'
+          commands:
+            - tapOn:
+                id: '^home-changes-requested-${output.fixtureChapterId}$'
+- runFlow:
+    when:
+      notVisible:
+        id: 'passage-header|observer-screen'
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: '^home-next-${output.fixtureChapterId}:'
+          direction: DOWN
+          timeout: 30000
+      - runFlow: ../ensure/ensure-no-modal.yaml
+      - tapOn:
+          id: '^home-next-${output.fixtureChapterId}:'
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'passage-header|observer-screen'
     timeout: 30000

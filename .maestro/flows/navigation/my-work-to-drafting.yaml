@@ -1,4 +1,4 @@
-# My Work → first chapter → drafting tab bar.
+# Next Home → first Next-up / book passage → Passage.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -8,15 +8,11 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
 - assertVisible:
-    id: 'drafting-tab-bar'
+    id: 'passage-header'
 - assertVisible:
-    id: 'drafting-tab-bible'
-- assertVisible:
-    id: 'drafting-tab-resources'
-- assertVisible:
-    id: 'drafting-tab-record'
+    id: 'passage-record|passage-listen|observer-screen'

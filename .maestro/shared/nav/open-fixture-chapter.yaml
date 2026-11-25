@@ -1,13 +1,11 @@
-# Open Projects → disposable fixture project → chapter label → drafting.
+# Open Home → fixture project/book → chapter label → Next Passage.
 # Env: MAESTRO_FIXTURE_PROJECT_NAME, MAESTRO_FIXTURE_CHAPTER_LABEL
 appId: com.eten.fluent
 ---
 - runFlow: goto-home.yaml
-- tapOn:
-    id: 'home-tab-projects'
 - extendedWaitUntil:
     visible:
-      id: 'milestone-row-.*'
+      id: 'home-books'
     timeout: 60000
 - runFlow: ../ensure/ensure-no-modal.yaml
 - scrollUntilVisible:
@@ -19,7 +17,7 @@ appId: com.eten.fluent
     text: ${MAESTRO_FIXTURE_PROJECT_NAME}
 - extendedWaitUntil:
     visible:
-      id: 'chapter-row-.*'
+      id: 'book-header'
     timeout: 60000
 - scrollUntilVisible:
     element:
@@ -27,24 +25,24 @@ appId: com.eten.fluent
     direction: DOWN
     timeout: 90000
 - tapOn:
-    text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
+    id: 'book-passage-.*'
 - repeat:
     times: 8
     while:
       notVisible:
-        id: 'drafting-tab-bar'
+        id: 'passage-header|observer-screen'
     commands:
       - runFlow: ../ensure/ensure-no-modal.yaml
       - runFlow:
           when:
             visible:
-              text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
+              id: 'book-passage-.*'
           commands:
             - tapOn:
-                text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
+                id: 'book-passage-.*'
       - waitForAnimationToEnd:
           timeout: 2000
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'passage-header|observer-screen'
     timeout: 60000

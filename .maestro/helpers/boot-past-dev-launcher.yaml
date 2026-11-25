@@ -8,13 +8,13 @@ appId: com.eten.fluent
 # Fast path: JS already painting
 - extendedWaitUntil:
     visible:
-      id: 'login-email-input|home-tab-my-work|auth-session-error|prepare-offline-screen'
+      id: 'login-email-input|home-header|home-tab-my-work|auth-session-error|prepare-offline-screen'
     timeout: 60000
     optional: true
 # Short cold-start grace past the main wait; returns at once if already up.
 - extendedWaitUntil:
     visible:
-      id: 'login-email-input|home-tab-my-work|auth-session-error|prepare-offline-screen'
+      id: 'login-email-input|home-header|home-tab-my-work|auth-session-error|prepare-offline-screen'
     timeout: 5000
     optional: true
 # Stuck on error dialog from a bad prior connect (metro only)

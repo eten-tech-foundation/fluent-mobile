@@ -1,35 +1,52 @@
-# Open first My Work chapter into drafting. Requires ≥1 assignment (Account A).
-# Use my-work-row-\d+$ so we do not match my-work-row-title-* (non-pressable Text).
-# Post-login sync may auto-push Prepare-for-Offline — dismiss and re-tap until drafting mounts.
+# Open the first Next-up passage (or first book cover). Requires ≥1 assignment
+# or book (Account A). Post-login sync may auto-push Prepare-for-Offline —
+# dismiss and re-tap until Passage or Observer mounts.
 appId: com.eten.fluent
 ---
 - runFlow: goto-home.yaml
-- tapOn:
-    id: 'home-tab-my-work'
 - extendedWaitUntil:
     visible:
-      id: 'my-work-row-\d+$'
+      id: 'home-next-up-hero|home-next-.*|home-book-.*'
     timeout: 60000
 - runFlow: ../ensure/ensure-no-modal.yaml
-- tapOn:
-    id: 'my-work-row-\d+$'
+- runFlow:
+    when:
+      visible:
+        id: 'home-next-.*'
+    commands:
+      - tapOn:
+          id: 'home-next-.*'
+- runFlow:
+    when:
+      notVisible:
+        id: 'passage-header|observer-screen|book-header'
+    commands:
+      - tapOn:
+          id: 'home-book-.*'
 - repeat:
     times: 8
     while:
       notVisible:
-        id: 'drafting-tab-bar'
+        id: 'passage-header|observer-screen'
     commands:
       - runFlow: ../ensure/ensure-no-modal.yaml
       - runFlow:
           when:
             visible:
-              id: 'my-work-row-\d+$'
+              id: 'book-passage-.*'
           commands:
             - tapOn:
-                id: 'my-work-row-\d+$'
+                id: 'book-passage-.*'
+      - runFlow:
+          when:
+            visible:
+              id: 'home-next-.*'
+          commands:
+            - tapOn:
+                id: 'home-next-.*'
       - waitForAnimationToEnd:
           timeout: 2000
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'passage-header|observer-screen'
     timeout: 60000

@@ -1,11 +1,15 @@
-# Home → Settings (More Settings).
+# Home → accounts sheet → Settings.
 appId: com.eten.fluent
 ---
 - runFlow: goto-home.yaml
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
+- extendedWaitUntil:
+    visible:
+      id: 'home-accounts'
+    timeout: 15000
 - tapOn:
-    id: 'settings-menu-more-settings'
+    id: 'home-accounts-settings'
 - extendedWaitUntil:
     visible:
       id: 'settings-prepare-offline'

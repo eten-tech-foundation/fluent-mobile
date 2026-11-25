@@ -1,9 +1,9 @@
-# Land on Home tabs from whatever surface the app is on.
+# Land on Next Home from whatever surface the app is on.
 appId: com.eten.fluent
 ---
 - runFlow: ensure-no-modal.yaml
 - runFlow: ../nav/goto-home.yaml
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertVisible:
-    id: 'home-tab-projects'
+    id: 'home-scroll'
