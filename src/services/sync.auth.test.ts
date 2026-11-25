@@ -397,6 +397,7 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
       dropped: 0,
       failed: 0,
       deferred: 2,
+      blocked: 0,
     });
     expect(syncPendingStageAdvances).not.toHaveBeenCalled();
   });
@@ -409,6 +410,7 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
       dropped: 0,
       failed: 0,
       deferred: 0,
+      blocked: 0,
     });
     expect(mockGetConnectivitySnapshot).not.toHaveBeenCalled();
     expect(syncPendingStageAdvances).not.toHaveBeenCalled();
@@ -468,6 +470,7 @@ describe('syncProjects / syncUserChapterWork reconciliation shape guard', () => 
       dropped: 0,
       failed: 0,
       deferred: 1,
+      blocked: 0,
     });
   });
 

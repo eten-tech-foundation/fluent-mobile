@@ -41,6 +41,7 @@ jest.mock('../db/db', () => ({ getDatabase: () => mockDb }));
 jest.mock('./storage', () => ({
   getActiveUserId: () => mockActiveUserId,
   setReauthRequired: jest.fn(),
+  isReauthRequired: () => false,
   kvStorage: {
     getItemSync: (key: string) => {
       if (mockKvReadFailures.delete(key)) {
@@ -294,6 +295,9 @@ describe('activation upload reconciliation (real worker + SQLite, #886)', () => 
     mockKv.clear();
     mockKvReadFailures.clear();
     mockCredentials.clear();
+    // The owner (7) is the active account, so its stored session is the
+    // pass token. Uploads never borrow another account's token (#854).
+    mockCredentials.set('7', { token: 'pass-token' });
     mockActiveUserId = '7';
     __resetRecordingSyncForTests();
     resetFileSystemMock();
@@ -336,6 +340,68 @@ describe('activation upload reconciliation (real worker + SQLite, #886)', () => 
     );
     return otherId;
   }
+
+  it('legacy take with a dispatched activation and no receipt: hold and release keep the operation, and the next pass reconciles without a fresh PUT (#855)', async () => {
+    // A legacy take: no stored unit, resolved through the chapter's only
+    // assignment. Clearing the unit bumps the generation once (the migrated
+    // trigger); the operation below is captured at that generation.
+    await mockDb.execute(`
+      INSERT INTO chapter_assignments(id, project_unit_id, bible_id, book_id,
+        chapter_number, assigned_user_id, updated_at)
+        VALUES (500, 12, 1, 40, 1, 7, '2026-01-01');
+      UPDATE recordings SET project_unit_id = NULL WHERE id = 'mine';
+    `);
+    const generation = Number((await row()).upload_intent_version);
+
+    // The activation PUT lands on the server but its response is lost: the
+    // operation stays dispatched and no receipt is written.
+    mockServer.loseNextAck = true;
+    await syncPendingRecordings('pass-token', {
+      delay,
+      maxAttempts: 1,
+    }).catch(() => undefined);
+    expect(mockServer.puts).toHaveLength(1);
+    expect(readUploadOperation('mine', generation)).toMatchObject({
+      phase: 'dispatched',
+    });
+    const originalPrecondition = readUploadOperation(
+      'mine',
+      generation,
+    )?.baseVersionToken;
+
+    // Removed from the project: the next pass holds the take, pinning its
+    // unit (which fires the trigger) without changing its generation.
+    await mockDb.execute('DELETE FROM user_projects WHERE user_id = 7');
+    restartProcess();
+    await pass();
+    expect(await row()).toMatchObject({
+      sync_status: 'held',
+      project_unit_id: 12,
+      upload_intent_version: generation,
+    });
+    expect(mockServer.puts).toHaveLength(1);
+    // The same dispatched operation is still there, with its precondition.
+    expect(readUploadOperation('mine', generation)).toMatchObject({
+      phase: 'dispatched',
+      baseVersionToken: originalPrecondition,
+    });
+
+    // Added back: the take is released and the dispatched operation is
+    // reconciled by reading the unit, under its original precondition.
+    await mockDb.execute(
+      'INSERT INTO user_projects(user_id, project_id) VALUES (7, 1)',
+    );
+    restartProcess();
+    await pass();
+
+    expect(mockServer.puts).toHaveLength(1);
+    expect(mockServer.gets).toHaveLength(1);
+    expect(await row()).toMatchObject({
+      sync_status: 'uploaded',
+      upload_intent_version: generation,
+    });
+    expect(readUploadOperation('mine', generation)).toBeNull();
+  });
 
   it('lost ack, restart, then another device selects a newer take: no replay, recording kept, needs attention', async () => {
     await seedKnownUnit();

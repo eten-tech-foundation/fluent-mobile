@@ -1,7 +1,7 @@
 import {
   getDatabaseWriteMark,
-  getPendingUploadChapters,
-  hasPendingChapterClaimsForUser,
+  getDevicePendingUploadChapters,
+  getPendingChapterClaims,
   sameDatabaseWrites,
   type DatabaseWriteMark,
 } from '../db/queries';
@@ -11,7 +11,9 @@ import {
   reconcileHeldRecordings,
 } from '../db/repositories/heldRecordingsRepository';
 import {
+  beginMembershipCheck,
   getVerifiedMembershipOwners,
+  invalidateVerifiedMembershipOwners,
   refreshMembershipForOwners,
 } from './projectMembership';
 import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
@@ -26,18 +28,20 @@ import {
   emitUploadSessionEvent,
   onSyncComplete,
 } from './syncEvents';
-import { AuthError } from './authError';
+import { AuthError, isAuthError } from './authError';
 import { getCredentials } from './keychain';
 import {
   getActiveUserId,
   getSyncPausedUntilMs,
+  isReauthRequired,
   setSyncPausedUntilMs,
   setReauthRequired,
 } from './storage';
 import {
   syncPendingChapterClaimsForUser,
-  syncPendingStageAdvancesForUser,
+  syncPendingStageAdvancesForAccounts,
 } from './sync';
+import { syncPendingChapterClaims } from './chapterClaimSync';
 import {
   getUploadOverCellular,
   subscribeToPreference,
@@ -48,6 +52,7 @@ import {
   createUploadOrchestrator,
   PAUSE_WINDOW_MS,
   type ChapterUploadWorker,
+  type StagePushOutcome,
   type UploadOrchestrator,
   type UploadOrchestratorDeps,
   type UploadOrchestratorSnapshot,
@@ -55,79 +60,149 @@ import {
 
 const log = logger.create('UploadOrchestrator');
 
-async function capturedQueueOwnerToken(
-  userId: number,
-  hasPending: () => Promise<boolean>,
-): Promise<string | null> {
-  let token: string | undefined;
+/**
+ * Stored session token for a queued row's account, or null when that account
+ * has none (signed out on this device, or never stored) or another account's
+ * stored token was already rejected. Never falls back to
+ * the active account's token: queued work uploads only as the account that
+ * made it (#854).
+ */
+async function storedOwnerToken(userId: number): Promise<string | null> {
+  const ownerId = String(userId);
+  // Another account whose stored token was already rejected: do not send it
+  // again; its work waits for it to sign in (#854).
+  if (ownerId !== getActiveUserId() && isReauthRequired(ownerId)) {
+    return null;
+  }
   try {
-    token = (await getCredentials(String(userId)))?.token;
+    return (await getCredentials(String(userId)))?.token ?? null;
   } catch {
     log.warn('Could not read queued owner credentials', { userId });
+    return null;
   }
-  if (token) return token;
-  // An empty queue needs no authenticated request. Never drain a nonempty
-  // owner's queue with the mutable global bearer after an account switch.
-  if (!(await hasPending().catch(() => true))) return null;
-  const ownerId = String(userId);
-  const changed = setReauthRequired(ownerId);
-  if (changed !== false && getActiveUserId() === ownerId) {
-    emitAuthReauthRequired(ownerId);
-  }
-  throw new AuthError(
-    'Queued owner credentials are missing',
-    'OWNER_CREDENTIALS_MISSING',
-  );
 }
 
-async function pushPendingClaimsBeforeUpload(): Promise<void> {
-  const activeUserId = getActiveUserId();
-  const userId = Number(activeUserId);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    log.warn('Skipping claim push before upload — no active user', {
-      activeUserId,
-    });
-    return;
+/**
+ * An account with queued work but no usable session: keep its work pending
+ * and flag it so the Sync page asks it to sign in (#854). The active account
+ * keeps the old behavior (fail the session into the reauth path), since its
+ * own session is what the user is looking at.
+ */
+function ownerNeedsSignIn(userId: number): void {
+  const ownerId = String(userId);
+  const changed = setReauthRequired(ownerId);
+  if (getActiveUserId() === ownerId) {
+    // Emit only when the flag actually changed, so a repeated drain does not
+    // re-prompt the active account.
+    if (changed !== false) {
+      emitAuthReauthRequired(ownerId);
+    }
+    throw new AuthError(
+      'Queued owner credentials are missing',
+      'OWNER_CREDENTIALS_MISSING',
+    );
   }
-  // Pass the active account's own token so the claim is attributed to the
-  // queued user even if the global auth token changes mid-session (#886).
-  const token = await capturedQueueOwnerToken(userId, () =>
-    hasPendingChapterClaimsForUser(userId),
-  );
-  if (!token) return;
-  const result = await syncPendingChapterClaimsForUser(userId, token);
+  log.info('Account with queued work must sign in again; leaving it pending', {
+    userId,
+  });
+}
+
+function distinctOwners(rows: ReadonlyArray<{ userId: number }>): number[] {
+  return [
+    ...new Set(
+      rows.map(row => row.userId).filter(id => Number.isFinite(id) && id > 0),
+    ),
+  ];
+}
+
+/**
+ * Push every account's queued offline claims before any take, each with that
+ * account's own token: the claim endpoint assigns to the bearer (#886, #854).
+ * Once `signal` aborts (cancel / pause), no further account's drain starts; a
+ * request already sent may still settle.
+ */
+async function pushPendingClaimsBeforeUpload(
+  signal?: AbortSignal,
+): Promise<void> {
+  let owners: number[];
+  try {
+    owners = distinctOwners(await getPendingChapterClaims());
+  } catch (error) {
+    // Unreadable queue: still push the active account's claims, as before
+    // (#886). Other accounts' claims wait for a readable queue.
+    log.warn('Could not read queued claims; pushing the active account only', {
+      error,
+    });
+    const activeUserId = Number(getActiveUserId());
+    owners =
+      Number.isFinite(activeUserId) && activeUserId > 0 ? [activeUserId] : [];
+  }
+  let deferred = 0;
+  let failed = 0;
+  for (const userId of owners) {
+    if (signal?.aborted) return;
+    const token = await storedOwnerToken(userId);
+    if (signal?.aborted) return;
+    if (!token) {
+      ownerNeedsSignIn(userId);
+      continue;
+    }
+    if (getActiveUserId() === String(userId)) {
+      const result = await syncPendingChapterClaimsForUser(userId, token);
+      deferred += result.deferred ?? 0;
+      failed += result.failed;
+      continue;
+    }
+    // Another account: drain its rows directly, so its outcome never lands in
+    // the active account's claim sync-error state (#854). An expired session
+    // keeps its claims queued and flags it for sign-in; this account's upload
+    // goes on.
+    try {
+      failed += (await syncPendingChapterClaims(userId, token)).failed;
+    } catch (error) {
+      if (!isAuthError(error)) throw error;
+      setReauthRequired(String(userId));
+      log.info('Account with queued claims must sign in again', { userId });
+    }
+  }
   // Offline at claim time is deferred work: the orchestrator takes its
   // connectivity-pause path (resume on reconnect) rather than uploading past
   // a claim that has not landed (#886).
-  if ((result.deferred ?? 0) > 0) {
+  if (deferred > 0) {
     throw new UploadNetworkInterruptedError(
-      `Chapter claim push deferred ${result.deferred} claim(s): offline`,
+      `Chapter claim push deferred ${deferred} claim(s): offline`,
     );
   }
   // Rows left failed resolve rather than throw. Throw so a drain-only session
   // skips `complete` and schedules its bounded retry; a take session logs and
   // uploads anyway, as before (#886).
-  if (result.failed > 0) {
-    throw new Error(
-      `Chapter claim push left ${result.failed} claim(s) pending`,
-    );
+  if (failed > 0) {
+    throw new Error(`Chapter claim push left ${failed} claim(s) pending`);
   }
 }
 
-async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
-  const activeUserId = getActiveUserId();
-  const userId = Number(activeUserId);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    log.warn('Skipping stage-advance push after upload — no active user', {
-      activeUserId,
-    });
-    return;
+/**
+ * Push every account's queued stage advances in queue order, each with its own
+ * token (#854). An account without a session keeps its rows pending (the Sync
+ * page asks it to sign in); rows from other accounts on the same chapter wait
+ * behind them and are reported as `blocked`. A signed-out account's own rows
+ * do not keep the active account's session from completing.
+ */
+async function pushPendingStageAdvancesAfterUpload(): Promise<StagePushOutcome> {
+  const owners = distinctOwners(await getPendingStageAdvances());
+  const tokens = new Map<number, string>();
+  for (const userId of owners) {
+    const token = await storedOwnerToken(userId);
+    if (token) {
+      tokens.set(userId, token);
+    } else {
+      ownerNeedsSignIn(userId);
+    }
   }
-  const token = await capturedQueueOwnerToken(userId, async () =>
-    (await getPendingStageAdvances()).some(row => row.userId === userId),
-  );
-  if (!token) return;
-  const result = await syncPendingStageAdvancesForUser(userId, token);
+  if (tokens.size === 0) {
+    return { progressed: false, blocked: 0 };
+  }
+  const result = await syncPendingStageAdvancesForAccounts(tokens);
   // Rows left pending resolve as `failed` rather than throwing. Throw so the
   // session skips `complete` and schedules its bounded retry (#257).
   if (result.failed > 0) {
@@ -141,6 +216,10 @@ async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
       `Stage-advance drain deferred ${result.deferred} row(s): offline`,
     );
   }
+  return {
+    progressed: result.synced + result.dropped > 0,
+    blocked: result.blocked,
+  };
 }
 
 /**
@@ -155,12 +234,31 @@ async function refreshMembershipBeforeUpload(): Promise<void> {
   if (!Number.isFinite(activeUserId) || activeUserId <= 0) {
     return;
   }
-  const owners = await getRecordingOwnerIds(activeUserId);
-  const verified = await refreshMembershipForOwners(owners);
-  if (verified.size === 0) {
-    throw new Error(
-      'Project membership could not be confirmed for any account',
-    );
+  // One generation covers the owner lookup and the refresh, so a failure in
+  // either only clears the set while no newer session has checked since.
+  const generation = beginMembershipCheck();
+  try {
+    // Accounts whose only queued work is a stage advance are checked too
+    // (#854): their membership decides whether that advance can still land,
+    // and so whether another account's later takes on the chapter must wait
+    // for it. They are not part of the take owners an upload pass gates on.
+    const owners = new Set(await getRecordingOwnerIds(activeUserId));
+    for (const owner of distinctOwners(await getPendingStageAdvances())) {
+      owners.add(owner);
+    }
+    const verified = await refreshMembershipForOwners([...owners], generation);
+    if (verified.size === 0) {
+      throw new Error(
+        'Project membership could not be confirmed for any account',
+      );
+    }
+  } catch (error) {
+    // The session goes on with claims and stage advances (#855). Chapter
+    // passes read the confirmed-owner set, so clear it: an earlier session's
+    // answer must not let a take upload this time. A newer session's answer
+    // is left alone.
+    invalidateVerifiedMembershipOwners(generation);
+    throw error;
   }
 }
 
@@ -179,15 +277,10 @@ async function reconcileHeldBeforeUpload(): Promise<{
   return { held: outcome.held, released: outcome.released };
 }
 
+/** Any account's queued stage advance starts a session (#257, #854). */
 async function hasPendingStageAdvances(): Promise<boolean> {
-  const activeUserId = getActiveUserId();
-  const userId = Number(activeUserId);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    return false;
-  }
   try {
-    const pending = await getPendingStageAdvances();
-    return pending.some(row => row.userId === userId);
+    return (await getPendingStageAdvances()).length > 0;
   } catch (error) {
     log.warn(
       'Could not check pending stage advances; attempting drain on reconnect',
@@ -197,14 +290,10 @@ async function hasPendingStageAdvances(): Promise<boolean> {
   }
 }
 
+/** Any account's queued claim starts a session (#886, #854). */
 async function hasPendingClaims(): Promise<boolean> {
-  const activeUserId = getActiveUserId();
-  const userId = Number(activeUserId);
-  if (!Number.isFinite(userId) || userId <= 0) {
-    return false;
-  }
   try {
-    return await hasPendingChapterClaimsForUser(userId);
+    return (await getPendingChapterClaims()).length > 0;
   } catch (error) {
     log.warn(
       'Could not check pending chapter claims; attempting push on reconnect',
@@ -289,7 +378,8 @@ export function startUploadOrchestrator(
     getUploadOverCellular,
     subscribeToUploadOverCellular: listener =>
       subscribeToPreference('uploadOverCellular', listener),
-    getPendingUploadChapters,
+    // Every account's chapters, not only the active one's (#854).
+    getPendingUploadChapters: getDevicePendingUploadChapters,
     getPausedUntilMs: getSyncPausedUntilMs,
     setPausedUntilMs: setSyncPausedUntilMs,
     now: () => Date.now(),

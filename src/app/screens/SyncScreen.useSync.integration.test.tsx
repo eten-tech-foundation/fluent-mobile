@@ -83,6 +83,8 @@ jest.mock('../../hooks/usePendingUploads', () => ({
     pendingChapterCount: 0,
     isUploading: false,
     uploadProgress: null,
+    otherAccountsPendingCount: 0,
+    otherAccountOwnerIds: [],
   }),
 }));
 

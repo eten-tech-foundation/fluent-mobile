@@ -2141,11 +2141,13 @@ describe('uploadOrchestrator', () => {
       h.emitConnectivity(true, true);
       await h.waitFor(() => h.events.some(event => event.type === 'idle'));
 
+      // The loop goes on past a failed chapter (#854), so the last take
+      // progress is followed by a chapter-boundary event without it.
       const last = [...h.events]
         .reverse()
         .find(
           (event): event is Extract<UploadSessionEvent, { type: 'progress' }> =>
-            event.type === 'progress',
+            event.type === 'progress' && event.currentChapter !== undefined,
         );
       expect(last?.currentChapter).toMatchObject({
         completedTakes: 1,
@@ -2154,6 +2156,34 @@ describe('uploadOrchestrator', () => {
       });
       expect(h.orchestrator.getSnapshot().currentChapter).toBeNull();
       expect(h.events.some(event => event.type === 'complete')).toBe(false);
+    });
+
+    it('keeps uploading later chapters and pushes stage advances after a chapter fails (#854)', async () => {
+      const stagePushes: number[] = [];
+      const h = createHarness({
+        chapters: [
+          { bookId: 1, chapterNumber: 1 },
+          { bookId: 1, chapterNumber: 2 },
+        ],
+        retainPending: [{ bookId: 1, chapterNumber: 1 }],
+        failUploads: (() => {
+          let calls = 0;
+          return () => {
+            calls += 1;
+            return calls === 1;
+          };
+        })(),
+        pushPendingStageAdvancesAfterUpload: async () => {
+          stagePushes.push(1);
+        },
+      });
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => h.events.some(event => event.type === 'idle'));
+
+      expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 2 }]);
+      expect(stagePushes).toHaveLength(1);
+      expect(h.events.some(event => event.type === 'complete')).toBe(false);
+      expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([500]);
     });
 
     it('emits hold events and exposes holdReason while automatic uploads are held', async () => {
@@ -2709,7 +2739,7 @@ describe('uploadOrchestrator', () => {
     await h.flush();
 
     expect(h.uploaded).toEqual([]);
-    expect(h.events.some(e => e.type === 'start')).toBe(false);
+    expect(h.events.some(e => e.type === 'complete')).toBe(false);
     // Attempt 1 backs off to 500ms instead of re-entering at the 0ms delay of
     // attempt 0, which would spin on a persistent failure.
     expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([500]);
@@ -2750,10 +2780,169 @@ describe('uploadOrchestrator', () => {
     await h.flush();
 
     // No membership answer means the cache could still say "member" for a
-    // project the account has left: nothing may upload.
+    // project the account has left: no take may upload.
     expect(h.uploaded).toEqual([]);
     expect(reconcile).not.toHaveBeenCalled();
-    expect(h.events.some(e => e.type === 'start')).toBe(false);
+    expect(h.events.some(e => e.type === 'complete')).toBe(false);
+    expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([500]);
+  });
+
+  describe('session stopped during the membership lookup (#855)', () => {
+    const blockedLookup = () => {
+      const gate: { release: () => void } = { release: () => undefined };
+      const lookup = jest.fn(
+        () =>
+          new Promise<boolean>(resolve => {
+            gate.release = () => resolve(true);
+          }),
+      );
+      return { gate, lookup };
+    };
+
+    it.each([
+      [
+        'cancelled',
+        (h: ReturnType<typeof createHarness>) => h.orchestrator.cancel(),
+      ],
+      [
+        'paused',
+        (h: ReturnType<typeof createHarness>) => h.orchestrator.pause(),
+      ],
+      [
+        'stopped',
+        async (h: ReturnType<typeof createHarness>) => {
+          h.orchestrator.stop();
+        },
+      ],
+    ])(
+      'does not start the membership request when the session is %s mid-lookup',
+      async (_label, interrupt) => {
+        const refresh = jest.fn(async () => undefined);
+        const reconcile = jest.fn(async () => ({ held: 0, released: 0 }));
+        const { gate, lookup } = blockedLookup();
+        const h = createHarness({
+          refreshMembershipBeforeUpload: refresh,
+          reconcileHeldBeforeUpload: reconcile,
+          hasRecordingsAffectedByMembership: lookup,
+        });
+
+        h.emitConnectivity(true, true);
+        await h.waitFor(() => lookup.mock.calls.length === 1);
+        await interrupt(h);
+        gate.release();
+        await h.flush();
+        await h.flush();
+
+        expect(refresh).not.toHaveBeenCalled();
+        expect(reconcile).not.toHaveBeenCalled();
+        expect(h.uploaded).toEqual([]);
+      },
+    );
+
+    it('does not reconcile held takes when the session is cancelled during the refresh', async () => {
+      const gate: { release: () => void } = { release: () => undefined };
+      const refresh = jest.fn(
+        () =>
+          new Promise<void>(resolve => {
+            gate.release = resolve;
+          }),
+      );
+      const reconcile = jest.fn(async () => ({ held: 0, released: 0 }));
+      const h = createHarness({
+        refreshMembershipBeforeUpload: refresh,
+        reconcileHeldBeforeUpload: reconcile,
+        hasRecordingsAffectedByMembership: async () => true,
+      });
+
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => refresh.mock.calls.length === 1);
+      await h.orchestrator.cancel();
+      gate.release();
+      await h.flush();
+      await h.flush();
+
+      expect(reconcile).not.toHaveBeenCalled();
+      expect(h.uploaded).toEqual([]);
+    });
+  });
+
+  it('does not start the membership request after the link switches to cellular mid-check (#855)', async () => {
+    const refresh = jest.fn(async () => undefined);
+    const link = { switchToCellular: (): void => undefined };
+    const h = createHarness({
+      refreshMembershipBeforeUpload: refresh,
+      reconcileHeldBeforeUpload: async () => ({ held: 0, released: 0 }),
+      hasRecordingsAffectedByMembership: async () => {
+        // Cellular uploads are off: the switch lands during this lookup.
+        link.switchToCellular();
+        return true;
+      },
+    });
+    link.switchToCellular = () => h.emitConnectivity(true, false, 'cellular');
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(refresh).not.toHaveBeenCalled();
+    expect(h.uploaded).toEqual([]);
+  });
+
+  it('defers takes, not the session, when held reconciliation rejects (#855)', async () => {
+    const calls: string[] = [];
+    const h = createHarness({
+      reconcileHeldBeforeUpload: async () => {
+        throw new Error('database unavailable');
+      },
+      pushPendingStageAdvancesAfterUpload: async () => {
+        calls.push('stage');
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(calls).toEqual(['stage']);
+    expect(h.uploaded).toEqual([]);
+  });
+
+  it("does not complete while another account's delete waits for sign-in (#854)", async () => {
+    const h = createHarness({
+      chapters: [{ bookId: 1, chapterNumber: 1 }],
+      drainPendingDeletions: async () => ({ failed: 0, deferred: 1 }),
+    });
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+    // The chapter itself uploaded; only the delete is still waiting.
+    expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 1 }]);
+    expect(h.events.some(e => e.type === 'complete')).toBe(false);
+  });
+
+  it('still pushes claims and stage advances when the membership refresh fails (#855)', async () => {
+    const calls: string[] = [];
+    const h = createHarness({
+      refreshMembershipBeforeUpload: async () => {
+        throw new Error('projects unavailable');
+      },
+      reconcileHeldBeforeUpload: async () => ({ held: 0, released: 0 }),
+      pushPendingClaimsBeforeUpload: async () => {
+        calls.push('claims');
+      },
+      pushPendingStageAdvancesAfterUpload: async () => {
+        calls.push('stage');
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    // Only the takes wait for membership; independent work still goes.
+    expect(calls).toEqual(['claims', 'stage']);
+    expect(h.uploaded).toEqual([]);
+    expect(h.events.some(e => e.type === 'complete')).toBe(false);
     expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([500]);
   });
 

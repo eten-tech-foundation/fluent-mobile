@@ -39,6 +39,7 @@ const mockSetChapterUploadWorker = jest.fn();
 const mockGetCredentials = jest.fn();
 const mockGetActiveUserId = jest.fn();
 const mockSetReauthRequired = jest.fn();
+const mockIsReauthRequired = jest.fn();
 const mockEmitAuthReauthRequired = jest.fn();
 const mockEmitUploadSessionEvent = jest.fn();
 const mockGetPendingRecordingDeletions = jest.fn();
@@ -50,7 +51,12 @@ const mockRefreshMembershipForOwners = jest.fn();
 const mockGetVerifiedMembershipOwners = jest.fn();
 const mockGetRecordingOwnerIds = jest.fn();
 const mockEmitHeldRecordingsChanged = jest.fn();
+const mockGetTakeIdsWaitingOnOtherAccounts = jest.fn();
 
+jest.mock('../db/queries', () => ({
+  getTakeIdsWaitingOnOtherAccounts: (...args: unknown[]) =>
+    mockGetTakeIdsWaitingOnOtherAccounts(...args),
+}));
 jest.mock('./projectMembership', () => ({
   refreshMembershipForOwners: (...args: unknown[]) =>
     mockRefreshMembershipForOwners(...args),
@@ -124,6 +130,7 @@ const mockKv = new Map<string, string>();
 jest.mock('./storage', () => ({
   getActiveUserId: (...args: unknown[]) => mockGetActiveUserId(...args),
   setReauthRequired: (...args: unknown[]) => mockSetReauthRequired(...args),
+  isReauthRequired: (...args: unknown[]) => mockIsReauthRequired(...args),
   kvStorage: {
     getItemSync: (key: string) => mockKv.get(key) ?? null,
     setItemSync: (key: string, value: string) => {
@@ -238,6 +245,8 @@ describe('recordingSync', () => {
     mockMarkRecordingFailed.mockResolvedValue(undefined);
     mockUploadVerseAudio.mockResolvedValue(successResponse());
     mockGetCredentials.mockResolvedValue(null);
+    mockGetTakeIdsWaitingOnOtherAccounts.mockResolvedValue(new Set());
+    mockIsReauthRequired.mockReturnValue(false);
     mockGetActiveUserId.mockReturnValue('2');
     mockGetPendingRecordingDeletions.mockResolvedValue([]);
     mockClearRecordingDeletion.mockResolvedValue(undefined);
@@ -762,6 +771,23 @@ describe('recordingSync', () => {
       recordedByUserId: 7,
     };
 
+    beforeEach(() => {
+      // The delete's owner (7) has a stored session on this device.
+      mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
+    });
+
+    it('keeps a delete queued when its owner has no stored session, and never uses the pass token (#854)', async () => {
+      mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
+      mockGetCredentials.mockResolvedValue(null);
+
+      const result = await drainPendingRecordingDeletions('tok-1', { delay });
+
+      expect(mockDeleteVerseAudioTake).not.toHaveBeenCalled();
+      expect(mockClearRecordingDeletion).not.toHaveBeenCalled();
+      expect(mockSetReauthRequired).toHaveBeenCalledWith('7');
+      expect(result).toMatchObject({ deleted: 0, failed: 0 });
+    });
+
     it('deletes queued server takes before uploading and raises the unit token', async () => {
       mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
       mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
@@ -838,11 +864,12 @@ describe('recordingSync', () => {
 
       await expect(worker.drainPendingDeletions!(signal)).resolves.toEqual({
         failed: 0,
+        deferred: 0,
       });
       expect(mockGetPendingRecordingDeletions).toHaveBeenCalledTimes(1);
       expect(mockDeleteVerseAudioTake).toHaveBeenCalledWith(
         { projectUnitId: 12, bibleTextId: 42, takeId: 55 },
-        'worker-tok',
+        'owner-tok',
         { signal: expect.any(AbortSignal) },
       );
       expect(mockClearRecordingDeletion).toHaveBeenCalledWith('rec-gone');
@@ -870,6 +897,7 @@ describe('recordingSync', () => {
         deleted: 1,
         failed: 1,
         failedForActiveUser: 1,
+        deferred: 0,
       });
 
       expect(mockDeleteVerseAudioTake).toHaveBeenCalledTimes(
@@ -900,11 +928,12 @@ describe('recordingSync', () => {
         deleted: 1,
         failed: 2,
         failedForActiveUser: 0,
+        deferred: 0,
       });
       const worker = createChapterUploadWorker(() => 'worker-tok');
       await expect(
         worker.drainPendingDeletions!(new AbortController().signal),
-      ).resolves.toEqual({ failed: 0 });
+      ).resolves.toEqual({ failed: 0, deferred: 0 });
     });
 
     it('drainPendingDeletions surfaces network interruption like takes', async () => {
@@ -940,7 +969,8 @@ describe('recordingSync', () => {
       });
     });
 
-    it('flags reauth for the owner and stops the pass on an auth failure', async () => {
+    it('flags reauth for the active owner and stops the pass on an auth failure', async () => {
+      mockGetActiveUserId.mockReturnValue('7');
       mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
       mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
       mockDeleteVerseAudioTake.mockRejectedValue(new AuthError('expired'));
@@ -952,6 +982,50 @@ describe('recordingSync', () => {
       expect(mockSetReauthRequired).toHaveBeenCalledWith('7');
       expect(mockClearRecordingDeletion).not.toHaveBeenCalled();
       expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    });
+
+    it("keeps another account's delete queued on its auth failure and keeps going (#854)", async () => {
+      mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
+      mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
+      mockDeleteVerseAudioTake.mockRejectedValue(new AuthError('expired'));
+
+      const result = await syncPendingRecordings('tok-1', { delay });
+
+      expect(mockSetReauthRequired).toHaveBeenCalledWith('7');
+      expect(mockClearRecordingDeletion).not.toHaveBeenCalled();
+      // The active account's take still uploads after the other account's 401.
+      expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({ uploaded: 1, deletionsFailed: 0 });
+    });
+
+    it("does not report complete while another account's delete waits for sign-in (#854)", async () => {
+      mockGetPendingRecordings.mockResolvedValue([]);
+      mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
+      mockGetCredentials.mockResolvedValue(null);
+
+      const drained = await drainPendingRecordingDeletions('tok-1', { delay });
+      expect(drained).toMatchObject({ deferred: 1, failed: 0 });
+
+      __resetRecordingSyncForTests();
+      mockEmitUploadSessionEvent.mockClear();
+      await syncPendingRecordings('tok-1', { delay });
+      expect(mockEmitUploadSessionEvent).not.toHaveBeenCalledWith({
+        type: 'complete',
+      });
+      expect(mockEmitUploadSessionEvent).toHaveBeenLastCalledWith({
+        type: 'idle',
+      });
+    });
+
+    it('skips a delete whose other-account owner is already flagged for sign-in (#854)', async () => {
+      mockGetPendingRecordingDeletions.mockResolvedValue([deletion]);
+      mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
+      mockIsReauthRequired.mockImplementation((id: string) => id === '7');
+
+      await drainPendingRecordingDeletions('tok-1', { delay });
+
+      expect(mockDeleteVerseAudioTake).not.toHaveBeenCalled();
+      expect(mockClearRecordingDeletion).not.toHaveBeenCalled();
     });
   });
 
@@ -970,15 +1044,96 @@ describe('recordingSync', () => {
     );
   });
 
-  it('falls back to the pass token when owner credentials are missing', async () => {
+  it('never borrows the pass token when owner credentials are missing; the take stays pending for sign-in (#854)', async () => {
     mockGetPendingRecordings.mockResolvedValue([
       pendingRecording({ recordedByUserId: 9 }),
     ]);
     mockGetCredentials.mockResolvedValue(null);
 
-    await syncPendingRecordings('pass-tok', { delay });
+    const result = await syncPendingRecordings('pass-tok', { delay });
 
     expect(mockGetCredentials).toHaveBeenCalledWith('9');
+    expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('9');
+    expect(result).toMatchObject({ uploaded: 0, failed: 0, deferred: 1 });
+  });
+
+  describe("takes waiting on another account's stage advance (#854 / #847)", () => {
+    it('defers the waiting take without uploading or failing it, and uploads the rest', async () => {
+      mockGetPendingRecordings.mockResolvedValue([
+        pendingRecording({ id: 'b-take', recordedByUserId: 8 }),
+        pendingRecording({ id: 'a-take', recordedByUserId: 7 }),
+      ]);
+      mockGetCredentials.mockImplementation(async (id: string) => ({
+        token: `owner-${id}`,
+      }));
+      mockGetTakeIdsWaitingOnOtherAccounts.mockResolvedValue(
+        new Set(['b-take']),
+      );
+
+      const result = await syncPendingRecordings('pass-tok', { delay });
+
+      expect(mockGetTakeIdsWaitingOnOtherAccounts).toHaveBeenCalledWith(
+        ['b-take', 'a-take'],
+        2,
+        expect.arrayContaining([2, 7, 8, 9]),
+      );
+      expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+      expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+        expect.any(Object),
+        'owner-7',
+      );
+      expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ uploaded: 1, failed: 0, deferred: 1 });
+    });
+
+    it('defers every take when the waiting check cannot be read', async () => {
+      mockGetPendingRecordings.mockResolvedValue([
+        pendingRecording({ id: 'a-take', recordedByUserId: 7 }),
+      ]);
+      mockGetCredentials.mockResolvedValue({ token: 'owner-7' });
+      mockGetTakeIdsWaitingOnOtherAccounts.mockRejectedValue(
+        new Error('database is locked'),
+      );
+
+      const result = await syncPendingRecordings('pass-tok', { delay });
+
+      expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+      expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ uploaded: 0, failed: 0, deferred: 1 });
+    });
+
+    it('surfaces a waiting take as a deferred chapter, not a failed one', async () => {
+      mockGetPendingRecordings.mockResolvedValue([
+        pendingRecording({ id: 'b-take', recordedByUserId: 8 }),
+      ]);
+      mockGetVerifiedMembershipOwners.mockReturnValue(new Set([2, 8]));
+      mockGetTakeIdsWaitingOnOtherAccounts.mockResolvedValue(
+        new Set(['b-take']),
+      );
+      const worker = createChapterUploadWorker(() => 'worker-tok');
+
+      const error = await worker
+        .uploadChapter(
+          { bookId: 40, chapterNumber: 1 },
+          new AbortController().signal,
+        )
+        .catch(caught => caught);
+
+      expect(isChapterUploadDeferredError(error)).toBe(true);
+      expect(mockUploadVerseAudio).not.toHaveBeenCalled();
+    });
+  });
+
+  it('still uses the pass token for a legacy take with no recorded owner', async () => {
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ recordedByUserId: null }),
+    ]);
+
+    await syncPendingRecordings('pass-tok', { delay });
+
+    expect(mockGetCredentials).not.toHaveBeenCalled();
     expect(mockUploadVerseAudio).toHaveBeenCalledWith(
       expect.any(Object),
       'pass-tok',
@@ -1049,7 +1204,7 @@ describe('recordingSync', () => {
       expect(mockGetCredentials).toHaveBeenCalledTimes(2);
     });
 
-    it('does not cache the pass-token fallback when owner credentials are missing', async () => {
+    it('does not cache a missing owner session: a later take re-reads it (#854)', async () => {
       mockGetPendingRecordings.mockResolvedValue([
         take('rec-1', 9),
         take('rec-2', 9),
@@ -1058,31 +1213,13 @@ describe('recordingSync', () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ token: 'owner-9' });
 
-      await syncPendingRecordings('pass-tok', { delay });
-
-      expect(mockUploadVerseAudio.mock.calls.map(c => c[1])).toEqual([
-        'pass-tok',
-        'owner-9',
-      ]);
-    });
-
-    it('does not cache the fallback when the owner is the active user', async () => {
-      mockGetActiveUserId.mockReturnValue('9');
-      mockGetPendingRecordings.mockResolvedValue([
-        take('rec-1', 9),
-        take('rec-2', 9),
-      ]);
-      mockGetCredentials
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ token: 'owner-9' });
-
-      await syncPendingRecordings('pass-tok', { delay });
+      const result = await syncPendingRecordings('pass-tok', { delay });
 
       expect(mockGetCredentials).toHaveBeenCalledTimes(2);
       expect(mockUploadVerseAudio.mock.calls.map(c => c[1])).toEqual([
-        'pass-tok',
         'owner-9',
       ]);
+      expect(result).toMatchObject({ uploaded: 1, deferred: 1, failed: 0 });
     });
 
     it('does not carry tokens into the next pass', async () => {
@@ -1481,18 +1618,26 @@ describe('recordingSync', () => {
     expect(mockEmitAuthReauthRequired).toHaveBeenCalledWith('2');
   });
 
-  it('marks the recording owner for reauth when owner token upload returns 401', async () => {
+  it("marks another account for reauth on its 401, leaves its take pending, and uploads the active account's take (#854)", async () => {
     mockGetPendingRecordings.mockResolvedValue([
-      pendingRecording({ recordedByUserId: 7 }),
+      pendingRecording({ id: 'rec-1', recordedByUserId: 7 }),
+      pendingRecording({ id: 'rec-2', recordedByUserId: 2 }),
     ]);
-    mockGetCredentials.mockResolvedValue({ token: 'owner-tok' });
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: `owner-${id}`,
+    }));
     mockGetActiveUserId.mockReturnValue('2');
-    mockUploadVerseAudio.mockRejectedValue(new AuthError('session expired'));
+    mockUploadVerseAudio.mockImplementation(
+      async (_input: unknown, token: string) => {
+        if (token === 'owner-7') throw new AuthError('session expired');
+        return successResponse();
+      },
+    );
 
-    await expect(
-      syncPendingRecordings('active-tok', { delay }),
-    ).rejects.toBeInstanceOf(AuthError);
+    const result = await syncPendingRecordings('active-tok', { delay });
 
+    expect(result).toMatchObject({ uploaded: 1, failed: 0, deferred: 1 });
+    expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
     expect(mockSetReauthRequired).toHaveBeenCalledWith('7');
     expect(mockEmitAuthReauthRequired).not.toHaveBeenCalled();
     expect(mockSetRecordingSyncStatus).toHaveBeenCalledWith(
@@ -1815,6 +1960,7 @@ describe('recordingSync', () => {
 
   it('createChapterUploadWorker keeps a real failure a plain error even when another take is deferred (#855)', async () => {
     mockGetVerifiedMembershipOwners.mockReturnValue(new Set([2]));
+    mockGetCredentials.mockResolvedValue({ token: 'owner-2' });
     mockGetPendingRecordings.mockResolvedValue([
       pendingRecording({ id: 'unconfirmed', recordedByUserId: 7 }),
       pendingRecording({ id: 'bad', recordedByUserId: 2, projectUnitId: null }),
@@ -1830,6 +1976,47 @@ describe('recordingSync', () => {
 
     expect(isChapterUploadDeferredError(error)).toBe(false);
     expect((error as Error).message).toMatch(/Chapter upload failed/);
+  });
+
+  it('createChapterUploadWorker defers a chapter when the membership check failed, even with nothing left to defer (#855)', async () => {
+    mockReconcileHeldRecordings.mockRejectedValue(new Error('database locked'));
+    mockGetPendingRecordings.mockResolvedValue([]);
+    const worker = createChapterUploadWorker(() => 'worker-tok');
+
+    const error = await worker
+      .uploadChapter(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      )
+      .catch(caught => caught);
+
+    expect(isChapterUploadDeferredError(error)).toBe(true);
+  });
+
+  it("completes another account's chapter while a signed-out account is unconfirmed (#854)", async () => {
+    // Owner 9 is signed out (not verified) and has work elsewhere on the
+    // device; this chapter only holds the active account's (2) take.
+    mockGetRecordingOwnerIds.mockResolvedValue([2, 9]);
+    mockGetVerifiedMembershipOwners.mockReturnValue(new Set([2]));
+    mockGetCredentials.mockImplementation(async (id: string) =>
+      id === '2' ? { token: 'owner-2' } : null,
+    );
+    mockGetPendingRecordings.mockResolvedValue([
+      pendingRecording({ id: 'b-take', recordedByUserId: 2 }),
+    ]);
+    const worker = createChapterUploadWorker(() => 'worker-tok');
+
+    await expect(
+      worker.uploadChapter(
+        { bookId: 40, chapterNumber: 1 },
+        new AbortController().signal,
+      ),
+    ).resolves.toBeUndefined();
+    expect(mockUploadVerseAudio).toHaveBeenCalledWith(
+      expect.any(Object),
+      'owner-2',
+      expect.anything(),
+    );
   });
 
   it('createChapterUploadWorker does not treat conflicts as chapter failures (#600)', async () => {
@@ -2218,7 +2405,7 @@ describe('recordingSync', () => {
       expect(mockReceipts.has('rec-1')).toBe(true);
     });
 
-    it('still uses the pass token when the owner credentials are missing (#854 unchanged)', async () => {
+    it('does not upload with the pass token when the owner credentials are missing (#854)', async () => {
       mockGetPendingRecordings.mockResolvedValue([
         pendingRecording({ recordedByUserId: 7 }),
       ]);
@@ -2226,10 +2413,7 @@ describe('recordingSync', () => {
 
       await syncPendingRecordings('pass-token', { delay });
 
-      expect(mockUploadVerseAudio).toHaveBeenCalledWith(
-        expect.anything(),
-        'pass-token',
-      );
+      expect(mockUploadVerseAudio).not.toHaveBeenCalled();
     });
   });
 });

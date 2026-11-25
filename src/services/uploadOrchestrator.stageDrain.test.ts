@@ -4,6 +4,7 @@
 // My Work) only follows a confirmed drain. The drain itself is mocked at its
 // production result contract.
 import type { UploadSessionEvent } from './syncEvents';
+import { AuthError } from './authError';
 import {
   SESSION_RETRY_MAX_ATTEMPTS,
   sessionRetryDelayMs,
@@ -19,17 +20,18 @@ type ConnectivityListener = (
 const mockListeners = new Set<ConnectivityListener>();
 const mockDrain = jest.fn();
 const mockClaimsDrain = jest.fn();
+const mockOtherAccountClaimsDrain = jest.fn();
 const mockGetPendingStageAdvances = jest.fn();
-const mockHasPendingChapterClaimsForUser = jest.fn();
+const mockGetPendingChapterClaims = jest.fn();
 const mockEmit = jest.fn();
 const mockGetCredentials = jest.fn();
 const mockSetReauthRequired = jest.fn();
 const mockEmitReauth = jest.fn();
+const mockIsReauthRequired = jest.fn();
 
 jest.mock('../db/queries', () => ({
-  getPendingUploadChapters: async () => [],
-  hasPendingChapterClaimsForUser: (userId: number) =>
-    mockHasPendingChapterClaimsForUser(userId),
+  getDevicePendingUploadChapters: async () => [],
+  getPendingChapterClaims: () => mockGetPendingChapterClaims(),
 }));
 jest.mock('../db/stageAdvanceQueueRepository', () => ({
   getPendingStageAdvances: () => mockGetPendingStageAdvances(),
@@ -40,15 +42,21 @@ jest.mock('../db/repositories/heldRecordingsRepository', () => ({
 }));
 // Membership refresh is exercised in projectMembership.test.ts; here it must
 // resolve so these drain sessions still run (#848).
+const mockRefreshOwners = jest.fn();
 jest.mock('./projectMembership', () => {
   let verified = new Set<number>();
   return {
     refreshProjectMembership: async () => undefined,
     refreshMembershipForOwners: async (ids: number[]) => {
+      mockRefreshOwners([...ids].sort((a, b) => a - b));
       verified = new Set(ids);
       return verified;
     },
     getVerifiedMembershipOwners: () => verified,
+    beginMembershipCheck: () => 1,
+    invalidateVerifiedMembershipOwners: () => {
+      verified = new Set();
+    },
   };
 });
 jest.mock('./connectivity', () => ({
@@ -68,6 +76,7 @@ jest.mock('./userPreferences', () => ({
   subscribeToPreference: () => () => undefined,
 }));
 jest.mock('./storage', () => ({
+  isReauthRequired: (id: string) => mockIsReauthRequired(id),
   getActiveUserId: () => '10',
   getSyncPausedUntilMs: () => null,
   setSyncPausedUntilMs: jest.fn(),
@@ -76,7 +85,12 @@ jest.mock('./storage', () => ({
 jest.mock('./sync', () => ({
   syncPendingChapterClaimsForUser: (...args: unknown[]) =>
     mockClaimsDrain(...args),
-  syncPendingStageAdvancesForUser: (...args: unknown[]) => mockDrain(...args),
+  syncPendingStageAdvancesForAccounts: (...args: unknown[]) =>
+    mockDrain(...args),
+}));
+jest.mock('./chapterClaimSync', () => ({
+  syncPendingChapterClaims: (...args: unknown[]) =>
+    mockOtherAccountClaimsDrain(...args),
 }));
 jest.mock('./keychain', () => ({
   getCredentials: (id: string) => mockGetCredentials(id),
@@ -139,10 +153,16 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockListeners.clear();
   mockGetCredentials.mockResolvedValue({ token: 'token-10' });
+  mockIsReauthRequired.mockReturnValue(false);
   timers = [];
   mockGetPendingStageAdvances.mockResolvedValue([{ id: 1, userId: 10 }]);
-  mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+  mockGetPendingChapterClaims.mockResolvedValue([]);
   mockClaimsDrain.mockResolvedValue({ synced: 0, conflicts: 0, failed: 0 });
+  mockOtherAccountClaimsDrain.mockResolvedValue({
+    synced: 0,
+    conflicts: 0,
+    failed: 0,
+  });
 });
 afterEach(() => {
   stopUploadOrchestrator();
@@ -151,7 +171,7 @@ afterEach(() => {
 describe('stage drain result contract (#257)', () => {
   it('fails closed before draining a claim with missing captured-owner credentials', async () => {
     mockGetCredentials.mockResolvedValue(null);
-    mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+    mockGetPendingChapterClaims.mockResolvedValue([{ id: 1, userId: 10 }]);
     startUploadOrchestrator({ schedule, worker: stubWorker });
     connect();
     await waitFor(() => mockSetReauthRequired.mock.calls.length > 0);
@@ -282,6 +302,7 @@ describe('stage drain result contract (#257)', () => {
 
 describe('claim push result contract (#886)', () => {
   it('treats an offline-deferred claim push as a connectivity pause, not something to upload past', async () => {
+    mockGetPendingChapterClaims.mockResolvedValue([{ id: 1, userId: 10 }]);
     mockClaimsDrain.mockResolvedValue({
       synced: 0,
       conflicts: 0,
@@ -312,7 +333,7 @@ describe('claim push result contract (#886)', () => {
 
   it('runs a claim-only session on reconnect when only a queued claim is pending', async () => {
     mockGetPendingStageAdvances.mockResolvedValue([]);
-    mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+    mockGetPendingChapterClaims.mockResolvedValue([{ id: 1, userId: 10 }]);
     mockDrain.mockResolvedValue({
       synced: 0,
       dropped: 0,
@@ -324,16 +345,14 @@ describe('claim push result contract (#886)', () => {
     connect();
     await waitFor(() => eventTypes().includes('complete'));
 
-    expect(mockHasPendingChapterClaimsForUser).toHaveBeenCalledWith(10);
+    expect(mockGetPendingChapterClaims).toHaveBeenCalled();
     expect(mockClaimsDrain).toHaveBeenCalledWith(10, 'token-10');
     expect(stubWorker.uploadChapter).not.toHaveBeenCalled();
   });
 
   it('runs the claim push on reconnect when the claim queue cannot be read', async () => {
     mockGetPendingStageAdvances.mockResolvedValue([]);
-    mockHasPendingChapterClaimsForUser.mockRejectedValue(
-      new Error('db closed'),
-    );
+    mockGetPendingChapterClaims.mockRejectedValue(new Error('db closed'));
     mockDrain.mockResolvedValue({
       synced: 0,
       dropped: 0,
@@ -350,7 +369,7 @@ describe('claim push result contract (#886)', () => {
 
   it('retries a drain-only session when the claim push leaves rows failed', async () => {
     mockGetPendingStageAdvances.mockResolvedValue([]);
-    mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+    mockGetPendingChapterClaims.mockResolvedValue([{ id: 1, userId: 10 }]);
     mockClaimsDrain.mockResolvedValue({ synced: 0, conflicts: 0, failed: 1 });
     startUploadOrchestrator({ schedule, worker: stubWorker });
 
@@ -366,7 +385,7 @@ describe('claim push result contract (#886)', () => {
 
   it('still drains queued stage advances when the claim push soft-fails, then retries', async () => {
     mockGetPendingStageAdvances.mockResolvedValue([{ id: 1, userId: 10 }]);
-    mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
+    mockGetPendingChapterClaims.mockResolvedValue([{ id: 1, userId: 10 }]);
     mockClaimsDrain.mockResolvedValue({ synced: 0, conflicts: 0, failed: 1 });
     mockDrain.mockResolvedValue({
       synced: 1,
@@ -389,7 +408,7 @@ describe('claim push result contract (#886)', () => {
 
   it('stays idle on reconnect with no chapters, stage rows or claims', async () => {
     mockGetPendingStageAdvances.mockResolvedValue([]);
-    mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
+    mockGetPendingChapterClaims.mockResolvedValue([]);
     startUploadOrchestrator({ schedule, worker: stubWorker });
 
     connect();
@@ -398,5 +417,241 @@ describe('claim push result contract (#886)', () => {
 
     expect(mockClaimsDrain).not.toHaveBeenCalled();
     expect(eventTypes()).not.toContain('complete');
+  });
+});
+
+describe('queued work from other accounts on this device (#854)', () => {
+  it("pushes another account's claims and stage advances with that account's own token", async () => {
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: `token-${id}`,
+    }));
+    mockGetPendingChapterClaims.mockResolvedValue([
+      { id: 1, userId: 10 },
+      { id: 2, userId: 20 },
+    ]);
+    mockGetPendingStageAdvances.mockResolvedValue([
+      { id: 1, userId: 20 },
+      { id: 2, userId: 10 },
+    ]);
+    mockDrain.mockResolvedValue({
+      synced: 2,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+      blocked: 0,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => eventTypes().includes('complete'));
+
+    // The active account's claims go through the sync-error-tracking wrapper;
+    // another account's drain directly, outside the active account's sync
+    // error state.
+    expect(mockClaimsDrain.mock.calls).toEqual([[10, 'token-10']]);
+    expect(mockOtherAccountClaimsDrain.mock.calls).toEqual([[20, 'token-20']]);
+    expect(mockDrain).toHaveBeenCalledWith(
+      new Map([
+        [20, 'token-20'],
+        [10, 'token-10'],
+      ]),
+    );
+    expect(mockSetReauthRequired).not.toHaveBeenCalled();
+  });
+
+  it("keeps a signed-out account pending and flagged, and still completes the active account's session", async () => {
+    mockGetCredentials.mockImplementation(async (id: string) =>
+      id === '20' ? null : { token: `token-${id}` },
+    );
+    mockGetPendingChapterClaims.mockResolvedValue([
+      { id: 1, userId: 10 },
+      { id: 2, userId: 20 },
+    ]);
+    mockGetPendingStageAdvances.mockResolvedValue([
+      { id: 1, userId: 20 },
+      { id: 2, userId: 10 },
+    ]);
+    mockDrain.mockResolvedValue({
+      synced: 1,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+      blocked: 0,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => eventTypes().includes('complete'));
+
+    // The active account's work still goes; the other account's never borrows it.
+    expect(mockClaimsDrain.mock.calls).toEqual([[10, 'token-10']]);
+    expect(mockOtherAccountClaimsDrain).not.toHaveBeenCalled();
+    expect(mockDrain).toHaveBeenCalledWith(new Map([[10, 'token-10']]));
+    // Flagged for the Sync page, but the active account is not sent to sign-in.
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('20');
+    expect(mockEmitReauth).not.toHaveBeenCalled();
+    expect(armedTimers()).toHaveLength(0);
+  });
+
+  it("does not complete while the active account's stage advance waits behind a signed-out account", async () => {
+    mockGetCredentials.mockImplementation(async (id: string) =>
+      id === '20' ? null : { token: `token-${id}` },
+    );
+    mockGetPendingStageAdvances.mockResolvedValue([
+      { id: 1, userId: 20 },
+      { id: 2, userId: 10 },
+    ]);
+    mockDrain.mockResolvedValue({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+      blocked: 1,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => mockDrain.mock.calls.length === 1);
+    await waitFor(() => armedTimers().length === 1);
+
+    expect(eventTypes()).not.toContain('complete');
+  });
+
+  it("keeps another account's claims queued when its session is rejected, and flags it", async () => {
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: `token-${id}`,
+    }));
+    mockGetPendingChapterClaims.mockResolvedValue([
+      { id: 1, userId: 20 },
+      { id: 2, userId: 10 },
+    ]);
+    mockGetPendingStageAdvances.mockResolvedValue([]);
+    mockOtherAccountClaimsDrain.mockRejectedValue(
+      new AuthError('expired', 'TOKEN_EXPIRED'),
+    );
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => eventTypes().includes('complete'));
+
+    expect(mockSetReauthRequired).toHaveBeenCalledWith('20');
+    expect(mockEmitReauth).not.toHaveBeenCalled();
+    expect(mockClaimsDrain).toHaveBeenCalledWith(10, 'token-10');
+  });
+
+  it("still ends the session into sign-in when the active account's claim push is rejected", async () => {
+    mockGetPendingChapterClaims.mockResolvedValue([{ id: 1, userId: 10 }]);
+    mockClaimsDrain.mockRejectedValue(
+      new AuthError('expired', 'TOKEN_EXPIRED'),
+    );
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => mockClaimsDrain.mock.calls.length === 1);
+    await settle();
+
+    expect(eventTypes()).not.toContain('complete');
+    expect(mockDrain).not.toHaveBeenCalled();
+  });
+});
+
+describe('membership refresh for stage-advance-only accounts (#854)', () => {
+  it('checks an account whose only queued work is a stage advance', async () => {
+    // Account 20 has no takes on the device, only a queued stage advance.
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: `token-${id}`,
+    }));
+    mockGetPendingStageAdvances.mockResolvedValue([{ id: 1, userId: 20 }]);
+    mockDrain.mockResolvedValue({
+      synced: 1,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+      blocked: 0,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => eventTypes().includes('complete'));
+
+    // The active account (take owners list) plus the stage-only account.
+    expect(mockRefreshOwners).toHaveBeenCalledWith([10, 20]);
+  });
+});
+
+describe('cancelling during the claim push (#854)', () => {
+  it("does not start another account's claims after a cancel", async () => {
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: `token-${id}`,
+    }));
+    mockGetPendingChapterClaims.mockResolvedValue([
+      { id: 1, userId: 10 },
+      { id: 2, userId: 20 },
+    ]);
+    let releaseActive!: () => void;
+    mockClaimsDrain.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          releaseActive = () =>
+            resolve({ synced: 1, conflicts: 0, failed: 0, deferred: 0 });
+        }),
+    );
+    const orchestrator = startUploadOrchestrator({
+      schedule,
+      worker: stubWorker,
+    });
+
+    connect();
+    await waitFor(() => mockClaimsDrain.mock.calls.length === 1);
+    await orchestrator.cancel();
+    releaseActive();
+    await settle();
+
+    expect(mockOtherAccountClaimsDrain).not.toHaveBeenCalled();
+    expect(mockDrain).not.toHaveBeenCalled();
+  });
+});
+
+describe('another account whose stored session was rejected (#854)', () => {
+  it("does not complete when the active account's stage advance is rejected", async () => {
+    mockDrain.mockRejectedValue(new AuthError('expired', 'TOKEN_EXPIRED'));
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => mockDrain.mock.calls.length === 1);
+    await settle();
+
+    expect(eventTypes()).not.toContain('complete');
+  });
+
+  it('is not sent again, and does not keep the active account from completing', async () => {
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: `token-${id}`,
+    }));
+    mockIsReauthRequired.mockImplementation((id: string) => id === '20');
+    mockGetPendingChapterClaims.mockResolvedValue([
+      { id: 1, userId: 20 },
+      { id: 2, userId: 10 },
+    ]);
+    mockGetPendingStageAdvances.mockResolvedValue([
+      { id: 1, userId: 20 },
+      { id: 2, userId: 10 },
+    ]);
+    mockDrain.mockResolvedValue({
+      synced: 1,
+      dropped: 0,
+      failed: 0,
+      deferred: 0,
+      blocked: 0,
+    });
+    startUploadOrchestrator({ schedule, worker: stubWorker });
+
+    connect();
+    await waitFor(() => eventTypes().includes('complete'));
+
+    expect(mockOtherAccountClaimsDrain).not.toHaveBeenCalled();
+    expect(mockClaimsDrain.mock.calls).toEqual([[10, 'token-10']]);
+    expect(mockDrain).toHaveBeenCalledWith(new Map([[10, 'token-10']]));
+    expect(mockEmitReauth).not.toHaveBeenCalled();
   });
 });

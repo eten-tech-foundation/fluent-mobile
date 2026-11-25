@@ -122,6 +122,8 @@ describe('useSyncStatus cellular gate', () => {
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
+      otherAccountsPendingCount: 0,
+      otherAccountOwnerIds: [],
     });
     mockUseLocalSyncHealth.mockReturnValue({
       needsDownloadSync: false,
@@ -208,6 +210,8 @@ describe('useSyncStatus cellular gate', () => {
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
+      otherAccountsPendingCount: 0,
+      otherAccountOwnerIds: [],
     });
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
@@ -295,6 +299,8 @@ describe('useSyncStatus metadata / reauth retry work', () => {
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
+      otherAccountsPendingCount: 0,
+      otherAccountOwnerIds: [],
     });
     mockUseLocalSyncHealth.mockReturnValue({
       needsDownloadSync: false,
@@ -455,6 +461,8 @@ describe('useSyncStatus before reachability is known', () => {
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
+      otherAccountsPendingCount: 0,
+      otherAccountOwnerIds: [],
     });
     mockUseLocalSyncHealth.mockReturnValue({
       needsDownloadSync: false,
@@ -550,6 +558,8 @@ describe('useSyncStatus before reachability is known', () => {
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
+      otherAccountsPendingCount: 0,
+      otherAccountOwnerIds: [],
     });
     const { result } = renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
@@ -572,6 +582,8 @@ describe('useSyncStatus before reachability is known', () => {
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
+      otherAccountsPendingCount: 0,
+      otherAccountOwnerIds: [],
     });
     const { result, rerender } = renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
@@ -603,6 +615,8 @@ describe('useSyncStatus before reachability is known', () => {
         failedErrorText: null,
         isUploading: false,
         uploadProgress: null,
+        otherAccountsPendingCount: 0,
+        otherAccountOwnerIds: [] as number[],
       };
       mockUsePendingUploads.mockReturnValue({
         ...counts,
@@ -638,6 +652,8 @@ describe('useSyncStatus before reachability is known', () => {
       failedErrorText: null,
       isUploading: false,
       uploadProgress: null,
+      otherAccountsPendingCount: 0,
+      otherAccountOwnerIds: [],
     });
     const { result } = renderHook(() =>
       useSyncStatus({ isSyncing: true, refreshKey: 0 }),

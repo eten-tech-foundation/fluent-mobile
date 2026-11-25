@@ -1,6 +1,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { getApiBaseUrl } from '../config/apiBaseUrl';
-import type { PendingUploadChapter } from '../db/queries';
+import {
+  getTakeIdsWaitingOnOtherAccounts,
+  type PendingUploadChapter,
+} from '../db/queries';
 import {
   clearRecordingDeletion,
   getPendingRecordingDeletions,
@@ -37,7 +40,11 @@ import { FluentAPI } from './api';
 import { isAuthError } from './authError';
 import { authToken } from './authToken';
 import { getCredentials, getCredentialsVersion } from './keychain';
-import { getActiveUserId, setReauthRequired } from './storage';
+import {
+  getActiveUserId,
+  isReauthRequired,
+  setReauthRequired,
+} from './storage';
 import {
   clearUploadReceipt,
   persistUploadReceipt,
@@ -91,6 +98,14 @@ export interface UploadResult {
    * Callers must treat this like `failed`: the pass is not complete.
    */
   deletionsFailed: number;
+  /**
+   * Set when this pass's membership check itself failed (the refresh or the
+   * held reconcile threw). The pass is not complete even when no take was
+   * left to defer (#855). An owner that merely could not be verified (signed
+   * out) does not set it: that owner's takes in this pass are already counted
+   * in `deferred`, so other accounts' chapters still complete (#854).
+   */
+  membershipUnconfirmed?: true;
 }
 
 /** Terminal outcome of one queued take delete (#886). */
@@ -111,6 +126,12 @@ export type DeletePassResult = {
    * logged, instead of blocking the active user's `complete` forever.
    */
   failedForActiveUser: number;
+  /**
+   * Rows left queued because their account must sign in again (no stored
+   * session, or its token was rejected). Not failures, but the pass is not
+   * complete while any remain (#854).
+   */
+  deferred: number;
 };
 
 export type RecordingSyncOptions = {
@@ -213,16 +234,39 @@ async function handleUploadAuthFailure(userId: string): Promise<void> {
   }
 }
 
-export type UploadTokenResolution = {
-  token: string;
-  userId: string | null;
-  /** `fallback`: the pass token, used when owner credentials are missing. */
-  source: 'owner' | 'fallback';
-};
+/** An auth failure for an account other than the active one (#854). */
+function isOtherAccountAuthFailure(
+  error: unknown,
+  tokenUserId: string | null,
+): boolean {
+  return (
+    isAuthError(error) &&
+    tokenUserId !== null &&
+    tokenUserId !== getActiveUserId()
+  );
+}
+
+export type UploadTokenResolution =
+  | {
+      token: string;
+      userId: string | null;
+      /** `fallback`: the pass token, for legacy rows with no recorded owner. */
+      source: 'owner' | 'fallback';
+    }
+  | {
+      /** The owner has no stored session on this device (#854). */
+      token: null;
+      userId: string;
+      source: 'missing';
+    };
 
 /**
- * Prefer the capture-time owner's stored token so upload attribution stays
- * stable even if another account is active (#105). Falls back to the pass token.
+ * The capture-time owner's stored token, so each take or delete uploads as
+ * the account that made it whichever account is active (#105, #854). Legacy
+ * rows with no recorded owner use the pass token. An owner with no stored
+ * session (signed out, or never stored) gets `missing`: the caller keeps that
+ * work pending, flagged for sign-in, and never borrows the active account's
+ * token (#854).
  */
 export async function resolveOwnerAuthToken(
   recordedByUserId: number | null,
@@ -237,21 +281,22 @@ export async function resolveOwnerAuthToken(
     };
   }
   const userId = String(recordedByUserId);
+  // Another account already flagged for sign-in: its stored token was
+  // rejected, so do not send it again; keep the work pending (#854).
+  if (userId !== getActiveUserId() && isReauthRequired(userId)) {
+    return { token: null, userId, source: 'missing' };
+  }
   const creds = await getCredentials(userId);
   if (creds?.token) {
     return { token: creds.token, userId, source: 'owner' };
   }
-  // Falls back to the active pass token when owner credentials are missing (#854).
-  log.warn('Owner credentials missing; using active pass token', {
+  log.warn('Owner credentials missing; leaving work pending for sign-in', {
     id: context.id,
     kind: context.kind,
     recordedByUserId,
   });
-  return {
-    token: fallbackToken,
-    userId: getActiveUserId() || null,
-    source: 'fallback',
-  };
+  setReauthRequired(userId);
+  return { token: null, userId, source: 'missing' };
 }
 
 export async function resolveUploadTokenForRecording(
@@ -284,7 +329,14 @@ function createPassOwnerTokens() {
       const key =
         owner !== null && Number.isFinite(owner) ? String(owner) : null;
       const cached = key === null ? undefined : tokens.get(key);
-      if (cached && cached.version === getCredentialsVersion()) {
+      // Setting the sign-in flag does not change the credentials version, so
+      // check it here too: another account's rejected token is never reused
+      // from the cache (#854).
+      if (
+        cached &&
+        cached.version === getCredentialsVersion() &&
+        !(key !== getActiveUserId() && isReauthRequired(key!))
+      ) {
         return cached.resolution;
       }
       const version = getCredentialsVersion();
@@ -1257,6 +1309,7 @@ async function runDeletePass(
     deleted: 0,
     failed: 0,
     failedForActiveUser: 0,
+    deferred: 0,
   };
   if (pending.length === 0) {
     return result;
@@ -1271,18 +1324,32 @@ async function runDeletePass(
 
   for (const deletion of pending) {
     throwIfAborted(options.signal);
-    const { token: deleteToken, userId: tokenUserId } =
-      await resolveOwnerAuthToken(deletion.recordedByUserId, token, {
-        id: deletion.id,
-        kind: 'delete',
+    const resolution = await resolveOwnerAuthToken(
+      deletion.recordedByUserId,
+      token,
+      { id: deletion.id, kind: 'delete' },
+    );
+    if (resolution.token === null) {
+      // Stays queued until its account signs in again (#854).
+      result.deferred += 1;
+      continue;
+    }
+    const { token: deleteToken, userId: tokenUserId } = resolution;
+    let outcome: TakeDeletionOutcome;
+    try {
+      outcome = await deleteOneRecordingTake(deletion, {
+        signal: options.signal,
+        delay: options.delay,
+        maxAttempts: options.maxAttempts,
+        token: deleteToken,
+        tokenUserId,
       });
-    const outcome = await deleteOneRecordingTake(deletion, {
-      signal: options.signal,
-      delay: options.delay,
-      maxAttempts: options.maxAttempts,
-      token: deleteToken,
-      tokenUserId,
-    });
+    } catch (error) {
+      // Another account's rejected session keeps its delete queued (#854).
+      if (!isOtherAccountAuthFailure(error, tokenUserId)) throw error;
+      result.deferred += 1;
+      continue;
+    }
     if (outcome.kind === 'failed') {
       result.failed += 1;
       if (ownedByActiveUser(deletion)) {
@@ -1342,7 +1409,13 @@ async function runUploadPass(
           delay,
           maxAttempts,
         })
-      : { attempted: 0, deleted: 0, failed: 0, failedForActiveUser: 0 };
+      : {
+          attempted: 0,
+          deleted: 0,
+          failed: 0,
+          failedForActiveUser: 0,
+          deferred: 0,
+        };
 
   // #855: before evaluating any pending take, establish fresh project
   // membership for the active account. Recordings whose owner lost
@@ -1393,6 +1466,25 @@ async function runUploadPass(
   }
 
   const pending = await getPendingRecordings(options.chapter);
+
+  // #854: takes recorded after another account's still-queued stage advance on
+  // the same chapter wait for that advance, instead of reaching the server
+  // while the chapter is a stage behind (a non-retryable 404). They stay
+  // pending; the session uploads them once the advance lands.
+  let waitingOnOtherAccounts: ReadonlySet<string> = new Set();
+  let waitCheckFailed = false;
+  try {
+    waitingOnOtherAccounts = await getTakeIdsWaitingOnOtherAccounts(
+      pending.map(recording => recording.id),
+      membershipUserId,
+      [...verifiedOwners],
+    );
+  } catch (error) {
+    log.warn('Could not check takes waiting on other accounts; deferring', {
+      error,
+    });
+    waitCheckFailed = true;
+  }
 
   log.info('Starting recording upload pass', {
     count: pending.length,
@@ -1452,6 +1544,8 @@ async function runUploadPass(
       const ownerId = recording.recordedByUserId ?? membershipUserId;
       if (
         reconcileFailed ||
+        waitCheckFailed ||
+        waitingOnOtherAccounts.has(recording.id) ||
         (membershipUserId !== null &&
           (ownerId === null || !verifiedOwners.has(ownerId)))
       ) {
@@ -1460,16 +1554,32 @@ async function runUploadPass(
         continue;
       }
 
-      const { token: uploadToken, userId: tokenUserId } =
-        await uploadTokens.resolve(recording, token);
-      const result = await uploadOneRecording(recording, {
-        signal: options.signal,
-        delay,
-        maxAttempts,
-        token: uploadToken,
-        tokenUserId,
-        now,
-      });
+      const resolution = await uploadTokens.resolve(recording, token);
+      if (resolution.token === null) {
+        // Owner signed out on this device: pending until it signs in (#854).
+        deferred += 1;
+        continue;
+      }
+      const { token: uploadToken, userId: tokenUserId } = resolution;
+      let result: Awaited<ReturnType<typeof uploadOneRecording>>;
+      try {
+        result = await uploadOneRecording(recording, {
+          signal: options.signal,
+          delay,
+          maxAttempts,
+          token: uploadToken,
+          tokenUserId,
+          now,
+        });
+      } catch (error) {
+        // Another account's rejected session leaves its take pending (flagged
+        // for sign-in by the upload) instead of ending the pass for everyone
+        // else (#854). The active account's own 401 still ends the pass.
+        if (!isOtherAccountAuthFailure(error, tokenUserId)) throw error;
+        deferred += 1;
+        uploadTokens.clear();
+        continue;
+      }
       if (result === 'uploaded') {
         uploaded += 1;
       } else if (result === 'conflicted') {
@@ -1514,6 +1624,7 @@ async function runUploadPass(
         failed > 0 ||
         deferred > 0 ||
         deletionsFailed > 0 ||
+        deletePass.deferred > 0 ||
         reconcileFailed ||
         gateFailed
           ? 'idle'
@@ -1527,7 +1638,14 @@ async function runUploadPass(
       deletionsFailed,
       deletionsDone: deletePass.deleted,
     });
-    return { uploaded, conflicted, failed, deferred, deletionsFailed };
+    return {
+      uploaded,
+      conflicted,
+      failed,
+      deferred,
+      deletionsFailed,
+      ...(reconcileFailed ? { membershipUnconfirmed: true as const } : {}),
+    };
   } catch (error) {
     if (isAbortError(error) || options.signal?.aborted) {
       emitPassEvent({ type: 'cancelled' });
@@ -1594,11 +1712,15 @@ function throwIfChapterPassIncomplete(result: UploadResult): void {
   if (result.failed > 0) {
     throw new Error(`Chapter upload failed for ${result.failed} recording(s)`);
   }
-  if (result.deferred > 0) {
+  if (result.deferred > 0 || result.membershipUnconfirmed) {
     // Not a hard failure: the orchestrator keeps going with other chapters
     // (another account's takes may still be eligible) and fails afterwards.
+    // An unconfirmed membership defers too, even with nothing left to defer
+    // in this chapter, so the session does not report `complete` (#855).
     throw new ChapterUploadDeferredError(
-      `Chapter upload deferred ${result.deferred} recording(s)`,
+      result.deferred > 0
+        ? `Chapter upload deferred ${result.deferred} recording(s)`
+        : 'Chapter upload deferred: project membership unconfirmed',
     );
   }
 }
@@ -1629,7 +1751,7 @@ export function createChapterUploadWorker(
         throw new Error('No auth token available for take delete drain');
       }
       const result = await drainPendingRecordingDeletions(token, { signal });
-      return { failed: result.failedForActiveUser };
+      return { failed: result.failedForActiveUser, deferred: result.deferred };
     },
   };
 }

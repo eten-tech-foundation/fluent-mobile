@@ -42,6 +42,8 @@ let mockPendingUploads = {
   hasUnuploadablePending: false,
   isUploading: false,
   uploadProgress: null,
+  otherAccountsPendingCount: 0,
+  otherAccountOwnerIds: [] as number[],
   countsUnknown: false,
   countsRead: true,
 };
@@ -139,26 +141,40 @@ jest.mock('../../hooks/useHeldRecordings', () => ({
   }),
 }));
 
-jest.mock('../../hooks/useUploadSessionState', () => ({
-  useUploadSessionState: (opts?: { hasClaimsOrSyncRetryWork?: boolean }) => ({
-    pageStatus:
-      opts?.hasClaimsOrSyncRetryWork &&
-      (mockPageStatus === 'uploadComplete' || mockPageStatus === 'allComplete')
-        ? 'pending'
-        : mockPageStatus,
-    progressUploaded: 0,
-    progressTotal: 3,
-    progressCurrentChapter: mockProgressCurrentChapter,
-    nextRetryAt: undefined,
-    sessionError: mockSessionError,
-    isControlPending: false,
-    isStartControlPending: false,
-    pause: mockPause,
-    cancel: mockCancel,
-    resumeUploads: mockResumeUploads,
-    syncNowUploads: mockSyncNowFromHook,
-  }),
+let mockOtherAccountNeedsSignIn = false;
+jest.mock('../../hooks/useOtherAccountNeedsSignIn', () => ({
+  useOtherAccountNeedsSignIn: () => mockOtherAccountNeedsSignIn,
 }));
+
+const mockSessionStateInputs: Array<{ hasPendingUploads?: boolean }> = [];
+jest.mock('../../hooks/useUploadSessionState', () => ({
+  useUploadSessionState: (opts?: {
+    hasClaimsOrSyncRetryWork?: boolean;
+    hasPendingUploads?: boolean;
+  }) => {
+    mockSessionStateInputs.push({ hasPendingUploads: opts?.hasPendingUploads });
+    return mockSessionState(opts);
+  },
+}));
+
+const mockSessionState = (opts?: { hasClaimsOrSyncRetryWork?: boolean }) => ({
+  pageStatus:
+    opts?.hasClaimsOrSyncRetryWork &&
+    (mockPageStatus === 'uploadComplete' || mockPageStatus === 'allComplete')
+      ? 'pending'
+      : mockPageStatus,
+  progressUploaded: 0,
+  progressTotal: 3,
+  progressCurrentChapter: mockProgressCurrentChapter,
+  nextRetryAt: undefined,
+  sessionError: mockSessionError,
+  isControlPending: false,
+  isStartControlPending: false,
+  pause: mockPause,
+  cancel: mockCancel,
+  resumeUploads: mockResumeUploads,
+  syncNowUploads: mockSyncNowFromHook,
+});
 
 jest.mock('../../db/queries', () => ({
   hasPendingChapterClaimsForUser: (...args: unknown[]) =>
@@ -204,6 +220,7 @@ jest.mock('lucide-react-native', () => {
     Play: MockIcon,
     X: MockIcon,
     CircleAlert: MockIcon,
+    Users: MockIcon,
   };
 });
 
@@ -254,11 +271,15 @@ describe('SyncScreen', () => {
       hasUnuploadablePending: false,
       isUploading: false,
       uploadProgress: null,
+      otherAccountsPendingCount: 0,
+      otherAccountOwnerIds: [] as number[],
       countsUnknown: false,
       countsRead: true,
     };
     mockSessionError = null;
     mockHeldRecordings = [];
+    mockOtherAccountNeedsSignIn = false;
+    mockSessionStateInputs.length = 0;
     mockPause.mockResolvedValue(undefined);
     mockCancel.mockResolvedValue(undefined);
     mockResumeUploads.mockResolvedValue(undefined);
@@ -829,5 +850,93 @@ describe('SyncScreen', () => {
       'Missing projectUnitId for recording (no matching chapter assignment)',
     );
     expect(screen.queryByText(/Open Sync page to retry\./)).toBeNull();
+  });
+
+  describe('work from other accounts on this device (#854)', () => {
+    it('counts it, keeps the page pending, and never says all synced', () => {
+      mockPendingUploads = {
+        ...mockPendingUploads,
+        hasPendingUploads: false,
+        pendingCount: 0,
+        pendingChapterCount: 0,
+        otherAccountsPendingCount: 3,
+        otherAccountOwnerIds: [20],
+      };
+      render(<SyncScreen />);
+
+      expect(screen.getByTestId('sync-other-accounts-count')).toHaveTextContent(
+        '3 uploads from other accounts on this device',
+      );
+      expect(screen.getByTestId('sync-other-accounts-subtitle')).toBeTruthy();
+      expect(
+        screen.queryByText('All work has been uploaded to Fluent.'),
+      ).toBeNull();
+      expect(mockSessionStateInputs.at(-1)).toEqual({
+        hasPendingUploads: true,
+      });
+      expect(screen.queryByTestId('sync-other-accounts-sign-in')).toBeNull();
+    });
+
+    it('asks another account to sign in without naming it', () => {
+      mockOtherAccountNeedsSignIn = true;
+      mockPendingUploads = {
+        ...mockPendingUploads,
+        hasPendingUploads: false,
+        pendingCount: 0,
+        pendingChapterCount: 0,
+        otherAccountsPendingCount: 1,
+        otherAccountOwnerIds: [20],
+      };
+      render(<SyncScreen />);
+
+      expect(screen.getByTestId('sync-other-accounts-count')).toHaveTextContent(
+        '1 upload from other accounts on this device',
+      );
+      expect(
+        screen.getByTestId('sync-other-accounts-sign-in'),
+      ).toHaveTextContent(
+        'Another account on this device must sign in to finish uploading.',
+      );
+      // No "will upload shortly" promise while that account must sign in.
+      expect(
+        screen.getByTestId('sync-other-accounts-subtitle'),
+      ).toHaveTextContent(
+        'Saved on this device. Uploads when that account signs in again.',
+      );
+    });
+
+    it('does not say all synced when another account only has a queued claim', () => {
+      mockOtherAccountNeedsSignIn = true;
+      mockPendingUploads = {
+        ...mockPendingUploads,
+        hasPendingUploads: false,
+        pendingCount: 0,
+        pendingChapterCount: 0,
+        // A claim is queued work but not counted as an upload.
+        otherAccountsPendingCount: 0,
+        otherAccountOwnerIds: [20],
+      };
+      render(<SyncScreen />);
+
+      expect(screen.getByTestId('sync-other-accounts-sign-in')).toBeTruthy();
+      expect(screen.getByTestId('sync-other-accounts-subtitle')).toBeTruthy();
+      expect(
+        screen.queryByText('All work has been uploaded to Fluent.'),
+      ).toBeNull();
+      // No "0 uploads" line: the count stays takes, deletes and stage changes.
+      expect(screen.queryByTestId('sync-other-accounts-count')).toBeNull();
+      expect(mockSessionStateInputs.at(-1)).toEqual({
+        hasPendingUploads: true,
+      });
+    });
+
+    it('shows nothing extra when no other account has work', () => {
+      render(<SyncScreen />);
+
+      expect(screen.queryByTestId('sync-other-accounts')).toBeNull();
+      expect(mockSessionStateInputs.at(-1)).toEqual({
+        hasPendingUploads: true,
+      });
+    });
   });
 });

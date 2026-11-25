@@ -18,8 +18,8 @@ const mockRecent = jest.fn();
 const mockPendingChapters = jest.fn();
 
 jest.mock('../db/queries', () => ({
-  getPendingUploadChapters: () => mockPendingChapters(),
-  hasPendingChapterClaimsForUser: async () => false,
+  getDevicePendingUploadChapters: () => mockPendingChapters(),
+  getPendingChapterClaims: async () => [],
 }));
 jest.mock('../db/stageAdvanceQueueRepository', () => ({
   getPendingStageAdvances: async () => [],
@@ -39,6 +39,10 @@ jest.mock('./projectMembership', () => {
       return verified;
     },
     getVerifiedMembershipOwners: () => verified,
+    beginMembershipCheck: () => 1,
+    invalidateVerifiedMembershipOwners: () => {
+      verified = new Set();
+    },
   };
 });
 jest.mock('./connectivity', () => ({
@@ -54,6 +58,7 @@ jest.mock('./userPreferences', () => ({
   subscribeToPreference: () => () => undefined,
 }));
 jest.mock('./storage', () => ({
+  isReauthRequired: () => false,
   getActiveUserId: () => '10',
   getSyncPausedUntilMs: () => null,
   setSyncPausedUntilMs: jest.fn(),
@@ -61,7 +66,7 @@ jest.mock('./storage', () => ({
 }));
 jest.mock('./sync', () => ({
   syncPendingChapterClaimsForUser: jest.fn(),
-  syncPendingStageAdvancesForUser: jest.fn(),
+  syncPendingStageAdvancesForAccounts: jest.fn(),
 }));
 jest.mock('./keychain', () => ({ getCredentials: jest.fn() }));
 jest.mock('./syncEvents', () => ({

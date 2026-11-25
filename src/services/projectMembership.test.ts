@@ -46,7 +46,9 @@ jest.mock('../utils/logger', () => ({
 import { ApiError } from '../types/api/errors';
 import { AuthError } from './authError';
 import {
+  beginMembershipCheck,
   getVerifiedMembershipOwners,
+  invalidateVerifiedMembershipOwners,
   OWNER_CREDENTIALS_MISSING,
   refreshMembershipForOwners,
   refreshProjectMembership,
@@ -269,5 +271,80 @@ describe('refreshMembershipForOwners (#855)', () => {
 
     await refreshMembershipForOwners([3]);
     expect([...getVerifiedMembershipOwners()]).toEqual([3]);
+  });
+});
+
+describe('membership checks from overlapping sessions (#855)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetUserProjects.mockResolvedValue({ data: [{ id: 10 }] });
+    mockSelectExistingIds.mockResolvedValue(new Set([10]));
+    mockInsertUserProjects.mockResolvedValue(undefined);
+    mockReconcileUserProjects.mockResolvedValue(undefined);
+    mockGetActiveUserId.mockReturnValue('1');
+    mockGetCredentials.mockImplementation(async (id: string) => ({
+      token: `tok-${id}`,
+    }));
+  });
+
+  it("does not let an older check's failure clear a newer check's owners", async () => {
+    // The older session starts its check, then fails in its owner lookup
+    // after a newer session's check has succeeded.
+    const older = beginMembershipCheck();
+    const newer = beginMembershipCheck();
+    await refreshMembershipForOwners([1], newer);
+    expect([...getVerifiedMembershipOwners()]).toEqual([1]);
+
+    invalidateVerifiedMembershipOwners(older);
+
+    expect([...getVerifiedMembershipOwners()]).toEqual([1]);
+  });
+
+  it("does not let an older refresh that fails late clear a newer check's owners", async () => {
+    let failOlder!: () => void;
+    mockGetUserProjects.mockImplementation(async (id: number) => {
+      if (id === 2) {
+        await new Promise<void>(resolve => {
+          failOlder = resolve;
+        });
+        throw new Error('offline');
+      }
+      return { data: [{ id: 10 }] };
+    });
+    const older = beginMembershipCheck();
+    const olderRefresh = refreshMembershipForOwners([2], older);
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+
+    const newer = beginMembershipCheck();
+    await refreshMembershipForOwners([1], newer);
+
+    failOlder();
+    const olderVerified = await olderRefresh;
+    expect(olderVerified.size).toBe(0);
+    // The older check would now invalidate after its empty result.
+    invalidateVerifiedMembershipOwners(older);
+
+    // Neither its empty result nor its invalidation replaced the newer set.
+    expect([...getVerifiedMembershipOwners()]).toEqual([1]);
+  });
+
+  it('clears the owners when the latest check fails', async () => {
+    const earlier = beginMembershipCheck();
+    await refreshMembershipForOwners([1], earlier);
+    expect([...getVerifiedMembershipOwners()]).toEqual([1]);
+
+    const latest = beginMembershipCheck();
+    invalidateVerifiedMembershipOwners(latest);
+
+    expect(getVerifiedMembershipOwners().size).toBe(0);
+  });
+
+  it('claims its own generation when called without one', async () => {
+    const stale = beginMembershipCheck();
+    await refreshMembershipForOwners([1]);
+
+    // A newer (unscoped) refresh has run since `stale` was claimed.
+    invalidateVerifiedMembershipOwners(stale);
+    expect([...getVerifiedMembershipOwners()]).toEqual([1]);
   });
 });

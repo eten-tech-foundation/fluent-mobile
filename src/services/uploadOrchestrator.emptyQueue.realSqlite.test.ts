@@ -39,6 +39,7 @@ jest.mock('./userPreferences', () => ({
   subscribeToPreference: () => () => undefined,
 }));
 jest.mock('./storage', () => ({
+  isReauthRequired: () => false,
   getActiveUserId: () => mockUserId,
   getUserIdSync: () => mockUserId,
   getSyncPausedUntilMs: () => null,
@@ -48,7 +49,7 @@ jest.mock('./storage', () => ({
 jest.mock('./sync', () => ({
   syncPendingChapterClaimsForUser: (...args: unknown[]) =>
     mockPushClaims(...args),
-  syncPendingStageAdvancesForUser: (...args: unknown[]) =>
+  syncPendingStageAdvancesForAccounts: (...args: unknown[]) =>
     mockPushStages(...args),
 }));
 jest.mock('./keychain', () => ({
@@ -65,6 +66,10 @@ jest.mock('./projectMembership', () => {
       return verified;
     },
     getVerifiedMembershipOwners: () => verified,
+    beginMembershipCheck: () => 1,
+    invalidateVerifiedMembershipOwners: () => {
+      verified = new Set();
+    },
   };
 });
 jest.mock('./syncEvents', () => ({
@@ -106,9 +111,7 @@ const isStages = (sql: string) =>
     sql,
   );
 const isClaims = (sql: string) =>
-  /FROM chapter_claim_queue\s+WHERE sync_status = 'pending' AND user_id/.test(
-    sql,
-  );
+  /FROM chapter_claim_queue\s+WHERE sync_status = 'pending'/.test(sql);
 
 async function fixtureDb(): Promise<DB> {
   const db = createRealSqliteDb();
@@ -255,7 +258,7 @@ describeReal('automatic empty-queue checks against real SQLite', () => {
 
     await returnHome();
 
-    expect(mockPushStages).toHaveBeenCalledWith(7, 'owner-token');
+    expect(mockPushStages).toHaveBeenCalledWith(new Map([[7, 'owner-token']]));
     expect(uploadChapter).not.toHaveBeenCalled();
   });
 
@@ -384,10 +387,13 @@ describeReal('automatic empty-queue checks against real SQLite', () => {
 
     await returnHome();
 
-    // Check and post-probe re-read (3 each), then one re-read per uploaded chapter.
+    // Check and post-probe re-read (3 each), then one re-read per uploaded
+    // chapter. Each push also reads its own queue once to find the accounts
+    // with queued rows, and the membership refresh reads the stage queue once
+    // for accounts whose only work is a stage advance (#854).
     expect(count(isMark)).toBe(1);
-    expect(count(isStages)).toBe(2);
-    expect(count(isClaims)).toBe(2);
+    expect(count(isStages)).toBe(4);
+    expect(count(isClaims)).toBe(3);
     expect(count(isChapters)).toBe(3);
   });
 });

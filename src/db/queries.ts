@@ -1,4 +1,5 @@
 import { getDatabase } from './db';
+import { uploadProjectUnitSql } from './recordingsRepository';
 import { logger } from '../utils/logger';
 import * as DBTypes from '../types/db/types';
 import { parseUserId } from '../utils/parseUserId';
@@ -1401,6 +1402,29 @@ function uploadablePendingWhere(userId: number | null): string {
 }
 
 /**
+ * Upload-eligible takes from any account on the device (#854). Must match the
+ * filter in `getPendingRecordings` (repository.ts), which the chapter pass
+ * reads: no owner filter, held takes left out (#855).
+ */
+function deviceUploadablePendingWhere(): string {
+  return `
+    NOT (
+      r.is_canonical = 0
+      AND r.is_selected = 1
+      AND EXISTS (
+        SELECT 1 FROM recordings c
+        WHERE c.bible_text_id = r.bible_text_id
+          AND c.is_canonical = 1
+          AND c.project_unit_id IS r.project_unit_id
+      )
+    )
+    AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
+    AND r.sync_status NOT IN ('uploaded', 'conflicted', 'held')
+    AND r.bible_text_id > 0
+  `;
+}
+
+/**
  * Queued server take deletes for the active user (#716). A chapter whose
  * only remaining work is one of these rows must still start the upload
  * worker, which runs the delete pass before uploads.
@@ -1660,6 +1684,157 @@ export type PendingUploadChapter = {
 };
 
 /**
+ * Distinct chapters with upload-eligible takes or a queued take delete from
+ * any account on the device (#854). The upload session uses this instead of
+ * the active-user list so another account's work uploads (as that account)
+ * without switching to it. Eligibility matches `getPendingRecordings`, which
+ * the chapter pass reads. UI counts stay active-user scoped.
+ */
+export async function getDevicePendingUploadChapters(
+  onError?: () => void,
+): Promise<PendingUploadChapter[]> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT book_id, chapter_number FROM (
+         SELECT bt.book_id AS book_id, bt.chapter_number AS chapter_number
+         FROM recordings r
+         JOIN bible_texts bt ON bt.id = r.bible_text_id
+         WHERE ${deviceUploadablePendingWhere()}
+         UNION
+         SELECT bt.book_id AS book_id, bt.chapter_number AS chapter_number
+         FROM recording_deletions d
+         JOIN bible_texts bt ON bt.id = d.bible_text_id
+         WHERE d.bible_text_id > 0
+       )
+       ORDER BY book_id, chapter_number`,
+    );
+    const rows = result.rows ?? [];
+    return rows.map(row => ({
+      bookId: Number(row.book_id),
+      chapterNumber: Number(row.chapter_number),
+    }));
+  } catch (error) {
+    log.error('Error fetching device pending upload chapters', { error });
+    onError?.();
+    return [];
+  }
+}
+
+export type OtherAccountsPendingSummary = {
+  /** Takes, take deletes and stage changes other accounts still have to upload. */
+  count: number;
+  /** Other accounts with any queued work (including claims), for sign-in checks. */
+  ownerIds: number[];
+};
+
+/**
+ * Upload work queued on this device by accounts other than the active one
+ * (#854). Uses the same take eligibility as the device upload list; held takes
+ * (owner removed from the project, #855) are not counted. Legacy takes with no
+ * recorded owner belong to the active account and are not counted.
+ */
+export async function getOtherAccountsPendingSummary(
+  activeUserId: number | null,
+): Promise<OtherAccountsPendingSummary> {
+  if (activeUserId === null) return { count: 0, ownerIds: [] };
+  const db = getDatabase();
+  const result = await db.execute(
+    `SELECT owner_id, SUM(n) AS n FROM (
+       SELECT r.recorded_by_user_id AS owner_id, 1 AS n
+       FROM recordings r
+       JOIN bible_texts bt ON bt.id = r.bible_text_id
+       WHERE ${deviceUploadablePendingWhere()}
+       UNION ALL
+       SELECT d.recorded_by_user_id AS owner_id, 1 AS n
+       FROM recording_deletions d
+       WHERE d.bible_text_id > 0
+       UNION ALL
+       SELECT s.user_id AS owner_id, 1 AS n
+       FROM stage_advance_queue s
+       WHERE s.sync_status = 'pending'
+       UNION ALL
+       SELECT q.user_id AS owner_id, 0 AS n
+       FROM chapter_claim_queue q
+       WHERE q.sync_status = 'pending'
+     )
+     WHERE owner_id IS NOT NULL AND owner_id <> ?
+     GROUP BY owner_id
+     ORDER BY owner_id`,
+    [activeUserId],
+  );
+  let count = 0;
+  const ownerIds: number[] = [];
+  for (const row of result.rows ?? []) {
+    const ownerId = Number(row.owner_id);
+    if (!Number.isFinite(ownerId) || ownerId <= 0) continue;
+    ownerIds.push(ownerId);
+    count += Number(row.n ?? 0);
+  }
+  return { count, ownerIds };
+}
+
+/**
+ * Takes that must wait for another account's stage advance (#854 / #847).
+ *
+ * A take is held back when a different account on this device queued a stage
+ * advance on the take's chapter before the take was recorded, and that
+ * advance has not reached the server yet. Uploading first would reach the
+ * server while the chapter is still at the earlier stage, which rejects the
+ * take (as a 404) instead of accepting it.
+ *
+ * Exception: when that account's membership was just confirmed and it is no
+ * longer a member of the chapter's project, its advance cannot land (#855),
+ * so it does not hold anyone else's takes.
+ *
+ * The take's project unit is resolved the way the upload resolves it
+ * (`uploadProjectUnitSql`), so a take only waits on its own project's chapter.
+ *
+ * Read errors propagate: the caller defers rather than uploading past an
+ * unknown order.
+ */
+export async function getTakeIdsWaitingOnOtherAccounts(
+  takeIds: readonly string[],
+  activeUserId: number | null,
+  verifiedOwnerIds: readonly number[],
+): Promise<Set<string>> {
+  if (takeIds.length === 0) return new Set();
+  const db = getDatabase();
+  const takePlaceholders = takeIds.map(() => '?').join(', ');
+  const removedOwnerFilter =
+    verifiedOwnerIds.length === 0
+      ? ''
+      : `AND NOT (
+           s.user_id IN (${verifiedOwnerIds.map(() => '?').join(', ')})
+           AND NOT EXISTS (
+             SELECT 1
+             FROM project_units pu
+             JOIN user_projects up ON up.project_id = pu.project_id
+             WHERE pu.id = ca.project_unit_id
+               AND up.user_id = s.user_id
+           )
+         )`;
+  const result = await db.execute(
+    `SELECT DISTINCT r.id AS id
+     FROM recordings r
+     JOIN bible_texts bt ON bt.id = r.bible_text_id
+     JOIN chapter_assignments ca
+       ON ca.bible_id = bt.bible_id
+      AND ca.book_id = bt.book_id
+      AND ca.chapter_number = bt.chapter_number
+      AND ca.project_unit_id = ${uploadProjectUnitSql('r.project_unit_id')}
+     JOIN stage_advance_queue s ON s.chapter_assignment_id = ca.id
+     WHERE r.id IN (${takePlaceholders})
+       AND s.sync_status = 'pending'
+       AND s.user_id <> COALESCE(r.recorded_by_user_id, ?)
+       AND s.created_at <= r.created_at
+       ${removedOwnerFilter}`,
+    [...takeIds, activeUserId, ...verifiedOwnerIds],
+  );
+  return new Set((result.rows ?? []).map(row => String(row.id)));
+}
+
+/**
  * Distinct chapters with upload-eligible takes or a queued take delete for
  * the active user (JOIN bible_texts). The upload engine (#150) returns
  * before the delete pass when this list is empty, so a chapter whose only
@@ -1707,8 +1882,24 @@ export async function getPendingUploadChapters(
 export async function assignmentHasPendingUploads(
   chapterAssignmentId: number,
   userId: number,
+  /**
+   * Only count work recorded at or before this time (ISO). A stage advance
+   * waits for the takes and deletes that came before it, never for ones
+   * recorded after it was queued (#854): those may themselves be waiting on
+   * another account's later stage advance.
+   */
+  recordedBefore?: string,
 ): Promise<boolean> {
+  // The account's own held takes count too (#855). A held take is earlier
+  // work still waiting for membership, not work that will never upload: if
+  // the advance went first, the take would reach a chapter that had already
+  // moved on once it is released, and be rejected.
   const db = getDatabase();
+  const takeCutoff =
+    recordedBefore === undefined ? '' : 'AND r.created_at <= ?';
+  const deleteCutoff =
+    recordedBefore === undefined ? '' : 'AND d.created_at <= ?';
+  const cutoffParams = recordedBefore === undefined ? [] : [recordedBefore];
   try {
     const result = await db.execute(
       `SELECT (
@@ -1722,6 +1913,7 @@ export async function assignmentHasPendingUploads(
           AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)
          WHERE ca.id = ?
            AND ${uploadablePendingWhere(userId)}
+           ${takeCutoff}
        ) + (
          SELECT COUNT(*)
          FROM recording_deletions d
@@ -1733,8 +1925,34 @@ export async function assignmentHasPendingUploads(
           AND d.project_unit_id = ca.project_unit_id
          WHERE ca.id = ?
            AND ${pendingDeletionWhere(userId)}
+           ${deleteCutoff}
+       ) + (
+         SELECT COUNT(*)
+         FROM recordings r
+         JOIN bible_texts bt ON bt.id = r.bible_text_id
+         JOIN chapter_assignments ca
+           ON ca.bible_id = bt.bible_id
+          AND ca.book_id = bt.book_id
+          AND ca.chapter_number = bt.chapter_number
+          AND (r.project_unit_id IS NULL OR r.project_unit_id = ca.project_unit_id)
+         WHERE ca.id = ?
+           AND r.sync_status = 'held'
+           AND r.recorded_by_user_id = ?
+           AND IFNULL(r.granularity, 'verse') IN ('verse', 'pericope')
+           AND r.bible_text_id > 0
+           ${takeCutoff}
        ) AS count`,
-      [chapterAssignmentId, userId, chapterAssignmentId, userId],
+      [
+        chapterAssignmentId,
+        userId,
+        ...cutoffParams,
+        chapterAssignmentId,
+        userId,
+        ...cutoffParams,
+        chapterAssignmentId,
+        userId,
+        ...cutoffParams,
+      ],
     );
     return Number(result.rows?.[0]?.count ?? 0) > 0;
   } catch (error) {

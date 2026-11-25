@@ -3508,6 +3508,7 @@ describe('syncAllUsers displayMode device-local (#777)', () => {
       synced: 0,
       dropped: 0,
       failed: 0,
+      blocked: 0,
     });
   });
 

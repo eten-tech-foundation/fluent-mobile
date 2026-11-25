@@ -36,7 +36,12 @@ let mockActiveUserId = '10';
 let mockPausedUntil: number | null = null;
 
 jest.mock('../db/queries', () => ({
-  getPendingUploadChapters: () => mockGetPendingChapters(),
+  getDevicePendingUploadChapters: () => mockGetPendingChapters(),
+  getPendingChapterClaims: async () => [],
+  getTakeIdsWaitingOnOtherAccounts: async () => new Set<string>(),
+}));
+jest.mock('../db/stageAdvanceQueueRepository', () => ({
+  getPendingStageAdvances: async () => [],
 }));
 jest.mock('../db/repositories/heldRecordingsRepository', () => ({
   reconcileHeldRecordings: async () => ({ held: 0, released: 0 }),
@@ -53,6 +58,10 @@ jest.mock('./projectMembership', () => {
       return verified;
     },
     getVerifiedMembershipOwners: () => verified,
+    beginMembershipCheck: () => 1,
+    invalidateVerifiedMembershipOwners: () => {
+      verified = new Set();
+    },
   };
 });
 jest.mock('../db/repository', () => ({
@@ -92,6 +101,7 @@ jest.mock('./userPreferences', () => ({
 }));
 const mockKv = new Map<string, string>();
 jest.mock('./storage', () => ({
+  isReauthRequired: () => false,
   kvStorage: {
     getItemSync: (key: string) => mockKv.get(key) ?? null,
     setItemSync: (key: string, value: string) => mockKv.set(key, value),
@@ -106,10 +116,12 @@ jest.mock('./storage', () => ({
 }));
 jest.mock('./sync', () => ({
   syncPendingChapterClaimsForUser: async () => undefined,
-  syncPendingStageAdvancesForUser: async () => ({
+  syncPendingStageAdvancesForAccounts: async () => ({
     synced: 0,
     dropped: 0,
     failed: 0,
+    deferred: 0,
+    blocked: 0,
   }),
 }));
 jest.mock('./keychain', () => ({

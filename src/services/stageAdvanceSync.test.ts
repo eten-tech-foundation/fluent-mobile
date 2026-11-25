@@ -28,8 +28,10 @@ import { setChapterAssignmentStatus } from '../db/repository';
 import { ApiError } from '../types/api/errors';
 import {
   __resetStageAdvanceSyncForTests,
+  drainStageAdvancesForAccounts,
   syncPendingStageAdvances,
 } from './stageAdvanceSync';
+import { AuthError } from './authError';
 
 const getAssignment = jest.mocked(FluentAPI.getChapterAssignment);
 const submitAssignment = jest.mocked(FluentAPI.submitChapterAssignment);
@@ -46,6 +48,12 @@ const draftToPeerCheck = {
   toStatus: 'peer_check',
   peerCheckerId: null,
   createdAt: '2026-10-22T12:00:00.000Z',
+};
+
+const flush = async () => {
+  for (let i = 0; i < 10; i += 1) {
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+  }
 };
 
 describe('syncPendingStageAdvances', () => {
@@ -75,9 +83,15 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 0,
       failed: 0,
+      blocked: 0,
     });
 
-    expect(hasPendingUploads).toHaveBeenCalledWith(7, 9);
+    // Only takes recorded before the stage advance hold it (#854).
+    expect(hasPendingUploads).toHaveBeenCalledWith(
+      7,
+      9,
+      draftToPeerCheck.createdAt,
+    );
     expect(submitAssignment).not.toHaveBeenCalled();
     expect(deleteRow).not.toHaveBeenCalled();
   });
@@ -98,6 +112,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 1,
       failed: 0,
+      blocked: 0,
     });
 
     expect(submitAssignment).not.toHaveBeenCalled();
@@ -120,6 +135,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 1,
       dropped: 0,
       failed: 0,
+      blocked: 0,
     });
 
     expect(getAssignment).toHaveBeenCalledWith(7, 'token-9');
@@ -150,6 +166,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 1,
       dropped: 0,
       failed: 0,
+      blocked: 0,
     });
 
     expect(submitAssignment).toHaveBeenCalledWith(7, 'token-9');
@@ -171,6 +188,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 1,
       failed: 0,
+      blocked: 0,
     });
 
     expect(submitAssignment).not.toHaveBeenCalled();
@@ -193,6 +211,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 1,
       failed: 0,
+      blocked: 0,
     });
 
     expect(submitAssignment).not.toHaveBeenCalled();
@@ -222,6 +241,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 0,
       failed: 1,
+      blocked: 0,
     });
 
     expect(submitAssignment).toHaveBeenCalledTimes(1);
@@ -247,6 +267,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 1,
       dropped: 0,
       failed: 0,
+      blocked: 0,
     });
     expect(deleteRow).toHaveBeenCalledWith(1);
   });
@@ -266,6 +287,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 0,
       failed: 1,
+      blocked: 0,
     });
     expect(setStatus).not.toHaveBeenCalled();
     expect(deleteRow).not.toHaveBeenCalled();
@@ -278,6 +300,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 0,
       failed: 1,
+      blocked: 0,
     });
 
     expect(submitAssignment).not.toHaveBeenCalled();
@@ -312,6 +335,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 1,
       failed: 0,
+      blocked: 0,
     });
 
     expect(submitAssignment).toHaveBeenCalledTimes(1);
@@ -335,6 +359,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 1,
       failed: 0,
+      blocked: 0,
     });
 
     expect(submitAssignment).not.toHaveBeenCalled();
@@ -357,6 +382,7 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 0,
       failed: 1,
+      blocked: 0,
     });
 
     expect(submitAssignment).not.toHaveBeenCalled();
@@ -391,8 +417,8 @@ describe('syncPendingStageAdvances', () => {
     });
 
     await expect(Promise.all([first, second])).resolves.toEqual([
-      { synced: 0, dropped: 1, failed: 0 },
-      { synced: 0, dropped: 1, failed: 0 },
+      { synced: 0, dropped: 1, failed: 0, blocked: 0 },
+      { synced: 0, dropped: 1, failed: 0, blocked: 0 },
     ]);
     expect(submitAssignment).not.toHaveBeenCalled();
     // Initial pass + the rerun the joiner requested.
@@ -430,7 +456,36 @@ describe('syncPendingStageAdvances', () => {
     expect(firstResult.synced).toBe(1);
   });
 
-  it('starts independent drains for overlapping calls with different users', async () => {
+  it("runs the joiner's follow-up pass with the joiner's newer token", async () => {
+    hasPendingUploads
+      .mockResolvedValueOnce(true) // first pass: takes still uploading
+      .mockResolvedValue(false);
+    getAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      projectId: 1,
+      projectUnitId: 1,
+      bibleId: 1,
+      bookId: 1,
+      chapterNumber: 4,
+      status: 'draft',
+    });
+    let releaseList!: () => void;
+    listPending.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          releaseList = () => resolve([draftToPeerCheck]);
+        }),
+    );
+
+    const first = syncPendingStageAdvances(9, 'old-token');
+    const second = syncPendingStageAdvances(9, 'new-token');
+    releaseList();
+    await Promise.all([first, second]);
+
+    expect(submitAssignment).toHaveBeenCalledWith(7, 'new-token');
+  });
+
+  it('runs overlapping drains for different users one after another, never at once (#854)', async () => {
     const userTwo = {
       id: 2,
       chapterAssignmentId: 8,
@@ -455,12 +510,10 @@ describe('syncPendingStageAdvances', () => {
 
     const first = syncPendingStageAdvances(9, 'token-9');
     const second = syncPendingStageAdvances(2, 'token-2');
-    await Promise.resolve();
-    await Promise.resolve();
+    await flush();
 
-    expect(getAssignment).toHaveBeenCalledTimes(2);
-    expect(getAssignment).toHaveBeenCalledWith(7, 'token-9');
-    expect(getAssignment).toHaveBeenCalledWith(8, 'token-2');
+    // User 2's drain waits for user 9's to finish.
+    expect(getAssignment.mock.calls).toEqual([[7, 'token-9']]);
 
     releases.get(7)!({
       chapterAssignmentId: 7,
@@ -471,6 +524,11 @@ describe('syncPendingStageAdvances', () => {
       chapterNumber: 4,
       status: 'peer_check',
     });
+    await flush();
+    expect(getAssignment.mock.calls).toEqual([
+      [7, 'token-9'],
+      [8, 'token-2'],
+    ]);
     releases.get(8)!({
       chapterAssignmentId: 8,
       projectId: 1,
@@ -482,9 +540,51 @@ describe('syncPendingStageAdvances', () => {
     });
 
     await expect(Promise.all([first, second])).resolves.toEqual([
-      { synced: 0, dropped: 1, failed: 0 },
-      { synced: 1, dropped: 0, failed: 0 },
+      { synced: 0, dropped: 1, failed: 0, blocked: 0 },
+      { synced: 1, dropped: 0, failed: 0, blocked: 0 },
     ]);
+  });
+
+  it('never submits one row twice when a multi-account drain overlaps a single-user drain (#854)', async () => {
+    let rows = [draftToPeerCheck];
+    listPending.mockImplementation(async () => rows);
+    deleteRow.mockImplementation(async (id: number) => {
+      rows = rows.filter(row => row.id !== id);
+    });
+    let releaseGet!: () => void;
+    const gate = new Promise<void>(resolve => {
+      releaseGet = resolve;
+    });
+    getAssignment.mockImplementation(async () => {
+      await gate;
+      return {
+        chapterAssignmentId: 7,
+        projectId: 1,
+        projectUnitId: 1,
+        bibleId: 1,
+        bookId: 1,
+        chapterNumber: 4,
+        status: 'draft',
+      };
+    });
+    submitAssignment.mockResolvedValue({
+      chapterAssignmentId: 7,
+      status: 'peer_check',
+    });
+
+    const all = drainStageAdvancesForAccounts(
+      new Map([
+        [9, 'token-9'],
+        [2, 'token-2'],
+      ]),
+      jest.fn(),
+    );
+    const single = syncPendingStageAdvances(9, 'token-9');
+    await flush();
+    releaseGet();
+    await Promise.all([all, single]);
+
+    expect(submitAssignment).toHaveBeenCalledTimes(1);
   });
 
   it('does not keep-lower a later chained row when an earlier row fails', async () => {
@@ -514,11 +614,250 @@ describe('syncPendingStageAdvances', () => {
       synced: 0,
       dropped: 0,
       failed: 1,
+      blocked: 0,
     });
 
     expect(getAssignment).toHaveBeenCalledTimes(1);
     expect(submitAssignment).not.toHaveBeenCalled();
     expect(deleteRow).not.toHaveBeenCalled();
     expect(setStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('stage advances from several accounts on one device (#854)', () => {
+  // #847: A (user 9) sends the chapter draft → peer_check, then B (user 2)
+  // sends it peer_check → community_review, both offline on one device.
+  const aToPeerCheck = draftToPeerCheck;
+  const bToCommunityReview = {
+    id: 2,
+    chapterAssignmentId: 7,
+    userId: 2,
+    fromStatus: 'peer_check',
+    toStatus: 'community_review',
+    peerCheckerId: null,
+    createdAt: '2026-10-22T12:05:00.000Z',
+  };
+  const assignment = (status: string) => ({
+    chapterAssignmentId: 7,
+    projectId: 1,
+    projectUnitId: 1,
+    bibleId: 1,
+    bookId: 1,
+    chapterNumber: 3,
+    status,
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __resetStageAdvanceSyncForTests();
+    listPending.mockResolvedValue([aToPeerCheck, bToCommunityReview]);
+    deleteRow.mockResolvedValue(undefined);
+    setStatus.mockResolvedValue(undefined);
+    hasPendingUploads.mockResolvedValue(false);
+  });
+
+  it("holds B's later stage advance behind A's in a single-user drain instead of rolling it back", async () => {
+    // Server is still in draft: A's advance has not landed.
+    getAssignment.mockResolvedValue(assignment('draft'));
+
+    await expect(syncPendingStageAdvances(2, 'token-2')).resolves.toEqual({
+      synced: 0,
+      dropped: 0,
+      failed: 0,
+      blocked: 1,
+    });
+
+    expect(getAssignment).not.toHaveBeenCalled();
+    expect(submitAssignment).not.toHaveBeenCalled();
+    // The keep-lower rule never ran: B's row and B's local stage stay put.
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(deleteRow).not.toHaveBeenCalled();
+  });
+
+  it("sends A's advance with A's token, then B's with B's token, in queue order", async () => {
+    getAssignment
+      .mockResolvedValueOnce(assignment('draft'))
+      .mockResolvedValueOnce(assignment('peer_check'));
+    submitAssignment
+      .mockResolvedValueOnce(assignment('peer_check'))
+      .mockResolvedValueOnce(assignment('community_review'));
+
+    await expect(
+      drainStageAdvancesForAccounts(
+        new Map([
+          [9, 'token-9'],
+          [2, 'token-2'],
+        ]),
+        jest.fn(() => true),
+      ),
+    ).resolves.toEqual({ synced: 2, dropped: 0, failed: 0, blocked: 0 });
+
+    expect(submitAssignment.mock.calls).toEqual([
+      [7, 'token-9'],
+      [7, 'token-2'],
+    ]);
+    expect(hasPendingUploads.mock.calls).toEqual([
+      [7, 9, aToPeerCheck.createdAt],
+      [7, 2, bToCommunityReview.createdAt],
+    ]);
+    expect(deleteRow.mock.calls).toEqual([[1], [2]]);
+  });
+
+  it("holds B's advance while A has no stored session, without failing it", async () => {
+    await expect(
+      drainStageAdvancesForAccounts(
+        new Map([[2, 'token-2']]),
+        jest.fn(() => true),
+      ),
+    ).resolves.toEqual({ synced: 0, dropped: 0, failed: 0, blocked: 1 });
+
+    expect(getAssignment).not.toHaveBeenCalled();
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(deleteRow).not.toHaveBeenCalled();
+  });
+
+  it("holds B's advance while A's own takes are still uploading", async () => {
+    hasPendingUploads.mockImplementation(async (_id, userId) => userId === 9);
+    getAssignment.mockResolvedValue(assignment('draft'));
+
+    await expect(
+      drainStageAdvancesForAccounts(
+        new Map([
+          [9, 'token-9'],
+          [2, 'token-2'],
+        ]),
+        jest.fn(() => true),
+      ),
+    ).resolves.toEqual({ synced: 0, dropped: 0, failed: 0, blocked: 0 });
+
+    // A waits for its own takes; B is held behind A (same chapter) and is
+    // never sent against a server still in draft.
+    expect(submitAssignment).not.toHaveBeenCalled();
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(getAssignment).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports one account's rejected token and keeps draining the others", async () => {
+    const otherChapter = {
+      ...bToCommunityReview,
+      id: 3,
+      chapterAssignmentId: 8,
+      fromStatus: 'draft',
+      toStatus: 'peer_check',
+    };
+    listPending.mockResolvedValue([aToPeerCheck, otherChapter]);
+    getAssignment.mockImplementation(async (id: number, token?: string) => {
+      if (token === 'token-9') {
+        throw new AuthError('expired', 'TOKEN_EXPIRED');
+      }
+      return { ...assignment('draft'), chapterAssignmentId: id };
+    });
+    submitAssignment.mockResolvedValue({
+      ...assignment('peer_check'),
+      chapterAssignmentId: 8,
+    });
+    const onOwnerAuthFailure = jest.fn(() => true);
+
+    await expect(
+      drainStageAdvancesForAccounts(
+        new Map([
+          [9, 'token-9'],
+          [2, 'token-2'],
+        ]),
+        onOwnerAuthFailure,
+      ),
+    ).resolves.toEqual({ synced: 1, dropped: 0, failed: 0, blocked: 0 });
+
+    expect(onOwnerAuthFailure).toHaveBeenCalledWith(9);
+    expect(submitAssignment).toHaveBeenCalledWith(8, 'token-2');
+    expect(deleteRow).toHaveBeenCalledWith(3);
+    expect(deleteRow).not.toHaveBeenCalledWith(1);
+  });
+
+  it("counts only other accounts' rows held behind a rejected account as blocked", async () => {
+    const aSecond = {
+      ...aToPeerCheck,
+      id: 3,
+      fromStatus: 'peer_check',
+      toStatus: 'community_review',
+    };
+    listPending.mockResolvedValue([aToPeerCheck, aSecond, bToCommunityReview]);
+    getAssignment.mockRejectedValue(new AuthError('expired', 'TOKEN_EXPIRED'));
+
+    await expect(
+      drainStageAdvancesForAccounts(
+        new Map([
+          [9, 'token-9'],
+          [2, 'token-2'],
+        ]),
+        jest.fn(() => true),
+      ),
+    ).resolves.toEqual({ synced: 0, dropped: 0, failed: 0, blocked: 1 });
+
+    // A's rejected token is sent once, never for A's second row.
+    expect(getAssignment).toHaveBeenCalledTimes(1);
+    expect(submitAssignment).not.toHaveBeenCalled();
+    expect(setStatus).not.toHaveBeenCalled();
+  });
+
+  it('releases the lock when a drain rejects, so the drain queued behind it still runs', async () => {
+    const otherChapter = {
+      ...bToCommunityReview,
+      id: 3,
+      chapterAssignmentId: 8,
+      fromStatus: 'draft',
+      toStatus: 'peer_check',
+    };
+    listPending.mockResolvedValue([aToPeerCheck, otherChapter]);
+    let rejectFirst!: (error: Error) => void;
+    getAssignment.mockImplementation((id: number) =>
+      id === 7
+        ? new Promise((_resolve, reject) => {
+            rejectFirst = reject;
+          })
+        : Promise.resolve({ ...assignment('draft'), chapterAssignmentId: 8 }),
+    );
+    submitAssignment.mockResolvedValue({
+      ...assignment('peer_check'),
+      chapterAssignmentId: 8,
+    });
+
+    const first = syncPendingStageAdvances(9, 'token-9');
+    const second = syncPendingStageAdvances(2, 'token-2');
+    await flush();
+    // User 9's GET is in flight and user 2's drain is still waiting its turn.
+    expect(getAssignment.mock.calls).toEqual([[7, 'token-9']]);
+    rejectFirst(new AuthError('expired', 'TOKEN_EXPIRED'));
+
+    await expect(first).rejects.toBeInstanceOf(AuthError);
+    await expect(second).resolves.toMatchObject({ synced: 1 });
+    expect(submitAssignment).toHaveBeenCalledWith(8, 'token-2');
+  });
+
+  it("rethrows the active account's rejected token from a multi-account drain", async () => {
+    listPending.mockResolvedValue([aToPeerCheck, bToCommunityReview]);
+    getAssignment.mockRejectedValue(new AuthError('expired', 'TOKEN_EXPIRED'));
+    // The callback answers false for the active account (9).
+    const onOwnerAuthFailure = jest.fn((userId: number) => userId !== 9);
+
+    await expect(
+      drainStageAdvancesForAccounts(
+        new Map([
+          [9, 'token-9'],
+          [2, 'token-2'],
+        ]),
+        onOwnerAuthFailure,
+      ),
+    ).rejects.toBeInstanceOf(AuthError);
+    expect(onOwnerAuthFailure).toHaveBeenCalledWith(9);
+  });
+
+  it('still rethrows a rejected token from a single-user drain', async () => {
+    listPending.mockResolvedValue([aToPeerCheck]);
+    getAssignment.mockRejectedValue(new AuthError('expired', 'TOKEN_EXPIRED'));
+
+    await expect(syncPendingStageAdvances(9, 'token-9')).rejects.toBeInstanceOf(
+      AuthError,
+    );
   });
 });

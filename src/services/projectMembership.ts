@@ -7,6 +7,7 @@ import {
 } from '../db/repository';
 import { getCredentials } from './keychain';
 import { AuthError } from './authError';
+import { isApiError } from '../types/api/errors';
 import { getActiveUserId, setReauthRequired } from './storage';
 import { emitAuthReauthRequired } from './syncEvents';
 import { logger } from '../utils/logger';
@@ -18,6 +19,24 @@ export const OWNER_CREDENTIALS_MISSING = 'OWNER_CREDENTIALS_MISSING';
 
 /** Owners whose membership the latest refresh confirmed with the server. */
 let verifiedOwners: ReadonlySet<number> = new Set();
+/**
+ * Bumped by every membership check. Only the latest check may publish its
+ * result or clear the set, so a slow older check (a session that was replaced
+ * by an account switch, say) cannot overwrite or wipe the owner set a newer
+ * session relies on.
+ */
+let membershipRefreshGeneration = 0;
+
+/**
+ * Claim a generation for one membership check, before its owner lookup. Pass
+ * it to `refreshMembershipForOwners` and, on failure, to
+ * `invalidateVerifiedMembershipOwners`: both only act while it is still the
+ * latest check.
+ */
+export function beginMembershipCheck(): number {
+  membershipRefreshGeneration += 1;
+  return membershipRefreshGeneration;
+}
 
 /**
  * Owners confirmed by the most recent `refreshMembershipForOwners`. Chapter
@@ -116,6 +135,8 @@ export async function refreshProjectMembership(
  */
 export async function refreshMembershipForOwners(
   ownerIds: readonly number[],
+  /** From `beginMembershipCheck`; a fresh one is claimed when omitted. */
+  generation: number = beginMembershipCheck(),
 ): Promise<Set<number>> {
   const verified = new Set<number>();
   for (const ownerId of new Set(ownerIds)) {
@@ -123,9 +144,12 @@ export async function refreshMembershipForOwners(
       await refreshProjectMembership(ownerId);
       verified.add(ownerId);
     } catch (error) {
+      // Status and code only: the error can carry the raw response body or
+      // message, which must not reach the logs.
       log.warn('Membership refresh failed for owner; deferring their takes', {
         userId: ownerId,
-        error,
+        status: isApiError(error) ? error.status : undefined,
+        code: isApiError(error) ? error.code : undefined,
       });
       // `AuthError` is always a 401: the stored credentials are gone
       // (`OWNER_CREDENTIALS_MISSING`) or the server rejected the token, so the
@@ -139,6 +163,19 @@ export async function refreshMembershipForOwners(
       }
     }
   }
-  verifiedOwners = verified;
+  if (generation === membershipRefreshGeneration) {
+    verifiedOwners = verified;
+  }
   return verified;
+}
+
+/**
+ * Forget every confirmed owner, for the check `generation` that failed (its
+ * owner lookup or refresh). Chapter passes then defer every take instead of
+ * trusting an earlier answer. A no-op once a newer check has started: that
+ * check's result, not this failure, is the current answer.
+ */
+export function invalidateVerifiedMembershipOwners(generation: number): void {
+  if (generation !== membershipRefreshGeneration) return;
+  verifiedOwners = new Set();
 }

@@ -1,4 +1,5 @@
 import {
+  anyDeviceAccountNeedsSignIn,
   signOutCurrentDeviceAccount,
   switchToDeviceAccount,
 } from './accountSession';
@@ -20,9 +21,11 @@ jest.mock('./authToken', () => ({
 
 const mockClearCredentials = jest.fn();
 const mockGetCredentials = jest.fn();
+const mockHasCredentials = jest.fn();
 jest.mock('./keychain', () => ({
   clearCredentials: (...args: unknown[]) => mockClearCredentials(...args),
   getCredentials: (...args: unknown[]) => mockGetCredentials(...args),
+  hasCredentials: (...args: unknown[]) => mockHasCredentials(...args),
 }));
 
 const mockSignOut = jest.fn();
@@ -37,7 +40,9 @@ const mockGetActiveUserId = jest.fn();
 const mockGetKnownUserIds = jest.fn();
 const mockSetItemSync = jest.fn();
 const mockSwitchActiveUser = jest.fn();
+const mockIsReauthRequired = jest.fn();
 jest.mock('./storage', () => ({
+  isReauthRequired: (...args: unknown[]) => mockIsReauthRequired(...args),
   getActiveUserId: (...args: unknown[]) => mockGetActiveUserId(...args),
   getKnownUserIds: (...args: unknown[]) => mockGetKnownUserIds(...args),
   kvStorage: { setItemSync: (...args: unknown[]) => mockSetItemSync(...args) },
@@ -164,5 +169,34 @@ describe('accountSession', () => {
       expect(mockClearUserOrgGrantSnapshot).toHaveBeenCalledWith('active-1');
       expect(mockSignOut).toHaveBeenCalled();
     });
+  });
+});
+
+describe('anyDeviceAccountNeedsSignIn (#854)', () => {
+  beforeEach(() => {
+    mockIsReauthRequired.mockReset().mockReturnValue(false);
+    mockHasCredentials.mockReset().mockResolvedValue(true);
+  });
+
+  it('is false when every account has a usable stored session', async () => {
+    await expect(anyDeviceAccountNeedsSignIn([20, 30])).resolves.toBe(false);
+    expect(mockHasCredentials.mock.calls).toEqual([['20'], ['30']]);
+  });
+
+  it('is true when an account is flagged for re-auth', async () => {
+    mockIsReauthRequired.mockImplementation((id: string) => id === '30');
+
+    await expect(anyDeviceAccountNeedsSignIn([20, 30])).resolves.toBe(true);
+  });
+
+  it('is true when an account signed out and has no stored session', async () => {
+    mockHasCredentials.mockImplementation(async (id: string) => id !== '20');
+
+    await expect(anyDeviceAccountNeedsSignIn([20, 30])).resolves.toBe(true);
+  });
+
+  it('is false with no other accounts', async () => {
+    await expect(anyDeviceAccountNeedsSignIn([])).resolves.toBe(false);
+    expect(mockHasCredentials).not.toHaveBeenCalled();
   });
 });
