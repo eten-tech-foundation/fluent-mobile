@@ -46,6 +46,7 @@ const fcbhJson = JSON.stringify([
 
 describe('loadBundledPericopeSet asset read', () => {
   beforeEach(async () => {
+    jest.clearAllMocks();
     __resetBundledPericopeCacheForTests();
     resetFileSystemMock();
     await FileSystem.writeAsStringAsync(mockFcbhUri, fcbhJson);
