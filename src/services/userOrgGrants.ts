@@ -9,7 +9,6 @@ import {
   getActiveUserId,
   getKnownUserIds,
   getUserEmail,
-  isReauthRequired,
   kvStorage,
   setReauthRequired,
 } from './storage';
@@ -165,9 +164,8 @@ export function getUserOrgGrants(userId: string): UserOrgGrantsSnapshot {
   if (!userId || !isRegisteredDeviceAccount(userId)) {
     return { status: 'unknown' };
   }
-  if (isReauthRequired(userId)) {
-    return { status: 'unknown' };
-  }
+  // A 401 means "sign in before the next sync", not "forget this device's
+  // grants". Missing or malformed snapshots still fail closed below.
   return readStoredSnapshot(userId);
 }
 
@@ -259,9 +257,10 @@ export function clearUserOrgGrantSnapshot(userId: string): void {
 }
 
 function noteAuthFailure(userId: string): void {
-  markUserOrgGrantsUnknown(userId);
-  setReauthRequired(userId);
-  if (userId === getActiveUserId()) {
+  // A 401 means sign in before the next sync. The last grant snapshot stays
+  // so Observer work remains visible offline.
+  const changed = setReauthRequired(userId);
+  if (changed !== false && userId === getActiveUserId()) {
     emitAuthReauthRequired(userId);
   }
 }

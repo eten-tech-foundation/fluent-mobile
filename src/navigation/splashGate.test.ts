@@ -1,6 +1,7 @@
 import BootSplash from 'react-native-bootsplash';
 import {
   __resetSplashGateForTests,
+  afterFirstPaint,
   armSplashGate,
   hideSplash,
   holdSplashForFirstPaint,
@@ -189,5 +190,85 @@ describe('splashGate', () => {
     jest.advanceTimersByTime(1);
 
     expect(mockHide).not.toHaveBeenCalled();
+  });
+
+  describe('afterFirstPaint', () => {
+    it('waits for a real paint before running deferred work', () => {
+      const work = jest.fn();
+      afterFirstPaint(work);
+      expect(work).not.toHaveBeenCalled();
+
+      hideSplash('fallback');
+      expect(work).not.toHaveBeenCalled();
+
+      hideSplash('home:content');
+      expect(work).toHaveBeenCalledTimes(1);
+    });
+
+    it('runs immediately once a paint was already reported', () => {
+      hideSplash('home:content');
+      const work = jest.fn();
+
+      afterFirstPaint(work);
+
+      expect(work).toHaveBeenCalledTimes(1);
+    });
+
+    it('runs queued work on the hard cap when no paint is reported', () => {
+      const work = jest.fn();
+      afterFirstPaint(work);
+
+      jest.advanceTimersByTime(LAUNCH_OVERLAY_CAP_MS);
+
+      expect(work).toHaveBeenCalledTimes(1);
+    });
+
+    it('runs each queued callback once, in order', () => {
+      const order: number[] = [];
+      afterFirstPaint(() => order.push(1));
+      afterFirstPaint(() => order.push(2));
+
+      hideSplash('home:content');
+      hideSplash('auth');
+
+      expect(order).toEqual([1, 2]);
+    });
+
+    it('keeps a throwing callback from blocking the rest of the queue', () => {
+      const later = jest.fn();
+      afterFirstPaint(() => {
+        throw new Error('boom');
+      });
+      afterFirstPaint(later);
+
+      hideSplash('home:content');
+
+      expect(later).toHaveBeenCalledTimes(1);
+      expect(mockLogError).toHaveBeenCalledWith(
+        'Deferred post-paint work failed',
+        { error: 'Error: boom' },
+      );
+    });
+
+    it('keeps queued work across a re-arm, for the next activity paint', () => {
+      const work = jest.fn();
+      afterFirstPaint(work);
+
+      armSplashGate();
+      expect(work).not.toHaveBeenCalled();
+
+      hideSplash('home:content');
+      expect(work).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops queued work when the test reset runs', () => {
+      const work = jest.fn();
+      afterFirstPaint(work);
+
+      __resetSplashGateForTests();
+      hideSplash('home:content');
+
+      expect(work).not.toHaveBeenCalled();
+    });
   });
 });

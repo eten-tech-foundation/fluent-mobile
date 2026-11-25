@@ -792,6 +792,25 @@ export async function hasPendingChapterClaimsForUser(
   }
 }
 
+export async function hasPendingStageAdvancesForUser(
+  userId: number,
+): Promise<boolean> {
+  const db = getDatabase();
+  try {
+    const result = await db.execute(
+      `SELECT 1 AS present
+       FROM stage_advance_queue
+       WHERE sync_status = 'pending' AND user_id = ?
+       LIMIT 1`,
+      [userId],
+    );
+    return (result.rows?.length ?? 0) > 0;
+  } catch (error) {
+    log.error('Error checking pending stage advances', { error, userId });
+    throw error;
+  }
+}
+
 /**
  * Claims the server rejected with 404 (`sync_status = 'claim_rejected'`).
  * Kept after the claim POST so conflict can be persisted once the assignment

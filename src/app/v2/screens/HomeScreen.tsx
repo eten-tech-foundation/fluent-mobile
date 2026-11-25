@@ -94,7 +94,9 @@ function HomeBody({
     isSyncingChapters,
     syncStatus,
     failedErrorText,
-    reauthRequired,
+    showSessionExpiredBanner,
+    signInToSyncLabel,
+    noteSyncOpened,
   } = useHomeSyncState({ postLoginSyncActive, userSwitchEpoch });
   const account = useActiveAccountSummary(userSwitchEpoch);
   const {
@@ -223,6 +225,7 @@ function HomeBody({
   // Home already watches sync for the empty state, so the cloud keeps this
   // lock instead of a second useHeaderSync subscription.
   const openSync = useCallback(() => {
+    noteSyncOpened();
     if (syncPushLockRef.current) return;
     syncPushLockRef.current = true;
     try {
@@ -230,7 +233,7 @@ function HomeBody({
     } catch {
       syncPushLockRef.current = false;
     }
-  }, [router]);
+  }, [noteSyncOpened, router]);
 
   const name = {
     firstName: account.firstName,
@@ -342,6 +345,7 @@ function HomeBody({
         <SyncStatusButton
           status={syncStatus}
           failedErrorText={failedErrorText}
+          signInToSyncLabel={signInToSyncLabel}
           onPress={openSync}
           testID="home-sync"
         />
@@ -361,7 +365,7 @@ function HomeBody({
         }
         testID="home-scroll"
       >
-        {reauthRequired ? (
+        {showSessionExpiredBanner ? (
           <Banner
             message="Session expired. Enter your password to keep syncing."
             actionLabel="Sign in"

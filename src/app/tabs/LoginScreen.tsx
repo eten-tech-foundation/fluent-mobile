@@ -14,7 +14,7 @@ import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useRouter } from 'expo-router';
 import { ApiUser } from '../../types/api/responses';
 import { theme } from '../../theme';
-import { useLogin } from '../../hooks/useLogin';
+import { useLogin, type LoginSuccessMeta } from '../../hooks/useLogin';
 import { AuthFormError } from '../../components/ui/AuthFormError';
 import { REAUTH_SUBMIT_BUTTON } from '../../constants/messages';
 import { hrefs } from '../../navigation/hrefs';
@@ -27,7 +27,11 @@ interface LoginScreenProps {
    * Override post-login handling. Defaults to cold `signIn` from auth session.
    * Pass explicitly for Add User (`signInAddUser` + navigate home) or reauth.
    */
-  onLoginSuccess?: (email: string, preloadedUser?: ApiUser) => void;
+  onLoginSuccess?: (
+    email: string,
+    preloadedUser?: ApiUser,
+    meta?: LoginSuccessMeta,
+  ) => void;
   /**
    * Which route group legal / forgot-password links should target.
    * Use `app` when LoginScreen is shown as Add User (authenticated stack).

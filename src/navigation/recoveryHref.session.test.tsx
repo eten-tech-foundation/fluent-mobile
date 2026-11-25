@@ -1,26 +1,27 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
-import {
-  getChapterAssignmentById,
-  getChapterRouteNames,
-  getPericopeForVerse,
-} from '../db/queries';
-import { useVerseAudio } from '../hooks/useVerseAudio';
-import { getDraftingUnit } from '../services/draftingUnitPreference';
+import { Alert } from 'react-native';
+import { getChapterAssignmentById, getChapterRouteNames } from '../db/queries';
+import { useRecordSession } from '../hooks/useRecordSession';
+import type { DraftingUnit } from '../services/draftingUnitPreference';
 import type { PausedTakeMarker } from '../services/pausedTakes';
-import type { RecordingUnitCapture } from '../utils/recordingRange';
+import type { ChapterAssignmentData } from '../types/db/types';
+import { readPassageRecovery, type PassageRecovery } from './passageRecovery';
 import { resolveRecoveryHref } from './recoveryHref';
 
 /**
- * #899: a failed pericope read must not turn a paused verse into another
- * session. `recoveryHref.test.ts` pins the routing; this one follows the
- * route's params into the recorder the opened screen builds, and checks the
- * saved take is the one that comes back, with Resume and Finish working.
+ * #914: follows a stored marker from Resume into the recorder the Next
+ * passage page builds, through the real session: the href, the recovery the
+ * page reads from it, and `useRecordSession` with its own text-id and unit
+ * lookups. The page tests pin that the page hands the session these args.
  */
 
 const mockRecordingStart = jest.fn();
 const mockRecordingStop = jest.fn();
+const mockPlay = jest.fn();
 const mockFileExists = jest.fn();
 const mockDeleteFile = jest.fn();
+const mockPersistTake = jest.fn();
+const mockUpsertPausedTake = jest.fn();
 const mockPausedMarkers: PausedTakeMarker[] = [];
 const mockRecordingState = {
   status: 'idle' as 'idle' | 'recording' | 'paused',
@@ -28,6 +29,16 @@ const mockRecordingState = {
 const mockClearPausedTake = jest.fn((sessionKey: string) => {
   const index = mockPausedMarkers.findIndex(m => m.sessionKey === sessionKey);
   if (index >= 0) mockPausedMarkers.splice(index, 1);
+});
+
+jest.mock('../hooks/useVerseAudio', () => {
+  const actual = jest.requireActual('../hooks/useVerseAudio');
+  return {
+    ...actual,
+    // The real hook; only the file commit is swapped for a spy.
+    useVerseAudio: (args: object) =>
+      actual.useVerseAudio({ ...args, persistTake: mockPersistTake }),
+  };
 });
 
 jest.mock('../hooks/useRecordingEngine', () => ({
@@ -44,7 +55,7 @@ jest.mock('../hooks/useRecordingEngine', () => ({
 
 jest.mock('../hooks/usePlaybackEngine', () => ({
   usePlaybackEngine: () => ({
-    play: jest.fn(),
+    play: mockPlay,
     resume: jest.fn(),
     stop: jest.fn().mockResolvedValue(undefined),
     pause: jest.fn(),
@@ -82,7 +93,7 @@ jest.mock('../services/pausedTakes', () => ({
     marker.chapterAssignmentId === undefined ||
     marker.verseNumber === undefined,
   listPausedTakes: () => mockPausedMarkers,
-  upsertPausedTake: jest.fn(),
+  upsertPausedTake: (marker: PausedTakeMarker) => mockUpsertPausedTake(marker),
 }));
 
 jest.mock('../services/recordingTakeDeletion', () => ({
@@ -98,13 +109,24 @@ jest.mock('../services/chapterClaimSync', () => ({
 jest.mock('../db/queries', () => ({
   getChapterAssignmentById: jest.fn(),
   getChapterRouteNames: jest.fn(),
-  getPericopeForVerse: jest.fn(),
+  // Verse v of Mark 14 is text 20 + v.
+  getBibleTextId: jest.fn(
+    async (_bible: number, _book: number, _chapter: number, verse: number) =>
+      20 + verse,
+  ),
+  getPericopeForVerse: jest.fn(async () => ({
+    pericopeTitle: 'The Last Supper',
+    verses: [22, 23, 24, 25].map(verseNumber => ({
+      chapterNumber: 14,
+      verseNumber,
+    })),
+  })),
 }));
 
+const mockTakesForVerse = jest.fn();
 jest.mock('../db/repository', () => ({
   addRecordingTake: jest.fn(),
-  deleteRecordingTake: jest.fn(),
-  getTakesForVerse: jest.fn().mockResolvedValue([]),
+  getTakesForVerse: (...args: unknown[]) => mockTakesForVerse(...args),
   getAllTakesForVerse: jest.fn().mockResolvedValue([]),
   verseHasMultipleRecorders: jest.fn().mockResolvedValue(false),
   selectRecordingTake: jest.fn(),
@@ -112,51 +134,101 @@ jest.mock('../db/repository', () => ({
   getProjectPericopeSetId: jest.fn().mockResolvedValue(3),
 }));
 
-jest.mock('../services/draftingUnitPreference', () => ({
-  getDraftingUnit: jest.fn(),
-}));
-
-jest.mock('../services/storage', () => ({
-  getActiveUserId: () => '7',
-}));
-
 const mockAssignment = getChapterAssignmentById as jest.Mock;
 const mockNames = getChapterRouteNames as jest.Mock;
-const mockPericope = getPericopeForVerse as jest.Mock;
-const mockUnit = getDraftingUnit as jest.Mock;
 
-const PASSAGE_VERSES = [22, 23, 24, 25].map(verseNumber => ({
+const chapter = {
+  id: 5,
+  projectId: 9,
+  projectUnitId: 3,
+  bibleId: 4,
+  bookId: 41,
+  bookName: 'Mark',
   chapterNumber: 14,
-  verseNumber,
-}));
+  assignedUserId: 7,
+  status: 'draft',
+} as unknown as ChapterAssignmentData;
 
-/** Verse 23 was paused inside a passage that starts at 22. */
-const marker: PausedTakeMarker = {
+const SAVED = 'file:///paused.aac';
+const marker = (fields: Partial<PausedTakeMarker>): PausedTakeMarker => ({
   sessionKey: '5:23',
-  segments: ['file:///paused.aac'],
+  segments: [SAVED],
   elapsedMs: 4000,
   startedAt: '2026-11-01T10:00:00Z',
   chapterAssignmentId: 5,
   verseNumber: 23,
-  capture: {
-    bibleTextId: 43,
-    granularity: 'verse',
-    startChapter: 14,
-    startVerse: 23,
-    endChapter: 14,
-    endVerse: 23,
-  },
+  ...fields,
+});
+const verseCapture = {
+  bibleTextId: 43,
+  granularity: 'verse' as const,
+  startChapter: 14,
+  startVerse: 23,
+  endChapter: 14,
+  endVerse: 23,
+};
+const passageCapture = {
+  bibleTextId: 42,
+  granularity: 'pericope' as const,
+  startChapter: 14,
+  startVerse: 22,
+  endChapter: 14,
+  endVerse: 25,
 };
 
-describe('resuming a paused verse take after a failed pericope read (#899)', () => {
-  const persistTake = jest.fn();
+/** What Resume opens, and the recovery the passage page reads from it. */
+async function recover(): Promise<PassageRecovery | null> {
+  const href = await resolveRecoveryHref(mockPausedMarkers[0]!, 'next');
+  if (!href || href.pathname !== '/(app)/(stack)/passage') return null;
+  const params = href.params as Record<string, string | undefined>;
+  return readPassageRecovery(
+    {
+      chapterId: Number(params.chapterId),
+      sessionKey: params.recoverSessionKey,
+      verse: Number(params.recoverVerse),
+    },
+    7,
+  );
+}
 
+/**
+ * The session as the page builds it: the sheet records in the recovered unit
+ * (verse by verse in a chapter without pericopes) and the recorder keys it
+ * on the recovered verse.
+ */
+function renderSession(
+  recovery: PassageRecovery,
+  wholeChapter = false,
+  userId = 7,
+) {
+  const draftingUnit: DraftingUnit = wholeChapter ? 'verse' : recovery.unit;
+  return renderHook(() =>
+    useRecordSession({
+      chapterData: chapter,
+      userId,
+      selectedVerse: recovery.verse,
+      versesLength: 72,
+      draftingUnit,
+    }),
+  );
+}
+
+async function resumeAndFinish(
+  result: ReturnType<typeof renderSession>['result'],
+) {
+  await act(async () => {
+    await result.current.verseAudio.resume();
+  });
+  expect(result.current.verseAudio.state).toBe('recording');
+  await act(async () => {
+    await result.current.verseAudio.stop();
+  });
+}
+
+describe('resuming a saved take in Next (#914)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPausedMarkers.splice(0, mockPausedMarkers.length, {
-      ...marker,
-      segments: [...marker.segments],
-    });
+    mockPausedMarkers.splice(0, mockPausedMarkers.length);
     mockRecordingState.status = 'idle';
     mockRecordingStart.mockImplementation(async () => {
       mockRecordingState.status = 'recording';
@@ -167,119 +239,207 @@ describe('resuming a paused verse take after a failed pericope read (#899)', () 
     });
     mockFileExists.mockResolvedValue(true);
     mockDeleteFile.mockResolvedValue(undefined);
-    persistTake.mockResolvedValue({
+    mockTakesForVerse.mockResolvedValue([]);
+    mockPersistTake.mockResolvedValue({
       id: 'rec_new',
       localFilePath: '/recordings/rec_new.m4a',
     });
-    mockAssignment.mockResolvedValue({
-      id: 5,
-      projectId: 9,
-      projectUnitId: 3,
-      bookId: 41,
-      bookName: 'Mark',
-      chapterNumber: 14,
-    });
+    mockAssignment.mockResolvedValue(chapter);
     mockNames.mockResolvedValue({
       projectName: 'Mark Telugu',
       milestoneName: 'Gospels Phase 1',
       language: 'Telugu',
     });
-    // The project records passages.
-    mockUnit.mockReturnValue('pericope');
-    mockPericope.mockResolvedValue({ verses: PASSAGE_VERSES });
   });
 
-  it('opens the saved verse session, which Resume and Finish carry through', async () => {
-    // Recovery's own read fails; the screen it opens reads fine.
-    mockPericope.mockImplementationOnce(async (...args: unknown[]) => {
-      (args[4] as (() => void) | undefined)?.();
-      return null;
-    });
+  it.each([
+    {
+      name: 'a verse take, whatever the drafting setting',
+      stored: marker({ capture: verseCapture }),
+      wholeChapter: false,
+      unit: 'verse',
+      saved: verseCapture,
+    },
+    {
+      name: 'a passage take paused after where the passage starts',
+      stored: marker({ capture: passageCapture }),
+      wholeChapter: false,
+      unit: 'pericope',
+      saved: passageCapture,
+    },
+    {
+      name: 'a passage take whose chapter has no pericopes now',
+      stored: marker({ capture: passageCapture }),
+      wholeChapter: true,
+      unit: 'pericope',
+      saved: passageCapture,
+    },
+    {
+      name: 'a marker from before captures, as a take on its verse',
+      stored: marker({}),
+      wholeChapter: false,
+      unit: 'verse',
+      saved: verseCapture,
+    },
+  ])(
+    'brings back $name, and Resume and Finish save it',
+    async ({ stored, wholeChapter, unit, saved }) => {
+      mockPausedMarkers.push(stored, marker({ sessionKey: '5:24' }));
+      const recovery = await recover();
+      expect(recovery).toEqual({ verse: 23, unit });
 
-    const href = await resolveRecoveryHref(marker, 'next');
+      const { result } = renderSession(recovery!, wholeChapter);
 
-    expect(href).toMatchObject({
-      pathname: '/(app)/(stack)/verse-detail',
-      params: {
-        chapterId: '5',
-        recoverSessionKey: '5:23',
-        recoverVerse: '23',
-      },
-    });
-    const { chapterId, recoverVerse } = (
-      href as { params: Record<string, string> }
-    ).params;
+      await waitFor(() =>
+        expect(result.current.verseAudio.state).toBe('paused'),
+      );
+      expect(result.current.verseAudio.recoveredElapsedMs).toBe(4000);
+      expect(mockClearPausedTake).not.toHaveBeenCalled();
+      expect(mockDeleteFile).not.toHaveBeenCalled();
 
-    // The drafting screen opens on that chapter and verse, and its own
-    // pericope read succeeds, so it records the passage as a unit.
-    const group = await getPericopeForVerse(41, 14, Number(recoverVerse), 3);
-    const recordingUnit: RecordingUnitCapture = {
-      granularity: 'pericope',
-      startChapter: 14,
-      startVerse: 22,
-      endChapter: 14,
-      endVerse: 25,
-      anchorBibleTextId: 42,
-      coveredViews: (group?.verses ?? []).map(
-        (v: (typeof PASSAGE_VERSES)[0]) => ({
-          bibleTextId: 20 + v.verseNumber,
-          chapterNumber: v.chapterNumber,
-          verseNumber: v.verseNumber,
+      await resumeAndFinish(result);
+
+      expect(mockPersistTake).toHaveBeenCalledTimes(1);
+      expect(mockPersistTake).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...saved,
+          tempUris: [SAVED, 'file:///tmp/take.m4a'],
+          durationMs: 4500,
         }),
-      ),
-    };
-    // Stable across renders, as the screen's are: a new function each render
-    // would re-run the hook's take load forever.
-    const loadTakes = jest.fn().mockResolvedValue([]);
-    const deleteTake = jest.fn();
-    const selectTake = jest.fn();
-    const countTakesAtView = async () => 0;
-    const { result } = renderHook(() =>
-      useVerseAudio({
-        bibleTextId: 43,
-        chapterAssignmentId: Number(chapterId),
-        chapterNumber: 14,
-        verseNumber: Number(recoverVerse),
-        draftingUnit: 'pericope',
-        recordingUnit,
-        userId: null,
-        loadTakes,
-        persistTake,
-        deleteTake,
-        selectTake,
-        countTakesAtView,
-      }),
-    );
+      );
+      // Only this take's marker goes; the other paused take stays.
+      expect(mockClearPausedTake).toHaveBeenCalledTimes(1);
+      expect(mockClearPausedTake).toHaveBeenCalledWith('5:23');
+      expect(mockPausedMarkers.map(m => m.sessionKey)).toEqual(['5:24']);
+      expect(result.current.verseAudio.state).toBe('recorded');
+    },
+  );
 
-    // The paused verse take comes back, its marker and audio untouched.
-    await waitFor(() => expect(result.current.state).toBe('paused'));
-    expect(result.current.recoveredElapsedMs).toBe(4000);
-    expect(mockPausedMarkers).toEqual([marker]);
+  it('keeps a verse take a verse take after a failed names read, then opens it', async () => {
+    mockPausedMarkers.push(marker({ capture: verseCapture }));
+    mockNames.mockResolvedValueOnce(null);
+
+    await expect(recover()).resolves.toBeNull();
+    expect(mockPausedMarkers).toHaveLength(1);
     expect(mockClearPausedTake).not.toHaveBeenCalled();
     expect(mockDeleteFile).not.toHaveBeenCalled();
 
-    // Resume records on, Finish saves the saved audio plus the new segment.
-    await act(async () => {
-      await result.current.resume();
-    });
-    expect(result.current.state).toBe('recording');
-    await act(async () => {
-      await result.current.stop();
-    });
+    const recovery = await recover();
+    expect(recovery).toEqual({ verse: 23, unit: 'verse' });
+    const { result } = renderSession(recovery!);
+    await waitFor(() => expect(result.current.verseAudio.state).toBe('paused'));
+    await resumeAndFinish(result);
+    expect(mockPersistTake).toHaveBeenCalledWith(
+      expect.objectContaining({ ...verseCapture }),
+    );
+  });
 
-    expect(persistTake).toHaveBeenCalledWith(
+  it('keeps the take paused, and its marker, when Finish fails to save', async () => {
+    mockPausedMarkers.push(marker({ capture: passageCapture }));
+    mockPersistTake.mockRejectedValueOnce(new Error('disk full'));
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const recovery = await recover();
+    const { result } = renderSession(recovery!);
+    await waitFor(() => expect(result.current.verseAudio.state).toBe('paused'));
+
+    await resumeAndFinish(result);
+
+    expect(result.current.verseAudio.state).toBe('paused');
+    expect(mockClearPausedTake).not.toHaveBeenCalled();
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+    expect(mockUpsertPausedTake).toHaveBeenCalledWith(
       expect.objectContaining({
-        tempUris: ['file:///paused.aac', 'file:///tmp/take.m4a'],
-        durationMs: 4500,
-        bibleTextId: 43,
-        granularity: 'verse',
-        startChapter: 14,
-        startVerse: 23,
-        endChapter: 14,
-        endVerse: 23,
+        sessionKey: '5:23',
+        segments: [SAVED, 'file:///tmp/take.m4a'],
+        capture: passageCapture,
+        userId: 7,
       }),
     );
-    expect(mockClearPausedTake).toHaveBeenCalledWith('5:23');
-    expect(result.current.state).toBe('recorded');
+    alert.mockRestore();
+  });
+
+  it('brings the same take back again after leaving it, without a second capture', async () => {
+    mockPausedMarkers.push(marker({ capture: passageCapture }));
+    const recovery = await recover();
+    const first = renderSession(recovery!);
+    await waitFor(() =>
+      expect(first.result.current.verseAudio.state).toBe('paused'),
+    );
+    first.unmount();
+
+    const again = renderSession((await recover())!);
+    await waitFor(() =>
+      expect(again.result.current.verseAudio.state).toBe('paused'),
+    );
+    expect(again.result.current.verseAudio.recoveredElapsedMs).toBe(4000);
+    expect(mockRecordingStart).not.toHaveBeenCalled();
+    expect(mockUpsertPausedTake).not.toHaveBeenCalled();
+    expect(mockPausedMarkers).toHaveLength(1);
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+  });
+
+  it('plays the saved take back through the take player', async () => {
+    mockPausedMarkers.push(marker({ capture: verseCapture }));
+    const { result } = renderSession((await recover())!);
+    await waitFor(() => expect(result.current.verseAudio.state).toBe('paused'));
+    await resumeAndFinish(result);
+
+    await act(async () => {
+      await result.current.verseAudio.playTake({
+        id: 'rec_new',
+        localFilePath: '/recordings/rec_new.m4a',
+      } as Parameters<typeof result.current.verseAudio.playTake>[0]);
+    });
+
+    expect(mockPlay).toHaveBeenCalledWith('/recordings/rec_new.m4a');
+    expect(result.current.verseAudio.errorMessage).toBeNull();
+  });
+
+  describe("another account's paused take", () => {
+    beforeEach(() => {
+      mockPausedMarkers.push(marker({ capture: verseCapture, userId: 8 }));
+    });
+
+    it("isn't opened for this account", async () => {
+      await expect(recover()).resolves.toBeNull();
+    });
+
+    it("isn't recovered, cleared or recorded over on its verse", async () => {
+      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      const { result } = renderSession({ verse: 23, unit: 'verse' });
+      await waitFor(() => expect(result.current.captureBibleTextId).toBe(43));
+      await act(async () => {});
+      expect(result.current.verseAudio.state).toBe('idle');
+
+      await act(async () => {
+        await result.current.verseAudio.start();
+      });
+
+      expect(mockRecordingStart).not.toHaveBeenCalled();
+      expect(alert).toHaveBeenCalledWith(
+        'Audio error',
+        expect.stringContaining('Another account'),
+      );
+      expect(mockUpsertPausedTake).not.toHaveBeenCalled();
+      expect(mockClearPausedTake).not.toHaveBeenCalled();
+      expect(mockDeleteFile).not.toHaveBeenCalled();
+      expect(mockPausedMarkers).toEqual([
+        marker({ capture: verseCapture, userId: 8 }),
+      ]);
+      alert.mockRestore();
+    });
+
+    it('comes back for the account that paused it', async () => {
+      const { result } = renderSession({ verse: 23, unit: 'verse' }, false, 8);
+      await waitFor(() =>
+        expect(result.current.verseAudio.state).toBe('paused'),
+      );
+    });
+  });
+
+  it('opens a marker from before owners were kept for whoever is signed in', async () => {
+    mockPausedMarkers.push(marker({ capture: verseCapture }));
+    const recovery = await recover();
+    expect(recovery).toEqual({ verse: 23, unit: 'verse' });
   });
 });

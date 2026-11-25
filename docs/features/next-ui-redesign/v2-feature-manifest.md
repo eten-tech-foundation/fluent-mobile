@@ -372,9 +372,9 @@ Folded in from Legacy, so Next blocks and warns the same way:
   route as in Legacy. Next up lists peer checks, open peer checks and
   observed chapters under "Checking and observing". The book page names each
   chapter's stage and whose it is.
-- **Recovery:** a paused pericope or chapter take resumes on the passage page,
-  and so does a verse take, on its verse, when the player records verse by
-  verse there. Otherwise a verse take resumes in classic drafting.
+- **Recovery:** every paused take resumes on the passage page, in the unit it
+  was saved in and on the verse it was keyed on, whatever the drafting setting
+  (Q33).
 - **Source text:** opening a passage repairs a blank language code and
   downloads missing text once when online.
 - **Home:** milestones with no chapters still list, "recorded" counts chapters

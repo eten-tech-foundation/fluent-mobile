@@ -21,6 +21,9 @@ const sessionDefaults = {
   syncStatus: 'online_synced' as SyncStatus,
   failedErrorText: null as string | null,
   reauthRequired: false,
+  showSessionExpiredBanner: false,
+  signInToSyncLabel: null as string | null,
+  noteSyncOpened: jest.fn(),
 };
 let mockSession = { ...sessionDefaults };
 let mockChapters: MyWorkChapter[] = [];
@@ -262,6 +265,7 @@ describe('Next HomeScreen', () => {
     fireEvent.press(screen.getByTestId('home-sync'));
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
+    expect(sessionDefaults.noteSyncOpened).toHaveBeenCalled();
   });
 
   it('keeps the header above My work and strokes it once the page scrolls', () => {
@@ -283,8 +287,13 @@ describe('Next HomeScreen', () => {
   });
 
   it('asks to sign in again when the session expired', () => {
-    mockSession = { ...sessionDefaults, reauthRequired: true };
+    mockSession = {
+      ...sessionDefaults,
+      showSessionExpiredBanner: true,
+      signInToSyncLabel: 'Sign in to sync',
+    };
     render(<HomeScreen />);
+    expect(screen.getByLabelText('Sign in to sync')).toBeTruthy();
 
     fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
     expect(mockPush).toHaveBeenCalledWith(hrefs.reauth({ returnTo: 'home' }));
