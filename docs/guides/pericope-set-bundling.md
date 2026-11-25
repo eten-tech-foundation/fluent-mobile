@@ -27,7 +27,9 @@ is updated (corrected pericope boundaries, added books, etc.).
    value (via `getPericopeSetVersion`/`setPericopeSetVersion` in
    `services/storage.ts`) to detect that a reseed is needed. Skipping it
    means the app won't pick up the refreshed data until the version
-   changes.
+   changes. If the refresh adds or removes books, update
+   `BUNDLED_PERICOPE_BOOK_CODES` in that same file. Sync uses the list to
+   skip the asset read for every other book code.
 3. Run `npm run typecheck && npm test -- pericopeSets` to confirm the
    loader still resolves correctly against the new file.
 4. Note the APK size delta in the PR (`du -sh assets/pericope-sets/`

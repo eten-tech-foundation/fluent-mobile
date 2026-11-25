@@ -1,9 +1,26 @@
+import { BOOK_CODE_TO_NAME } from '../../assets/pericope-sets/bookCodeMap';
+import { BUNDLED_PERICOPE_BOOK_CODES } from '../../assets/pericope-sets/pericopeSetVersions';
 import {
   flattenApiPericopeSetGroups,
   loadBundledPericopeSet,
   getBundledPericopeSetVersion,
   parseApiPericopeIdentity,
 } from './pericopeSets';
+
+function bookCodesInExport(rows: readonly { book: string }[]): string[] {
+  const codeByName = new Map(
+    Object.entries(BOOK_CODE_TO_NAME).map(([code, name]) => [name, code]),
+  );
+  const codes = new Set<string>();
+  for (const row of rows) {
+    const code = codeByName.get(row.book);
+    if (!code) {
+      throw new Error(`No book code for bundled book ${row.book}`);
+    }
+    codes.add(code);
+  }
+  return [...codes].sort();
+}
 
 describe('loadBundledPericopeSet', () => {
   it('returns typed, normalized verses for a mapped (setId, bookCode) pair', async () => {
@@ -73,6 +90,20 @@ describe('loadBundledPericopeSet', () => {
     const first = await loadBundledPericopeSet(2, 'GEN');
     const second = await loadBundledPericopeSet(2, 'GEN');
     expect(second).toEqual(first);
+  });
+
+  it('lists exactly the books shipped in both bundled exports', () => {
+    const fcbh =
+      require('../../assets/pericope-sets/FCBH-All-Books.pericope') as {
+        book: string;
+      }[];
+    const fia =
+      require('../../assets/pericope-sets/FIA-All-Books.pericope') as {
+        book: string;
+      }[];
+    const expected = [...BUNDLED_PERICOPE_BOOK_CODES].sort();
+    expect(bookCodesInExport(fcbh)).toEqual(expected);
+    expect(bookCodesInExport(fia)).toEqual(expected);
   });
 
   describe('getBundledPericopeSetVersion', () => {

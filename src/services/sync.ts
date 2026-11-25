@@ -68,6 +68,7 @@ import {
   refreshUserOrgGrants,
 } from './userOrgGrants';
 import { getTranslatorProjectIds } from '../utils/myWorkDraftDownload';
+import { BUNDLED_PERICOPE_BOOK_CODES } from '../../assets/pericope-sets/pericopeSetVersions';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import { runKvBatchSync } from './kvBatch';
 import {
@@ -2303,22 +2304,28 @@ export async function syncPericopes(
               continue;
             }
 
-            const verses = await loadBundledPericopeSet(
-              pericopeSetId,
-              bookCode,
-            );
-            if (verses) {
-              if (await upsertPericopeSet(pericopeSetId, bookCode, verses)) {
-                setPericopeBookVersion(pericopeSetId, bookCode, bundledVersion);
-                pericopeBookCounts.reseeded += 1;
+            if (BUNDLED_PERICOPE_BOOK_CODES.has(bookCode)) {
+              const verses = await loadBundledPericopeSet(
+                pericopeSetId,
+                bookCode,
+              );
+              if (verses) {
+                if (await upsertPericopeSet(pericopeSetId, bookCode, verses)) {
+                  setPericopeBookVersion(
+                    pericopeSetId,
+                    bookCode,
+                    bundledVersion,
+                  );
+                  pericopeBookCounts.reseeded += 1;
+                }
+                continue;
               }
-              continue;
-            }
 
-            log.debug(
-              'Book missing from bundled set — falling back to GET /pericope-sets/{id}',
-              { pericopeSetId, bookCode },
-            );
+              log.debug(
+                'Book missing from bundled set — falling back to GET /pericope-sets/{id}',
+                { pericopeSetId, bookCode },
+              );
+            }
           }
 
           const result = await FluentAPI.getPericopeSet(

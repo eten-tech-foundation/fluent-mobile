@@ -18,3 +18,46 @@ export const BUNDLED_PERICOPE_VERSIONS: Record<number, string> = {
   [FCBH_SET_ID]: '2026-09-04',
   [FIA_SET_ID]: '2026-09-04',
 };
+
+/**
+ * Book codes present in both bundled exports. Sync skips the asset read
+ * for any other code and goes straight to the API (#1003). Update this
+ * when a refresh adds or removes books; the pericopeSets test fails if
+ * it drifts from the files.
+ */
+export const BUNDLED_PERICOPE_BOOK_CODES: ReadonlySet<string> = new Set([
+  '1CO',
+  '1JN',
+  '1KI',
+  '1PE',
+  '1SA',
+  '1TH',
+  '1TI',
+  '2CO',
+  '2JN',
+  '2KI',
+  '2SA',
+  '2TI',
+  '3JN',
+  'ACT',
+  'DEU',
+  'EPH',
+  'EST',
+  'EXO',
+  'GAL',
+  'GEN',
+  'JAS',
+  'JDG',
+  'JHN',
+  'JOS',
+  'JUD',
+  'LEV',
+  'LUK',
+  'MAT',
+  'MRK',
+  'NUM',
+  'PHM',
+  'PHP',
+  'RUT',
+  'TIT',
+]);

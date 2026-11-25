@@ -96,6 +96,32 @@ describe('syncPericopes', () => {
     expect(clearSyncError).toHaveBeenCalled();
   });
 
+  it('does not open the bundled asset for a book outside the export', async () => {
+    jest.mocked(getChaptersNeedingPericopeSync).mockResolvedValue([
+      {
+        projectId: 10,
+        bookId: 23,
+        bookCode: 'ISA',
+        chapterNumber: 1,
+      },
+    ]);
+    jest.mocked(getBundledPericopeSetVersion).mockReturnValue('2026-09-04');
+    jest.mocked(FluentAPI.getPericopeSet).mockResolvedValue({
+      status: 200,
+      etag: '"etag-isa"',
+      data: [],
+    });
+
+    await syncPericopes();
+
+    expect(loadBundledPericopeSet).not.toHaveBeenCalled();
+    expect(FluentAPI.getPericopeSet).toHaveBeenCalledWith(
+      1,
+      { bookCode: 'ISA', etag: null },
+      undefined,
+    );
+  });
+
   it('hydrates via GET /pericope-sets/{id} for an unbundled set (200)', async () => {
     jest.mocked(getProjectPericopeSetId).mockResolvedValue(99);
     jest.mocked(getBundledPericopeSetVersion).mockReturnValue(null);
