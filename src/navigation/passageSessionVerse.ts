@@ -1,7 +1,7 @@
 /**
- * Verse the Next recorder keys a passage take on: the first verse of the
- * passage that falls in this chapter. The paused-take session key is that
- * verse, so recovery can reopen the passage only when it matches.
+ * Verse the Next recorder keys a new passage take on: the first verse of the
+ * passage that falls in this chapter. A recovered take keeps the verse it
+ * was saved under instead.
  */
 export function passageSessionVerse(
   verses: ReadonlyArray<{ chapterNumber: number; verseNumber: number }>,

@@ -4,19 +4,18 @@ import { ListRow } from '../../../../components/ui/ListRow';
 import {
   OPEN_CLASSIC_DRAFTING,
   OPEN_CLASSIC_DRAFTING_DETAIL,
-  PEER_CHECK_QUEUED_DETAIL,
-  PEER_CHECK_QUEUED_TITLE,
-  PEER_CHECK_SEND_LABEL,
   PEER_CHECK_SENT_DETAIL,
   PEER_CHECK_SENT_TITLE,
+  STAGE_QUEUED_DETAIL,
   TAKE_REVIEW_OPEN_DETAIL,
   TAKE_REVIEW_TITLE,
 } from '../../../../constants/messages';
-import type { PeerCheckRow } from './usePeerCheckSend';
+import type { StageSendRow } from './useStageSend';
 
 /**
- * The title's sheet: the book page, Send to Peer Check, everyone's takes when
- * others have recorded here, and classic drafting for remaining resources.
+ * The title's sheet: the book page, Send to the chapter's next stage,
+ * everyone's takes when others have recorded here, and classic drafting for
+ * remaining resources.
  */
 export function TitleSheet({
   visible,
@@ -36,7 +35,7 @@ export function TitleSheet({
   chapterName: string;
   milestoneName: string;
   /** Omitted when this account has no send here. */
-  send: PeerCheckRow | null;
+  send: StageSendRow | null;
   onSend: () => void;
   onClose: () => void;
   onOpenBook: () => void;
@@ -64,7 +63,7 @@ export function TitleSheet({
       />
       {send?.kind === 'send' ? (
         <ListRow
-          title={PEER_CHECK_SEND_LABEL}
+          title={send.label}
           subtitle={send.detail}
           trailing="chevron"
           disabled={send.disabled}
@@ -72,13 +71,13 @@ export function TitleSheet({
             onClose();
             onSend();
           }}
-          accessibilityLabel={`${PEER_CHECK_SEND_LABEL}. ${send.detail}`}
+          accessibilityLabel={`${send.label}. ${send.detail}`}
           testID="passage-send"
         />
       ) : send?.kind === 'queued' ? (
         <ListRow
-          title={PEER_CHECK_QUEUED_TITLE}
-          subtitle={PEER_CHECK_QUEUED_DETAIL}
+          title={send.title}
+          subtitle={STAGE_QUEUED_DETAIL}
           testID="passage-send-queued"
         />
       ) : send?.kind === 'sent' ? (

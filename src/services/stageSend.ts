@@ -10,9 +10,12 @@ import {
 import { getProjectPericopeSetId } from '../db/repository';
 import type { ChapterAssignmentData } from '../types/db/types';
 import { logger } from '../utils/logger';
+import { classifyMyWorkListAccess } from '../utils/myWorkChapterFilter';
+import { getTranslatorProjectIds } from '../utils/myWorkDraftDownload';
 import {
   getStageAdvanceVisibility,
   resolvePeerCheckerAssignmentOnAdvance,
+  type StageAdvanceStatus,
   type StageAdvanceVisibility,
 } from '../utils/stageAdvancement';
 import { isStageAhead } from '../utils/workflowStage';
@@ -24,9 +27,9 @@ import { confirmStageAdvancement } from './stageAdvance';
 import { getActiveUserId } from './storage';
 import { syncPendingStageAdvancesForUser } from './sync';
 
-const log = logger.create('peerCheckSend');
+const log = logger.create('stageSend');
 
-export type PeerCheckSendCheck = {
+export type StageSendCheck = {
   chapter: ChapterAssignmentData;
   /** The Record tab's gate, for the whole chapter. */
   visibility: StageAdvanceVisibility;
@@ -35,16 +38,16 @@ export type PeerCheckSendCheck = {
 };
 
 /**
- * Whether this account may send the chapter to Peer Check now: the Record
- * tab's gate (role, a fully recorded chapter, conflict, takes that can't
- * upload), read fresh for the whole chapter. Null when it isn't a Peer Check
- * send at all, e.g. a later stage (#909) or a chapter not on this phone.
+ * Whether this account may send the chapter on to its next stage now: the
+ * Record tab's gate (role, a fully recorded chapter while drafting, conflict,
+ * takes that can't upload), read fresh for the whole chapter. Null when the
+ * gate offers no send, e.g. a Complete chapter or one not on this phone.
  */
-export async function readPeerCheckSend(params: {
+export async function readStageSend(params: {
   chapterAssignmentId: number;
   userId: number;
   draftingUnit: DraftingUnit;
-}): Promise<PeerCheckSendCheck | null> {
+}): Promise<StageSendCheck | null> {
   const { chapterAssignmentId, userId, draftingUnit } = params;
   const chapter = await getChapterAssignmentById(chapterAssignmentId);
   if (!chapter) return null;
@@ -81,47 +84,75 @@ export async function readPeerCheckSend(params: {
     // Send is the chapter's, not a unit's.
     isOnLastUnit: true,
   });
-  if (visibility.destination?.nextStatus !== 'peer_check') return null;
+  if (!visibility.destination) return null;
+  // Seeing a Peer Check isn't checking it: only its checker, or a peer the
+  // chapter would open for as open Peer Check work (Translator grant), sends.
+  if (
+    normalizeChapterStatus(chapter.status) === 'peer_check' &&
+    !isPeerCheckWork(chapter, userId)
+  ) {
+    return null;
+  }
   return { chapter, visibility, hasConflict, hasUnuploadableTakes };
 }
 
+function isPeerCheckWork(
+  chapter: ChapterAssignmentData,
+  userId: number,
+): boolean {
+  if (chapter.projectId === null) return false;
+  const access = classifyMyWorkListAccess({
+    userId,
+    assignmentStatus: chapter.status,
+    assignedUserId: chapter.assignedUserId,
+    peerCheckerId: chapter.peerCheckerId,
+    projectId: chapter.projectId,
+    grantProjectIds: [],
+    translatorProjectIds: getTranslatorProjectIds(String(userId)),
+  });
+  return access === 'assigned' || access === 'open_peer';
+}
+
 /**
- * - `confirmed`: the server has the chapter in Peer Check.
- * - `queued`: saved here; the queue sends it when it can.
+ * - `confirmed`: the server has the chapter at the stage it was sent to.
+ * - `queued`: saved here; the queue sends it when it can. Never Complete.
  * - `kept`: the server kept the chapter at its stage; the local send is gone.
  */
-export type PeerCheckSendResult = 'confirmed' | 'queued' | 'kept';
+export type StageSendResult = 'confirmed' | 'queued' | 'kept';
 
-export class PeerCheckSendBlockedError extends Error {
+export class StageSendBlockedError extends Error {
   constructor() {
-    super("This chapter can't be sent to Peer Check right now");
-    this.name = 'PeerCheckSendBlockedError';
+    super("This chapter can't be sent on right now");
+    this.name = 'StageSendBlockedError';
   }
 }
 
 /**
- * Sends one chapter to Peer Check for the account that asked. Rechecks the
- * gate, writes and queues it as the Record tab does, then drains the queue
- * once so an online send can come back confirmed. Throws, writing nothing,
- * when the account changed or the chapter can't be sent.
+ * Sends one chapter on to `to` for the account that asked. Rechecks the gate,
+ * and refuses if the chapter's next stage is no longer `to`. A nonterminal
+ * send is written and queued as the Record tab does, then the queue drains
+ * once so an online send can come back confirmed. Complete is written only
+ * after the server confirms it, and throws otherwise. Throws, writing
+ * nothing, when the account changed or the chapter can't be sent.
  */
-export async function sendChapterToPeerCheck(params: {
+export async function sendChapterToStage(params: {
   chapterAssignmentId: number;
   userId: number;
   draftingUnit: DraftingUnit;
-}): Promise<PeerCheckSendResult> {
-  const { chapterAssignmentId, userId } = params;
+  to: StageAdvanceStatus;
+}): Promise<StageSendResult> {
+  const { chapterAssignmentId, userId, to } = params;
   const isActive = () => getActiveUserId() === String(userId);
-  if (!isActive()) throw new PeerCheckSendBlockedError();
-  const check = await readPeerCheckSend(params);
+  if (!isActive()) throw new StageSendBlockedError();
+  const check = await readStageSend(params);
   if (
     !isActive() ||
     !check ||
     !check.visibility.visible ||
     check.visibility.disabled ||
-    !check.visibility.destination
+    check.visibility.destination?.nextStatus !== to
   ) {
-    throw new PeerCheckSendBlockedError();
+    throw new StageSendBlockedError();
   }
   const { destination } = check.visibility;
   await confirmStageAdvancement({
@@ -134,6 +165,7 @@ export async function sendChapterToPeerCheck(params: {
     }),
     userId,
   });
+  if (to === 'complete') return 'confirmed';
 
   // The send is written; from here a failure leaves it queued, not undone.
   try {
@@ -155,7 +187,7 @@ export async function sendChapterToPeerCheck(params: {
       ? 'confirmed'
       : 'kept';
   } catch (error) {
-    log.warn('Peer Check send queued; follow-up failed', {
+    log.warn('Stage send queued; follow-up failed', {
       chapterAssignmentId,
       error: error instanceof Error ? error.message : String(error),
     });

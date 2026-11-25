@@ -346,7 +346,7 @@ describe('persist + read isolation', () => {
     expect(hasProjectObserverGrant('1', 100)).toBe(true);
   });
 
-  it('fails closed while reauth is required (inactive account)', () => {
+  it('keeps the stored snapshot while reauth is required', () => {
     persistOrgGrantsFromUserResponse('1', {
       id: 1,
       email: 'one@example.com',
@@ -354,8 +354,11 @@ describe('persist + read isolation', () => {
     });
     mockIsReauthRequired.mockReturnValue(true);
 
-    expect(getUserOrgGrants('1')).toEqual({ status: 'unknown' });
-    expect(hasProjectObserverGrant('1', 100)).toBe(false);
+    expect(getUserOrgGrants('1')).toEqual({
+      status: 'known',
+      grants: [observerGrant],
+    });
+    expect(hasProjectObserverGrant('1', 100)).toBe(true);
   });
 
   it('excludes org-only Observer grants from project membership helpers', () => {
@@ -451,17 +454,28 @@ describe('refreshUserOrgGrants', () => {
     expect(mockSetReauthRequired).not.toHaveBeenCalled();
   });
 
-  it('marks unknown and sets reauth on auth failure', async () => {
+  it('keeps the stored snapshot and emits reauth once on auth failure', async () => {
+    persistOrgGrantsFromUserResponse('1', {
+      id: 1,
+      email: 'one@example.com',
+      orgGrants: [observerGrant],
+    });
     mockGetUserByEmail.mockRejectedValue(new AuthError('revoked'));
+    mockSetReauthRequired.mockReturnValueOnce(true).mockReturnValueOnce(false);
 
     await expect(refreshUserOrgGrants('1', 'token-1')).rejects.toThrow(
       AuthError,
     );
-
-    expect(mockStore.get('1:org_grant_snapshot')).toBe(
-      JSON.stringify({ status: 'unknown' }),
+    await expect(refreshUserOrgGrants('1', 'token-1')).rejects.toThrow(
+      AuthError,
     );
+
+    expect(getUserOrgGrants('1')).toEqual({
+      status: 'known',
+      grants: [observerGrant],
+    });
     expect(mockSetReauthRequired).toHaveBeenCalledWith('1');
+    expect(mockEmitAuthReauthRequired).toHaveBeenCalledTimes(1);
     expect(mockEmitAuthReauthRequired).toHaveBeenCalledWith('1');
   });
 

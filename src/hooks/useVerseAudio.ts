@@ -57,7 +57,9 @@ import {
   upsertPausedTake,
   type PausedTakeCapture,
 } from '../services/pausedTakes';
+import { isPausedTakeForeign } from '../services/pausedTakeOwner';
 import { decideRecovery } from '../services/pausedTakeRecovery';
+import { RECORD_FOREIGN_PAUSED_TAKE } from '../constants/messages';
 
 export type { RecordingUnitCapture };
 
@@ -571,6 +573,28 @@ export function useVerseAudio({
     [loadAllTakesFn, checkMultipleRecordersFn],
   );
 
+  // Recovered audio belongs to the account that paused it. If the account
+  // changes under a mounted hook, let go of it so resume, discard, pause and
+  // save can't act on it. Its marker and files stay for their owner. Declared
+  // before the take load so that run hydrates the new account's own marker.
+  const heldForUserIdRef = useRef(userId);
+  const recordingIdleRef = useRef(false);
+  recordingIdleRef.current = recording.status === 'idle';
+  useEffect(() => {
+    if (heldForUserIdRef.current === userId) return;
+    heldForUserIdRef.current = userId;
+    // A live native recorder is not recovered audio; the app blocks account
+    // switches while one runs.
+    if (!recordingIdleRef.current) return;
+    if (recoveredSegmentsRef.current.length === 0) return;
+    recoveredSegmentsRef.current = [];
+    recoveredElapsedMsRef.current = 0;
+    setRecoveredElapsedMs(0);
+    capturePersistRef.current = null;
+    setErrorMessage(null);
+    dispatch({ type: 'DISCARD' });
+  }, [userId]);
+
   useEffect(() => {
     let cancelled = false;
     // `activeBibleTextIdRef` is assigned synchronously below, so a newer run
@@ -627,7 +651,10 @@ export function useVerseAudio({
           verseNumber,
           bibleTextId,
         );
-        const marker = listPausedTakes().find(m => m.sessionKey === key);
+        // Another account's paused take is neither recovered nor cleaned up here.
+        const marker = listPausedTakes().find(
+          m => m.sessionKey === key && !isPausedTakeForeign(m, userId),
+        );
         if (!marker) {
           markLoaded();
           return;
@@ -703,6 +730,7 @@ export function useVerseAudio({
     bibleTextId,
     chapterAssignmentId,
     verseNumber,
+    userId,
     loadTakesFn,
     refreshAllTakes,
     clearStitchQueue,
@@ -760,6 +788,16 @@ export function useVerseAudio({
     // start() never deletes a marker or its segments (#567).
     if (recoveredSegmentsRef.current.length > 0) {
       setErrorMessage('Save or discard the paused recording first.');
+      return;
+    }
+    // Pausing writes the marker under this key, which would replace theirs.
+    if (
+      sessionKey !== null &&
+      listPausedTakes().some(
+        m => m.sessionKey === sessionKey && isPausedTakeForeign(m, userId),
+      )
+    ) {
+      setErrorMessage(RECORD_FOREIGN_PAUSED_TAKE);
       return;
     }
 
@@ -847,8 +885,10 @@ export function useVerseAudio({
     projectUnitId,
     recording,
     recordingUnit,
+    sessionKey,
     state,
     takesLoadKey,
+    userId,
     verseNumber,
   ]);
 
@@ -872,6 +912,7 @@ export function useVerseAudio({
           // Freeze the capture span so recovery persists the same unit even if
           // the drafting mode changed before the take is resumed (#567).
           capture: snapshot ? toMarkerCapture(snapshot) : undefined,
+          userId: userId ?? undefined,
         });
       }
       dispatch({ type: 'PAUSE' });
@@ -880,7 +921,7 @@ export function useVerseAudio({
       setErrorMessage(message);
       dispatch({ type: 'ERROR', message });
     }
-  }, [chapterAssignmentId, recording, sessionKey, verseNumber]);
+  }, [chapterAssignmentId, recording, sessionKey, userId, verseNumber]);
 
   // Background auto-pause runs the exact same path as the Pause button (#567).
   autoPauseRef.current = () => {
@@ -1071,6 +1112,7 @@ export function useVerseAudio({
             chapterAssignmentId: chapterAssignmentId ?? undefined,
             verseNumber,
             capture: toMarkerCapture(snapshot),
+            userId: userId ?? undefined,
           });
         }
         // The marker above is keyed to the old verse, so recovery finds this take

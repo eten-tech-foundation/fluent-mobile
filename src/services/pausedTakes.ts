@@ -26,6 +26,8 @@ export type PausedTakeMarker = {
   verseNumber?: number;
   /** Capture span frozen at start, so recovery persists the same unit. */
   capture?: PausedTakeCapture;
+  /** The account that paused it. Markers from before this field are anyone's. */
+  userId?: number;
 };
 
 export function isValidMarker(value: unknown): value is PausedTakeMarker {

@@ -10,8 +10,8 @@ import {
 import {
   ObserverDraftTab,
   type ObserverDraftTabProps,
-  type ObserverDraftUnit,
 } from './ObserverDraftTab';
+import type { ObserverDraftUnit } from '../../types/draftDownload/types';
 
 const mockPlaybackPlay = jest.fn();
 const mockPlaybackLoad = jest.fn();

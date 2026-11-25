@@ -114,6 +114,7 @@ export function useRecorder({
   userId,
   unit,
   openVerse,
+  sessionVerse,
   showing,
   focused,
   downloading,
@@ -127,6 +128,11 @@ export function useRecorder({
   unit: DraftingUnit;
   /** Verse mode starts here when it's in the passage, e.g. a recovered take. */
   openVerse?: number;
+  /**
+   * A recovered passage take's saved verse, which keys its session. Without
+   * it a passage records under its first verse in this chapter.
+   */
+  sessionVerse?: number;
   /** The player is open in Record mode; leaving it commits a pending delete. */
   showing: boolean;
   /** Passage has its route; a screen pushed over it (Book) takes it. */
@@ -162,10 +168,15 @@ export function useRecorder({
     setPickedWithVerses(true);
     setVerse(firstVerse());
   }
+  // The recovered take keeps its saved verse until it's saved or discarded.
+  // New takes after it key on the passage start, as any visit here does.
+  const [holdingSaved, setHoldingSaved] = useState(sessionVerse !== undefined);
   const session = useRecordSession({
     chapterData: assignment,
     userId,
-    selectedVerse: verseMode ? verse : anchorVerse,
+    selectedVerse: verseMode
+      ? verse
+      : (holdingSaved ? sessionVerse : undefined) ?? anchorVerse,
     versesLength: passage.chapterVerseCount,
     draftingUnit: unit,
     onChapterClaimed: onReload,
@@ -173,6 +184,16 @@ export function useRecorder({
     onRegisterCaptureControls,
   });
   const { verseAudio } = session;
+  const sawSaved = useRef(false);
+  useEffect(() => {
+    if (!holdingSaved) return;
+    const s = verseAudio.state;
+    if (s === 'paused' || s === 'recording' || s === 'saving') {
+      sawSaved.current = true;
+    } else if (sawSaved.current) {
+      setHoldingSaved(false);
+    }
+  }, [holdingSaved, verseAudio.state]);
   const step = useVerseStep({
     verses: stepVerses,
     selectedVerse: verse,
@@ -251,10 +272,21 @@ export function useRecorder({
     else if (!paused && verseAudio.state !== 'saving') setWentLive(false);
   }, [live, paused, verseAudio.state]);
   const recovered = paused && !wentLive;
+  // In-memory envelopes for takes saved this session. Not written to the DB.
+  const [levelsByTake, setLevelsByTake] = useState<
+    ReadonlyMap<string, number[]>
+  >(() => new Map());
   // A deleted take waits out the undo window first; Legacy's deleteTake does
-  // the rest, including handing off the selection.
+  // the rest, including handing off the selection. The wave stays until that
+  // commit finishes, so Undo still has it.
   const deletion = usePendingDelete(async id => {
     await verseAudio.deleteTake(id);
+    setLevelsByTake(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
     // The hero's takes line falls back to the loaded passage once none are left.
     onReload();
   });
@@ -331,17 +363,26 @@ export function useRecorder({
       ? liveTakes
       : passage.takes.filter(t => !deletion.hiddenIds.has(t.id));
 
-  // Live input levels for the take in progress, kept per take for this
-  // session so a take just recorded still shows its wave.
-  const liveLevels = useLiveLevels(
+  // Live input levels for the take in progress. Saved waves stay with their
+  // take until a new `assignment.id` or a committed delete.
+  const sampled = useLiveLevels(
     verseAudio.getMetering,
     capturing,
     verseAudio.state === 'recording',
   );
-  const levelsByTake = useRef(new Map<string, number[]>());
+  const { live: liveLevels, envelope } = sampled;
   const knownTakeIds = useRef<Set<string> | null>(null);
   // The levels belong to the take just saved, not to a verse stepped onto.
   const justSaved = useRef(false);
+  const chapterId = assignment.id;
+  const chapterSeen = useRef(chapterId);
+  // A new `assignment.id` clears the waves; verse changes keep them.
+  useEffect(() => {
+    if (chapterSeen.current === chapterId) return;
+    chapterSeen.current = chapterId;
+    knownTakeIds.current = null;
+    setLevelsByTake(new Map());
+  }, [chapterId]);
   useEffect(() => {
     if (verseAudio.state === 'saving') justSaved.current = true;
   }, [verseAudio.state]);
@@ -349,14 +390,30 @@ export function useRecorder({
     const ids = verseAudio.takes.map(t => t.id);
     const known = knownTakeIds.current;
     const fresh = known ? ids.filter(id => !known.has(id)) : [];
-    if (justSaved.current && fresh.length === 1 && liveLevels.length > 0) {
-      levelsByTake.current.set(fresh[0], liveLevels);
+    // A failed save leaves `saving` with no new take. Don't keep the flag,
+    // or the next take to appear inherits this capture's wave.
+    if (
+      verseAudio.state !== 'saving' &&
+      justSaved.current &&
+      fresh.length !== 1
+    ) {
       justSaved.current = false;
     }
+    const saveId =
+      justSaved.current && fresh.length === 1 && envelope.length > 0
+        ? fresh[0]
+        : null;
+    if (saveId) justSaved.current = false;
     knownTakeIds.current = new Set(ids);
-    // Only a change in the takes means one was saved.
+    if (!saveId) return;
+    setLevelsByTake(prev => {
+      const next = new Map(prev);
+      next.set(saveId, envelope);
+      return next;
+    });
+    // envelope is omitted: the effect stores the value from the render that saved.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verseAudio.takes]);
+  }, [verseAudio.takes, verseAudio.state]);
 
   const passageTakes = verseAudio.takes
     .filter(isPassageTake)
@@ -507,7 +564,7 @@ export function useRecorder({
         takeNumber: frontTake.takeNumber,
         label: takeLabel(frontTake.takeNumber),
         durationMs: frontTake.durationMs ?? null,
-        levels: levelsByTake.current.get(frontTake.id) ?? [],
+        levels: levelsByTake.get(frontTake.id) ?? [],
         progress:
           playingFront && verseAudio.durationMs > 0
             ? verseAudio.positionMs / verseAudio.durationMs

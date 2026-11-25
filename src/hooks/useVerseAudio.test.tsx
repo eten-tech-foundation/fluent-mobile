@@ -796,13 +796,14 @@ describe('useVerseAudio', () => {
     expect(mockNotifyPendingUploads).toHaveBeenCalledTimes(1);
   });
 
-  it('writes a paused-take marker when recording is paused', async () => {
+  it('writes a paused-take marker, with its account, when recording is paused', async () => {
     const { result } = renderHook(() =>
       useVerseAudio({
         ...verseAudioArgs(),
         chapterAssignmentId: 7,
         chapterNumber: 1,
         verseNumber: 3,
+        userId: 12,
       }),
     );
 
@@ -830,6 +831,7 @@ describe('useVerseAudio', () => {
         endChapter: 1,
         endVerse: 3,
       },
+      userId: 12,
     });
     expect(result.current.state).toBe('paused');
   });
@@ -886,6 +888,36 @@ describe('useVerseAudio', () => {
     });
     await waitFor(() => expect(result.current.state).toBe('paused'));
     expect(result.current.takesLoaded).toBe(true);
+    expect(result.current.recoveredElapsedMs).toBe(1000);
+  });
+
+  it('lets go of a recovered take when the account changes, leaving it for its owner', async () => {
+    mockPausedMarkers.push({ ...recoveredMarker(), userId: 12 });
+
+    const { result, rerender } = renderHook(
+      ({ userId }: { userId: number }) =>
+        useVerseAudio({ ...recoveryArgs(), userId }),
+      { initialProps: { userId: 12 } },
+    );
+    await waitFor(() => expect(result.current.state).toBe('paused'));
+
+    rerender({ userId: 13 });
+    await waitFor(() => expect(result.current.state).not.toBe('paused'));
+
+    expect(result.current.recoveredElapsedMs).toBe(0);
+    // Nothing of the first account's is saved, resumed, discarded or deleted.
+    await act(async () => {
+      await result.current.stop();
+      await result.current.discardCapture();
+    });
+    expect(persistTake).not.toHaveBeenCalled();
+    expect(mockClearPausedTake).not.toHaveBeenCalled();
+    expect(mockDeleteFile).not.toHaveBeenCalled();
+    expect(mockPausedMarkers).toEqual([{ ...recoveredMarker(), userId: 12 }]);
+
+    // And their own take comes back for them.
+    rerender({ userId: 12 });
+    await waitFor(() => expect(result.current.state).toBe('paused'));
     expect(result.current.recoveredElapsedMs).toBe(1000);
   });
 

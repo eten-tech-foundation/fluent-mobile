@@ -42,6 +42,7 @@ let mockPendingUploads = {
   isUploading: false,
   uploadProgress: null,
   countsUnknown: false,
+  countsRead: true,
 };
 let mockSessionError: string | null = null;
 let mockMetadataSyncActive = false;
@@ -223,6 +224,7 @@ describe('SyncScreen', () => {
       isUploading: false,
       uploadProgress: null,
       countsUnknown: false,
+      countsRead: true,
     };
     mockSessionError = null;
     mockPause.mockResolvedValue(undefined);
@@ -547,6 +549,28 @@ describe('SyncScreen', () => {
       expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
       expect(mockTriggerSync).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('shows no status until the first count read lands (#1002)', () => {
+    mockPageStatus = 'allComplete';
+    mockPendingUploads = {
+      ...mockPendingUploads,
+      hasPendingUploads: false,
+      pendingCount: 0,
+      pendingChapterCount: 0,
+      countsRead: false,
+    };
+    const { rerender } = render(<SyncScreen />);
+
+    expect(screen.queryByText('Online · all synced')).toBeNull();
+    expect(screen.queryByText('Offline · nothing pending')).toBeNull();
+    expect(screen.queryByText('All synced')).toBeNull();
+
+    mockPendingUploads = { ...mockPendingUploads, countsRead: true };
+    rerender(<SyncScreen />);
+
+    expect(screen.getByText('Online · all synced')).toBeTruthy();
+    expect(screen.getByText('All synced')).toBeTruthy();
   });
 
   it('does not show All synced when pending counts are unknown', () => {

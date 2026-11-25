@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ObserverDraftUnit } from '../app/tabs/ObserverDraftTab';
 import { useAuthSession } from '../navigation/AuthSessionProvider';
 import {
   listObserverUnitChapters,
@@ -10,7 +9,10 @@ import {
 import { onAuthReauthRequired, onSyncComplete } from '../services/syncEvents';
 import { getActiveUserId, getKnownUserIds } from '../services/storage';
 import { hasProjectObserverGrant } from '../services/userOrgGrants';
-import type { DraftChapterLocalBundle } from '../types/draftDownload/types';
+import type {
+  DraftChapterLocalBundle,
+  ObserverDraftUnit,
+} from '../types/draftDownload/types';
 import type {
   ChapterAssignmentData,
   ChapterListItem,
