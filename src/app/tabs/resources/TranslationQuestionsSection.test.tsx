@@ -38,15 +38,15 @@ function renderSection(
 }
 
 describe('TranslationQuestionsSection', () => {
-  it('hides content when no questions are available', () => {
-    renderSection({ status: 'ready', questions: [] });
+  it('hides content when no questions are available', async () => {
+    await renderSection({ status: 'ready', questions: [] });
     expect(screen.queryByTestId('translation-questions-loading')).toBeNull();
     expect(screen.queryByTestId('translation-questions-list')).toBeNull();
     expect(screen.queryByTestId('translation-questions-error')).toBeNull();
   });
 
-  it('keeps answers hidden until a question accordion is expanded', () => {
-    renderSection({
+  it('keeps answers hidden until a question accordion is expanded', async () => {
+    await renderSection({
       status: 'ready',
       questions: SAMPLE_QUESTIONS,
     });
@@ -59,7 +59,7 @@ describe('TranslationQuestionsSection', () => {
       ),
     ).toBeNull();
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId('translation-question-tq-99-2-1-toggle'),
     );
 
@@ -70,22 +70,22 @@ describe('TranslationQuestionsSection', () => {
     ).toBeTruthy();
   });
 
-  it('resets nested expansion when the unit identity changes', () => {
+  it('resets nested expansion when the unit identity changes', async () => {
     const answer =
       'The passage describes the events surrounding this verse so the translator can check key meaning.';
     const questions = SAMPLE_QUESTIONS;
 
-    const { rerender } = renderSection({
+    const { rerender } = await renderSection({
       status: 'ready',
       questions,
     });
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId('translation-question-tq-99-2-1-toggle'),
     );
     expect(screen.getByText(answer)).toBeTruthy();
 
-    rerender(
+    await rerender(
       <TranslationQuestionsSection
         state={{ status: 'ready', questions }}
         retry={jest.fn()}
@@ -100,9 +100,9 @@ describe('TranslationQuestionsSection', () => {
     expect(screen.queryByText(answer)).toBeNull();
   });
 
-  it('shows section-scoped error and recovers on Retry', () => {
+  it('shows section-scoped error and recovers on Retry', async () => {
     const retry = jest.fn();
-    const { rerender } = renderSection(
+    const { rerender } = await renderSection(
       { status: 'error', message: TRANSLATION_QUESTIONS_LOAD_ERROR },
       retry,
     );
@@ -111,10 +111,10 @@ describe('TranslationQuestionsSection', () => {
     expect(screen.getByText(TRANSLATION_QUESTIONS_LOAD_ERROR)).toBeTruthy();
     expect(screen.queryByTestId('translation-questions-list')).toBeNull();
 
-    fireEvent.press(screen.getByTestId('translation-questions-retry'));
+    await fireEvent.press(screen.getByTestId('translation-questions-retry'));
     expect(retry).toHaveBeenCalledTimes(1);
 
-    rerender(
+    await rerender(
       <TranslationQuestionsSection
         state={{
           status: 'ready',
@@ -131,8 +131,8 @@ describe('TranslationQuestionsSection', () => {
     expect(screen.getByTestId('translation-questions-list')).toBeTruthy();
   });
 
-  it('treats a missing load state as loading instead of crashing', () => {
-    renderSection(undefined);
+  it('treats a missing load state as loading instead of crashing', async () => {
+    await renderSection(undefined);
     expect(screen.getByTestId('translation-questions-loading')).toBeTruthy();
   });
 });

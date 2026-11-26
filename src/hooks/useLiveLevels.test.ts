@@ -27,69 +27,71 @@ describe('useLiveLevels', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it('samples every 100ms while recording and keeps levels through a pause', () => {
+  it('samples every 100ms while recording and keeps levels through a pause', async () => {
     const getMetering = jest.fn(() => 0);
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ capturing, sampling }: Props) =>
         useLiveLevels(getMetering, capturing, sampling),
       { initialProps: { capturing: true, sampling: true } },
     );
 
-    act(() => jest.advanceTimersByTime(300));
+    await act(() => jest.advanceTimersByTime(300));
     expect(result.current.live).toEqual([1, 1, 1]);
 
-    rerender({ capturing: true, sampling: false });
-    act(() => jest.advanceTimersByTime(300));
+    await rerender({ capturing: true, sampling: false });
+    await act(() => jest.advanceTimersByTime(300));
     expect(result.current.live).toHaveLength(3);
   });
 
-  it('starts a new take with fresh levels', () => {
+  it('starts a new take with fresh levels', async () => {
     const getMetering = jest.fn(() => 0);
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ capturing, sampling }: Props) =>
         useLiveLevels(getMetering, capturing, sampling),
       { initialProps: { capturing: true, sampling: true } },
     );
-    act(() => jest.advanceTimersByTime(200));
-    rerender({ capturing: false, sampling: false });
+    await act(() => jest.advanceTimersByTime(200));
+    await rerender({ capturing: false, sampling: false });
     expect(result.current.live).toHaveLength(2);
 
-    rerender({ capturing: true, sampling: true });
+    await rerender({ capturing: true, sampling: true });
     expect(result.current.live).toEqual([]);
   });
 
-  it('stops the sampler when the hook unmounts', () => {
+  it('stops the sampler when the hook unmounts', async () => {
     const getMetering = jest.fn(() => 0);
-    const { unmount } = renderHook(() =>
+    const { unmount } = await renderHook(() =>
       useLiveLevels(getMetering, true, true),
     );
-    act(() => jest.advanceTimersByTime(100));
+    await act(() => jest.advanceTimersByTime(100));
     const calls = getMetering.mock.calls.length;
-    unmount();
-    act(() => jest.advanceTimersByTime(500));
+    await unmount();
+    await act(() => jest.advanceTimersByTime(500));
     expect(getMetering).toHaveBeenCalledTimes(calls);
   });
 
-  it('keeps sampling on the same take after a pause', () => {
+  it('keeps sampling on the same take after a pause', async () => {
     const getMetering = jest.fn(() => 0);
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ sampling }: { sampling: boolean }) =>
         useLiveLevels(getMetering, true, sampling),
       { initialProps: { sampling: true } },
     );
-    act(() => jest.advanceTimersByTime(200));
-    rerender({ sampling: false });
-    act(() => jest.advanceTimersByTime(500));
-    rerender({ sampling: true });
-    act(() => jest.advanceTimersByTime(100));
+    await act(() => jest.advanceTimersByTime(200));
+    await rerender({ sampling: false });
+    await act(() => jest.advanceTimersByTime(500));
+    await rerender({ sampling: true });
+    await act(() => jest.advanceTimersByTime(100));
     expect(result.current.live).toEqual([1, 1, 1]);
   });
 
-  it('keeps one new live bar per sample after the window is full (#904)', () => {
+  it('keeps one new live bar per sample after the window is full (#904)', async () => {
     let sample = 0;
     const getMetering = jest.fn(() => (sample++ === LIVE_LEVEL_BARS ? 0 : -32));
-    const { result } = renderHook(() => useLiveLevels(getMetering, true, true));
-    act(() => jest.advanceTimersByTime((LIVE_LEVEL_BARS + 5) * 100));
+    const { result } = await renderHook(() =>
+      useLiveLevels(getMetering, true, true),
+    );
+    await act(() => jest.advanceTimersByTime((LIVE_LEVEL_BARS + 5) * 100));
     expect(result.current.live).toHaveLength(LIVE_LEVEL_BARS);
     expect(result.current.live.at(-5)).toBe(1);
     expect(result.current.envelope.length).toBeLessThanOrEqual(

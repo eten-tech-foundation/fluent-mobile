@@ -15,9 +15,9 @@ jest.mock('../../services/storage', () => ({
 const next = resolveTheme('next');
 
 describe('Banner', () => {
-  it('shows the message on surface/inverse and runs its action', () => {
+  it('shows the message on surface/inverse and runs its action', async () => {
     const onAction = jest.fn();
-    render(
+    await render(
       <UiVersionOverride value="next">
         <Banner
           message="Session expired. Enter your password to keep syncing."
@@ -36,15 +36,15 @@ describe('Banner', () => {
       screen.getByText('Session expired. Enter your password to keep syncing.'),
     ).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 
-  it('announces the message when it appears', () => {
+  it('announces the message when it appears', async () => {
     const announce = jest
       .spyOn(AccessibilityInfo, 'announceForAccessibility')
       .mockImplementation(() => undefined);
-    render(
+    await render(
       <Banner message="Offline" actionLabel="Retry" onAction={jest.fn()} />,
     );
     expect(announce).toHaveBeenCalledWith('Offline');

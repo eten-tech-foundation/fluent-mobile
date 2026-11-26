@@ -20,6 +20,12 @@ import {
   getSelectedTakeCoverages,
 } from '../../db/queries';
 import type { useDraftingUnit } from '../../hooks/useDraftingUnit';
+import { lastFlatListProps } from '../../test/flatListCapture';
+
+jest.mock('react-native/Libraries/Lists/FlatList', () => ({
+  __esModule: true,
+  default: require('../../test/flatListCapture').CapturingFlatList,
+}));
 
 jest.mock('../../services/storage', () => ({
   getActiveUserId: () => '1',
@@ -102,7 +108,7 @@ describe('BibleTab', () => {
   });
 
   it('keeps the tapped verse selected on the Bible tab', async () => {
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={1}
@@ -116,7 +122,7 @@ describe('BibleTab', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Verse 2')).toBeTruthy();
     });
-    fireEvent.press(screen.getByLabelText('Verse 2'));
+    await fireEvent.press(screen.getByLabelText('Verse 2'));
     expect(screen.getByLabelText('Verse 2, selected')).toBeTruthy();
     expect(
       screen.getAllByTestId('bible-verse-waveform').length,
@@ -127,7 +133,7 @@ describe('BibleTab', () => {
   it('invokes onOpenRecord after selecting a verse unit', async () => {
     const onOpenRecord = jest.fn();
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={1}
@@ -141,7 +147,7 @@ describe('BibleTab', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Verse 2')).toBeTruthy();
     });
-    fireEvent.press(screen.getByLabelText('Verse 2'));
+    await fireEvent.press(screen.getByLabelText('Verse 2'));
 
     expect(screen.getByLabelText('Verse 2, selected')).toBeTruthy();
     expect(onOpenRecord).toHaveBeenCalledTimes(1);
@@ -155,7 +161,7 @@ describe('BibleTab', () => {
     jest.mocked(getProjectPericopeSetId).mockResolvedValue(null);
     jest.mocked(getPericopesForChapter).mockResolvedValue([]);
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={1}
@@ -193,7 +199,7 @@ describe('BibleTab', () => {
       },
     ]);
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={1}
@@ -208,7 +214,7 @@ describe('BibleTab', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Mark 14:1–2, selected')).toBeTruthy();
     });
-    fireEvent.press(screen.getByLabelText('Mark 14:1–2, selected'));
+    await fireEvent.press(screen.getByLabelText('Mark 14:1–2, selected'));
 
     expect(onOpenRecord).toHaveBeenCalledTimes(1);
     // Card tap opens Record without expanding — expand is chevron-only.
@@ -233,7 +239,7 @@ describe('BibleTab', () => {
       },
     ]);
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={1}
@@ -249,23 +255,23 @@ describe('BibleTab', () => {
       expect(screen.getByLabelText('Expand Mark 14:1–2')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByLabelText('Expand Mark 14:1–2'));
+    await fireEvent.press(screen.getByLabelText('Expand Mark 14:1–2'));
     expect(screen.getByTestId('bible-pericope-verse-14-1')).toBeTruthy();
     expect(screen.getByTestId('bible-pericope-verse-14-2')).toBeTruthy();
     expect(onOpenRecord).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByLabelText('Collapse Mark 14:1–2'));
+    await fireEvent.press(screen.getByLabelText('Collapse Mark 14:1–2'));
     expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
     expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
     expect(onOpenRecord).not.toHaveBeenCalled();
   });
 
-  it('shows a loading indicator instead of verse rows while coverage loads', () => {
+  it('shows a loading indicator instead of verse rows while coverage loads', async () => {
     jest
       .mocked(getSelectedTakeCoverages)
       .mockImplementation(() => new Promise(() => {}));
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={1}
@@ -281,7 +287,7 @@ describe('BibleTab', () => {
     expect(screen.queryByLabelText(/Verse /)).toBeNull();
   });
 
-  it('shows a loading indicator instead of verse rows while pericopes load', () => {
+  it('shows a loading indicator instead of verse rows while pericopes load', async () => {
     mockUseDraftingUnit.mockReturnValue({
       draftingUnit: 'pericope',
       setDraftingUnit: jest.fn(),
@@ -290,7 +296,7 @@ describe('BibleTab', () => {
       .mocked(getProjectPericopeSetId)
       .mockImplementation(() => new Promise(() => {}));
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={1}
@@ -324,7 +330,7 @@ describe('BibleTab', () => {
       },
     ]);
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={1}
@@ -342,11 +348,11 @@ describe('BibleTab', () => {
     expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
     expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
 
-    fireEvent.press(screen.getByLabelText('Expand Mark 14:1–2'));
+    await fireEvent.press(screen.getByLabelText('Expand Mark 14:1–2'));
     expect(screen.getByTestId('bible-pericope-verse-14-1')).toBeTruthy();
     expect(screen.getByTestId('bible-pericope-verse-14-2')).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText('Collapse Mark 14:1–2'));
+    await fireEvent.press(screen.getByLabelText('Collapse Mark 14:1–2'));
     expect(screen.getByLabelText('Mark 14:1–2, selected')).toBeTruthy();
     expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
     expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
@@ -369,7 +375,7 @@ describe('BibleTab', () => {
       },
     ]);
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={2}
@@ -409,7 +415,7 @@ describe('BibleTab', () => {
       },
     ]);
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={2}
@@ -427,7 +433,7 @@ describe('BibleTab', () => {
     expect(screen.queryByTestId('bible-pericope-verse-14-2')).toBeNull();
     expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
 
-    fireEvent.press(screen.getByLabelText('Expand Mark 14:2'));
+    await fireEvent.press(screen.getByLabelText('Expand Mark 14:2'));
     expect(screen.getByTestId('bible-pericope-verse-14-2')).toBeTruthy();
     expect(screen.queryByTestId('bible-pericope-verse-14-1')).toBeNull();
   });
@@ -460,7 +466,7 @@ describe('BibleTab', () => {
       },
     ]);
 
-    render(
+    await render(
       <DraftingProvider
         verses={verses}
         initialVerse={1}
@@ -488,7 +494,7 @@ describe('BibleTab', () => {
         endVerse: 2,
       },
     ];
-    fireEvent.press(screen.getByTestId('refresh-recorded'));
+    await fireEvent.press(screen.getByTestId('refresh-recorded'));
 
     await waitFor(() => {
       expect(
@@ -499,7 +505,7 @@ describe('BibleTab', () => {
 
   describe('verse-row accessibility selected vs playing (#48 / D-0048-01 observability)', () => {
     it('exposes selected-only, playing-only, both, and neither labels', async () => {
-      render(
+      await render(
         <DraftingProvider
           verses={verses}
           initialVerse={1}
@@ -520,7 +526,7 @@ describe('BibleTab', () => {
       expect(screen.queryByLabelText('Verse 2, playing')).toBeNull();
 
       await act(async () => {
-        fireEvent.press(screen.getByTestId('set-playing-2'));
+        await fireEvent.press(screen.getByTestId('set-playing-2'));
       });
       await waitFor(() => {
         expect(screen.getByLabelText('Verse 2, playing')).toBeTruthy();
@@ -530,7 +536,7 @@ describe('BibleTab', () => {
       expect(screen.queryByLabelText('Verse 1, selected, playing')).toBeNull();
 
       await act(async () => {
-        fireEvent.press(screen.getByTestId('set-playing-1'));
+        await fireEvent.press(screen.getByTestId('set-playing-1'));
       });
       await waitFor(() => {
         expect(
@@ -553,7 +559,7 @@ describe('BibleTab', () => {
         },
       ];
 
-      render(
+      await render(
         <DraftingProvider
           verses={threeVerses}
           initialVerse={1}
@@ -571,7 +577,7 @@ describe('BibleTab', () => {
       });
 
       await act(async () => {
-        fireEvent.press(screen.getByTestId('set-playing-2'));
+        await fireEvent.press(screen.getByTestId('set-playing-2'));
       });
       await waitFor(() => {
         expect(screen.getByLabelText('Verse 2, playing')).toBeTruthy();
@@ -579,7 +585,7 @@ describe('BibleTab', () => {
       expect(screen.getByLabelText('Verse 1, selected')).toBeTruthy();
 
       await act(async () => {
-        fireEvent.press(screen.getByTestId('set-playing-3'));
+        await fireEvent.press(screen.getByTestId('set-playing-3'));
       });
       await waitFor(() => {
         expect(screen.getByLabelText('Verse 3, playing')).toBeTruthy();
@@ -605,7 +611,7 @@ describe('BibleTab', () => {
         text: `Verse ${i + 1} text`,
       }));
 
-      render(
+      await render(
         <DraftingProvider
           verses={manyVerses}
           initialVerse={1}
@@ -622,7 +628,7 @@ describe('BibleTab', () => {
       });
 
       await act(async () => {
-        fireEvent.press(screen.getByTestId('set-playing-8'));
+        await fireEvent.press(screen.getByTestId('set-playing-8'));
       });
 
       await waitFor(() => {
@@ -659,7 +665,7 @@ describe('BibleTab', () => {
       ]);
 
       try {
-        const { UNSAFE_getByType } = render(
+        await render(
           <DraftingProvider
             verses={verses}
             initialVerse={1}
@@ -672,14 +678,18 @@ describe('BibleTab', () => {
         );
 
         await waitFor(() => {
-          expect(
-            UNSAFE_getByType(FlatList).props.onScrollToIndexFailed,
-          ).toEqual(expect.any(Function));
+          expect(lastFlatListProps().onScrollToIndexFailed).toEqual(
+            expect.any(Function),
+          );
         });
 
         scrollToIndex.mockClear();
-        act(() => {
-          UNSAFE_getByType(FlatList).props.onScrollToIndexFailed({ index: 1 });
+        await act(() => {
+          lastFlatListProps().onScrollToIndexFailed?.({
+            index: 1,
+            highestMeasuredFrameIndex: 0,
+            averageItemLength: 0,
+          });
         });
 
         await waitFor(() => {

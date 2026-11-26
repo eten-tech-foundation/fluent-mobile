@@ -182,7 +182,7 @@ describe('useMyWorkChapters Observer grants', () => {
   });
 
   it('passes getObserverProjectIds into the query for a valid active account', async () => {
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
@@ -200,7 +200,7 @@ describe('useMyWorkChapters Observer grants', () => {
 
   it('reports a failed first read, so Home can tell it from no chapters', async () => {
     mockGetMyWorkChapters.mockRejectedValueOnce(new Error('disk I/O error'));
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe(true);
@@ -215,7 +215,7 @@ describe('useMyWorkChapters Observer grants', () => {
     const mark = deferred<{ connection: object; changes: number }>();
     queries.getDatabaseWriteMark.mockReturnValueOnce(mark.promise);
 
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => expect(mockGetMyWorkChapters).toHaveBeenCalled());
     expect(
@@ -233,11 +233,11 @@ describe('useMyWorkChapters Observer grants', () => {
 
   it('defers the first-focus metadata refresh until the first paint (#1002)', async () => {
     mockAfterFirstPaint.mockImplementationOnce(() => {});
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(mockRefreshChapterMetadataIfOnline).not.toHaveBeenCalled();
-    act(() => {
+    await act(() => {
       mockAfterFirstPaint.mock.calls[0][0]();
     });
     expect(mockRefreshChapterMetadataIfOnline).toHaveBeenCalledWith(7);
@@ -245,11 +245,11 @@ describe('useMyWorkChapters Observer grants', () => {
 
   it('skips the deferred refresh when the user signed out before the paint (#1002)', async () => {
     mockAfterFirstPaint.mockImplementationOnce(() => {});
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockGetActiveUserId.mockReturnValue('');
-    act(() => {
+    await act(() => {
       mockAfterFirstPaint.mock.calls[0][0]();
     });
     expect(mockRefreshChapterMetadataIfOnline).not.toHaveBeenCalled();
@@ -257,11 +257,11 @@ describe('useMyWorkChapters Observer grants', () => {
 
   it('drops the deferred refresh when the hook unmounts before the paint (#1002)', async () => {
     mockAfterFirstPaint.mockImplementationOnce(() => {});
-    const { result, unmount } = renderHook(() => useMyWorkChapters());
+    const { result, unmount } = await renderHook(() => useMyWorkChapters());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    unmount();
-    act(() => {
+    await unmount();
+    await act(() => {
       mockAfterFirstPaint.mock.calls[0][0]();
     });
     expect(mockRefreshChapterMetadataIfOnline).not.toHaveBeenCalled();
@@ -273,7 +273,7 @@ describe('useMyWorkChapters Observer grants', () => {
       mountMetadata.promise,
     );
 
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.chapters).toEqual([observerChapter]);
@@ -293,7 +293,7 @@ describe('useMyWorkChapters Observer grants', () => {
     mockGetObserverProjectIds.mockReturnValue([]);
     mockGetMyWorkChapters.mockResolvedValue([]);
 
-    renderHook(() => useMyWorkChapters());
+    await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
@@ -309,7 +309,7 @@ describe('useMyWorkChapters Observer grants', () => {
     const slow = deferred<MyWorkChapter[]>();
     mockGetMyWorkChapters.mockReturnValueOnce(slow.promise);
 
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
@@ -341,7 +341,7 @@ describe('useMyWorkChapters Observer grants', () => {
     const slow = deferred<MyWorkChapter[]>();
     mockGetMyWorkChapters.mockReturnValueOnce(slow.promise);
 
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
@@ -366,7 +366,7 @@ describe('useMyWorkChapters Observer grants', () => {
     const slow = deferred<MyWorkChapter[]>();
     mockGetMyWorkChapters.mockReturnValueOnce(slow.promise);
 
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
@@ -390,7 +390,7 @@ describe('useMyWorkChapters Observer grants', () => {
 
   it('clears previously published rows when a later load sees an invalid account', async () => {
     mockRefreshChapterMetadataIfOnline.mockReturnValue(new Promise(() => {}));
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => {
       expect(result.current.chapters).toEqual([observerChapter]);
@@ -429,7 +429,7 @@ describe('useMyWorkChapters Observer grants', () => {
     mockGetActiveUserId.mockReturnValue('8');
     mockParseUserId.mockReturnValue(7);
 
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -440,7 +440,7 @@ describe('useMyWorkChapters Observer grants', () => {
 
   it('clears published rows on load error even after an account switch', async () => {
     mockRefreshChapterMetadataIfOnline.mockReturnValue(new Promise(() => {}));
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => {
       expect(result.current.chapters).toEqual([observerChapter]);
@@ -472,7 +472,7 @@ describe('useMyWorkChapters Observer grants', () => {
 
   describe('on regaining focus', () => {
     async function mounted() {
-      const hook = renderHook(() => useMyWorkChapters());
+      const hook = await renderHook(() => useMyWorkChapters());
       await waitFor(() =>
         expect(hook.result.current.chapters).toEqual([observerChapter]),
       );
@@ -538,7 +538,7 @@ describe('useMyWorkChapters Observer grants', () => {
       };
       const slow = deferred<MyWorkChapter[]>();
       mockGetMyWorkChapters.mockReturnValueOnce(slow.promise);
-      const { result } = renderHook(() => useMyWorkChapters());
+      const { result } = await renderHook(() => useMyWorkChapters());
       await waitFor(() =>
         expect(mockGetMyWorkChapters).toHaveBeenCalledWith(7, {
           grantProjectIds: [100],
@@ -601,7 +601,7 @@ describe('useMyWorkChapters Observer grants', () => {
 
   describe('when the refresh key changes', () => {
     async function mountedWithKey() {
-      const hook = renderHook(
+      const hook = await renderHook(
         ({ key }: { key: number }) => useMyWorkChapters(key),
         { initialProps: { key: 0 } },
       );
@@ -615,7 +615,7 @@ describe('useMyWorkChapters Observer grants', () => {
       const { result, rerender } = await mountedWithKey();
       const shown = result.current.chapters;
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
       await act(async () => {});
 
       expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
@@ -630,7 +630,7 @@ describe('useMyWorkChapters Observer grants', () => {
       ]);
 
       mockWrites = 1;
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() =>
         expect(result.current.chapters).toEqual([
@@ -647,7 +647,7 @@ describe('useMyWorkChapters Observer grants', () => {
       });
       const { rerender } = await mountedWithKey();
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() =>
         expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2),
@@ -659,7 +659,7 @@ describe('useMyWorkChapters Observer grants', () => {
       mockGetObserverProjectIds.mockReturnValue([]);
       mockGetMyWorkChapters.mockResolvedValueOnce([]);
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() => expect(result.current.chapters).toEqual([]));
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(7, {
@@ -676,7 +676,7 @@ describe('useMyWorkChapters Observer grants', () => {
       mockGetObserverProjectIds.mockReturnValue([]);
       mockGetMyWorkChapters.mockResolvedValueOnce([]);
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() => expect(result.current.chapters).toEqual([]));
       expect(mockGetMyWorkChapters).toHaveBeenLastCalledWith(8, {
@@ -701,7 +701,7 @@ describe('useMyWorkChapters Observer grants', () => {
       mockGetMyWorkChapters.mockRejectedValueOnce(new Error('disk I/O error'));
       mockWrites = 1;
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
       await waitFor(() => expect(result.current.error).toBe(true));
 
       expect(result.current.chapters).toEqual([]);
@@ -721,7 +721,7 @@ describe('useMyWorkChapters Observer grants', () => {
       );
       mockWrites = 1;
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       expect(result.current.reading).toBe(true);
       expect(result.current.chapters).toEqual([observerChapter]);
@@ -742,7 +742,7 @@ describe('useMyWorkChapters Observer grants', () => {
       queries.getDatabaseWriteMark.mockResolvedValueOnce(null);
       mockGetMyWorkChapters.mockResolvedValueOnce([assignedChapter]);
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() =>
         expect(result.current.chapters).toEqual([assignedChapter]),
@@ -759,7 +759,7 @@ describe('useMyWorkChapters Observer grants', () => {
       queries.getDatabaseWriteMark.mockResolvedValueOnce(null);
       mockGetMyWorkChapters.mockRejectedValueOnce(new Error('db down'));
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() => expect(result.current.error).toBe(true));
       expect(result.current.reading).toBe(false);
@@ -774,7 +774,7 @@ describe('useMyWorkChapters Observer grants', () => {
       const first = deferred<MyWorkChapter[]>();
       mockGetMyWorkChapters.mockReturnValueOnce(first.promise);
       mockWrites = 1;
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
       await waitFor(() =>
         expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2),
       );
@@ -785,7 +785,7 @@ describe('useMyWorkChapters Observer grants', () => {
         await mark.promise;
         return { connection: mockConnection, changes: 2 };
       });
-      rerender({ key: 2 });
+      await rerender({ key: 2 });
       await act(async () => {
         first.resolve([]);
       });
@@ -818,7 +818,7 @@ describe('useMyWorkChapters Observer grants', () => {
       let staleStarted = false;
 
       try {
-        const { result, rerender } = renderHook(
+        const { result, rerender } = await renderHook(
           ({ key }: { key: number }) => useMyWorkChapters(key),
           { initialProps: { key: 0 } },
         );
@@ -842,7 +842,7 @@ describe('useMyWorkChapters Observer grants', () => {
             }),
         );
         mockWrites = 1;
-        rerender({ key: 1 });
+        await rerender({ key: 1 });
         await act(async () => {
           for (const effect of deferredPassives.splice(0)) {
             effect();
@@ -856,7 +856,7 @@ describe('useMyWorkChapters Observer grants', () => {
           return { connection: mockConnection, changes: 2 };
         });
 
-        rerender({ key: 2 });
+        await rerender({ key: 2 });
         expect(result.current.reading).toBe(true);
 
         await act(async () => {

@@ -39,13 +39,13 @@ describe('ForgotPasswordScreen', () => {
   });
 
   it('shows a validation error for an invalid email', async () => {
-    renderForgotPasswordScreen();
+    await renderForgotPasswordScreen();
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByTestId('forgot-password-email-input'),
       'not-an-email',
     );
-    fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
+    await fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
 
     expect(
       await screen.findByText('Please enter a valid email address'),
@@ -56,9 +56,9 @@ describe('ForgotPasswordScreen', () => {
   it('renders the sent state after a successful request', async () => {
     jest.mocked(FluentAPI.forgotPassword).mockResolvedValue({});
 
-    renderForgotPasswordScreen();
+    await renderForgotPasswordScreen();
 
-    fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
+    await fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
 
     await waitFor(() => {
       expect(FluentAPI.forgotPassword).toHaveBeenCalledWith('t@fluent.local');
@@ -69,15 +69,15 @@ describe('ForgotPasswordScreen', () => {
   it('resends the reset email from the sent state', async () => {
     jest.mocked(FluentAPI.forgotPassword).mockResolvedValue({});
 
-    renderForgotPasswordScreen();
-    fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
+    await renderForgotPasswordScreen();
+    await fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
 
     await waitFor(() => {
       expect(screen.getByTestId('forgot-password-sent-view')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('forgot-password-resend-button'));
-    fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
+    await fireEvent.press(screen.getByTestId('forgot-password-resend-button'));
+    await fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
 
     await waitFor(() => {
       expect(FluentAPI.forgotPassword).toHaveBeenCalledTimes(2);
@@ -89,8 +89,8 @@ describe('ForgotPasswordScreen', () => {
       .mocked(FluentAPI.forgotPassword)
       .mockRejectedValue(new Error('Network request failed'));
 
-    renderForgotPasswordScreen();
-    fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
+    await renderForgotPasswordScreen();
+    await fireEvent.press(screen.getByTestId('forgot-password-submit-button'));
 
     expect(
       await screen.findByTestId('forgot-password-global-error'),

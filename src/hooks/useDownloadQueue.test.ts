@@ -97,7 +97,7 @@ describe('useDownloadQueue transport gate', () => {
       connectionType: 'cellular',
     });
 
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await act(async () => {
       const gate = await result.current.start([queuedItem]);
@@ -115,7 +115,7 @@ describe('useDownloadQueue transport gate', () => {
       connectionType: 'wifi',
     });
 
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await act(async () => {
       const gate = await result.current.start([queuedItem]);
@@ -134,7 +134,7 @@ describe('useDownloadQueue transport gate', () => {
       connectionType: 'cellular',
     });
 
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await act(async () => {
       const gate = await result.current.resume();
@@ -148,7 +148,7 @@ describe('useDownloadQueue transport gate', () => {
   it('resumes a paused worker on Wi-Fi', async () => {
     mockGetState.mockReturnValue('paused');
 
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await act(async () => {
       await result.current.resume();
@@ -166,7 +166,7 @@ describe('useDownloadQueue transport gate', () => {
       connectionType: 'cellular',
     });
 
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await act(async () => {
       await result.current.start([queuedItem]);
@@ -184,7 +184,7 @@ describe('useDownloadQueue transport gate', () => {
       connectionType: 'cellular',
     });
 
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await act(async () => {
       await result.current.resume();
@@ -201,7 +201,7 @@ describe('useDownloadQueue transport gate', () => {
       connectionType: 'ethernet',
     });
 
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await act(async () => {
       await result.current.start([queuedItem]);
@@ -250,7 +250,7 @@ describe('useDownloadQueue idle discovery and active flags (#147)', () => {
       aggregateProgress: 0,
     });
 
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await waitFor(() => {
       expect(result.current.hasDownloads).toBe(false);
@@ -258,7 +258,7 @@ describe('useDownloadQueue idle discovery and active flags (#147)', () => {
   });
 
   it('refreshes an idle mounted consumer when the queue changes externally', async () => {
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await waitFor(() => {
       expect(result.current.hasDownloads).toBe(false);
@@ -282,8 +282,8 @@ describe('useDownloadQueue idle discovery and active flags (#147)', () => {
   });
 
   it('notifies both mounted consumers and cleans up on unmount', async () => {
-    const first = renderHook(() => useDownloadQueue());
-    const second = renderHook(() => useDownloadQueue());
+    const first = await renderHook(() => useDownloadQueue());
+    const second = await renderHook(() => useDownloadQueue());
 
     await waitFor(() => {
       expect(first.result.current.hasDownloads).toBe(false);
@@ -293,7 +293,7 @@ describe('useDownloadQueue idle discovery and active flags (#147)', () => {
     const callsAfterMount = (getDownloadQueueSnapshot as jest.Mock).mock.calls
       .length;
 
-    second.unmount();
+    await second.unmount();
 
     (getDownloadQueueSnapshot as jest.Mock).mockResolvedValue({
       items: [queuedItem],
@@ -332,7 +332,7 @@ describe('useDownloadQueue idle discovery and active flags (#147)', () => {
         aggregateProgress: 0,
       });
 
-    const { result } = renderHook(() => useDownloadQueue());
+    const { result } = await renderHook(() => useDownloadQueue());
 
     await waitFor(() => {
       expect(result.current.hasDownloads).toBe(true);

@@ -11,6 +11,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { Text, TouchableOpacity } from 'react-native';
+import { holdNextCall } from '../src/test/holdNextCall';
 
 // The children sit under the launch overlay and are hidden from accessibility
 // while it is up. These tests exercise session wiring, not accessibility, so
@@ -178,7 +179,7 @@ describe('AuthSessionProvider', () => {
 
   async function renderRestoredSession() {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
-    const utils = render(
+    const utils = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -193,7 +194,7 @@ describe('AuthSessionProvider', () => {
     const { hideSplash } = jest.requireMock('../src/navigation/splashGate') as {
       hideSplash: (reason: string) => void;
     };
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -217,7 +218,9 @@ describe('AuthSessionProvider', () => {
   });
 
   it('bootstraps session, then renders children', async () => {
-    const { getByTestId, getByText, queryByTestId } = render(
+    // Hold the restore open: RNTL 14's async render flushes resolved reads.
+    const releaseRestore = holdNextCall(mockRestoreSession);
+    const { getByTestId, getByText, queryByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -228,6 +231,7 @@ describe('AuthSessionProvider', () => {
     expect(mockArmSplashGate).toHaveBeenCalledTimes(1);
     expect(mockHoldSplashForFirstPaint).not.toHaveBeenCalled();
 
+    await act(async () => releaseRestore());
     await waitFor(() => {
       expect(queryByTestId('auth-session-loading')).toBeNull();
       expect(getByTestId('auth-flag').props.children).toBe('no');
@@ -244,7 +248,7 @@ describe('AuthSessionProvider', () => {
     const { hideSplash } = jest.requireMock('../src/navigation/splashGate') as {
       hideSplash: (reason: string) => void;
     };
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -264,7 +268,7 @@ describe('AuthSessionProvider', () => {
 
   it('says it is still loading after the overlay has been up for 4 seconds', async () => {
     jest.useFakeTimers();
-    const { getByText, unmount } = render(
+    const { getByText, unmount } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -278,7 +282,7 @@ describe('AuthSessionProvider', () => {
       jest.advanceTimersByTime(4_000);
     });
     expect(getByText('Still loading…')).toBeTruthy();
-    unmount();
+    await unmount();
     jest.useRealTimers();
   });
 
@@ -299,7 +303,7 @@ describe('AuthSessionProvider', () => {
     // Never settles: the first screen must not wait on it.
     clearOrphanedPausedTakes.mockReturnValueOnce(new Promise<number>(() => {}));
 
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -332,7 +336,7 @@ describe('AuthSessionProvider', () => {
     ) as { clearOrphanedPausedTakes: jest.Mock };
     initializeDatabase.mockRejectedValueOnce(new Error('db boom'));
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -350,7 +354,7 @@ describe('AuthSessionProvider', () => {
     clearOrphanedPausedTakes.mockRejectedValueOnce(new Error('kv down'));
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
 
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -371,7 +375,7 @@ describe('AuthSessionProvider', () => {
 
   it('restores auth and starts upload orchestrator', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -388,7 +392,7 @@ describe('AuthSessionProvider', () => {
   it('holds the upload orchestrator and auto-resume until the first paint (#1002)', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
     mockAfterFirstPaint.mockImplementationOnce(() => {});
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -402,7 +406,7 @@ describe('AuthSessionProvider', () => {
     expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
     expect(mockRefreshSyncStatusStore).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(() => {
       mockAfterFirstPaint.mock.calls[0][0]();
     });
     expect(mockStartUploadOrchestrator).toHaveBeenCalled();
@@ -412,7 +416,7 @@ describe('AuthSessionProvider', () => {
     const stopAutoResume =
       mockStartDownloadQueueAutoResume.mock.results[0].value;
     await act(async () => {
-      fireEvent.press(getByTestId('sign-out'));
+      await fireEvent.press(getByTestId('sign-out'));
     });
     expect(mockStopDownloadQueueAutoResume).toHaveBeenCalledWith(
       stopAutoResume,
@@ -422,7 +426,7 @@ describe('AuthSessionProvider', () => {
   it('does not start the orchestrator when the provider unmounts before the first paint (#1002)', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
     mockAfterFirstPaint.mockImplementationOnce(() => {});
-    const { getByTestId, unmount } = render(
+    const { getByTestId, unmount } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -432,8 +436,8 @@ describe('AuthSessionProvider', () => {
     });
     const deferredStart = mockAfterFirstPaint.mock.calls[0][0];
 
-    unmount();
-    act(() => {
+    await unmount();
+    await act(() => {
       deferredStart();
     });
 
@@ -452,7 +456,7 @@ describe('AuthSessionProvider', () => {
     expect(mockRefreshSyncStatusStore).toHaveBeenCalled();
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in'));
+      await fireEvent.press(getByTestId('sign-in'));
     });
     expect(mockSyncAllData).toHaveBeenCalled();
   });
@@ -466,12 +470,12 @@ describe('AuthSessionProvider', () => {
     expect(mockRefreshSyncStatusStore).toHaveBeenCalled();
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in'));
+      await fireEvent.press(getByTestId('sign-in'));
     });
     expect(mockSyncAllData).toHaveBeenCalled();
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-out'));
+      await fireEvent.press(getByTestId('sign-out'));
     });
     expect(mockStopDownloadQueueAutoResume).toHaveBeenCalledWith(null);
   });
@@ -482,14 +486,14 @@ describe('AuthSessionProvider', () => {
     const { getByTestId } = await renderRestoredSession();
 
     await act(async () => {
-      fireEvent.press(getByTestId('switch-user'));
+      await fireEvent.press(getByTestId('switch-user'));
     });
     expect(mockResetSyncStatusStore).toHaveBeenCalledTimes(1);
     expect(mockStartUploadOrchestrator).not.toHaveBeenCalled();
     expect(mockStartDownloadQueueAutoResume).not.toHaveBeenCalled();
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-out'));
+      await fireEvent.press(getByTestId('sign-out'));
     });
     expect(getByTestId('auth-flag').props.children).toBe('no');
     expect(mockStopUploadOrchestrator).toHaveBeenCalled();
@@ -504,7 +508,7 @@ describe('AuthSessionProvider', () => {
         }),
     );
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -514,7 +518,7 @@ describe('AuthSessionProvider', () => {
     });
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in'));
+      await fireEvent.press(getByTestId('sign-in'));
     });
     expect(getByTestId('sync-flag').props.children).toBe('yes');
 
@@ -536,7 +540,7 @@ describe('AuthSessionProvider', () => {
       });
     });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -546,7 +550,7 @@ describe('AuthSessionProvider', () => {
     });
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-in'));
+      await fireEvent.press(getByTestId('sign-in'));
     });
 
     await waitFor(() => {
@@ -561,7 +565,7 @@ describe('AuthSessionProvider', () => {
 
   it('signOut clears auth', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -571,7 +575,7 @@ describe('AuthSessionProvider', () => {
     });
 
     await act(async () => {
-      fireEvent.press(getByTestId('sign-out'));
+      await fireEvent.press(getByTestId('sign-out'));
     });
     expect(getByTestId('auth-flag').props.children).toBe('no');
     expect(mockSignOut).toHaveBeenCalled();
@@ -580,7 +584,7 @@ describe('AuthSessionProvider', () => {
 
   it('refreshes the sync-status store when a session starts', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -593,7 +597,7 @@ describe('AuthSessionProvider', () => {
   });
 
   it('does not touch the sync-status store while signed out', async () => {
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -608,7 +612,7 @@ describe('AuthSessionProvider', () => {
 
   it('resets the sync-status store on sign-out and on user switch', async () => {
     mockRestoreSession.mockResolvedValueOnce({ authenticated: true });
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -621,7 +625,7 @@ describe('AuthSessionProvider', () => {
     // User switch: reset the old user's counts, then reload for the new user.
     const refreshesBefore = mockRefreshSyncStatusStore.mock.calls.length;
     await act(async () => {
-      fireEvent.press(getByTestId('switch-user'));
+      await fireEvent.press(getByTestId('switch-user'));
     });
     expect(mockResetSyncStatusStore).toHaveBeenCalledTimes(1);
     expect(mockRefreshSyncStatusStore.mock.calls.length).toBe(
@@ -630,7 +634,7 @@ describe('AuthSessionProvider', () => {
 
     // Sign-out: reset again, and nothing reloads for a signed-out app.
     await act(async () => {
-      fireEvent.press(getByTestId('sign-out'));
+      await fireEvent.press(getByTestId('sign-out'));
     });
     expect(mockResetSyncStatusStore).toHaveBeenCalledTimes(2);
     expect(mockRefreshSyncStatusStore.mock.calls.length).toBe(
@@ -644,7 +648,7 @@ describe('AuthSessionProvider', () => {
     };
     initializeDatabase.mockRejectedValueOnce(new Error('db boom'));
 
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = await render(
       <AuthSessionProvider>
         <AuthProbe />
       </AuthSessionProvider>,
@@ -656,7 +660,7 @@ describe('AuthSessionProvider', () => {
     expect(queryByTestId('auth-flag')).toBeNull();
 
     // The error is the first screen: once laid out, it takes the splash down.
-    fireEvent(getByTestId('auth-session-error'), 'layout', {
+    await fireEvent(getByTestId('auth-session-error'), 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 100 } },
     });
     expect(mockHideSplash).toHaveBeenCalledWith('init-error');

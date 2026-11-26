@@ -19,8 +19,8 @@ const resource = {
 };
 
 describe('StorageResourceRow', () => {
-  it('shows kind label and formatted size', () => {
-    render(
+  it('shows kind label and formatted size', async () => {
+    await render(
       <StorageResourceRow
         resource={resource}
         selected={false}
@@ -32,10 +32,10 @@ describe('StorageResourceRow', () => {
     expect(screen.getByText('125 MB')).toBeTruthy();
   });
 
-  it('calls onToggle when pressed', () => {
+  it('calls onToggle when pressed', async () => {
     const onToggle = jest.fn();
 
-    render(
+    await render(
       <StorageResourceRow
         resource={resource}
         selected={false}
@@ -43,12 +43,14 @@ describe('StorageResourceRow', () => {
       />,
     );
 
-    fireEvent.press(screen.getByTestId('storage-resource-row-resource-b'));
+    await fireEvent.press(
+      screen.getByTestId('storage-resource-row-resource-b'),
+    );
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
-  it('reflects selected accessibility state', () => {
-    render(
+  it('reflects selected accessibility state', async () => {
+    await render(
       <StorageResourceRow
         resource={resource}
         selected={true}

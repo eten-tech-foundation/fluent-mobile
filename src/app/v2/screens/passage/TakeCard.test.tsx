@@ -63,9 +63,9 @@ function Card({
   );
 }
 
-function renderTake(take: FrontTake, firstVerse = 1) {
-  const result = render(<Card take={take} firstVerse={firstVerse} />);
-  fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
+async function renderTake(take: FrontTake, firstVerse = 1) {
+  const result = await render(<Card take={take} firstVerse={firstVerse} />);
+  await fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
     nativeEvent: { layout: { width: SLOT, height: 52 } },
   });
   return result;
@@ -89,8 +89,8 @@ describe('TakeCard live waveform', () => {
     mockPreferenceStore();
   });
 
-  it('spreads a short recording across the measured card width, newest last', () => {
-    renderTake(recordingTake());
+  it('spreads a short recording across the measured card width, newest last', async () => {
+    await renderTake(recordingTake());
 
     expect(barCount()).toBe(SLOT_BARS);
     expect(barHeight(0)).toBe(levelHeight(0.2));
@@ -100,12 +100,12 @@ describe('TakeCard live waveform', () => {
     ).toBe('progressbar');
   });
 
-  it('keeps that wave on pause and continues it on resume', () => {
-    const { rerender } = renderTake(recordingTake());
+  it('keeps that wave on pause and continues it on resume', async () => {
+    const { rerender } = await renderTake(recordingTake());
     expect(barCount()).toBe(SLOT_BARS);
     expect(barHeight(SLOT_BARS - 1)).toBe(levelHeight(0.8));
 
-    rerender(
+    await rerender(
       <Card
         take={recordingTake({
           recording: false,
@@ -114,14 +114,14 @@ describe('TakeCard live waveform', () => {
         })}
       />,
     );
-    fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
+    await fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
       nativeEvent: { layout: { width: SLOT, height: 52 } },
     });
     expect(barCount()).toBe(SLOT_BARS);
     expect(barHeight(SLOT_BARS - 1)).toBe(levelHeight(0.8));
     expect(screen.getByLabelText('Take 1, paused, 0:02')).toBeTruthy();
 
-    rerender(
+    await rerender(
       <Card
         take={recordingTake({
           levels: [0.2, 0.8, 0.5],
@@ -129,16 +129,16 @@ describe('TakeCard live waveform', () => {
         })}
       />,
     );
-    fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
+    await fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
       nativeEvent: { layout: { width: SLOT, height: 52 } },
     });
     expect(barCount()).toBe(SLOT_BARS);
     expect(barHeight(SLOT_BARS - 1)).toBe(levelHeight(0.5));
   });
 
-  it('shows the saved take across the same width after stop', () => {
-    const { rerender } = renderTake(recordingTake());
-    rerender(
+  it('shows the saved take across the same width after stop', async () => {
+    const { rerender } = await renderTake(recordingTake());
+    await rerender(
       <Card
         take={recordingTake({
           recording: false,
@@ -146,7 +146,7 @@ describe('TakeCard live waveform', () => {
         })}
       />,
     );
-    fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
+    await fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
       nativeEvent: { layout: { width: SLOT, height: 52 } },
     });
 
@@ -156,9 +156,9 @@ describe('TakeCard live waveform', () => {
     expect(screen.getByLabelText('Take 1 playback')).toBeTruthy();
   });
 
-  it('starts a new wave for the next take', () => {
-    const { rerender } = renderTake(recordingTake());
-    rerender(
+  it('starts a new wave for the next take', async () => {
+    const { rerender } = await renderTake(recordingTake());
+    await rerender(
       <Card
         take={recordingTake({
           takeNumber: 2,
@@ -166,7 +166,7 @@ describe('TakeCard live waveform', () => {
         })}
       />,
     );
-    fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
+    await fireEvent(screen.getByTestId('passage-take-wave-slot'), 'layout', {
       nativeEvent: { layout: { width: SLOT, height: 52 } },
     });
 
@@ -176,16 +176,16 @@ describe('TakeCard live waveform', () => {
     expect(screen.getByLabelText('Take 2, recording, 0:01')).toBeTruthy();
   });
 
-  it('drops a bar when the verse chip is three digits wide', () => {
-    renderTake(recordingTake(), 176);
+  it('drops a bar when the verse chip is three digits wide', async () => {
+    await renderTake(recordingTake(), 176);
 
     expect(barCount()).toBe(barsInTakeWave(SLOT, 176, SPACING));
     expect(barCount()).toBe(SLOT_BARS - 1);
   });
 
-  it('still fills the width when motion is reduced', () => {
+  it('still fills the width when motion is reduced', async () => {
     mockReduceMotion = true;
-    renderTake(recordingTake());
+    await renderTake(recordingTake());
 
     expect(barCount()).toBe(SLOT_BARS);
   });

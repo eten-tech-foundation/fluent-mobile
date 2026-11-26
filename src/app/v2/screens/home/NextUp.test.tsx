@@ -115,10 +115,10 @@ describe('nextUpStatusLine', () => {
 });
 
 describe('NextUp', () => {
-  it('opens the passage from the hero, one TalkBack stop', () => {
+  it('opens the passage from the hero, one TalkBack stop', async () => {
     const onOpen = jest.fn();
     const hero = item('birth', { recordedStatus: 'partial' });
-    render(
+    await render(
       <NextUp
         nextUp={{ status: 'ready', hero, after: [], checking: [] }}
         onOpen={onOpen}
@@ -127,7 +127,7 @@ describe('NextUp', () => {
 
     expect(screen.getByRole('header', { name: 'Next up' })).toBeTruthy();
     expect(screen.getAllByRole('button')).toHaveLength(1);
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', {
         name: 'Birth, Matthew 1:18–25, Draft · Gospels Phase 1. Keep recording.',
       }),
@@ -138,8 +138,8 @@ describe('NextUp', () => {
     expect(screen.queryByText('Then')).toBeNull();
   });
 
-  it('leaves the reference to the cover when the passage has no title', () => {
-    render(
+  it('leaves the reference to the cover when the passage has no title', async () => {
+    await render(
       <NextUp
         nextUp={{
           status: 'ready',
@@ -159,14 +159,14 @@ describe('NextUp', () => {
     ).toBeTruthy();
   });
 
-  it('lists the passages after it and opens one', () => {
+  it('lists the passages after it and opens one', async () => {
     const onOpen = jest.fn();
     const next = item('genealogy', {
       title: null,
       reference: 'Matthew 1:1–17',
       verses: '1–17',
     });
-    render(
+    await render(
       <NextUp
         nextUp={{
           status: 'ready',
@@ -180,7 +180,7 @@ describe('NextUp', () => {
 
     expect(screen.getByText('Then')).toBeTruthy();
     expect(screen.queryByText('Matthew 1:1–17')).toBeNull();
-    fireEvent.press(screen.getByTestId('home-next-1:genealogy'));
+    await fireEvent.press(screen.getByTestId('home-next-1:genealogy'));
     expect(onOpen).toHaveBeenCalledWith(next);
   });
 
@@ -192,7 +192,7 @@ describe('NextUp', () => {
         workflowStage: 'peer_check',
       } as MyWorkChapter),
     );
-    render(
+    await render(
       <NextUp
         nextUp={{ status: 'ready', hero: null, after: [], checking: checks }}
         onOpen={jest.fn()}
@@ -214,14 +214,14 @@ describe('NextUp', () => {
     );
   });
 
-  it('waits for the passages before showing anything', () => {
-    render(<NextUp nextUp={{ status: 'loading' }} onOpen={jest.fn()} />);
+  it('waits for the passages before showing anything', async () => {
+    await render(<NextUp nextUp={{ status: 'loading' }} onOpen={jest.fn()} />);
 
     expect(screen.queryByTestId('home-next-up')).toBeNull();
   });
 
-  it('points to the books when nothing is left to record', () => {
-    render(
+  it('points to the books when nothing is left to record', async () => {
+    await render(
       <NextUp
         nextUp={{ status: 'ready', hero: null, after: [], checking: [] }}
         onOpen={jest.fn()}

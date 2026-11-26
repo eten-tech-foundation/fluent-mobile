@@ -51,16 +51,16 @@ const baseItem: PrepareOfflineResourceItem = {
 };
 
 describe('ResourceItemRow', () => {
-  it('shows completed status icon before the label in summary mode', () => {
-    render(<ResourceItemRow item={baseItem} mode="summary" />);
+  it('shows completed status icon before the label in summary mode', async () => {
+    await render(<ResourceItemRow item={baseItem} mode="summary" />);
 
     expect(screen.getByTestId('resource-status-completed')).toBeTruthy();
     expect(screen.getByText('Text')).toBeTruthy();
     expect(screen.getByText('8 MB')).toBeTruthy();
   });
 
-  it('shows pending download icon before the label for selected items', () => {
-    render(
+  it('shows pending download icon before the label for selected items', async () => {
+    await render(
       <ResourceItemRow
         item={{ ...baseItem, tier: 3, status: 'selected' }}
         mode="summary"
@@ -70,8 +70,8 @@ describe('ResourceItemRow', () => {
     expect(screen.getByTestId('resource-status-pending')).toBeTruthy();
   });
 
-  it('shows tier lock in summary for tier 1 rows not yet on device', () => {
-    render(
+  it('shows tier lock in summary for tier 1 rows not yet on device', async () => {
+    await render(
       <ResourceItemRow
         item={{ ...baseItem, status: 'selected' }}
         mode="summary"
@@ -83,15 +83,17 @@ describe('ResourceItemRow', () => {
     expect(screen.queryByTestId('resource-status-pending')).toBeNull();
   });
 
-  it('shows completed check in summary for tier 1 rows already on device', () => {
-    render(<ResourceItemRow item={baseItem} mode="summary" showTierLock />);
+  it('shows completed check in summary for tier 1 rows already on device', async () => {
+    await render(
+      <ResourceItemRow item={baseItem} mode="summary" showTierLock />,
+    );
 
     expect(screen.getByTestId('resource-status-completed')).toBeTruthy();
     expect(screen.queryByTestId('resource-summary-tier-lock')).toBeNull();
   });
 
-  it('shows progress ring while downloading in summary mode', () => {
-    render(
+  it('shows progress ring while downloading in summary mode', async () => {
+    await render(
       <ResourceItemRow
         item={{ ...baseItem, status: 'downloading', progress: 0.67 }}
         mode="summary"
@@ -107,8 +109,8 @@ describe('ResourceItemRow', () => {
     ).toBe(0.67);
   });
 
-  it('shows static progress ring while paused in summary mode', () => {
-    render(
+  it('shows static progress ring while paused in summary mode', async () => {
+    await render(
       <ResourceItemRow
         item={{ ...baseItem, status: 'paused', progress: 0.42 }}
         mode="summary"
@@ -122,8 +124,8 @@ describe('ResourceItemRow', () => {
     ).toBe(0.42);
   });
 
-  it('shows tier lock in customize for required tier 1 rows', () => {
-    render(
+  it('shows tier lock in customize for required tier 1 rows', async () => {
+    await render(
       <ResourceItemRow
         item={baseItem}
         mode="customize"
@@ -136,8 +138,8 @@ describe('ResourceItemRow', () => {
     expect(screen.getByTestId('resource-customize-tier-lock')).toBeTruthy();
   });
 
-  it('shows green check for on-device tier 2/3 rows in customize', () => {
-    render(
+  it('shows green check for on-device tier 2/3 rows in customize', async () => {
+    await render(
       <ResourceItemRow
         item={{ ...baseItem, tier: 2 }}
         mode="customize"
@@ -153,8 +155,8 @@ describe('ResourceItemRow', () => {
     expect(screen.queryByTestId('resource-customize-tier-lock')).toBeNull();
   });
 
-  it('keeps downloading tier 2/3 rows editable in customize', () => {
-    render(
+  it('keeps downloading tier 2/3 rows editable in customize', async () => {
+    await render(
       <ResourceItemRow
         item={{
           ...baseItem,
@@ -181,8 +183,8 @@ describe('ResourceItemRow', () => {
     ).toBeTruthy();
   });
 
-  it('shows full catalog size even when partial progress is saved on a row', () => {
-    render(
+  it('shows full catalog size even when partial progress is saved on a row', async () => {
+    await render(
       <ResourceItemRow
         item={{
           ...baseItem,

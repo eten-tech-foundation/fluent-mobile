@@ -25,18 +25,18 @@ const milestone: MilestoneSummary = {
 };
 
 describe('MilestoneRow', () => {
-  it('shows milestone name and project subtitle with count', () => {
-    render(<MilestoneRow milestone={milestone} onPress={jest.fn()} />);
+  it('shows milestone name and project subtitle with count', async () => {
+    await render(<MilestoneRow milestone={milestone} onPress={jest.fn()} />);
 
     expect(screen.getByText('Mark')).toBeTruthy();
     expect(screen.getByText('Baka NT · 3 milestones')).toBeTruthy();
     expect(screen.getByTestId('milestone-row-12')).toBeTruthy();
   });
 
-  it('invokes onPress when the row is pressed', () => {
+  it('invokes onPress when the row is pressed', async () => {
     const onPress = jest.fn();
-    render(<MilestoneRow milestone={milestone} onPress={onPress} />);
-    fireEvent.press(screen.getByTestId('milestone-row-12'));
+    await render(<MilestoneRow milestone={milestone} onPress={onPress} />);
+    await fireEvent.press(screen.getByTestId('milestone-row-12'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

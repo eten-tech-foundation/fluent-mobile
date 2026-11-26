@@ -45,11 +45,11 @@ describe('PassageCover', () => {
     jest.restoreAllMocks();
   });
 
-  it('says the title, reference and status, and opens on tap', () => {
+  it('says the title, reference and status, and opens on tap', async () => {
     const onPress = jest.fn();
-    render(cover({ recordedVerses: 2, onPress }));
+    await render(cover({ recordedVerses: 2, onPress }));
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', {
         name: 'The Last Supper, Mark 14:22–25, Partly recorded',
       }),
@@ -58,25 +58,25 @@ describe('PassageCover', () => {
     expect(screen.queryByText('Partly recorded')).toBeNull();
   });
 
-  it('shows no title under the cover without a pericope title', () => {
-    render(cover({ title: undefined }));
+  it('shows no title under the cover without a pericope title', async () => {
+    await render(cover({ title: undefined }));
     expect(screen.queryByText('Mark 14:22–25')).toBeNull();
     expect(
       screen.getByRole('button', { name: 'Mark 14:22–25, Not recorded yet' }),
     ).toBeTruthy();
   });
 
-  it('draws some art before anything is recorded', () => {
+  it('draws some art before anything is recorded', async () => {
     const spec = jest.spyOn(generator, 'coverArtSpec');
-    render(cover());
+    await render(cover());
     expect(spec).toHaveBeenCalledWith(
       expect.objectContaining({ progress: generator.artProgress(0) }),
       expect.anything(),
     );
   });
 
-  it('draws on the lighter surface ground', () => {
-    render(<UiVersionOverride value="next">{cover()}</UiVersionOverride>);
+  it('draws on the lighter surface ground', async () => {
+    await render(<UiVersionOverride value="next">{cover()}</UiVersionOverride>);
 
     const face = screen.getByTestId('cover-face');
     expect(StyleSheet.flatten(face.props.style).backgroundColor).toBe(
@@ -88,9 +88,9 @@ describe('PassageCover', () => {
     ['Not recorded yet', 0],
     ['Partly recorded', 2],
     ['Recorded', 4],
-  ])('has no badge while it is %s', (status, recordedVerses) => {
-    render(cover({ recordedVerses }));
-    measure();
+  ])('has no badge while it is %s', async (status, recordedVerses) => {
+    await render(cover({ recordedVerses }));
+    await measure();
     expect(screen.queryByTestId('cover-badge', hidden)).toBeNull();
     expect(
       screen.getByRole('button', {
@@ -99,16 +99,16 @@ describe('PassageCover', () => {
     ).toBeTruthy();
   });
 
-  it('waits to draw the badge until the cover is measured', () => {
-    render(cover({ recordedVerses: 4, submitted: true }));
+  it('waits to draw the badge until the cover is measured', async () => {
+    await render(cover({ recordedVerses: 4, submitted: true }));
     expect(screen.queryByTestId('cover-badge', hidden)).toBeNull();
-    measure();
+    await measure();
     expect(screen.getByTestId('cover-badge', hidden)).toBeTruthy();
   });
 
-  it('shows a static peer check badge, with no progress to fake', () => {
-    render(cover({ recordedVerses: 4, submitted: true }));
-    measure();
+  it('shows a static peer check badge, with no progress to fake', async () => {
+    await render(cover({ recordedVerses: 4, submitted: true }));
+    await measure();
     expect(screen.getByTestId('cover-badge-peer-check', hidden)).toBeTruthy();
     expect(screen.queryByTestId('cover-badge-ring', hidden)).toBeNull();
     expect(screen.queryByTestId('cover-badge-check', hidden)).toBeNull();
@@ -119,9 +119,9 @@ describe('PassageCover', () => {
     ).toBeTruthy();
   });
 
-  it('shows a cloud while its send waits to go up', () => {
-    render(cover({ recordedVerses: 4, waitingToSend: true }));
-    measure();
+  it('shows a cloud while its send waits to go up', async () => {
+    await render(cover({ recordedVerses: 4, waitingToSend: true }));
+    await measure();
     expect(screen.getByTestId('cover-badge-waiting', hidden)).toBeTruthy();
     expect(screen.queryByTestId('cover-badge-ring', hidden)).toBeNull();
     expect(
@@ -131,9 +131,11 @@ describe('PassageCover', () => {
     ).toBeTruthy();
   });
 
-  it('waits to send before it reads as in peer check', () => {
-    render(cover({ recordedVerses: 4, waitingToSend: true, submitted: true }));
-    measure();
+  it('waits to send before it reads as in peer check', async () => {
+    await render(
+      cover({ recordedVerses: 4, waitingToSend: true, submitted: true }),
+    );
+    await measure();
     expect(
       screen.getByRole('button', {
         name: 'The Last Supper, Mark 14:22–25, Waiting to send',
@@ -141,9 +143,11 @@ describe('PassageCover', () => {
     ).toBeTruthy();
   });
 
-  it('shows a check once it passes peer check', () => {
-    render(cover({ recordedVerses: 4, submitted: true, peerChecked: true }));
-    measure();
+  it('shows a check once it passes peer check', async () => {
+    await render(
+      cover({ recordedVerses: 4, submitted: true, peerChecked: true }),
+    );
+    await measure();
     expect(screen.getByTestId('cover-badge-check', hidden)).toBeTruthy();
     expect(screen.queryByTestId('cover-badge-ring', hidden)).toBeNull();
     expect(

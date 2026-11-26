@@ -37,7 +37,7 @@ describe('useUploadSessionState', () => {
       pausedUntilMs: null,
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -60,7 +60,7 @@ describe('useUploadSessionState', () => {
       pausedUntilMs: null,
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -84,7 +84,7 @@ describe('useUploadSessionState', () => {
       holdReason: 'drafting',
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -116,7 +116,7 @@ describe('useUploadSessionState', () => {
       holdReason: null,
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -138,7 +138,7 @@ describe('useUploadSessionState', () => {
       pausedUntilMs: until,
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -160,7 +160,7 @@ describe('useUploadSessionState', () => {
       pausedUntilMs: null,
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -179,7 +179,7 @@ describe('useUploadSessionState', () => {
       pausedUntilMs: null,
     });
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
     });
 
@@ -197,7 +197,7 @@ describe('useUploadSessionState', () => {
       pausedUntilMs: null,
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -213,7 +213,7 @@ describe('useUploadSessionState', () => {
   });
 
   it('pause calls pauseUploadSession', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -229,7 +229,7 @@ describe('useUploadSessionState', () => {
   });
 
   it('cancel calls cancelUploadSession', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -245,7 +245,7 @@ describe('useUploadSessionState', () => {
   });
 
   it('resumeUploads calls syncNowUploads', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -263,7 +263,7 @@ describe('useUploadSessionState', () => {
   it('sets sessionError when control action fails', async () => {
     mockPauseUploadSession.mockRejectedValue(new Error('orchestrator down'));
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -288,7 +288,7 @@ describe('useUploadSessionState', () => {
         }),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -297,7 +297,7 @@ describe('useUploadSessionState', () => {
     );
 
     let syncPromise!: Promise<void>;
-    act(() => {
+    await act(() => {
       syncPromise = result.current.syncNowUploads();
     });
 
@@ -313,7 +313,7 @@ describe('useUploadSessionState', () => {
   });
 
   it('does not report uploadComplete when pending counts are unknown', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: false,
         hasFailedUploads: false,
@@ -329,7 +329,7 @@ describe('useUploadSessionState', () => {
   });
 
   it('keeps pageStatus pending when only unuploadable takes remain after idle', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: false,
         hasFailedUploads: false,
@@ -344,7 +344,7 @@ describe('useUploadSessionState', () => {
   });
 
   it('reports allComplete when uploads and downloads are both clear', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: false,
         hasFailedUploads: false,
@@ -359,7 +359,7 @@ describe('useUploadSessionState', () => {
   });
 
   it('reports uploadComplete when uploads are clear but downloads remain', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: false,
         hasFailedUploads: false,
@@ -382,7 +382,7 @@ describe('useUploadSessionState', () => {
         }),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useUploadSessionState({
         hasPendingUploads: true,
         hasFailedUploads: false,
@@ -391,7 +391,7 @@ describe('useUploadSessionState', () => {
     );
 
     let pausePromise!: Promise<void>;
-    act(() => {
+    await act(() => {
       pausePromise = result.current.pause();
     });
 

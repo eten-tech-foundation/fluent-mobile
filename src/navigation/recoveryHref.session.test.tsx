@@ -214,7 +214,7 @@ function renderSession(
 }
 
 async function resumeAndFinish(
-  result: ReturnType<typeof renderSession>['result'],
+  result: Awaited<ReturnType<typeof renderSession>>['result'],
 ) {
   await act(async () => {
     await result.current.verseAudio.resume();
@@ -288,7 +288,7 @@ describe('resuming a saved take in Next (#914)', () => {
       const recovery = await recover();
       expect(recovery).toEqual({ verse: 23, unit });
 
-      const { result } = renderSession(recovery!, wholeChapter);
+      const { result } = await renderSession(recovery!, wholeChapter);
 
       await waitFor(() =>
         expect(result.current.verseAudio.state).toBe('paused'),
@@ -326,7 +326,7 @@ describe('resuming a saved take in Next (#914)', () => {
 
     const recovery = await recover();
     expect(recovery).toEqual({ verse: 23, unit: 'verse' });
-    const { result } = renderSession(recovery!);
+    const { result } = await renderSession(recovery!);
     await waitFor(() => expect(result.current.verseAudio.state).toBe('paused'));
     await resumeAndFinish(result);
     expect(mockPersistTake).toHaveBeenCalledWith(
@@ -339,7 +339,7 @@ describe('resuming a saved take in Next (#914)', () => {
     mockPersistTake.mockRejectedValueOnce(new Error('disk full'));
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const recovery = await recover();
-    const { result } = renderSession(recovery!);
+    const { result } = await renderSession(recovery!);
     await waitFor(() => expect(result.current.verseAudio.state).toBe('paused'));
 
     await resumeAndFinish(result);
@@ -361,13 +361,13 @@ describe('resuming a saved take in Next (#914)', () => {
   it('brings the same take back again after leaving it, without a second capture', async () => {
     mockPausedMarkers.push(marker({ capture: passageCapture }));
     const recovery = await recover();
-    const first = renderSession(recovery!);
+    const first = await renderSession(recovery!);
     await waitFor(() =>
       expect(first.result.current.verseAudio.state).toBe('paused'),
     );
-    first.unmount();
+    await first.unmount();
 
-    const again = renderSession((await recover())!);
+    const again = await renderSession((await recover())!);
     await waitFor(() =>
       expect(again.result.current.verseAudio.state).toBe('paused'),
     );
@@ -380,7 +380,7 @@ describe('resuming a saved take in Next (#914)', () => {
 
   it('plays the saved take back through the take player', async () => {
     mockPausedMarkers.push(marker({ capture: verseCapture }));
-    const { result } = renderSession((await recover())!);
+    const { result } = await renderSession((await recover())!);
     await waitFor(() => expect(result.current.verseAudio.state).toBe('paused'));
     await resumeAndFinish(result);
 
@@ -406,7 +406,7 @@ describe('resuming a saved take in Next (#914)', () => {
 
     it("isn't recovered, cleared or recorded over on its verse", async () => {
       const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-      const { result } = renderSession({ verse: 23, unit: 'verse' });
+      const { result } = await renderSession({ verse: 23, unit: 'verse' });
       await waitFor(() => expect(result.current.captureBibleTextId).toBe(43));
       await act(async () => {});
       expect(result.current.verseAudio.state).toBe('idle');
@@ -430,7 +430,11 @@ describe('resuming a saved take in Next (#914)', () => {
     });
 
     it('comes back for the account that paused it', async () => {
-      const { result } = renderSession({ verse: 23, unit: 'verse' }, false, 8);
+      const { result } = await renderSession(
+        { verse: 23, unit: 'verse' },
+        false,
+        8,
+      );
       await waitFor(() =>
         expect(result.current.verseAudio.state).toBe('paused'),
       );

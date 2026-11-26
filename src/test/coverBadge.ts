@@ -1,8 +1,8 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 
 /** Lays a cover face out at the width its sizes are drawn for, so its badge draws. */
-export function measureFace(testID: string): void {
-  fireEvent(screen.getByTestId(testID), 'layout', {
+export async function measureFace(testID: string): Promise<void> {
+  await fireEvent(screen.getByTestId(testID), 'layout', {
     nativeEvent: { layout: { width: 165, height: 165 } },
   });
 }

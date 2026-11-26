@@ -268,11 +268,11 @@ type RenderTabOptions = {
   ) => void;
 };
 
-function renderTab(
+async function renderTab(
   onCaptureActiveChange?: (active: boolean) => void,
   options?: RenderTabOptions,
 ) {
-  return render(
+  return await render(
     <DraftingProvider verses={verses} initialVerse={3}>
       <RecordTab
         chapterData={options?.chapterData ?? chapterData}
@@ -344,7 +344,7 @@ describe('RecordTab', () => {
   });
 
   it('renders idle design chrome: verse nav, record, source link', async () => {
-    renderTab();
+    await renderTab();
 
     expect(screen.getByTestId('record-tab')).toBeTruthy();
     expect(screen.getByTestId('record-verse-reference')).toBeTruthy();
@@ -446,7 +446,7 @@ describe('RecordTab', () => {
       return idleAudio;
     });
 
-    render(
+    await render(
       <DraftingProvider verses={multiVerses} initialVerse={3}>
         <RecordTab chapterData={chapterData} userId={42} />
       </DraftingProvider>,
@@ -456,7 +456,7 @@ describe('RecordTab', () => {
       expect(capturedIds.some(id => id === 100)).toBe(true);
     });
 
-    fireEvent.press(screen.getByTestId('record-next-verse'));
+    await fireEvent.press(screen.getByTestId('record-next-verse'));
 
     expect(screen.getByTestId('record-start-button')).toBeDisabled();
     expect(capturedIds.at(-1)).toBeNull();
@@ -471,7 +471,7 @@ describe('RecordTab', () => {
   it('does not claim text is syncing when bible text is missing and sync is idle', async () => {
     mockGetBibleTextId.mockResolvedValueOnce(null);
 
-    renderTab();
+    await renderTab();
 
     await waitFor(() => {
       expect(screen.getByTestId('record-syncing-hint')).toHaveTextContent(
@@ -487,7 +487,7 @@ describe('RecordTab', () => {
     mockIsSyncing = true;
     mockGetBibleTextId.mockResolvedValueOnce(null);
 
-    renderTab();
+    await renderTab();
 
     await waitFor(() => {
       expect(screen.getByTestId('record-syncing-hint')).toHaveTextContent(
@@ -500,19 +500,19 @@ describe('RecordTab', () => {
   it('opens Sync when source text is unavailable and Open Sync is pressed', async () => {
     mockGetBibleTextId.mockResolvedValueOnce(null);
 
-    renderTab();
+    await renderTab();
 
     await waitFor(() => {
       expect(screen.getByTestId('record-open-sync-button')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('record-open-sync-button'));
+    await fireEvent.press(screen.getByTestId('record-open-sync-button'));
 
     expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
   });
 
-  it('registers shell source-audio integration for idle record chrome', () => {
-    renderTab();
+  it('registers shell source-audio integration for idle record chrome', async () => {
+    await renderTab();
 
     expect(mockUseSourceAudioRecordTabIntegration).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -529,7 +529,7 @@ describe('RecordTab', () => {
       status: 'playing',
     });
 
-    renderTab();
+    await renderTab();
 
     await waitFor(() => {
       expect(
@@ -537,14 +537,14 @@ describe('RecordTab', () => {
       ).toEqual(expect.objectContaining({ disabled: false }));
     });
 
-    fireEvent.press(screen.getByTestId('record-start-button'));
+    await fireEvent.press(screen.getByTestId('record-start-button'));
 
     await waitFor(() => {
       expect(mockStopSourceAudio).toHaveBeenCalled();
     });
   });
 
-  it('renders review chrome with a single take row and Record New Take', () => {
+  it('renders review chrome with a single take row and Record New Take', async () => {
     const take = makeTake();
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
@@ -555,7 +555,7 @@ describe('RecordTab', () => {
       durationMs: 0,
     });
 
-    renderTab();
+    await renderTab();
 
     expect(screen.getByTestId('record-take-row-rec_1')).toBeTruthy();
     expect(screen.getByTestId('record-take-badge-rec_1')).toHaveTextContent(
@@ -576,7 +576,7 @@ describe('RecordTab', () => {
     expect(screen.queryByTestId('take-view-toggle')).toBeNull();
   });
 
-  it('renders a pericope take subtitle from capture metadata', () => {
+  it('renders a pericope take subtitle from capture metadata', async () => {
     const take = makeTake({
       takeNumber: 2,
       granularity: 'pericope',
@@ -590,14 +590,14 @@ describe('RecordTab', () => {
       selectedTake: take,
     });
 
-    renderTab();
+    await renderTab();
 
     expect(screen.getByTestId('record-take-badge-rec_1')).toHaveTextContent(
       'Take 2 - Pericope - vv. 3-7',
     );
   });
 
-  it('renders one card per take, in list order, with only the latest marked selected', () => {
+  it('renders one card per take, in list order, with only the latest marked selected', async () => {
     const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
     const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
@@ -607,7 +607,7 @@ describe('RecordTab', () => {
       selectedTake: take2,
     });
 
-    renderTab();
+    await renderTab();
 
     expect(screen.getByTestId('record-take-badge-rec_1')).toHaveTextContent(
       'Take 1 - Verse - v. 3',
@@ -622,7 +622,7 @@ describe('RecordTab', () => {
     expect(screen.getByLabelText('Selected take')).toBeTruthy();
   });
 
-  it('selecting an unselected take calls selectTake with its id', () => {
+  it('selecting an unselected take calls selectTake with its id', async () => {
     const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
     const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
@@ -632,13 +632,15 @@ describe('RecordTab', () => {
       selectedTake: take2,
     });
 
-    renderTab();
+    await renderTab();
 
-    fireEvent.press(screen.getByLabelText('Select this take as active draft'));
+    await fireEvent.press(
+      screen.getByLabelText('Select this take as active draft'),
+    );
     expect(idleAudio.selectTake).toHaveBeenCalledWith('rec_1');
   });
 
-  it('deletes a non-selected take immediately, with no confirmation prompt', () => {
+  it('deletes a non-selected take immediately, with no confirmation prompt', async () => {
     const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
     const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
@@ -648,19 +650,19 @@ describe('RecordTab', () => {
       selectedTake: take2,
     });
 
-    renderTab();
+    await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-delete-button-rec_1')); // take 1
+    await fireEvent.press(screen.getByTestId('record-delete-button-rec_1')); // take 1
 
     expect(Alert.alert).not.toHaveBeenCalled();
     expect(idleAudio.deleteTake).toHaveBeenCalledWith('rec_1');
   });
 
-  it('explains a refused cross-anchor official replacement (#896)', () => {
-    renderTab();
+  it('explains a refused cross-anchor official replacement (#896)', async () => {
+    await renderTab();
     const args = mockUseVerseAudio.mock.calls.at(-1)?.[0];
 
-    act(() => {
+    await act(() => {
       args?.onReplacementBlocked?.();
     });
 
@@ -670,7 +672,7 @@ describe('RecordTab', () => {
     );
   });
 
-  it('confirms before deleting the selected take, and only deletes on confirm', () => {
+  it('confirms before deleting the selected take, and only deletes on confirm', async () => {
     const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
     const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
     mockUseVerseAudio.mockReturnValue({
@@ -680,9 +682,11 @@ describe('RecordTab', () => {
       selectedTake: take2,
     });
 
-    renderTab();
+    await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-delete-selected-button-rec_2'));
+    await fireEvent.press(
+      screen.getByTestId('record-delete-selected-button-rec_2'),
+    );
 
     expect(Alert.alert).toHaveBeenCalledTimes(1);
     expect(idleAudio.deleteTake).not.toHaveBeenCalled();
@@ -698,7 +702,7 @@ describe('RecordTab', () => {
     expect(idleAudio.deleteTake).toHaveBeenCalledWith('rec_2');
   });
 
-  it('confirms before deleting a non-selected pericope take in Verse mode, naming the full range', () => {
+  it('confirms before deleting a non-selected pericope take in Verse mode, naming the full range', async () => {
     const pericopeTake = makeTake({
       id: 'pericope-1',
       takeNumber: 1,
@@ -721,9 +725,11 @@ describe('RecordTab', () => {
       selectedTake: verseTake,
     });
 
-    renderTab();
+    await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-delete-button-pericope-1'));
+    await fireEvent.press(
+      screen.getByTestId('record-delete-button-pericope-1'),
+    );
 
     expect(Alert.alert).toHaveBeenCalledTimes(1);
     const [title, message, buttons] = (Alert.alert as jest.Mock).mock
@@ -739,7 +745,7 @@ describe('RecordTab', () => {
     expect(idleAudio.deleteTake).toHaveBeenCalledWith('pericope-1');
   });
 
-  it('keeps a pericope take when Verse-mode delete confirmation is cancelled', () => {
+  it('keeps a pericope take when Verse-mode delete confirmation is cancelled', async () => {
     const pericopeTake = makeTake({
       id: 'pericope-1',
       takeNumber: 1,
@@ -762,9 +768,11 @@ describe('RecordTab', () => {
       selectedTake: verseTake,
     });
 
-    renderTab();
+    await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-delete-button-pericope-1'));
+    await fireEvent.press(
+      screen.getByTestId('record-delete-button-pericope-1'),
+    );
 
     const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] as [
       string,
@@ -788,9 +796,9 @@ describe('RecordTab', () => {
       playingTakeId: null,
     });
 
-    const { rerender } = renderTab();
+    const { rerender } = await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-play-button-rec_1')); // play take 1
+    await fireEvent.press(screen.getByTestId('record-play-button-rec_1')); // play take 1
     await waitFor(() => {
       expect(idleAudio.playTake).toHaveBeenCalledWith(take1);
     });
@@ -804,18 +812,18 @@ describe('RecordTab', () => {
       playingTakeId: 'rec_1',
       loadedTakeId: 'rec_1',
     });
-    rerender(
+    await rerender(
       <DraftingProvider verses={verses} initialVerse={3}>
         <RecordTab chapterData={chapterData} userId={1} />
       </DraftingProvider>,
     );
 
-    fireEvent.press(screen.getByTestId('record-play-button-rec_1')); // tap the same (now playing) take
+    await fireEvent.press(screen.getByTestId('record-play-button-rec_1')); // tap the same (now playing) take
     await waitFor(() => {
       expect(idleAudio.pausePlayback).toHaveBeenCalled();
     });
     // Tapping a different, non-loaded take's play button still calls playTake.
-    fireEvent.press(screen.getByTestId('record-play-button-rec_2'));
+    await fireEvent.press(screen.getByTestId('record-play-button-rec_2'));
     await waitFor(() => {
       expect(idleAudio.playTake).toHaveBeenCalledWith(take2);
     });
@@ -824,7 +832,7 @@ describe('RecordTab', () => {
     expect(screen.getAllByLabelText('Draft waveform scrubber')).toHaveLength(1);
   });
 
-  it('keeps waveform progress visible while a take is paused mid-playback', () => {
+  it('keeps waveform progress visible while a take is paused mid-playback', async () => {
     const take = makeTake({
       granularity: 'pericope',
       startVerse: 3,
@@ -843,12 +851,12 @@ describe('RecordTab', () => {
       durationMs: 13000,
     });
 
-    renderTab();
+    await renderTab();
 
     expect(screen.getByLabelText('Take time 0:05 / 0:13')).toBeTruthy();
   });
 
-  it('clears waveform progress after playback ends but keeps scrub enabled', () => {
+  it('clears waveform progress after playback ends but keeps scrub enabled', async () => {
     const take = makeTake({ durationMs: 13000 });
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
@@ -862,13 +870,13 @@ describe('RecordTab', () => {
       durationMs: 13000,
     });
 
-    renderTab();
+    await renderTab();
 
     expect(screen.getByLabelText('Take time 0:00 / 0:13')).toBeTruthy();
     expect(screen.getByLabelText('Draft waveform scrubber')).toBeTruthy();
   });
 
-  it('keeps the loaded take scrubbable after playback reaches the end', () => {
+  it('keeps the loaded take scrubbable after playback reaches the end', async () => {
     const take = makeTake();
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
@@ -880,19 +888,19 @@ describe('RecordTab', () => {
       loadedTakeId: 'rec_1',
     });
 
-    renderTab();
+    await renderTab();
 
     const scrubber = screen.getByLabelText('Draft waveform scrubber');
-    fireEvent(scrubber, 'layout', {
+    await fireEvent(scrubber, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
     });
-    fireEvent(scrubber, 'responderGrant', {
+    await fireEvent(scrubber, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
     expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
   });
 
-  it('scrubs the selected take before it has ever been played', () => {
+  it('scrubs the selected take before it has ever been played', async () => {
     const take = makeTake({ durationMs: 13000 });
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
@@ -904,19 +912,19 @@ describe('RecordTab', () => {
       loadedTakeId: null,
     });
 
-    renderTab();
+    await renderTab();
 
     const scrubber = screen.getByLabelText('Draft waveform scrubber');
-    fireEvent(scrubber, 'layout', {
+    await fireEvent(scrubber, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
     });
-    fireEvent(scrubber, 'responderGrant', {
+    await fireEvent(scrubber, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
     expect(idleAudio.seek).toHaveBeenCalledWith(6500, take);
   });
 
-  it('keeps unplayed, unselected My Takes rows non-scrubbable before Complete (#833 AC 5)', () => {
+  it('keeps unplayed, unselected My Takes rows non-scrubbable before Complete (#833 AC 5)', async () => {
     const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
     const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: false });
     mockUseVerseAudio.mockReturnValue({
@@ -930,7 +938,7 @@ describe('RecordTab', () => {
       loadedTakeId: null,
     });
 
-    renderTab();
+    await renderTab();
 
     expect(screen.queryAllByLabelText('Draft waveform scrubber')).toHaveLength(
       0,
@@ -946,7 +954,7 @@ describe('RecordTab', () => {
       state: 'recording',
     });
 
-    const { rerender } = renderTab(onCaptureActiveChange);
+    const { rerender } = await renderTab(onCaptureActiveChange);
 
     expect(onCaptureActiveChange).toHaveBeenCalledWith(true);
     expect(screen.getByTestId('playback-progress-animated')).toBeTruthy();
@@ -959,7 +967,7 @@ describe('RecordTab', () => {
       selectedTake: take,
       durationMs: 1000,
     });
-    rerender(
+    await rerender(
       <DraftingProvider verses={verses} initialVerse={3}>
         <RecordTab
           chapterData={chapterData}
@@ -976,13 +984,13 @@ describe('RecordTab', () => {
 
   // --- #49: leave prompt with Resume / Discard ------------------------------
 
-  it('registers draft playback stop so Drafting can halt audio on Back (#866)', () => {
+  it('registers draft playback stop so Drafting can halt audio on Back (#866)', async () => {
     const onRegisterDraftPlayback = jest.fn();
     mockUseVerseAudio.mockReturnValue({
       ...idleAudio,
       state: 'playing',
     });
-    renderTab(undefined, { onRegisterDraftPlayback });
+    await renderTab(undefined, { onRegisterDraftPlayback });
     expect(onRegisterDraftPlayback).toHaveBeenCalledWith(
       expect.objectContaining({ stopPlayback: expect.any(Function) }),
     );
@@ -1000,7 +1008,7 @@ describe('RecordTab', () => {
     ];
 
     /** Capture the controls RecordTab registers while a capture is active. */
-    function renderCapturingTab() {
+    async function renderCapturingTab() {
       let controls:
         | import('../../types/captureControls').CaptureControls
         | null = null;
@@ -1008,7 +1016,7 @@ describe('RecordTab', () => {
         ...idleAudio,
         state: 'paused',
       });
-      render(
+      await render(
         <DraftingProvider verses={twoVerseChapterVerses} initialVerse={3}>
           <RecordTab
             chapterData={chapterData}
@@ -1023,15 +1031,15 @@ describe('RecordTab', () => {
       return controls!;
     }
 
-    it('registers Resume/Discard controls while a capture is active', () => {
-      renderCapturingTab();
+    it('registers Resume/Discard controls while a capture is active', async () => {
+      await renderCapturingTab();
     });
 
     it('next-verse chevron shows Resume/Discard; Discard drops no take and proceeds', async () => {
-      renderCapturingTab();
+      await renderCapturingTab();
       const discardCapture = idleAudio.discardCapture as jest.Mock;
 
-      fireEvent.press(screen.getByTestId('record-next-verse'));
+      await fireEvent.press(screen.getByTestId('record-next-verse'));
 
       expect(Alert.alert).toHaveBeenCalledTimes(1);
       const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] as [
@@ -1056,10 +1064,10 @@ describe('RecordTab', () => {
       expect(idleAudio.stop).not.toHaveBeenCalled();
     });
 
-    it('next-verse chevron keeps the capture on Resume', () => {
-      renderCapturingTab();
+    it('next-verse chevron keeps the capture on Resume', async () => {
+      await renderCapturingTab();
 
-      fireEvent.press(screen.getByTestId('record-next-verse'));
+      await fireEvent.press(screen.getByTestId('record-next-verse'));
 
       const [, , buttons] = (Alert.alert as jest.Mock).mock.calls[0] as [
         string,
@@ -1078,7 +1086,7 @@ describe('RecordTab', () => {
   // --- #279: Take View Toggle + All Takes ---------------------------------
 
   describe('All Takes toggle (#279)', () => {
-    it('shows the toggle when multiple accounts have takes for the unit', () => {
+    it('shows the toggle when multiple accounts have takes for the unit', async () => {
       const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
       mockUseVerseAudio.mockReturnValue({
         ...idleAudio,
@@ -1100,14 +1108,14 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
+      await renderTab();
 
       expect(screen.getByTestId('take-view-toggle')).toBeTruthy();
       expect(screen.getByText('My Takes')).toBeTruthy();
       expect(screen.getByText('All Takes')).toBeTruthy();
     });
 
-    it('hides the active-draft selection indicator in My Takes once the toggle is visible', () => {
+    it('hides the active-draft selection indicator in My Takes once the toggle is visible', async () => {
       const ownTake = makeTake({
         id: 'rec_1',
         takeNumber: 1,
@@ -1123,7 +1131,7 @@ describe('RecordTab', () => {
         allTakes: [makeOwnedTake({ id: 'rec_1' })],
       });
 
-      renderTab();
+      await renderTab();
 
       expect(screen.queryByLabelText('Selected take')).toBeNull();
       expect(
@@ -1131,7 +1139,7 @@ describe('RecordTab', () => {
       ).toBeNull();
     });
 
-    it("shows a read-only canonical mark in My Takes when the account's own take is canonical", () => {
+    it("shows a read-only canonical mark in My Takes when the account's own take is canonical", async () => {
       const ownTake = makeTake({
         id: 'rec_1',
         takeNumber: 1,
@@ -1147,14 +1155,14 @@ describe('RecordTab', () => {
         allTakes: [makeOwnedTake({ id: 'rec_1' })],
       });
 
-      renderTab();
+      await renderTab();
 
       expect(
         screen.getByTestId('record-take-canonical-readonly-rec_1'),
       ).toBeTruthy();
     });
 
-    it('does not show Record New Take in All Takes view', () => {
+    it('does not show Record New Take in All Takes view', async () => {
       const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
       mockUseVerseAudio.mockReturnValue({
         ...idleAudio,
@@ -1176,13 +1184,13 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
-      fireEvent.press(screen.getByTestId('take-view-all'));
+      await renderTab();
+      await fireEvent.press(screen.getByTestId('take-view-all'));
 
       expect(screen.queryByTestId('record-new-take-button')).toBeNull();
     });
 
-    it('groups All Takes by owner and orders takes within a group ascending', () => {
+    it('groups All Takes by owner and orders takes within a group ascending', async () => {
       const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
       mockUseVerseAudio.mockReturnValue({
         ...idleAudio,
@@ -1212,8 +1220,8 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
-      fireEvent.press(screen.getByTestId('take-view-all'));
+      await renderTab();
+      await fireEvent.press(screen.getByTestId('take-view-all'));
 
       const headers = screen.getAllByTestId('take-group-header-name');
       expect(headers[0]).toHaveTextContent('Maria Santos');
@@ -1225,7 +1233,7 @@ describe('RecordTab', () => {
       expect(badges[2]).toHaveTextContent('Take 2 - Verse - v. 3');
     });
 
-    it('tapping the canonical circle in All Takes calls setCanonical with the take id', () => {
+    it('tapping the canonical circle in All Takes calls setCanonical with the take id', async () => {
       const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
       mockUseVerseAudio.mockReturnValue({
         ...idleAudio,
@@ -1247,16 +1255,16 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
-      fireEvent.press(screen.getByTestId('take-view-all'));
+      await renderTab();
+      await fireEvent.press(screen.getByTestId('take-view-all'));
 
       const canonicalButtons = screen.getAllByTestId('shared-take-canonical');
-      fireEvent.press(canonicalButtons[1]!);
+      await fireEvent.press(canonicalButtons[1]!);
 
       expect(idleAudio.setCanonical).toHaveBeenCalledWith('rec_2');
     });
 
-    it('shows the toggle and idle record button when the active account has no personal take yet, and switches to All Takes on tap', () => {
+    it('shows the toggle and idle record button when the active account has no personal take yet, and switches to All Takes on tap', async () => {
       // Active account's own hook state stays 'idle' (nothing recorded by
       // them), but teammates already have takes for this unit. Per #71/#279,
       // My Takes' idle/review state is governed by the active account's own
@@ -1284,7 +1292,7 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
+      await renderTab();
 
       // Toggle is visible — other accounts have takes for this unit.
       expect(screen.getByTestId('take-view-toggle')).toBeTruthy();
@@ -1293,7 +1301,7 @@ describe('RecordTab', () => {
       expect(screen.queryByTestId('record-take-row-rec_1')).toBeNull();
       expect(screen.queryByTestId('record-new-take-button')).toBeNull();
 
-      fireEvent.press(screen.getByTestId('take-view-all'));
+      await fireEvent.press(screen.getByTestId('take-view-all'));
       const headers = screen.getAllByTestId('take-group-header-name');
       expect(headers).toHaveLength(2);
       expect(headers[0]).toHaveTextContent('Maria Santos');
@@ -1301,7 +1309,7 @@ describe('RecordTab', () => {
       expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
     });
 
-    it('scrubs an unplayed take recorded by someone else (#833)', () => {
+    it('scrubs an unplayed take recorded by someone else (#833)', async () => {
       const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
       const sharedTake = makeOwnedTake({
         id: 'rec_9',
@@ -1324,14 +1332,14 @@ describe('RecordTab', () => {
         loadedTakeId: null,
       });
 
-      renderTab();
-      fireEvent.press(screen.getByTestId('take-view-all'));
+      await renderTab();
+      await fireEvent.press(screen.getByTestId('take-view-all'));
 
       const scrubber = screen.getByLabelText('Draft waveform scrubber');
-      fireEvent(scrubber, 'layout', {
+      await fireEvent(scrubber, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
       });
-      fireEvent(scrubber, 'responderGrant', {
+      await fireEvent(scrubber, 'responderGrant', {
         nativeEvent: { locationX: 50 },
       });
 
@@ -1339,7 +1347,7 @@ describe('RecordTab', () => {
       expect(idleAudio.seek).not.toHaveBeenCalledWith(6500, ownTake);
     });
 
-    it('leaves an All Takes row alone while a different take is in the player (#833)', () => {
+    it('leaves an All Takes row alone while a different take is in the player (#833)', async () => {
       const sharedTake = makeOwnedTake({
         id: 'rec_9',
         recordedByUserId: 2,
@@ -1358,8 +1366,8 @@ describe('RecordTab', () => {
         loadedTakeId: 'rec_1',
       });
 
-      renderTab();
-      fireEvent.press(screen.getByTestId('take-view-all'));
+      await renderTab();
+      await fireEvent.press(screen.getByTestId('take-view-all'));
 
       expect(screen.getAllByTestId('shared-take-row')).toHaveLength(1);
       expect(screen.queryByLabelText('Draft waveform scrubber')).toBeNull();
@@ -1368,7 +1376,7 @@ describe('RecordTab', () => {
   });
 
   it('shows taken-chapter banner for an unrelated viewer and disables record', async () => {
-    renderTab(undefined, {
+    await renderTab(undefined, {
       chapterData: {
         ...chapterData,
         assignedUserId: 99,
@@ -1380,12 +1388,12 @@ describe('RecordTab', () => {
 
     await waitForCaptureReady();
     expect(screen.getByTestId('record-start-button')).toBeDisabled();
-    fireEvent.press(screen.getByTestId('record-start-button'));
+    await fireEvent.press(screen.getByTestId('record-start-button'));
     expect(idleAudio.start).not.toHaveBeenCalled();
   });
 
-  it('hides taken-chapter banner when current user holds the Drafter slot', () => {
-    renderTab(undefined, {
+  it('hides taken-chapter banner when current user holds the Drafter slot', async () => {
+    await renderTab(undefined, {
       chapterData: {
         ...chapterData,
         assignedUserId: 42,
@@ -1396,7 +1404,7 @@ describe('RecordTab', () => {
   });
 
   it('hides taken-chapter banner when current user holds the Peer Checker slot', async () => {
-    renderTab(undefined, {
+    await renderTab(undefined, {
       chapterData: {
         ...chapterData,
         assignedUserId: 99,
@@ -1407,33 +1415,33 @@ describe('RecordTab', () => {
     expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
     await waitForCaptureReady();
     expect(screen.getByTestId('record-start-button')).toBeEnabled();
-    fireEvent.press(screen.getByTestId('record-start-button'));
+    await fireEvent.press(screen.getByTestId('record-start-button'));
     await waitFor(() => {
       expect(idleAudio.start).toHaveBeenCalled();
     });
   });
 
-  it('shows conflict banner when hook reports a conflict', () => {
+  it('shows conflict banner when hook reports a conflict', async () => {
     mockUseChapterConflictStatus.mockReturnValue({ hasConflict: true });
 
-    renderTab();
+    await renderTab();
 
     expect(screen.getByText(RECORD_AUDIO_CONFLICT_WARNING)).toBeTruthy();
     expect(screen.getByTestId('record-verse-reference')).toBeTruthy();
   });
 
-  it('hides conflict banner when hook reports no conflict', () => {
+  it('hides conflict banner when hook reports no conflict', async () => {
     mockUseChapterConflictStatus.mockReturnValue({ hasConflict: false });
 
-    renderTab();
+    await renderTab();
 
     expect(screen.queryByText(RECORD_AUDIO_CONFLICT_WARNING)).toBeNull();
   });
 
-  it('renders taken-chapter banner above conflict banner and verse nav', () => {
+  it('renders taken-chapter banner above conflict banner and verse nav', async () => {
     mockUseChapterConflictStatus.mockReturnValue({ hasConflict: true });
 
-    renderTab(undefined, {
+    await renderTab(undefined, {
       chapterData: {
         ...chapterData,
         assignedUserId: 99,
@@ -1454,7 +1462,7 @@ describe('RecordTab', () => {
   });
 
   it('shows stage advance CTA for assigned drafter with chapter recordings', async () => {
-    renderTab();
+    await renderTab();
 
     await waitFor(() => {
       expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
@@ -1465,7 +1473,7 @@ describe('RecordTab', () => {
   it('disables stage advance CTA when chapter has a conflict', async () => {
     mockUseChapterConflictStatus.mockReturnValue({ hasConflict: true });
 
-    renderTab();
+    await renderTab();
 
     await waitFor(() => {
       expect(screen.getByTestId('stage-advance-button')).toBeDisabled();
@@ -1475,7 +1483,7 @@ describe('RecordTab', () => {
   it('disables stage advance CTA and explains when takes cannot upload (#585)', async () => {
     mockChapterHasUnuploadableSelectedTakes.mockResolvedValue(true);
 
-    renderTab();
+    await renderTab();
 
     await waitFor(() => {
       expect(screen.getByTestId('stage-advance-button')).toBeDisabled();
@@ -1486,7 +1494,7 @@ describe('RecordTab', () => {
   });
 
   it('hides stage advance CTA when current user is not the assignee', async () => {
-    renderTab(undefined, {
+    await renderTab(undefined, {
       chapterData: {
         ...chapterData,
         assignedUserId: 99,
@@ -1500,7 +1508,7 @@ describe('RecordTab', () => {
   });
 
   it('shows Send to Community Review without a taken banner on open Peer Check', async () => {
-    renderTab(undefined, {
+    await renderTab(undefined, {
       chapterData: {
         ...chapterData,
         status: 'peer_check',
@@ -1518,7 +1526,7 @@ describe('RecordTab', () => {
   });
 
   it('hides Send and disables record for the drafter on open Peer Check', async () => {
-    renderTab(undefined, {
+    await renderTab(undefined, {
       chapterData: {
         ...chapterData,
         status: 'peer_check',
@@ -1534,7 +1542,7 @@ describe('RecordTab', () => {
   });
 
   it('shows taken banner and hides Send for a non-assignee on PM-assigned Peer Check', async () => {
-    renderTab(undefined, {
+    await renderTab(undefined, {
       chapterData: {
         ...chapterData,
         status: 'peer_check',
@@ -1551,7 +1559,7 @@ describe('RecordTab', () => {
   });
 
   it('disables record for the drafter when a Peer Checker is already assigned', async () => {
-    renderTab(undefined, {
+    await renderTab(undefined, {
       chapterData: {
         ...chapterData,
         status: 'peer_check',
@@ -1563,7 +1571,7 @@ describe('RecordTab', () => {
     expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
     await waitForCaptureReady();
     expect(screen.getByTestId('record-start-button')).toBeDisabled();
-    fireEvent.press(screen.getByTestId('record-start-button'));
+    await fireEvent.press(screen.getByTestId('record-start-button'));
     expect(idleAudio.start).not.toHaveBeenCalled();
   });
 
@@ -1575,7 +1583,7 @@ describe('RecordTab', () => {
   ] as const)(
     'lets a non-assigned translator record during %s',
     async status => {
-      renderTab(undefined, {
+      await renderTab(undefined, {
         chapterData: {
           ...chapterData,
           status,
@@ -1587,7 +1595,7 @@ describe('RecordTab', () => {
       expect(screen.queryByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeNull();
       await waitForCaptureReady();
       expect(screen.getByTestId('record-start-button')).toBeEnabled();
-      fireEvent.press(screen.getByTestId('record-start-button'));
+      await fireEvent.press(screen.getByTestId('record-start-button'));
       await waitFor(() => {
         expect(idleAudio.start).toHaveBeenCalled();
       });
@@ -1595,7 +1603,7 @@ describe('RecordTab', () => {
   );
 
   it('assigns the tapping peer when confirming Send to Community Review on open Peer Check', async () => {
-    render(
+    await render(
       <SafeAreaProvider
         initialMetrics={{
           frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -1619,8 +1627,8 @@ describe('RecordTab', () => {
     await waitFor(() => {
       expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
     });
-    fireEvent.press(screen.getByTestId('stage-advance-button'));
-    fireEvent.press(screen.getByTestId('stage-advance-send'));
+    await fireEvent.press(screen.getByTestId('stage-advance-button'));
+    await fireEvent.press(screen.getByTestId('stage-advance-send'));
 
     await waitFor(() => {
       expect(confirmStageAdvancement).toHaveBeenCalledWith({
@@ -1641,7 +1649,7 @@ describe('RecordTab', () => {
     });
     (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
 
-    renderTab();
+    await renderTab();
 
     // Verse-mode fallback: the single fixture verse (3) is also the last
     // verse in `verses`, so isOnLastUnit should resolve true via the verse
@@ -1663,7 +1671,7 @@ describe('RecordTab', () => {
     // simulate a set id with no bundled/local rows.
     (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(7);
 
-    renderTab();
+    await renderTab();
 
     // Set id alone used to keep isOnLastUnit false forever (activePericope
     // never resolves). Fall back to verse last-unit so the CTA appears.
@@ -1676,7 +1684,7 @@ describe('RecordTab', () => {
   });
 
   it('does not read the pericope set while drafting verse by verse', async () => {
-    renderTab();
+    await renderTab();
 
     await waitForCaptureReady();
     expect(getProjectPericopeSetId).not.toHaveBeenCalled();
@@ -1691,7 +1699,7 @@ describe('RecordTab', () => {
         <RecordTab chapterData={chapterData} userId={42} />
       </DraftingProvider>
     );
-    const { rerender } = render(tree());
+    const { rerender } = await render(tree());
     await waitForCaptureReady();
     expect(getProjectPericopeSetId).not.toHaveBeenCalled();
 
@@ -1699,7 +1707,7 @@ describe('RecordTab', () => {
       draftingUnit: 'pericope',
       setDraftingUnit: jest.fn(),
     });
-    rerender(tree());
+    await rerender(tree());
 
     await waitFor(() => {
       expect(screen.getByText(PERICOPE_UNAVAILABLE_WARNING)).toBeTruthy();
@@ -1716,7 +1724,7 @@ describe('RecordTab', () => {
     };
 
     it('disables the idle record button at Complete', async () => {
-      renderTab(undefined, { chapterData: completeChapter });
+      await renderTab(undefined, { chapterData: completeChapter });
 
       await waitForCaptureReady();
       expect(screen.getByTestId('record-start-button')).toBeDisabled();
@@ -1731,12 +1739,12 @@ describe('RecordTab', () => {
         selectedTake: take,
       });
 
-      renderTab(undefined, { chapterData: completeChapter });
+      await renderTab(undefined, { chapterData: completeChapter });
 
       await waitForCaptureReady();
       expect(screen.getByTestId('record-new-take-button')).toBeDisabled();
     });
-    it('hides delete and select controls at Complete but keeps playback', () => {
+    it('hides delete and select controls at Complete but keeps playback', async () => {
       const take1 = makeTake({ id: 'rec_1', takeNumber: 1, isSelected: false });
       const take2 = makeTake({ id: 'rec_2', takeNumber: 2, isSelected: true });
       mockUseVerseAudio.mockReturnValue({
@@ -1746,7 +1754,7 @@ describe('RecordTab', () => {
         selectedTake: take2,
       });
 
-      renderTab(undefined, { chapterData: completeChapter });
+      await renderTab(undefined, { chapterData: completeChapter });
 
       expect(screen.queryByTestId('record-delete-button-rec_1')).toBeNull();
       expect(
@@ -1767,9 +1775,9 @@ describe('RecordTab', () => {
         selectedTake: take,
       });
 
-      renderTab(undefined, { chapterData: completeChapter });
+      await renderTab(undefined, { chapterData: completeChapter });
 
-      fireEvent.press(screen.getByTestId('record-play-button-rec_1'));
+      await fireEvent.press(screen.getByTestId('record-play-button-rec_1'));
       await waitFor(() => {
         expect(idleAudio.playTake).toHaveBeenCalledWith(take);
       });
@@ -1785,7 +1793,7 @@ describe('RecordTab', () => {
         selectedTake: take2,
       });
 
-      renderTab(undefined, {
+      await renderTab(undefined, {
         chapterData: { ...completeChapter, status: 'consultant_check' },
       });
 
@@ -1795,7 +1803,7 @@ describe('RecordTab', () => {
       expect(screen.getByTestId('record-delete-button-rec_1')).toBeTruthy();
       expect(screen.getByTestId('record-take-select-rec_1')).toBeTruthy();
     });
-    it('does not allow designating a canonical take in All Takes at Complete', () => {
+    it('does not allow designating a canonical take in All Takes at Complete', async () => {
       const ownTake = makeTake({ id: 'rec_1', takeNumber: 1 });
       mockUseVerseAudio.mockReturnValue({
         ...idleAudio,
@@ -1817,8 +1825,8 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab(undefined, { chapterData: completeChapter });
-      fireEvent.press(screen.getByTestId('take-view-all'));
+      await renderTab(undefined, { chapterData: completeChapter });
+      await fireEvent.press(screen.getByTestId('take-view-all'));
 
       // Rows still render (so the assertions below aren't vacuous)...
       expect(screen.getAllByTestId('shared-take-row')).toHaveLength(2);
@@ -1827,7 +1835,7 @@ describe('RecordTab', () => {
       expect(idleAudio.setCanonical).not.toHaveBeenCalled();
     });
 
-    it('scrubs an unplayed, unselected take at Complete (#833)', () => {
+    it('scrubs an unplayed, unselected take at Complete (#833)', async () => {
       const loadedTake = makeTake({
         id: 'rec_1',
         durationMs: 13000,
@@ -1850,18 +1858,18 @@ describe('RecordTab', () => {
         loadedTakeId: 'rec_1',
       });
 
-      renderTab(undefined, { chapterData: completeChapter });
+      await renderTab(undefined, { chapterData: completeChapter });
 
       const scrubbers = screen.getAllByLabelText('Draft waveform scrubber');
       expect(scrubbers).toHaveLength(2);
       const [loadedScrubber, unplayedScrubber] = scrubbers;
-      fireEvent(loadedScrubber!, 'layout', {
+      await fireEvent(loadedScrubber!, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
       });
-      fireEvent(unplayedScrubber!, 'layout', {
+      await fireEvent(unplayedScrubber!, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
       });
-      fireEvent(unplayedScrubber!, 'responderGrant', {
+      await fireEvent(unplayedScrubber!, 'responderGrant', {
         nativeEvent: { locationX: 50 },
       });
 
@@ -1894,7 +1902,7 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
+      await renderTab();
 
       await waitFor(() => {
         expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
@@ -1914,7 +1922,7 @@ describe('RecordTab', () => {
       });
       (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
 
-      renderTab();
+      await renderTab();
 
       await waitFor(() => {
         expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
@@ -1934,7 +1942,7 @@ describe('RecordTab', () => {
       });
       (getProjectPericopeSetId as jest.Mock).mockResolvedValueOnce(null);
 
-      renderTab();
+      await renderTab();
 
       await waitFor(() => {
         expect(mockIsChapterFullyRecordedVerseMode).toHaveBeenCalledWith(
@@ -1947,13 +1955,13 @@ describe('RecordTab', () => {
       });
     });
 
-    it('never shows a subtitle in verse mode, even if a pericope would resolve', () => {
+    it('never shows a subtitle in verse mode, even if a pericope would resolve', async () => {
       mockUseDraftingUnit.mockReturnValue({
         draftingUnit: 'verse',
         setDraftingUnit: jest.fn(),
       });
 
-      renderTab();
+      await renderTab();
 
       expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
         'Mark 14:3',
@@ -1981,7 +1989,7 @@ describe('RecordTab', () => {
       ],
     });
 
-    renderTab();
+    await renderTab();
 
     await waitFor(() => {
       expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
@@ -2003,14 +2011,14 @@ describe('RecordTab', () => {
       }),
     );
 
-    const { rerender } = renderTab();
+    const { rerender } = await renderTab();
 
     // Switch to verse mode before the in-flight pericope lookup resolves.
     mockUseDraftingUnit.mockReturnValue({
       draftingUnit: 'verse',
       setDraftingUnit: jest.fn(),
     });
-    rerender(
+    await rerender(
       <DraftingProvider verses={verses} initialVerse={3}>
         <RecordTab chapterData={chapterData} userId={42} />
       </DraftingProvider>,
@@ -2097,7 +2105,7 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
+      await renderTab();
 
       await waitFor(() => {
         expect(screen.getByTestId(/^record-take-badge-/)).toHaveTextContent(
@@ -2126,7 +2134,7 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
+      await renderTab();
 
       await waitFor(() => {
         expect(screen.getByTestId('record-pericope-unavailable')).toBeTruthy();
@@ -2147,7 +2155,7 @@ describe('RecordTab', () => {
       expect(screen.queryByText(/Stitched/)).toBeNull();
 
       // A stitched row would route through playStitched; real rows play takes.
-      fireEvent.press(screen.getByTestId('record-play-button-v3'));
+      await fireEvent.press(screen.getByTestId('record-play-button-v3'));
       expect(idleAudio.playStitched).not.toHaveBeenCalled();
       expect(idleAudio.playTake).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'v3' }),
@@ -2175,7 +2183,7 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
+      await renderTab();
 
       await waitFor(() => {
         expect(screen.getByTestId(/^record-take-badge-/)).toHaveTextContent(
@@ -2183,7 +2191,7 @@ describe('RecordTab', () => {
         );
       });
 
-      fireEvent.press(screen.getByTestId(/^record-play-button-/));
+      await fireEvent.press(screen.getByTestId(/^record-play-button-/));
 
       expect(idleAudio.playStitched).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -2219,7 +2227,7 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
+      await renderTab();
 
       await waitFor(() => {
         expect(mockResolveRecordingUnit).toHaveBeenCalled();
@@ -2254,20 +2262,23 @@ describe('RecordTab', () => {
       mockResolveRecordingUnit.mockResolvedValue(pericopeUnit);
 
       let audioState: 'idle' | 'recorded' = 'idle';
+      // One takes array, as the real hook keeps: a new array per render would
+      // re-run the takes-changed effect on every render.
+      const takes = [
+        makeTake({ id: 'v3', startVerse: 3, endVerse: 3 }),
+        makeTake({
+          id: 'v4',
+          startVerse: 4,
+          endVerse: 4,
+        }),
+      ];
       mockUseVerseAudio.mockImplementation(() => ({
         ...idleAudio,
         state: audioState,
-        takes: [
-          makeTake({ id: 'v3', startVerse: 3, endVerse: 3 }),
-          makeTake({
-            id: 'v4',
-            startVerse: 4,
-            endVerse: 4,
-          }),
-        ],
+        takes,
       }));
 
-      const { rerender } = render(
+      const { rerender } = await render(
         <DraftingProvider verses={verses} initialVerse={3}>
           <RecordTab chapterData={chapterData} userId={42} />
         </DraftingProvider>,
@@ -2280,7 +2291,7 @@ describe('RecordTab', () => {
       const hookCallsBeforeRerender = mockUseVerseAudio.mock.calls.length;
 
       audioState = 'recorded';
-      rerender(
+      await rerender(
         <DraftingProvider verses={verses} initialVerse={3}>
           <RecordTab chapterData={chapterData} userId={42} />
         </DraftingProvider>,
@@ -2298,7 +2309,7 @@ describe('RecordTab', () => {
       expect(mockResolveRecordingUnit.mock.calls.length).toBe(callsAfterMount);
     });
 
-    it('lists verse takes individually in verse view', () => {
+    it('lists verse takes individually in verse view', async () => {
       mockUseDraftingUnit.mockReturnValue({
         draftingUnit: 'verse',
         setDraftingUnit: jest.fn(),
@@ -2312,7 +2323,7 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
+      await renderTab();
 
       const badges = screen.getAllByTestId(/^record-take-badge-/);
       expect(badges).toHaveLength(2);
@@ -2330,7 +2341,7 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab();
+      await renderTab();
 
       await waitFor(() => {
         expect(screen.getByTestId(/^record-take-badge-/)).toHaveTextContent(
@@ -2339,10 +2350,10 @@ describe('RecordTab', () => {
       });
 
       const scrubber = screen.getByLabelText('Draft waveform scrubber');
-      fireEvent(scrubber, 'layout', {
+      await fireEvent(scrubber, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
       });
-      fireEvent(scrubber, 'responderGrant', {
+      await fireEvent(scrubber, 'responderGrant', {
         nativeEvent: { locationX: 50 },
       });
 
@@ -2365,7 +2376,7 @@ describe('RecordTab', () => {
         ],
       });
 
-      renderTab(undefined, {
+      await renderTab(undefined, {
         chapterData: { ...chapterData, status: 'complete' },
       });
 
@@ -2376,10 +2387,10 @@ describe('RecordTab', () => {
       });
 
       const scrubber = screen.getByLabelText('Draft waveform scrubber');
-      fireEvent(scrubber, 'layout', {
+      await fireEvent(scrubber, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
       });
-      fireEvent(scrubber, 'responderGrant', {
+      await fireEvent(scrubber, 'responderGrant', {
         nativeEvent: { locationX: 50 },
       });
 
@@ -2406,7 +2417,7 @@ describe('RecordTab', () => {
         stitchPositionMs: 15000,
       });
 
-      renderTab();
+      await renderTab();
 
       await waitFor(() => {
         expect(screen.getByLabelText('Take time 0:15 / 0:26')).toBeTruthy();
@@ -2514,7 +2525,7 @@ describe('RecordTab', () => {
     it('tapping Next jumps past the whole current pericope, not one verse at a time', async () => {
       mockTwoAdjacentPericopes();
 
-      render(
+      await render(
         <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
           <RecordTab chapterData={chapterData} userId={42} />
         </DraftingProvider>,
@@ -2526,7 +2537,7 @@ describe('RecordTab', () => {
         );
       });
 
-      fireEvent.press(screen.getByTestId('record-next-verse'));
+      await fireEvent.press(screen.getByTestId('record-next-verse'));
 
       // Lands on verse 6 (first verse after the pericope's last verse, 5) in
       // one tap — not verse 5 (the next verse within the same pericope).
@@ -2540,7 +2551,7 @@ describe('RecordTab', () => {
     it('tapping Previous jumps to the previous pericope set', async () => {
       mockTwoAdjacentPericopes();
 
-      render(
+      await render(
         <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
           <RecordTab chapterData={chapterData} userId={42} />
         </DraftingProvider>,
@@ -2552,7 +2563,7 @@ describe('RecordTab', () => {
         );
       });
 
-      fireEvent.press(screen.getByTestId('record-prev-verse'));
+      await fireEvent.press(screen.getByTestId('record-prev-verse'));
 
       // Lands inside the prior pericope (1-2), which then resolves and
       // displays as its own full range — not verse 2 shown as a lone verse.
@@ -2566,7 +2577,7 @@ describe('RecordTab', () => {
     it('shows the full pericope verse range in Source Bible text, not just the selected verse', async () => {
       mockTwoAdjacentPericopes();
 
-      render(
+      await render(
         <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
           <RecordTab chapterData={chapterData} userId={42} />
         </DraftingProvider>,
@@ -2578,26 +2589,26 @@ describe('RecordTab', () => {
         );
       });
 
-      fireEvent.press(screen.getByTestId('record-source-toggle'));
+      await fireEvent.press(screen.getByTestId('record-source-toggle'));
 
       expect(screen.getByTestId('record-source-body')).toHaveTextContent(
         '3Verse three text. 4Verse four text. 5Verse five text.',
       );
     });
 
-    it('still shows only the selected verse in Source Bible text in verse mode', () => {
+    it('still shows only the selected verse in Source Bible text in verse mode', async () => {
       mockUseDraftingUnit.mockReturnValue({
         draftingUnit: 'verse',
         setDraftingUnit: jest.fn(),
       });
 
-      render(
+      await render(
         <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
           <RecordTab chapterData={chapterData} userId={42} />
         </DraftingProvider>,
       );
 
-      fireEvent.press(screen.getByTestId('record-source-toggle'));
+      await fireEvent.press(screen.getByTestId('record-source-toggle'));
 
       expect(screen.getByTestId('record-source-body')).toHaveTextContent(
         '4Verse four text.',
@@ -2633,7 +2644,7 @@ describe('RecordTab', () => {
         },
       ];
 
-      render(
+      await render(
         <DraftingProvider verses={crossChapterVerses} initialVerse={45}>
           <RecordTab chapterData={chapterData} userId={42} />
         </DraftingProvider>,
@@ -2676,7 +2687,7 @@ describe('RecordTab', () => {
       mockTwoAdjacentPericopes();
       (getPericopesForChapter as jest.Mock).mockResolvedValue(twoPericopes);
 
-      render(
+      await render(
         <DraftingProvider verses={pericopeChapterVerses} initialVerse={4}>
           <RecordTab chapterData={chapterData} userId={42} />
         </DraftingProvider>,
@@ -2691,7 +2702,7 @@ describe('RecordTab', () => {
         expect(screen.getByTestId('stage-advance-button')).toBeTruthy();
       });
 
-      fireEvent.press(screen.getByTestId('record-prev-verse'));
+      await fireEvent.press(screen.getByTestId('record-prev-verse'));
 
       await waitFor(() => {
         expect(screen.getByTestId('record-verse-reference')).toHaveTextContent(
@@ -2705,7 +2716,7 @@ describe('RecordTab', () => {
       mockTwoAdjacentPericopes();
       (getPericopesForChapter as jest.Mock).mockResolvedValue(twoPericopes);
 
-      render(
+      await render(
         <DraftingProvider verses={pericopeChapterVerses} initialVerse={1}>
           <RecordTab chapterData={chapterData} userId={42} />
         </DraftingProvider>,

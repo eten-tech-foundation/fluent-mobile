@@ -12,6 +12,7 @@ import { getTakesForVerse } from '../db/recordingsRepository';
 import { getProjectPericopeSetId } from '../db/repository';
 import { ensureSourceLanguageIso, syncBibleTexts } from '../services/sync';
 import { emitSyncComplete } from '../services/syncEvents';
+import { holdNextCall } from '../test/holdNextCall';
 
 jest.mock('expo-router', () => ({
   useFocusEffect: (effect: () => void) => {
@@ -138,7 +139,7 @@ describe('usePassage', () => {
   });
 
   it('loads the passage text, status and its whole-passage takes', async () => {
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toEqual({
@@ -184,7 +185,7 @@ describe('usePassage', () => {
   it('is the whole chapter without a pericope set', async () => {
     mockSetId.mockResolvedValue(null);
 
-    const { result } = renderHook(() => usePassage(5, 1, 3));
+    const { result } = await renderHook(() => usePassage(5, 1, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({
@@ -199,7 +200,7 @@ describe('usePassage', () => {
   it('is the whole chapter when recording verse by verse', async () => {
     mockUnit = 'verse';
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(mockSetId).not.toHaveBeenCalled();
@@ -214,7 +215,7 @@ describe('usePassage', () => {
   it("loads in a recovered take's unit rather than the setting's", async () => {
     mockUnit = 'verse';
 
-    const { result } = renderHook(() => usePassage(5, 23, 3, 'pericope'));
+    const { result } = await renderHook(() => usePassage(5, 23, 3, 'pericope'));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(mockPericope).toHaveBeenCalledWith(41, 14, 23, 7);
@@ -222,25 +223,28 @@ describe('usePassage', () => {
   });
 
   it('shows loading, not the old passage, while the other unit loads', async () => {
-    const { result, rerender } = renderHook(() => usePassage(5, 22, 3));
+    const { result, rerender } = await renderHook(() => usePassage(5, 22, 3));
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
 
+    // The other unit's coverage read stays in flight until released.
+    const releaseCoverage = holdNextCall(mockCoverages);
     mockUnit = 'verse';
-    rerender({});
+    await rerender({});
 
     expect(result.current.passage.status).toBe('loading');
+    await act(async () => releaseCoverage());
     await waitFor(() =>
       expect(result.current.passage).toMatchObject({ wholeChapter: true }),
     );
   });
 
   it('is missing, not stuck loading, when the other unit fails to load', async () => {
-    const { result, rerender } = renderHook(() => usePassage(5, 22, 3));
+    const { result, rerender } = await renderHook(() => usePassage(5, 22, 3));
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
 
     mockAssignment.mockRejectedValueOnce(new Error('db'));
     mockUnit = 'verse';
-    rerender({});
+    await rerender({});
 
     await waitFor(() => expect(result.current.passage.status).toBe('missing'));
   });
@@ -256,7 +260,7 @@ describe('usePassage', () => {
       },
     ]);
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     const passage = result.current.passage;
@@ -283,7 +287,7 @@ describe('usePassage', () => {
       },
     ]);
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     const passage = result.current.passage;
@@ -295,7 +299,7 @@ describe('usePassage', () => {
   it('is missing when the chapter is gone', async () => {
     mockAssignment.mockResolvedValue(null);
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('missing'));
   });
@@ -304,11 +308,11 @@ describe('usePassage', () => {
     mockTexts.mockResolvedValueOnce([]);
     mockSync.mockResolvedValue(undefined);
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({ downloaded: false });
 
-    act(() => result.current.download());
+    await act(() => result.current.download());
 
     await waitFor(() =>
       expect(result.current.passage).toMatchObject({ downloaded: true }),
@@ -324,14 +328,14 @@ describe('usePassage', () => {
     mockTexts.mockResolvedValueOnce([]);
     mockSync.mockResolvedValue(undefined);
 
-    const { result, rerender } = renderHook(() => usePassage(5, 22, 3));
+    const { result, rerender } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() =>
       expect(result.current.passage).toMatchObject({ downloaded: true }),
     );
     expect(mockSync).toHaveBeenCalledTimes(1);
-    rerender({});
-    act(() => focusEffect?.());
+    await rerender({});
+    await act(() => focusEffect?.());
     await waitFor(() => expect(mockAssignment).toHaveBeenCalledTimes(2));
     expect(mockSync).toHaveBeenCalledTimes(1);
   });
@@ -339,7 +343,7 @@ describe('usePassage', () => {
   it("doesn't download on open while offline", async () => {
     mockTexts.mockResolvedValue([]);
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() =>
       expect(result.current.passage).toMatchObject({ downloaded: false }),
@@ -352,7 +356,7 @@ describe('usePassage', () => {
     mockTexts.mockResolvedValue([]);
     mockSync.mockResolvedValue(undefined);
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.downloadState).toBe('failed'));
     expect(mockSync).toHaveBeenCalledTimes(1);
@@ -371,7 +375,7 @@ describe('usePassage', () => {
     });
     mockEnsureIso.mockResolvedValueOnce(true);
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     await waitFor(() =>
@@ -391,13 +395,13 @@ describe('usePassage', () => {
       sourceLanguageCode: '',
     });
 
-    const { result, rerender } = renderHook(() => usePassage(5, 22, 3));
+    const { result, rerender } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(mockEnsureIso).not.toHaveBeenCalled();
 
     mockOnline = true;
-    rerender({});
+    await rerender({});
     await waitFor(() =>
       expect(mockEnsureIso).toHaveBeenCalledWith(9, expect.any(Function)),
     );
@@ -405,7 +409,7 @@ describe('usePassage', () => {
 
   it("doesn't repair the code when it's there", async () => {
     mockOnline = true;
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(mockEnsureIso).not.toHaveBeenCalled();
@@ -416,7 +420,7 @@ describe('usePassage', () => {
       verseTexts.map(v => (v.verseNumber === 25 ? { ...v, text: '' } : v)),
     );
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({ downloaded: false });
@@ -429,7 +433,7 @@ describe('usePassage', () => {
       totalVerses: 0,
     });
 
-    const { result } = renderHook(() => usePassage(5, 1, 3));
+    const { result } = await renderHook(() => usePassage(5, 1, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({ downloaded: true });
@@ -443,7 +447,7 @@ describe('usePassage', () => {
     });
     mockTexts.mockResolvedValue([]);
 
-    const { result } = renderHook(() => usePassage(5, 1, 3));
+    const { result } = await renderHook(() => usePassage(5, 1, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({ downloaded: false });
@@ -456,7 +460,7 @@ describe('usePassage', () => {
       totalVerses: verseTexts.length,
     });
 
-    const { result } = renderHook(() => usePassage(5, 1, 3));
+    const { result } = await renderHook(() => usePassage(5, 1, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({ downloaded: true });
@@ -469,7 +473,7 @@ describe('usePassage', () => {
       totalVerses: verseTexts.length + 1,
     });
 
-    const { result } = renderHook(() => usePassage(5, 1, 3));
+    const { result } = await renderHook(() => usePassage(5, 1, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({ downloaded: false });
@@ -478,7 +482,7 @@ describe('usePassage', () => {
   it("judges a pericope on its own verses, not the chapter's count", async () => {
     mockAssignment.mockResolvedValue({ ...baseAssignment, totalVerses: 99 });
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
     expect(result.current.passage).toMatchObject({ downloaded: true });
@@ -497,12 +501,12 @@ describe('usePassage', () => {
     mockTexts.mockResolvedValue([]);
     mockSync.mockResolvedValue(undefined);
 
-    const { result } = renderHook(() => usePassage(5, 25, 3));
+    const { result } = await renderHook(() => usePassage(5, 25, 3));
     await waitFor(() =>
       expect(result.current.passage).toMatchObject({ downloaded: false }),
     );
 
-    act(() => result.current.download());
+    await act(() => result.current.download());
 
     await waitFor(() => expect(mockSync).toHaveBeenCalled());
     expect(mockSync).toHaveBeenCalledWith(undefined, {
@@ -521,7 +525,7 @@ describe('usePassage', () => {
   it('shows waiting to send while a stage advance is queued', async () => {
     mockPending.mockResolvedValue(true);
 
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
 
     await waitFor(() =>
       expect(result.current.passage).toMatchObject({ waitingToSend: true }),
@@ -529,34 +533,34 @@ describe('usePassage', () => {
   });
 
   it('reloads after a sync and keeps the passage when the reload fails', async () => {
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
 
     mockAssignment.mockRejectedValueOnce(new Error('offline'));
-    act(() => emitSyncComplete());
+    await act(() => emitSyncComplete());
 
     await waitFor(() => expect(mockAssignment).toHaveBeenCalledTimes(2));
     expect(result.current.passage.status).toBe('ready');
   });
 
   it('drops the previous passage when a different chapter fails to load', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ id }: { id: number }) => usePassage(id, 22, 3),
       { initialProps: { id: 5 } },
     );
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
 
     mockAssignment.mockRejectedValueOnce(new Error('gone'));
-    rerender({ id: 6 });
+    await rerender({ id: 6 });
 
     await waitFor(() => expect(result.current.passage.status).toBe('missing'));
   });
 
   it('reloads when the screen is focused again', async () => {
-    const { result } = renderHook(() => usePassage(5, 22, 3));
+    const { result } = await renderHook(() => usePassage(5, 22, 3));
     await waitFor(() => expect(result.current.passage.status).toBe('ready'));
 
-    act(() => focusEffect?.());
+    await act(() => focusEffect?.());
 
     await waitFor(() => expect(mockAssignment).toHaveBeenCalledTimes(2));
   });

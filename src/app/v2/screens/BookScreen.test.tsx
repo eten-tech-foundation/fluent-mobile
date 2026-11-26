@@ -5,6 +5,12 @@ import BookScreen from './BookScreen';
 import type { BookPassage, BookPassages } from '../../../hooks/useBookPassages';
 import { hrefs } from '../../../navigation/hrefs';
 import type { ProjectChapter } from '../../../types/db/types';
+import { lastFlatListProps } from '../../../test/flatListCapture';
+
+jest.mock('react-native/Libraries/Lists/FlatList', () => ({
+  __esModule: true,
+  default: require('../../../test/flatListCapture').CapturingFlatList,
+}));
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -148,8 +154,8 @@ describe('BookScreen', () => {
     };
   });
 
-  it('names the book and groups passages under their chapters', () => {
-    render(<BookScreen />);
+  it('names the book and groups passages under their chapters', async () => {
+    await render(<BookScreen />);
 
     expect(screen.getByText('Mark')).toBeTruthy();
     expect(screen.getByText('Chapter 14')).toBeTruthy();
@@ -166,16 +172,16 @@ describe('BookScreen', () => {
     expect(screen.queryByText('Not recorded yet')).toBeNull();
   });
 
-  it('shows the sync status and opens Sync, like Legacy drafting', () => {
-    render(<BookScreen />);
+  it('shows the sync status and opens Sync, like Legacy drafting', async () => {
+    await render(<BookScreen />);
 
     const cloud = screen.getByTestId('book-sync');
     expect(cloud.props.accessibilityLabel).toMatch(/pending/i);
-    fireEvent.press(cloud);
+    await fireEvent.press(cloud);
     expect(mockOpenSync).toHaveBeenCalledTimes(1);
   });
 
-  it('says when a passage is in peer check', () => {
+  it('says when a passage is in peer check', async () => {
     mockChapters = [chapter(1, 14)];
     mockPassages = {
       status: 'ready',
@@ -199,24 +205,24 @@ describe('BookScreen', () => {
       pericopes: true,
     };
 
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     expect(
       screen.getByLabelText('The Last Supper, Mark 14:22–25, In peer check'),
     ).toBeTruthy();
   });
 
-  it('uses the milestone name when it spans books', () => {
+  it('uses the milestone name when it spans books', async () => {
     mockChapters = [chapter(1, 14), chapter(2, 1, 'Luke')];
 
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     expect(screen.getByText('Gospels Phase 1')).toBeTruthy();
     expect(screen.getByRole('header', { name: 'Mark 14' })).toBeTruthy();
     expect(screen.getByRole('header', { name: 'Luke 1' })).toBeTruthy();
   });
 
-  it('counts passages across books, and one crossing chapters once', () => {
+  it('counts passages across books, and one crossing chapters once', async () => {
     const passage = (key: string, recordedVerses: number): BookPassage => ({
       key,
       title: null,
@@ -242,12 +248,12 @@ describe('BookScreen', () => {
       pericopes: true,
     };
 
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     expect(screen.getByText('1 of 2 pericopes recorded')).toBeTruthy();
   });
 
-  it('counts chapters when the project has no pericopes', () => {
+  it('counts chapters when the project has no pericopes', async () => {
     const whole = (id: number, recordedVerses: number): BookPassage => ({
       key: `chapter:${id}`,
       title: null,
@@ -266,12 +272,12 @@ describe('BookScreen', () => {
       pericopes: false,
     };
 
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     expect(screen.getByText('1 of 2 chapters recorded')).toBeTruthy();
   });
 
-  it('says each chapter’s stage, whose it is, and what has to sync', () => {
+  it('says each chapter’s stage, whose it is, and what has to sync', async () => {
     mockChapters = [
       {
         ...chapter(1, 14),
@@ -288,7 +294,7 @@ describe('BookScreen', () => {
         hasConflict: true,
       },
     ];
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     expect(screen.getByTestId('book-chapter-1-meta').props.children).toBe(
       "Community Check · Someone else's · Upload pending",
@@ -298,7 +304,7 @@ describe('BookScreen', () => {
     );
   });
 
-  it('shows a waiting send on its covers', () => {
+  it('shows a waiting send on its covers', async () => {
     mockChapters = [chapter(1, 14)];
     mockPassages = {
       status: 'ready',
@@ -321,7 +327,7 @@ describe('BookScreen', () => {
       ]),
       pericopes: true,
     };
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     expect(
       screen.getByLabelText('The Last Supper, Mark 14:22–25, Waiting to send'),
@@ -330,10 +336,10 @@ describe('BookScreen', () => {
 
   it('sends an observer to the read-only view, never the passage', async () => {
     mockOpen = { kind: 'observer', href: observerHref };
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('book-passage-1-pericope::1'));
+      await fireEvent.press(screen.getByTestId('book-passage-1-pericope::1'));
     });
 
     expect(mockPush).toHaveBeenCalledWith(observerHref);
@@ -341,10 +347,10 @@ describe('BookScreen', () => {
   });
 
   it('opens the passage page for the passage, marked as from the book', async () => {
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('book-passage-1-pericope::1'));
+      await fireEvent.press(screen.getByTestId('book-passage-1-pericope::1'));
     });
 
     expect(mockPush).toHaveBeenCalledWith(
@@ -381,21 +387,21 @@ describe('BookScreen', () => {
       jest.useRealTimers();
     });
 
-    it("scrolls to the chapter once that chapter's covers load", () => {
+    it("scrolls to the chapter once that chapter's covers load", async () => {
       const loaded = mockPassages;
       mockParams = { ...baseParams, focusChapterId: '2' };
       mockPassages = { status: 'loading' };
-      const { rerender } = render(<BookScreen />);
+      const { rerender } = await render(<BookScreen />);
       expect(scrollToIndex).not.toHaveBeenCalled();
 
       // Settled for no chapters yet, before the milestone's arrive.
       mockPassages = { status: 'ready', byChapter: new Map(), pericopes: true };
-      rerender(<BookScreen />);
+      await rerender(<BookScreen />);
       expect(scrollToIndex).not.toHaveBeenCalled();
 
       mockPassages = loaded;
-      rerender(<BookScreen />);
-      rerender(<BookScreen />);
+      await rerender(<BookScreen />);
+      await rerender(<BookScreen />);
 
       expect(scrollToIndex).toHaveBeenCalledTimes(1);
       expect(scrollToIndex).toHaveBeenCalledWith({
@@ -405,7 +411,7 @@ describe('BookScreen', () => {
       });
     });
 
-    it('waits to scroll until the list is shown, even if the focused chapter already has covers', () => {
+    it('waits to scroll until the list is shown, even if the focused chapter already has covers', async () => {
       const loaded = mockPassages;
       if (loaded.status !== 'ready') throw new Error('expected ready passages');
       mockParams = { ...baseParams, focusChapterId: '2' };
@@ -414,12 +420,12 @@ describe('BookScreen', () => {
         byChapter: new Map([[2, loaded.byChapter.get(2) ?? []]]),
         pericopes: true,
       };
-      const { rerender } = render(<BookScreen />);
+      const { rerender } = await render(<BookScreen />);
       expect(screen.queryByTestId('book-list')).toBeNull();
       expect(scrollToIndex).not.toHaveBeenCalled();
 
       mockPassages = loaded;
-      rerender(<BookScreen />);
+      await rerender(<BookScreen />);
 
       expect(screen.getByTestId('book-list')).toBeTruthy();
       expect(scrollToIndex).toHaveBeenCalledTimes(1);
@@ -430,55 +436,58 @@ describe('BookScreen', () => {
       });
     });
 
-    it('starts at the top without a chapter, with one it does not have, or at the first', () => {
-      render(<BookScreen />);
+    it('starts at the top without a chapter, with one it does not have, or at the first', async () => {
+      await render(<BookScreen />);
       mockParams = { ...baseParams, focusChapterId: '99' };
-      render(<BookScreen />);
+      await render(<BookScreen />);
       mockParams = { ...baseParams, focusChapterId: '1' };
-      render(<BookScreen />);
+      await render(<BookScreen />);
 
       expect(scrollToIndex).not.toHaveBeenCalled();
     });
 
-    it('jumps near a chapter it has not laid out yet, retrying up to three times', () => {
+    it('jumps near a chapter it has not laid out yet, retrying up to three times', async () => {
       jest.useFakeTimers();
       mockParams = { ...baseParams, focusChapterId: '2' };
-      render(<BookScreen />);
+      await render(<BookScreen />);
       scrollToIndex.mockClear();
-      const list = screen.UNSAFE_getByType(FlatList);
-      const failed = { index: 1, averageItemLength: 300 };
+      const failed = {
+        index: 1,
+        highestMeasuredFrameIndex: 0,
+        averageItemLength: 300,
+      };
 
-      act(() => list.props.onScrollToIndexFailed(failed));
+      await act(() => lastFlatListProps().onScrollToIndexFailed?.(failed));
       expect(scrollToOffset).toHaveBeenCalledWith({
         offset: 300,
         animated: false,
       });
-      act(() => jest.advanceTimersByTime(100));
+      await act(() => jest.advanceTimersByTime(100));
       expect(scrollToIndex).toHaveBeenCalledTimes(1);
 
       for (let miss = 0; miss < 3; miss += 1) {
-        act(() => list.props.onScrollToIndexFailed(failed));
-        act(() => jest.advanceTimersByTime(100));
+        await act(() => lastFlatListProps().onScrollToIndexFailed?.(failed));
+        await act(() => jest.advanceTimersByTime(100));
       }
       expect(scrollToIndex).toHaveBeenCalledTimes(3);
       expect(scrollToOffset).toHaveBeenCalledTimes(4);
     });
   });
 
-  it('shows a spinner on the first load only, keeping the list on a reload', () => {
+  it('shows a spinner on the first load only, keeping the list on a reload', async () => {
     mockLoadState = { loading: true, error: null, removed: false };
     mockChapters = [];
-    const { rerender } = render(<BookScreen />);
+    const { rerender } = await render(<BookScreen />);
     expect(screen.queryByText('Chapter 14')).toBeNull();
 
     mockChapters = [chapter(1, 14), chapter(2, 15)];
-    rerender(<BookScreen />);
+    await rerender(<BookScreen />);
     expect(screen.getByText('Chapter 14')).toBeTruthy();
   });
 
-  it('shows the spinner, not the list, while chapters are ready and passages are loading', () => {
+  it('shows the spinner, not the list, while chapters are ready and passages are loading', async () => {
     mockPassages = { status: 'loading' };
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     expect(screen.getByTestId('loading-spinner')).toBeTruthy();
     expect(screen.queryByTestId('book-list')).toBeNull();
@@ -486,95 +495,95 @@ describe('BookScreen', () => {
     expect(screen.queryByText('Chapter 14')).toBeNull();
   });
 
-  it('holds the spinner until covers exist for the chapters', () => {
+  it('holds the spinner until covers exist for the chapters', async () => {
     mockPassages = { status: 'ready', byChapter: new Map(), pericopes: true };
-    render(<BookScreen />);
+    await render(<BookScreen />);
 
     expect(screen.getByTestId('loading-spinner')).toBeTruthy();
     expect(screen.queryByTestId('book-list')).toBeNull();
   });
 
-  it('shows the list and the book name together once passages are ready', () => {
+  it('shows the list and the book name together once passages are ready', async () => {
     const loaded = mockPassages;
     mockPassages = { status: 'loading' };
-    const { rerender } = render(<BookScreen />);
+    const { rerender } = await render(<BookScreen />);
     expect(screen.queryByTestId('book-list')).toBeNull();
 
     mockPassages = loaded;
-    rerender(<BookScreen />);
+    await rerender(<BookScreen />);
 
     expect(screen.getByTestId('book-list')).toBeTruthy();
     expect(screen.getByText('Mark')).toBeTruthy();
     expect(screen.getByTestId('book-passage-1-pericope::1')).toBeTruthy();
   });
 
-  it('keeps the list mounted on a later focus when passages stay ready', () => {
-    const { rerender } = render(<BookScreen />);
+  it('keeps the list mounted on a later focus when passages stay ready', async () => {
+    const { rerender } = await render(<BookScreen />);
     expect(screen.getByTestId('book-list')).toBeTruthy();
 
-    rerender(<BookScreen />);
+    await rerender(<BookScreen />);
 
     expect(screen.getByTestId('book-list')).toBeTruthy();
     expect(screen.getByText('Mark')).toBeTruthy();
   });
 
-  it('keeps the list when coming back even if passages load again', () => {
-    const { rerender } = render(<BookScreen />);
+  it('keeps the list when coming back even if passages load again', async () => {
+    const { rerender } = await render(<BookScreen />);
     expect(screen.getByTestId('book-list')).toBeTruthy();
 
     mockPassages = { status: 'loading' };
-    rerender(<BookScreen />);
+    await rerender(<BookScreen />);
 
     expect(screen.getByTestId('book-list')).toBeTruthy();
     expect(screen.getByText('Mark')).toBeTruthy();
     expect(screen.getByText('Chapter 14')).toBeTruthy();
   });
 
-  it('offers a retry when the chapters fail to load', () => {
+  it('offers a retry when the chapters fail to load', async () => {
     mockLoadState = {
       loading: false,
       error: new Error('nope'),
       removed: false,
     };
 
-    render(<BookScreen />);
-    fireEvent.press(screen.getByTestId('book-retry'));
+    await render(<BookScreen />);
+    await fireEvent.press(screen.getByTestId('book-retry'));
 
     expect(mockRetry).toHaveBeenCalled();
   });
 
-  it('goes back', () => {
-    render(<BookScreen />);
+  it('goes back', async () => {
+    await render(<BookScreen />);
 
-    fireEvent.press(screen.getByLabelText('Back'));
+    await fireEvent.press(screen.getByLabelText('Back'));
 
     expect(mockBack).toHaveBeenCalled();
   });
 
-  it('strokes the header once the passages scroll under it', () => {
+  it('strokes the header once the passages scroll under it', async () => {
     jest.useFakeTimers();
-    render(<BookScreen />);
+    await render(<BookScreen />);
     const stroke = screen.getByTestId('book-header-stroke');
     expect(stroke).toHaveAnimatedStyle({ opacity: 0 });
 
-    fireEvent.scroll(screen.getByTestId('book-list'), {
+    await fireEvent.scroll(screen.getByTestId('book-list'), {
       nativeEvent: {
         contentOffset: { x: 0, y: 120 },
         contentSize: { width: 360, height: 2000 },
         layoutMeasurement: { width: 360, height: 640 },
       },
     });
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
 
     expect(stroke).toHaveAnimatedStyle({ opacity: 1 });
   });
 
-  it('drops the stroke when the list gives way to an error', () => {
+  it('drops the stroke when the list gives way to an error', async () => {
     jest.useFakeTimers();
-    render(<BookScreen />);
-    fireEvent.scroll(screen.getByTestId('book-list'), {
+    await render(<BookScreen />);
+    await fireEvent.scroll(screen.getByTestId('book-list'), {
       nativeEvent: {
         contentOffset: { x: 0, y: 120 },
         contentSize: { width: 360, height: 2000 },
@@ -582,10 +591,10 @@ describe('BookScreen', () => {
       },
     });
     mockLoadState = { loading: false, error: new Error('x'), removed: false };
-    screen.rerender(<BookScreen />);
+    await screen.rerender(<BookScreen />);
     mockLoadState = { loading: false, error: null, removed: false };
-    screen.rerender(<BookScreen />);
-    act(() => {
+    await screen.rerender(<BookScreen />);
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
 

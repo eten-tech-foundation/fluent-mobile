@@ -63,8 +63,8 @@ describe('galleryEntries', () => {
     }
   });
 
-  it('shows every Next icon in the Icons entry', () => {
-    renderNext(<IconsEntry />);
+  it('shows every Next icon in the Icons entry', async () => {
+    await renderNext(<IconsEntry />);
     for (const name of Object.keys(icons)) {
       expect(screen.getByTestId(`gallery-icon-${name}`)).toBeTruthy();
     }
@@ -72,9 +72,9 @@ describe('galleryEntries', () => {
 
   it.each(galleryEntries.map(e => [e.name, e] as const))(
     'renders %s under Next',
-    (_, entry) => {
-      const { unmount } = renderNext(<entry.Component />);
-      unmount();
+    async (_, entry) => {
+      const { unmount } = await renderNext(<entry.Component />);
+      await unmount();
     },
   );
 });
@@ -86,30 +86,32 @@ describe('TakeFanEntry', () => {
   });
   afterEach(() => jest.useRealTimers());
 
-  it('records a take into the fan and brings it to the front', () => {
-    renderNext(<TakeFanEntry />);
+  it('records a take into the fan and brings it to the front', async () => {
+    await renderNext(<TakeFanEntry />);
 
-    fireEvent.press(screen.getByTestId('gallery-take-record'));
-    act(() => jest.advanceTimersByTime(1000));
-    fireEvent.press(screen.getByTestId('gallery-take-eject'));
+    await fireEvent.press(screen.getByTestId('gallery-take-record'));
+    await act(() => jest.advanceTimersByTime(1000));
+    await fireEvent.press(screen.getByTestId('gallery-take-eject'));
 
     expect(screen.getByText('v. 23 · Take 3')).toBeTruthy();
     expect(screen.getByText('3 of 5 takes on v. 23')).toBeTruthy();
   });
 
-  it('offers Undo on the card after a take is deleted, then lets it go', () => {
-    renderNext(<TakeFanEntry />);
+  it('offers Undo on the card after a take is deleted, then lets it go', async () => {
+    await renderNext(<TakeFanEntry />);
 
-    fireEvent(screen.getByLabelText('Take 1'), 'accessibilityAction', {
+    await fireEvent(screen.getByLabelText('Take 1'), 'accessibilityAction', {
       nativeEvent: { actionName: 'delete' },
     });
-    fireEvent.press(screen.getByLabelText('Undo deleting v. 23 · Take 1'));
+    await fireEvent.press(
+      screen.getByLabelText('Undo deleting v. 23 · Take 1'),
+    );
     expect(screen.getByText('2 of 5 takes on v. 23')).toBeTruthy();
 
-    fireEvent(screen.getByLabelText('Take 1'), 'accessibilityAction', {
+    await fireEvent(screen.getByLabelText('Take 1'), 'accessibilityAction', {
       nativeEvent: { actionName: 'delete' },
     });
-    act(() => jest.advanceTimersByTime(UNDO_MS));
+    await act(() => jest.advanceTimersByTime(UNDO_MS));
     expect(screen.getByText('1 of 5 takes on v. 23')).toBeTruthy();
   });
 });
@@ -117,11 +119,11 @@ describe('TakeFanEntry', () => {
 describe('WaveformEntry', () => {
   beforeEach(() => mockPreferenceStore());
 
-  it('steps verses with Previous and Next, off at the ends', () => {
-    renderNext(<WaveformEntry />);
+  it('steps verses with Previous and Next, off at the ends', async () => {
+    await renderNext(<WaveformEntry />);
 
     expect(screen.getByLabelText('Previous')).toBeDisabled();
-    fireEvent.press(screen.getByLabelText('Next: verse 23'));
+    await fireEvent.press(screen.getByLabelText('Next: verse 23'));
     expect(screen.getByLabelText('Previous: verse 22')).toBeTruthy();
     expect(screen.getByLabelText('Next: verse 24')).toBeTruthy();
   });
@@ -130,14 +132,14 @@ describe('WaveformEntry', () => {
 describe('NoteEntry', () => {
   beforeEach(() => mockPreferenceStore());
 
-  it('steps notes with the keys and closes from the header', () => {
-    renderNext(<NoteEntry />);
+  it('steps notes with the keys and closes from the header', async () => {
+    await renderNext(<NoteEntry />);
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByLabelText('Next note: My blood of the covenant,'),
     );
     expect(screen.getByLabelText('Note 2 of 3')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('Close the note'));
+    await fireEvent.press(screen.getByLabelText('Close the note'));
     expect(screen.getByText('Open the note again')).toBeTruthy();
   });
 });

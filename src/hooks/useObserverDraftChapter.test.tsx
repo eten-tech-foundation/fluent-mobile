@@ -126,7 +126,7 @@ describe('useObserverDraftChapter scope projection', () => {
         }),
     );
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({
         chapterAssignmentId,
         projectId,
@@ -144,7 +144,7 @@ describe('useObserverDraftChapter scope projection', () => {
     // Account switch + epoch bump before deferred bundle resolves.
     mockGetActiveUserId.mockReturnValue('8');
     mockUserSwitchEpoch = 1;
-    rerender({ chapterAssignmentId: 1001, projectId: 9 });
+    await rerender({ chapterAssignmentId: 1001, projectId: 9 });
 
     // Synchronous hide on the switched render — no prior account content.
     expect(result.current.hasAccess).toBe(false);
@@ -175,7 +175,7 @@ describe('useObserverDraftChapter scope projection', () => {
         }),
     );
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({
         chapterAssignmentId,
         projectId,
@@ -190,7 +190,7 @@ describe('useObserverDraftChapter scope projection', () => {
       expect(resolvers.length).toBe(1);
     });
 
-    rerender({ chapterAssignmentId: 1002, projectId: 9 });
+    await rerender({ chapterAssignmentId: 1002, projectId: 9 });
 
     expect(result.current.hasAccess).toBe(false);
     expect(result.current.draftUnits).toEqual([]);
@@ -213,7 +213,7 @@ describe('useObserverDraftChapter scope projection', () => {
       bundleFor(1001, 'VISIBLE'),
     );
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({
         chapterAssignmentId,
         projectId,
@@ -230,7 +230,7 @@ describe('useObserverDraftChapter scope projection', () => {
     });
 
     mockHasProjectObserverGrant.mockReturnValue(false);
-    rerender({ chapterAssignmentId: 1001, projectId: 9 });
+    await rerender({ chapterAssignmentId: 1001, projectId: 9 });
 
     expect(result.current.hasAccess).toBe(false);
     expect(result.current.draftUnits).toEqual([]);
@@ -246,7 +246,7 @@ describe('useObserverDraftChapter scope projection', () => {
         }),
     );
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({
         chapterAssignmentId,
         projectId,
@@ -264,10 +264,10 @@ describe('useObserverDraftChapter scope projection', () => {
     // A → B → A (epoch 0 → 1 → 2); deferred result still belongs to epoch 0.
     mockGetActiveUserId.mockReturnValue('8');
     mockUserSwitchEpoch = 1;
-    rerender({ chapterAssignmentId: 1001, projectId: 9 });
+    await rerender({ chapterAssignmentId: 1001, projectId: 9 });
     mockGetActiveUserId.mockReturnValue('7');
     mockUserSwitchEpoch = 2;
-    rerender({ chapterAssignmentId: 1001, projectId: 9 });
+    await rerender({ chapterAssignmentId: 1001, projectId: 9 });
 
     expect(result.current.hasAccess).toBe(false);
     expect(result.current.draftUnits).toEqual([]);

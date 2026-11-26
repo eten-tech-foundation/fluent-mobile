@@ -1,4 +1,5 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { holdNextCall } from '../test/holdNextCall';
 import { useBibleTabUnits } from './useBibleTabUnits';
 import { getProjectPericopeSetId } from '../db/repository';
 import {
@@ -73,10 +74,14 @@ describe('useBibleTabUnits', () => {
   });
 
   it('returns verse rows and a Verse caption in verse mode', async () => {
-    const { result } = renderHook(() => useBibleTabUnits(hookArgs));
+    const releaseCoverages = holdNextCall(
+      getSelectedTakeCoverages as jest.Mock,
+    );
+    const { result } = await renderHook(() => useBibleTabUnits(hookArgs));
 
     expect(result.current.unitsPending).toBe(true);
 
+    await act(async () => releaseCoverages());
     await waitFor(() => {
       expect(result.current.unitsPending).toBe(false);
     });
@@ -109,7 +114,7 @@ describe('useBibleTabUnits', () => {
       },
     ]);
 
-    const { result } = renderHook(() => useBibleTabUnits(hookArgs));
+    const { result } = await renderHook(() => useBibleTabUnits(hookArgs));
 
     expect(result.current.effectiveUnit).toBe('pericope');
     expect(result.current.unitsPending).toBe(true);
@@ -142,7 +147,7 @@ describe('useBibleTabUnits', () => {
       },
     ]);
 
-    const { result } = renderHook(() => useBibleTabUnits(hookArgs));
+    const { result } = await renderHook(() => useBibleTabUnits(hookArgs));
 
     await waitFor(() => {
       expect(result.current.units).toHaveLength(1);
@@ -168,7 +173,7 @@ describe('useBibleTabUnits', () => {
       },
     ]);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: typeof hookArgs) => useBibleTabUnits(props),
       { initialProps: hookArgs },
     );
@@ -178,7 +183,7 @@ describe('useBibleTabUnits', () => {
     });
 
     jest.mocked(getProjectPericopeSetId).mockResolvedValue(null);
-    rerender({ ...hookArgs, projectId: 10 });
+    await rerender({ ...hookArgs, projectId: 10 });
 
     await waitFor(() => {
       expect(result.current.effectiveUnit).toBe('verse');
@@ -212,7 +217,7 @@ describe('useBibleTabUnits', () => {
       },
     ]);
 
-    const { result } = renderHook(() => useBibleTabUnits(hookArgs));
+    const { result } = await renderHook(() => useBibleTabUnits(hookArgs));
 
     await waitFor(() => {
       expect(result.current.units[0]?.bodyVerses).toEqual([

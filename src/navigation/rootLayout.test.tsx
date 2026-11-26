@@ -74,47 +74,47 @@ beforeEach(() => {
 });
 
 describe('root layout launch entry (#886)', () => {
-  it('enters saved Home from the launch route without a screen transition', () => {
-    const view = render(<RootLayout />);
+  it('enters saved Home from the launch route without a screen transition', async () => {
+    const view = await render(<RootLayout />);
     expect(mockScreens['(app)']).toBeUndefined();
 
     mockAuth = { isAuthenticated: true, isLoading: false };
-    view.rerender(<RootLayout />);
+    await view.rerender(<RootLayout />);
     expect(mockScreens['(app)']).toEqual(NO_ANIMATION);
 
     mockSegments = ['(app)', '(stack)'];
-    view.rerender(<RootLayout />);
+    await view.rerender(<RootLayout />);
     expect(mockScreens['(app)']).toEqual(NO_ANIMATION);
 
-    view.rerender(<RootLayout />);
+    await view.rerender(<RootLayout />);
     expect(mockScreens['(app)']).toBeUndefined();
   });
 
-  it('keeps the default transition after the first group has been shown', () => {
+  it('keeps the default transition after the first group has been shown', async () => {
     mockAuth = { isAuthenticated: true, isLoading: false };
     mockSegments = ['(app)', '(stack)'];
-    const view = render(<RootLayout />);
+    const view = await render(<RootLayout />);
 
     mockSegments = ['(app)', '(stack)', 'sync'];
-    view.rerender(<RootLayout />);
+    await view.rerender(<RootLayout />);
     expect(mockScreens['(app)']).toBeUndefined();
   });
 
-  it('keeps the default transition into Home after signing in', () => {
+  it('keeps the default transition into Home after signing in', async () => {
     mockAuth = { isAuthenticated: false, isLoading: false };
     mockSegments = ['(auth)', 'login'];
-    const view = render(<RootLayout />);
+    const view = await render(<RootLayout />);
     expect(mockScreens['(auth)']).toEqual(NO_ANIMATION);
 
-    view.rerender(<RootLayout />);
+    await view.rerender(<RootLayout />);
     expect(mockScreens['(auth)']).toBeUndefined();
 
     mockAuth = { isAuthenticated: true, isLoading: false };
-    view.rerender(<RootLayout />);
+    await view.rerender(<RootLayout />);
     expect(mockRedirects).toEqual(['/(app)/(stack)']);
 
     mockSegments = ['(app)', '(stack)'];
-    view.rerender(<RootLayout />);
+    await view.rerender(<RootLayout />);
     expect(mockScreens['(app)']).toBeUndefined();
   });
 });

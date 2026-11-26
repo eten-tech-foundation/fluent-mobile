@@ -41,11 +41,11 @@ describe('HardwarePanel', () => {
     mockPreferenceStore({ pref_ui_version: 'next' });
   });
 
-  it('flips between Listen and Record from the mode toggle', () => {
-    render(<Panel />);
+  it('flips between Listen and Record from the mode toggle', async () => {
+    await render(<Panel />);
     expect(screen.getByText('listen keys')).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('switch', { name: 'Record mode' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Record mode' }));
 
     expect(screen.getByText('record keys')).toBeTruthy();
     expect(mockToggle).toHaveBeenLastCalledWith(true);
@@ -55,24 +55,24 @@ describe('HardwarePanel', () => {
     ).toMatchObject({ checked: true });
   });
 
-  it('locks the mode while a take is in progress', () => {
-    render(<Panel locked />);
+  it('locks the mode while a take is in progress', async () => {
+    await render(<Panel locked />);
 
     const toggle = screen.getByRole('switch', { name: 'Record mode' });
     expect(toggle.props.accessibilityState).toMatchObject({ disabled: true });
-    fireEvent.press(toggle);
+    await fireEvent.press(toggle);
     expect(screen.getByText('listen keys')).toBeTruthy();
     expect(mockToggle).not.toHaveBeenCalled();
   });
 
-  it('pads for the gesture bar unless told not to', () => {
-    const { unmount } = render(<Panel />);
+  it('pads for the gesture bar unless told not to', async () => {
+    const { unmount } = await render(<Panel />);
     expect(
       StyleSheet.flatten(screen.getByTestId('panel').props.style).paddingBottom,
     ).toBe(24);
-    unmount();
+    await unmount();
 
-    render(
+    await render(
       <HardwarePanel
         recordMode={false}
         onRecordModeChange={jest.fn()}
@@ -87,8 +87,8 @@ describe('HardwarePanel', () => {
     ).toBeUndefined();
   });
 
-  it('keeps the speaker grill out of TalkBack', () => {
-    render(<Panel />);
+  it('keeps the speaker grill out of TalkBack', async () => {
+    await render(<Panel />);
 
     expect(screen.queryByTestId('panel-grill')).toBeNull();
     expect(

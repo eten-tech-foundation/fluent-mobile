@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Switch, Text, TouchableOpacity } from 'react-native';
+import { Text } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import {
   SettingsDestructiveRow,
@@ -10,6 +10,7 @@ import {
 import { UiVersionOverride } from '../../theme/useTheme';
 import { resolveTheme } from '../../theme/uiVersion';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
+import { getByHostType } from '../../test/hostElements';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
@@ -56,7 +57,26 @@ beforeEach(() => {
 });
 afterEach(() => Object.assign(nextColors, originalColors));
 
-it('scopes navigation colors while disabled and press behavior stays controlled', () => {
+it('dims a row that mounts disabled', async () => {
+  await render(
+    scope(
+      'legacy',
+      <SettingsNavigationRow
+        title="Navigate"
+        subtitle="Enabled detail"
+        icon={<Text>Icon</Text>}
+        onPress={jest.fn()}
+        disabled
+        disabledSubtitle="Unavailable"
+        testID="navigation-row"
+      />,
+    ),
+  );
+
+  expect(screen.getByTestId('navigation-row')).toHaveStyle({ opacity: 0.5 });
+});
+
+it('scopes navigation colors while disabled and press behavior stays controlled', async () => {
   const onPress = jest.fn();
   const row = (disabled = false) => (
     <SettingsNavigationRow
@@ -69,7 +89,7 @@ it('scopes navigation colors while disabled and press behavior stays controlled'
       testID="navigation-row"
     />
   );
-  const { rerender } = render(scope('legacy', row()));
+  const { rerender } = await render(scope('legacy', row()));
   expect(screen.getByText('Navigate')).toHaveStyle({
     color: legacy.colors.foreground,
   });
@@ -77,33 +97,34 @@ it('scopes navigation colors while disabled and press behavior stays controlled'
     paddingHorizontal: legacy.spacing.lg,
     paddingVertical: legacy.spacing.md,
   });
-  rerender(scope('next', row()));
+  await rerender(scope('next', row()));
   expect(screen.getByText('Navigate')).toHaveStyle({ color: '#123456' });
   expect(screen.getByText('Enabled detail')).toHaveStyle({ color: '#234567' });
   expect(screen.getByTestId('row-chevron').props.color).toBe('#234567');
-  fireEvent.press(screen.getByTestId('navigation-row'));
+  await fireEvent.press(screen.getByTestId('navigation-row'));
   expect(onPress).toHaveBeenCalledTimes(1);
-  rerender(scope('next', row(true)));
+  await rerender(scope('next', row(true)));
   expect(screen.getByText('Navigate')).toHaveStyle({ color: '#234567' });
-  // TouchableOpacity's Jest host injects animated opacity; check the unchanged
-  // disabled style passed to the control rather than that animation stub.
-  expect(
-    StyleSheet.flatten(screen.UNSAFE_getByType(TouchableOpacity).props.style),
-  ).toMatchObject({ opacity: 0.5 });
   expect(
     screen.getByTestId('navigation-row').props.accessibilityState.disabled,
   ).toBe(true);
   expect(screen.getByText('Unavailable')).toBeTruthy();
   expect(screen.queryByTestId('row-chevron')).toBeNull();
-  fireEvent.press(screen.getByTestId('navigation-row'));
+  await fireEvent.press(screen.getByTestId('navigation-row'));
   expect(onPress).toHaveBeenCalledTimes(1);
-  rerender(scope('legacy', row()));
+  await rerender(scope('legacy', row()));
   expect(screen.getByText('Navigate')).toHaveStyle({
     color: legacy.colors.foreground,
   });
 });
 
-it('scopes Switch colors without changing controlled value or callback', () => {
+// Jest renders the iOS host, which takes the track colours as separate props.
+const trackColors = () => {
+  const host = getByHostType('RCTSwitch').props;
+  return { false: host.tintColor, true: host.onTintColor };
+};
+
+it('scopes Switch colors without changing controlled value or callback', async () => {
   const onValueChange = jest.fn();
   const row = (value: boolean) => (
     <SettingsToggleRow
@@ -114,30 +135,30 @@ it('scopes Switch colors without changing controlled value or callback', () => {
       testID="toggle-row"
     />
   );
-  const { rerender } = render(scope('legacy', row(false)));
-  expect(screen.UNSAFE_getByType(Switch).props.trackColor).toEqual({
+  const { rerender } = await render(scope('legacy', row(false)));
+  expect(trackColors()).toEqual({
     false: legacy.colors.border,
     true: legacy.colors.primary,
   });
-  rerender(scope('next', row(false)));
-  expect(screen.UNSAFE_getByType(Switch).props.trackColor).toEqual({
+  await rerender(scope('next', row(false)));
+  expect(trackColors()).toEqual({
     false: '#56789a',
     true: '#345678',
   });
-  expect(screen.UNSAFE_getByType(Switch).props.thumbColor).toBe('#456789');
+  expect(getByHostType('RCTSwitch').props.thumbTintColor).toBe('#456789');
   expect(screen.getByText('Toggle')).toHaveStyle({ color: '#123456' });
-  expect(screen.UNSAFE_getByType(Switch).props.value).toBe(false);
-  fireEvent(screen.UNSAFE_getByType(Switch), 'valueChange', true);
+  expect(getByHostType('RCTSwitch').props.value).toBe(false);
+  await fireEvent(getByHostType('RCTSwitch'), 'valueChange', true);
   expect(onValueChange).toHaveBeenCalledWith(true);
-  rerender(scope('next', row(true)));
-  expect(screen.UNSAFE_getByType(Switch).props.value).toBe(true);
-  rerender(scope('legacy', row(true)));
-  expect(screen.UNSAFE_getByType(Switch).props.thumbColor).toBe(
+  await rerender(scope('next', row(true)));
+  expect(getByHostType('RCTSwitch').props.value).toBe(true);
+  await rerender(scope('legacy', row(true)));
+  expect(getByHostType('RCTSwitch').props.thumbTintColor).toBe(
     legacy.colors.primaryForeground,
   );
 });
 
-it('scopes segmented selection while responding to value changes without theme changes', () => {
+it('scopes segmented selection while responding to value changes without theme changes', async () => {
   const onValueChange = jest.fn();
   const row = (value: 'verse' | 'pericope') => (
     <SettingsSegmentedRow
@@ -152,19 +173,19 @@ it('scopes segmented selection while responding to value changes without theme c
       testID="unit"
     />
   );
-  const { rerender } = render(scope('legacy', row('verse')));
+  const { rerender } = await render(scope('legacy', row('verse')));
   expect(screen.getByTestId('unit-verse')).toHaveStyle({
     backgroundColor: legacy.colors.background,
   });
-  rerender(scope('next', row('verse')));
+  await rerender(scope('next', row('verse')));
   expect(screen.getByTestId('unit-verse')).toHaveStyle({
     backgroundColor: '#6789ab',
   });
   expect(screen.getByText('Verse')).toHaveStyle({ color: '#123456' });
   expect(screen.getByText('Pericope')).toHaveStyle({ color: '#234567' });
-  fireEvent.press(screen.getByTestId('unit-pericope'));
+  await fireEvent.press(screen.getByTestId('unit-pericope'));
   expect(onValueChange).toHaveBeenCalledWith('pericope');
-  rerender(scope('next', row('pericope')));
+  await rerender(scope('next', row('pericope')));
   expect(
     screen.getByTestId('unit-pericope').props.accessibilityState.selected,
   ).toBe(true);
@@ -176,13 +197,13 @@ it('scopes segmented selection while responding to value changes without theme c
   });
   expect(screen.getByText('Pericope')).toHaveStyle({ color: '#123456' });
   expect(screen.getByText('Verse')).toHaveStyle({ color: '#234567' });
-  rerender(scope('legacy', row('pericope')));
+  await rerender(scope('legacy', row('pericope')));
   expect(screen.getByText('Pericope')).toHaveStyle({
     color: legacy.colors.foreground,
   });
 });
 
-it('scopes destructive text without changing press behavior', () => {
+it('scopes destructive text without changing press behavior', async () => {
   const onPress = jest.fn();
   const row = (
     <SettingsDestructiveRow
@@ -192,17 +213,17 @@ it('scopes destructive text without changing press behavior', () => {
       testID="destructive-row"
     />
   );
-  const { rerender } = render(scope('legacy', row));
+  const { rerender } = await render(scope('legacy', row));
   expect(screen.getByText('Destructive action')).toHaveStyle({
     color: legacy.colors.destructive,
   });
-  rerender(scope('next', row));
+  await rerender(scope('next', row));
   expect(screen.getByText('Destructive action')).toHaveStyle({
     color: '#89abcd',
   });
-  fireEvent.press(screen.getByTestId('destructive-row'));
+  await fireEvent.press(screen.getByTestId('destructive-row'));
   expect(onPress).toHaveBeenCalledTimes(1);
-  rerender(scope('legacy', row));
+  await rerender(scope('legacy', row));
   expect(screen.getByText('Destructive action')).toHaveStyle({
     color: legacy.colors.destructive,
   });

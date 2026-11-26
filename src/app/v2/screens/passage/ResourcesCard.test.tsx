@@ -2,7 +2,6 @@ import 'react-native-gesture-handler/jestSetup';
 import React, { useState } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { ScrollView, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
 import { makeMutable, getAnimatedStyle } from 'react-native-reanimated';
 import {
   fireGestureHandler,
@@ -10,10 +9,63 @@ import {
 } from 'react-native-gesture-handler/jest-utils';
 import type { ImagesMapsItem } from '../../../../types/resources/imagesMaps';
 import { resolveTheme } from '../../../../theme/uiVersion';
-import { PassageImages } from './PassageImages';
+import { getAllByHostType } from '../../../../test/hostElements';
 import { centerOffset, ResourcesCard } from './ResourcesCard';
 
 /** The system's reduce-motion setting. */
+// Keeps the latest PassageImages props: `onGrown` is called by the list itself.
+let mockPassageImagesProps: {
+  onGrown?: (top: number, bottom: number) => void;
+} = {};
+jest.mock('./PassageImages', () => {
+  const React = require('react');
+  const actual = jest.requireActual('./PassageImages');
+  return {
+    ...actual,
+    PassageImages: (props: {
+      onGrown?: (top: number, bottom: number) => void;
+    }) => {
+      mockPassageImagesProps = props;
+      return React.createElement(actual.PassageImages, props);
+    },
+  };
+});
+
+// The shared expo-image mock drops onError; here the host view keeps it, so a
+// failed thumbnail can be reported with fireEvent.
+jest.mock('expo-image', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    Image: ({
+      onError,
+      onLoad,
+      source,
+      ...props
+    }: {
+      onError?: () => void;
+      onLoad?: (event: unknown) => void;
+      source?: { uri?: string } | string | number;
+    }) => {
+      React.useEffect(() => {
+        const url = typeof source === 'object' ? source?.uri ?? '' : '';
+        onLoad?.({
+          cacheType: 'none',
+          source: { url, width: 1, height: 1, mediaType: null },
+        });
+        // Fires once per mount, like a real image load. A new `source` object
+        // from the caller must not re-fire it, so `source` stays out of deps.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [onLoad]);
+      return React.createElement(View, { ...props, source, onError });
+    },
+  };
+});
+
+/** Preview thumbnails: the host views that were given an image source. */
+const images = () =>
+  getAllByHostType('View').filter(node => node.props.source !== undefined);
+
 let mockReduceMotion = false;
 jest.mock('react-native-reanimated', () => ({
   __esModule: true,
@@ -71,7 +123,9 @@ function Card({
   );
 }
 
-const settle = () => act(() => jest.advanceTimersByTime(1000));
+const settle = async () => {
+  await act(() => jest.advanceTimersByTime(1000));
+};
 
 /** How far the card is moved from its place: `OPEN` grown, `DOCKED` docked. */
 function offset() {
@@ -86,13 +140,13 @@ const cardHeight = () =>
   StyleSheet.flatten(screen.getByTestId('passage-resources-peek').props.style)
     .height;
 
-function renderCard(maxHeight = GROWN) {
+async function renderCard(maxHeight = GROWN) {
   jest.useFakeTimers();
-  render(<Card maxHeight={maxHeight} />);
-  fireEvent(screen.getByTestId('passage-resources-grab'), 'layout', {
+  await render(<Card maxHeight={maxHeight} />);
+  await fireEvent(screen.getByTestId('passage-resources-grab'), 'layout', {
     nativeEvent: { layout: { width: 360, height: HEADER } },
   });
-  settle();
+  await settle();
 }
 
 describe('ResourcesCard', () => {
@@ -101,41 +155,41 @@ describe('ResourcesCard', () => {
     mockBottom = 0;
   });
 
-  it('docks above a gesture bar, and floats above it when open', () => {
+  it('docks above a gesture bar, and floats above it when open', async () => {
     mockBottom = 24;
-    renderCard();
+    await renderCard();
     // Docked, the header shows above the bar, as without one.
     expect(offset()).toBe(GROWN - (LIFT + 24) - (HEADER + 24));
-    act(() => external(true));
-    settle();
+    await act(() => external(true));
+    await settle();
     expect(offset()).toBe(-(LIFT + 24));
     expect(cardHeight()).toBe(GROWN - (LIFT + 24));
   });
 
-  it('floats less on a page too short to float, and never covers the header', () => {
-    renderCard(HEADER + 10);
+  it('floats less on a page too short to float, and never covers the header', async () => {
+    await renderCard(HEADER + 10);
     expect(cardHeight()).toBe(HEADER);
     expect(offset()).toBe(0);
-    act(() => external(true));
-    settle();
+    await act(() => external(true));
+    await settle();
     expect(offset()).toBe(-10);
   });
 
-  it('docks with only its header showing', () => {
-    renderCard();
+  it('docks with only its header showing', async () => {
+    await renderCard();
     expect(offset()).toBe(DOCKED);
     // Short of the bottom by the gap, so it floats when open.
     expect(cardHeight()).toBe(GROWN - LIFT);
   });
 
-  it('grows and docks when opened or closed from outside', () => {
-    renderCard();
-    act(() => external(true));
-    settle();
+  it('grows and docks when opened or closed from outside', async () => {
+    await renderCard();
+    await act(() => external(true));
+    await settle();
     expect(offset()).toBe(OPEN);
 
-    act(() => external(false));
-    settle();
+    await act(() => external(false));
+    await settle();
     expect(offset()).toBe(DOCKED);
   });
 
@@ -144,45 +198,46 @@ describe('ResourcesCard', () => {
     [true, false],
   ])(
     'scrolls a grown image to its middle (reduce motion %s, animated %s)',
-    (reduce, animated) => {
+    async (reduce, animated) => {
       mockReduceMotion = reduce;
-      renderCard();
-      fireEvent.press(screen.getByRole('button', { name: 'Resources' }));
-      settle();
-      fireEvent(screen.getByTestId('passage-resources'), 'layout', {
+      await renderCard();
+      await fireEvent.press(screen.getByRole('button', { name: 'Resources' }));
+      await settle();
+      await fireEvent(screen.getByTestId('passage-resources'), 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 600 } },
       });
       // Opening scrolls to the top; only the grow's scroll counts here.
       const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
       scrollTo.mockClear();
-      const { onGrown } = screen.UNSAFE_getByType(PassageImages).props;
-      act(() => onGrown(800, 1000));
+      await act(() => mockPassageImagesProps.onGrown?.(800, 1000));
       expect(scrollTo).toHaveBeenCalledWith({ y: 600, animated });
       scrollTo.mockRestore();
       mockReduceMotion = false;
     },
   );
 
-  it('grows on a tap and docks from its chevron', () => {
-    renderCard();
-    fireEvent.press(screen.getByRole('button', { name: 'Resources' }));
-    settle();
+  it('grows on a tap and docks from its chevron', async () => {
+    await renderCard();
+    await fireEvent.press(screen.getByRole('button', { name: 'Resources' }));
+    await settle();
     expect(offset()).toBe(OPEN);
 
-    fireEvent.press(screen.getByRole('button', { name: 'Collapse resources' }));
-    settle();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Collapse resources' }),
+    );
+    await settle();
     expect(offset()).toBe(DOCKED);
   });
 
-  it('follows a flick up and a flick down', () => {
-    renderCard();
+  it('follows a flick up and a flick down', async () => {
+    await renderCard();
     const drag = getByGestureTestId('passage-resources-drag');
 
     fireGestureHandler(drag, [
       { translationY: 0, velocityY: 0 },
       { translationY: -60, velocityY: -1200 },
     ]);
-    settle();
+    await settle();
     expect(offset()).toBe(OPEN);
     expect(
       screen.getByTestId('passage-resources-open').props.accessibilityState
@@ -193,56 +248,50 @@ describe('ResourcesCard', () => {
       { translationY: 0, velocityY: 0 },
       { translationY: 60, velocityY: 1200 },
     ]);
-    settle();
+    await settle();
     expect(offset()).toBe(DOCKED);
   });
 
-  it('springs back when a short, slow drag lets go', () => {
-    renderCard();
+  it('springs back when a short, slow drag lets go', async () => {
+    await renderCard();
     fireGestureHandler(getByGestureTestId('passage-resources-drag'), [
       { translationY: 0, velocityY: 0 },
       { translationY: -40, velocityY: -50 },
     ]);
-    settle();
+    await settle();
     expect(offset()).toBe(DOCKED);
   });
 
-  it('drops a preview whose thumbnail fails to load', () => {
-    render(<Card previews={PREVIEWS} />);
-    expect(screen.UNSAFE_getAllByType(Image)).toHaveLength(3);
-    act(() => {
-      screen.UNSAFE_getAllByType(Image)[1].props.onError();
-    });
-    expect(screen.UNSAFE_getAllByType(Image)).toHaveLength(2);
+  it('drops a preview whose thumbnail fails to load', async () => {
+    await render(<Card previews={PREVIEWS} />);
+    expect(images()).toHaveLength(3);
+    await fireEvent(images()[1], 'error');
+    expect(images()).toHaveLength(2);
   });
 
-  it('fills in with the next preview that loads, up to three', () => {
+  it('fills in with the next preview that loads, up to three', async () => {
     const four = [
       ...PREVIEWS,
       { id: 'd', title: 'Image d', uri: 'file:///d.jpg' },
     ];
-    render(<Card previews={four} />);
+    await render(<Card previews={four} />);
     const uris = () =>
-      screen
-        .UNSAFE_getAllByType(Image)
-        .map(image => (image.props.source as { uri: string }).uri);
+      images().map(image => (image.props.source as { uri: string }).uri);
     expect(uris()).toEqual(['file:///a.jpg', 'file:///b.jpg', 'file:///c.jpg']);
-    act(() => {
-      screen.UNSAFE_getAllByType(Image)[0].props.onError();
-    });
+    await fireEvent(images()[0], 'error');
     expect(uris()).toEqual(['file:///b.jpg', 'file:///c.jpg', 'file:///d.jpg']);
   });
 
-  it('gives a failed preview another try when the previews load again', () => {
-    const view = render(<Card previews={PREVIEWS} previewsScope="first" />);
-    act(() => {
-      screen.UNSAFE_getAllByType(Image)[1].props.onError();
-    });
-    expect(screen.UNSAFE_getAllByType(Image)).toHaveLength(2);
+  it('gives a failed preview another try when the previews load again', async () => {
+    const view = await render(
+      <Card previews={PREVIEWS} previewsScope="first" />,
+    );
+    await fireEvent(images()[1], 'error');
+    expect(images()).toHaveLength(2);
 
     // The same images, loaded again (a retry, back online, the full list).
-    view.rerender(<Card previews={PREVIEWS} previewsScope="all" />);
-    expect(screen.UNSAFE_getAllByType(Image)).toHaveLength(3);
+    await view.rerender(<Card previews={PREVIEWS} previewsScope="all" />);
+    expect(images()).toHaveLength(3);
   });
 });
 

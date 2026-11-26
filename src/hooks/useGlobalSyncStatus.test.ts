@@ -7,27 +7,27 @@ describe('useGlobalSyncStatus', () => {
     emitSyncComplete();
   });
 
-  it('reports syncing when mounted after a sync already started (#886)', () => {
+  it('reports syncing when mounted after a sync already started (#886)', async () => {
     emitSyncStart();
 
-    const { result } = renderHook(() => useGlobalSyncStatus());
+    const { result } = await renderHook(() => useGlobalSyncStatus());
 
     expect(result.current).toBe(true);
 
-    act(() => emitSyncComplete());
+    await act(() => emitSyncComplete());
 
     expect(result.current).toBe(false);
   });
 
-  it('reports idle when mounted with no sync running', () => {
+  it('reports idle when mounted with no sync running', async () => {
     emitSyncStart();
     emitSyncComplete();
 
-    const { result } = renderHook(() => useGlobalSyncStatus());
+    const { result } = await renderHook(() => useGlobalSyncStatus());
 
     expect(result.current).toBe(false);
 
-    act(() => emitSyncStart());
+    await act(() => emitSyncStart());
 
     expect(result.current).toBe(true);
   });

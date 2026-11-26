@@ -3,11 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ChapterSelectorGrid } from './ChapterSelectorGrid';
 
 describe('ChapterSelectorGrid', () => {
-  it('renders chapter numbers and toggles selection', () => {
+  it('renders chapter numbers and toggles selection', async () => {
     const onToggleChapter = jest.fn();
     const selectedIds = new Set<number>();
 
-    const { rerender } = render(
+    const { rerender } = await render(
       <ChapterSelectorGrid
         chapterIds={[1, 2]}
         chapterNumbers={[3, 4]}
@@ -19,10 +19,10 @@ describe('ChapterSelectorGrid', () => {
     expect(screen.getByText('3')).toBeTruthy();
     expect(screen.getByText('4')).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText('Chapter 3'));
+    await fireEvent.press(screen.getByLabelText('Chapter 3'));
     expect(onToggleChapter).toHaveBeenCalledWith(1);
 
-    rerender(
+    await rerender(
       <ChapterSelectorGrid
         chapterIds={[1, 2]}
         chapterNumbers={[3, 4]}

@@ -79,9 +79,9 @@ const PERICOPE = passage([
 type Props = { passage: Ready; userId: number | null; enabled: boolean };
 
 /** Every state rendered, so a stale one can't hide between renders. */
-function renderImages(initial: Partial<Props> = {}) {
+async function renderImages(initial: Partial<Props> = {}) {
   const seen: PassageImagesState[] = [];
-  const view = renderHook(
+  const view = await renderHook(
     (props: Props) => {
       const result = usePassageImages(props);
       seen.push(result.state);
@@ -114,7 +114,7 @@ describe('usePassageImages', () => {
 
   it('stays loading without asking anything while connectivity is unresolved', async () => {
     mockConnectivity = { isOnline: false, hasResolved: false };
-    const { result } = renderImages();
+    const { result } = await renderImages();
     await act(async () => {});
     expect(result.current.state).toEqual({ status: 'loading' });
     expect(mockFindRows).not.toHaveBeenCalled();
@@ -122,13 +122,13 @@ describe('usePassageImages', () => {
   });
 
   it('does not load until asked', async () => {
-    const { result, rerender } = renderImages({ enabled: false });
+    const { result, rerender } = await renderImages({ enabled: false });
     await act(async () => {});
     expect(result.current.state).toEqual({ status: 'loading' });
     expect(getImages).not.toHaveBeenCalled();
 
     getImages.mockResolvedValue(response(item(1, 'Jerusalem')));
-    rerender({ passage: PERICOPE, userId: 5, enabled: true });
+    await rerender({ passage: PERICOPE, userId: 5, enabled: true });
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
   });
 
@@ -138,7 +138,7 @@ describe('usePassageImages', () => {
         ? response(item(1, 'Jerusalem'))
         : response(item(1, 'Jerusalem'), item(2, 'Upper room')),
     );
-    const { result } = renderImages();
+    const { result } = await renderImages();
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
     expect(getImages.mock.calls).toEqual([
       [7, 'MRK', 14, 1, 'eng'],
@@ -169,7 +169,7 @@ describe('usePassageImages', () => {
 
   it('asks only for the first verses when told to', async () => {
     getImages.mockResolvedValue(response());
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePassageImages({
         passage: passage(
           [1, 2, 3, 4].map(v => ({ chapterNumber: 14, verseNumber: v })),
@@ -185,7 +185,7 @@ describe('usePassageImages', () => {
 
   it('keeps each chapter of a cross-chapter passage with its own verses', async () => {
     getImages.mockResolvedValue(response());
-    const { result } = renderImages({
+    const { result } = await renderImages({
       passage: passage([
         { chapterNumber: 14, verseNumber: 72 },
         { chapterNumber: 15, verseNumber: 1 },
@@ -208,7 +208,7 @@ describe('usePassageImages', () => {
         localFilePath: 'file:///images/1.jpg',
       } as DownloadQueueItem,
     ]);
-    const { result } = renderImages();
+    const { result } = await renderImages();
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
     expect(titles(result.current.state)).toEqual(['Jerusalem']);
     const [lookup] = mockFindRows.mock.calls[0];
@@ -224,28 +224,28 @@ describe('usePassageImages', () => {
 
   it('never reads offline-with-none as confirmed empty', async () => {
     mockConnectivity = { isOnline: false, hasResolved: true };
-    const { result, rerender } = renderImages();
+    const { result, rerender } = await renderImages();
     await waitFor(() =>
       expect(result.current.state).toEqual({ status: 'unprepared' }),
     );
 
     // Something in the project is downloaded, but downloads are per chapter.
     mockDownloadedSections = ['imagesMaps'];
-    rerender({ passage: PERICOPE, userId: 5, enabled: true });
+    await rerender({ passage: PERICOPE, userId: 5, enabled: true });
     expect(result.current.state).toEqual({ status: 'noneOffline' });
     expect(getImages).not.toHaveBeenCalled();
   });
 
   it('shows empty, not unprepared, after an online load with none', async () => {
     getImages.mockResolvedValue(response());
-    const { result } = renderImages();
+    const { result } = await renderImages();
     await waitFor(() =>
       expect(result.current.state).toEqual({ status: 'ready', items: [] }),
     );
   });
 
   it('asks nothing for a whole chapter whose text is not here yet', async () => {
-    const { result } = renderImages({ passage: passage([]) });
+    const { result } = await renderImages({ passage: passage([]) });
     await act(async () => {});
     expect(result.current.state).toEqual({ status: 'noVerses' });
     expect(mockFindRows).not.toHaveBeenCalled();
@@ -254,7 +254,7 @@ describe('usePassageImages', () => {
 
   it('fails as one state and Retry recovers it', async () => {
     getImages.mockRejectedValue(new Error('down'));
-    const { result } = renderImages();
+    const { result } = await renderImages();
     await waitFor(() =>
       expect(result.current.state).toEqual({ status: 'failed' }),
     );
@@ -283,11 +283,16 @@ describe('usePassageImages', () => {
         finishOld = resolve;
       });
       getImages.mockImplementation(() => old);
-      const { rerender, seen } = renderImages();
+      const { rerender, seen } = await renderImages();
       await waitFor(() => expect(getImages).toHaveBeenCalledTimes(2));
 
       getImages.mockImplementation(() => new Promise(() => {}));
-      rerender({ passage: PERICOPE, userId: 5, enabled: true, ...change });
+      await rerender({
+        passage: PERICOPE,
+        userId: 5,
+        enabled: true,
+        ...change,
+      });
       await act(async () => {
         finishOld(response(item(1, 'Old image')));
       });
@@ -305,9 +310,9 @@ describe('usePassageImages', () => {
     ['book', { passage: passage(PERICOPE.verses, { bookCode: 'LUK' }) }],
     ['verses', { passage: passage([{ chapterNumber: 14, verseNumber: 3 }]) }],
   ])('changes its scope with the %s', async (_name, change) => {
-    const { result, rerender } = renderImages({ enabled: false });
+    const { result, rerender } = await renderImages({ enabled: false });
     const first = result.current.scope;
-    rerender({ passage: PERICOPE, userId: 5, enabled: false, ...change });
+    await rerender({ passage: PERICOPE, userId: 5, enabled: false, ...change });
     expect(result.current.scope).not.toBe(first);
     // Lets the disabled loads settle inside the test.
     await act(async () => {});

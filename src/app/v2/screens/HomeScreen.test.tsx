@@ -1,5 +1,4 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
 import {
   act,
   fireEvent,
@@ -8,6 +7,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import HomeScreen from './HomeScreen';
+import { getByHostType } from '../../../test/hostElements';
 import { hrefs } from '../../../navigation/hrefs';
 import type { NextUp } from '../../../hooks/useNextUp';
 import type { HomeBookSummary, MyWorkChapter } from '../../../types/db/types';
@@ -214,8 +214,8 @@ describe('Next HomeScreen', () => {
     mockIsFocused = true;
   });
 
-  it('shows the account, the sync status and a chapter summary', () => {
-    render(<HomeScreen />);
+  it('shows the account, the sync status and a chapter summary', async () => {
+    await render(<HomeScreen />);
 
     expect(screen.getByRole('header', { name: 'My work' })).toBeTruthy();
     expect(screen.getByText('JS')).toBeTruthy();
@@ -227,9 +227,9 @@ describe('Next HomeScreen', () => {
     ).toBeTruthy();
   });
 
-  it('says checking, not offline, before reachability is known', () => {
+  it('says checking, not offline, before reachability is known', async () => {
     mockSession = { ...sessionDefaults, syncStatus: 'checking' };
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.getByTestId('home-summary').props.children).toBe(
       '2 chapters',
@@ -242,76 +242,76 @@ describe('Next HomeScreen', () => {
     expect(screen.getByTestId('home-books')).toBeTruthy();
   });
 
-  it('still shows a confirmed offline', () => {
+  it('still shows a confirmed offline', async () => {
     mockSession = { ...sessionDefaults, syncStatus: 'offline_pending' };
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(
       screen.getByLabelText('Offline · upload pending. Open Sync page.'),
     ).toBeTruthy();
   });
 
-  it('opens accounts from the avatar and the Sync page from the cloud', () => {
-    render(<HomeScreen />);
+  it('opens accounts from the avatar and the Sync page from the cloud', async () => {
+    await render(<HomeScreen />);
     expect(screen.queryByTestId('accounts-sheet')).toBeNull();
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', { name: 'Jordan Smith. Accounts' }),
     );
-    fireEvent.press(screen.getByTestId('accounts-sheet'));
+    await fireEvent.press(screen.getByTestId('accounts-sheet'));
     expect(screen.queryByTestId('accounts-sheet')).toBeNull();
 
-    fireEvent.press(screen.getByTestId('home-sync'));
-    fireEvent.press(screen.getByTestId('home-sync'));
+    await fireEvent.press(screen.getByTestId('home-sync'));
+    await fireEvent.press(screen.getByTestId('home-sync'));
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
     expect(sessionDefaults.noteSyncOpened).toHaveBeenCalled();
   });
 
-  it('keeps the header above My work and strokes it once the page scrolls', () => {
+  it('keeps the header above My work and strokes it once the page scrolls', async () => {
     jest.useFakeTimers();
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
     const scroll = screen.getByTestId('home-scroll');
     expect(within(scroll).queryByTestId('home-sync')).toBeNull();
     const stroke = screen.getByTestId('home-header-stroke');
     expect(stroke).toHaveAnimatedStyle({ opacity: 0 });
 
-    fireEvent.scroll(scroll, {
+    await fireEvent.scroll(scroll, {
       nativeEvent: { contentOffset: { x: 0, y: 80 } },
     });
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
 
     expect(stroke).toHaveAnimatedStyle({ opacity: 1 });
   });
 
-  it('asks to sign in again when the session expired', () => {
+  it('asks to sign in again when the session expired', async () => {
     mockSession = {
       ...sessionDefaults,
       showSessionExpiredBanner: true,
       signInToSyncLabel: 'Sign in to sync',
     };
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
     expect(screen.getByLabelText('Sign in to sync')).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
     expect(mockPush).toHaveBeenCalledWith(hrefs.reauth({ returnTo: 'home' }));
   });
 
-  it('shows the syncing state until the first sync settles', () => {
+  it('shows the syncing state until the first sync settles', async () => {
     mockSession = { ...sessionDefaults, showLoading: true };
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.getByTestId('home-loading')).toBeTruthy();
     expect(screen.getByTestId('home-sync')).toBeTruthy();
     expect(screen.getByText('My work')).toBeTruthy();
   });
 
-  it('shows the empty message when no milestone has chapters', () => {
+  it('shows the empty message when no milestone has chapters', async () => {
     mockChapters = [];
     mockBooks = [];
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.getByTestId('home-empty')).toBeTruthy();
     expect(screen.getByTestId('home-summary').props.children).toBe(
@@ -325,91 +325,91 @@ describe('Next HomeScreen', () => {
         nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 100 } },
       });
 
-    it('comes down once the content is laid out', () => {
-      render(<HomeScreen />);
-      layout();
+    it('comes down once the content is laid out', async () => {
+      await render(<HomeScreen />);
+      await layout();
 
       expect(mockHideSplash).toHaveBeenCalledWith('home:content');
     });
 
-    it('comes down for the empty message too', () => {
+    it('comes down for the empty message too', async () => {
       mockChapters = [];
       mockBooks = [];
-      render(<HomeScreen />);
-      layout();
+      await render(<HomeScreen />);
+      await layout();
 
       expect(mockHideSplash).toHaveBeenCalledWith('home:empty');
     });
 
-    it('comes down for the failed-read message too', () => {
+    it('comes down for the failed-read message too', async () => {
       mockChapters = [];
       mockBooks = [];
       mockBooksError = true;
-      render(<HomeScreen />);
-      layout();
+      await render(<HomeScreen />);
+      await layout();
 
       expect(mockHideSplash).toHaveBeenCalledWith('home:error');
     });
 
-    it('stays up while the lists are still being read', () => {
+    it('stays up while the lists are still being read', async () => {
       mockBooksLoading = true;
-      render(<HomeScreen />);
-      layout();
+      await render(<HomeScreen />);
+      await layout();
 
       expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
       expect(mockHideSplash).not.toHaveBeenCalled();
     });
 
-    it('comes down for the spinner of a launch-time sync with nothing saved', () => {
+    it('comes down for the spinner of a launch-time sync with nothing saved', async () => {
       mockChapters = [];
       mockBooks = [];
       mockSession = { ...sessionDefaults, isSyncingChapters: true };
-      render(<HomeScreen />);
-      layout();
+      await render(<HomeScreen />);
+      await layout();
 
       expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
       expect(mockHideSplash).toHaveBeenCalledWith('home:syncing');
     });
 
-    it('comes down when a screen is pushed over Home before its lists land', () => {
+    it('comes down when a screen is pushed over Home before its lists land', async () => {
       mockBooksLoading = true;
       mockNextUp = { status: 'loading' };
       mockIsFocused = false;
-      render(<HomeScreen />);
+      await render(<HomeScreen />);
 
       expect(mockHideSplash).toHaveBeenCalledWith('home:blurred');
     });
 
-    it('leaves the splash to Home while it is focused and still reading', () => {
+    it('leaves the splash to Home while it is focused and still reading', async () => {
       mockBooksLoading = true;
       mockNextUp = { status: 'loading' };
-      render(<HomeScreen />);
+      await render(<HomeScreen />);
 
       expect(mockHideSplash).not.toHaveBeenCalled();
     });
   });
 
-  it('points to the books when nothing is mine yet', () => {
+  it('points to the books when nothing is mine yet', async () => {
     mockChapters = [];
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.queryByTestId('home-empty')).toBeNull();
     expect(screen.getByTestId('home-next-up-empty')).toBeTruthy();
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
-  it('waits for the books before showing anything', () => {
+  it('waits for the books before showing anything', async () => {
     mockBooksLoading = true;
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
     expect(screen.queryByText('Next up')).toBeNull();
   });
 
-  it('holds the first paint until Next up lands, then shows Books before it', () => {
+  it('holds the first paint until Next up lands, then shows Books before it', async () => {
     mockChapters = [chapter(1, 'Mark', 14)];
     mockNextUp = { status: 'loading' };
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     // Chapters and books are read, but Home waits for the hero so it
     // appears complete at once rather than Books first and the hero later.
@@ -440,7 +440,7 @@ describe('Next HomeScreen', () => {
       after: [],
       checking: [],
     };
-    screen.rerender(<HomeScreen />);
+    await screen.rerender(<HomeScreen />);
 
     expect(screen.getByTestId('home-next-up-hero')).toBeTruthy();
     expect(screen.queryByText('Then')).toBeNull();
@@ -452,121 +452,121 @@ describe('Next HomeScreen', () => {
     );
   });
 
-  it('keeps Books on screen when Next up reloads later', () => {
+  it('keeps Books on screen when Next up reloads later', async () => {
     mockChapters = [chapter(1, 'Mark', 14)];
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
     const booksBefore = screen.getByTestId('home-books');
 
     // e.g. the drafting unit changed: Next up goes back to loading.
     mockNextUp = { status: 'loading' };
-    screen.rerender(<HomeScreen />);
+    await screen.rerender(<HomeScreen />);
 
     expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
     expect(screen.getByTestId('home-books')).toBe(booksBefore);
     expect(screen.queryByTestId('home-next-up')).toBeNull();
   });
 
-  it("doesn't wait on Next up when there are no chapters to draft", () => {
+  it("doesn't wait on Next up when there are no chapters to draft", async () => {
     mockChapters = [];
     mockNextUp = { status: 'loading' };
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
-  it('holds the spinner instead of the empty message while the post-sync read is in flight', () => {
+  it('holds the spinner instead of the empty message while the post-sync read is in flight', async () => {
     mockChapters = [];
     mockBooks = [];
     // Home has painted once already, as it has by the time a sync ends.
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
     expect(screen.getByTestId('home-empty')).toBeTruthy();
 
     mockChaptersReading = true;
-    screen.rerender(<HomeScreen />);
+    await screen.rerender(<HomeScreen />);
 
     expect(screen.queryByTestId('home-empty')).toBeNull();
     expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
 
     mockChaptersReading = false;
-    screen.rerender(<HomeScreen />);
+    await screen.rerender(<HomeScreen />);
 
     expect(screen.getByTestId('home-empty')).toBeTruthy();
   });
 
-  it('says the chapters read failed when there is nothing saved to show', () => {
+  it('says the chapters read failed when there is nothing saved to show', async () => {
     mockChapters = [];
     mockBooks = [];
     mockChaptersError = true;
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.queryByTestId('home-empty')).toBeNull();
     expect(screen.getByTestId('home-error')).toBeTruthy();
   });
 
-  it('retries both Home reads from the chapters-error empty state', () => {
+  it('retries both Home reads from the chapters-error empty state', async () => {
     mockChapters = [];
     mockBooks = [];
     mockChaptersError = true;
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.queryByTestId('home-empty')).toBeNull();
     expect(screen.getByTestId('home-error')).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId('home-retry'));
+    await fireEvent.press(screen.getByTestId('home-retry'));
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(mockRefreshBooks).toHaveBeenCalledTimes(1);
   });
 
-  it('says the reads failed, with a retry, when there is nothing saved to show', () => {
+  it('says the reads failed, with a retry, when there is nothing saved to show', async () => {
     mockChapters = [];
     mockBooks = [];
     mockBooksError = true;
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.queryByTestId('home-empty')).toBeNull();
     expect(screen.getByTestId('home-error')).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId('home-retry'));
+    await fireEvent.press(screen.getByTestId('home-retry'));
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(mockRefreshBooks).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the saved books when a later read fails', () => {
+  it('keeps the saved books when a later read fails', async () => {
     mockBooksError = true;
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.queryByTestId('home-error')).toBeNull();
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
-  it('keeps Next up and Books showing while they reload after a sync', () => {
-    render(<HomeScreen />);
+  it('keeps Next up and Books showing while they reload after a sync', async () => {
+    await render(<HomeScreen />);
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
 
     mockChaptersLoading = true;
     mockBooksLoading = true;
-    screen.rerender(<HomeScreen />);
+    await screen.rerender(<HomeScreen />);
 
     expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
     expect(screen.getByRole('header', { name: 'Next up' })).toBeTruthy();
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
-  it('keeps the books on screen through a sync when none of the chapters are mine', () => {
+  it('keeps the books on screen through a sync when none of the chapters are mine', async () => {
     mockChapters = [];
     mockSession = { ...sessionDefaults, isSyncingChapters: true };
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.queryByTestId('home-chapters-loading')).toBeNull();
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
   });
 
-  it('waits on chapters while a sync is still bringing them in', () => {
+  it('waits on chapters while a sync is still bringing them in', async () => {
     mockChapters = [];
     mockBooks = [];
     mockSession = { ...sessionDefaults, isSyncingChapters: true };
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
     expect(screen.queryByTestId('home-empty')).toBeNull();
     expect(screen.getByTestId('home-chapters-loading')).toBeTruthy();
@@ -583,11 +583,11 @@ describe('Next HomeScreen', () => {
         finishBooks = resolve;
       }),
     );
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
     const refreshControl = () =>
-      screen.UNSAFE_getByType(ScrollView).props.refreshControl.props;
+      getByHostType('RCTScrollView').props.refreshControl.props;
 
-    act(() => {
+    await act(() => {
       void refreshControl().onRefresh();
     });
     expect(mockRefresh).toHaveBeenCalledTimes(1);
@@ -629,11 +629,11 @@ describe('Next HomeScreen', () => {
     });
 
     it('opens the passage to record next on its passage page', async () => {
-      render(<HomeScreen />);
+      await render(<HomeScreen />);
 
       expect(screen.getByRole('header', { name: 'Next up' })).toBeTruthy();
       await act(async () => {
-        fireEvent.press(
+        await fireEvent.press(
           screen.getByRole('button', {
             name: 'The Last Supper, Mark 14:22–25, Draft · Gospels Phase 1. Keep recording.',
           }),
@@ -655,10 +655,10 @@ describe('Next HomeScreen', () => {
 
     it('sends an observer to the read-only view, never the passage', async () => {
       mockOpen = { kind: 'observer', href: observerHref };
-      render(<HomeScreen />);
+      await render(<HomeScreen />);
 
       await act(async () => {
-        fireEvent.press(screen.getByTestId('home-next-up-hero'));
+        await fireEvent.press(screen.getByTestId('home-next-up-hero'));
       });
       expect(mockPush).toHaveBeenCalledWith(observerHref);
       expect(mockPush).toHaveBeenCalledTimes(1);
@@ -666,15 +666,15 @@ describe('Next HomeScreen', () => {
 
     it("doesn't open anything when the access check stops it", async () => {
       mockOpen = null;
-      render(<HomeScreen />);
+      await render(<HomeScreen />);
 
       await act(async () => {
-        fireEvent.press(screen.getByTestId('home-next-up-hero'));
+        await fireEvent.press(screen.getByTestId('home-next-up-hero'));
       });
       expect(mockPush).not.toHaveBeenCalled();
     });
 
-    it('lists the chapters I check or observe after the passages', () => {
+    it('lists the chapters I check or observe after the passages', async () => {
       const peer = {
         ...chapter(2, 'Mark', 15),
         workflowStage: 'peer_check',
@@ -703,7 +703,7 @@ describe('Next HomeScreen', () => {
           },
         ],
       } as NextUp;
-      render(<HomeScreen />);
+      await render(<HomeScreen />);
 
       expect(screen.getByTestId('home-checking')).toBeTruthy();
       expect(
@@ -714,11 +714,11 @@ describe('Next HomeScreen', () => {
     });
   });
 
-  it('keeps accounts and settings reachable without an account summary', () => {
+  it('keeps accounts and settings reachable without an account summary', async () => {
     mockActiveUserId = null;
-    render(<HomeScreen />);
+    await render(<HomeScreen />);
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', { name: 'Accounts and settings' }),
     );
     expect(screen.getByTestId('accounts-sheet')).toBeTruthy();
@@ -727,10 +727,10 @@ describe('Next HomeScreen', () => {
   describe('Changes requested', () => {
     it('opens the passage to re-record', async () => {
       mockChangesPreview = true;
-      render(<HomeScreen />);
+      await render(<HomeScreen />);
 
       await act(async () => {
-        fireEvent.press(
+        await fireEvent.press(
           screen.getByRole('button', {
             name: 'Changes requested. Ravi left 3 notes on your Mark 14. Make changes.',
           }),
@@ -750,18 +750,18 @@ describe('Next HomeScreen', () => {
       );
     });
 
-    it('is not on Home without the dev preview', () => {
-      render(<HomeScreen />);
+    it('is not on Home without the dev preview', async () => {
+      await render(<HomeScreen />);
 
       expect(screen.queryByTestId('home-changes-requested')).toBeNull();
     });
   });
 
-  it('lists the books and opens one at its first chapter', () => {
-    render(<HomeScreen />);
+  it('lists the books and opens one at its first chapter', async () => {
+    await render(<HomeScreen />);
 
     expect(screen.getByRole('header', { name: 'Books' })).toBeTruthy();
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', {
         name: 'Mark, Gospels Phase 1 · 2 yours · 1 with others · 13 open, 1 of 16 chapters recorded. Open book page.',
       }),

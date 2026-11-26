@@ -51,6 +51,7 @@ import { Footer } from './Footer';
 import { NoteScreen } from './NoteScreen';
 import { hasNotesStatus, NotesStatus } from './NotesStatus';
 import { PassageHero } from './PassageHero';
+import { PassageQuestions } from './PassageQuestions';
 import { PlayerChrome } from './PlayerChrome';
 import { PlayerKeys, type KeyAction, type ListenKeys } from './PlayerKeys';
 import { type Ready } from './ready';
@@ -62,6 +63,7 @@ import { TakeReview } from './TakeReview';
 import { TitleSheet } from './TitleSheet';
 import { usePassageImages } from './usePassageImages';
 import { usePassageNotes } from './usePassageNotes';
+import { usePassageQuestions } from './usePassageQuestions';
 import { useRecorder } from './useRecorder';
 import { useStageSend } from './useStageSend';
 import { useTakeReview } from './useTakeReview';
@@ -350,6 +352,19 @@ export function Sheet({
   const { isOnline, hasResolved } = useConnectivity();
   const [playingVerse, setPlayingVerse] = useState<number | null>(null);
   const steps = recorder.verse;
+  const scopeLabel = steps ? `Verse ${steps.current}` : passage.reference;
+  const [questionsOpen, setQuestionsOpen] = useState(false);
+  // Like the notes, they load the first time they're asked for, then stay.
+  const [questionsAsked, setQuestionsAsked] = useState(false);
+  const questions = usePassageQuestions({
+    passage,
+    userId,
+    verse: steps?.current ?? null,
+    enabled: questionsAsked,
+  });
+  useEffect(() => {
+    if (!focused) setQuestionsOpen(false);
+  }, [focused]);
   const [resourcesOpen, setResourcesOpen] = useState(false);
   // The full list loads the first time the card opens, or in the background
   // once the previews settle, then stays.
@@ -747,6 +762,10 @@ export function Sheet({
             recorder.releaseReview();
             onOpenBook();
           }}
+          onOpenQuestions={() => {
+            setQuestionsAsked(true);
+            setQuestionsOpen(true);
+          }}
           onOpenClassic={onOpenClassic}
           onOpenReview={
             review.available && !capturing
@@ -759,9 +778,17 @@ export function Sheet({
         />
         <TakeReview
           visible={reviewOpen}
-          scopeLabel={steps ? `Verse ${steps.current}` : passage.reference}
+          scopeLabel={scopeLabel}
           owners={review.owners}
           onClose={() => setReviewOpen(false)}
+        />
+        <PassageQuestions
+          visible={questionsOpen}
+          scopeLabel={scopeLabel}
+          scope={questions.scope}
+          state={questions.state}
+          onRetry={() => void questions.retry()}
+          onClose={() => setQuestionsOpen(false)}
         />
       </ColorModeScope>
       <PlayerChrome

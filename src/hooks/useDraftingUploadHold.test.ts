@@ -49,19 +49,19 @@ describe('useDraftingUploadHold', () => {
     });
   });
 
-  it('keeps the hold while another screen still wants it', () => {
-    const first = renderHook(() => useDraftingUploadHold());
-    const second = renderHook(() => useDraftingUploadHold());
+  it('keeps the hold while another screen still wants it', async () => {
+    const first = await renderHook(() => useDraftingUploadHold());
+    const second = await renderHook(() => useDraftingUploadHold());
     expect(mockHold).toHaveBeenLastCalledWith(true);
 
-    first.unmount();
+    await first.unmount();
     expect(mockHold).toHaveBeenLastCalledWith(true);
 
-    second.unmount();
+    await second.unmount();
     expect(mockHold).toHaveBeenLastCalledWith(false);
   });
 
-  it('drops the hold when the app backgrounds, and ignores inactive', () => {
+  it('drops the hold when the app backgrounds, and ignores inactive', async () => {
     let onChange: ((state: string) => void) | undefined;
     const remove = jest.fn();
     jest
@@ -71,7 +71,7 @@ describe('useDraftingUploadHold', () => {
         return { remove };
       });
 
-    const { unmount } = renderHook(() => useDraftingUploadHold());
+    const { unmount } = await renderHook(() => useDraftingUploadHold());
     expect(mockHold).toHaveBeenLastCalledWith(true);
 
     onChange?.('background');
@@ -83,7 +83,7 @@ describe('useDraftingUploadHold', () => {
     onChange?.('inactive');
     expect(mockHold).toHaveBeenLastCalledWith(true);
 
-    unmount();
+    await unmount();
     expect(remove).toHaveBeenCalled();
   });
 });
