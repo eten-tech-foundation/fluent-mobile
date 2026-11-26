@@ -291,8 +291,8 @@ describe('PrepareForOfflineScreen', () => {
     );
   });
 
-  it('shows instruction and project picker when no project is selected', () => {
-    render(<PrepareForOfflineScreen />);
+  it('shows instruction and project picker when no project is selected', async () => {
+    await render(<PrepareForOfflineScreen />);
 
     expect(
       screen.getByText(
@@ -304,9 +304,9 @@ describe('PrepareForOfflineScreen', () => {
   });
 
   it('shows chapter accordion and resources section after selecting a project', async () => {
-    render(<PrepareForOfflineScreen />);
+    await render(<PrepareForOfflineScreen />);
 
-    fireEvent.press(screen.getByText('Luke'));
+    await fireEvent.press(screen.getByText('Luke'));
 
     await waitFor(() => {
       expect(screen.getByText('Assigned chapters (1)')).toBeTruthy();
@@ -321,11 +321,11 @@ describe('PrepareForOfflineScreen', () => {
   });
 
   it('shows manage device storage section after selecting a project', async () => {
-    render(<PrepareForOfflineScreen />);
+    await render(<PrepareForOfflineScreen />);
 
     expect(screen.queryByTestId('manage-device-storage-section')).toBeNull();
 
-    fireEvent.press(screen.getByText('Luke'));
+    await fireEvent.press(screen.getByText('Luke'));
 
     await waitFor(() => {
       expect(screen.getByTestId('manage-device-storage-section')).toBeTruthy();
@@ -333,16 +333,18 @@ describe('PrepareForOfflineScreen', () => {
   });
 
   it('calls handleDownload when Download is pressed', async () => {
-    render(<PrepareForOfflineScreen />);
+    await render(<PrepareForOfflineScreen />);
 
-    fireEvent.press(screen.getByText('Luke'));
+    await fireEvent.press(screen.getByText('Luke'));
 
     await waitFor(() => {
       const button = screen.getByTestId('prepare-offline-download-button');
       expect(button.props.accessibilityState?.disabled).toBe(false);
     });
 
-    fireEvent.press(screen.getByTestId('prepare-offline-download-button'));
+    await fireEvent.press(
+      screen.getByTestId('prepare-offline-download-button'),
+    );
 
     await waitFor(() => {
       expect(mockHandleDownload).toHaveBeenCalled();
@@ -391,9 +393,9 @@ describe('PrepareForOfflineScreen', () => {
       retry: jest.fn(),
     }));
 
-    render(<PrepareForOfflineScreen />);
+    await render(<PrepareForOfflineScreen />);
 
-    fireEvent.press(screen.getByText('Luke'));
+    await fireEvent.press(screen.getByText('Luke'));
 
     await waitFor(() => {
       const button = screen.getByTestId('prepare-offline-download-button');
@@ -446,9 +448,9 @@ describe('PrepareForOfflineScreen', () => {
       retry: jest.fn(),
     }));
 
-    render(<PrepareForOfflineScreen />);
+    await render(<PrepareForOfflineScreen />);
 
-    fireEvent.press(screen.getByText('Luke'));
+    await fireEvent.press(screen.getByText('Luke'));
 
     await waitFor(() => {
       const button = screen.getByTestId('prepare-offline-download-button');
@@ -460,9 +462,9 @@ describe('PrepareForOfflineScreen', () => {
   });
 
   it('keeps download footer visible while customize panel is expanded', async () => {
-    render(<PrepareForOfflineScreen />);
+    await render(<PrepareForOfflineScreen />);
 
-    fireEvent.press(screen.getByText('Luke'));
+    await fireEvent.press(screen.getByText('Luke'));
 
     await waitFor(() => {
       expect(
@@ -470,7 +472,7 @@ describe('PrepareForOfflineScreen', () => {
       ).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText('Customize download'));
+    await fireEvent.press(screen.getByText('Customize download'));
 
     expect(screen.getByTestId('prepare-offline-download-footer')).toBeTruthy();
     expect(screen.getByTestId('prepare-offline-download-button')).toBeTruthy();
@@ -487,8 +489,8 @@ describe('PrepareForOfflineScreen', () => {
           }),
       );
 
-      render(<PrepareForOfflineScreen />);
-      fireEvent.press(screen.getByText('Luke'));
+      await render(<PrepareForOfflineScreen />);
+      await fireEvent.press(screen.getByText('Luke'));
 
       await waitFor(() => {
         expect(
@@ -515,8 +517,8 @@ describe('PrepareForOfflineScreen', () => {
           }),
       );
 
-      render(<PrepareForOfflineScreen />);
-      fireEvent.press(screen.getByText('Luke'));
+      await render(<PrepareForOfflineScreen />);
+      await fireEvent.press(screen.getByText('Luke'));
 
       await waitFor(() => {
         expect(
@@ -543,8 +545,8 @@ describe('PrepareForOfflineScreen', () => {
           }),
       );
 
-      render(<PrepareForOfflineScreen />);
-      fireEvent.press(screen.getByText('Luke'));
+      await render(<PrepareForOfflineScreen />);
+      await fireEvent.press(screen.getByText('Luke'));
 
       await waitFor(() => {
         expect(
@@ -559,14 +561,14 @@ describe('PrepareForOfflineScreen', () => {
 
   describe('back navigation (#503)', () => {
     it('returns to the picker instead of calling router.back() when a project was selected in-screen', async () => {
-      render(<PrepareForOfflineScreen />);
+      await render(<PrepareForOfflineScreen />);
 
-      fireEvent.press(screen.getByText('Luke'));
+      await fireEvent.press(screen.getByText('Luke'));
       await waitFor(() => {
         expect(screen.getByText('Assigned chapters (1)')).toBeTruthy();
       });
 
-      fireEvent.press(screen.getByLabelText('Go back'));
+      await fireEvent.press(screen.getByLabelText('Go back'));
 
       expect(screen.getByText('Select a project')).toBeTruthy();
       expect(mockGoBack).not.toHaveBeenCalled();
@@ -575,21 +577,21 @@ describe('PrepareForOfflineScreen', () => {
     it('returns to the picker instead of calling router.back() when the project was seeded from a route param', async () => {
       mockUseLocalSearchParams.mockReturnValue({ projectId: '5' });
 
-      render(<PrepareForOfflineScreen />);
+      await render(<PrepareForOfflineScreen />);
       await waitFor(() => {
         expect(screen.getByText('Assigned chapters (1)')).toBeTruthy();
       });
 
-      fireEvent.press(screen.getByLabelText('Go back'));
+      await fireEvent.press(screen.getByLabelText('Go back'));
 
       expect(screen.getByText('Select a project')).toBeTruthy();
       expect(mockGoBack).not.toHaveBeenCalled();
     });
 
-    it('calls router.back() when already on the picker with no project selected', () => {
-      render(<PrepareForOfflineScreen />);
+    it('calls router.back() when already on the picker with no project selected', async () => {
+      await render(<PrepareForOfflineScreen />);
 
-      fireEvent.press(screen.getByLabelText('Go back'));
+      await fireEvent.press(screen.getByLabelText('Go back'));
 
       expect(mockGoBack).toHaveBeenCalledTimes(1);
     });

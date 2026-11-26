@@ -101,8 +101,8 @@ describe('useTakeReview', () => {
     mockFileSize.mockImplementation(async () => 1000);
   });
 
-  it('groups every take by owner with its range and official state', () => {
-    const { result } = setup();
+  it('groups every take by owner with its range and official state', async () => {
+    const { result } = await setup();
     expect(result.current.available).toBe(true);
     expect(
       result.current.owners.map(o => ({
@@ -125,13 +125,13 @@ describe('useTakeReview', () => {
   });
 
   it("plays the tapped row, including another owner's take", async () => {
-    const { result } = setup();
+    const { result } = await setup();
     await act(async () => find(result, 'theirs-2').onPlayPause());
     expect(audioMocks.playTake).toHaveBeenCalledWith(rows[2]);
   });
 
   it('pauses the row that is playing', async () => {
-    const { result } = setup({
+    const { result } = await setup({
       audio: makeAudio({ playingTakeId: 'theirs-1', state: 'playing' }),
     });
     expect(find(result, 'theirs-1').playing).toBe(true);
@@ -141,14 +141,14 @@ describe('useTakeReview', () => {
   });
 
   it('seeks the tapped row on a first scrub with nothing loaded', async () => {
-    const { result } = setup();
+    const { result } = await setup();
     await act(async () => find(result, 'theirs-1').onSeek(0.5));
     expect(audioMocks.seek).toHaveBeenCalledWith(10000, rows[1]);
     expect(audioMocks.pausePlayback).not.toHaveBeenCalled();
   });
 
   it('pauses another take before seeking a different explicit row', async () => {
-    const { result } = setup({
+    const { result } = await setup({
       audio: makeAudio({
         playingTakeId: 'mine-1',
         loadedTakeId: 'mine-1',
@@ -163,18 +163,18 @@ describe('useTakeReview', () => {
     expect(audioMocks.seek).toHaveBeenCalledWith(5000, rows[1]);
   });
 
-  it('moves only the row in the player, however the rows are ordered', () => {
+  it('moves only the row in the player, however the rows are ordered', async () => {
     const audio = makeAudio({
       loadedTakeId: 'theirs-2',
       playbackStatus: 'paused',
       durationMs: 10000,
       positionMs: 2500,
     });
-    const { result, rerender } = setup({ audio });
+    const { result, rerender } = await setup({ audio });
     expect(find(result, 'theirs-2').progress).toBe(0.25);
     expect(find(result, 'theirs-1').progress).toBe(0);
 
-    rerender({
+    await rerender({
       audio: { ...audio, allTakes: [rows[2], rows[0], rows[1]] },
       userId: 7,
       open: true,
@@ -186,7 +186,7 @@ describe('useTakeReview', () => {
 
   it('explains audio that is not on this phone, without playing', async () => {
     mockFileExists.mockImplementation(async path => path !== 'file:///t1.m4a');
-    const { result } = setup();
+    const { result } = await setup();
     await act(async () => find(result, 'theirs-1').onPlayPause());
     expect(audioMocks.playTake).not.toHaveBeenCalled();
     expect(find(result, 'theirs-1').missing).toBe(true);
@@ -198,7 +198,7 @@ describe('useTakeReview', () => {
 
   it('treats an empty file as not on this phone', async () => {
     mockFileSize.mockImplementation(async () => 0);
-    const { result } = setup();
+    const { result } = await setup();
     await act(async () => find(result, 'theirs-1').onSeek(0.5));
     expect(audioMocks.seek).not.toHaveBeenCalled();
     expect(find(result, 'theirs-1').missing).toBe(true);
@@ -215,9 +215,9 @@ describe('useTakeReview', () => {
     async (_name, change) => {
       let resolve!: (v: boolean) => void;
       mockFileExists.mockReturnValueOnce(new Promise(r => (resolve = r)));
-      const { result, rerender } = setup();
-      act(() => find(result, 'theirs-1').onPlayPause());
-      rerender({ audio: makeAudio(), userId: 7, open: true, ...change });
+      const { result, rerender } = await setup();
+      await act(() => find(result, 'theirs-1').onPlayPause());
+      await rerender({ audio: makeAudio(), userId: 7, open: true, ...change });
       await act(async () => resolve(true));
       expect(audioMocks.playTake).not.toHaveBeenCalled();
       expect(audioMocks.seek).not.toHaveBeenCalled();
@@ -225,9 +225,9 @@ describe('useTakeReview', () => {
   );
 
   it('stops the take it played when review closes', async () => {
-    const { result, rerender } = setup();
+    const { result, rerender } = await setup();
     await act(async () => find(result, 'theirs-1').onPlayPause());
-    rerender({
+    await rerender({
       audio: makeAudio({ playingTakeId: 'theirs-1', state: 'playing' }),
       userId: 7,
       open: false,
@@ -236,15 +236,15 @@ describe('useTakeReview', () => {
   });
 
   it('stops the take it played when the account or unit changes', async () => {
-    const { result, rerender } = setup();
+    const { result, rerender } = await setup();
     await act(async () => find(result, 'theirs-1').onPlayPause());
-    rerender({
+    await rerender({
       audio: makeAudio({ playingTakeId: 'theirs-1', state: 'playing' }),
       userId: 7,
       open: true,
     });
     expect(audioMocks.stopPlayback).not.toHaveBeenCalled();
-    rerender({
+    await rerender({
       audio: makeAudio({
         playingTakeId: 'theirs-1',
         state: 'playing',
@@ -257,9 +257,9 @@ describe('useTakeReview', () => {
   });
 
   it('stops a take that is no longer one this account may see', async () => {
-    const { result, rerender } = setup();
+    const { result, rerender } = await setup();
     await act(async () => find(result, 'theirs-1').onPlayPause());
-    rerender({
+    await rerender({
       audio: makeAudio({
         playingTakeId: 'theirs-1',
         state: 'playing',
@@ -274,11 +274,11 @@ describe('useTakeReview', () => {
     ]);
   });
 
-  it("leaves a take it didn't start playing when it closes", () => {
-    const { rerender } = setup({
+  it("leaves a take it didn't start playing when it closes", async () => {
+    const { rerender } = await setup({
       audio: makeAudio({ playingTakeId: 'mine-1', state: 'playing' }),
     });
-    rerender({
+    await rerender({
       audio: makeAudio({ playingTakeId: 'mine-1', state: 'playing' }),
       userId: 7,
       open: false,
@@ -286,8 +286,8 @@ describe('useTakeReview', () => {
     expect(audioMocks.stopPlayback).not.toHaveBeenCalled();
   });
 
-  it('is not offered when only this account has takes here', () => {
-    const { result } = setup({
+  it('is not offered when only this account has takes here', async () => {
+    const { result } = await setup({
       audio: makeAudio({ hasMultipleRecorders: false, allTakes: [rows[0]] }),
     });
     expect(result.current.available).toBe(false);
@@ -304,23 +304,23 @@ describe('useTakeReview', () => {
 
     it('is stopped when review closes, so it cannot start later', async () => {
       const release = holdPlay();
-      const { result, rerender } = setup();
+      const { result, rerender } = await setup();
       await act(async () => {
         void find(result, 'theirs-1').onPlayPause();
       });
       expect(audioMocks.playTake).toHaveBeenCalledTimes(1);
-      rerender({ audio: makeAudio(), userId: 7, open: false });
+      await rerender({ audio: makeAudio(), userId: 7, open: false });
       expect(audioMocks.stopPlayback).toHaveBeenCalledTimes(1);
       await act(async () => release());
     });
 
     it('is stopped when the take is no longer one this account may see', async () => {
       const release = holdPlay();
-      const { result, rerender } = setup();
+      const { result, rerender } = await setup();
       await act(async () => {
         void find(result, 'theirs-1').onPlayPause();
       });
-      rerender({
+      await rerender({
         audio: makeAudio({ allTakes: [rows[0]] }),
         userId: 7,
         open: true,
@@ -334,22 +334,22 @@ describe('useTakeReview', () => {
       audioMocks.seek.mockReturnValueOnce(
         new Promise<void>(r => (resolve = r)),
       );
-      const { result, rerender } = setup();
+      const { result, rerender } = await setup();
       await act(async () => {
         void find(result, 'theirs-1').onSeek(0.5);
       });
       expect(audioMocks.seek).toHaveBeenCalledTimes(1);
-      rerender({ audio: makeAudio(), userId: 7, open: false });
+      await rerender({ audio: makeAudio(), userId: 7, open: false });
       expect(audioMocks.stopPlayback).toHaveBeenCalledTimes(1);
       await act(async () => resolve());
     });
   });
 
   it('leaves a fan take playing after a review take, when review closes', async () => {
-    const { result, rerender } = setup();
+    const { result, rerender } = await setup();
     await act(async () => find(result, 'theirs-1').onPlayPause());
     // The fan's own Play took the player over.
-    rerender({
+    await rerender({
       audio: makeAudio({
         playingTakeId: 'mine-1',
         loadedTakeId: 'mine-1',
@@ -358,7 +358,7 @@ describe('useTakeReview', () => {
       userId: 7,
       open: true,
     });
-    rerender({
+    await rerender({
       audio: makeAudio({
         playingTakeId: 'mine-1',
         loadedTakeId: 'mine-1',
@@ -371,7 +371,7 @@ describe('useTakeReview', () => {
   });
 
   it('scrubs the row playing without pausing it', async () => {
-    const { result } = setup({
+    const { result } = await setup({
       audio: makeAudio({
         playingTakeId: 'theirs-1',
         loadedTakeId: 'theirs-1',
@@ -390,19 +390,19 @@ describe('useTakeReview', () => {
       new Promise<void>(r => (resolve = r)),
     );
     const playing = makeAudio({ playingTakeId: 'mine-1', state: 'playing' });
-    const { result, rerender } = setup({ audio: playing });
+    const { result, rerender } = await setup({ audio: playing });
     await act(async () => {
       void find(result, 'theirs-1').onSeek(0.5);
     });
     expect(audioMocks.pausePlayback).toHaveBeenCalledTimes(1);
-    rerender({ audio: playing, userId: 7, open: false });
+    await rerender({ audio: playing, userId: 7, open: false });
     await act(async () => resolve());
     expect(audioMocks.seek).not.toHaveBeenCalled();
   });
 
   it('checks a missing take again on Play, and forgets it on reopening', async () => {
     mockFileExists.mockImplementation(async () => false);
-    const { result, rerender } = setup();
+    const { result, rerender } = await setup();
     await act(async () => find(result, 'theirs-1').onPlayPause());
     expect(find(result, 'theirs-1').missing).toBe(true);
 
@@ -415,15 +415,15 @@ describe('useTakeReview', () => {
     mockFileExists.mockImplementation(async () => false);
     await act(async () => find(result, 'theirs-2').onPlayPause());
     expect(find(result, 'theirs-2').missing).toBe(true);
-    rerender({ audio: makeAudio(), userId: 7, open: false });
-    rerender({ audio: makeAudio(), userId: 7, open: true });
+    await rerender({ audio: makeAudio(), userId: 7, open: false });
+    await rerender({ audio: makeAudio(), userId: 7, open: true });
     expect(find(result, 'theirs-2').missing).toBe(false);
   });
 
   it('says when the player could not play the take', async () => {
-    const { result, rerender } = setup();
+    const { result, rerender } = await setup();
     await act(async () => find(result, 'theirs-1').onPlayPause());
-    rerender({
+    await rerender({
       audio: makeAudio({
         loadedTakeId: 'theirs-1',
         errorMessage: 'play failed',
@@ -441,9 +441,9 @@ describe('useTakeReview', () => {
   it('drops a play for a take that lost access while its file was checked', async () => {
     let resolve!: (v: boolean) => void;
     mockFileExists.mockReturnValueOnce(new Promise(r => (resolve = r)));
-    const { result, rerender } = setup();
-    act(() => find(result, 'theirs-1').onPlayPause());
-    rerender({
+    const { result, rerender } = await setup();
+    await act(() => find(result, 'theirs-1').onPlayPause());
+    await rerender({
       audio: makeAudio({ allTakes: [rows[0]] }),
       userId: 7,
       open: true,
@@ -455,19 +455,19 @@ describe('useTakeReview', () => {
   it('drops a tap from before review was closed and opened again', async () => {
     let resolve!: (v: boolean) => void;
     mockFileExists.mockReturnValueOnce(new Promise(r => (resolve = r)));
-    const { result, rerender } = setup();
-    act(() => find(result, 'theirs-1').onPlayPause());
-    rerender({ audio: makeAudio(), userId: 7, open: false });
-    rerender({ audio: makeAudio(), userId: 7, open: true });
+    const { result, rerender } = await setup();
+    await act(() => find(result, 'theirs-1').onPlayPause());
+    await rerender({ audio: makeAudio(), userId: 7, open: false });
+    await rerender({ audio: makeAudio(), userId: 7, open: true });
     await act(async () => resolve(true));
     expect(audioMocks.playTake).not.toHaveBeenCalled();
   });
 
   it("doesn't call a pause error a failed take", async () => {
-    const { result, rerender } = setup();
+    const { result, rerender } = await setup();
     await act(async () => find(result, 'theirs-1').onPlayPause());
     // The fan's take is in the player now; its pause fails.
-    rerender({
+    await rerender({
       audio: makeAudio({
         loadedTakeId: 'mine-1',
         errorMessage: 'pause failed',

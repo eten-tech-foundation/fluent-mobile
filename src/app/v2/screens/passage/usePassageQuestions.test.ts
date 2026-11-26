@@ -107,9 +107,9 @@ type Props = {
 };
 
 /** Every state rendered, so a stale one can't hide between renders. */
-function renderQuestions(initial: Partial<Props> = {}) {
+async function renderQuestions(initial: Partial<Props> = {}) {
   const seen: PassageQuestionsState[] = [];
-  const view = renderHook(
+  const view = await renderHook(
     (props: Props) => {
       const result = usePassageQuestions(props);
       seen.push(result.state);
@@ -144,7 +144,7 @@ describe('usePassageQuestions', () => {
 
   it('stays loading without asking anything while connectivity is unresolved', async () => {
     mockConnectivity = { isOnline: false, hasResolved: false };
-    const { result } = renderQuestions();
+    const { result } = await renderQuestions();
     await act(async () => {});
     expect(result.current.state).toEqual({ status: 'loading' });
     expect(mockFindRows).not.toHaveBeenCalled();
@@ -152,13 +152,18 @@ describe('usePassageQuestions', () => {
   });
 
   it('does not load until asked', async () => {
-    const { result, rerender } = renderQuestions({ enabled: false });
+    const { result, rerender } = await renderQuestions({ enabled: false });
     await act(async () => {});
     expect(result.current.state).toEqual({ status: 'loading' });
     expect(getQuestions).not.toHaveBeenCalled();
 
     getQuestions.mockResolvedValue(response(item(1, 'Who?', 'Jesus.')));
-    rerender({ passage: PERICOPE, userId: 5, verse: null, enabled: true });
+    await rerender({
+      passage: PERICOPE,
+      userId: 5,
+      verse: null,
+      enabled: true,
+    });
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
   });
 
@@ -171,7 +176,7 @@ describe('usePassageQuestions', () => {
             item(2, 'Why wait?', 'A riot.'),
           ),
     );
-    const { result } = renderQuestions();
+    const { result } = await renderQuestions();
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
     expect(getQuestions.mock.calls).toEqual([
       [7, 'MRK', 14, 1, 'eng'],
@@ -188,7 +193,7 @@ describe('usePassageQuestions', () => {
 
   it('keeps each chapter of a cross-chapter passage with its own verses', async () => {
     getQuestions.mockResolvedValue(response());
-    const { result } = renderQuestions({
+    const { result } = await renderQuestions({
       passage: passage([
         { chapterNumber: 14, verseNumber: 72 },
         { chapterNumber: 15, verseNumber: 1 },
@@ -203,7 +208,7 @@ describe('usePassageQuestions', () => {
 
   it("asks only for verse mode's verse", async () => {
     getQuestions.mockResolvedValue(response(item(2, 'Why wait?', 'A riot.')));
-    const { result } = renderQuestions({ verse: 2 });
+    const { result } = await renderQuestions({ verse: 2 });
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
     expect(getQuestions.mock.calls).toEqual([[7, 'MRK', 14, 2, 'eng']]);
   });
@@ -219,7 +224,7 @@ describe('usePassageQuestions', () => {
       } as unknown as DownloadQueueItem,
     ]);
     mockReadJson.mockResolvedValue([tipTap('Who came?', 'The priests.')]);
-    const { result } = renderQuestions();
+    const { result } = await renderQuestions();
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
     expect(questionTexts(result.current.state)).toEqual(['Who came?']);
     expect(mockFindRows).toHaveBeenCalledWith(
@@ -236,20 +241,25 @@ describe('usePassageQuestions', () => {
 
   it('says offline questions were never prepared, apart from an empty passage', async () => {
     mockConnectivity = { isOnline: false, hasResolved: true };
-    const { result, rerender } = renderQuestions();
+    const { result, rerender } = await renderQuestions();
     await waitFor(() =>
       expect(result.current.state).toEqual({ status: 'unprepared' }),
     );
 
     mockDownloadedSections = ['translationQuestions'];
-    rerender({ passage: PERICOPE, userId: 5, verse: null, enabled: true });
+    await rerender({
+      passage: PERICOPE,
+      userId: 5,
+      verse: null,
+      enabled: true,
+    });
     expect(result.current.state).toEqual({ status: 'ready', questions: [] });
     expect(getQuestions).not.toHaveBeenCalled();
   });
 
   it("asks nothing for a whole chapter whose text isn't here yet", async () => {
     getQuestions.mockResolvedValue(response(item(1, 'Verse one?', 'No.')));
-    const { result } = renderQuestions({ passage: passage([]) });
+    const { result } = await renderQuestions({ passage: passage([]) });
     await act(async () => {});
     expect(result.current.state).toEqual({ status: 'noVerses' });
     expect(getQuestions).not.toHaveBeenCalled();
@@ -258,7 +268,7 @@ describe('usePassageQuestions', () => {
 
   it('is empty, not unprepared, offline without a project', async () => {
     mockConnectivity = { isOnline: false, hasResolved: true };
-    const { result } = renderQuestions({
+    const { result } = await renderQuestions({
       passage: passage(PERICOPE.verses, { projectId: null }),
     });
     await waitFor(() =>
@@ -268,7 +278,7 @@ describe('usePassageQuestions', () => {
 
   it('is empty, not unprepared, online with nothing for the passage', async () => {
     getQuestions.mockResolvedValue(response());
-    const { result } = renderQuestions();
+    const { result } = await renderQuestions();
     await waitFor(() =>
       expect(result.current.state).toEqual({ status: 'ready', questions: [] }),
     );
@@ -276,7 +286,7 @@ describe('usePassageQuestions', () => {
 
   it('fails on its own and Retry recovers in place', async () => {
     getQuestions.mockRejectedValue(new Error('offline'));
-    const { result } = renderQuestions({ verse: 2 });
+    const { result } = await renderQuestions({ verse: 2 });
     await waitFor(() =>
       expect(result.current.state).toEqual({ status: 'failed' }),
     );
@@ -302,7 +312,7 @@ describe('usePassageQuestions', () => {
     'never shows the old questions after a %s switch',
     async (_name, change) => {
       getQuestions.mockResolvedValue(response(item(1, 'Old?', 'Old.')));
-      const { result, rerender, seen } = renderQuestions();
+      const { result, rerender, seen } = await renderQuestions();
       await waitFor(() =>
         expect(questionTexts(result.current.state)).toEqual(['Old?']),
       );
@@ -313,7 +323,7 @@ describe('usePassageQuestions', () => {
         () => new Promise(resolve => pending.push(resolve)),
       );
       const from = seen.length;
-      rerender({
+      await rerender({
         passage: PERICOPE,
         userId: 5,
         verse: null,
@@ -337,10 +347,10 @@ describe('usePassageQuestions', () => {
     getQuestions.mockImplementation(
       () => new Promise(resolve => pending.push(resolve)),
     );
-    const { result, rerender, seen } = renderQuestions({ verse: 1 });
+    const { result, rerender, seen } = await renderQuestions({ verse: 1 });
     await waitFor(() => expect(pending).toHaveLength(1));
 
-    rerender({ passage: PERICOPE, userId: 6, verse: 1, enabled: true });
+    await rerender({ passage: PERICOPE, userId: 6, verse: 1, enabled: true });
     await waitFor(() => expect(pending).toHaveLength(2));
     await act(async () => {
       pending[0]!(response(item(1, 'For five?', 'No.')));

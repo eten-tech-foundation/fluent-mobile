@@ -78,7 +78,7 @@ describe('useMyWorkChapters query boundary', () => {
   it('surfaces SQL execute failures as error, not an empty success', async () => {
     mockExecute.mockRejectedValue(new Error('disk I/O error'));
 
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe(true);
@@ -91,7 +91,7 @@ describe('useMyWorkChapters query boundary', () => {
       .mockRejectedValueOnce(new Error('disk I/O error'))
       .mockResolvedValueOnce({ rows: [] });
 
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
 
     await waitFor(() => expect(result.current.error).toBe(true));
 

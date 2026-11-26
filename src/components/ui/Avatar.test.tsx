@@ -15,9 +15,9 @@ jest.mock('../../services/storage', () => ({
 const next = resolveTheme('next');
 
 describe('Avatar', () => {
-  it('shows the initials on surface/inverse and opens on press', () => {
+  it('shows the initials on surface/inverse and opens on press', async () => {
     const onPress = jest.fn();
-    render(
+    await render(
       <UiVersionOverride value="next">
         <Avatar
           initials="JS"
@@ -38,12 +38,12 @@ describe('Avatar', () => {
       next.roles.fgOnInverse,
     );
 
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('is a plain picture without a press, left to its row to speak', () => {
-    render(
+  it('is a plain picture without a press, left to its row to speak', async () => {
+    await render(
       <UiVersionOverride value="next">
         <Avatar initials="RK" testID="avatar" />
       </UiVersionOverride>,

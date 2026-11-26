@@ -28,8 +28,8 @@ describe('TermsOfUsePage', () => {
     mockCanGoBack.mockReturnValue(true);
   });
 
-  it('renders scrollable terms content', () => {
-    render(<TermsOfUsePage />);
+  it('renders scrollable terms content', async () => {
+    await render(<TermsOfUsePage />);
 
     expect(screen.getByTestId('terms-of-use-scroll')).toBeTruthy();
     expect(screen.getAllByText('Terms of Use').length).toBeGreaterThan(0);
@@ -42,18 +42,18 @@ describe('TermsOfUsePage', () => {
     expect(content.getByText(/provided by third parties/)).toBeTruthy();
   });
 
-  it('uses router back when the legal header has navigation history', () => {
-    render(<TermsOfUsePage />);
-    fireEvent.press(screen.getByTestId('terms-of-use-scroll-back'));
+  it('uses router back when the legal header has navigation history', async () => {
+    await render(<TermsOfUsePage />);
+    await fireEvent.press(screen.getByTestId('terms-of-use-scroll-back'));
     expect(mockCanGoBack).toHaveBeenCalledTimes(1);
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('replaces with the existing Home route when no back history exists', () => {
+  it('replaces with the existing Home route when no back history exists', async () => {
     mockCanGoBack.mockReturnValue(false);
-    render(<TermsOfUsePage />);
-    fireEvent.press(screen.getByTestId('terms-of-use-scroll-back'));
+    await render(<TermsOfUsePage />);
+    await fireEvent.press(screen.getByTestId('terms-of-use-scroll-back'));
     expect(mockBack).not.toHaveBeenCalled();
     expect(mockReplace).toHaveBeenCalledTimes(1);
     expect(mockReplace).toHaveBeenCalledWith(

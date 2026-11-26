@@ -60,26 +60,26 @@ describe('useSync', () => {
     jest.useRealTimers();
   });
 
-  it('shows never-synced state when no timestamp is stored', () => {
-    const { result } = renderHook(() => useSync());
+  it('shows never-synced state when no timestamp is stored', async () => {
+    const { result } = await renderHook(() => useSync());
 
     expect(result.current.stateType).toBe('never');
     expect(result.current.displayText).toBe('Never synced');
     expect(result.current.isSyncing).toBe(false);
   });
 
-  it('shows the first stored sync error step', () => {
+  it('shows the first stored sync error step', async () => {
     mockGetSyncError.mockImplementation((key: string) =>
       key === KV_KEYS.SYNC_ERROR_PROJECTS ? 'network down' : undefined,
     );
 
-    const { result } = renderHook(() => useSync());
+    const { result } = await renderHook(() => useSync());
 
     expect(result.current.stateType).toBe('error');
     expect(result.current.displayText).toBe('Sync failed: projects');
   });
 
-  it('joins chapter claim and assignment sync errors', () => {
+  it('joins chapter claim and assignment sync errors', async () => {
     mockGetSyncError.mockImplementation((key: string) => {
       if (key === KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS) {
         return 'Failed to sync 1 pending chapter claim(s)';
@@ -90,7 +90,7 @@ describe('useSync', () => {
       return undefined;
     });
 
-    const { result } = renderHook(() => useSync());
+    const { result } = await renderHook(() => useSync());
 
     expect(result.current.stateType).toBe('error');
     expect(result.current.displayText).toBe(
@@ -98,18 +98,18 @@ describe('useSync', () => {
     );
   });
 
-  it('surfaces pericope sync errors from KV', () => {
+  it('surfaces pericope sync errors from KV', async () => {
     mockGetSyncError.mockImplementation((key: string) =>
       key === KV_KEYS.SYNC_ERROR_PERICOPES ? 'pericope failed' : undefined,
     );
 
-    const { result } = renderHook(() => useSync());
+    const { result } = await renderHook(() => useSync());
 
     expect(result.current.stateType).toBe('error');
     expect(result.current.displayText).toBe('Sync failed: pericopes');
   });
 
-  it('shows last synced relative time in normal state', () => {
+  it('shows last synced relative time in normal state', async () => {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60_000).toISOString();
     mockGetSyncState.mockReturnValue({
       lastSyncedAt: fiveMinutesAgo,
@@ -118,7 +118,7 @@ describe('useSync', () => {
       biblesCount: 3,
     });
 
-    const { result } = renderHook(() => useSync());
+    const { result } = await renderHook(() => useSync());
 
     expect(result.current.stateType).toBe('normal');
     expect(result.current.displayText).toBe('Last synced: 5 mins ago');
@@ -136,12 +136,12 @@ describe('useSync', () => {
         }),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSync({ onSyncStart, onSyncComplete, onError }),
     );
 
     let syncPromise: Promise<void> | undefined;
-    act(() => {
+    await act(() => {
       syncPromise = result.current.triggerSync();
     });
 
@@ -167,7 +167,7 @@ describe('useSync', () => {
     const onError = jest.fn();
     mockSyncAllUsers.mockRejectedValue(new Error('sync failed'));
 
-    const { result } = renderHook(() => useSync({ onError }));
+    const { result } = await renderHook(() => useSync({ onError }));
 
     await act(async () => {
       await result.current.triggerSync();
@@ -177,14 +177,14 @@ describe('useSync', () => {
     expect(result.current.isSyncing).toBe(false);
   });
 
-  it('clears error display when stored errors change after sync completes', () => {
+  it('clears error display when stored errors change after sync completes', async () => {
     mockGetSyncError.mockImplementation((key: string) =>
       key === KV_KEYS.SYNC_ERROR_MASTER_DATA
         ? 'Unable to resolve host'
         : undefined,
     );
 
-    const { result } = renderHook(() => useSync());
+    const { result } = await renderHook(() => useSync());
 
     expect(result.current.stateType).toBe('error');
     expect(result.current.displayText).toBe('Sync failed: master data');
@@ -197,7 +197,7 @@ describe('useSync', () => {
       biblesCount: 1,
     });
 
-    act(() => {
+    await act(() => {
       emitSyncComplete();
     });
 
@@ -205,18 +205,18 @@ describe('useSync', () => {
     expect(result.current.displayText).toBe('Last synced: Just now');
   });
 
-  it('refreshes error text while in the error state on the interval', () => {
+  it('refreshes error text while in the error state on the interval', async () => {
     mockGetSyncError.mockImplementation((key: string) =>
       key === KV_KEYS.SYNC_ERROR_PROJECTS ? 'catalog unavailable' : undefined,
     );
 
-    const { result } = renderHook(() => useSync());
+    const { result } = await renderHook(() => useSync());
 
     expect(result.current.stateType).toBe('error');
 
     mockGetSyncError.mockReturnValue(undefined);
 
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(60_000);
     });
 
@@ -224,27 +224,27 @@ describe('useSync', () => {
     expect(result.current.displayText).toBe('Never synced');
   });
 
-  it('refreshes metadata error text when an upload session completes', () => {
+  it('refreshes metadata error text when an upload session completes', async () => {
     mockGetSyncError.mockImplementation((key: string) =>
       key === KV_KEYS.SYNC_ERROR_BIBLE_TEXTS
         ? 'Unable to resolve host'
         : undefined,
     );
 
-    const { result } = renderHook(() => useSync());
+    const { result } = await renderHook(() => useSync());
 
     expect(result.current.displayText).toBe('Sync failed: bible texts');
 
     mockGetSyncError.mockReturnValue(undefined);
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'complete' });
     });
 
     expect(result.current.stateType).toBe('never');
   });
 
-  it('refreshes relative time on the normal-state interval', () => {
+  it('refreshes relative time on the normal-state interval', async () => {
     const twoMinutesAgo = new Date(Date.now() - 2 * 60_000).toISOString();
     mockGetSyncState.mockReturnValue({
       lastSyncedAt: twoMinutesAgo,
@@ -253,11 +253,11 @@ describe('useSync', () => {
       biblesCount: 1,
     });
 
-    const { result } = renderHook(() => useSync());
+    const { result } = await renderHook(() => useSync());
 
     expect(result.current.displayText).toBe('Last synced: 2 mins ago');
 
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(60_000);
     });
 

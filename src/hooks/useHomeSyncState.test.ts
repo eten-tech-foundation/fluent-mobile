@@ -106,9 +106,9 @@ describe('useHomeSyncState', () => {
     mockHomeFlags.advancesReadFails = false;
   });
 
-  it('bumps the re-read in the render where the post-login sync ends', () => {
+  it('bumps the re-read in the render where the post-login sync ends', async () => {
     const commits: { active: boolean; refreshKey: number }[] = [];
-    const hook = renderHook(
+    const hook = await renderHook(
       ({ active }: { active: boolean }) => {
         const state = useHomeSyncState({
           postLoginSyncActive: active,
@@ -124,7 +124,7 @@ describe('useHomeSyncState', () => {
     );
     const before = hook.result.current.refreshKey;
 
-    hook.rerender({ active: false });
+    await hook.rerender({ active: false });
 
     expect(hook.result.current.refreshKey).toBe(before + 1);
     expect(hook.result.current.showLoading).toBe(false);
@@ -138,7 +138,7 @@ describe('useHomeSyncState', () => {
   it('shows the session banner when online and a claim is waiting', async () => {
     mockHomeFlags.reauthRequired = true;
     mockHomeFlags.claimsPending = true;
-    const hook = renderHook(
+    const hook = await renderHook(
       () =>
         useHomeSyncState({ postLoginSyncActive: false, userSwitchEpoch: 0 }),
       { initialProps: undefined },
@@ -152,7 +152,7 @@ describe('useHomeSyncState', () => {
   it('shows the session banner when online and a stage advance is waiting', async () => {
     mockHomeFlags.reauthRequired = true;
     mockHomeFlags.advancesPending = true;
-    const hook = renderHook(
+    const hook = await renderHook(
       () =>
         useHomeSyncState({ postLoginSyncActive: false, userSwitchEpoch: 0 }),
       { initialProps: undefined },
@@ -166,7 +166,7 @@ describe('useHomeSyncState', () => {
     mockHomeFlags.reauthRequired = true;
     mockHomeFlags.claimsPending = true;
     mockHomeFlags.advancesReadFails = true;
-    const hook = renderHook(
+    const hook = await renderHook(
       () =>
         useHomeSyncState({ postLoginSyncActive: false, userSwitchEpoch: 0 }),
       { initialProps: undefined },
@@ -177,7 +177,7 @@ describe('useHomeSyncState', () => {
   });
 
   it('stays quiet while offline, and a Sync tap only counts during reauth', async () => {
-    const hook = renderHook(
+    const hook = await renderHook(
       () =>
         useHomeSyncState({ postLoginSyncActive: false, userSwitchEpoch: 0 }),
       { initialProps: undefined },
@@ -187,13 +187,13 @@ describe('useHomeSyncState', () => {
     mockHomeFlags.reauthRequired = true;
     mockHomeFlags.isOnline = false;
     mockHomeFlags.isLinkOnline = false;
-    hook.rerender(undefined);
+    await hook.rerender(undefined);
     expect(hook.result.current.showSessionExpiredBanner).toBe(false);
     expect(hook.result.current.signInToSyncLabel).toBeNull();
 
     mockHomeFlags.isOnline = true;
     mockHomeFlags.isLinkOnline = true;
-    hook.rerender(undefined);
+    await hook.rerender(undefined);
     expect(hook.result.current.showSessionExpiredBanner).toBe(false);
 
     hook.result.current.noteSyncOpened();
@@ -214,7 +214,7 @@ describe('useHomeSyncState', () => {
     mockHomeFlags.hasResolved = reach.hasResolved;
     mockHomeFlags.isOnline = reach.isOnline;
     mockHomeFlags.isLinkOnline = true;
-    const hook = renderHook(
+    const hook = await renderHook(
       () =>
         useHomeSyncState({ postLoginSyncActive: false, userSwitchEpoch: 0 }),
       { initialProps: undefined },
@@ -224,13 +224,13 @@ describe('useHomeSyncState', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    hook.rerender(undefined);
+    await hook.rerender(undefined);
     expect(hook.result.current.showSessionExpiredBanner).toBe(false);
     expect(hook.result.current.signInToSyncLabel).toBeNull();
 
     mockHomeFlags.hasResolved = true;
     mockHomeFlags.isOnline = true;
-    hook.rerender(undefined);
+    await hook.rerender(undefined);
     await waitFor(() => {
       expect(hook.result.current.showSessionExpiredBanner).toBe(true);
     });

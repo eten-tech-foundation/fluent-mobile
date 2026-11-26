@@ -7,15 +7,15 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 describe('DraftingHeader', () => {
-  it('renders the title with back control', () => {
-    render(<DraftingHeader title="Genesis 1" onBack={jest.fn()} />);
+  it('renders the title with back control', async () => {
+    await render(<DraftingHeader title="Genesis 1" onBack={jest.fn()} />);
 
     expect(screen.getByText('Genesis 1')).toBeTruthy();
     expect(screen.getByLabelText('Go back')).toBeTruthy();
   });
 
-  it('renders sync control when status and handler are provided', () => {
-    render(
+  it('renders sync control when status and handler are provided', async () => {
+    await render(
       <DraftingHeader
         title="Genesis 1"
         onBack={jest.fn()}
@@ -30,8 +30,8 @@ describe('DraftingHeader', () => {
     ).toBeTruthy();
   });
 
-  it('shows a visible subtitle while drafting holds pending uploads', () => {
-    const { rerender } = render(
+  it('shows a visible subtitle while drafting holds pending uploads', async () => {
+    const { rerender } = await render(
       <DraftingHeader
         title="Genesis 1"
         onBack={jest.fn()}
@@ -44,7 +44,7 @@ describe('DraftingHeader', () => {
       screen.getByText('Uploads wait until you leave drafting'),
     ).toBeTruthy();
 
-    rerender(
+    await rerender(
       <DraftingHeader
         title="Genesis 1"
         onBack={jest.fn()}

@@ -1,4 +1,5 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { holdNextCall } from '../test/holdNextCall';
 import {
   coverVerses,
   loadChapterPassages,
@@ -225,7 +226,7 @@ describe('useBookPassages', () => {
     );
     const chapters = [chapter(1, 14), chapter(2, 15)];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -238,7 +239,7 @@ describe('useBookPassages', () => {
     mockUnit = 'verse';
     const chapters = [chapter(1, 14), chapter(2, 15)];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -253,7 +254,7 @@ describe('useBookPassages', () => {
     mockUnit = 'verse';
     const chapters = [chapter(1, 14, { completedVerses: 1 })];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -265,15 +266,18 @@ describe('useBookPassages', () => {
 
   it('shows loading, not the old covers, while the other unit loads', async () => {
     const chapters = [chapter(1, 14)];
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       useBookPassages(chapters, 9, 3),
     );
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
+    // The other unit's coverage read stays in flight until released.
+    const releaseCoverage = holdNextCall(mockCoverages);
     mockUnit = 'verse';
-    rerender({});
+    await rerender({});
 
     expect(result.current.status).toBe('loading');
+    await act(async () => releaseCoverage());
     await waitFor(() => expect(result.current.status).toBe('ready'));
   });
 
@@ -305,7 +309,7 @@ describe('useBookPassages', () => {
     );
     const chapters = [chapter(1, 14), chapter(2, 15)];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -346,7 +350,7 @@ describe('useBookPassages', () => {
     mockPericopes.mockResolvedValue([crossing]);
     const chapters = [chapter(1, 14), chapter(2, 15)];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -376,7 +380,7 @@ describe('useBookPassages', () => {
       chapter(2, 15, { workflowStage: 'community_review' }),
     ];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -411,7 +415,7 @@ describe('useBookPassages', () => {
       chapter(2, 15, { workflowStage: 'peer_check' }),
     ];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -445,7 +449,9 @@ describe('useBookPassages', () => {
         ...others,
       ];
 
-      const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+      const { result } = await renderHook(() =>
+        useBookPassages(chapters, 9, 3),
+      );
 
       await waitFor(() => expect(result.current.status).toBe('ready'));
       if (result.current.status !== 'ready') return;
@@ -465,7 +471,7 @@ describe('useBookPassages', () => {
     mockPericopes.mockResolvedValue([]);
     const chapters = [chapter(1, 14), chapter(2, 15)];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(mockCoverages).toHaveBeenCalledTimes(1);
@@ -476,7 +482,7 @@ describe('useBookPassages', () => {
     mockSetId.mockResolvedValue(null);
     const chapters = [chapter(1, 14, { completedVerses: 5, totalVerses: 72 })];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -502,7 +508,7 @@ describe('useBookPassages', () => {
     mockPericopes.mockResolvedValue([]);
     const chapters = [chapter(1, 14), chapter(2, 15)];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -513,7 +519,7 @@ describe('useBookPassages', () => {
     mockSetId.mockRejectedValue(new Error('db'));
     const chapters = [chapter(1, 14)];
 
-    const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+    const { result } = await renderHook(() => useBookPassages(chapters, 9, 3));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status !== 'ready') return;
@@ -534,7 +540,9 @@ describe('useBookPassages', () => {
         chapter(1, 14, { workflowStage, completedVerses: 0, totalVerses: 72 }),
       ];
 
-      const { result } = renderHook(() => useBookPassages(chapters, 9, 3));
+      const { result } = await renderHook(() =>
+        useBookPassages(chapters, 9, 3),
+      );
 
       await waitFor(() => expect(result.current.status).toBe('ready'));
       if (result.current.status !== 'ready') return;

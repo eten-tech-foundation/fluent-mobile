@@ -23,7 +23,7 @@ describe('useRetryFailedUploads', () => {
   });
 
   it('fails fast when there is no auth token', async () => {
-    const { result } = renderHook(() => useRetryFailedUploads());
+    const { result } = await renderHook(() => useRetryFailedUploads());
 
     let outcome: Awaited<ReturnType<typeof result.current.retryFailedUploads>> =
       null;
@@ -53,7 +53,7 @@ describe('useRetryFailedUploads', () => {
         }),
     );
 
-    const { result } = renderHook(() => useRetryFailedUploads());
+    const { result } = await renderHook(() => useRetryFailedUploads());
 
     let pending: Promise<{
       uploaded: number;
@@ -62,7 +62,7 @@ describe('useRetryFailedUploads', () => {
       deferred: number;
       deletionsFailed: number;
     } | null>;
-    act(() => {
+    await act(() => {
       pending = result.current.retryFailedUploads();
     });
 

@@ -39,7 +39,7 @@ describe('useTranslationQuestionsForUnit', () => {
   it('loads questions for units that have TQ content', async () => {
     mockLoad.mockResolvedValue(SAMPLE_QUESTIONS);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTranslationQuestionsForUnit({
         projectId: 7,
         bookCode: 'MRK',
@@ -70,7 +70,7 @@ describe('useTranslationQuestionsForUnit', () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
     mockLoad.mockResolvedValueOnce(SAMPLE_QUESTIONS);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTranslationQuestionsForUnit({
         projectId: 7,
         bookCode: 'MRK',
@@ -100,7 +100,7 @@ describe('useTranslationQuestionsForUnit', () => {
   it('does not show the previous unit while the next load is still pending', async () => {
     mockLoad.mockResolvedValue(SAMPLE_QUESTIONS);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({
         projectId,
         bookCode,
@@ -147,7 +147,7 @@ describe('useTranslationQuestionsForUnit', () => {
     });
     mockLoad.mockReturnValueOnce(pendingLoad);
 
-    rerender({
+    await rerender({
       projectId: 7,
       bookCode: 'MRK',
       chapterNumber: 14,
@@ -186,7 +186,7 @@ describe('useTranslationQuestionsForUnit', () => {
         chapterNumber: 14,
         verseNumber: 2,
       };
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         (props: typeof base) => {
           const hook = useTranslationQuestionsForUnit(props);
           rendered.push(hook.state.status);
@@ -200,7 +200,7 @@ describe('useTranslationQuestionsForUnit', () => {
 
       mockLoad.mockReturnValueOnce(new Promise(() => {}));
       const from = rendered.length;
-      rerender({ ...base, ...change });
+      await rerender({ ...base, ...change });
       expect(rendered.slice(from)).not.toContain('ready');
     },
   );

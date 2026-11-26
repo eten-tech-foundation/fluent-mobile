@@ -51,7 +51,7 @@ describe('useLaunchRecoveryPrompt', () => {
       },
     ]);
 
-    renderHook(() => useLaunchRecoveryPrompt({ onResume: () => true }));
+    await renderHook(() => useLaunchRecoveryPrompt({ onResume: () => true }));
 
     await waitFor(() => expect(alert).toHaveBeenCalled());
     expect(mockCollect).toHaveBeenCalledWith(7);
@@ -66,7 +66,7 @@ describe('useLaunchRecoveryPrompt', () => {
       return [take(7)];
     });
 
-    renderHook(() => useLaunchRecoveryPrompt({ onResume: () => true }));
+    await renderHook(() => useLaunchRecoveryPrompt({ onResume: () => true }));
 
     await waitFor(() => expect(mockCollect).toHaveBeenCalled());
     await act(async () => {});
@@ -80,7 +80,7 @@ describe('useLaunchRecoveryPrompt', () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockCollect.mockResolvedValue([take(7)]);
 
-    renderHook(() => useLaunchRecoveryPrompt({ onResume: () => true }));
+    await renderHook(() => useLaunchRecoveryPrompt({ onResume: () => true }));
     await waitFor(() => expect(alert).toHaveBeenCalled());
     mockActiveUser = 8;
     const buttons = alert.mock.calls[0]![2] as {
@@ -98,7 +98,7 @@ describe('useLaunchRecoveryPrompt', () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockCollect.mockResolvedValue([take(7)]);
 
-    renderHook(() => useLaunchRecoveryPrompt({ onResume: () => true }));
+    await renderHook(() => useLaunchRecoveryPrompt({ onResume: () => true }));
     await waitFor(() => expect(alert).toHaveBeenCalled());
     const buttons = alert.mock.calls[0]![2] as {
       text: string;

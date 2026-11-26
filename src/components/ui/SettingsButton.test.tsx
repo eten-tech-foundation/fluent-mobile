@@ -10,12 +10,12 @@ jest.mock('lucide-react-native', () => {
 });
 
 describe('SettingsButton', () => {
-  it('calls onPress when pressed', () => {
+  it('calls onPress when pressed', async () => {
     const onPress = jest.fn();
 
-    render(<SettingsButton onPress={onPress} />);
+    await render(<SettingsButton onPress={onPress} />);
 
-    fireEvent.press(screen.getByLabelText('Settings'));
+    await fireEvent.press(screen.getByLabelText('Settings'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

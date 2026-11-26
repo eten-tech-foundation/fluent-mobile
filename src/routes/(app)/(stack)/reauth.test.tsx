@@ -54,16 +54,16 @@ describe('ReauthRoute', () => {
     jest.clearAllMocks();
   });
 
-  it('does not sync after an offline sign-in', () => {
-    render(<ReauthRoute />);
+  it('does not sync after an offline sign-in', async () => {
+    await render(<ReauthRoute />);
     loginSuccess('t@fluent.local', undefined, { offline: true });
     expect(mockNotifyUserSwitched).toHaveBeenCalledTimes(1);
     expect(mockSyncAllData).not.toHaveBeenCalled();
     expect(mockNavigateFromReauth).toHaveBeenCalled();
   });
 
-  it('syncs after an online sign-in', () => {
-    render(<ReauthRoute />);
+  it('syncs after an online sign-in', async () => {
+    await render(<ReauthRoute />);
     loginSuccess('t@fluent.local');
     expect(mockSyncAllData).toHaveBeenCalledWith(true);
     expect(mockNotifyUserSwitched).not.toHaveBeenCalled();

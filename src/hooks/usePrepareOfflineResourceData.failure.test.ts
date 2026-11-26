@@ -56,7 +56,7 @@ beforeEach(() => {
 it.each([21, 49])(
   'accepts %i selected chapters with complete empty responses',
   async count => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineResourceData(
         12,
         10,
@@ -77,7 +77,7 @@ it.each([401, 403, 502, 0])(
   async status => {
     const error = new ApiError(status, 'fixture', 'fixture');
     mockFetch.mockRejectedValueOnce(error);
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineResourceData(12, 10, chapters, new Set([1])),
     );
     await waitFor(() => expect(result.current.error).toBe(error));
@@ -89,7 +89,7 @@ it.each([401, 403, 502, 0])(
 
 it('distinguishes missing local project context from a manifest request failure', async () => {
   mockContext.mockResolvedValue(null);
-  const { result } = renderHook(() =>
+  const { result } = await renderHook(() =>
     usePrepareOfflineResourceData(12, 10, chapters, new Set([1])),
   );
   await waitFor(() => expect(result.current.error).toBeInstanceOf(Error));
@@ -99,13 +99,13 @@ it('distinguishes missing local project context from a manifest request failure'
 
 it('recovers on a changed selection after a failed request', async () => {
   mockFetch.mockRejectedValueOnce(new ApiError(502, 'fixture', 'fixture'));
-  const { result, rerender } = renderHook(
+  const { result, rerender } = await renderHook(
     ({ selected }: { selected: Set<number> }) =>
       usePrepareOfflineResourceData(12, 10, chapters, selected),
     { initialProps: { selected: new Set([1]) } },
   );
   await waitFor(() => expect(result.current.error).toBeInstanceOf(ApiError));
-  rerender({ selected: new Set([2]) });
+  await rerender({ selected: new Set([2]) });
   await waitFor(() => expect(result.current.error).toBeNull());
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.manifestContexts[0].startChapter).toBe(2);
@@ -118,7 +118,7 @@ it('keeps canonical MAT contexts as contiguous max-20 ranges', async () => {
     bookName: 'Mathew',
     bookId: 40,
   }));
-  const { result } = renderHook(() =>
+  const { result } = await renderHook(() =>
     usePrepareOfflineResourceData(
       12,
       10,
@@ -158,7 +158,7 @@ it('a failure in a different selected book clears successful Matthew results too
   mockFetch.mockImplementation((_projectId, context) =>
     context.bookCode === 'PSA' ? Promise.reject(error) : Promise.resolve([]),
   );
-  const { result } = renderHook(() =>
+  const { result } = await renderHook(() =>
     usePrepareOfflineResourceData(12, 10, [matthew, psalm], new Set([1, 2])),
   );
   await waitFor(() => expect(result.current.error).toBe(error));
@@ -175,15 +175,15 @@ it('aborts in-flight selection load and does not surface abort as a catalog erro
         resolveFetch = resolve;
       }),
   );
-  const first = renderHook(() =>
+  const first = await renderHook(() =>
     usePrepareOfflineResourceData(12, 10, chapters, new Set([1, 2, 3])),
   );
   await waitFor(() => expect(mockFetch).toHaveBeenCalled());
-  first.unmount();
+  await first.unmount();
   resolveFetch?.([]);
 
   mockFetch.mockClear().mockResolvedValue([]);
-  const second = renderHook(() =>
+  const second = await renderHook(() =>
     usePrepareOfflineResourceData(12, 10, chapters, new Set([1])),
   );
   await waitFor(() => expect(second.result.current.loading).toBe(false));

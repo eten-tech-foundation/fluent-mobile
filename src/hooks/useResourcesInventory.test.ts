@@ -40,7 +40,7 @@ describe('useResourcesInventory', () => {
           }),
       );
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: { projectId: number | null; userId: number | null }) =>
         useResourcesInventory(props.projectId, props.userId),
       { initialProps: { projectId: 1, userId: 10 } },
@@ -56,7 +56,7 @@ describe('useResourcesInventory', () => {
       expect(result.current.downloadedSections).toEqual(['translationNotes']);
     });
 
-    rerender({ projectId: 1, userId: 20 });
+    await rerender({ projectId: 1, userId: 20 });
 
     // Identity change must clear immediately — no prior-account bleed.
     expect(result.current.downloadedSections).toEqual([]);
@@ -75,7 +75,9 @@ describe('useResourcesInventory', () => {
 
   it('ignores a stale resolution after project replacement', async () => {
     let resolveStale!: (sections: ResourceSectionId[]) => void;
+    let resolveFresh!: (sections: ResourceSectionId[]) => void;
 
+    // Both reads stay in flight: RNTL 14 flushes resolved promises on rerender.
     mockGetDownloaded
       .mockImplementationOnce(
         () =>
@@ -83,17 +85,26 @@ describe('useResourcesInventory', () => {
             resolveStale = resolve;
           }),
       )
-      .mockResolvedValueOnce(['translationQuestions']);
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveFresh = resolve;
+          }),
+      );
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: { projectId: number | null; userId: number | null }) =>
         useResourcesInventory(props.projectId, props.userId),
       { initialProps: { projectId: 1, userId: 10 } },
     );
 
-    rerender({ projectId: 2, userId: 10 });
+    await rerender({ projectId: 2, userId: 10 });
 
     expect(result.current.downloadedSections).toEqual([]);
+
+    await act(async () => {
+      resolveFresh(['translationQuestions']);
+    });
 
     await waitFor(() => {
       expect(result.current.downloadedSections).toEqual([
@@ -112,7 +123,7 @@ describe('useResourcesInventory', () => {
   it('clears sections when project or user becomes null', async () => {
     mockGetDownloaded.mockResolvedValue(['translationNotes']);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: { projectId: number | null; userId: number | null }) =>
         useResourcesInventory(props.projectId, props.userId),
       { initialProps: { projectId: 1, userId: 10 } },
@@ -122,7 +133,7 @@ describe('useResourcesInventory', () => {
       expect(result.current.downloadedSections).toEqual(['translationNotes']);
     });
 
-    rerender({ projectId: null, userId: 10 });
+    await rerender({ projectId: null, userId: 10 });
     expect(result.current.downloadedSections).toEqual([]);
   });
 });

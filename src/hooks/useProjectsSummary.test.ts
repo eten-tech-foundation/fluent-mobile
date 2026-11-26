@@ -77,7 +77,7 @@ describe('useProjectsSummary', () => {
       firstMetadata.promise,
     );
 
-    renderHook(() => useProjectsSummary());
+    await renderHook(() => useProjectsSummary());
 
     await waitFor(() => {
       expect(mockGetProjectsWithSummary).toHaveBeenCalled();
@@ -120,7 +120,7 @@ describe('useProjectsSummary', () => {
     const metadata = deferred<void>();
     mockRefreshChapterMetadataIfOnline.mockReturnValue(metadata.promise);
 
-    const { result } = renderHook(() => useProjectsSummary());
+    const { result } = await renderHook(() => useProjectsSummary());
 
     await waitFor(() => {
       expect(mockGetProjectsWithSummary).toHaveBeenCalledTimes(1);

@@ -130,9 +130,9 @@ describe('SettingsScreen log out', () => {
   it('shows the unsynced warning and does not log out until confirmed', async () => {
     mockGetUnsyncedRecordingCount.mockResolvedValue(1);
     mockSignOutCurrentDeviceAccount.mockResolvedValue({ kind: 'signed_out' });
-    const { getByTestId } = render(<SettingsScreen />);
+    const { getByTestId } = await render(<SettingsScreen />);
 
-    fireEvent.press(getByTestId('settings-log-out'));
+    await fireEvent.press(getByTestId('settings-log-out'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(

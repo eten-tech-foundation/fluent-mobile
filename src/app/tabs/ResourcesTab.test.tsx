@@ -407,7 +407,7 @@ describe('ResourcesTab', () => {
       { status: 'completed', resourceName: 'Reference Images', kind: 'image' },
     ]);
     mockLoadImages.mockResolvedValue(imagesForVerse(2));
-    renderResources(1);
+    await renderResources(1);
 
     await waitFor(() => {
       expect(screen.getByText('Images & Maps')).toBeTruthy();
@@ -416,7 +416,7 @@ describe('ResourcesTab', () => {
   });
 
   it('shows non-empty sections online when nothing is inventoried (fresh)', async () => {
-    renderResources(1);
+    await renderResources(1);
     // Verse 1 mock: TN only; TQ + Images hide after empty load (#591).
     await waitFor(() => {
       expect(screen.getByText('Translation Notes')).toBeTruthy();
@@ -430,7 +430,7 @@ describe('ResourcesTab', () => {
   });
 
   it('loads Translation Questions with the tab, not on expand', async () => {
-    renderResources(2);
+    await renderResources(2);
     await waitFor(() => {
       expect(mockLoadQuestions).toHaveBeenCalled();
     });
@@ -447,7 +447,7 @@ describe('ResourcesTab', () => {
     mockLoadNotes.mockImplementation(async () => notesResult([]));
     mockLoadQuestions.mockImplementation(async () => questionsForVerse(2));
     mockLoadImages.mockImplementation(async () => imagesForVerse(2));
-    renderResources(2);
+    await renderResources(2);
 
     await waitFor(() => {
       expect(mockLoadNotes).toHaveBeenCalled();
@@ -465,7 +465,7 @@ describe('ResourcesTab', () => {
 
   it('hides Translation Questions when the unit loads empty online', async () => {
     // Default verse-1 mocks already return empty TQ + Images; assert hide-when-empty.
-    renderResources(1);
+    await renderResources(1);
 
     await waitFor(() => {
       expect(screen.getByText('Translation Notes')).toBeTruthy();
@@ -477,7 +477,7 @@ describe('ResourcesTab', () => {
   });
 
   it('shows the online empty message when every section loads empty', async () => {
-    renderResources(3);
+    await renderResources(3);
     await waitFor(() => {
       expect(screen.getByText(RESOURCES_NONE_FOR_VERSE_MESSAGE)).toBeTruthy();
     });
@@ -487,14 +487,14 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
-  it('shows the empty message offline when nothing is inventoried (fresh)', () => {
+  it('shows the empty message offline when nothing is inventoried (fresh)', async () => {
     mockOfflineConnectivity();
-    renderResources(1);
+    await renderResources(1);
     expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows a loading indicator while connectivity is unresolved', () => {
+  it('shows a loading indicator while connectivity is unresolved', async () => {
     mockUseConnectivity.mockReturnValue({
       isOnline: true,
       isLinkOnline: true,
@@ -506,27 +506,27 @@ describe('ResourcesTab', () => {
       connectivityPending: true,
       transferConnectivityPending: true,
     });
-    renderResources(1);
+    await renderResources(1);
     expect(screen.getByTestId('resources-tab-loading')).toBeTruthy();
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
     expect(screen.queryByText(RESOURCES_NONE_FOR_VERSE_MESSAGE)).toBeNull();
     expect(screen.queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows empty when projectId is null', () => {
+  it('shows empty when projectId is null', async () => {
     markSectionsCompleted([
       'translationNotes',
       'translationQuestions',
       'imagesMaps',
     ]);
-    renderResources(1, null);
+    await renderResources(1, null);
     expect(screen.getByText(RESOURCES_EMPTY_MESSAGE)).toBeTruthy();
   });
 
-  it('shows Translation Notes only for tier1 inventory offline', () => {
+  it('shows Translation Notes only for tier1 inventory offline', async () => {
     mockOfflineConnectivity();
     markSectionsCompleted(['translationNotes']);
-    renderResources(2);
+    await renderResources(2);
     expect(screen.getByText('Mark 14:2')).toBeTruthy();
     expect(screen.getByText('Translation Notes')).toBeTruthy();
     expect(screen.queryByText('Translation Questions')).toBeNull();
@@ -538,7 +538,7 @@ describe('ResourcesTab', () => {
     mockOfflineConnectivity();
     markSectionsCompleted(['translationNotes', 'translationQuestions']);
     // Verse 2 mocks have TN + TQ content; empty sections hide after load (#591).
-    renderResources(2);
+    await renderResources(2);
     await waitFor(() => {
       expect(screen.getByText('Translation Notes')).toBeTruthy();
       expect(screen.getByText('Translation Questions')).toBeTruthy();
@@ -554,7 +554,7 @@ describe('ResourcesTab', () => {
     ]);
     mockLoadImages.mockResolvedValue(imagesForVerse(2));
     // Verse 2 mocks have TN + TQ + Images content.
-    renderResources(2);
+    await renderResources(2);
     await waitFor(() => {
       expect(screen.getByText('Translation Notes')).toBeTruthy();
       expect(screen.getByText('Translation Questions')).toBeTruthy();
@@ -564,15 +564,31 @@ describe('ResourcesTab', () => {
 
   it('updates the reference label when the selected verse changes', async () => {
     markSectionsCompleted(['translationNotes']);
-    renderResources(1);
+    await renderResources(1);
     expect(screen.getByText('Mark 14:1')).toBeTruthy();
     await waitFor(() => {
       expect(screen.getByText('Translation Notes')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('select-verse-3'));
-    expect(screen.getByText('Mark 14:3')).toBeTruthy();
+    // The reference label shows only while the verse has resources, so check
+    // it on verse 2 (which has them) once the new verse settles.
+    await fireEvent.press(screen.getByTestId('select-verse-2'));
+    await waitFor(() => {
+      expect(screen.getByText('Mark 14:2')).toBeTruthy();
+    });
+    expect(screen.queryByText('Mark 14:1')).toBeNull();
+    expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
+  });
+
+  it('says nothing is available for a verse with no resources (#591)', async () => {
+    markSectionsCompleted(['translationNotes']);
+    await renderResources(1);
+    await waitFor(() => {
+      expect(screen.getByText('Translation Notes')).toBeTruthy();
+    });
+
     // Verse 3 mocks are empty — online tab-wide empty (#591).
+    await fireEvent.press(screen.getByTestId('select-verse-3'));
     await waitFor(() => {
       expect(screen.getByText(RESOURCES_NONE_FOR_VERSE_MESSAGE)).toBeTruthy();
     });
@@ -586,19 +602,19 @@ describe('ResourcesTab', () => {
       'imagesMaps',
     ]);
     mockLoadImages.mockResolvedValue(imagesForVerse(2));
-    renderResources(2);
+    await renderResources(2);
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId('resources-section-translationNotes-toggle'),
     );
     await waitFor(() => {
       expect(screen.getByTestId('translation-notes-list')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('select-verse-1'));
+    await fireEvent.press(screen.getByTestId('select-verse-1'));
     expect(screen.queryByTestId('translation-notes-list')).toBeNull();
 
-    fireEvent.press(screen.getByTestId('select-verse-2'));
+    await fireEvent.press(screen.getByTestId('select-verse-2'));
     await waitFor(() => {
       expect(screen.getByTestId('translation-notes-list')).toBeTruthy();
     });
@@ -612,7 +628,7 @@ describe('ResourcesTab', () => {
       'imagesMaps',
     ]);
     mockLoadImages.mockResolvedValue(imagesForVerse(2));
-    renderResources(3);
+    await renderResources(3);
     // Verse 3 used to mean empty under verse % 3 mocks; inventory wins.
     expect(screen.getByText('Mark 14:3')).toBeTruthy();
     await waitFor(() => {
@@ -621,7 +637,7 @@ describe('ResourcesTab', () => {
     expect(screen.queryByText(RESOURCES_EMPTY_MESSAGE)).toBeNull();
   });
 
-  it('keeps chapter:verse header in verse mode when unit title is bare (#593)', () => {
+  it('keeps chapter:verse header in verse mode when unit title is bare (#593)', async () => {
     mockUseBibleTabUnits.mockImplementation(
       ({ selectedVerse }: { selectedVerse: number }): BibleTabUnitsMock => ({
         draftingUnit: 'verse',
@@ -648,7 +664,7 @@ describe('ResourcesTab', () => {
       }),
     );
     markSectionsCompleted(['translationNotes']);
-    renderResources(2);
+    await renderResources(2);
     expect(screen.getByText('Mark 14:2')).toBeTruthy();
     expect(screen.queryByText('2')).toBeNull();
   });
@@ -683,7 +699,7 @@ describe('ResourcesTab', () => {
       }),
     );
     markSectionsCompleted(['translationNotes']);
-    renderResources(1);
+    await renderResources(1);
 
     expect(screen.getByText('Mark 14:1–3')).toBeTruthy();
     expect(screen.getByTestId('resources-unit-99-pericope:1')).toBeTruthy();

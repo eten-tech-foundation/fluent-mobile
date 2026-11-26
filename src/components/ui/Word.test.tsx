@@ -16,9 +16,9 @@ describe('Word', () => {
     mockPreferenceStore();
   });
 
-  it('opens its note from a Phrase chip, named for TalkBack', () => {
+  it('opens its note from a Phrase chip, named for TalkBack', async () => {
     const onPress = jest.fn();
-    render(
+    await render(
       <Text>
         <Word
           word="blood"
@@ -29,12 +29,12 @@ describe('Word', () => {
       </Text>,
     );
 
-    fireEvent.press(screen.getByLabelText('Translation note: my blood'));
+    await fireEvent.press(screen.getByLabelText('Translation note: my blood'));
     expect(onPress).toHaveBeenCalled();
   });
 
-  it('reads a phrase once: later words are hidden from TalkBack', () => {
-    render(
+  it('reads a phrase once: later words are hidden from TalkBack', async () => {
+    await render(
       <Text>
         <Word word="my" variant="phrase" onPress={jest.fn()} testID="w1" />
         <Word
@@ -56,9 +56,11 @@ describe('Word', () => {
     ).toBe('no-hide-descendants');
   });
 
-  it('stays one width whether a joined phrase is focused or at rest', () => {
-    const box = (variant: 'note' | 'phrase') => {
-      render(<Word word="my" variant={variant} joinEnd testID={variant} />);
+  it('stays one width whether a joined phrase is focused or at rest', async () => {
+    const box = async (variant: 'note' | 'phrase') => {
+      await render(
+        <Word word="my" variant={variant} joinEnd testID={variant} />,
+      );
       const style = StyleSheet.flatten(screen.getByTestId(variant).props.style);
       const edge = (border?: number, padding?: unknown) =>
         (border ?? style.borderWidth ?? 0) +
@@ -69,11 +71,11 @@ describe('Word', () => {
       };
     };
 
-    expect(box('phrase')).toEqual(box('note'));
+    expect(await box('phrase')).toEqual(await box('note'));
   });
 
-  it('goes quiet when dimmed: an unfilled outline, the word unchanged', () => {
-    render(
+  it('goes quiet when dimmed: an unfilled outline, the word unchanged', async () => {
+    await render(
       <Text>
         <Word word="cup" variant="note" testID="open" />
         <Word word="cup" variant="phrase" dimmed testID="dimmed" />
@@ -87,8 +89,8 @@ describe('Word', () => {
     expect(dimmed.borderWidth).toBe(open.borderWidth);
   });
 
-  it('is plain text without a press', () => {
-    render(<Word word="which" variant="plain" testID="w" />);
+  it('is plain text without a press', async () => {
+    await render(<Word word="which" variant="plain" testID="w" />);
 
     expect(screen.getByText('which')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();

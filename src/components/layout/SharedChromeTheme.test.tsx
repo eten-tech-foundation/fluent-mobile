@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { render, screen } from '@testing-library/react-native';
 import { AppHeader, HeaderBackButton } from './AppHeader';
 import { StackScreenHeader } from './StackScreenHeader';
@@ -8,6 +8,7 @@ import { UiVersionOverride } from '../../theme/useTheme';
 import { legacyTheme } from '../../theme/legacy';
 import { resolveTheme } from '../../theme/uiVersion';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
+import { getAllByHostType } from '../../test/hostElements';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
@@ -30,8 +31,7 @@ const tree = (version: 'legacy' | 'next') => (
 );
 
 function headerShells() {
-  const shells = screen
-    .UNSAFE_getAllByType(View)
+  const shells = getAllByHostType('View')
     .map(node => StyleSheet.flatten(node.props.style))
     .filter(style => style?.borderBottomColor !== undefined);
   expect(shells).toHaveLength(2);
@@ -44,7 +44,7 @@ describe('shared chrome follows the scoped theme', () => {
     mockPreferenceStore();
   });
 
-  it('preserves Legacy values and picks up independently changed Next tokens at runtime', () => {
+  it('preserves Legacy values and picks up independently changed Next tokens at runtime', async () => {
     const nextColors = nextTheme.colors as {
       primary: string;
       cardBackground: string;
@@ -73,7 +73,7 @@ describe('shared chrome follows the scoped theme', () => {
       nextLayout.paddingVertical = 23;
       nextCard.backgroundColor = '#abcdef';
       nextRadius.full = 37;
-      const { rerender } = render(tree('legacy'));
+      const { rerender } = await render(tree('legacy'));
       expect(headerShells().map(style => style.backgroundColor)).toEqual([
         legacyTheme.colors.primary,
         legacyTheme.colors.cardBackground,
@@ -85,7 +85,7 @@ describe('shared chrome follows the scoped theme', () => {
         borderRadius: legacyTheme.radius.full,
       });
 
-      rerender(tree('next'));
+      await rerender(tree('next'));
       expect(headerShells().map(style => style.backgroundColor)).toEqual([
         '#123456',
         '#654321',
@@ -108,7 +108,7 @@ describe('shared chrome follows the scoped theme', () => {
         borderRadius: 37,
       });
 
-      rerender(tree('legacy'));
+      await rerender(tree('legacy'));
       expect(headerShells().map(style => style.backgroundColor)).toEqual([
         legacyTheme.colors.primary,
         legacyTheme.colors.cardBackground,

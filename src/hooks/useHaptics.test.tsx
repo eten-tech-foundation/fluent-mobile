@@ -53,23 +53,23 @@ describe('useHaptics', () => {
     setMicActive('other', false);
   });
 
-  it('is a no-op in Legacy', () => {
+  it('is a no-op in Legacy', async () => {
     setUiVersion('legacy');
-    const { result } = renderHook(() => useHaptics());
+    const { result } = await renderHook(() => useHaptics());
     result.current.press();
     expect(perform).not.toHaveBeenCalled();
   });
 
-  it('fires the virtual key haptic in Next', () => {
+  it('fires the virtual key haptic in Next', async () => {
     setUiVersion('next');
-    const { result } = renderHook(() => useHaptics());
+    const { result } = await renderHook(() => useHaptics());
     result.current.press();
     expect(perform).toHaveBeenCalledWith('virtual-key');
   });
 
-  it('maps toggle to the on and off haptics in Next', () => {
+  it('maps toggle to the on and off haptics in Next', async () => {
     setUiVersion('next');
-    const { result } = renderHook(() => useHaptics());
+    const { result } = await renderHook(() => useHaptics());
     result.current.toggle(true);
     result.current.toggle(false);
     expect(perform.mock.calls.map(call => call[0])).toEqual([
@@ -78,10 +78,10 @@ describe('useHaptics', () => {
     ]);
   });
 
-  it('maps a drag pick-up and drop to the drag haptics in Next', () => {
+  it('maps a drag pick-up and drop to the drag haptics in Next', async () => {
     jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
     setUiVersion('next');
-    const { result } = renderHook(() => useHaptics());
+    const { result } = await renderHook(() => useHaptics());
     result.current.dragStart();
     result.current.dragEnd();
     expect(perform.mock.calls.map(call => call[0])).toEqual([
@@ -90,10 +90,10 @@ describe('useHaptics', () => {
     ]);
   });
 
-  it('falls back to haptics older Android has for a drag', () => {
+  it('falls back to haptics older Android has for a drag', async () => {
     jest.spyOn(Platform, 'Version', 'get').mockReturnValue(29);
     setUiVersion('next');
-    const { result } = renderHook(() => useHaptics());
+    const { result } = await renderHook(() => useHaptics());
     result.current.dragStart();
     result.current.dragEnd();
     expect(perform.mock.calls.map(call => call[0])).toEqual([
@@ -102,8 +102,8 @@ describe('useHaptics', () => {
     ]);
   });
 
-  it('follows a UiVersionOverride even when the preference is Legacy', () => {
-    const { result } = renderHook(() => useHaptics(), {
+  it('follows a UiVersionOverride even when the preference is Legacy', async () => {
+    const { result } = await renderHook(() => useHaptics(), {
       wrapper: ({ children }) => (
         <UiVersionOverride value="next">{children}</UiVersionOverride>
       ),
@@ -112,12 +112,12 @@ describe('useHaptics', () => {
     expect(perform).toHaveBeenCalledWith('virtual-key');
   });
 
-  it('stays silent until every mic owner has closed', () => {
+  it('stays silent until every mic owner has closed', async () => {
     setUiVersion('next');
     setMicActive('test', true);
     setMicActive('other', true);
     setMicActive('test', false);
-    const { result } = renderHook(() => useHaptics());
+    const { result } = await renderHook(() => useHaptics());
     result.current.press();
     expect(perform).not.toHaveBeenCalled();
 
@@ -126,10 +126,10 @@ describe('useHaptics', () => {
     expect(perform).toHaveBeenCalledWith('virtual-key');
   });
 
-  it('stays silent while the mic is active', () => {
+  it('stays silent while the mic is active', async () => {
     setUiVersion('next');
     setMicActive('test', true);
-    const { result } = renderHook(() => useHaptics());
+    const { result } = await renderHook(() => useHaptics());
     result.current.press();
     expect(perform).not.toHaveBeenCalled();
   });

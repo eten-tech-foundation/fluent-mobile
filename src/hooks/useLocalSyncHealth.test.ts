@@ -57,7 +57,7 @@ describe('useLocalSyncHealth', () => {
   it('reports needsDownloadSync when assignee repair is required', async () => {
     mockUserNeedsAssigneeRepair.mockResolvedValue(true);
 
-    const { result } = renderHook(() => useLocalSyncHealth());
+    const { result } = await renderHook(() => useLocalSyncHealth());
 
     await waitFor(() => {
       expect(result.current.checking).toBe(false);
@@ -71,14 +71,14 @@ describe('useLocalSyncHealth', () => {
     mockPainted = false;
     mockUserNeedsAssigneeRepair.mockResolvedValue(true);
 
-    const { result } = renderHook(() => useLocalSyncHealth());
+    const { result } = await renderHook(() => useLocalSyncHealth());
     await act(async () => {});
 
     expect(mockWriteMark).not.toHaveBeenCalled();
     expect(mockUserNeedsAssigneeRepair).not.toHaveBeenCalled();
     expect(result.current.checking).toBe(true);
 
-    act(() => {
+    await act(() => {
       for (const run of mockPaintQueue.splice(0)) run();
     });
 
@@ -91,9 +91,9 @@ describe('useLocalSyncHealth', () => {
   it('skips the held check when unmounted before the first paint', async () => {
     mockPainted = false;
 
-    const { unmount } = renderHook(() => useLocalSyncHealth());
-    unmount();
-    act(() => {
+    const { unmount } = await renderHook(() => useLocalSyncHealth());
+    await unmount();
+    await act(() => {
       for (const run of mockPaintQueue.splice(0)) run();
     });
     await act(async () => {});
@@ -103,7 +103,7 @@ describe('useLocalSyncHealth', () => {
   });
 
   it('reports healthy when assignee repair is not required', async () => {
-    const { result } = renderHook(() => useLocalSyncHealth());
+    const { result } = await renderHook(() => useLocalSyncHealth());
 
     await waitFor(() => {
       expect(result.current.checking).toBe(false);
@@ -115,7 +115,7 @@ describe('useLocalSyncHealth', () => {
   it('skips repair check when no user is signed in', async () => {
     mockParseUserId.mockReturnValue(null);
 
-    const { result } = renderHook(() => useLocalSyncHealth());
+    const { result } = await renderHook(() => useLocalSyncHealth());
 
     await waitFor(() => {
       expect(result.current.checking).toBe(false);
@@ -129,7 +129,7 @@ describe('useLocalSyncHealth', () => {
   it('reports chapters whose text a sync could still fetch', async () => {
     mockCountChaptersMissingBibleText.mockResolvedValue(1071);
 
-    const { result } = renderHook(() => useLocalSyncHealth());
+    const { result } = await renderHook(() => useLocalSyncHealth());
 
     await waitFor(() => {
       expect(result.current.checking).toBe(false);
@@ -145,7 +145,7 @@ describe('useLocalSyncHealth', () => {
     mockUserNeedsAssigneeRepair.mockRejectedValue(new Error('db gone'));
     mockCountChaptersMissingBibleText.mockResolvedValue(4);
 
-    const { result } = renderHook(() => useLocalSyncHealth());
+    const { result } = await renderHook(() => useLocalSyncHealth());
 
     await waitFor(() => {
       expect(result.current.checking).toBe(false);
@@ -158,7 +158,7 @@ describe('useLocalSyncHealth', () => {
   it('reports no text gap when the count fails', async () => {
     mockCountChaptersMissingBibleText.mockRejectedValue(new Error('db gone'));
 
-    const { result } = renderHook(() => useLocalSyncHealth());
+    const { result } = await renderHook(() => useLocalSyncHealth());
 
     await waitFor(() => {
       expect(result.current.checking).toBe(false);
@@ -168,7 +168,7 @@ describe('useLocalSyncHealth', () => {
   });
 
   it('re-checks when refreshKey changes', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ refreshKey }: { refreshKey: number }) =>
         useLocalSyncHealth(refreshKey),
       { initialProps: { refreshKey: 0 } },
@@ -179,7 +179,7 @@ describe('useLocalSyncHealth', () => {
     });
 
     mockUserNeedsAssigneeRepair.mockResolvedValue(true);
-    rerender({ refreshKey: 1 });
+    await rerender({ refreshKey: 1 });
 
     await waitFor(() => {
       expect(result.current.needsDownloadSync).toBe(true);
@@ -209,13 +209,13 @@ describe('useLocalSyncHealth', () => {
     });
 
     async function mountChecked() {
-      const hook = renderHook(() => useLocalSyncHealth());
+      const hook = await renderHook(() => useLocalSyncHealth());
       await waitFor(() => expect(hook.result.current.checking).toBe(false));
       return hook;
     }
 
     it('shows the last answer without reading again', async () => {
-      (await mountChecked()).unmount();
+      await (await mountChecked()).unmount();
 
       const { result } = await mountChecked();
 
@@ -228,7 +228,7 @@ describe('useLocalSyncHealth', () => {
     });
 
     it('reads again after a write', async () => {
-      (await mountChecked()).unmount();
+      await (await mountChecked()).unmount();
       changes = 11;
       mockCountChaptersMissingBibleText.mockResolvedValue(2);
 
@@ -239,7 +239,7 @@ describe('useLocalSyncHealth', () => {
     });
 
     it('reads again for another user', async () => {
-      (await mountChecked()).unmount();
+      await (await mountChecked()).unmount();
       mockParseUserId.mockReturnValue(242);
       mockCountChaptersMissingBibleText.mockResolvedValue(0);
 
@@ -253,7 +253,7 @@ describe('useLocalSyncHealth', () => {
       mockCountChaptersMissingBibleText.mockRejectedValueOnce(
         new Error('busy'),
       );
-      (await mountChecked()).unmount();
+      await (await mountChecked()).unmount();
 
       const { result } = await mountChecked();
 
@@ -262,7 +262,7 @@ describe('useLocalSyncHealth', () => {
     });
 
     it('reads again when the write count is unreadable', async () => {
-      (await mountChecked()).unmount();
+      await (await mountChecked()).unmount();
       mockWriteMark.mockResolvedValue(null);
 
       await mountChecked();

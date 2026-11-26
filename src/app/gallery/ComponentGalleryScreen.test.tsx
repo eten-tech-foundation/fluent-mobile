@@ -31,8 +31,8 @@ const background = (testID: string) =>
 describe('ComponentGalleryScreen', () => {
   beforeEach(() => mockPreferenceStore());
 
-  it('keeps pinned entries in their own mode when the stage changes', () => {
-    render(
+  it('keeps pinned entries in their own mode when the stage changes', async () => {
+    await render(
       <SafeAreaProvider
         initialMetrics={{
           frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -43,7 +43,7 @@ describe('ComponentGalleryScreen', () => {
       </SafeAreaProvider>,
     );
 
-    fireEvent.press(screen.getByText('Canvas'));
+    await fireEvent.press(screen.getByText('Canvas'));
 
     expect(background('gallery-stage')).toBe(nextColorRoles.canvas.bgDefault);
     expect(background('gallery-pinned-key')).toBe(

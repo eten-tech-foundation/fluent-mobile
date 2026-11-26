@@ -46,65 +46,65 @@ describe('useHeaderSync', () => {
     mockHoldReason = null;
   });
 
-  it('follows the drafting upload hold from session events', () => {
-    const { result, unmount } = renderHook(() => useHeaderSync());
+  it('follows the drafting upload hold from session events', async () => {
+    const { result, unmount } = await renderHook(() => useHeaderSync());
     expect(result.current.heldForDrafting).toBe(false);
 
     mockHoldReason = 'drafting';
-    act(() => mockSessionListeners.forEach(listener => listener()));
+    await act(() => mockSessionListeners.forEach(listener => listener()));
     expect(result.current.heldForDrafting).toBe(true);
 
     mockHoldReason = null;
-    act(() => mockSessionListeners.forEach(listener => listener()));
+    await act(() => mockSessionListeners.forEach(listener => listener()));
     expect(result.current.heldForDrafting).toBe(false);
 
-    unmount();
+    await unmount();
     expect(mockSessionListeners.size).toBe(0);
   });
 
-  it('opens Sync once until the screen is focused again', () => {
-    const { result, rerender } = renderHook(() => useHeaderSync());
+  it('opens Sync once until the screen is focused again', async () => {
+    const { result, rerender } = await renderHook(() => useHeaderSync());
 
-    act(() => result.current.openSync());
-    act(() => result.current.openSync());
+    await act(() => result.current.openSync());
+    await act(() => result.current.openSync());
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
 
     mockFocused = false;
-    rerender({});
+    await rerender({});
     mockFocused = true;
-    rerender({});
-    act(() => result.current.openSync());
+    await rerender({});
+    await act(() => result.current.openSync());
     expect(mockPush).toHaveBeenCalledTimes(2);
   });
 
-  it('goes through the guard, which can hold the push', () => {
+  it('goes through the guard, which can hold the push', async () => {
     const guard = jest.fn();
-    const { result } = renderHook(() => useHeaderSync({ guard }));
+    const { result } = await renderHook(() => useHeaderSync({ guard }));
 
-    act(() => result.current.openSync());
+    await act(() => result.current.openSync());
     expect(guard).toHaveBeenCalledTimes(1);
     expect(mockPush).not.toHaveBeenCalled();
 
-    act(() => guard.mock.calls[0][0]());
+    await act(() => guard.mock.calls[0][0]());
     expect(mockPush).toHaveBeenCalledTimes(1);
   });
 
-  it('re-reads sync health after a sync finishes and when the screen returns', () => {
-    const { result, rerender } = renderHook(() => useHeaderSync());
+  it('re-reads sync health after a sync finishes and when the screen returns', async () => {
+    const { result, rerender } = await renderHook(() => useHeaderSync());
     expect(mockUseSyncStatus).toHaveBeenLastCalledWith(
       expect.objectContaining({ refreshKey: 0 }),
     );
 
-    act(() => onGlobalSyncComplete?.());
+    await act(() => onGlobalSyncComplete?.());
     expect(mockUseSyncStatus).toHaveBeenLastCalledWith(
       expect.objectContaining({ refreshKey: 1 }),
     );
 
     mockFocused = false;
-    rerender({});
+    await rerender({});
     mockFocused = true;
-    rerender({});
+    await rerender({});
     expect(mockUseSyncStatus).toHaveBeenLastCalledWith(
       expect.objectContaining({ refreshKey: 2 }),
     );
