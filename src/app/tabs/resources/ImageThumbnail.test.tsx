@@ -26,8 +26,8 @@ describe('ImageThumbnail', () => {
     mockZoomableImage.mockClear();
   });
 
-  it('shows a loading indicator until the image finishes loading', () => {
-    render(
+  it('shows a loading indicator until the image finishes loading', async () => {
+    await render(
       <ImageThumbnail item={SAMPLE_ITEM} onOpenFullscreen={() => undefined} />,
     );
 
@@ -36,13 +36,13 @@ describe('ImageThumbnail', () => {
     ).toBeTruthy();
   });
 
-  it('hides the loading indicator after the image loads', () => {
-    render(
+  it('hides the loading indicator after the image loads', async () => {
+    await render(
       <ImageThumbnail item={SAMPLE_ITEM} onOpenFullscreen={() => undefined} />,
     );
 
     const onLoad = mockZoomableImage.mock.calls[0]?.[0]?.onLoad;
-    act(() => {
+    await act(() => {
       onLoad?.();
     });
 
@@ -51,14 +51,16 @@ describe('ImageThumbnail', () => {
     ).toBeNull();
   });
 
-  it('prefers thumbnailUri for the list preview (#594)', () => {
+  it('prefers thumbnailUri for the list preview (#594)', async () => {
     const item: ImagesMapsItem = {
       ...SAMPLE_ITEM,
       uri: 'https://cdn.example/full.png',
       thumbnailUri: 'https://cdn.example/thumb.png',
     };
 
-    render(<ImageThumbnail item={item} onOpenFullscreen={() => undefined} />);
+    await render(
+      <ImageThumbnail item={item} onOpenFullscreen={() => undefined} />,
+    );
 
     expect(mockZoomableImage.mock.calls[0]?.[0]?.uri).toBe(
       'https://cdn.example/thumb.png',

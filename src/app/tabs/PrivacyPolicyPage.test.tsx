@@ -28,8 +28,8 @@ describe('PrivacyPolicyPage', () => {
     mockCanGoBack.mockReturnValue(true);
   });
 
-  it('renders scrollable privacy policy content', () => {
-    render(<PrivacyPolicyPage />);
+  it('renders scrollable privacy policy content', async () => {
+    await render(<PrivacyPolicyPage />);
 
     expect(screen.getByTestId('privacy-policy-scroll')).toBeTruthy();
     expect(screen.getAllByText('Privacy Policy').length).toBeGreaterThan(0);
@@ -40,18 +40,18 @@ describe('PrivacyPolicyPage', () => {
     expect(content.getByText(/do not share your information/)).toBeTruthy();
   });
 
-  it('uses router back when the legal header has navigation history', () => {
-    render(<PrivacyPolicyPage />);
-    fireEvent.press(screen.getByTestId('privacy-policy-scroll-back'));
+  it('uses router back when the legal header has navigation history', async () => {
+    await render(<PrivacyPolicyPage />);
+    await fireEvent.press(screen.getByTestId('privacy-policy-scroll-back'));
     expect(mockCanGoBack).toHaveBeenCalledTimes(1);
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('replaces with the existing Home route when no back history exists', () => {
+  it('replaces with the existing Home route when no back history exists', async () => {
     mockCanGoBack.mockReturnValue(false);
-    render(<PrivacyPolicyPage />);
-    fireEvent.press(screen.getByTestId('privacy-policy-scroll-back'));
+    await render(<PrivacyPolicyPage />);
+    await fireEvent.press(screen.getByTestId('privacy-policy-scroll-back'));
     expect(mockBack).not.toHaveBeenCalled();
     expect(mockReplace).toHaveBeenCalledTimes(1);
     expect(mockReplace).toHaveBeenCalledWith(

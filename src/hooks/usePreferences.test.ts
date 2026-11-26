@@ -26,13 +26,13 @@ describe('usePreferences', () => {
     mockPreferenceStore();
   });
 
-  it('returns preferences from storage', () => {
+  it('returns preferences from storage', async () => {
     mockPreferenceStore({
       pref_upload_over_cellular: 'true',
       pref_ui_version: 'next',
     });
 
-    const { result } = renderHook(() => usePreferences());
+    const { result } = await renderHook(() => usePreferences());
 
     expect(result.current.uploadOverCellular).toBe(true);
     expect(result.current.uiVersion).toBe('next');
@@ -42,10 +42,10 @@ describe('usePreferences', () => {
     });
   });
 
-  it('persists and updates upload over cellular', () => {
-    const { result } = renderHook(() => usePreferences());
+  it('persists and updates upload over cellular', async () => {
+    const { result } = await renderHook(() => usePreferences());
 
-    act(() => {
+    await act(() => {
       result.current.setUploadOverCellular(true);
     });
 
@@ -56,12 +56,12 @@ describe('usePreferences', () => {
     expect(result.current.uploadOverCellular).toBe(true);
   });
 
-  it('persists and updates uiVersion', () => {
-    const { result } = renderHook(() => usePreferences());
+  it('persists and updates uiVersion', async () => {
+    const { result } = await renderHook(() => usePreferences());
 
     expect(result.current.uiVersion).toBe('next');
 
-    act(() => {
+    await act(() => {
       result.current.setUiVersion('legacy');
     });
 
@@ -69,12 +69,12 @@ describe('usePreferences', () => {
     expect(result.current.uiVersion).toBe('legacy');
   });
 
-  it('reload refreshes preferences from storage', () => {
-    const { result } = renderHook(() => usePreferences());
+  it('reload refreshes preferences from storage', async () => {
+    const { result } = await renderHook(() => usePreferences());
 
     mockPreferenceStore({ pref_upload_over_cellular: 'true' });
 
-    act(() => {
+    await act(() => {
       result.current.reload();
     });
 
@@ -88,40 +88,44 @@ describe('usePreference', () => {
     mockPreferenceStore();
   });
 
-  it('returns a single preference value', () => {
+  it('returns a single preference value', async () => {
     mockPreferenceStore({ pref_upload_over_cellular: 'true' });
 
-    const { result } = renderHook(() => usePreference('uploadOverCellular'));
+    const { result } = await renderHook(() =>
+      usePreference('uploadOverCellular'),
+    );
 
     expect(result.current).toBe(true);
   });
 
-  it('updates when the preference changes in storage', () => {
-    const { result } = renderHook(() => usePreference('uploadOverCellular'));
+  it('updates when the preference changes in storage', async () => {
+    const { result } = await renderHook(() =>
+      usePreference('uploadOverCellular'),
+    );
 
     expect(result.current).toBe(false);
 
-    act(() => {
+    await act(() => {
       setUserPreferences({ uploadOverCellular: true });
     });
 
     expect(result.current).toBe(true);
   });
 
-  it('does not update when storage is unchanged', () => {
+  it('does not update when storage is unchanged', async () => {
     let latestValue = false;
 
-    const { rerender } = renderHook(() => {
+    const { rerender } = await renderHook(() => {
       latestValue = usePreference('uploadOverCellular');
     });
 
     expect(latestValue).toBe(false);
 
-    act(() => {
+    await act(() => {
       notifyUserPreferencesChanged();
     });
 
-    rerender({});
+    await rerender({});
     expect(latestValue).toBe(false);
   });
 });

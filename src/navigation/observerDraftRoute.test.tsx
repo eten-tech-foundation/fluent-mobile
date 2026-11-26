@@ -20,8 +20,8 @@ jest.mock('../app/v2/screens/ObserverScreen', () => ({
 }));
 
 describe('observer-draft route', () => {
-  it('shows the Legacy Observer screen in Legacy', () => {
-    render(
+  it('shows the Legacy Observer screen in Legacy', async () => {
+    await render(
       <UiVersionOverride value="legacy">
         <ObserverDraftRoute />
       </UiVersionOverride>,
@@ -29,8 +29,8 @@ describe('observer-draft route', () => {
     expect(screen.getByText('Legacy observer')).toBeTruthy();
   });
 
-  it('shows the Next Observer screen in Next', () => {
-    render(
+  it('shows the Next Observer screen in Next', async () => {
+    await render(
       <UiVersionOverride value="next">
         <ObserverDraftRoute />
       </UiVersionOverride>,

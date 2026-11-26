@@ -99,7 +99,7 @@ describe('chapter metadata refresh on list open', () => {
       metadataRefresh.promise,
     );
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ key }: { key: number }) => useMyWorkChapters(key),
       { initialProps: { key: 0 } },
     );
@@ -114,7 +114,7 @@ describe('chapter metadata refresh on list open', () => {
     });
     expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(1);
 
-    rerender({ key: 1 });
+    await rerender({ key: 1 });
     await waitFor(() => {
       expect(mockGetMyWorkChapters).toHaveBeenCalledTimes(2);
     });
@@ -122,7 +122,7 @@ describe('chapter metadata refresh on list open', () => {
   });
 
   it('re-reads My Work at once when the list regains focus', async () => {
-    const { result } = renderHook(() => useMyWorkChapters());
+    const { result } = await renderHook(() => useMyWorkChapters());
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
@@ -141,7 +141,7 @@ describe('chapter metadata refresh on list open', () => {
       metadataRefresh.promise,
     );
 
-    renderHook(() => useMilestoneChapters(10, 3));
+    await renderHook(() => useMilestoneChapters(10, 3));
 
     await waitFor(() => {
       expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
@@ -167,7 +167,7 @@ describe('chapter metadata refresh on list open', () => {
     );
     mockIsUserProjectMember.mockResolvedValueOnce(false);
 
-    const { result } = renderHook(() => useMilestoneChapters(10, 3));
+    const { result } = await renderHook(() => useMilestoneChapters(10, 3));
 
     await waitFor(() => {
       expect(mockGetMilestoneChapters).toHaveBeenCalledTimes(1);
@@ -191,7 +191,7 @@ describe('chapter metadata refresh on list open', () => {
     const first = deferred<void>();
     mockRefreshChapterMetadataIfOnline.mockReturnValueOnce(first.promise);
 
-    const { result } = renderHook(() => useMilestoneChapters(10, 3));
+    const { result } = await renderHook(() => useMilestoneChapters(10, 3));
 
     await act(async () => {
       first.resolve();

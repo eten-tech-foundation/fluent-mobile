@@ -5,16 +5,16 @@ import {
 } from './UploadProgressBar';
 
 describe('UploadProgressBar (#886)', () => {
-  it('keeps chapter counts as the headline and hides the take line without a current chapter', () => {
-    render(<UploadProgressBar uploadedChapters={1} totalChapters={4} />);
+  it('keeps chapter counts as the headline and hides the take line without a current chapter', async () => {
+    await render(<UploadProgressBar uploadedChapters={1} totalChapters={4} />);
 
     expect(screen.getByText('25%')).toBeTruthy();
     expect(screen.getByText('1 of 4 chapters uploaded')).toBeTruthy();
     expect(screen.queryByTestId('upload-progress-current-chapter')).toBeNull();
   });
 
-  it('credits the in-flight chapter fractionally so a long chapter moves the bar', () => {
-    render(
+  it('credits the in-flight chapter fractionally so a long chapter moves the bar', async () => {
+    await render(
       <UploadProgressBar
         uploadedChapters={1}
         totalChapters={4}
@@ -36,8 +36,8 @@ describe('UploadProgressBar (#886)', () => {
     ).toHaveTextContent('Chapter 2: 5 of 10 takes uploaded');
   });
 
-  it('does not count failed takes as progress and shows them on the take line', () => {
-    render(
+  it('does not count failed takes as progress and shows them on the take line', async () => {
+    await render(
       <UploadProgressBar
         uploadedChapters={3}
         totalChapters={4}
@@ -58,8 +58,8 @@ describe('UploadProgressBar (#886)', () => {
     ).toHaveTextContent('Chapter 4: 7 of 10 takes uploaded · 3 failed');
   });
 
-  it('never exceeds 100% when the counts disagree transiently', () => {
-    render(
+  it('never exceeds 100% when the counts disagree transiently', async () => {
+    await render(
       <UploadProgressBar
         uploadedChapters={4}
         totalChapters={4}

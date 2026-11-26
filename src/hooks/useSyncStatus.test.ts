@@ -152,7 +152,7 @@ describe('useSyncStatus cellular gate', () => {
       reload: jest.fn(),
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
 
@@ -184,7 +184,7 @@ describe('useSyncStatus cellular gate', () => {
       reload: jest.fn(),
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
 
@@ -230,7 +230,7 @@ describe('useSyncStatus cellular gate', () => {
       reload: jest.fn(),
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
 
@@ -262,7 +262,7 @@ describe('useSyncStatus cellular gate', () => {
       reload: jest.fn(),
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
 
@@ -310,7 +310,7 @@ describe('useSyncStatus metadata / reauth retry work', () => {
       refreshReauthRequired: jest.fn(),
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
 
@@ -330,7 +330,7 @@ describe('useSyncStatus metadata / reauth retry work', () => {
       checking: false,
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
 
@@ -347,7 +347,7 @@ describe('useSyncStatus metadata / reauth retry work', () => {
       key === KV_KEYS.SYNC_ERROR_BIBLE_TEXTS ? 'Not Found' : undefined,
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
 
@@ -363,7 +363,7 @@ describe('useSyncStatus metadata / reauth retry work', () => {
       key === KV_KEYS.SYNC_ERROR_USER ? 'Unauthorized' : undefined,
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
 
@@ -374,7 +374,7 @@ describe('useSyncStatus metadata / reauth retry work', () => {
   });
 
   it('is online_synced when no metadata errors and no active-user reauth', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
 
@@ -398,7 +398,7 @@ describe('useSyncStatus metadata / reauth retry work', () => {
     setReauthRequired('2');
 
     try {
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncStatus({ isSyncing: false, refreshKey: 0 }),
       );
 
@@ -464,9 +464,9 @@ describe('useSyncStatus before reachability is known', () => {
     mockOnlineWifi();
   });
 
-  it('shows checking, not offline, then online once /health answers', () => {
+  it('shows checking, not offline, then online once /health answers', async () => {
     mockUseConnectivity.mockReturnValue(unresolved);
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
     expect(result.current.status).toBe('checking');
@@ -474,14 +474,14 @@ describe('useSyncStatus before reachability is known', () => {
     expect(result.current.isOnline).toBe(false);
 
     mockUseConnectivity.mockReturnValue(resolved({ isLinkOnline: true }));
-    rerender({});
+    await rerender({});
     expect(result.current.status).toBe('online_synced');
     expect(result.current.isOnline).toBe(true);
   });
 
-  it('shows checking, then offline once /health fails', () => {
+  it('shows checking, then offline once /health fails', async () => {
     mockUseConnectivity.mockReturnValue(unresolved);
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
     expect(result.current.status).toBe('checking');
@@ -489,37 +489,37 @@ describe('useSyncStatus before reachability is known', () => {
     mockUseConnectivity.mockReturnValue(
       resolved({ isOnline: false, isLinkOnline: true }),
     );
-    rerender({});
+    await rerender({});
     expect(result.current.status).toBe('offline_synced');
   });
 
-  it('keeps checking while /health said online but the link is unknown', () => {
+  it('keeps checking while /health said online but the link is unknown', async () => {
     mockUseConnectivity.mockReturnValue({
       ...unresolved,
       hasResolved: true,
       connectivityPending: false,
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
     expect(result.current.status).toBe('checking');
     expect(result.current.isOnline).toBe(false);
   });
 
-  it('is offline as soon as /health fails, before the link answers', () => {
+  it('is offline as soon as /health fails, before the link answers', async () => {
     mockUseConnectivity.mockReturnValue({
       ...unresolved,
       isOnline: false,
       hasResolved: true,
       connectivityPending: false,
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
     expect(result.current.status).toBe('offline_synced');
   });
 
-  it('keeps checking when only the transport snapshot says no link', () => {
+  it('keeps checking when only the transport snapshot says no link', async () => {
     // NetInfo's first `unknown` state reads as no link; that isn't offline.
     mockUseConnectivity.mockReturnValue({
       ...unresolved,
@@ -527,13 +527,13 @@ describe('useSyncStatus before reachability is known', () => {
       hasTransferResolved: true,
       transferConnectivityPending: false,
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
     expect(result.current.status).toBe('checking');
   });
 
-  it('is offline with pending uploads once a down link is reported', () => {
+  it('is offline with pending uploads once a down link is reported', async () => {
     mockUseConnectivity.mockReturnValue(
       resolved({ isOnline: false, isLinkOnline: false }),
     );
@@ -551,13 +551,13 @@ describe('useSyncStatus before reachability is known', () => {
       isUploading: false,
       uploadProgress: null,
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
     expect(result.current.status).toBe('offline_pending');
   });
 
-  it('shows pending uploads once reachability resolves', () => {
+  it('shows pending uploads once reachability resolves', async () => {
     mockUseConnectivity.mockReturnValue(unresolved);
     mockUsePendingUploads.mockReturnValue({
       pendingCount: 0,
@@ -573,13 +573,13 @@ describe('useSyncStatus before reachability is known', () => {
       isUploading: false,
       uploadProgress: null,
     });
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       useSyncStatus({ isSyncing: false, refreshKey: 0 }),
     );
     expect(result.current.status).toBe('checking');
 
     mockUseConnectivity.mockReturnValue(resolved({ isLinkOnline: true }));
-    rerender({});
+    await rerender({});
     // Unknown counts still never read as all synced.
     expect(result.current.status).toBe('online_pending');
   });
@@ -589,7 +589,7 @@ describe('useSyncStatus before reachability is known', () => {
     ['offline', resolved({ isOnline: false, isLinkOnline: false })],
   ])(
     'stays checking while %s until the first count read lands (#1002)',
-    (_label, connectivity) => {
+    async (_label, connectivity) => {
       mockUseConnectivity.mockReturnValue(connectivity);
       const counts = {
         pendingCount: 2,
@@ -611,19 +611,19 @@ describe('useSyncStatus before reachability is known', () => {
         hasPendingUploads: false,
         countsRead: false,
       });
-      const { result, rerender } = renderHook(() =>
+      const { result, rerender } = await renderHook(() =>
         useSyncStatus({ isSyncing: false, refreshKey: 0 }),
       );
       expect(result.current.status).toBe('checking');
 
       mockUsePendingUploads.mockReturnValue({ ...counts, countsRead: true });
-      rerender({});
+      await rerender({});
       expect(result.current.status).not.toBe('checking');
       expect(result.current.status).toMatch(/_pending$/);
     },
   );
 
-  it('still shows a running sync while the counts are unread (#1002)', () => {
+  it('still shows a running sync while the counts are unread (#1002)', async () => {
     mockUseConnectivity.mockReturnValue(resolved({ isLinkOnline: true }));
     mockUsePendingUploads.mockReturnValue({
       pendingCount: 0,
@@ -639,7 +639,7 @@ describe('useSyncStatus before reachability is known', () => {
       isUploading: false,
       uploadProgress: null,
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSyncStatus({ isSyncing: true, refreshKey: 0 }),
     );
     expect(result.current.status).toBe('online_syncing');

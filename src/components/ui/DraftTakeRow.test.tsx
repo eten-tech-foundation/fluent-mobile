@@ -18,24 +18,24 @@ const baseProps = {
 };
 
 describe('DraftTakeRow trailing slot (#571)', () => {
-  it('reserves the delete slot when onDelete is omitted (stitched row)', () => {
-    const { getByTestId, queryByTestId } = render(
+  it('reserves the delete slot when onDelete is omitted (stitched row)', async () => {
+    const { getByTestId, queryByTestId } = await render(
       <DraftTakeRow {...baseProps} leadingIndicator="none" />,
     );
     expect(getByTestId(SPACER_ID, hidden)).toBeTruthy();
     expect(queryByTestId('record-delete-button-t1')).toBeNull();
   });
 
-  it('renders the delete button and no spacer when onDelete is provided', () => {
-    const { getByTestId, queryByTestId } = render(
+  it('renders the delete button and no spacer when onDelete is provided', async () => {
+    const { getByTestId, queryByTestId } = await render(
       <DraftTakeRow {...baseProps} onDelete={jest.fn()} />,
     );
     expect(getByTestId('record-delete-button-t1')).toBeTruthy();
     expect(queryByTestId(SPACER_ID, hidden)).toBeNull();
   });
 
-  it('spacer width matches the delete button footprint', () => {
-    const { getByTestId } = render(
+  it('spacer width matches the delete button footprint', async () => {
+    const { getByTestId } = await render(
       <DraftTakeRow {...baseProps} leadingIndicator="none" />,
     );
     const style = StyleSheet.flatten(
@@ -44,8 +44,8 @@ describe('DraftTakeRow trailing slot (#571)', () => {
     expect(style.width).toBe(iconSizes.chevron + theme.spacing.xs * 2);
   });
 
-  it('canonicalReadOnly row keeps its check icon and reserves the slot', () => {
-    const { getByTestId } = render(
+  it('canonicalReadOnly row keeps its check icon and reserves the slot', async () => {
+    const { getByTestId } = await render(
       <DraftTakeRow
         {...baseProps}
         leadingIndicator="canonicalReadOnly"
@@ -60,8 +60,8 @@ describe('DraftTakeRow trailing slot (#571)', () => {
 describe('DraftTakeRow long take labels (#589)', () => {
   const longPericopeLabel = 'Take 1 - Pericope - vv. 8:31-9:1';
 
-  it('renders the full pericope label without a single-line clamp', () => {
-    const { getByTestId, getByText } = render(
+  it('renders the full pericope label without a single-line clamp', async () => {
+    const { getByTestId, getByText } = await render(
       <DraftTakeRow {...baseProps} label={longPericopeLabel} />,
     );
 
@@ -70,8 +70,8 @@ describe('DraftTakeRow long take labels (#589)', () => {
     expect(badge.props.numberOfLines).toBeUndefined();
   });
 
-  it('keeps the playback timer visible beside a long label', () => {
-    const { getByTestId } = render(
+  it('keeps the playback timer visible beside a long label', async () => {
+    const { getByTestId } = await render(
       <DraftTakeRow
         {...baseProps}
         label={longPericopeLabel}
@@ -83,9 +83,9 @@ describe('DraftTakeRow long take labels (#589)', () => {
     expect(getByTestId('record-take-time-t1')).toHaveTextContent('0:01 / 0:13');
   });
 
-  it('still renders short verse labels', () => {
+  it('still renders short verse labels', async () => {
     const verseLabel = 'Take 2 - Verse - v. 3';
-    const { getByText } = render(
+    const { getByText } = await render(
       <DraftTakeRow {...baseProps} label={verseLabel} />,
     );
     expect(getByText(verseLabel)).toBeTruthy();

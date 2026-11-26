@@ -228,7 +228,7 @@ function renderScreen() {
 
 async function openDraft() {
   await waitFor(() => expect(screen.getByTestId('observer-tab-draft')));
-  fireEvent.press(screen.getByTestId('observer-tab-draft'));
+  await fireEvent.press(screen.getByTestId('observer-tab-draft'));
 }
 
 function deferred<T>() {
@@ -269,7 +269,7 @@ describe('ObserverScreen (Next)', () => {
   });
 
   it('shows the permitted chapter source and canonical draft from the local bundle', async () => {
-    renderScreen();
+    await renderScreen();
 
     expect(await screen.findByText('In the beginning')).toBeTruthy();
     expect(screen.getByText('Matthew 1')).toBeTruthy();
@@ -292,7 +292,7 @@ describe('ObserverScreen (Next)', () => {
   });
 
   it('has no Record, take choice, delete or stage action and writes nothing', async () => {
-    renderScreen();
+    await renderScreen();
     await openDraft();
     await screen.findByTestId('observer-draft-play-501');
 
@@ -300,19 +300,19 @@ describe('ObserverScreen (Next)', () => {
       expect(screen.queryByText(text)).toBeNull();
       expect(screen.queryByLabelText(text)).toBeNull();
     }
-    fireEvent.press(screen.getByTestId('observer-draft-play-501'));
+    await fireEvent.press(screen.getByTestId('observer-draft-play-501'));
     await waitFor(() => expect(mockResume).toHaveBeenCalled());
     expect(mockRepositoryCalls).toEqual([]);
   });
 
   it('plays the exact canonical take with its full reference', async () => {
-    renderScreen();
+    await renderScreen();
     await openDraft();
 
     const play = await screen.findByLabelText(
       'Play canonical draft, Matthew 1:1',
     );
-    fireEvent.press(play);
+    await fireEvent.press(play);
 
     await waitFor(() =>
       expect(mockLoad).toHaveBeenCalledWith('file:///canonical/55.m4a'),
@@ -326,12 +326,12 @@ describe('ObserverScreen (Next)', () => {
 
   it('seeks only the loaded take', async () => {
     mockPlayback.durationMs = 10000;
-    renderScreen();
+    await renderScreen();
     await openDraft();
-    fireEvent.press(await screen.findByTestId('observer-draft-play-501'));
+    await fireEvent.press(await screen.findByTestId('observer-draft-play-501'));
 
     const track = await screen.findByTestId('observer-draft-seek-501');
-    fireEvent(track, 'accessibilityAction', {
+    await fireEvent(track, 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' },
     });
     expect(mockSeek).toHaveBeenCalledWith(5000);
@@ -354,7 +354,7 @@ describe('ObserverScreen (Next)', () => {
     mockGetDraftChapterLocalBundle.mockResolvedValue(
       bundle({ units: [unit(overrides)] }),
     );
-    renderScreen();
+    await renderScreen();
     await openDraft();
 
     expect(
@@ -368,7 +368,7 @@ describe('ObserverScreen (Next)', () => {
     mockGetDraftChapterLocalBundle.mockResolvedValue(
       bundle({ units: [unit({ draftText: '  ' })] }),
     );
-    renderScreen();
+    await renderScreen();
     await openDraft();
     expect(
       await screen.findByTestId('observer-draft-text-unavailable-501'),
@@ -379,7 +379,7 @@ describe('ObserverScreen (Next)', () => {
     mockGetDraftChapterLocalBundle.mockResolvedValue(
       bundle({ status: 'idle', units: [], sourceScripture: null }),
     );
-    renderScreen();
+    await renderScreen();
 
     expect(await screen.findByTestId('observer-source-empty')).toBeTruthy();
     await openDraft();
@@ -392,7 +392,7 @@ describe('ObserverScreen (Next)', () => {
     mockGetDraftChapterLocalBundle.mockResolvedValue(
       bundle({ status: 'failed' }),
     );
-    renderScreen();
+    await renderScreen();
     await openDraft();
     expect(screen.getByTestId('observer-draft-notice')).toHaveTextContent(
       "Some of this chapter's draft didn't download.",
@@ -402,14 +402,14 @@ describe('ObserverScreen (Next)', () => {
 
   it('never shows content to an account without the project Observer grant', async () => {
     mockHasProjectObserverGrant.mockReturnValue(false);
-    renderScreen();
+    await renderScreen();
     expect(await screen.findByTestId('observer-no-access')).toBeTruthy();
     expect(mockGetDraftChapterLocalBundle).not.toHaveBeenCalled();
   });
 
   it('never shows content to an account that is not registered on the phone', async () => {
     mockGetKnownUserIds.mockReturnValue([]);
-    renderScreen();
+    await renderScreen();
     expect(await screen.findByTestId('observer-no-access')).toBeTruthy();
     expect(mockGetDraftChapterLocalBundle).not.toHaveBeenCalled();
   });
@@ -420,7 +420,7 @@ describe('ObserverScreen (Next)', () => {
     mockGetDraftChapterLocalBundle.mockResolvedValue(
       bundle({ units: [unit({ draftText: 'Account eight draft' })] }),
     );
-    const view = renderScreen();
+    const view = await renderScreen();
     await waitFor(() =>
       expect(mockGetDraftChapterLocalBundle).toHaveBeenCalledTimes(1),
     );
@@ -428,7 +428,7 @@ describe('ObserverScreen (Next)', () => {
     mockGetKnownUserIds.mockReturnValue(['7', '8']);
     mockGetActiveUserId.mockReturnValue('8');
     mockEpoch = 1;
-    view.rerender(screenTree());
+    await view.rerender(screenTree());
     await act(async () => {
       pending.resolve(
         bundle({ units: [unit({ draftText: 'STALE account seven draft' })] }),
@@ -444,9 +444,9 @@ describe('ObserverScreen (Next)', () => {
   });
 
   it('stops playback and drops the old content when the account switches', async () => {
-    const view = renderScreen();
+    const view = await renderScreen();
     await openDraft();
-    fireEvent.press(await screen.findByTestId('observer-draft-play-501'));
+    await fireEvent.press(await screen.findByTestId('observer-draft-play-501'));
     await screen.findByLabelText('Pause canonical draft, Matthew 1:1');
     mockStop.mockClear();
     const pending = deferred<unknown>();
@@ -455,7 +455,7 @@ describe('ObserverScreen (Next)', () => {
     mockGetKnownUserIds.mockReturnValue(['7', '8']);
     mockGetActiveUserId.mockReturnValue('8');
     mockEpoch = 1;
-    view.rerender(screenTree());
+    await view.rerender(screenTree());
 
     await waitFor(() => expect(mockStop).toHaveBeenCalled());
     expect(screen.queryByText('Target draft')).toBeNull();
@@ -468,9 +468,9 @@ describe('ObserverScreen (Next)', () => {
   });
 
   it('clears content and stops playback when the grant is revoked', async () => {
-    renderScreen();
+    await renderScreen();
     await openDraft();
-    fireEvent.press(await screen.findByTestId('observer-draft-play-501'));
+    await fireEvent.press(await screen.findByTestId('observer-draft-play-501'));
     await waitFor(() => expect(mockResume).toHaveBeenCalled());
     mockStop.mockClear();
 
@@ -487,20 +487,20 @@ describe('ObserverScreen (Next)', () => {
   });
 
   it('hides content and stops playback on blur, then re-checks access on return', async () => {
-    const view = renderScreen();
+    const view = await renderScreen();
     await openDraft();
-    fireEvent.press(await screen.findByTestId('observer-draft-play-501'));
+    await fireEvent.press(await screen.findByTestId('observer-draft-play-501'));
     await waitFor(() => expect(mockResume).toHaveBeenCalled());
     mockStop.mockClear();
     const accessReads = mockGetChapterAssignmentById.mock.calls.length;
 
     mockFocused = false;
-    view.rerender(screenTree());
+    await view.rerender(screenTree());
     await waitFor(() => expect(mockStop).toHaveBeenCalled());
     expect(screen.queryByText('Target draft')).toBeNull();
 
     mockFocused = true;
-    view.rerender(screenTree());
+    await view.rerender(screenTree());
     await waitFor(() =>
       expect(mockGetChapterAssignmentById.mock.calls.length).toBeGreaterThan(
         accessReads,
@@ -510,14 +510,14 @@ describe('ObserverScreen (Next)', () => {
   });
 
   it('shows no access, not a spinner, when the grant is lost while away', async () => {
-    const view = renderScreen();
+    const view = await renderScreen();
     await screen.findByText('In the beginning');
 
     mockFocused = false;
-    view.rerender(screenTree());
+    await view.rerender(screenTree());
     mockHasProjectObserverGrant.mockReturnValue(false);
     mockFocused = true;
-    view.rerender(screenTree());
+    await view.rerender(screenTree());
 
     expect(await screen.findByTestId('observer-no-access')).toBeTruthy();
     expect(screen.queryByTestId('observer-loading')).toBeNull();
@@ -525,8 +525,8 @@ describe('ObserverScreen (Next)', () => {
   });
 
   it('changes chapter only through the destination guard', async () => {
-    renderScreen();
-    fireEvent.press(await screen.findByTestId('observer-chapter-1002'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByTestId('observer-chapter-1002'));
 
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith({
@@ -542,8 +542,8 @@ describe('ObserverScreen (Next)', () => {
 
   it('stays put when the guard denies the next chapter', async () => {
     mockGetObserverDraftDestination.mockResolvedValue(null);
-    renderScreen();
-    fireEvent.press(await screen.findByTestId('observer-chapter-1002'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByTestId('observer-chapter-1002'));
     await waitFor(() =>
       expect(mockGetObserverDraftDestination).toHaveBeenCalled(),
     );
@@ -578,7 +578,7 @@ describe('ObserverScreen (Next)', () => {
         },
       }),
     );
-    renderScreen();
+    await renderScreen();
 
     expect(await screen.findByText('Matthew 1:1–2')).toBeTruthy();
     expect(screen.getByText('1 In the beginning 2 was the Word')).toBeTruthy();
@@ -605,7 +605,7 @@ describe('ObserverScreen (Next)', () => {
           ? [{ bibleId, bookId, chapterNumber, verseNumber: 1, text: 'Next' }]
           : [],
     );
-    renderScreen();
+    await renderScreen();
 
     expect(await screen.findByText('Matthew 1:1–2:1')).toBeTruthy();
     expect(await screen.findByText('1 In the beginning 1 Next')).toBeTruthy();
@@ -613,7 +613,7 @@ describe('ObserverScreen (Next)', () => {
 
   it('says when pericopes are unavailable and falls back to verses', async () => {
     mockDraftingUnit = 'pericope';
-    renderScreen();
+    await renderScreen();
     expect(
       await screen.findByTestId('observer-pericope-unavailable'),
     ).toBeTruthy();
@@ -623,11 +623,11 @@ describe('ObserverScreen (Next)', () => {
   it('does not navigate when the screen blurs before the chapter check returns', async () => {
     const pending = deferred<unknown>();
     mockGetObserverDraftDestination.mockReturnValue(pending.promise);
-    const view = renderScreen();
-    fireEvent.press(await screen.findByTestId('observer-chapter-1002'));
+    const view = await renderScreen();
+    await fireEvent.press(await screen.findByTestId('observer-chapter-1002'));
 
     mockFocused = false;
-    view.rerender(screenTree());
+    await view.rerender(screenTree());
     await act(async () => {
       pending.resolve({
         pathname: '/(app)/(stack)/observer-draft',

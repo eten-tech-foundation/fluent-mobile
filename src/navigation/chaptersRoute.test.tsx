@@ -27,8 +27,8 @@ jest.mock('../app/v2/screens/BookScreen', () => ({
 }));
 
 describe('chapters route', () => {
-  it('shows the Legacy chapter list in Legacy', () => {
-    render(
+  it('shows the Legacy chapter list in Legacy', async () => {
+    await render(
       <UiVersionOverride value="legacy">
         <ChaptersRoute />
       </UiVersionOverride>,
@@ -36,8 +36,8 @@ describe('chapters route', () => {
     expect(screen.getByText('Legacy chapters')).toBeTruthy();
   });
 
-  it('shows the book page in Next', () => {
-    render(
+  it('shows the book page in Next', async () => {
+    await render(
       <UiVersionOverride value="next">
         <ChaptersRoute />
       </UiVersionOverride>,

@@ -38,91 +38,103 @@ function steps(over: Partial<VerseSteps> = {}): VerseSteps {
   };
 }
 
-function laidOut(props: VerseSteps) {
-  render(<VersePages steps={props} />);
-  fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
+async function laidOut(props: VerseSteps) {
+  await render(<VersePages steps={props} />);
+  await fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
     nativeEvent: { layout: { width: 300, height: 600 } },
   });
 }
 
 describe('VersePages', () => {
-  it('moves to the verse swiped to', () => {
+  it('moves to the verse swiped to', async () => {
     const props = steps();
-    laidOut(props);
-    fireEvent(screen.getByTestId('passage-verse-pager'), 'momentumScrollEnd', {
-      nativeEvent: { contentOffset: { x: 600, y: 0 } },
-    });
+    await laidOut(props);
+    await fireEvent(
+      screen.getByTestId('passage-verse-pager'),
+      'momentumScrollEnd',
+      {
+        nativeEvent: { contentOffset: { x: 600, y: 0 } },
+      },
+    );
 
     expect(props.go).toHaveBeenCalledWith(13);
   });
 
-  it('stays on the verse when a swipe settles where it started', () => {
+  it('stays on the verse when a swipe settles where it started', async () => {
     const props = steps();
-    laidOut(props);
-    fireEvent(screen.getByTestId('passage-verse-pager'), 'momentumScrollEnd', {
-      nativeEvent: { contentOffset: { x: 0, y: 0 } },
-    });
+    await laidOut(props);
+    await fireEvent(
+      screen.getByTestId('passage-verse-pager'),
+      'momentumScrollEnd',
+      {
+        nativeEvent: { contentOffset: { x: 0, y: 0 } },
+      },
+    );
 
     expect(props.go).not.toHaveBeenCalled();
   });
 
-  it('turns pages from TalkBack on the position row', () => {
+  it('turns pages from TalkBack on the position row', async () => {
     const props = steps();
-    laidOut(props);
+    await laidOut(props);
     const position = screen.getByTestId('passage-verse-position');
 
     expect(position.props.accessibilityRole).toBe('adjustable');
-    fireEvent(position, 'accessibilityAction', {
+    await fireEvent(position, 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' },
     });
     expect(props.go).toHaveBeenCalledWith(12);
   });
 
-  it('turns no page from TalkBack while a take is in progress', () => {
-    laidOut(steps({ locked: true }));
+  it('turns no page from TalkBack while a take is in progress', async () => {
+    await laidOut(steps({ locked: true }));
 
     expect(
       screen.getByTestId('passage-verse-position').props.accessibilityActions,
     ).toEqual([]);
   });
 
-  it("doesn't swipe while a take is in progress or saving", () => {
-    laidOut(steps({ locked: true }));
+  it("doesn't swipe while a take is in progress or saving", async () => {
+    await laidOut(steps({ locked: true }));
 
     expect(screen.getByTestId('passage-verse-pager').props.scrollEnabled).toBe(
       false,
     );
   });
 
-  it('follows the verse playing', () => {
+  it('follows the verse playing', async () => {
     const props = steps();
-    laidOut(props);
-    screen.rerender(<VersePages steps={props} playing={13} />);
+    await laidOut(props);
+    await screen.rerender(<VersePages steps={props} playing={13} />);
 
     expect(screen.getByLabelText('Verse 13, 3 of 3')).toBeTruthy();
   });
 
-  it('holds a swiped verse until the audio gets there', () => {
+  it('holds a swiped verse until the audio gets there', async () => {
     const props = steps();
-    laidOut(props);
-    screen.rerender(<VersePages steps={props} playing={11} />);
-    fireEvent(screen.getByTestId('passage-verse-pager'), 'momentumScrollEnd', {
-      nativeEvent: { contentOffset: { x: 600, y: 0 } },
-    });
-    screen.rerender(<VersePages steps={props} playing={11} />);
+    await laidOut(props);
+    await screen.rerender(<VersePages steps={props} playing={11} />);
+    await fireEvent(
+      screen.getByTestId('passage-verse-pager'),
+      'momentumScrollEnd',
+      {
+        nativeEvent: { contentOffset: { x: 600, y: 0 } },
+      },
+    );
+    await screen.rerender(<VersePages steps={props} playing={11} />);
 
     expect(screen.getByLabelText('Verse 13, 3 of 3')).toBeTruthy();
-    screen.rerender(
+    await screen.rerender(
       <VersePages steps={{ ...props, current: 13, index: 2 }} playing={13} />,
     );
-    screen.rerender(
+    await screen.rerender(
       <VersePages steps={{ ...props, current: 13, index: 2 }} playing={12} />,
     );
     expect(screen.getByLabelText('Verse 12, 2 of 3')).toBeTruthy();
   });
 
-  it('draws the verse chip in place of its dot, and says when it is recorded', () => {
-    render(
+  it('draws the verse chip in place of its dot, and says when it is recorded', async () => {
+    await render(
       <VersePages
         steps={steps({
           current: 12,
@@ -137,9 +149,9 @@ describe('VersePages', () => {
     expect(screen.getByText('12')).toBeTruthy();
   });
 
-  it('shows the verse chip and a count instead of dots past 12', () => {
+  it('shows the verse chip and a count instead of dots past 12', async () => {
     const many = Array.from({ length: 20 }, (_, i) => verse(i + 1));
-    render(
+    await render(
       <VersePages steps={steps({ verses: many, index: 2, current: 3 })} />,
     );
 
@@ -149,11 +161,12 @@ describe('VersePages', () => {
 
   describe('when the system text size changes while the page is open', () => {
     const initial = Dimensions.get('window');
-    const setFontScale = (fontScale: number) =>
-      act(() => {
+    const setFontScale = async (fontScale: number) => {
+      await act(() => {
         const window = { ...initial, fontScale };
         Dimensions.set({ window, screen: window });
       });
+    };
     afterEach(() => setFontScale(initial.fontScale));
 
     // "Verse" in verse 11 carries note 0, so its chip renders beside the text.
@@ -186,43 +199,43 @@ describe('VersePages', () => {
       expect(got.chip).toBeCloseTo(line - 6);
     };
 
-    function mounted() {
-      setFontScale(1);
-      render(page());
-      fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
+    async function mounted() {
+      await setFontScale(1);
+      await render(page());
+      await fireEvent(screen.getByTestId('passage-verse-pages'), 'layout', {
         nativeEvent: { layout: { width: 300, height: 600 } },
       });
       expectLine(40);
     }
 
-    it('compensates the line height from 1 to 2 (40 → 26)', () => {
-      mounted();
-      setFontScale(2);
+    it('compensates the line height from 1 to 2 (40 → 26)', async () => {
+      await mounted();
+      await setFontScale(2);
       expectLine(26);
-      screen.rerender(page());
+      await screen.rerender(page());
       expectLine(26);
     });
 
-    it('keeps the full line height below and at the reading maximum', () => {
-      mounted();
-      setFontScale(1.15);
+    it('keeps the full line height below and at the reading maximum', async () => {
+      await mounted();
+      await setFontScale(1.15);
       expectLine(40);
-      setFontScale(1.3);
+      await setFontScale(1.3);
       expectLine(40);
     });
 
-    it('caps the line height above the reading maximum, and back again', () => {
-      mounted();
-      setFontScale(1.5);
+    it('caps the line height above the reading maximum, and back again', async () => {
+      await mounted();
+      await setFontScale(1.5);
       expectLine((40 * 1.3) / 1.5);
-      setFontScale(1);
+      await setFontScale(1);
       expectLine(40);
     });
 
-    it('still follows a theme change at the current text size', () => {
-      mounted();
-      setFontScale(2);
-      screen.rerender(page('legacy'));
+    it('still follows a theme change at the current text size', async () => {
+      await mounted();
+      await setFontScale(2);
+      await screen.rerender(page('legacy'));
 
       const legacy = resolveTheme('legacy');
       const next = resolveTheme('next');

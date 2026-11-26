@@ -16,8 +16,8 @@ describe('PageDots', () => {
     mockPreferenceStore();
   });
 
-  it('draws one dot per page', () => {
-    render(
+  it('draws one dot per page', async () => {
+    await render(
       <PageDots
         count={7}
         index={1}
@@ -30,8 +30,8 @@ describe('PageDots', () => {
     expect(screen.queryByTestId('p-dot-7')).toBeNull();
   });
 
-  it('is read as one element with the page position', () => {
-    render(
+  it('is read as one element with the page position', async () => {
+    await render(
       <PageDots
         count={7}
         index={1}
@@ -48,8 +48,8 @@ describe('PageDots', () => {
     return StyleSheet.flatten(screen.getByTestId(testID).props.style);
   }
 
-  it('grows and darkens the current page', () => {
-    render(
+  it('grows and darkens the current page', async () => {
+    await render(
       <PageDots
         count={7}
         index={1}
@@ -66,8 +66,8 @@ describe('PageDots', () => {
     );
   });
 
-  it('draws nothing with only one page', () => {
-    render(
+  it('draws nothing with only one page', async () => {
+    await render(
       <PageDots
         count={1}
         index={0}
@@ -80,8 +80,8 @@ describe('PageDots', () => {
     expect(screen.queryByLabelText('Page 1 of 1')).toBeNull();
   });
 
-  it('clamps an out-of-range index to the last page', () => {
-    render(
+  it('clamps an out-of-range index to the last page', async () => {
+    await render(
       <PageDots
         count={3}
         index={9}

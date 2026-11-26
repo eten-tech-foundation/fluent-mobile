@@ -44,15 +44,15 @@ describe('sampleSentBack', () => {
 });
 
 describe('ChangesRequested', () => {
-  it("shows the sample on one of my drafts and opens that chapter's first passage", () => {
+  it("shows the sample on one of my drafts and opens that chapter's first passage", async () => {
     mockEnabled.mockReturnValue(true);
     const onOpen = jest.fn();
     const recorded = chapter(2, { completedVerses: 4 });
-    render(
+    await render(
       <ChangesRequested chapters={[chapter(1), recorded]} onOpen={onOpen} />,
     );
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', {
         name: 'Changes requested. Ravi left 3 notes on your Mark 2. Make changes.',
       }),
@@ -60,9 +60,11 @@ describe('ChangesRequested', () => {
     expect(onOpen).toHaveBeenCalledWith(recorded, 1);
   });
 
-  it('renders nothing unless the dev preview is on', () => {
+  it('renders nothing unless the dev preview is on', async () => {
     mockEnabled.mockReturnValue(false);
-    render(<ChangesRequested chapters={[chapter(1)]} onOpen={jest.fn()} />);
+    await render(
+      <ChangesRequested chapters={[chapter(1)]} onOpen={jest.fn()} />,
+    );
 
     expect(screen.queryByTestId('home-changes-requested')).toBeNull();
   });

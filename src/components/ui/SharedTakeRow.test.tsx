@@ -15,8 +15,8 @@ const baseProps = {
 describe('SharedTakeRow long take labels (#589)', () => {
   const longPericopeLabel = 'Take 1 - Pericope - vv. 8:31-9:1';
 
-  it('renders the full pericope label without a single-line clamp', () => {
-    const { getByTestId, getByText } = render(
+  it('renders the full pericope label without a single-line clamp', async () => {
+    const { getByTestId, getByText } = await render(
       <SharedTakeRow {...baseProps} label={longPericopeLabel} />,
     );
 
@@ -25,8 +25,8 @@ describe('SharedTakeRow long take labels (#589)', () => {
     expect(badge.props.numberOfLines).toBeUndefined();
   });
 
-  it('keeps the playback timer visible beside a long label', () => {
-    const { getByTestId } = render(
+  it('keeps the playback timer visible beside a long label', async () => {
+    const { getByTestId } = await render(
       <SharedTakeRow
         {...baseProps}
         label={longPericopeLabel}
@@ -38,9 +38,9 @@ describe('SharedTakeRow long take labels (#589)', () => {
     expect(getByTestId('shared-take-time')).toHaveTextContent('0:01 / 0:13');
   });
 
-  it('still renders short verse labels', () => {
+  it('still renders short verse labels', async () => {
     const verseLabel = 'Take 2 - Verse - v. 3';
-    const { getByText } = render(
+    const { getByText } = await render(
       <SharedTakeRow {...baseProps} label={verseLabel} />,
     );
     expect(getByText(verseLabel)).toBeTruthy();
@@ -48,9 +48,9 @@ describe('SharedTakeRow long take labels (#589)', () => {
 });
 
 describe('SharedTakeRow scrubbing (#833)', () => {
-  it('seeks this take when onSeek is provided', () => {
+  it('seeks this take when onSeek is provided', async () => {
     const onSeek = jest.fn();
-    const { getByTestId, getByLabelText } = render(
+    const { getByTestId, getByLabelText } = await render(
       <SharedTakeRow {...baseProps} durationMs={3000} onSeek={onSeek} />,
     );
 
@@ -58,18 +58,18 @@ describe('SharedTakeRow scrubbing (#833)', () => {
     expect(scrubber.props.onStartShouldSetResponder()).toBe(true);
     expect(getByLabelText('Draft waveform scrubber')).toBeTruthy();
 
-    fireEvent(scrubber, 'layout', {
+    await fireEvent(scrubber, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
     });
-    fireEvent(scrubber, 'responderGrant', {
+    await fireEvent(scrubber, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
 
     expect(onSeek).toHaveBeenCalledWith(1500);
   });
 
-  it('ignores drags when onSeek is absent', () => {
-    const { getByTestId, queryByLabelText } = render(
+  it('ignores drags when onSeek is absent', async () => {
+    const { getByTestId, queryByLabelText } = await render(
       <SharedTakeRow {...baseProps} durationMs={3000} onSeek={undefined} />,
     );
 
@@ -82,21 +82,21 @@ describe('SharedTakeRow scrubbing (#833)', () => {
 });
 
 describe('SharedTakeRow canonical designation', () => {
-  it('renders a pressable canonical control when onDesignateCanonical is provided', () => {
+  it('renders a pressable canonical control when onDesignateCanonical is provided', async () => {
     const onDesignateCanonical = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <SharedTakeRow
         {...baseProps}
         onDesignateCanonical={onDesignateCanonical}
       />,
     );
 
-    fireEvent.press(getByTestId('shared-take-canonical'));
+    await fireEvent.press(getByTestId('shared-take-canonical'));
     expect(onDesignateCanonical).toHaveBeenCalledTimes(1);
   });
 
-  it('renders no control and a layout spacer when locked and not canonical', () => {
-    const { queryByTestId, getByTestId } = render(
+  it('renders no control and a layout spacer when locked and not canonical', async () => {
+    const { queryByTestId, getByTestId } = await render(
       <SharedTakeRow
         {...baseProps}
         onDesignateCanonical={undefined}
@@ -115,8 +115,8 @@ describe('SharedTakeRow canonical designation', () => {
     ).toBeTruthy();
   });
 
-  it('shows a read-only canonical mark when locked and canonical', () => {
-    const { queryByTestId, getByTestId } = render(
+  it('shows a read-only canonical mark when locked and canonical', async () => {
+    const { queryByTestId, getByTestId } = await render(
       <SharedTakeRow
         {...baseProps}
         onDesignateCanonical={undefined}

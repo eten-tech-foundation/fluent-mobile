@@ -15,12 +15,12 @@ jest.mock('./splashGate', () => ({
 }));
 
 describe('auth layout', () => {
-  it('takes the splash down once the signed-out screen lays out', () => {
-    render(<AuthLayout />);
+  it('takes the splash down once the signed-out screen lays out', async () => {
+    await render(<AuthLayout />);
     expect(hideSplash).not.toHaveBeenCalled();
 
     // Bubbles to the layout's root view, the nearest onLayout.
-    fireEvent(screen.getByText('Login'), 'layout', {
+    await fireEvent(screen.getByText('Login'), 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 640 } },
     });
 

@@ -6,10 +6,11 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { AccountSwitcherPanel } from './AccountSwitcherPanel';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { UiVersionOverride } from '../../theme/useTheme';
 import { resolveTheme } from '../../theme/uiVersion';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
+import { getAllByHostType } from '../../test/hostElements';
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -117,8 +118,8 @@ describe('AccountSwitcherPanel', () => {
     setDeviceAccountsResult();
   });
 
-  it('renders known accounts with the active row indicated', () => {
-    const { getByText, getByTestId } = render(
+  it('renders known accounts with the active row indicated', async () => {
+    const { getByText, getByTestId } = await render(
       <AccountSwitcherPanel visible onClose={onClose} />,
     );
 
@@ -137,21 +138,21 @@ describe('AccountSwitcherPanel', () => {
     ).toBe(false);
   });
 
-  it('shows a loading indicator while accounts are loading', () => {
+  it('shows a loading indicator while accounts are loading', async () => {
     setDeviceAccountsResult({ loading: true });
-    const { queryByText } = render(
+    const { queryByText } = await render(
       <AccountSwitcherPanel visible onClose={onClose} />,
     );
 
     expect(queryByText('Other User')).toBeNull();
   });
 
-  it('does nothing when tapping the already-active row', () => {
-    const { getByTestId } = render(
+  it('does nothing when tapping the already-active row', async () => {
+    const { getByTestId } = await render(
       <AccountSwitcherPanel visible onClose={onClose} />,
     );
 
-    fireEvent.press(getByTestId('account-switcher-row-active-1'));
+    await fireEvent.press(getByTestId('account-switcher-row-active-1'));
 
     expect(mockGetCredentials).not.toHaveBeenCalled();
     expect(mockSwitchActiveUser).not.toHaveBeenCalled();
@@ -161,11 +162,11 @@ describe('AccountSwitcherPanel', () => {
   it('switches successfully when the target account has a valid session', async () => {
     mockGetCredentials.mockResolvedValueOnce({ token: 'valid-token' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AccountSwitcherPanel visible onClose={onClose} />,
     );
 
-    fireEvent.press(getByTestId('account-switcher-row-other-2'));
+    await fireEvent.press(getByTestId('account-switcher-row-other-2'));
 
     await waitFor(() => {
       expect(mockGetCredentials).toHaveBeenCalledWith('other-2');
@@ -184,11 +185,11 @@ describe('AccountSwitcherPanel', () => {
     mockCanDismiss.mockReturnValueOnce(true);
     mockGetCredentials.mockResolvedValueOnce({ token: 'valid-token' });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AccountSwitcherPanel visible onClose={onClose} />,
     );
 
-    fireEvent.press(getByTestId('account-switcher-row-other-2'));
+    await fireEvent.press(getByTestId('account-switcher-row-other-2'));
 
     await waitFor(() => {
       expect(mockDismissAll).toHaveBeenCalled();
@@ -199,11 +200,11 @@ describe('AccountSwitcherPanel', () => {
   it('shows an error and keeps the current account active when credentials are missing', async () => {
     mockGetCredentials.mockResolvedValueOnce(null);
 
-    const { getByTestId, findByTestId } = render(
+    const { getByTestId, findByTestId } = await render(
       <AccountSwitcherPanel visible onClose={onClose} />,
     );
 
-    fireEvent.press(getByTestId('account-switcher-row-other-2'));
+    await fireEvent.press(getByTestId('account-switcher-row-other-2'));
 
     const errorBanner = await findByTestId('account-switcher-error');
     expect(errorBanner).toBeTruthy();
@@ -217,11 +218,11 @@ describe('AccountSwitcherPanel', () => {
   it('shows an error when the stored session is corrupted (no token field)', async () => {
     mockGetCredentials.mockResolvedValueOnce({ token: '' });
 
-    const { getByTestId, findByTestId } = render(
+    const { getByTestId, findByTestId } = await render(
       <AccountSwitcherPanel visible onClose={onClose} />,
     );
 
-    fireEvent.press(getByTestId('account-switcher-row-other-2'));
+    await fireEvent.press(getByTestId('account-switcher-row-other-2'));
 
     await findByTestId('account-switcher-error');
     expect(mockSwitchActiveUser).not.toHaveBeenCalled();
@@ -235,13 +236,13 @@ describe('AccountSwitcherPanel', () => {
       }),
     );
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AccountSwitcherPanel visible onClose={onClose} />,
     );
 
     const row = getByTestId('account-switcher-row-other-2');
-    fireEvent.press(row);
-    fireEvent.press(row); // second tap while first is still resolving
+    await fireEvent.press(row);
+    await fireEvent.press(row); // second tap while first is still resolving
 
     resolveCreds({ token: 'valid-token' });
 
@@ -250,9 +251,9 @@ describe('AccountSwitcherPanel', () => {
     });
   });
 
-  it('navigates to Add Account and closes the panel', () => {
+  it('navigates to Add Account and closes the panel', async () => {
     const onBeforeAddAccount = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <AccountSwitcherPanel
         visible
         onClose={onClose}
@@ -260,17 +261,17 @@ describe('AccountSwitcherPanel', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('account-switcher-add-account'));
+    await fireEvent.press(getByTestId('account-switcher-add-account'));
 
     expect(onBeforeAddAccount).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith('/(app)/(stack)/add-user');
   });
 
-  it('shows the account limit message instead of Add Account when at the cap', () => {
+  it('shows the account limit message instead of Add Account when at the cap', async () => {
     setDeviceAccountsResult({ hasAccountLimit: true });
 
-    const { getByText, queryByTestId } = render(
+    const { getByText, queryByTestId } = await render(
       <AccountSwitcherPanel visible onClose={onClose} />,
     );
 
@@ -278,7 +279,7 @@ describe('AccountSwitcherPanel', () => {
     expect(queryByTestId('account-switcher-add-account')).toBeNull();
   });
 
-  it('isolates Next panel colors and spacing while preserving Legacy and session behavior', () => {
+  it('isolates Next panel colors and spacing while preserving Legacy and session behavior', async () => {
     const legacy = resolveTheme('legacy');
     const next = resolveTheme('next');
     const colors = next.colors as {
@@ -303,9 +304,9 @@ describe('AccountSwitcherPanel', () => {
       </UiVersionOverride>
     );
     const surfaces = () => {
-      const styles = screen
-        .UNSAFE_getAllByType(View)
-        .map(node => StyleSheet.flatten(node.props.style));
+      const styles = getAllByHostType('View').map(node =>
+        StyleSheet.flatten(node.props.style),
+      );
       const backdrops = styles.filter(
         style =>
           style?.flex === 1 &&
@@ -332,7 +333,7 @@ describe('AccountSwitcherPanel', () => {
       spacing.lg = 27;
       radius.lg = 29;
       sizes.xl = 31;
-      const { rerender } = render(panel('legacy'));
+      const { rerender } = await render(panel('legacy'));
       expect(surfaces()[0]).toMatchObject({
         backgroundColor: legacy.colors.drawerOverlay,
       });
@@ -345,7 +346,7 @@ describe('AccountSwitcherPanel', () => {
         color: legacy.colors.foreground,
         fontSize: legacy.typography.sizes.xl,
       });
-      rerender(panel('next'));
+      await rerender(panel('next'));
       expect(surfaces()[0]).toMatchObject({
         backgroundColor: 'rgba(1, 2, 3, 0.5)',
       });
@@ -368,9 +369,9 @@ describe('AccountSwitcherPanel', () => {
         borderTopColor: '#345678',
       });
       mockBottomInset = 11;
-      rerender(panel('next'));
+      await rerender(panel('next'));
       expect(surfaces()[1]).toMatchObject({ paddingBottom: 38 });
-      rerender(panel('legacy'));
+      await rerender(panel('legacy'));
       expect(surfaces()[0]).toMatchObject({
         backgroundColor: legacy.colors.drawerOverlay,
       });

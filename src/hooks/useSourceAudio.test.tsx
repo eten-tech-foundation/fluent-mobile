@@ -113,7 +113,7 @@ describe('useSourceAudio', () => {
   });
 
   it('sets empty when project id is missing', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSourceAudio({
         ...baseArgs(),
         projectId: null,
@@ -127,7 +127,7 @@ describe('useSourceAudio', () => {
   });
 
   it('shows loading while language code is still missing', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSourceAudio({
         ...baseArgs(),
         languageCode: undefined,
@@ -159,7 +159,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -175,7 +175,7 @@ describe('useSourceAudio', () => {
     expect(mockPlaybackPlay).toHaveBeenCalledWith('https://cdn.example/ch.mp3');
     expect(onPlayingVerseChange).toHaveBeenCalledWith(1);
 
-    rerender({ ...baseArgs(), verse: 2 });
+    await rerender({ ...baseArgs(), verse: 2 });
     await waitFor(() => {
       expect(mockPlaybackSeek).toHaveBeenCalledWith(4000);
     });
@@ -186,14 +186,14 @@ describe('useSourceAudio', () => {
     fetchChapterSourceAudio.mockImplementation(
       () => new Promise(resolve => (resolveFetch = resolve)),
     );
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
     await waitFor(() => expect(fetchChapterSourceAudio).toHaveBeenCalled());
     expect(result.current.loadState).toBe('loading');
 
-    rerender({ ...baseArgs(), verse: 2 });
+    await rerender({ ...baseArgs(), verse: 2 });
     expect(result.current.loadState).toBe('loading');
 
     await act(async () => {
@@ -226,7 +226,7 @@ describe('useSourceAudio', () => {
     expect(mockPlaybackSeek).toHaveBeenCalledWith(4000);
     expect(onPlayingVerseChange).toHaveBeenLastCalledWith(2);
 
-    rerender({ ...baseArgs(), verse: 3 });
+    await rerender({ ...baseArgs(), verse: 3 });
     expect(result.current.loadState).toBe('ready');
     expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1);
   });
@@ -240,7 +240,7 @@ describe('useSourceAudio', () => {
       items: [],
     });
 
-    const { result } = renderHook(() => useSourceAudio(baseArgs()));
+    const { result } = await renderHook(() => useSourceAudio(baseArgs()));
 
     await waitFor(() => {
       expect(result.current.loadState).toBe('empty');
@@ -268,7 +268,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -283,7 +283,7 @@ describe('useSourceAudio', () => {
     });
     expect(mockPlaybackLoad).toHaveBeenCalledWith(localUri);
 
-    rerender({ ...baseArgs(), verse: 2 });
+    await rerender({ ...baseArgs(), verse: 2 });
     await waitFor(() => {
       expect(mockPlaybackSeek).toHaveBeenCalledWith(4000);
     });
@@ -292,7 +292,7 @@ describe('useSourceAudio', () => {
   it('shows empty offline when nothing is downloaded (#579 G.27)', async () => {
     resolveLocalSourceAudio.mockResolvedValue(null);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSourceAudio({ ...baseArgs(), isOnline: false }),
     );
 
@@ -318,7 +318,7 @@ describe('useSourceAudio', () => {
     };
     fetchChapterSourceAudio.mockResolvedValue(data);
 
-    const { result } = renderHook(() => useSourceAudio(baseArgs()));
+    const { result } = await renderHook(() => useSourceAudio(baseArgs()));
 
     await waitFor(() => {
       expect(result.current.loadState).toBe('ready');
@@ -348,7 +348,7 @@ describe('useSourceAudio', () => {
         }),
     );
     switchAccount('5', 'token-5');
-    const { rerender } = renderHook(
+    const { rerender } = await renderHook(
       (props: UseSourceAudioArgs) => useSourceAudio(props),
       { initialProps: { ...baseArgs(), userId: 5 } },
     );
@@ -368,7 +368,7 @@ describe('useSourceAudio', () => {
         },
       ],
     });
-    rerender({ ...baseArgs(), userId: 6 });
+    await rerender({ ...baseArgs(), userId: 6 });
     await waitFor(() =>
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2),
     );
@@ -404,7 +404,7 @@ describe('useSourceAudio', () => {
         ],
       });
 
-    const { result } = renderHook(() => useSourceAudio(baseArgs()));
+    const { result } = await renderHook(() => useSourceAudio(baseArgs()));
 
     await waitFor(() => {
       expect(result.current.loadState).toBe('error');
@@ -435,7 +435,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -444,7 +444,7 @@ describe('useSourceAudio', () => {
       expect(result.current.loadState).toBe('ready');
     });
 
-    rerender({ ...baseArgs(), enabled: false });
+    await rerender({ ...baseArgs(), enabled: false });
     await waitFor(() => {
       expect(mockPlaybackStop).toHaveBeenCalled();
       expect(result.current.loadState).toBe('empty');
@@ -460,7 +460,7 @@ describe('useSourceAudio', () => {
         }),
     );
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -469,7 +469,7 @@ describe('useSourceAudio', () => {
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1);
     });
 
-    rerender({ ...baseArgs(), enabled: false });
+    await rerender({ ...baseArgs(), enabled: false });
     await waitFor(() => {
       expect(result.current.loadState).toBe('empty');
     });
@@ -519,7 +519,7 @@ describe('useSourceAudio', () => {
           }),
       );
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -528,13 +528,13 @@ describe('useSourceAudio', () => {
       expect(result.current.loadState).toBe('ready');
     });
 
-    rerender({ ...baseArgs(), chapter: 2 });
+    await rerender({ ...baseArgs(), chapter: 2 });
     await waitFor(() => {
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2);
       expect(result.current.loadState).toBe('loading');
     });
 
-    rerender({ ...baseArgs(), chapter: 1 });
+    await rerender({ ...baseArgs(), chapter: 1 });
     await waitFor(() => {
       expect(result.current.loadState).toBe('ready');
     });
@@ -599,7 +599,7 @@ describe('useSourceAudio', () => {
         ],
       });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -608,12 +608,12 @@ describe('useSourceAudio', () => {
       expect(result.current.loadState).toBe('ready');
     });
 
-    rerender({ ...baseArgs(), enabled: false });
+    await rerender({ ...baseArgs(), enabled: false });
     await waitFor(() => {
       expect(result.current.loadState).toBe('empty');
     });
 
-    rerender({ ...baseArgs(), enabled: true });
+    await rerender({ ...baseArgs(), enabled: true });
     await waitFor(() => {
       expect(result.current.loadState).toBe('ready');
     });
@@ -650,7 +650,7 @@ describe('useSourceAudio', () => {
         }),
     );
 
-    const { result } = renderHook(() => useSourceAudio(baseArgs()));
+    const { result } = await renderHook(() => useSourceAudio(baseArgs()));
 
     await waitFor(() => {
       expect(result.current.loadState).toBe('ready');
@@ -697,7 +697,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useSourceAudio({ ...baseArgs(), verse: 2 }),
     );
 
@@ -750,7 +750,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -769,7 +769,7 @@ describe('useSourceAudio', () => {
     mockPlaybackSeek.mockClear();
     mockPlaybackPlay.mockClear();
 
-    rerender({ ...baseArgs(), verse: 2 });
+    await rerender({ ...baseArgs(), verse: 2 });
 
     await act(async () => {
       await result.current.play();
@@ -798,7 +798,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -817,7 +817,7 @@ describe('useSourceAudio', () => {
     mockPlaybackSeek.mockClear();
     mockPlaybackPlay.mockClear();
 
-    rerender({ ...baseArgs(), verse: 2 });
+    await rerender({ ...baseArgs(), verse: 2 });
 
     await waitFor(() => {
       expect(mockPlaybackSeek).toHaveBeenCalledWith(4000);
@@ -842,7 +842,7 @@ describe('useSourceAudio', () => {
       // No verseTimestamps — API often returns none on DEV (#235 / #595).
     });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -862,7 +862,7 @@ describe('useSourceAudio', () => {
     mockPlaybackSeek.mockClear();
     onPlayingVerseChange.mockClear();
 
-    rerender({ ...baseArgs(), verse: 5 });
+    await rerender({ ...baseArgs(), verse: 5 });
 
     await waitFor(() => {
       expect(onPlayingVerseChange).toHaveBeenCalledWith(5);
@@ -890,7 +890,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result } = renderHook(
+    const { result } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -936,7 +936,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -957,7 +957,7 @@ describe('useSourceAudio', () => {
     await act(async () => {
       await result.current.pause();
     });
-    rerender({ ...baseArgs(), verse: 2 });
+    await rerender({ ...baseArgs(), verse: 2 });
     mockPlaybackSeek.mockClear();
     await act(async () => {
       await result.current.play();
@@ -985,7 +985,7 @@ describe('useSourceAudio', () => {
       ],
     });
 
-    const { result } = renderHook(
+    const { result } = await renderHook(
       (props: ReturnType<typeof baseArgs>) => useSourceAudio(props),
       { initialProps: baseArgs() },
     );
@@ -1028,7 +1028,7 @@ describe('useSourceAudio', () => {
       verseTimestamps: [{ verse: 1, startSeconds: 0 }],
     });
 
-    const { result } = renderHook(() => useSourceAudio(baseArgs()));
+    const { result } = await renderHook(() => useSourceAudio(baseArgs()));
 
     await waitFor(() => {
       expect(result.current.loadState).toBe('ready');
@@ -1073,11 +1073,11 @@ describe('useSourceAudio', () => {
         userId: number;
       },
     ) {
-      const view = renderHook(() => useSourceAudio(args));
+      const view = await renderHook(() => useSourceAudio(args));
       await waitFor(() => {
         expect(view.result.current.loadState).toBe('ready');
       });
-      view.unmount();
+      await view.unmount();
     }
 
     it("reuses this account's lookup, and asks again for another account", async () => {
@@ -1104,12 +1104,12 @@ describe('useSourceAudio', () => {
           answer = resolve;
         }),
       );
-      const first = renderHook(() =>
+      const first = await renderHook(() =>
         useSourceAudio({ ...baseArgs(), userId: 5 }),
       );
       await waitFor(() => expect(fetchChapterSourceAudio).toHaveBeenCalled());
-      first.unmount();
-      const second = renderHook(() =>
+      await first.unmount();
+      const second = await renderHook(() =>
         useSourceAudio({ ...baseArgs(), userId: 5 }),
       );
       await act(async () => {
@@ -1131,7 +1131,7 @@ describe('useSourceAudio', () => {
       await openAndClose({ ...baseArgs(), userId: 5 });
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2);
 
-      const view = renderHook(() =>
+      const view = await renderHook(() =>
         useSourceAudio({ ...baseArgs(), userId: 5 }),
       );
       await waitFor(() => {
@@ -1183,14 +1183,14 @@ describe('useSourceAudio', () => {
         userId === 5 ? audio('file:///a-download.mp3') : null,
       );
       fetchChapterSourceAudio.mockResolvedValue(audio('https://cdn/b.mp3'));
-      const view = mount({ userId: 5 });
+      const view = await mount({ userId: 5 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       expect(await playedUri(view.result)).toBe('file:///a-download.mp3');
       expect(view.result.current.status).toBe('playing');
       mockPlaybackStop.mockClear();
 
       switchAccount('6', 'token-6');
-      view.rerender({ userId: 6 });
+      await view.rerender({ userId: 6 });
       await waitFor(() => expect(mockPlaybackStop).toHaveBeenCalled());
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       expect(view.result.current.status).toBe('idle');
@@ -1205,10 +1205,10 @@ describe('useSourceAudio', () => {
       fetchChapterSourceAudio
         .mockResolvedValueOnce(audio('https://cdn/a.mp3'))
         .mockResolvedValueOnce(audio('https://cdn/b.mp3'));
-      const view = mount({ userId: 5 });
+      const view = await mount({ userId: 5 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       switchAccount('6', 'token-6');
-      view.rerender({ userId: 6 });
+      await view.rerender({ userId: 6 });
       await waitFor(() =>
         expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2),
       );
@@ -1225,12 +1225,12 @@ describe('useSourceAudio', () => {
           }),
         )
         .mockResolvedValueOnce(audio('https://cdn/b.mp3'));
-      const view = mount({ userId: 5 });
+      const view = await mount({ userId: 5 });
       await waitFor(() =>
         expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1),
       );
       switchAccount('6', 'token-6');
-      view.rerender({ userId: 6 });
+      await view.rerender({ userId: 6 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       await act(async () => {
         answerA(audio('https://cdn/a.mp3'));
@@ -1241,23 +1241,23 @@ describe('useSourceAudio', () => {
 
     it("misses its own copy on a later chapter load after A's resources were cleared", async () => {
       fetchChapterSourceAudio.mockResolvedValue(audio('https://cdn/a.mp3'));
-      const view = mount({ userId: 5, chapter: 1 });
+      const view = await mount({ userId: 5, chapter: 1 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
 
       // Away and back: the hook's own copy answers, no new request.
-      view.rerender({ userId: 5, chapter: 2 });
+      await view.rerender({ userId: 5, chapter: 2 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
-      view.rerender({ userId: 5, chapter: 1 });
+      await view.rerender({ userId: 5, chapter: 1 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2);
 
       clearPassageResourceReuse('5');
-      view.rerender({ userId: 5, chapter: 2 });
+      await view.rerender({ userId: 5, chapter: 2 });
       await waitFor(() =>
         expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(3),
       );
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
-      view.rerender({ userId: 5, chapter: 1 });
+      await view.rerender({ userId: 5, chapter: 1 });
       await waitFor(() =>
         expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(4),
       );
@@ -1265,14 +1265,14 @@ describe('useSourceAudio', () => {
 
     it('keeps reusing a valid empty answer, and offline still never asks', async () => {
       fetchChapterSourceAudio.mockResolvedValue({ ...audio('x'), items: [] });
-      const view = mount({ userId: 5 });
+      const view = await mount({ userId: 5 });
       await waitFor(() => expect(view.result.current.loadState).toBe('empty'));
-      view.unmount();
-      const again = mount({ userId: 5 });
+      await view.unmount();
+      const again = await mount({ userId: 5 });
       await waitFor(() => expect(again.result.current.loadState).toBe('empty'));
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1);
 
-      const offline = mount({ userId: 6, isOnline: false });
+      const offline = await mount({ userId: 6, isOnline: false });
       await waitFor(() =>
         expect(offline.result.current.loadState).toBe('empty'),
       );
@@ -1283,13 +1283,13 @@ describe('useSourceAudio', () => {
       fetchChapterSourceAudio
         .mockResolvedValueOnce(audio('https://cdn/a.mp3'))
         .mockRejectedValueOnce(new ApiError(403, 'forbidden'));
-      const view = mount({ userId: 5 });
+      const view = await mount({ userId: 5 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       expect(await playedUri(view.result)).toBe('https://cdn/a.mp3');
       expect(view.result.current.status).toBe('playing');
       mockPlaybackStop.mockClear();
 
-      act(() => {
+      await act(() => {
         clearPassageResourceReuse('5');
       });
       expect(view.result.current.loadState).not.toBe('ready');
@@ -1311,12 +1311,12 @@ describe('useSourceAudio', () => {
         )
         .mockResolvedValueOnce(audio('https://cdn/after.mp3'))
         .mockResolvedValue(audio('https://cdn/later.mp3'));
-      const view = mount({ userId: 5 });
+      const view = await mount({ userId: 5 });
       await waitFor(() =>
         expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(1),
       );
 
-      act(() => {
+      await act(() => {
         clearPassageResourceReuse('5');
       });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
@@ -1326,8 +1326,8 @@ describe('useSourceAudio', () => {
       expect(await playedUri(view.result)).toBe('https://cdn/after.mp3');
 
       // A remount (the shared reuse) doesn't hand back the obsolete answer either.
-      view.unmount();
-      const again = mount({ userId: 5 });
+      await view.unmount();
+      const again = await mount({ userId: 5 });
       await waitFor(() => expect(again.result.current.loadState).toBe('ready'));
       expect(await playedUri(again.result)).toBe('https://cdn/after.mp3');
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2);
@@ -1338,7 +1338,7 @@ describe('useSourceAudio', () => {
         .mockResolvedValueOnce(audio('https://cdn/a.mp3'))
         .mockReturnValueOnce(new Promise(() => {}));
       const seenByB: ReturnType<typeof useSourceAudio>[] = [];
-      const view = renderHook(
+      const view = await renderHook(
         (props: Partial<UseSourceAudioArgs>) => {
           const out = useSourceAudio({ ...baseArgs(), ...props });
           if (props.userId === 6) seenByB.push(out);
@@ -1351,7 +1351,7 @@ describe('useSourceAudio', () => {
       expect(view.result.current.isPlaying).toBe(true);
 
       switchAccount('6', 'token-6');
-      view.rerender({ userId: 6 });
+      await view.rerender({ userId: 6 });
       expect(seenByB.length).toBeGreaterThan(0);
       for (const out of seenByB) {
         expect(out.loadState).toBe('loading');
@@ -1378,7 +1378,7 @@ describe('useSourceAudio', () => {
           missLocally = resolve;
         }),
       );
-      const first = mount({ userId: 5 });
+      const first = await mount({ userId: 5 });
       await waitFor(() =>
         expect(resolveLocalSourceAudio).toHaveBeenCalledTimes(1),
       );
@@ -1391,9 +1391,9 @@ describe('useSourceAudio', () => {
       expect(bearers).not.toContain('token-b');
 
       // Back on A: A's own lookup, under A's bearer.
-      first.unmount();
+      await first.unmount();
       switchAccount('5', 'token-a');
-      const again = mount({ userId: 5 });
+      const again = await mount({ userId: 5 });
       await waitFor(() => expect(again.result.current.loadState).toBe('ready'));
       expect(bearers).toEqual(['token-a']);
       expect(await playedUri(again.result)).toBe('https://cdn/token-a.mp3');
@@ -1410,14 +1410,14 @@ describe('useSourceAudio', () => {
       );
       // B is active before this hook's props have caught up.
       switchAccount('6', 'token-b');
-      const stale = mount({ userId: 5 });
+      const stale = await mount({ userId: 5 });
       await waitFor(() => expect(stale.result.current.loadState).toBe('error'));
       expect(bearers).toEqual([]);
       expect(await playedUri(stale.result)).toBeUndefined();
 
-      stale.unmount();
+      await stale.unmount();
       switchAccount('5', 'token-a');
-      const again = mount({ userId: 5 });
+      const again = await mount({ userId: 5 });
       await waitFor(() => expect(again.result.current.loadState).toBe('ready'));
       expect(bearers).toEqual(['token-a']);
       expect(await playedUri(again.result)).toBe('https://cdn/token-a.mp3');
@@ -1438,7 +1438,7 @@ describe('useSourceAudio', () => {
           missLocally = resolve;
         }),
       );
-      const view = mount({ userId: 5 });
+      const view = await mount({ userId: 5 });
       await waitFor(() =>
         expect(resolveLocalSourceAudio).toHaveBeenCalledTimes(1),
       );
@@ -1474,7 +1474,7 @@ describe('useSourceAudio', () => {
     }
 
     it('looks nothing up and reads as loading, not missing', async () => {
-      const view = mount({ deferred: true });
+      const view = await mount({ deferred: true });
       await act(async () => {});
       expect(view.result.current.loadState).toBe('loading');
       expect(resolveLocalSourceAudio).not.toHaveBeenCalled();
@@ -1483,13 +1483,13 @@ describe('useSourceAudio', () => {
 
     it('asks once when wanted, and a reopen reuses the answer', async () => {
       fetchChapterSourceAudio.mockResolvedValue(audio('https://cdn/a.mp3'));
-      const view = mount({ deferred: true });
-      view.rerender({ deferred: false });
+      const view = await mount({ deferred: true });
+      await view.rerender({ deferred: false });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
-      view.unmount();
+      await view.unmount();
 
-      const reopened = mount({ deferred: true });
-      reopened.rerender({ deferred: false });
+      const reopened = await mount({ deferred: true });
+      await reopened.rerender({ deferred: false });
       await waitFor(() =>
         expect(reopened.result.current.loadState).toBe('ready'),
       );
@@ -1498,18 +1498,18 @@ describe('useSourceAudio', () => {
 
     it('keeps the downloaded file first once wanted', async () => {
       resolveLocalSourceAudio.mockResolvedValue(audio('file:///ch.mp3'));
-      const view = mount({ deferred: true });
-      view.rerender({ deferred: false });
+      const view = await mount({ deferred: true });
+      await view.rerender({ deferred: false });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       expect(fetchChapterSourceAudio).not.toHaveBeenCalled();
     });
 
     it("asks for the account that's active when it's wanted, not the one that opened", async () => {
       fetchChapterSourceAudio.mockResolvedValue(audio('https://cdn/b.mp3'));
-      const view = mount({ deferred: true });
+      const view = await mount({ deferred: true });
       switchAccount('6', 'token-6');
-      view.rerender({ deferred: true, userId: 6 });
-      view.rerender({ deferred: false, userId: 6 });
+      await view.rerender({ deferred: true, userId: 6 });
+      await view.rerender({ deferred: false, userId: 6 });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       expect(resolveLocalSourceAudio).toHaveBeenCalledTimes(1);
       expect(resolveLocalSourceAudio).toHaveBeenCalledWith(
@@ -1519,13 +1519,13 @@ describe('useSourceAudio', () => {
 
     it('asks again after the account is cleared while it waited', async () => {
       fetchChapterSourceAudio.mockResolvedValue(audio('https://cdn/a.mp3'));
-      const first = mount({});
+      const first = await mount({});
       await waitFor(() => expect(first.result.current.loadState).toBe('ready'));
-      first.unmount();
-      act(() => clearPassageResourceReuse('5'));
+      await first.unmount();
+      await act(() => clearPassageResourceReuse('5'));
 
-      const view = mount({ deferred: true });
-      view.rerender({ deferred: false });
+      const view = await mount({ deferred: true });
+      await view.rerender({ deferred: false });
       await waitFor(() => expect(view.result.current.loadState).toBe('ready'));
       expect(fetchChapterSourceAudio).toHaveBeenCalledTimes(2);
     });
@@ -1540,10 +1540,10 @@ describe('useSourceAudio', () => {
       fetchChapterSourceAudio.mockRejectedValueOnce(
         new ApiError(502, 'Bad gateway'),
       );
-      const view = mount({ deferred: true, chapter: 2 });
-      view.rerender({ deferred: false, chapter: 2 });
+      const view = await mount({ deferred: true, chapter: 2 });
+      await view.rerender({ deferred: false, chapter: 2 });
       await waitFor(() => expect(fetchChapterSourceAudio).toHaveBeenCalled());
-      view.rerender({ deferred: false, chapter: 3 });
+      await view.rerender({ deferred: false, chapter: 3 });
       await waitFor(() => expect(view.result.current.loadState).toBe('error'));
       await act(async () => {
         answer(audio('https://cdn/ch2.mp3'));
@@ -1555,8 +1555,8 @@ describe('useSourceAudio', () => {
       fetchChapterSourceAudio
         .mockRejectedValueOnce(new ApiError(502, 'Bad gateway'))
         .mockResolvedValue(audio('https://cdn/a.mp3'));
-      const view = mount({ deferred: true });
-      view.rerender({ deferred: false });
+      const view = await mount({ deferred: true });
+      await view.rerender({ deferred: false });
       await waitFor(() => expect(view.result.current.loadState).toBe('error'));
       await act(async () => {
         view.result.current.retry();

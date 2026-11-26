@@ -87,7 +87,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
   });
 
   it('never calls broad metadata refresh or pending claims from PFO repair', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -106,7 +106,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
     repairParents.mockResolvedValueOnce('offline');
     mockContext.mockResolvedValue({ sourceLanguageCode: 'gjk' });
 
-    const first = renderHook(() =>
+    const first = await renderHook(() =>
       usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
     );
     await waitFor(() => expect(first.result.current.loading).toBe(false));
@@ -114,7 +114,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
       1,
       expect.objectContaining({ languageCode: 'gjk', bibleId: 167 }),
     );
-    first.unmount();
+    await first.unmount();
 
     // Successful narrow repair updates local ISO before context read.
     __resetPrepareOfflineReferencedParentsLatchForTests();
@@ -124,7 +124,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
       return 'ok';
     });
 
-    const second = renderHook(() =>
+    const second = await renderHook(() =>
       usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
     );
     await waitFor(() => expect(second.result.current.loading).toBe(false));
@@ -139,23 +139,23 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
   it('does not latch offline/failure — retries repair on next load', async () => {
     repairParents.mockResolvedValueOnce('offline');
 
-    const first = renderHook(() =>
+    const first = await renderHook(() =>
       usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
     );
     await waitFor(() => expect(first.result.current.loading).toBe(false));
     expect(repairParents).toHaveBeenCalledTimes(1);
-    first.unmount();
+    await first.unmount();
 
     repairParents.mockResolvedValueOnce('failed');
-    const second = renderHook(() =>
+    const second = await renderHook(() =>
       usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
     );
     await waitFor(() => expect(second.result.current.loading).toBe(false));
     expect(repairParents).toHaveBeenCalledTimes(2);
-    second.unmount();
+    await second.unmount();
 
     repairParents.mockResolvedValueOnce('ok');
-    const third = renderHook(() =>
+    const third = await renderHook(() =>
       usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
     );
     await waitFor(() => expect(third.result.current.loading).toBe(false));
@@ -163,7 +163,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
 
     // Latched after ok — chapter toggle with same bible/book set does not re-repair.
     mockFetch.mockClear();
-    const { rerender, result } = renderHook(
+    const { rerender, result } = await renderHook(
       ({ selected }: { selected: Set<number> }) =>
         usePrepareOfflineResourceData(
           1,
@@ -175,7 +175,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     const callsAfterMount = repairParents.mock.calls.length;
-    rerender({ selected: new Set([1, 2]) });
+    await rerender({ selected: new Set([1, 2]) });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(repairParents.mock.calls.length).toBe(callsAfterMount);
   });
@@ -183,7 +183,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
   it('re-repairs when a later selection introduces a new bible/book id set', async () => {
     repairParents.mockResolvedValue('ok');
 
-    const { rerender, result } = renderHook(
+    const { rerender, result } = await renderHook(
       ({
         chapters,
         selected,
@@ -206,7 +206,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
       chapters: [{ bibleId: 167, bookId: 40 }],
     });
 
-    rerender({
+    await rerender({
       chapters: [
         chapter(1),
         chapter(2, {
@@ -241,16 +241,16 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
         }),
     );
 
-    const first = renderHook(() =>
+    const first = await renderHook(() =>
       usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
     );
     await waitFor(() => expect(repairParents).toHaveBeenCalledTimes(1));
-    first.unmount();
+    await first.unmount();
     resolveRepair('ok');
 
     // Same refs after cancel — must repair again (latch was not written).
     repairParents.mockResolvedValue('ok');
-    const second = renderHook(() =>
+    const second = await renderHook(() =>
       usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
     );
     await waitFor(() => expect(second.result.current.loading).toBe(false));
@@ -268,7 +268,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
         }),
     );
 
-    const { rerender, result, unmount } = renderHook(
+    const { rerender, result, unmount } = await renderHook(
       ({ projectId, userId }: { projectId: number; userId: number }) =>
         usePrepareOfflineResourceData(
           projectId,
@@ -282,7 +282,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
 
     // Account + project change cancels the first effect before latch write.
     repairParents.mockResolvedValue('ok');
-    rerender({ projectId: 2, userId: 99 });
+    await rerender({ projectId: 2, userId: 99 });
     resolveRepair('ok');
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(repairParents).toHaveBeenCalledTimes(2);
@@ -291,11 +291,11 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
       projectId: 2,
       chapters: [{ bibleId: 167, bookId: 40 }],
     });
-    unmount();
+    await unmount();
 
     // Original account/project/ref key was never latched — repairs again.
     repairParents.mockClear().mockResolvedValue('ok');
-    const again = renderHook(() =>
+    const again = await renderHook(() =>
       usePrepareOfflineResourceData(1, 10, [chapter(1)], new Set([1])),
     );
     await waitFor(() => expect(again.result.current.loading).toBe(false));
@@ -306,7 +306,7 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
     repairParents.mockResolvedValue('ok');
 
     for (let projectId = 1; projectId <= 64; projectId += 1) {
-      const hook = renderHook(() =>
+      const hook = await renderHook(() =>
         usePrepareOfflineResourceData(
           projectId,
           10,
@@ -315,12 +315,12 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
         ),
       );
       await waitFor(() => expect(hook.result.current.loading).toBe(false));
-      hook.unmount();
+      await hook.unmount();
     }
     expect(repairParents).toHaveBeenCalledTimes(64);
 
     // 65th distinct key evicts the oldest successful entry.
-    const overflow = renderHook(() =>
+    const overflow = await renderHook(() =>
       usePrepareOfflineResourceData(
         65,
         10,
@@ -329,13 +329,13 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
       ),
     );
     await waitFor(() => expect(overflow.result.current.loading).toBe(false));
-    overflow.unmount();
+    await overflow.unmount();
     expect(repairParents).toHaveBeenCalledTimes(65);
 
     // A still-retained key is reused without another repair (check before
     // re-adding the evicted key, which would FIFO-evict the next oldest).
     repairParents.mockClear().mockResolvedValue('ok');
-    const retained = renderHook(() =>
+    const retained = await renderHook(() =>
       usePrepareOfflineResourceData(
         2,
         10,
@@ -345,11 +345,11 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
     );
     await waitFor(() => expect(retained.result.current.loading).toBe(false));
     expect(repairParents).not.toHaveBeenCalled();
-    retained.unmount();
+    await retained.unmount();
 
     // Evicted oldest key safely re-repairs.
     repairParents.mockClear().mockResolvedValue('ok');
-    const evicted = renderHook(() =>
+    const evicted = await renderHook(() =>
       usePrepareOfflineResourceData(
         1,
         10,
@@ -359,14 +359,14 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
     );
     await waitFor(() => expect(evicted.result.current.loading).toBe(false));
     expect(repairParents).toHaveBeenCalledTimes(1);
-    evicted.unmount();
+    await evicted.unmount();
   });
 
   it('never caches failed repairs even under cache pressure', async () => {
     repairParents.mockResolvedValue('failed');
 
     for (let projectId = 1; projectId <= 70; projectId += 1) {
-      const hook = renderHook(() =>
+      const hook = await renderHook(() =>
         usePrepareOfflineResourceData(
           projectId,
           10,
@@ -375,13 +375,13 @@ describe('usePrepareOfflineResourceData referenced-parent repair', () => {
         ),
       );
       await waitFor(() => expect(hook.result.current.loading).toBe(false));
-      hook.unmount();
+      await hook.unmount();
     }
     expect(repairParents).toHaveBeenCalledTimes(70);
 
     // Same failed key still retries (never entered the successful-repair cache).
     repairParents.mockClear().mockResolvedValue('ok');
-    const retry = renderHook(() =>
+    const retry = await renderHook(() =>
       usePrepareOfflineResourceData(
         1,
         10,

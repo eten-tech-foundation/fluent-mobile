@@ -54,7 +54,7 @@ describe('useUploadSyncNotificationTap', () => {
       notification: uploadNotification,
     });
 
-    renderHook(() => useUploadSyncNotificationTap());
+    await renderHook(() => useUploadSyncNotificationTap());
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/(app)/(stack)/sync');
@@ -68,7 +68,7 @@ describe('useUploadSyncNotificationTap', () => {
       notification: uploadNotification,
     });
 
-    const { rerender } = renderHook(() => useUploadSyncNotificationTap());
+    const { rerender } = await renderHook(() => useUploadSyncNotificationTap());
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/(auth)/login');
@@ -76,7 +76,7 @@ describe('useUploadSyncNotificationTap', () => {
     expect(mockPush).not.toHaveBeenCalled();
 
     mockIsAuthenticated = true;
-    rerender(undefined);
+    await rerender(undefined);
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/(app)/(stack)/sync');

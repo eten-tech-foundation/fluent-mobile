@@ -247,9 +247,9 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
       verseNumber: VERSE,
     };
 
-    const tn = renderHook(() => useTranslationNotesForUnit(unit));
-    const tq = renderHook(() => useTranslationQuestionsForUnit(unit));
-    const img = renderHook(() => useImagesMapsForUnit(unit));
+    const tn = await renderHook(() => useTranslationNotesForUnit(unit));
+    const tq = await renderHook(() => useTranslationQuestionsForUnit(unit));
+    const img = await renderHook(() => useImagesMapsForUnit(unit));
 
     await waitFor(() => {
       expect(tn.result.current.state.status).toBe('ready');
@@ -383,8 +383,10 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
       chapterNumber: CHAPTER,
       verseNumber: VERSE,
     };
-    const tn = renderHook(() => useTranslationNotesForUnit(mismatchedUnit));
-    const img = renderHook(() => useImagesMapsForUnit(mismatchedUnit));
+    const tn = await renderHook(() =>
+      useTranslationNotesForUnit(mismatchedUnit),
+    );
+    const img = await renderHook(() => useImagesMapsForUnit(mismatchedUnit));
 
     await waitFor(() => {
       expect(tn.result.current.state.status).toBe('ready');
@@ -415,9 +417,9 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
       verseNumber: VERSE,
     };
 
-    const tn = renderHook(() => useTranslationNotesForUnit(unit));
-    const tq = renderHook(() => useTranslationQuestionsForUnit(unit));
-    const img = renderHook(() => useImagesMapsForUnit(unit));
+    const tn = await renderHook(() => useTranslationNotesForUnit(unit));
+    const tq = await renderHook(() => useTranslationQuestionsForUnit(unit));
+    const img = await renderHook(() => useImagesMapsForUnit(unit));
 
     await waitFor(() => {
       expect(tn.result.current.state.status).toBe('ready');
@@ -459,9 +461,9 @@ describe('cached Resources path — no network (#192, ISOLATED)', () => {
       verseNumber: VERSE,
     };
 
-    const tn = renderHook(() => useTranslationNotesForUnit(unit));
-    const tq = renderHook(() => useTranslationQuestionsForUnit(unit));
-    const img = renderHook(() => useImagesMapsForUnit(unit));
+    const tn = await renderHook(() => useTranslationNotesForUnit(unit));
+    const tq = await renderHook(() => useTranslationQuestionsForUnit(unit));
+    const img = await renderHook(() => useImagesMapsForUnit(unit));
 
     await waitFor(() => {
       expect(tn.result.current.state.status).toBe('ready');

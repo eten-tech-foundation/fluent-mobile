@@ -75,8 +75,8 @@ describe('DownloadProgressSection', () => {
     jest.resetAllMocks();
   });
 
-  it('renders nothing when the queue is empty', () => {
-    const { queryByTestId } = render(
+  it('renders nothing when the queue is empty', async () => {
+    const { queryByTestId } = await render(
       <DownloadProgressSection
         snapshot={EMPTY_DOWNLOAD_SNAPSHOT}
         onManageDownloads={onManageDownloads}
@@ -86,8 +86,8 @@ describe('DownloadProgressSection', () => {
     expect(queryByTestId('download-progress-section')).toBeNull();
   });
 
-  it('shows header, count, and row labels for active items', () => {
-    const { getByText, getByTestId, getAllByText } = render(
+  it('shows header, count, and row labels for active items', async () => {
+    const { getByText, getByTestId, getAllByText } = await render(
       <DownloadProgressSection
         snapshot={fixtureSnapshot}
         onManageDownloads={onManageDownloads}
@@ -104,19 +104,19 @@ describe('DownloadProgressSection', () => {
     expect(getAllByText('0%')).toHaveLength(3);
   });
 
-  it('calls onManageDownloads when manage row is pressed', () => {
-    const { getByTestId } = render(
+  it('calls onManageDownloads when manage row is pressed', async () => {
+    const { getByTestId } = await render(
       <DownloadProgressSection
         snapshot={fixtureSnapshot}
         onManageDownloads={onManageDownloads}
       />,
     );
 
-    fireEvent.press(getByTestId('download-manage-press'));
+    await fireEvent.press(getByTestId('download-manage-press'));
     expect(onManageDownloads).toHaveBeenCalledTimes(1);
   });
 
-  it('renders nothing when every item is completed', () => {
+  it('renders nothing when every item is completed', async () => {
     const allCompletedSnapshot: DownloadQueueSnapshot = {
       items: [
         {
@@ -141,7 +141,7 @@ describe('DownloadProgressSection', () => {
       primaryProjectId: 1,
     };
 
-    const { queryByTestId } = render(
+    const { queryByTestId } = await render(
       <DownloadProgressSection
         snapshot={allCompletedSnapshot}
         onManageDownloads={onManageDownloads}
@@ -151,7 +151,7 @@ describe('DownloadProgressSection', () => {
     expect(queryByTestId('download-progress-section')).toBeNull();
   });
 
-  it('shows remaining count from totalCount minus completedCount', () => {
+  it('shows remaining count from totalCount minus completedCount', async () => {
     const partialSnapshot: DownloadQueueSnapshot = {
       items: [
         {
@@ -177,7 +177,7 @@ describe('DownloadProgressSection', () => {
       primaryProjectId: 1,
     };
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <DownloadProgressSection
         snapshot={partialSnapshot}
         onManageDownloads={onManageDownloads}
@@ -188,7 +188,7 @@ describe('DownloadProgressSection', () => {
     expect(getByText('67%')).toBeTruthy();
   });
 
-  it('lists failed items as active rows', () => {
+  it('lists failed items as active rows', async () => {
     const failedSnapshot: DownloadQueueSnapshot = {
       items: [
         {
@@ -204,7 +204,7 @@ describe('DownloadProgressSection', () => {
       aggregateProgress: 0.42,
     };
 
-    const { getByText, getByTestId } = render(
+    const { getByText, getByTestId } = await render(
       <DownloadProgressSection
         snapshot={failedSnapshot}
         onManageDownloads={onManageDownloads}

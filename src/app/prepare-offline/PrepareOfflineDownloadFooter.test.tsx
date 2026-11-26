@@ -31,8 +31,8 @@ describe('PrepareOfflineDownloadFooter', () => {
     jest.clearAllMocks();
   });
 
-  it('updates total row and download label in idle session', () => {
-    render(
+  it('updates total row and download label in idle session', async () => {
+    await render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
         totalBytes={204 * 1024 * 1024}
@@ -48,8 +48,8 @@ describe('PrepareOfflineDownloadFooter', () => {
     ).toHaveTextContent('Download 18 MB');
   });
 
-  it('shows incomplete total when unknown sizes remain (#756)', () => {
-    render(
+  it('shows incomplete total when unknown sizes remain (#756)', async () => {
+    await render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
         totalBytes={2.4 * 1024 * 1024}
@@ -66,22 +66,24 @@ describe('PrepareOfflineDownloadFooter', () => {
     ).not.toHaveTextContent(/^2\.4 MB$/);
   });
 
-  it('calls onDownload when the download button is pressed', () => {
+  it('calls onDownload when the download button is pressed', async () => {
     const onDownload = jest.fn();
-    render(
+    await render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
         onDownload={onDownload}
       />,
     );
 
-    fireEvent.press(screen.getByTestId('prepare-offline-download-button'));
+    await fireEvent.press(
+      screen.getByTestId('prepare-offline-download-button'),
+    );
     expect(onDownload).toHaveBeenCalledTimes(1);
   });
 
-  it('does not call onDownload when the download button is disabled', () => {
+  it('does not call onDownload when the download button is disabled', async () => {
     const onDownload = jest.fn();
-    render(
+    await render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
         canDownload={false}
@@ -91,12 +93,12 @@ describe('PrepareOfflineDownloadFooter', () => {
 
     const button = screen.getByTestId('prepare-offline-download-button');
     expect(button.props.accessibilityState?.disabled).toBe(true);
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onDownload).not.toHaveBeenCalled();
   });
 
-  it('shows pause and cancel controls while downloading', () => {
-    render(
+  it('shows pause and cancel controls while downloading', async () => {
+    await render(
       <PrepareOfflineDownloadFooter {...defaultProps} session="downloading" />,
     );
 
@@ -112,8 +114,10 @@ describe('PrepareOfflineDownloadFooter', () => {
     expect(screen.queryByTestId('prepare-offline-remaining-bytes')).toBeNull();
   });
 
-  it('shows resume and cancel controls while paused', () => {
-    render(<PrepareOfflineDownloadFooter {...defaultProps} session="paused" />);
+  it('shows resume and cancel controls while paused', async () => {
+    await render(
+      <PrepareOfflineDownloadFooter {...defaultProps} session="paused" />,
+    );
 
     expect(
       screen.getByTestId('prepare-offline-download-controls-paused'),
@@ -122,8 +126,8 @@ describe('PrepareOfflineDownloadFooter', () => {
     expect(screen.getByTestId('prepare-offline-download-cancel')).toBeTruthy();
   });
 
-  it('disables controls while busy', () => {
-    render(
+  it('disables controls while busy', async () => {
+    await render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
         session="downloading"
@@ -137,8 +141,8 @@ describe('PrepareOfflineDownloadFooter', () => {
     ).toBe(true);
   });
 
-  it('shows complete feedback when session is complete', () => {
-    render(
+  it('shows complete feedback when session is complete', async () => {
+    await render(
       <PrepareOfflineDownloadFooter {...defaultProps} session="complete" />,
     );
 
@@ -149,9 +153,9 @@ describe('PrepareOfflineDownloadFooter', () => {
     expect(screen.queryByTestId('prepare-offline-download-button')).toBeNull();
   });
 
-  it('disables download and explains when transport is blocked', () => {
+  it('disables download and explains when transport is blocked', async () => {
     const onDownload = jest.fn();
-    render(
+    await render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
         onDownload={onDownload}
@@ -163,13 +167,13 @@ describe('PrepareOfflineDownloadFooter', () => {
     const button = screen.getByTestId('prepare-offline-download-button');
     expect(button.props.accessibilityState?.disabled).toBe(true);
     expect(screen.getByTestId('prepare-offline-footer-hint')).toBeTruthy();
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onDownload).not.toHaveBeenCalled();
   });
 
-  it('shows retryable prepare errors without disabling download', () => {
+  it('shows retryable prepare errors without disabling download', async () => {
     const onDownload = jest.fn();
-    render(
+    await render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
         onDownload={onDownload}
@@ -182,12 +186,12 @@ describe('PrepareOfflineDownloadFooter', () => {
     expect(screen.getByTestId('prepare-offline-footer-hint')).toHaveTextContent(
       'Could not prepare Bible text for offline. Try again.',
     );
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onDownload).toHaveBeenCalledTimes(1);
   });
 
-  it('hides stale prepare errors while transport is blocked without a message', () => {
-    render(
+  it('hides stale prepare errors while transport is blocked without a message', async () => {
+    await render(
       <PrepareOfflineDownloadFooter
         {...defaultProps}
         transportBlocked

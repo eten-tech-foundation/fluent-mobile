@@ -10,12 +10,12 @@ jest.mock('lucide-react-native', () => {
 });
 
 describe('PageHeaderBackButton', () => {
-  it('calls onPress when pressed', () => {
+  it('calls onPress when pressed', async () => {
     const onPress = jest.fn();
 
-    render(<PageHeaderBackButton onPress={onPress} />);
+    await render(<PageHeaderBackButton onPress={onPress} />);
 
-    fireEvent.press(screen.getByLabelText('Go back'));
+    await fireEvent.press(screen.getByLabelText('Go back'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

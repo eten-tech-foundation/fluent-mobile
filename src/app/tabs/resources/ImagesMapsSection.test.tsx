@@ -104,8 +104,8 @@ describe('ImagesMapsSection', () => {
     mockAutoFailZoomableImages = false;
   });
 
-  it('renders nothing when ready with no items (parent hides accordion)', () => {
-    const { toJSON } = render(
+  it('renders nothing when ready with no items (parent hides accordion)', async () => {
+    const { toJSON } = await render(
       <ImagesMapsSection
         state={{ status: 'ready', items: [] }}
         retry={() => undefined}
@@ -117,8 +117,8 @@ describe('ImagesMapsSection', () => {
     expect(screen.queryByTestId('images-maps-empty')).toBeNull();
   });
 
-  it('shows a loading spinner while items are loading', () => {
-    render(
+  it('shows a loading spinner while items are loading', async () => {
+    await render(
       <ImagesMapsSection
         state={{ status: 'loading' }}
         retry={() => undefined}
@@ -128,8 +128,8 @@ describe('ImagesMapsSection', () => {
     expect(screen.getByTestId('images-maps-loading')).toBeTruthy();
   });
 
-  it('shows titles, captions, and attribution for items', () => {
-    render(
+  it('shows titles, captions, and attribution for items', async () => {
+    await render(
       <ImagesMapsSection
         state={{ status: 'ready', items: IMAGES_FOR_VERSE_2 }}
         retry={() => undefined}
@@ -142,24 +142,26 @@ describe('ImagesMapsSection', () => {
     expect(screen.getByText('Aquifer / Bible Journey Maps')).toBeTruthy();
   });
 
-  it('opens fullscreen when maximize is pressed', () => {
-    render(
+  it('opens fullscreen when maximize is pressed', async () => {
+    await render(
       <ImagesMapsSection
         state={{ status: 'ready', items: IMAGES_FOR_VERSE_2 }}
         retry={() => undefined}
       />,
     );
 
-    fireEvent.press(screen.getByTestId('images-maps-maximize-img-99-2-1'));
+    await fireEvent.press(
+      screen.getByTestId('images-maps-maximize-img-99-2-1'),
+    );
 
     expect(screen.getByTestId('images-maps-fullscreen')).toBeTruthy();
-    fireEvent.press(screen.getByTestId('images-maps-fullscreen-close'));
+    await fireEvent.press(screen.getByTestId('images-maps-fullscreen-close'));
     expect(screen.queryByTestId('images-maps-fullscreen')).toBeNull();
   });
 
-  it('shows section-scoped error and recovers on Retry', () => {
+  it('shows section-scoped error and recovers on Retry', async () => {
     const retry = jest.fn();
-    const { rerender } = render(
+    const { rerender } = await render(
       <ImagesMapsSection
         state={{ status: 'error', message: IMAGES_MAPS_LOAD_ERROR }}
         retry={retry}
@@ -169,10 +171,10 @@ describe('ImagesMapsSection', () => {
     expect(screen.getByTestId('images-maps-error')).toBeTruthy();
     expect(screen.getByText(IMAGES_MAPS_LOAD_ERROR)).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId('images-maps-retry'));
+    await fireEvent.press(screen.getByTestId('images-maps-retry'));
     expect(retry).toHaveBeenCalledTimes(1);
 
-    rerender(
+    await rerender(
       <ImagesMapsSection
         state={{ status: 'ready', items: IMAGES_FOR_VERSE_2 }}
         retry={retry}
@@ -186,7 +188,7 @@ describe('ImagesMapsSection', () => {
     mockAutoFailZoomableImages = true;
     const retry = jest.fn();
 
-    render(
+    await render(
       <ImagesMapsSection
         state={{ status: 'ready', items: IMAGES_FOR_VERSE_2 }}
         retry={retry}
@@ -199,7 +201,7 @@ describe('ImagesMapsSection', () => {
     expect(screen.getByText(IMAGES_MAPS_LOAD_ERROR)).toBeTruthy();
     expect(screen.queryByTestId('images-maps-list')).toBeNull();
 
-    fireEvent.press(screen.getByTestId('images-maps-retry'));
+    await fireEvent.press(screen.getByTestId('images-maps-retry'));
     expect(retry).toHaveBeenCalledTimes(1);
   });
 });

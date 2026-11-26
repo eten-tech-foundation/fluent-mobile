@@ -1,12 +1,25 @@
 import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
-import { act, render, screen } from '@testing-library/react-native';
-import { Image } from 'expo-image';
+import { act, render } from '@testing-library/react-native';
 import {
   fireGestureHandler,
   getByGestureTestId,
 } from 'react-native-gesture-handler/jest-utils';
 import { clampScale, clampTranslate, ZoomableImage } from './ZoomableImage';
+
+// The shared expo-image mock fires onLoad itself with a 1 × 1 source; this file
+// keeps the handler so it can report the image's own size.
+let mockImageOnLoad: ((event: unknown) => void) | undefined;
+jest.mock('expo-image', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    Image: (props: { source?: unknown; onLoad?: (event: unknown) => void }) => {
+      mockImageOnLoad = props.onLoad;
+      return React.createElement(View, { source: props.source });
+    },
+  };
+});
 
 describe('ZoomableImage limits', () => {
   it('holds a pinch between 1x and 4x', () => {
@@ -32,13 +45,13 @@ describe('ZoomableImage limits', () => {
 });
 
 describe('ZoomableImage', () => {
-  it("hands onLoad the image's own size", () => {
+  it("hands onLoad the image's own size", async () => {
     const onLoad = jest.fn();
-    render(
+    await render(
       <ZoomableImage uri="file:///map.jpg" onLoad={onLoad} testID="zoom" />,
     );
-    act(() => {
-      screen.UNSAFE_getByType(Image).props.onLoad({
+    await act(() => {
+      mockImageOnLoad?.({
         cacheType: 'none',
         source: { url: 'file:///map.jpg', width: 800, height: 600 },
       });
@@ -48,7 +61,7 @@ describe('ZoomableImage', () => {
 
   it('taps with one still finger only, so a quick pinch never taps', async () => {
     const onPress = jest.fn();
-    render(<ZoomableImage uri="file:///map.jpg" onPress={onPress} />);
+    await render(<ZoomableImage uri="file:///map.jpg" onPress={onPress} />);
     const tap = getByGestureTestId('zoomable-image-tap');
 
     fireGestureHandler(tap);
@@ -71,8 +84,8 @@ describe('ZoomableImage', () => {
     expect((tap.config as { maxDist?: number }).maxDist).toBe(10);
   });
 
-  it('never reads two quick pinches as a double tap that resets the zoom', () => {
-    render(<ZoomableImage uri="file:///map.jpg" />);
+  it('never reads two quick pinches as a double tap that resets the zoom', async () => {
+    await render(<ZoomableImage uri="file:///map.jpg" />);
     const doubleTap = getByGestureTestId('zoomable-image-double-tap');
     const touchesDown = doubleTap.handlers.onTouchesDown as unknown as (
       event: { numberOfTouches: number },

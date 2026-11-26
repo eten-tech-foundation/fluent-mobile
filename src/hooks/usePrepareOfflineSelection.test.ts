@@ -31,7 +31,9 @@ describe('usePrepareOfflineSelection', () => {
       },
     ]);
 
-    const { result } = renderHook(() => usePrepareOfflineSelection(1, 42));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineSelection(1, 42),
+    );
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -56,7 +58,9 @@ describe('usePrepareOfflineSelection', () => {
       },
     ]);
 
-    const { result } = renderHook(() => usePrepareOfflineSelection(1, 42));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineSelection(1, 42),
+    );
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -86,24 +90,26 @@ describe('usePrepareOfflineSelection', () => {
       },
     ]);
 
-    const { result } = renderHook(() => usePrepareOfflineSelection(1, 42));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineSelection(1, 42),
+    );
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
 
-    act(() => {
+    await act(() => {
       result.current.toggleChapter(1);
     });
     expect(result.current.selectedIds.has(1)).toBe(true);
 
-    act(() => {
+    await act(() => {
       result.current.toggleBook(result.current.books[0]);
     });
     expect(result.current.selectedIds.has(1)).toBe(true);
     expect(result.current.selectedIds.has(2)).toBe(true);
 
-    act(() => {
+    await act(() => {
       result.current.toggleBook(result.current.books[0]);
     });
     expect(result.current.selectedIds.size).toBe(0);
@@ -120,7 +126,7 @@ describe('usePrepareOfflineSelection', () => {
       },
     ]);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ projectId }: { projectId: number | null }) =>
         usePrepareOfflineSelection(projectId, 42),
       { initialProps: { projectId: 1 } },
@@ -141,7 +147,7 @@ describe('usePrepareOfflineSelection', () => {
       },
     ]);
 
-    rerender({ projectId: 2 });
+    await rerender({ projectId: 2 });
 
     await waitFor(() => {
       expect(result.current.selectedIds.size).toBe(0);
@@ -160,7 +166,7 @@ describe('usePrepareOfflineSelection', () => {
       },
     ]);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ projectId }: { projectId: number | null }) =>
         usePrepareOfflineSelection(projectId, 42),
       { initialProps: { projectId: 1 } },
@@ -171,7 +177,7 @@ describe('usePrepareOfflineSelection', () => {
     });
     expect(result.current.accordionExpanded).toBe(false);
 
-    rerender({ projectId: null });
+    await rerender({ projectId: null });
 
     await waitFor(() => {
       expect(result.current.accordionExpanded).toBe(true);
@@ -187,7 +193,7 @@ describe('usePrepareOfflineSelection', () => {
       },
     ]);
 
-    rerender({ projectId: 2 });
+    await rerender({ projectId: 2 });
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -208,7 +214,7 @@ describe('usePrepareOfflineSelection', () => {
       },
     ]);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ projectId }: { projectId: number | null }) =>
         usePrepareOfflineSelection(projectId, 42),
       { initialProps: { projectId: 1 } },
@@ -219,17 +225,17 @@ describe('usePrepareOfflineSelection', () => {
     });
     expect(result.current.accordionExpanded).toBe(true);
 
-    act(() => {
+    await act(() => {
       result.current.setAccordionExpanded(false);
     });
     expect(result.current.accordionExpanded).toBe(false);
 
-    rerender({ projectId: null });
+    await rerender({ projectId: null });
     await waitFor(() => {
       expect(result.current.accordionExpanded).toBe(true);
     });
 
-    rerender({ projectId: 1 });
+    await rerender({ projectId: 1 });
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });

@@ -196,14 +196,16 @@ describe('HomeScreenBody progressive login (#670)', () => {
     mockHideSplash.mockClear();
   });
 
-  it('takes the cold-start splash down as soon as it mounts', () => {
-    render(<HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />);
+  it('takes the cold-start splash down as soon as it mounts', async () => {
+    await render(
+      <HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />,
+    );
 
     expect(mockHideSplash).toHaveBeenCalledWith('home:legacy');
   });
 
   it('dismisses full-screen loading when Tier 1 clears while sync continues', async () => {
-    const { rerender } = render(
+    const { rerender } = await render(
       <HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />,
     );
 
@@ -213,7 +215,7 @@ describe('HomeScreenBody progressive login (#670)', () => {
 
     expect(screen.getByTestId('home-loading')).toBeTruthy();
 
-    rerender(
+    await rerender(
       <HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />,
     );
 
@@ -227,7 +229,7 @@ describe('HomeScreenBody progressive login (#670)', () => {
 
   it('clears route newUserLoading when Tier 1 ends so the loader does not wait for Tier 2', async () => {
     mockLocalSearchParams.newUserLoading = 'true';
-    const { rerender, unmount } = render(
+    const { rerender, unmount } = await render(
       <HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />,
     );
 
@@ -237,18 +239,20 @@ describe('HomeScreenBody progressive login (#670)', () => {
       emitSyncStart();
     });
 
-    rerender(
+    await rerender(
       <HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />,
     );
 
     expect(screen.queryByTestId('home-loading')).toBeNull();
     expect(screen.getByTestId('my-work-tab')).toBeTruthy();
 
-    unmount();
+    await unmount();
   });
 
   it('bumps My Work refreshKey when the upload session completes (#257)', async () => {
-    render(<HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />);
+    await render(
+      <HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />,
+    );
     const readKey = () =>
       Number(screen.getByTestId('my-work-refresh-key').props.children);
     const before = readKey();
@@ -270,18 +274,18 @@ describe('HomeScreenBody progressive login (#670)', () => {
     expect(readKey()).toBe(before + 1);
   });
 
-  it('unsubscribes from upload session events on unmount (#257)', () => {
+  it('unsubscribes from upload session events on unmount (#257)', async () => {
     const syncEvents = require('../../services/syncEvents');
     const unsubscribe = jest.fn();
     const spy = jest
       .spyOn(syncEvents, 'onUploadSessionEvent')
       .mockReturnValue(unsubscribe);
 
-    const { unmount } = render(
+    const { unmount } = await render(
       <HomeScreenBody postLoginSyncActive={false} userSwitchEpoch={0} />,
     );
     expect(spy).toHaveBeenCalled();
-    unmount();
+    await unmount();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
 
     spy.mockRestore();
@@ -294,26 +298,26 @@ describe('HomeScreenBody Sync navigation (#721)', () => {
     mockPush.mockClear();
   });
 
-  it('keeps the Sync button mounted while settling and navigates on tap', () => {
-    render(<HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />);
+  it('keeps the Sync button mounted while settling and navigates on tap', async () => {
+    await render(<HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />);
 
     expect(screen.getByTestId('home-loading')).toBeTruthy();
     const syncButton = screen.getByTestId('home-sync-button');
     expect(syncButton).toBeTruthy();
 
-    fireEvent(syncButton, 'pressIn');
-    fireEvent.press(syncButton);
+    await fireEvent(syncButton, 'pressIn');
+    await fireEvent.press(syncButton);
 
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith(hrefs.sync);
   });
 
-  it('ignores a duplicate Sync press while navigation is in flight', () => {
-    render(<HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />);
+  it('ignores a duplicate Sync press while navigation is in flight', async () => {
+    await render(<HomeScreenBody postLoginSyncActive userSwitchEpoch={0} />);
 
     const syncButton = screen.getByTestId('home-sync-button');
-    fireEvent.press(syncButton);
-    fireEvent.press(syncButton);
+    await fireEvent.press(syncButton);
+    await fireEvent.press(syncButton);
 
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith(hrefs.sync);

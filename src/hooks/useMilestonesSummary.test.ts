@@ -79,7 +79,7 @@ describe('useMilestonesSummary', () => {
       firstMetadata.promise,
     );
 
-    renderHook(() => useMilestonesSummary());
+    await renderHook(() => useMilestonesSummary());
 
     await waitFor(() => {
       expect(mockGetMilestonesWithSummary).toHaveBeenCalled();

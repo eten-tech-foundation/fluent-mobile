@@ -1,8 +1,8 @@
 import React from 'react';
-import { Modal } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Dialog } from './Dialog';
 import { UiVersionOverride } from '../../theme/useTheme';
+import { getByHostType } from '../../test/hostElements';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
@@ -30,8 +30,8 @@ describe('Dialog', () => {
     jest.useRealTimers();
   });
 
-  it('asks its question with a primary and a quiet answer', () => {
-    render(dialog(true));
+  it('asks its question with a primary and a quiet answer', async () => {
+    await render(dialog(true));
 
     expect(
       screen.getByRole('header', { name: 'Send Mark 14 to Peer Check?' }),
@@ -43,60 +43,60 @@ describe('Dialog', () => {
     expect(screen.getByRole('button', { name: 'Not yet' })).toBeTruthy();
   });
 
-  it('confirms from the primary button', () => {
+  it('confirms from the primary button', async () => {
     const onConfirm = jest.fn();
     const onCancel = jest.fn();
-    render(dialog(true, onConfirm, onCancel));
+    await render(dialog(true, onConfirm, onCancel));
 
-    fireEvent.press(screen.getByRole('button', { name: 'Send' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onCancel).not.toHaveBeenCalled();
   });
 
-  it('cancels from the quiet button, the scrim and Back', () => {
+  it('cancels from the quiet button, the scrim and Back', async () => {
     const onCancel = jest.fn();
-    render(dialog(true, jest.fn(), onCancel));
+    await render(dialog(true, jest.fn(), onCancel));
 
-    fireEvent.press(screen.getByRole('button', { name: 'Not yet' }));
-    fireEvent.press(screen.getByTestId('dialog-scrim'));
-    fireEvent(screen.UNSAFE_getByType(Modal), 'requestClose');
+    await fireEvent.press(screen.getByRole('button', { name: 'Not yet' }));
+    await fireEvent.press(screen.getByTestId('dialog-scrim'));
+    await fireEvent(getByHostType('Modal'), 'requestClose');
     expect(onCancel).toHaveBeenCalledTimes(3);
   });
 
-  it('keeps the scrim out of TalkBack, which has Not yet', () => {
-    render(dialog(true));
+  it('keeps the scrim out of TalkBack, which has Not yet', async () => {
+    await render(dialog(true));
 
     expect(
       screen.getByTestId('dialog-scrim').props.importantForAccessibility,
     ).toBe('no');
   });
 
-  it('ignores a second tap while it fades away', () => {
+  it('ignores a second tap while it fades away', async () => {
     jest.useFakeTimers();
     const onConfirm = jest.fn();
     const onCancel = jest.fn();
-    const { rerender } = render(dialog(true, onConfirm, onCancel));
+    const { rerender } = await render(dialog(true, onConfirm, onCancel));
 
-    rerender(dialog(false, onConfirm, onCancel));
-    fireEvent.press(screen.getByTestId('dialog-confirm'));
-    fireEvent.press(screen.getByTestId('dialog-cancel'));
-    fireEvent.press(screen.getByTestId('dialog-scrim'));
+    await rerender(dialog(false, onConfirm, onCancel));
+    await fireEvent.press(screen.getByTestId('dialog-confirm'));
+    await fireEvent.press(screen.getByTestId('dialog-cancel'));
+    await fireEvent.press(screen.getByTestId('dialog-scrim'));
     expect(onConfirm).not.toHaveBeenCalled();
     expect(onCancel).not.toHaveBeenCalled();
   });
 
-  it('fades away, then leaves', () => {
+  it('fades away, then leaves', async () => {
     jest.useFakeTimers();
-    const { rerender } = render(dialog(true));
+    const { rerender } = await render(dialog(true));
 
-    rerender(dialog(false));
+    await rerender(dialog(false));
     expect(screen.getByText('Not yet')).toBeTruthy();
-    act(() => jest.advanceTimersByTime(1000));
+    await act(() => jest.advanceTimersByTime(1000));
     expect(screen.queryByText('Not yet')).toBeNull();
   });
 
-  it('renders nothing until opened', () => {
-    render(dialog(false));
+  it('renders nothing until opened', async () => {
+    await render(dialog(false));
 
     expect(screen.queryByText('Send Mark 14 to Peer Check?')).toBeNull();
   });
