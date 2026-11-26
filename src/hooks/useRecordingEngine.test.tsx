@@ -243,14 +243,14 @@ describe('useRecordingEngine', () => {
     // only passes when teardown skips the hold with `immediate: true`.
     jest.useFakeTimers();
     try {
-      const { result, unmount } = renderHook(() => useRecordingEngine());
+      const { result, unmount } = await renderHook(() => useRecordingEngine());
       await act(async () => {
         await result.current.start();
       });
       stopSpy.mockClear();
 
       await act(async () => {
-        unmount();
+        await unmount();
       });
 
       expect(stopSpy).toHaveBeenCalledTimes(1);

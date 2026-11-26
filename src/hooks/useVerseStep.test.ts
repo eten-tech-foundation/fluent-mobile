@@ -79,13 +79,13 @@ describe('useVerseStep', () => {
 
   it.each<VerseAudioState>(['recording', 'saving'])(
     'does not step, prompt or discard while a Stop is pending (%s) (#979)',
-    state => {
-      const { result, onChange, resetCapture, discardCapture } = setup(
+    async state => {
+      const { result, onChange, resetCapture, discardCapture } = await setup(
         1,
         state,
         true,
       );
-      act(() => result.current.request(2));
+      await act(() => result.current.request(2));
       expect(Alert.alert).not.toHaveBeenCalled();
       expect(discardCapture).not.toHaveBeenCalled();
       expect(resetCapture).not.toHaveBeenCalled();

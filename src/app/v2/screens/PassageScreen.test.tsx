@@ -1644,11 +1644,11 @@ describe('PassageScreen', () => {
     mockEnsureMic.mockImplementationOnce(
       () => new Promise<boolean>(resolve => (grantMic = resolve)),
     );
-    const { rerender } = render(<PassageScreen />);
-    fireEvent.press(screen.getByTestId('passage-record'));
+    const { rerender } = await render(<PassageScreen />);
+    await fireEvent.press(screen.getByTestId('passage-record'));
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('passage-key-record'));
+      await fireEvent.press(screen.getByTestId('passage-key-record'));
     });
     expect(mockEnsureMic).toHaveBeenCalledTimes(1);
 
@@ -1666,11 +1666,11 @@ describe('PassageScreen', () => {
     mockEnsureMic.mockImplementationOnce(
       () => new Promise<boolean>(resolve => (grantMic = resolve)),
     );
-    const { rerender } = render(<PassageScreen />);
-    fireEvent.press(screen.getByTestId('passage-record'));
+    const { rerender } = await render(<PassageScreen />);
+    await fireEvent.press(screen.getByTestId('passage-record'));
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('passage-key-record'));
+      await fireEvent.press(screen.getByTestId('passage-key-record'));
     });
     expect(mockEnsureMic).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('passage-confirm')).toBeNull();
@@ -1687,7 +1687,7 @@ describe('PassageScreen', () => {
 
     // The next Record tap asks first.
     await act(async () => {
-      fireEvent.press(screen.getByTestId('passage-key-record'));
+      await fireEvent.press(screen.getByTestId('passage-key-record'));
     });
     expect(screen.getByTestId('passage-confirm')).toBeTruthy();
     expect(mockStart).not.toHaveBeenCalled();
@@ -1815,15 +1815,15 @@ describe('PassageScreen', () => {
     expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('keeps the take tile and its number while the saved take joins the list (#979)', () => {
+  it('keeps the take tile and its number while the saved take joins the list (#979)', async () => {
     mockSession = {
       ...mockSession,
       state: 'recording',
       captureActive: true,
       takes: [take(1)],
     };
-    const { rerender } = render(<PassageScreen />);
-    fireEvent.press(screen.getByTestId('passage-record'));
+    const { rerender } = await render(<PassageScreen />);
+    await fireEvent.press(screen.getByTestId('passage-record'));
     expect(screen.getByLabelText('Take 2, recording')).toBeTruthy();
 
     // Saving starts with the earlier takes, then the new take joins the list
@@ -1835,10 +1835,10 @@ describe('PassageScreen', () => {
       captureActive: false,
       takes: [take(1)],
     };
-    rerender(<PassageScreen />);
+    await rerender(<PassageScreen />);
     const saved = { ...take(2), isSelected: true };
     mockSession = { ...mockSession, takes: [take(1), saved] };
-    rerender(<PassageScreen />);
+    await rerender(<PassageScreen />);
     expect(screen.getAllByTestId('passage-fan-2', hidden)).toHaveLength(1);
     expect(screen.queryByTestId('passage-fan-3', hidden)).toBeNull();
     // Still the held tile (no status, not selected), not the saved take early.
@@ -1847,7 +1847,7 @@ describe('PassageScreen', () => {
 
     // SAVED: the saved take replaces the held tile.
     mockSession = { ...mockSession, state: 'recorded' };
-    rerender(<PassageScreen />);
+    await rerender(<PassageScreen />);
     expect(screen.getAllByTestId('passage-fan-2', hidden)).toHaveLength(1);
     expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();
     expect(screen.queryByLabelText('Take 2')).toBeNull();
