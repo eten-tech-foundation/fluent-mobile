@@ -14,8 +14,8 @@ tags:
 - evalScript: >-
     ${output.fixtureChapterId = (typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_ID).trim()}
 - assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId)}
-- assertTrue: ${RegExp('^home-next-' + output.fixtureChapterId + ':').test('home-next-' + output.fixtureChapterId + ':x') === true}
-- assertTrue: ${RegExp('^home-next-' + output.fixtureChapterId + ':').test('home-next-' + output.fixtureChapterId + '0:x') === false}
+- assertTrue: ${RegExp('^home-next-' + output.fixtureChapterId + ':.*').test('home-next-' + output.fixtureChapterId + ':x') === true}
+- assertTrue: ${RegExp('^home-next-' + output.fixtureChapterId + ':.*').test('home-next-' + output.fixtureChapterId + '0:x') === false}
 - assertNotVisible:
     id: 'login-email-input'
 - runFlow: ../../shared/nav/goto-home.yaml
@@ -23,12 +23,12 @@ tags:
     id: 'home-header'
 - scrollUntilVisible:
     element:
-      id: '^home-next-${output.fixtureChapterId}:'
+      id: '^home-next-${output.fixtureChapterId}:.*'
     direction: DOWN
     timeout: 30000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - tapOn:
-    id: '^home-next-${output.fixtureChapterId}:'
+    id: '^home-next-${output.fixtureChapterId}:.*'
 - extendedWaitUntil:
     visible:
       id: 'passage-header'

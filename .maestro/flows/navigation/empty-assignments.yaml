@@ -22,13 +22,14 @@ tags:
 - assertVisible:
     id: 'home-book-.*'
 
-# Nothing assigned to record in Next up.
+# Nothing assigned to record in Next up. Do not assertNotVisible
+# `home-next-.*` — that regex also matches `home-next-up-empty`.
 - scrollUntilVisible:
     element:
-      id: 'home-next-up-empty'
+      id: 'home-next-up'
     direction: DOWN
     timeout: 60000
 - assertVisible:
     id: 'home-next-up-empty'
 - assertNotVisible:
-    id: 'home-next-.*'
+    id: 'home-next-up-hero'

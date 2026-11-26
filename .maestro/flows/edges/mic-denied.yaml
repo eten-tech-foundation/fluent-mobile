@@ -13,16 +13,16 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
-- tapOn:
-    id: 'drafting-tab-record'
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-header'
+- assertVisible:
+    id: 'passage-record|passage-listen'
 - tapOn:
-    id: 'record-start-button'
+    id: 'passage-record'
     optional: true
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-header'

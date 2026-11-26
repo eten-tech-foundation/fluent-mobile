@@ -22,17 +22,8 @@ tags:
 - assertNotVisible:
     id: 'login-email-input'
 - assertVisible:
-    id: 'home-tab-my-work'
-- tapOn:
-    id: 'home-settings-button'
-- extendedWaitUntil:
-    visible:
-      id: 'settings-drawer-content'
-    timeout: 15000
-- assertVisible:
-    id: 'settings-menu-active-.*'
-- tapOn:
-    id: 'settings-menu-more-settings'
+    id: 'home-header'
+- runFlow: ../../shared/nav/goto-settings.yaml
 - scrollUntilVisible:
     element:
       id: 'settings-prepare-offline'
@@ -60,7 +51,7 @@ tags:
     id: 'stack-header-back'
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 15000
 - assertNotVisible:
     id: 'login-email-input'

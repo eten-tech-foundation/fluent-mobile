@@ -33,11 +33,11 @@ tags:
     timeout: 15000
 - scrollUntilVisible:
     element:
-      id: '^book-passage-${MAESTRO_FIXTURE_CHAPTER_ID}-'
+      id: '^book-passage-${MAESTRO_FIXTURE_CHAPTER_ID}-.*'
     direction: DOWN
     timeout: 15000
 - tapOn:
-    id: '^book-passage-${MAESTRO_FIXTURE_CHAPTER_ID}-'
+    id: '^book-passage-${MAESTRO_FIXTURE_CHAPTER_ID}-.*'
 - extendedWaitUntil:
     visible:
       id: passage-header|observer-screen

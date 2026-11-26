@@ -12,7 +12,7 @@ output.myWorkRowIdRe =
 output.homeNextIdRe =
   (output.fixtureChapterId === undefined || output.fixtureChapterId === null || String(output.fixtureChapterId).trim().length === 0)
     ? ''
-    : ('^home-next-' + String(output.fixtureChapterId).trim().replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + ':');
+    : ('^home-next-' + String(output.fixtureChapterId).trim().replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + ':.*');
 
 output.homeChangesIdRe =
   (output.fixtureChapterId === undefined || output.fixtureChapterId === null || String(output.fixtureChapterId).trim().length === 0)
@@ -27,4 +27,4 @@ output.bookChapterIdRe =
 output.bookPassageIdRe =
   (output.fixtureChapterId === undefined || output.fixtureChapterId === null || String(output.fixtureChapterId).trim().length === 0)
     ? ''
-    : ('^book-passage-' + String(output.fixtureChapterId).trim().replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '-');
+    : ('^book-passage-' + String(output.fixtureChapterId).trim().replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '-.*');

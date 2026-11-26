@@ -1,4 +1,6 @@
-# Conflict list indicator + Record conflict banner (#607 / #574).
+# Conflict on the Next book page + Passage notice (#607 / #574).
+# Next map: chapter-conflict-indicator → book-chapter meta "Sync conflict";
+# record-conflict-warning → passage-notices-conflict.
 appId: com.eten.fluent
 tags:
   - ownership
@@ -8,7 +10,7 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow:
@@ -18,27 +20,22 @@ tags:
 - back
 - extendedWaitUntil:
     visible:
-      id: 'chapter-row-.*'
+      id: 'book-header'
     timeout: 30000
 - scrollUntilVisible:
     element:
       text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
     direction: DOWN
     timeout: 90000
+    visibilityPercentage: 50
 - assertVisible:
     text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
-- assertVisible:
-    id: 'chapter-conflict-indicator'
-- assertVisible: 'Unresolved recording conflict'
+- assertVisible: 'Sync conflict'
 - tapOn:
-    text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+    id: 'book-passage-.*'
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'passage-header'
     timeout: 60000
-- tapOn:
-    id: 'drafting-tab-record'
 - assertVisible:
-    id: 'record-tab'
-- assertVisible:
-    id: 'record-conflict-warning'
+    id: 'passage-notices-conflict'

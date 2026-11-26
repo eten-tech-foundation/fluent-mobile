@@ -7,3 +7,4 @@ output.sectionToggleId = output.sectionId.length > 0 ? ('resources-section-' + o
 output.sectionHostId = output.sectionId.length > 0 ? ('resources-section-' + output.sectionId) : '';
 output.contentMarkerRe = output.contentMarker.length > 0 ? ('^' + String(output.contentMarker).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '$') : '';
 output.myWorkRowIdRe = output.populatedFixture.length > 0 ? ('^my-work-row-' + String(output.populatedFixture).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '$') : '';
+output.homeNextIdRe = output.populatedFixture.length > 0 ? ('^home-next-' + String(output.populatedFixture).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + ':.*') : '';

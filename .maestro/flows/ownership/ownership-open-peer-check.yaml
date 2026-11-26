@@ -1,4 +1,4 @@
-# Open Peer Check (no peerChecker): no taken warning on Record (#607 / #574).
+# Open Peer Check (no peerChecker): no taken notice on Passage (#607 / #574).
 appId: com.eten.fluent
 tags:
   - ownership
@@ -8,16 +8,16 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow:
     file: ../../shared/nav/open-fixture-chapter.yaml
     env:
       MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_OPEN_PEER_CHECK_LABEL}
-- tapOn:
-    id: 'drafting-tab-record'
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-header'
+- assertVisible:
+    id: 'passage-record|passage-listen|observer-screen'
 - assertNotVisible:
-    id: 'record-taken-warning'
+    id: 'passage-notices-taken'

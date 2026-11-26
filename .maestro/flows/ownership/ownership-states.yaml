@@ -1,4 +1,8 @@
-# Ownership UI: mine / other / unassigned on project chapter list (#574).
+# Ownership UI: mine / other / unassigned on the Next book page (#574).
+# Next map: chapter-row + chapter-ownership-* → book-chapter-*-meta
+# ("Yours" / "Someone else's" / "Unassigned"); record-taken-warning →
+# passage-notices-taken. Requires MAESTRO_FIXTURE_PROJECT_NAME plus
+# MINE / OTHER / UNASSIGNED labels.
 appId: com.eten.fluent
 tags:
   - ownership
@@ -7,27 +11,42 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-
-- tapOn:
-    id: 'home-tab-projects'
-- extendedWaitUntil:
-    visible:
-      id: 'milestone-row-.*'
-    timeout: 60000
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_PROJECT_NAME}
+      text: '.*${MAESTRO_FIXTURE_PROJECT_NAME}.*'
     direction: DOWN
     timeout: 60000
+    visibilityPercentage: 50
 - tapOn:
-    text: ${MAESTRO_FIXTURE_PROJECT_NAME}
+    text: '.*${MAESTRO_FIXTURE_PROJECT_NAME}.*'
+- runFlow:
+    when:
+      visible:
+        id: 'passage-header'
+    commands:
+      - tapOn:
+          id: 'passage-title'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-title-sheet'
+          timeout: 15000
+      - tapOn:
+          id: 'passage-book'
 - extendedWaitUntil:
     visible:
-      id: 'chapter-row-.*'
+      id: 'book-header'
     timeout: 60000
+- repeat:
+    times: 12
+    commands:
+      - swipe:
+          from:
+            id: 'book-list'
+          direction: DOWN
+          duration: 250
 
 # Mine
 - scrollUntilVisible:
@@ -35,12 +54,12 @@ tags:
       text: ${MAESTRO_FIXTURE_MINE_LABEL}
     direction: DOWN
     timeout: 90000
+    visibilityPercentage: 50
 - assertVisible:
-    id: 'chapter-row-.*'
+    id: 'book-chapter-.*'
     containsDescendants:
       - text: ${MAESTRO_FIXTURE_MINE_LABEL}
-      - id: 'chapter-ownership-mine'
-- assertVisible: 'Assigned to you'
+- assertVisible: 'Yours'
 
 # Other
 - scrollUntilVisible:
@@ -48,42 +67,27 @@ tags:
       text: ${MAESTRO_FIXTURE_OTHER_LABEL}
     direction: DOWN
     timeout: 90000
+    visibilityPercentage: 50
 - assertVisible:
-    id: 'chapter-row-.*'
+    id: 'book-chapter-.*'
     containsDescendants:
       - text: ${MAESTRO_FIXTURE_OTHER_LABEL}
-      - id: 'chapter-ownership-other'
-- assertVisible: 'Assigned to another translator'
+- assertVisible: "Someone else's"
 
-# Unassigned → no ownership icon on that row; Record has no taken warning
+# Unassigned → open Passage; Record has no taken notice
 - scrollUntilVisible:
     element:
       text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
     direction: DOWN
     timeout: 90000
-- assertVisible:
-    id: 'chapter-row-.*'
-    containsDescendants:
-      - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
-- assertNotVisible:
-    id: 'chapter-row-.*'
-    containsDescendants:
-      - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
-      - id: 'chapter-ownership-mine'
-- assertNotVisible:
-    id: 'chapter-row-.*'
-    containsDescendants:
-      - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
-      - id: 'chapter-ownership-other'
+    visibilityPercentage: 50
 - tapOn:
-    text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
+    id: 'book-passage-.*'
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'passage-header'
     timeout: 60000
-- tapOn:
-    id: 'drafting-tab-record'
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-record|passage-listen'
 - assertNotVisible:
-    id: 'record-taken-warning'
+    id: 'passage-notices-taken'

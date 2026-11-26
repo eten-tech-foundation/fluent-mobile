@@ -20,6 +20,12 @@ tags:
       - runFlow:
           when:
             visible:
+              id: 'passage-close'
+          commands:
+            - back
+      - runFlow:
+          when:
+            visible:
               id: 'passage-back'
           commands:
             - tapOn:

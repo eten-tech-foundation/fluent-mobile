@@ -1,0 +1,29 @@
+# Observer journey on Next (`observer-screen`). Account A is a translator on
+# the usual fixture — if this open lands on Passage instead, the flow fails
+# visibly (Blocked: no observer assignment). Do not skip-green on Passage.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - fixture-blocked
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-header'
+- runFlow: ../../shared/nav/open-any-chapter.yaml
+- assertVisible:
+    id: 'observer-screen'
+- assertVisible:
+    id: 'observer-back'
+- assertVisible:
+    id: 'observer-tab-.*|observer-draft-list|observer-source-list|observer-chapters'
+- tapOn:
+    id: 'observer-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-header'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'

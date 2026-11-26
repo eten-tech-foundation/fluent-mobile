@@ -36,12 +36,12 @@ tags:
 - assertNotVisible:
     id: 'settings-menu-more-settings'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertVisible:
-    id: 'home-settings-button'
+    id: 'home-account'
 # Cached switch → PM9 (matches retained runtime actor on project13).
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
       id: 'settings-drawer-content'
@@ -66,7 +66,7 @@ tags:
           timeout: 2000
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 90000
 # Home ids stay visible behind an open drawer — require drawer closed before gear.
 - assertNotVisible:
@@ -74,7 +74,7 @@ tags:
 - assertNotVisible:
     id: 'settings-menu-more-settings'
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
       id: 'settings-drawer-content'
@@ -173,13 +173,13 @@ tags:
     id: 'stack-header-back'
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 90000
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 # Happy-path active12 restore (EXTERNAL host finally still required on failure).
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
       id: 'settings-drawer-content'
@@ -200,7 +200,7 @@ tags:
           timeout: 2000
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 90000
 # Same: closed drawer before gear after switch back to account 12.
 - assertNotVisible:
@@ -208,7 +208,7 @@ tags:
 - assertNotVisible:
     id: 'settings-menu-more-settings'
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
       id: 'settings-drawer-content'
@@ -228,8 +228,8 @@ tags:
 - assertNotVisible:
     id: 'settings-drawer-content'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertVisible:
-    id: 'home-settings-button'
+    id: 'home-account'
 - assertNotVisible:
     id: 'login-email-input'

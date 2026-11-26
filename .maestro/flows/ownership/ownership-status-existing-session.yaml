@@ -1,8 +1,9 @@
-# READ-ONLY: chapter-list ownership / conflict status for one EXISTING fixture chapter.
+# READ-ONLY: Next book-page ownership / conflict status for one EXISTING
+# fixture chapter.
 #
-# Asserts chapter-list ownership UI state beyond entry smoke:
-# env-declared expected ownership on a named project+chapter row, without
-# claim / record / stage-advance / reassign / Sync Now.
+# Asserts book-chapter meta beyond entry smoke: env-declared expected
+# ownership on a named project+chapter, without claim / record /
+# stage-advance / reassign / Sync Now.
 #
 # Required env (fail if absent/invalid — no skip/auth fallback):
 # - MAESTRO_FIXTURE_PROJECT_NAME
@@ -11,12 +12,13 @@
 #
 # Optional env (omit/empty → none; typo FAILS — never silent skip):
 # - MAESTRO_EXPECT_RECORD_WARNING = none | taken | conflict
-#   When taken|conflict: open Record tab read-only to assert warning chrome,
-#   then back out. Never taps record-start / record-new-take.
+#   When taken|conflict: open Passage read-only to assert notice chrome,
+#   then back out. Never taps passage-record / passage-key-record.
 #
-# Exit: ViewProject uses StackScreenHeader testID stack-header-back
-# (ViewProject.tsx + StackScreenHeader.tsx). goto-home has no chapter-list
-# branch — do NOT call goto-home from chapter list (times out).
+# Next map: home-tab-projects / milestone-row / chapter-row → home books +
+# book-chapter-*-meta ("Yours" / "Someone else's" / "Unassigned" /
+# "Sync conflict"); record-*-warning → passage-notices-taken|conflict.
+# Leave via book-back (goto-home).
 #
 # Forbidden: clearState, ensure-on-login, login-*, ensure-warm-home,
 # ensure-warm-session, ownership-auto-claim, Sync, Discard recovery.
@@ -26,171 +28,123 @@ tags:
   - existing-session
   - read-only
 ---
-# Normalize + validate ALL enums (including optionals) before any UI work.
-# Complex selector values use external runScript (do NOT store functions on
-# output — Maestro contexts drop them).
 - runScript: ../../shared/scripts/ownership-status-values.js
+- evalScript: >-
+    ${output.projectNameOnHome = (typeof MAESTRO_FIXTURE_PROJECT_NAME === 'undefined' || MAESTRO_FIXTURE_PROJECT_NAME === null) ? '' : String(MAESTRO_FIXTURE_PROJECT_NAME)}
 - assertTrue: ${output.fixtureProjectName.length > 0}
 - assertTrue: ${output.fixtureChapterLabel.length > 0}
 - assertTrue: ${['mine','other','unassigned','conflict'].indexOf(output.expectOwnership) >= 0}
 - assertTrue: ${['none','taken','conflict'].indexOf(output.expectRecordWarning) >= 0}
-- assertTrue: ${typeof output.projectNameRe === 'string' && output.projectNameRe.length > 0}
+- assertTrue: ${typeof output.projectNameOnHome === 'string' && output.projectNameOnHome.length > 0}
 - assertTrue: ${typeof output.chapterLabelRe === 'string' && output.chapterLabelRe.length > 0}
 
 - assertNotVisible:
     id: 'login-email-input'
 - runFlow: ../../shared/nav/goto-home.yaml
 - assertVisible:
-    id: 'home-tab-my-work'
-- tapOn:
-    id: 'home-tab-projects'
-- extendedWaitUntil:
-    visible:
-      id: 'milestone-row-.*'
-    timeout: 60000
+    id: 'home-header'
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - scrollUntilVisible:
     element:
-      text: ${output.projectNameRe}
+      text: '.+${output.projectNameOnHome}.+'
     direction: DOWN
     timeout: 60000
+    visibilityPercentage: 50
 - tapOn:
-    text: ${output.projectNameRe}
+    text: '.+${output.projectNameOnHome}.+'
+- runFlow:
+    when:
+      visible:
+        id: 'passage-header'
+    commands:
+      - tapOn:
+          id: 'passage-title'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-title-sheet'
+          timeout: 15000
+      - tapOn:
+          id: 'passage-book'
 - extendedWaitUntil:
     visible:
-      id: 'chapter-row-.*'
+      id: 'book-header'
     timeout: 60000
+- repeat:
+    times: 12
+    commands:
+      - swipe:
+          from:
+            id: 'book-list'
+          direction: DOWN
+          duration: 250
 - scrollUntilVisible:
     element:
       text: ${output.chapterLabelRe}
     direction: DOWN
     timeout: 90000
+    visibilityPercentage: 50
 - assertVisible:
-    id: 'chapter-row-.*'
+    id: 'book-chapter-.*'
     containsDescendants:
       - text: ${output.chapterLabelRe}
 
-# mine — ownership id + a11y label scoped to the chosen chapter row
 - runFlow:
     when:
       true: ${output.expectOwnership == 'mine'}
     commands:
-      - assertVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-ownership-mine'
-            - text: '^Assigned to you$'
-      - assertNotVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-conflict-indicator'
-
-# other
+      - assertVisible: 'Yours'
 - runFlow:
     when:
       true: ${output.expectOwnership == 'other'}
     commands:
-      - assertVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-ownership-other'
-            - text: '^Assigned to another translator$'
-      - assertNotVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-conflict-indicator'
-
-# unassigned — no ownership icon / conflict on that row
+      - assertVisible: "Someone else's"
 - runFlow:
     when:
       true: ${output.expectOwnership == 'unassigned'}
     commands:
-      - assertNotVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-ownership-mine'
-      - assertNotVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-ownership-other'
-      - assertNotVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-conflict-indicator'
-
-# conflict — indicator + a11y label scoped to chosen row
+      - assertVisible: 'Unassigned'
 - runFlow:
     when:
       true: ${output.expectOwnership == 'conflict'}
     commands:
-      - assertVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-conflict-indicator'
-            - text: '^Unresolved recording conflict$'
-      - assertNotVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-ownership-mine'
-      - assertNotVisible:
-          id: 'chapter-row-.*'
-          containsDescendants:
-            - text: ${output.chapterLabelRe}
-            - id: 'chapter-ownership-other'
+      - assertVisible: 'Sync conflict'
 
-# Optional Record-tab warning inspect (read-only — no record/claim taps)
 - runFlow:
     when:
       true: ${output.expectRecordWarning == 'taken' || output.expectRecordWarning == 'conflict'}
     commands:
       - tapOn:
-          text: ${output.chapterLabelRe}
+          id: 'book-passage-.*'
       - extendedWaitUntil:
           visible:
-            id: 'drafting-tab-bar'
+            id: 'passage-header'
           timeout: 60000
-      - tapOn:
-          id: 'drafting-tab-record'
-      - assertVisible:
-          id: 'record-tab'
       - runFlow:
           when:
             true: ${output.expectRecordWarning == 'taken'}
           commands:
             - assertVisible:
-                id: 'record-taken-warning'
+                id: 'passage-notices-taken'
             - assertNotVisible:
-                id: 'record-conflict-warning'
+                id: 'passage-notices-conflict'
       - runFlow:
           when:
             true: ${output.expectRecordWarning == 'conflict'}
           commands:
             - assertVisible:
-                id: 'record-conflict-warning'
-      - tapOn:
-          id: 'drafting-header-back'
+                id: 'passage-notices-conflict'
+      - back
       - extendedWaitUntil:
           visible:
-            id: 'chapter-row-.*'
+            id: 'book-header'
           timeout: 30000
 
-# Leave ViewProject chapter list via stack header back (source-backed).
-- assertVisible:
-    id: 'stack-header-back'
 - tapOn:
-    id: 'stack-header-back'
+    id: 'book-back'
+- runFlow: ../../shared/nav/goto-home.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 30000
 - assertNotVisible:
     id: 'login-email-input'

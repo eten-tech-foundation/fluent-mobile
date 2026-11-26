@@ -8,7 +8,7 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/goto-settings.yaml

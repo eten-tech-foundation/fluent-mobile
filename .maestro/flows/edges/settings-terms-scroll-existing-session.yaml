@@ -14,15 +14,15 @@ tags:
 - assertNotVisible:
     id: 'login-email-input'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
 - tapOn:
-    id: 'settings-menu-terms-of-use'
+    id: 'home-accounts-terms'
 - extendedWaitUntil:
     visible:
       id: 'terms-of-use-scroll'
@@ -60,19 +60,19 @@ tags:
     id: 'terms-of-use-scroll-back'
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 15000
 # Verify retained active/cached identities without switching or authenticating.
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
 - back
 - assertNotVisible:
-    id: 'settings-drawer-content'
+    id: 'home-accounts'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertNotVisible:
     id: 'login-email-input'

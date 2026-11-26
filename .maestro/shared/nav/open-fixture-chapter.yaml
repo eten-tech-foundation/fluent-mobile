@@ -1,5 +1,8 @@
 # Open Home → fixture project/book → chapter label → Next Passage.
 # Env: MAESTRO_FIXTURE_PROJECT_NAME, MAESTRO_FIXTURE_CHAPTER_LABEL
+# Home book cards show bookName + milestoneName, not the API project name.
+# Match the project name as a substring (Next-up status or a11y label), then
+# if that opened a passage, use the title sheet to reach the book page.
 appId: com.eten.fluent
 ---
 - runFlow: goto-home.yaml
@@ -10,20 +13,45 @@ appId: com.eten.fluent
 - runFlow: ../ensure/ensure-no-modal.yaml
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_PROJECT_NAME}
+      text: '.*${MAESTRO_FIXTURE_PROJECT_NAME}.*'
     direction: DOWN
     timeout: 60000
+    visibilityPercentage: 50
 - tapOn:
-    text: ${MAESTRO_FIXTURE_PROJECT_NAME}
+    text: '.*${MAESTRO_FIXTURE_PROJECT_NAME}.*'
+- runFlow:
+    when:
+      visible:
+        id: 'passage-header'
+    commands:
+      - tapOn:
+          id: 'passage-title'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-title-sheet'
+          timeout: 15000
+      - tapOn:
+          id: 'passage-book'
 - extendedWaitUntil:
     visible:
       id: 'book-header'
     timeout: 60000
+# Gallery may open focused on a later chapter. Fling toward the start, then
+# search down for the fixture label.
+- repeat:
+    times: 12
+    commands:
+      - swipe:
+          from:
+            id: 'book-list'
+          direction: DOWN
+          duration: 250
 - scrollUntilVisible:
     element:
       text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
     direction: DOWN
     timeout: 90000
+    visibilityPercentage: 50
 - tapOn:
     id: 'book-passage-.*'
 - repeat:

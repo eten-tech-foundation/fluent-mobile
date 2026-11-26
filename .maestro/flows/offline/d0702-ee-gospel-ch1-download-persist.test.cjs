@@ -200,7 +200,7 @@ describe('D-0702-01 durable wrapper static contract', () => {
     );
     // Both post-switch gear taps (active9 + restore12) require drawer closed first.
     const postSwitchGear =
-      /extendedWaitUntil:\s*\n\s*visible:\s*\n\s*id: 'home-tab-my-work'[\s\S]*?assertNotVisible:\s*\n\s*id: 'settings-drawer-content'\s*\n- assertNotVisible:\s*\n\s*id: 'settings-menu-more-settings'\s*\n- tapOn:\s*\n\s*id: 'home-settings-button'/g;
+      /extendedWaitUntil:\s*\n\s*visible:\s*\n\s*id: 'home-header'[\s\S]*?assertNotVisible:\s*\n\s*id: 'settings-drawer-content'\s*\n- assertNotVisible:\s*\n\s*id: 'settings-menu-more-settings'\s*\n- tapOn:\s*\n\s*id: 'home-account'/g;
     const postSwitchMatches = body.match(postSwitchGear) || [];
     assert.equal(
       postSwitchMatches.length,
@@ -235,22 +235,22 @@ describe('D-0702-01 durable wrapper static contract', () => {
       'identity (active12+cache) then Back',
     );
     assert.ok(
-      /pressKey:\s*Back[\s\S]*assertNotVisible:\s*\n\s*id: 'settings-drawer-content'[\s\S]*assertVisible:\s*\n\s*id: 'home-tab-my-work'/m.test(
+      /pressKey:\s*Back[\s\S]*assertNotVisible:\s*\n\s*id: 'settings-drawer-content'[\s\S]*assertVisible:\s*\n\s*id: 'home-header'/m.test(
         afterIdentity,
       ),
       'Back → drawer absent → Home visible',
     );
     // Forbidden: dismiss open drawer by tapping Home chrome behind it.
     assert.ok(
-      !/settings-menu-active-12[\s\S]*tapOn:\s*\n\s*id: 'home-tab-my-work'[\s\S]*assertNotVisible:\s*\n\s*id: 'settings-drawer-content'/m.test(
+      !/settings-menu-active-12[\s\S]*tapOn:\s*\n\s*id: 'home-header'[\s\S]*assertNotVisible:\s*\n\s*id: 'settings-drawer-content'/m.test(
         body,
       ),
-      'must not dismiss drawer via background home-tab-my-work tap',
+      'must not dismiss drawer via background home-header tap',
     );
     // No reopen of drawer after final Back (would leave open for host/next case).
     const afterBack = body.slice(backIdx);
     assert.ok(
-      !/tapOn:\s*\n\s*id: 'home-settings-button'/.test(afterBack),
+      !/tapOn:\s*\n\s*id: 'home-account'/.test(afterBack),
       'must not reopen drawer after final Back',
     );
     void drawerGoneIdx;

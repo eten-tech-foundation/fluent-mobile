@@ -17,10 +17,10 @@ tags:
 - runFlow:
     when:
       visible:
-        id: '^home-next-${output.fixtureChapterId}:'
+        id: '^home-next-${output.fixtureChapterId}:.*'
     commands:
       - tapOn:
-          id: '^home-next-${output.fixtureChapterId}:'
+          id: '^home-next-${output.fixtureChapterId}:.*'
 - runFlow:
     when:
       notVisible:
@@ -40,12 +40,12 @@ tags:
     commands:
       - scrollUntilVisible:
           element:
-            id: '^home-next-${output.fixtureChapterId}:'
+            id: '^home-next-${output.fixtureChapterId}:.*'
           direction: DOWN
           timeout: 30000
       - runFlow: ../ensure/ensure-no-modal.yaml
       - tapOn:
-          id: '^home-next-${output.fixtureChapterId}:'
+          id: '^home-next-${output.fixtureChapterId}:.*'
 - extendedWaitUntil:
     visible:
       id: 'passage-header|observer-screen'

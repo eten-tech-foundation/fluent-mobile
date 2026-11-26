@@ -1,4 +1,5 @@
-# Resources sections expand/collapse chrome.
+# Next resources: expand/collapse the docked images card, and open
+# Translation Questions from the title sheet. Never taps passage-classic.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -8,20 +9,36 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
+- assertVisible:
+    id: 'passage-header'
 - tapOn:
-    id: 'drafting-tab-resources'
+    id: 'passage-resources-open'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-resources'
+    timeout: 15000
 - assertVisible:
-    id: 'resources-tab'
-- runFlow:
-    when:
-      visible:
-        id: 'resources-section-.*-toggle'
-    commands:
-      - tapOn:
-          id: 'resources-section-.*-toggle'
-- assertVisible:
-    id: 'resources-tab'
+    id: 'passage-images-list|passage-images-empty|passage-images-unprepared|passage-images-loading|passage-images-none-offline|passage-images-error|passage-images-no-text'
+- tapOn:
+    id: 'passage-resources-collapse'
+- tapOn:
+    id: 'passage-title'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-title-sheet'
+    timeout: 15000
+- tapOn:
+    id: 'passage-open-questions'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-questions'
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'passage-header'
+    timeout: 15000

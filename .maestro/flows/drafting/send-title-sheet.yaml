@@ -1,0 +1,33 @@
+# Send / later-stage on Next: title sheet rows passage-send /
+# passage-send-queued / passage-send-sent. Never taps passage-classic.
+# Pins the assigned draft (`MAESTRO_FIXTURE_CHAPTER_ID`) — open-any-chapter
+# can land on Complete (no Send row). If this draft still has no send, the
+# assert fails visibly (Blocked) — do not skip-green.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - fixture-blocked
+---
+- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-header'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
+- assertVisible:
+    id: 'passage-header'
+- tapOn:
+    id: 'passage-title'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-title-sheet'
+    timeout: 15000
+- assertVisible:
+    id: 'passage-send|passage-send-queued|passage-send-sent'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'passage-header'
+    timeout: 15000

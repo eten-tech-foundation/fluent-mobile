@@ -40,4 +40,12 @@ appId: com.eten.fluent
             - openLink: ${MAESTRO_DEV_CLIENT_URL}
             - waitForAnimationToEnd:
                 timeout: 30000
+      # SDK 57 Dev Client home lists servers instead of a Connect button.
+      - runFlow:
+          when:
+            visible: 'Development Build'
+          commands:
+            - openLink: ${MAESTRO_DEV_CLIENT_URL}
+            - waitForAnimationToEnd:
+                timeout: 30000
 - runFlow: dismiss-expo-dev-menu.yaml

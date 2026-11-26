@@ -1,15 +1,21 @@
-# Take view mine/all toggle — existing session only (read-only chrome).
+# Others' takes (Legacy mine/all take-view-toggle → Next Review) — existing
+# session only (read-only chrome). Next map: my-work-row-* → home-next-{id}:
+# via open-my-work-chapter; take-view-toggle → passage-title →
+# passage-open-review (hard, offered only with multiple recorders);
+# take-view-all / record-all-take-list → passage-review +
+# passage-review-owner-*; take-view-mine → Review closed (Passage shows only
+# my takes).
 #
 # Preconditions (fail visibly if unmet — no optional skip / fake pass):
 # - App already running with a logged-in session (not login screen).
-# - Home reachable; My Work contains my-work-row for fixture chapter id.
+# - Home reachable; Next up (or the book page) shows the fixture chapter id.
 # - MAESTRO_FIXTURE_CHAPTER_ID: nonempty digits /^[1-9][0-9]*$/ (typeof-safe
 #   guard below).
 # - EXISTING multi-recorder data on that chapter's current Record unit so
-#   take-view-toggle is visible (hasMultipleRecorders). If toggle absent → FAIL.
+#   passage-open-review is offered (hasMultipleRecorders). If absent → FAIL.
 # - MAESTRO_FIXTURE_TAKE_VIEW_ALL_MARKER: required nonempty typeof-safe string;
-#   non-sensitive All Takes label (typically take-group-header-name text).
-#   Asserted as anchored ^…$ escaped exact text; must not show under My Takes.
+#   non-sensitive other-recorder label (Review owner name text).
+#   Asserted as anchored ^…$ escaped exact text; must not show outside Review.
 #
 # Forbidden (command nodes — not this comment): clearState, ensure-on-login,
 # login-*, ensure-warm-home, ensure-warm-session, Discard, record-start /
@@ -40,68 +46,47 @@ tags:
 
 - assertNotVisible:
     id: 'login-email-input'
-- runFlow: ../../shared/nav/goto-home.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'passage-header'
+# Mine (Review closed): fixture marker must not show.
+- assertNotVisible:
+    id: 'passage-review'
+- assertNotVisible:
+    text: ${output.takeViewAllMarkerRe}
 - tapOn:
-    id: 'home-tab-my-work'
-- scrollUntilVisible:
-    element:
-      id: ${output.myWorkRowIdRe}
-    direction: DOWN
-    timeout: 30000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- tapOn:
-    id: ${output.myWorkRowIdRe}
+    id: 'passage-title'
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
-    timeout: 30000
-- tapOn:
-    id: 'drafting-tab-record'
-- assertVisible:
-    id: 'record-tab'
+      id: 'passage-title-sheet'
+    timeout: 10000
 # Hard fail if multi-recorder fixture missing (no when/skip).
 - extendedWaitUntil:
     visible:
-      id: 'take-view-toggle'
+      id: 'passage-open-review'
     timeout: 20000
-- assertVisible:
-    id: 'take-view-mine'
-- assertVisible:
-    id: 'take-view-all'
-# Default mine: All list + fixture marker must not show.
 - tapOn:
-    id: 'take-view-mine'
-- assertNotVisible:
-    id: 'record-all-take-list'
-- assertNotVisible:
-    text: ${output.takeViewAllMarkerRe}
-# Switch to All: list + non-sensitive marker from fixture.
-- tapOn:
-    id: 'take-view-all'
+    id: 'passage-open-review'
+# All: Review + owner group + non-sensitive marker from fixture.
+- extendedWaitUntil:
+    visible:
+      id: 'passage-review'
+    timeout: 15000
 - assertVisible:
-    id: 'record-all-take-list'
-- assertVisible:
-    id: 'take-group-header'
+    id: 'passage-review-owner-.*'
 - extendedWaitUntil:
     visible:
       text: ${output.takeViewAllMarkerRe}
     timeout: 15000
-- assertNotVisible:
-    id: 'record-take-list'
-# Back to mine: All chrome gone; marker gone.
-- tapOn:
-    id: 'take-view-mine'
-- assertNotVisible:
-    id: 'record-all-take-list'
+# Back to mine: Review gone; marker gone.
+- back
+- extendedWaitUntil:
+    notVisible:
+      id: 'passage-review'
+    timeout: 10000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - assertNotVisible:
     text: ${output.takeViewAllMarkerRe}
-- tapOn:
-    id: 'drafting-header-back'
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 30000
+- runFlow: ../../shared/nav/goto-home.yaml
 - assertNotVisible:
     id: 'login-email-input'

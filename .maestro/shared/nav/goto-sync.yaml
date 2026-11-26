@@ -12,7 +12,7 @@ tags:
 - waitForAnimationToEnd:
     timeout: 3000
 - repeat:
-    times: 4
+    times: 8
     while:
       notVisible:
         id: 'sync-screen'

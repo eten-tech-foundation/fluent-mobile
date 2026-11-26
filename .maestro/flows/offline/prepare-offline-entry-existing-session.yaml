@@ -17,15 +17,7 @@ tags:
 ---
 - assertNotVisible:
     id: 'login-email-input'
-- runFlow: ../../shared/nav/goto-home.yaml
-- assertVisible:
-    id: 'home-tab-my-work'
-- assertVisible:
-    id: 'home-settings-button'
-- tapOn:
-    id: 'home-settings-button'
-- tapOn:
-    id: 'settings-menu-more-settings'
+- runFlow: ../../shared/nav/goto-settings.yaml
 - scrollUntilVisible:
     element:
       id: 'settings-prepare-offline'
@@ -43,6 +35,6 @@ tags:
     id: 'stack-header-back'
 - runFlow: ../../shared/nav/goto-home.yaml
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertNotVisible:
     id: 'login-email-input'

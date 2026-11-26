@@ -31,12 +31,12 @@ tags:
 - assertNotVisible:
     id: 'settings-menu-more-settings'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertVisible:
-    id: 'home-settings-button'
+    id: 'home-account'
 # Cached switch → PM9
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
       id: 'settings-drawer-content'
@@ -61,10 +61,10 @@ tags:
           timeout: 2000
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 90000
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
       id: 'settings-drawer-content'
@@ -238,10 +238,10 @@ tags:
     id: 'stack-header-back'
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 90000
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
       id: 'settings-drawer-content'
@@ -258,8 +258,8 @@ tags:
 - assertNotVisible:
     id: 'settings-drawer-content'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertVisible:
-    id: 'home-settings-button'
+    id: 'home-account'
 - assertNotVisible:
     id: 'login-email-input'

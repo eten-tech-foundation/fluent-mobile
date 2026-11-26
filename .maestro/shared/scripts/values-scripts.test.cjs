@@ -61,6 +61,8 @@ describe('resources-populated-values', () => {
     assertExact(out.contentMarkerRe, 'Map (1).png');
     assertExact(out.myWorkRowIdRe, 'my-work-row-7');
     assert.ok(!new RegExp(out.myWorkRowIdRe).test('my-work-row-70'));
+    assertExact(out.homeNextIdRe, 'home-next-7:foo');
+    assert.ok(!new RegExp(out.homeNextIdRe).test('home-next-70:foo'));
   });
 
   it('exports empty selectors when env is missing', () => {

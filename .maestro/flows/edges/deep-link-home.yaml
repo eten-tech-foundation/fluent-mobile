@@ -5,7 +5,9 @@ tags:
   - deeplink
 ---
 - runFlow: ../../shared/ensure/ensure-on-login.yaml
-- openLink: fluent://home
+# Next has no /home route (`fluent://home` → Unmatched). Index `/` is the
+# session gate to login or Home. Mapping leftover `/home` URLs is #917.
+- openLink: fluent:///
 - runFlow: ../../helpers/boot-past-dev-launcher.yaml
 - evalScript: ${output.deepLinkLanded = ''}
 - runFlow:
@@ -19,9 +21,9 @@ tags:
 - runFlow:
     when:
       visible:
-        id: 'home-tab-my-work'
+        id: 'home-header'
     commands:
       - evalScript: ${output.deepLinkLanded = 'home'}
       - assertVisible:
-          id: 'home-tab-my-work'
+          id: 'home-header'
 - assertTrue: ${output.deepLinkLanded == 'login' || output.deepLinkLanded == 'home'}

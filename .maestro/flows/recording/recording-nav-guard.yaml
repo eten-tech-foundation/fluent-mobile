@@ -1,6 +1,13 @@
-# Recording nav guard: back while recording raises alert and stays on Record.
+# Recording leave guard on Next Passage: a live take + leave asks
+# "Recording in progress"; Resume cancels the leave and keeps recording;
+# leave again and Discard ends the take and closes the player.
 # Mutating: requires MAESTRO_FIXTURE_CHAPTER_ID on an allowlisted project.
 # fixture-blocked keeps default lanes from running this without that fixture.
+# Next map: drafting-header-back → Sheet.close() (system Back). Close in the
+# hero is the same handler, but it sits in a GestureDetector; Maestro's tap
+# on passage-close does not fire onPress (device 2026-11-25). Both prompts
+# use Back. record-start → passage-record + passage-key-record; live key →
+# 'Pause recording'. Dialog actions: passage-confirm-cancel / -confirm.
 appId: com.eten.fluent
 tags:
   - edges
@@ -17,48 +24,56 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/open-my-work-chapter.yaml
-- tapOn:
-    id: 'drafting-tab-record'
+- assertVisible:
+    id: 'passage-header'
 - runFlow: ../../shared/ensure/ensure-take-capacity.yaml
-- runFlow:
-    when:
-      visible:
-        id: 'record-start-button'
-        enabled: true
-    commands:
-      - tapOn:
-          id: 'record-start-button'
-- runFlow:
-    when:
-      visible:
-        id: 'record-new-take-button'
-        enabled: true
-    commands:
-      - tapOn:
-          id: 'record-new-take-button'
+- tapOn:
+    id: 'passage-record'
 - extendedWaitUntil:
     visible:
-      id: 'record-stop-button'
+      id: 'passage-player'
     timeout: 15000
 - tapOn:
-    id: 'drafting-header-back'
+    id: 'passage-key-record'
 - extendedWaitUntil:
-    visible: 'Recording in progress'
+    visible: 'Pause recording'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+# Cancelled navigation: Back asks, Resume keeps the live take.
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'passage-confirm'
     timeout: 10000
-- tapOn: 'Resume'
-- assertVisible:
-    id: 'record-stop-button'
+- assertVisible: 'Recording in progress'
 - tapOn:
-    id: 'drafting-header-back'
-- extendedWaitUntil:
-    visible: 'Recording in progress'
-    timeout: 10000
-- tapOn: 'Discard'
+    id: 'passage-confirm-cancel'
 - extendedWaitUntil:
     notVisible:
-      id: 'record-stop-button'
+      id: 'passage-confirm'
+    timeout: 10000
+- assertVisible:
+    id: 'passage-player'
+- assertVisible: 'Pause recording'
+# Leave again; Discard ends the take and closes the player.
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'passage-confirm'
+    timeout: 10000
+- tapOn:
+    id: 'passage-confirm-confirm'
+- extendedWaitUntil:
+    notVisible: 'Pause recording'
     timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: 'passage-record'
+    timeout: 15000
+- assertVisible:
+    id: 'passage-header'
