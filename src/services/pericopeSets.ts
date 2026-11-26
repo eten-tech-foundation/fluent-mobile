@@ -84,6 +84,7 @@ function normalizeFiaRow(row: RawFiaPericopeRow): BundledPericopeVerse {
 }
 
 type AssetReadTiming = {
+  /** JavaScript string length of the asset text. Not a UTF-8 scan. */
   bytes: number;
   parseMs: number;
 };
@@ -96,25 +97,6 @@ function monotonicNow(): number {
 
 function elapsedMs(since: number): number {
   return Math.round((monotonicNow() - since) * 10) / 10;
-}
-
-/** UTF-8 size of the asset text. The project tsconfig has no TextEncoder type. */
-function utf8ByteLength(text: string): number {
-  let bytes = 0;
-  for (let i = 0; i < text.length; i += 1) {
-    const code = text.charCodeAt(i);
-    if (code < 0x80) {
-      bytes += 1;
-    } else if (code < 0x800) {
-      bytes += 2;
-    } else if (code >= 0xd800 && code <= 0xdbff) {
-      bytes += 4;
-      i += 1;
-    } else {
-      bytes += 3;
-    }
-  }
-  return bytes;
 }
 
 /**
@@ -159,7 +141,7 @@ async function readBundledJson<T>(
   }
   return {
     rows: parsed as T[],
-    timing: { bytes: utf8ByteLength(text), parseMs },
+    timing: { bytes: text.length, parseMs },
   };
 }
 
