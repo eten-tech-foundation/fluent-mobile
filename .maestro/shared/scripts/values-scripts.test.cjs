@@ -70,6 +70,7 @@ describe('resources-populated-values', () => {
     assert.equal(out.sectionId, '');
     assert.equal(out.sectionToggleId, '');
     assert.equal(out.myWorkRowIdRe, '');
+    assert.equal(out.homeNextIdRe, '');
   });
 });
 
@@ -93,6 +94,8 @@ describe('fixture chapter row exporters', () => {
     });
     assertExact(out.myWorkRowIdRe, 'my-work-row-12');
     assert.ok(!new RegExp(out.myWorkRowIdRe).test('my-work-row-123'));
+    assertExact(out.homeNextIdRe, 'home-next-12:x');
+    assert.ok(!new RegExp(out.homeNextIdRe).test('home-next-120:x'));
     assertExact(out.takeViewAllMarkerRe, 'All takes');
   });
 
@@ -126,7 +129,9 @@ describe('fixture chapter row exporters', () => {
       const out = run('fixture-row-values', {}, { fixtureChapterId });
       assert.equal(out.myWorkRowIdRe, '');
       assert.equal(out.homeNextIdRe, '');
+      assert.equal(out.homeChangesIdRe, '');
       assert.equal(out.bookChapterIdRe, '');
+      assert.equal(out.bookPassageIdRe, '');
     }
   });
 
@@ -138,6 +143,8 @@ describe('fixture chapter row exporters', () => {
     });
     assertExact(out.myWorkRowIdRe, 'my-work-row-3');
     assertExact(out.bibleVerseRowIdRe, 'bible-verse-row-4');
+    assertExact(out.passageScriptVerseIdRe, 'passage-script-verse-4');
+    assertExact(out.passageVerseRowIdRe, 'passage-verse-row-4');
     assertExact(out.recordReferenceRe, 'Mark 1:4');
     assert.ok(!new RegExp(out.myWorkRowIdRe).test('my-work-row-30'));
   });
@@ -157,10 +164,13 @@ describe('fixture chapter row exporters', () => {
 
   it('chapter-id exporters stay empty without MAESTRO_FIXTURE_CHAPTER_ID', () => {
     assert.equal(run('take-view-values').myWorkRowIdRe, '');
+    assert.equal(run('take-view-values').homeNextIdRe, '');
     assert.equal(run('verse-bounds-values').myWorkRowIdRe, '');
     const bible = run('bible-record-values');
     assert.equal(bible.myWorkRowIdRe, '');
     assert.equal(bible.bibleVerseRowIdRe, '');
+    assert.equal(bible.passageScriptVerseIdRe, '');
+    assert.equal(bible.passageVerseRowIdRe, '');
     assert.equal(bible.recordReferenceRe, '');
   });
 });

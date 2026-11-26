@@ -5,6 +5,12 @@
 # if that opened a passage, use the title sheet to reach the book page.
 appId: com.eten.fluent
 ---
+- evalScript: >-
+    ${output.fixtureProjectName = (typeof MAESTRO_FIXTURE_PROJECT_NAME === 'undefined' || MAESTRO_FIXTURE_PROJECT_NAME === null) ? '' : String(MAESTRO_FIXTURE_PROJECT_NAME).trim()}
+- evalScript: >-
+    ${output.fixtureChapterLabel = (typeof MAESTRO_FIXTURE_CHAPTER_LABEL === 'undefined' || MAESTRO_FIXTURE_CHAPTER_LABEL === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_LABEL).trim()}
+- assertTrue: ${typeof output.fixtureProjectName === 'string' && output.fixtureProjectName.length > 0}
+- assertTrue: ${typeof output.fixtureChapterLabel === 'string' && output.fixtureChapterLabel.length > 0}
 - runFlow: goto-home.yaml
 - extendedWaitUntil:
     visible:
@@ -13,12 +19,12 @@ appId: com.eten.fluent
 - runFlow: ../ensure/ensure-no-modal.yaml
 - scrollUntilVisible:
     element:
-      text: '.*${MAESTRO_FIXTURE_PROJECT_NAME}.*'
+      text: '.*${output.fixtureProjectName}.*'
     direction: DOWN
     timeout: 60000
     visibilityPercentage: 50
 - tapOn:
-    text: '.*${MAESTRO_FIXTURE_PROJECT_NAME}.*'
+    text: '.*${output.fixtureProjectName}.*'
 - runFlow:
     when:
       visible:
@@ -48,7 +54,7 @@ appId: com.eten.fluent
           duration: 250
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
+      text: ${output.fixtureChapterLabel}
     direction: DOWN
     timeout: 90000
     visibilityPercentage: 50

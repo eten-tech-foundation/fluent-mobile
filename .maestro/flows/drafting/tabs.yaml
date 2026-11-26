@@ -14,28 +14,23 @@ tags:
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
 - assertVisible:
-    id: 'passage-header|observer-screen'
-- runFlow:
-    when:
-      visible:
-        id: 'passage-header'
-    commands:
-      - assertVisible:
-          id: 'passage-record|passage-listen'
-      - assertVisible:
-          id: 'passage-resources-peek|passage-resources-open'
-      - tapOn:
-          id: 'passage-title'
-      - extendedWaitUntil:
-          visible:
-            id: 'passage-title-sheet'
-          timeout: 15000
-      - assertVisible:
-          id: 'passage-open-questions'
-      - back
-      - extendedWaitUntil:
-          visible:
-            id: 'passage-header'
-          timeout: 15000
-      - assertVisible:
-          id: 'passage-record|passage-listen'
+    id: 'passage-header'
+- assertVisible:
+    id: 'passage-record|passage-listen'
+- assertVisible:
+    id: 'passage-resources-peek|passage-resources-open'
+- tapOn:
+    id: 'passage-title'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-title-sheet'
+    timeout: 15000
+- assertVisible:
+    id: 'passage-open-questions'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'passage-header'
+    timeout: 15000
+- assertVisible:
+    id: 'passage-record|passage-listen'

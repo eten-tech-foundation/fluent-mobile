@@ -16,29 +16,24 @@ tags:
     id: 'login-email-input'
 - runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - assertVisible:
-    id: 'passage-header|observer-screen'
-- runFlow:
-    when:
-      visible:
-        id: 'passage-header'
-    commands:
-      - assertVisible:
-          id: 'passage-record|passage-listen'
-      - assertVisible:
-          id: 'passage-resources-peek|passage-resources-open'
-      - tapOn:
-          id: 'passage-title'
-      - extendedWaitUntil:
-          visible:
-            id: 'passage-title-sheet'
-          timeout: 15000
-      - assertVisible:
-          id: 'passage-open-questions'
-      - back
-      - extendedWaitUntil:
-          visible:
-            id: 'passage-header'
-          timeout: 15000
+    id: 'passage-header'
+- assertVisible:
+    id: 'passage-record|passage-listen'
+- assertVisible:
+    id: 'passage-resources-peek|passage-resources-open'
+- tapOn:
+    id: 'passage-title'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-title-sheet'
+    timeout: 15000
+- assertVisible:
+    id: 'passage-open-questions'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'passage-header'
+    timeout: 15000
 - runFlow: ../../shared/nav/goto-home.yaml
 - extendedWaitUntil:
     visible:

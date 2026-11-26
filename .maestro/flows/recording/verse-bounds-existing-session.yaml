@@ -66,14 +66,14 @@ tags:
 # Anchored exact FIRST chip/label (not copyTextFrom-only).
 - extendedWaitUntil:
     visible:
-      text: '${output.verseRefFirst}'
+      text: '^${output.verseRefFirst}$'
     timeout: 15000
 - tapOn:
     id: 'passage-key-next'
 # Wait for NEXT label so stale same-testID text cannot pass.
 - extendedWaitUntil:
     visible:
-      text: '${output.verseRefNext}'
+      text: '^${output.verseRefNext}$'
     timeout: 15000
 - assertVisible:
     id: 'passage-verse-position'
@@ -85,7 +85,7 @@ tags:
     id: 'passage-key-previous'
 - extendedWaitUntil:
     visible:
-      text: '${output.verseRefFirst}'
+      text: '^${output.verseRefFirst}$'
     timeout: 15000
 - assertVisible:
     id: 'passage-verse-position'

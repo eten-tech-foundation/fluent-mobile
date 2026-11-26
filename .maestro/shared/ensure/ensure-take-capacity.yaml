@@ -1,15 +1,8 @@
-# Fail fast when neither Next Record nor an enabled Legacy start/new-take is
-# available (at cap). Next capacity is asserted in the recording flows; this
-# helper only refuses a dead Record control.
+# Fail fast on Legacy when Record is absent (at cap). Next capacity is
+# asserted in the recording flows (`passage-key-record` enabled) — a visible
+# `passage-record` here is not a capacity signal (blocked Record still shows).
 appId: com.eten.fluent
 ---
-- runFlow:
-    when:
-      visible:
-        id: 'passage-record'
-    commands:
-      - assertVisible:
-          id: 'passage-record'
 - runFlow:
     when:
       notVisible:

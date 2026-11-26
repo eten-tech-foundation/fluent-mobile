@@ -4,4 +4,6 @@ output.fixtureVerseNumber = (typeof MAESTRO_FIXTURE_VERSE_NUMBER === 'undefined'
 output.expectRecordReference = (typeof MAESTRO_EXPECT_RECORD_REFERENCE === 'undefined' || MAESTRO_EXPECT_RECORD_REFERENCE === null) ? '' : String(MAESTRO_EXPECT_RECORD_REFERENCE).trim();
 output.myWorkRowIdRe = output.fixtureChapterId.length > 0 ? ('^my-work-row-' + String(output.fixtureChapterId).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '$') : '';
 output.bibleVerseRowIdRe = output.fixtureVerseNumber.length > 0 ? ('^bible-verse-row-' + String(output.fixtureVerseNumber).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '$') : '';
+output.passageScriptVerseIdRe = output.fixtureVerseNumber.length > 0 ? ('^passage-script-verse-' + String(output.fixtureVerseNumber).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '$') : '';
+output.passageVerseRowIdRe = output.fixtureVerseNumber.length > 0 ? ('^passage-verse-row-' + String(output.fixtureVerseNumber).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '$') : '';
 output.recordReferenceRe = output.expectRecordReference.length > 0 ? ('^' + String(output.expectRecordReference).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '$') : '';

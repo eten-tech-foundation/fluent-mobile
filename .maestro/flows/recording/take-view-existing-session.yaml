@@ -38,11 +38,11 @@ tags:
 - runScript: ../../shared/scripts/take-view-values.js
 - assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId)}
 - assertTrue: ${typeof output.takeViewAllMarker === 'string' && output.takeViewAllMarker.length > 0}
-- assertTrue: ${typeof output.takeViewAllMarkerRe === 'string' && output.takeViewAllMarkerRe.length > 0 && typeof output.myWorkRowIdRe === 'string' && output.myWorkRowIdRe.length > 0}
+- assertTrue: ${typeof output.takeViewAllMarkerRe === 'string' && output.takeViewAllMarkerRe.length > 0 && typeof output.homeNextIdRe === 'string' && output.homeNextIdRe.length > 0}
 - assertTrue: ${RegExp(output.takeViewAllMarkerRe).test(output.takeViewAllMarker) === true}
-- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId) === true}
+- assertTrue: ${RegExp(output.homeNextIdRe).test('home-next-' + output.fixtureChapterId + ':x') === true}
 - assertTrue: ${RegExp(output.takeViewAllMarkerRe).test(output.takeViewAllMarker + 'X') === false && RegExp(output.takeViewAllMarkerRe).test('X' + output.takeViewAllMarker) === false}
-- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId + '0') === false && RegExp(output.myWorkRowIdRe).test('my-work-row-0' + output.fixtureChapterId) === false}
+- assertTrue: ${RegExp(output.homeNextIdRe).test('home-next-' + output.fixtureChapterId + '0:x') === false}
 
 - assertNotVisible:
     id: 'login-email-input'

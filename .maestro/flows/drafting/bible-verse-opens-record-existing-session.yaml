@@ -25,20 +25,10 @@ tags:
     id: 'passage-header'
 - assertVisible:
     id: 'passage-record|passage-listen'
-- runFlow:
-    when:
-      visible:
-        id: '^passage-script-verse-${output.fixtureVerseNumber}$'
-    commands:
-      - tapOn:
-          id: '^passage-script-verse-${output.fixtureVerseNumber}$'
-- runFlow:
-    when:
-      visible:
-        id: '^passage-verse-row-${output.fixtureVerseNumber}$'
-    commands:
-      - tapOn:
-          id: '^passage-verse-row-${output.fixtureVerseNumber}$'
+- assertVisible:
+    id: '${output.passageScriptVerseIdRe}|${output.passageVerseRowIdRe}'
+- tapOn:
+    id: '${output.passageScriptVerseIdRe}|${output.passageVerseRowIdRe}'
 - assertVisible:
     id: 'passage-record|passage-listen|passage-player'
 - runFlow: ../../shared/nav/goto-home.yaml
