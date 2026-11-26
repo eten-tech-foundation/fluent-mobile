@@ -29,12 +29,9 @@ tags:
 ---
 - assertNotVisible:
     id: 'login-email-input'
-# Drawer must be closed — Home IDs remain visible behind an open drawer; tapping
-# gear coords then hits settings-menu-more-settings (root live route 2026-10-21).
+# Accounts sheet must be closed — Home IDs remain visible behind it.
 - assertNotVisible:
-    id: 'settings-drawer-content'
-- assertNotVisible:
-    id: 'settings-menu-more-settings'
+    id: 'home-accounts'
 - assertVisible:
     id: 'home-header'
 - assertVisible:
@@ -44,16 +41,16 @@ tags:
     id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
 - assertVisible:
-    id: 'settings-menu-account-9'
+    id: 'home-account-9'
 - assertVisible:
-    id: 'settings-menu-account-10'
+    id: 'home-account-10'
 - assertVisible:
-    id: 'settings-menu-account-12'
+    id: 'home-account-12'
 - tapOn:
-    id: 'settings-menu-account-9'
+    id: 'home-account-9'
 - repeat:
     times: 4
     while:
@@ -68,21 +65,20 @@ tags:
     visible:
       id: 'home-header'
     timeout: 90000
-# Home ids stay visible behind an open drawer — require drawer closed before gear.
+# Home ids stay visible behind an open sheet — require it closed before avatar.
 - assertNotVisible:
-    id: 'settings-drawer-content'
-- assertNotVisible:
-    id: 'settings-menu-more-settings'
+    id: 'home-accounts'
 - tapOn:
     id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
 - assertVisible:
-    id: 'settings-menu-active-9'
+    id: 'home-account-9'
+    text: '.+, signed in'
 - tapOn:
-    id: 'settings-menu-more-settings'
+    id: 'home-accounts-settings'
 - scrollUntilVisible:
     element:
       id: 'settings-prepare-offline'
@@ -182,12 +178,12 @@ tags:
     id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
 - assertVisible:
-    id: 'settings-menu-account-12'
+    id: 'home-account-12'
 - tapOn:
-    id: 'settings-menu-account-12'
+    id: 'home-account-12'
 - repeat:
     times: 4
     while:
@@ -202,31 +198,29 @@ tags:
     visible:
       id: 'home-header'
     timeout: 90000
-# Same: closed drawer before gear after switch back to account 12.
+# Same: closed sheet before avatar after switch back to account 12.
 - assertNotVisible:
-    id: 'settings-drawer-content'
-- assertNotVisible:
-    id: 'settings-menu-more-settings'
+    id: 'home-accounts'
 - tapOn:
     id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
 - assertVisible:
-    id: 'settings-menu-active-12'
+    id: 'home-account-12'
+    text: '.+, signed in'
 - assertVisible:
-    id: 'settings-menu-account-10'
+    id: 'home-account-10'
 - assertVisible:
-    id: 'settings-menu-account-9'
+    id: 'home-account-9'
 - assertVisible:
-    id: 'settings-menu-account-12'
-# Identity proven while drawer open. Dismiss with Android Back (root-proven) —
-# do NOT tap home-tab-my-work behind the drawer (retained 71999: tap fails to
-# dismiss; assertNotVisible drawer fails). Do not reopen drawer after Back.
+    id: 'home-account-12'
+# Identity proven while sheet open. Dismiss with Android Back — do not tap
+# Home chrome behind the sheet. Do not reopen the sheet after Back.
 - pressKey: Back
 - assertNotVisible:
-    id: 'settings-drawer-content'
+    id: 'home-accounts'
 - assertVisible:
     id: 'home-header'
 - assertVisible:

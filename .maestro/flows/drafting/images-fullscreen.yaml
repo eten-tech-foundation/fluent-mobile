@@ -29,11 +29,20 @@ tags:
     visible:
       id: 'passage-images-list'
     timeout: 30000
+# passage-image-* is on the collapsed tile. Caption exists only when grown.
+- assertNotVisible:
+    id: 'passage-image-.*-caption'
 - tapOn:
     id: 'passage-image-.*-zoom'
 - extendedWaitUntil:
     visible:
-      id: 'passage-image-.*'
+      id: 'passage-image-.*-caption'
+    timeout: 15000
+- tapOn:
+    id: 'passage-image-.*-toggle'
+- extendedWaitUntil:
+    notVisible:
+      id: 'passage-image-.*-caption'
     timeout: 15000
 - tapOn:
     id: 'passage-resources-collapse'

@@ -1,10 +1,13 @@
 # Open the fixture chapter by id into Next Passage. Requires
 # MAESTRO_FIXTURE_CHAPTER_ID. Missing id is a failed precondition (runner
 # preflight reports BLOCKED).
-# Prefer Next up (`home-next-{id}:…`); else Changes requested; else the
-# chapter's book-page covers. Chapter 12 must not match home-next-123.
-# Copy env onto output.fixtureChapterId — YAML ${MAESTRO_FIXTURE_CHAPTER_ID}
-# becomes the literal "undefined" when the key is missing on Maestro 2.10.0.
+# Prefer Next up (`home-next-{id}:…`); else Changes requested. There is no
+# Book-page fallback here — a chapter outside those rails times out (Blocked).
+# Callers that pin a different chapter (resources empty/populated) must pass
+# `env: MAESTRO_FIXTURE_CHAPTER_ID` on `runFlow`; this helper copies env onto
+# output and would overwrite a caller-set output.fixtureChapterId.
+# YAML ${MAESTRO_FIXTURE_CHAPTER_ID} is the literal "undefined" when the key
+# is missing on Maestro 2.10.0.
 appId: com.eten.fluent
 tags:
   - ordered-readonly

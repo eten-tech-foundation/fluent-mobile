@@ -190,22 +190,23 @@ describe('D-0702-01 durable wrapper static contract', () => {
   it('ordered wrapper sequences Matthew/Mark/Luke + project13 + restore12', () => {
     const body = fs.readFileSync(ordered, 'utf8');
     assert.ok(body.includes("id: '^project-row-13$'"));
-    assert.ok(body.includes('settings-menu-account-9'));
-    assert.ok(body.includes('settings-menu-account-12'));
-    assert.ok(body.includes('settings-menu-active-12'));
-    assert.ok(body.includes("id: 'settings-drawer-content'"));
+    assert.ok(body.includes('home-account-9'));
+    assert.ok(body.includes('home-account-12'));
+    assert.ok(body.includes('home-accounts-settings'));
+    assert.ok(body.includes("id: 'home-accounts'"));
     assert.ok(
-      /assertNotVisible:\s*\n\s*id: 'settings-drawer-content'/m.test(body),
-      'entry must require drawer closed before gear tap',
+      /assertNotVisible:\s*\n\s*id: 'home-accounts'/m.test(body),
+      'entry must require accounts sheet closed before avatar tap',
     );
-    // Both post-switch gear taps (active9 + restore12) require drawer closed first.
+    // Both post-switch avatar taps (settings after PM9 + identity after 12)
+    // require the sheet closed first.
     const postSwitchGear =
-      /extendedWaitUntil:\s*\n\s*visible:\s*\n\s*id: 'home-header'[\s\S]*?assertNotVisible:\s*\n\s*id: 'settings-drawer-content'\s*\n- assertNotVisible:\s*\n\s*id: 'settings-menu-more-settings'\s*\n- tapOn:\s*\n\s*id: 'home-account'/g;
+      /extendedWaitUntil:\s*\n\s*visible:\s*\n\s*id: 'home-header'[\s\S]*?assertNotVisible:\s*\n\s*id: 'home-accounts'\s*\n- tapOn:\s*\n\s*id: 'home-account'/g;
     const postSwitchMatches = body.match(postSwitchGear) || [];
     assert.equal(
       postSwitchMatches.length,
       2,
-      'both post-switch gear taps must assert drawer closed first',
+      'both post-switch avatar taps must assert accounts sheet closed first',
     );
     assert.ok(body.includes('Expand Matthew'));
     assert.ok(body.includes('Expand Mark'));
@@ -216,44 +217,40 @@ describe('D-0702-01 durable wrapper static contract', () => {
     assert.ok(!/^\s*-\s*runFlow:.*goto-home/m.test(body));
   });
 
-  it('final teardown: identity in drawer → Back → drawer absent → Home (no Home-tab dismiss)', () => {
+  it('final teardown: identity in accounts sheet → Back → sheet absent → Home (no Home-tab dismiss)', () => {
     const body = fs.readFileSync(ordered, 'utf8');
     // Only one dismiss-at-end pattern: active12/cache asserts, then Back.
-    const activeIdx = body.lastIndexOf("id: 'settings-menu-active-12'");
+    const activeIdx = body.lastIndexOf("text: '.+, signed in'");
     const backIdx = body.lastIndexOf('pressKey: Back');
-    const drawerGoneIdx = body.lastIndexOf(
-      "id: 'settings-drawer-content'",
-    );
-    // Last settings-drawer-content mention should be assertNotVisible after Back.
+    const sheetGoneIdx = body.lastIndexOf("id: 'home-accounts'");
     assert.ok(activeIdx > 0, 'active12 identity check required');
     assert.ok(backIdx > activeIdx, 'Back must follow active12/cache identity');
     const afterIdentity = body.slice(activeIdx);
     assert.ok(
-      /settings-menu-active-12[\s\S]*settings-menu-account-10[\s\S]*settings-menu-account-9[\s\S]*settings-menu-account-12[\s\S]*pressKey:\s*Back/m.test(
+      /signed in[\s\S]*home-account-10[\s\S]*home-account-9[\s\S]*home-account-12[\s\S]*pressKey:\s*Back/m.test(
         afterIdentity,
       ),
       'identity (active12+cache) then Back',
     );
     assert.ok(
-      /pressKey:\s*Back[\s\S]*assertNotVisible:\s*\n\s*id: 'settings-drawer-content'[\s\S]*assertVisible:\s*\n\s*id: 'home-header'/m.test(
+      /pressKey:\s*Back[\s\S]*assertNotVisible:\s*\n\s*id: 'home-accounts'[\s\S]*assertVisible:\s*\n\s*id: 'home-header'/m.test(
         afterIdentity,
       ),
-      'Back → drawer absent → Home visible',
+      'Back → accounts sheet absent → Home visible',
     );
-    // Forbidden: dismiss open drawer by tapping Home chrome behind it.
+    // Forbidden: dismiss open sheet by tapping Home chrome behind it.
     assert.ok(
-      !/settings-menu-active-12[\s\S]*tapOn:\s*\n\s*id: 'home-header'[\s\S]*assertNotVisible:\s*\n\s*id: 'settings-drawer-content'/m.test(
+      !/signed in[\s\S]*tapOn:\s*\n\s*id: 'home-header'[\s\S]*assertNotVisible:\s*\n\s*id: 'home-accounts'/m.test(
         body,
       ),
-      'must not dismiss drawer via background home-header tap',
+      'must not dismiss accounts sheet via background home-header tap',
     );
-    // No reopen of drawer after final Back (would leave open for host/next case).
     const afterBack = body.slice(backIdx);
     assert.ok(
       !/tapOn:\s*\n\s*id: 'home-account'/.test(afterBack),
-      'must not reopen drawer after final Back',
+      'must not reopen accounts sheet after final Back',
     );
-    void drawerGoneIdx;
+    void sheetGoneIdx;
   });
 
   it('forbids hardware/auth/download mutation commands in authored YAML', () => {

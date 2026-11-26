@@ -60,6 +60,10 @@ appId: com.eten.fluent
     visibilityPercentage: 50
 - tapOn:
     id: 'book-passage-.*'
+    childOf:
+      id: 'book-chapter-.*'
+      containsDescendants:
+        - text: ${output.fixtureChapterLabel}
 - repeat:
     times: 8
     while:
@@ -74,6 +78,10 @@ appId: com.eten.fluent
           commands:
             - tapOn:
                 id: 'book-passage-.*'
+                childOf:
+                  id: 'book-chapter-.*'
+                  containsDescendants:
+                    - text: ${output.fixtureChapterLabel}
       - waitForAnimationToEnd:
           timeout: 2000
 - extendedWaitUntil:

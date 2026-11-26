@@ -437,7 +437,11 @@ function scanPfoDownloadFlowBody(yaml, adm, flowPath) {
       flows: [flowPath],
     };
   }
-  if (!new RegExp(`settings-menu-account-${adm.actorUserId}`).test(body)) {
+  if (
+    !new RegExp(
+      `(?:settings-menu-account|home-account)-${adm.actorUserId}`,
+    ).test(body)
+  ) {
     return {
       ok: false,
       status: 'BLOCKED',
@@ -447,7 +451,7 @@ function scanPfoDownloadFlowBody(yaml, adm, flowPath) {
   }
   if (
     new RegExp(
-      String.raw`(?:tapOn|longPressOn):\s*\n\s*id:\s*['"]?settings-menu-account-(?!${adm.actorUserId}\b)\d+`,
+      String.raw`(?:tapOn|longPressOn):\s*\n\s*id:\s*['"]?(?:settings-menu-account|home-account)-(?!${adm.actorUserId}\b)\d+`,
     ).test(body)
   ) {
     return {

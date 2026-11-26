@@ -33,9 +33,12 @@ tags:
 - assertNotVisible:
     id: 'login-email-input'
 - runFlow: ../../shared/nav/goto-home.yaml
-- evalScript: >-
-    ${output.fixtureChapterId = output.populatedChapterId}
-- runFlow: ../../shared/nav/open-my-work-chapter.yaml
+# open-my-work-chapter copies MAESTRO_FIXTURE_CHAPTER_ID onto output — override
+# so this populated fixture is not replaced by the default draft chapter.
+- runFlow:
+    file: ../../shared/nav/open-my-work-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_CHAPTER_ID: ${MAESTRO_EXPECT_RESOURCES_POPULATED_FIXTURE}
 - assertVisible:
     id: 'passage-header'
 - runFlow:

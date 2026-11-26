@@ -1,7 +1,8 @@
-# Tapping a script verse keeps Record on Next Passage at that verse.
+# Tapping the verse row opens Listen on Next Passage at that verse.
+# passage-script-verse-* is non-pressable Text — do not tap it.
 # Existing signed-in session. Required: MAESTRO_FIXTURE_CHAPTER_ID,
 # MAESTRO_FIXTURE_VERSE_NUMBER, MAESTRO_EXPECT_RECORD_REFERENCE
-# (exact rendered reference ending in :<verse>).
+# (fixture wiring; UI proof is passage-verse-position).
 # No capture, playback, claim, sync, login, or state reset.
 appId: com.eten.fluent
 tags:
@@ -25,12 +26,20 @@ tags:
     id: 'passage-header'
 - assertVisible:
     id: 'passage-record|passage-listen'
-- assertVisible:
-    id: '${output.passageScriptVerseIdRe}|${output.passageVerseRowIdRe}'
+- scrollUntilVisible:
+    element:
+      id: '${output.passageVerseRowIdRe}'
+    direction: DOWN
+    timeout: 30000
 - tapOn:
-    id: '${output.passageScriptVerseIdRe}|${output.passageVerseRowIdRe}'
+    id: '${output.passageVerseRowIdRe}'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-player'
+    timeout: 15000
 - assertVisible:
-    id: 'passage-record|passage-listen|passage-player'
+    id: 'passage-verse-position'
+    text: 'Verse ${output.fixtureVerseNumber}(, recorded)?, .*'
 - runFlow: ../../shared/nav/goto-home.yaml
 - extendedWaitUntil:
     visible:

@@ -1,7 +1,7 @@
 # READ-ONLY idle lock on a Complete-stage chapter (existing session).
-# Next map: home-tab-projects/milestone-row-* → Home books (`home-book-*`) or,
-# when this project has no book card, a same-project Next-up row (status line
-# contains the project name) → passage-title → passage-book → book page;
+# Next map: home-tab-projects/milestone-row-* → Home books (`home-book-*`) or
+# a same-project Next-up row (status line is milestoneName, not the API
+# project name) → passage-title → passage-book → book page;
 # chapter-row-{id} → book-chapter-{id} (+ -meta stage text); drafting-tab-bar
 # → passage-header; record-start-button disabled → passage-record absent
 # (isRecordingLockedByStage) + passage-notices-blocked ("Recording isn't open…").
@@ -9,8 +9,9 @@
 # that is not a take list. Fan tiles stay absent until takes are on the phone.
 # drafting-header-back / stack-header-back → passage-back / book-back.
 # Required env pins the fixture selectors; missing values fail before any UI:
-# - MAESTRO_FIXTURE_PROJECT_NAME: project name as shown on Next-up status
-#   (Home book cards show bookName + milestoneName, not this string).
+# - MAESTRO_FIXTURE_PROJECT_NAME: substring matched on Next-up status /
+#   a11y label (milestoneName). Home book cards show bookName + milestoneName,
+#   not the API project name.
 # - MAESTRO_FIXTURE_CHAPTER_LABEL: exact chapter label shown on its row.
 # - MAESTRO_FIXTURE_CHAPTER_ID: positive digits (book-chapter-<id>).
 # The chapter must be in the Complete stage. Cached takes on the phone
@@ -49,8 +50,9 @@ tags:
     timeout: 30000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 # Book cards do not render the API project name. A same-project Next-up
-# status line does ("Draft · {project} · …"). Tap that, then the title sheet
-# book row, so the book page lists the Complete chapter.
+# status line is "Draft · {milestoneName} · …". This fixture's env value
+# matches that milestone substring. Tap that, then the title sheet book
+# row, so the book page lists the Complete chapter.
 - scrollUntilVisible:
     element:
       text: '.+${output.projectNameOnHome}.+'

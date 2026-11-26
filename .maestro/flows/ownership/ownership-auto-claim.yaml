@@ -38,7 +38,24 @@ tags:
     visible:
       id: 'passage-key-play|passage-fan-[0-9]+'
     timeout: 30000
+# Hardware Back closes the expanded player (Sheet.tsx); it does not leave Passage.
 - back
+- runFlow:
+    when:
+      visible:
+        id: 'passage-player'
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: 'passage-player'
+          timeout: 10000
+- runFlow:
+    when:
+      visible:
+        id: 'passage-header'
+    commands:
+      - tapOn:
+          id: 'passage-back'
 - extendedWaitUntil:
     visible:
       id: 'book-header'
@@ -50,7 +67,9 @@ tags:
     timeout: 90000
     visibilityPercentage: 50
 - assertVisible:
-    id: 'book-chapter-.*'
-    containsDescendants:
-      - text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
-- assertVisible: 'Yours'
+    id: 'book-chapter-[0-9]+-meta'
+    text: '(.* · )?Yours( · .*)?'
+    childOf:
+      id: 'book-chapter-[0-9]+'
+      containsDescendants:
+        - text: ${MAESTRO_FIXTURE_CLAIM_LABEL}

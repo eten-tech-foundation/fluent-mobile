@@ -17,11 +17,11 @@ tags:
     id: home-header
 - scrollUntilVisible:
     element:
-      id: '^home-book-${MAESTRO_FIXTURE_MILESTONE_ID}:'
+      id: '^home-book-${MAESTRO_FIXTURE_MILESTONE_ID}:.*'
     direction: DOWN
     timeout: 15000
 - tapOn:
-    id: '^home-book-${MAESTRO_FIXTURE_MILESTONE_ID}:'
+    id: '^home-book-${MAESTRO_FIXTURE_MILESTONE_ID}:.*'
 - extendedWaitUntil:
     visible:
       id: book-header

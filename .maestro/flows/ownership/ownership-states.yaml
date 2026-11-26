@@ -48,7 +48,7 @@ tags:
           direction: DOWN
           duration: 250
 
-# Mine
+# Mine — chapterMeta is "Draft · Yours · …" (full-string match on Maestro 2.10).
 - scrollUntilVisible:
     element:
       text: ${MAESTRO_FIXTURE_MINE_LABEL}
@@ -56,10 +56,12 @@ tags:
     timeout: 90000
     visibilityPercentage: 50
 - assertVisible:
-    id: 'book-chapter-.*'
-    containsDescendants:
-      - text: ${MAESTRO_FIXTURE_MINE_LABEL}
-- assertVisible: 'Yours'
+    id: 'book-chapter-[0-9]+-meta'
+    text: '(.* · )?Yours( · .*)?'
+    childOf:
+      id: 'book-chapter-[0-9]+'
+      containsDescendants:
+        - text: ${MAESTRO_FIXTURE_MINE_LABEL}
 
 # Other
 - scrollUntilVisible:
@@ -69,20 +71,40 @@ tags:
     timeout: 90000
     visibilityPercentage: 50
 - assertVisible:
-    id: 'book-chapter-.*'
-    containsDescendants:
-      - text: ${MAESTRO_FIXTURE_OTHER_LABEL}
-- assertVisible: "Someone else's"
+    id: 'book-chapter-[0-9]+-meta'
+    text: "(.* · )?Someone else's( · .*)?"
+    childOf:
+      id: 'book-chapter-[0-9]+'
+      containsDescendants:
+        - text: ${MAESTRO_FIXTURE_OTHER_LABEL}
 
-# Unassigned → open Passage; Record has no taken notice
+# Unassigned → open that chapter's Passage; Record has no taken notice
 - scrollUntilVisible:
     element:
       text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
     direction: DOWN
     timeout: 90000
     visibilityPercentage: 50
+- assertVisible:
+    id: 'book-chapter-[0-9]+-meta'
+    text: '(.* · )?Unassigned( · .*)?'
+    childOf:
+      id: 'book-chapter-[0-9]+'
+      containsDescendants:
+        - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
+- assertNotVisible:
+    id: 'book-chapter-[0-9]+-meta'
+    text: '(.* · )?Yours( · .*)?'
+    childOf:
+      id: 'book-chapter-[0-9]+'
+      containsDescendants:
+        - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
 - tapOn:
-    id: 'book-passage-.*'
+    id: 'book-passage-[0-9]+-.*'
+    childOf:
+      id: 'book-chapter-[0-9]+'
+      containsDescendants:
+        - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
 - extendedWaitUntil:
     visible:
       id: 'passage-header'

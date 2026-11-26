@@ -30,9 +30,19 @@ tags:
     visibilityPercentage: 50
 - assertVisible:
     text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
-- assertVisible: 'Sync conflict'
+- assertVisible:
+    id: 'book-chapter-[0-9]+-meta'
+    text: '.*Sync conflict.*'
+    childOf:
+      id: 'book-chapter-[0-9]+'
+      containsDescendants:
+        - text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
 - tapOn:
-    id: 'book-passage-.*'
+    id: 'book-passage-[0-9]+-.*'
+    childOf:
+      id: 'book-chapter-[0-9]+'
+      containsDescendants:
+        - text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
 - extendedWaitUntil:
     visible:
       id: 'passage-header'

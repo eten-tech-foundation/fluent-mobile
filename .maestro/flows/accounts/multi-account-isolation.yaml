@@ -16,16 +16,16 @@ tags:
 
 - extendedWaitUntil:
     visible:
-      id: 'home-next-.*|home-book-.*'
+      id: 'home-next-[0-9]+:.*|home-book-.*'
     timeout: 60000
 # Next lists Books above Next up — scroll past the gallery to copy the card.
 - scrollUntilVisible:
     element:
-      id: 'home-next-.*'
+      id: 'home-next-[0-9]+:.*'
     direction: DOWN
     timeout: 20000
 - copyTextFrom:
-    id: 'home-next-.*'
+    id: 'home-next-[0-9]+:.*'
 - evalScript: ${output.accountAMyWorkLabel = maestro.copiedText}
 - assertTrue: ${output.accountAMyWorkLabel != null && output.accountAMyWorkLabel != ''}
 
@@ -87,11 +87,14 @@ tags:
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 
-# C1: Account B empty My Work — then prove A's label is absent
-- extendedWaitUntil:
-    visible:
-      id: 'home-empty|home-header'
-    timeout: 60000
+# C1: Account B Home settled. B may have its own Next up — do not require
+# home-empty. A's copied card must not appear in B's Next-up section.
+- runFlow: ../../shared/ensure/ensure-home-settled.yaml
+- scrollUntilVisible:
+    element:
+      id: 'home-next-up'
+    direction: DOWN
+    timeout: 20000
 - assertNotVisible: ${output.accountAMyWorkLabel}
 
 # C3: switch to A — label returns
@@ -104,11 +107,11 @@ tags:
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-next-.*|home-book-.*'
+      id: 'home-next-[0-9]+:.*|home-book-.*'
     timeout: 60000
 - scrollUntilVisible:
     element:
-      id: 'home-next-.*'
+      id: 'home-next-[0-9]+:.*'
     direction: DOWN
     timeout: 20000
 - assertVisible: ${output.accountAMyWorkLabel}

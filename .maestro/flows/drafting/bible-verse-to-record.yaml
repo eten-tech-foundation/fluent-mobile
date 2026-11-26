@@ -1,6 +1,7 @@
-# Selecting a verse on Next Passage keeps Record on the same screen
-# (no drafting-tab-record hop). Verse chrome is passage-script-verse-* /
-# passage-verse-row-*; Record is passage-record / passage-listen.
+# Selecting a verse on Next Passage opens Listen on the same screen
+# (no drafting-tab-record hop). passage-script-verse-* is a non-pressable
+# Text; the row (VerseList) is the tap target. Verse-mode fixture required —
+# pericope script-only Passages have no verse rows (Blocked, not skip-green).
 appId: com.eten.fluent
 tags:
   - smoke
@@ -13,9 +14,16 @@ tags:
     id: 'passage-header'
 - assertVisible:
     id: 'passage-record|passage-listen'
-- assertVisible:
-    id: 'passage-script-verse-[0-9]+|passage-verse-row-[0-9]+'
+- scrollUntilVisible:
+    element:
+      id: 'passage-verse-row-[0-9]+'
+    direction: DOWN
+    timeout: 30000
 - tapOn:
-    id: 'passage-script-verse-[0-9]+|passage-verse-row-[0-9]+'
+    id: 'passage-verse-row-[0-9]+'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-player'
+    timeout: 15000
 - assertVisible:
-    id: 'passage-record|passage-listen|passage-player'
+    id: 'passage-verse-position'

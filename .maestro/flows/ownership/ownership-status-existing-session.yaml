@@ -92,29 +92,57 @@ tags:
     when:
       true: ${output.expectOwnership == 'mine'}
     commands:
-      - assertVisible: 'Yours'
+      - assertVisible:
+          id: 'book-chapter-[0-9]+-meta'
+          text: '(.* · )?Yours( · .*)?'
+          childOf:
+            id: 'book-chapter-[0-9]+'
+            containsDescendants:
+              - text: ${output.chapterLabelRe}
 - runFlow:
     when:
       true: ${output.expectOwnership == 'other'}
     commands:
-      - assertVisible: "Someone else's"
+      - assertVisible:
+          id: 'book-chapter-[0-9]+-meta'
+          text: "(.* · )?Someone else's( · .*)?"
+          childOf:
+            id: 'book-chapter-[0-9]+'
+            containsDescendants:
+              - text: ${output.chapterLabelRe}
 - runFlow:
     when:
       true: ${output.expectOwnership == 'unassigned'}
     commands:
-      - assertVisible: 'Unassigned'
+      - assertVisible:
+          id: 'book-chapter-[0-9]+-meta'
+          text: '(.* · )?Unassigned( · .*)?'
+          childOf:
+            id: 'book-chapter-[0-9]+'
+            containsDescendants:
+              - text: ${output.chapterLabelRe}
 - runFlow:
     when:
       true: ${output.expectOwnership == 'conflict'}
     commands:
-      - assertVisible: 'Sync conflict'
+      - assertVisible:
+          id: 'book-chapter-[0-9]+-meta'
+          text: '.*Sync conflict.*'
+          childOf:
+            id: 'book-chapter-[0-9]+'
+            containsDescendants:
+              - text: ${output.chapterLabelRe}
 
 - runFlow:
     when:
       true: ${output.expectRecordWarning == 'taken' || output.expectRecordWarning == 'conflict'}
     commands:
       - tapOn:
-          id: 'book-passage-.*'
+          id: 'book-passage-[0-9]+-.*'
+          childOf:
+            id: 'book-chapter-[0-9]+'
+            containsDescendants:
+              - text: ${output.chapterLabelRe}
       - extendedWaitUntil:
           visible:
             id: 'passage-header'

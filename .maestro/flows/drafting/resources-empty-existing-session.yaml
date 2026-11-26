@@ -19,14 +19,16 @@ tags:
   - fixture-blocked
 ---
 - runScript: ../../shared/scripts/resources-empty-values.js
-- evalScript: >-
-    ${output.fixtureChapterId = (typeof MAESTRO_EXPECT_RESOURCES_EMPTY_FIXTURE === 'undefined' || MAESTRO_EXPECT_RESOURCES_EMPTY_FIXTURE === null) ? '' : String(MAESTRO_EXPECT_RESOURCES_EMPTY_FIXTURE).trim()}
 - assertTrue: ${output.emptyFixture.length > 0 && Number(output.emptyFixture) > 0}
 - assertTrue: ${['device_inventory','none_for_verse'].indexOf(output.emptyKind) >= 0}
-- assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId)}
 - assertNotVisible:
     id: 'login-email-input'
-- runFlow: ../../shared/nav/open-my-work-chapter.yaml
+# open-my-work-chapter copies MAESTRO_FIXTURE_CHAPTER_ID onto output — override
+# so this empty fixture is not replaced by the default draft chapter.
+- runFlow:
+    file: ../../shared/nav/open-my-work-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_CHAPTER_ID: ${MAESTRO_EXPECT_RESOURCES_EMPTY_FIXTURE}
 - assertVisible:
     id: 'passage-header'
 - tapOn:
