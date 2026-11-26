@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Alert,
   StyleSheet,
-  View,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -20,6 +19,7 @@ import {
   setRecordCaptureGate,
 } from '../../navigation/recordCaptureGate';
 import type { DrawerContentComponentProps } from 'expo-router/drawer';
+import { getAllByHostType } from '../../test/hostElements';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -232,8 +232,8 @@ describe('UserSettingsMenu', () => {
     );
   }
 
-  it('renders More Settings, legal divider, then Privacy/Terms before accounts', () => {
-    const { getByTestId, getByText, queryByText, toJSON } = renderMenu();
+  it('renders More Settings, legal divider, then Privacy/Terms before accounts', async () => {
+    const { getByTestId, getByText, queryByText, toJSON } = await renderMenu();
 
     expect(getByTestId('settings-menu-more-settings')).toBeTruthy();
     expect(getByTestId('settings-menu-legal-divider')).toBeTruthy();
@@ -263,28 +263,28 @@ describe('UserSettingsMenu', () => {
     expect(tree.indexOf('Accounts')).toBeLessThan(tree.indexOf('Log out'));
   });
 
-  it('navigates to drawer routes when More Settings / legal items are pressed', () => {
-    const { getByTestId } = renderMenu();
+  it('navigates to drawer routes when More Settings / legal items are pressed', async () => {
+    const { getByTestId } = await renderMenu();
 
-    fireEvent.press(getByTestId('settings-menu-more-settings'));
+    await fireEvent.press(getByTestId('settings-menu-more-settings'));
     expect(mockNavigate).toHaveBeenCalledWith('settings');
 
-    fireEvent.press(getByTestId('settings-menu-privacy-policy'));
+    await fireEvent.press(getByTestId('settings-menu-privacy-policy'));
     expect(mockNavigate).toHaveBeenCalledWith('privacy-policy');
 
-    fireEvent.press(getByTestId('settings-menu-terms-of-use'));
+    await fireEvent.press(getByTestId('settings-menu-terms-of-use'));
     expect(mockNavigate).toHaveBeenCalledWith('terms-of-use');
   });
 
-  it('uses leading checkmark for active and person icon for inactive (design mock)', () => {
-    const { getByTestId } = renderMenu();
+  it('uses leading checkmark for active and person icon for inactive (design mock)', async () => {
+    const { getByTestId } = await renderMenu();
 
     expect(getByTestId('settings-menu-active-active-1')).toBeTruthy();
     expect(getByTestId('settings-menu-inactive-other-2')).toBeTruthy();
   });
 
-  it('applies DrawerItem focused styling to the active account', () => {
-    const { getByTestId } = renderMenu();
+  it('applies DrawerItem focused styling to the active account', async () => {
+    const { getByTestId } = await renderMenu();
     const active = getByTestId('settings-menu-account-active-1');
     const inactive = getByTestId('settings-menu-account-other-2');
 
@@ -296,7 +296,7 @@ describe('UserSettingsMenu', () => {
     expect(inactive.props.accessibilityState).toEqual({ selected: false });
   });
 
-  it('shows the 3-account limit message instead of Add User when capped', () => {
+  it('shows the 3-account limit message instead of Add User when capped', async () => {
     setDeviceAccountsResult({
       accounts: [
         activeAccount,
@@ -312,24 +312,24 @@ describe('UserSettingsMenu', () => {
       hasAccountLimit: true,
     });
 
-    const { getByTestId, queryByTestId } = renderMenu();
+    const { getByTestId, queryByTestId } = await renderMenu();
 
     expect(getByTestId('settings-menu-account-limit')).toBeTruthy();
     expect(queryByTestId('settings-menu-add-user')).toBeNull();
   });
 
-  it('navigates to Add User via href when Add User is pressed', () => {
-    const { getByTestId } = renderMenu();
-    fireEvent.press(getByTestId('settings-menu-add-user'));
+  it('navigates to Add User via href when Add User is pressed', async () => {
+    const { getByTestId } = await renderMenu();
+    await fireEvent.press(getByTestId('settings-menu-add-user'));
 
     expect(mockCloseDrawer).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith(hrefs.addUser);
   });
 
   it('does nothing when tapping the already-active user', async () => {
-    const { getByText } = renderMenu();
+    const { getByText } = await renderMenu();
 
-    fireEvent.press(getByText('active@example.com'));
+    await fireEvent.press(getByText('active@example.com'));
 
     expect(mockSwitchToDeviceAccount).not.toHaveBeenCalled();
     expect(mockCloseDrawer).toHaveBeenCalled();
@@ -338,9 +338,9 @@ describe('UserSettingsMenu', () => {
   it('switches successfully when the target user has a valid session', async () => {
     mockCanDismiss.mockReturnValue(true);
     mockSwitchToDeviceAccount.mockResolvedValueOnce(undefined);
-    const { getByText } = renderMenu();
+    const { getByText } = await renderMenu();
 
-    fireEvent.press(getByText('other@example.com'));
+    await fireEvent.press(getByText('other@example.com'));
 
     await waitFor(() => {
       expect(mockSwitchToDeviceAccount).toHaveBeenCalledWith('other-2');
@@ -355,9 +355,9 @@ describe('UserSettingsMenu', () => {
 
   it('shows an alert when switch fails', async () => {
     mockSwitchToDeviceAccount.mockRejectedValueOnce(new Error('missing'));
-    const { getByText } = renderMenu();
+    const { getByText } = await renderMenu();
 
-    fireEvent.press(getByText('other@example.com'));
+    await fireEvent.press(getByText('other@example.com'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -371,8 +371,8 @@ describe('UserSettingsMenu', () => {
   it('warns and stays signed in when recordings are not on the server', async () => {
     mockGetUnsyncedRecordingCount.mockResolvedValue(1);
 
-    const { getByText } = renderMenu();
-    fireEvent.press(getByText('Log out'));
+    const { getByText } = await renderMenu();
+    await fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -397,8 +397,8 @@ describe('UserSettingsMenu', () => {
       userId: 'other-2',
     });
 
-    const { getByText } = renderMenu();
-    fireEvent.press(getByText('Log out'));
+    const { getByText } = await renderMenu();
+    await fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(mockSignOutCurrentDeviceAccount).toHaveBeenCalled();
@@ -415,8 +415,8 @@ describe('UserSettingsMenu', () => {
       kind: 'signed_out',
     });
 
-    const { getByText } = renderMenu();
-    fireEvent.press(getByText('Log out'));
+    const { getByText } = await renderMenu();
+    await fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(onSignOut).toHaveBeenCalled();
@@ -426,8 +426,8 @@ describe('UserSettingsMenu', () => {
   it('alerts when sign out fails', async () => {
     mockSignOutCurrentDeviceAccount.mockRejectedValueOnce(new Error('boom'));
 
-    const { getByText } = renderMenu();
-    fireEvent.press(getByText('Log out'));
+    const { getByText } = await renderMenu();
+    await fireEvent.press(getByText('Log out'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -440,11 +440,11 @@ describe('UserSettingsMenu', () => {
   });
 
   it('reloads accounts whenever the drawer opens', async () => {
-    const { rerender } = renderMenu();
+    const { rerender } = await renderMenu();
     expect(mockReload).not.toHaveBeenCalled();
 
     mockDrawerStatus = 'open';
-    rerender(
+    await rerender(
       <UserSettingsMenu
         {...drawerProps}
         onSignOut={onSignOut}
@@ -457,11 +457,11 @@ describe('UserSettingsMenu', () => {
     });
   });
 
-  it('blocks drawer navigation, account switch, Add User, and Sign Out while recording', () => {
+  it('blocks drawer navigation, account switch, Add User, and Sign Out while recording', async () => {
     setRecordCaptureGate(true);
-    const { getByTestId, getByText } = renderMenu();
+    const { getByTestId, getByText } = await renderMenu();
 
-    fireEvent.press(getByTestId('settings-menu-more-settings'));
+    await fireEvent.press(getByTestId('settings-menu-more-settings'));
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(mockCloseDrawer).toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith(
@@ -473,7 +473,7 @@ describe('UserSettingsMenu', () => {
     jest.mocked(Alert.alert).mockClear();
     mockCloseDrawer.mockClear();
 
-    fireEvent.press(getByText('other@example.com'));
+    await fireEvent.press(getByText('other@example.com'));
     expect(mockSwitchToDeviceAccount).not.toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith(
       RECORDING_IN_PROGRESS_TITLE,
@@ -482,7 +482,7 @@ describe('UserSettingsMenu', () => {
     );
 
     jest.mocked(Alert.alert).mockClear();
-    fireEvent.press(getByTestId('settings-menu-add-user'));
+    await fireEvent.press(getByTestId('settings-menu-add-user'));
     expect(mockPush).not.toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith(
       RECORDING_IN_PROGRESS_TITLE,
@@ -491,7 +491,7 @@ describe('UserSettingsMenu', () => {
     );
 
     jest.mocked(Alert.alert).mockClear();
-    fireEvent.press(getByTestId('settings-menu-sign-out'));
+    await fireEvent.press(getByTestId('settings-menu-sign-out'));
     expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith(
       RECORDING_IN_PROGRESS_TITLE,
@@ -500,7 +500,7 @@ describe('UserSettingsMenu', () => {
     );
   });
 
-  it('scopes drawer colors, label weights and spacing while preserving Legacy and account behavior', () => {
+  it('scopes drawer colors, label weights and spacing while preserving Legacy and account behavior', async () => {
     const legacy = resolveTheme('legacy');
     const next = resolveTheme('next');
     const colors = next.colors as {
@@ -544,13 +544,12 @@ describe('UserSettingsMenu', () => {
       weights.semibold = '800';
       lineHeights.tight = 27;
       spacing.xs = 13;
-      const view = render(menu('legacy'));
+      const view = await render(menu('legacy'));
       const more = () => view.getByTestId('settings-menu-more-settings');
       const label = (id: string) =>
         StyleSheet.flatten(view.getByTestId(id).props.labelStyle);
       const footer = () => {
-        const footers = view
-          .UNSAFE_getAllByType(View)
+        const footers = getAllByHostType('View')
           .map(node => StyleSheet.flatten(node.props.style))
           .filter(
             style =>
@@ -573,7 +572,7 @@ describe('UserSettingsMenu', () => {
         backgroundColor: legacy.colors.cardBackground,
         paddingBottom: legacy.spacing.xs,
       });
-      view.rerender(menu('next'));
+      await view.rerender(menu('next'));
       expect(view.getByTestId('settings-drawer-content')).toHaveStyle({
         backgroundColor: '#123456',
       });
@@ -613,7 +612,7 @@ describe('UserSettingsMenu', () => {
         backgroundColor: '#123456',
         paddingBottom: 13,
       });
-      view.rerender(menu('legacy'));
+      await view.rerender(menu('legacy'));
       expect(view.getByTestId('settings-drawer-content')).toHaveStyle({
         backgroundColor: legacy.colors.cardBackground,
       });

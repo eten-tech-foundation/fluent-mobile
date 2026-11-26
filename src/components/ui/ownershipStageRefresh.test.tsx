@@ -71,7 +71,7 @@ const PEER_CHECKER_ID = 11;
 const ASSIGNMENT_ID = 488;
 
 describe('MyWorkRow / ProjectChapterRow ownership indicator after stage change', () => {
-  it('clears MyWorkRow mine icon after Draft→complete refresh with retained assignees', () => {
+  it('clears MyWorkRow mine icon after Draft→complete refresh with retained assignees', async () => {
     const draftOwnership = ownershipFromStageRefresh({
       status: 'draft',
       assignedUserId: DRAFTER_ID,
@@ -107,7 +107,7 @@ describe('MyWorkRow / ProjectChapterRow ownership indicator after stage change',
       listAccess: 'assigned',
     };
 
-    const { getByTestId, queryByTestId, rerender } = render(
+    const { getByTestId, queryByTestId, rerender } = await render(
       <MyWorkRow chapter={draftChapter} onPress={jest.fn()} />,
     );
 
@@ -122,7 +122,7 @@ describe('MyWorkRow / ProjectChapterRow ownership indicator after stage change',
     });
     expect(completeOwnership).toBe('unassigned');
 
-    rerender(
+    await rerender(
       <MyWorkRow
         chapter={{
           ...draftChapter,
@@ -139,7 +139,7 @@ describe('MyWorkRow / ProjectChapterRow ownership indicator after stage change',
     expect(queryByTestId('chapter-ownership-other')).toBeNull();
   });
 
-  it('clears ProjectChapterRow mine icon after Draft→community_review with retained assignees', () => {
+  it('clears ProjectChapterRow mine icon after Draft→community_review with retained assignees', async () => {
     const draftOwnership = ownershipFromStageRefresh({
       status: 'draft',
       assignedUserId: DRAFTER_ID,
@@ -163,7 +163,7 @@ describe('MyWorkRow / ProjectChapterRow ownership indicator after stage change',
       lastActivityLabel: 'Today',
     };
 
-    const { getByTestId, queryByTestId, rerender } = render(
+    const { getByTestId, queryByTestId, rerender } = await render(
       <ProjectChapterRow chapter={draftChapter} onPress={jest.fn()} />,
     );
 
@@ -178,7 +178,7 @@ describe('MyWorkRow / ProjectChapterRow ownership indicator after stage change',
     });
     expect(communityOwnership).toBe('unassigned');
 
-    rerender(
+    await rerender(
       <ProjectChapterRow
         chapter={{
           ...draftChapter,

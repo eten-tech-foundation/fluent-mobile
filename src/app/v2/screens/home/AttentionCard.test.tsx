@@ -7,9 +7,9 @@ jest.mock('../../../../services/storage', () => ({
 }));
 
 describe('AttentionCard', () => {
-  it('reads as one sentence and one button', () => {
+  it('reads as one sentence and one button', async () => {
     const onPress = jest.fn();
-    render(
+    await render(
       <AttentionCard
         eyebrow="Community notes"
         title="6 notes from 3 reviewers"
@@ -31,7 +31,7 @@ describe('AttentionCard', () => {
       screen.getByText('AM', { includeHiddenElements: true }),
     ).toBeTruthy();
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', {
         name: 'Community notes. 6 notes from 3 reviewers. Open review.',
       }),
@@ -39,8 +39,8 @@ describe('AttentionCard', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('shows no faces when nobody is named', () => {
-    render(
+  it('shows no faces when nobody is named', async () => {
+    await render(
       <AttentionCard
         eyebrow="Changes requested"
         title="Your Matthew 2 has notes to address"

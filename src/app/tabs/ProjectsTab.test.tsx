@@ -70,7 +70,7 @@ describe('ProjectsTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<ProjectsTab />);
+    await render(<ProjectsTab />);
 
     expect(
       await screen.findByText(
@@ -87,7 +87,7 @@ describe('ProjectsTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<ProjectsTab />);
+    await render(<ProjectsTab />);
 
     expect(await screen.findByText('Mark')).toBeTruthy();
     expect(await screen.findAllByText('Baka NT · 2 milestones')).toHaveLength(

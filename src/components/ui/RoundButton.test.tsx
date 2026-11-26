@@ -37,9 +37,9 @@ describe('RoundButton', () => {
     jest.useRealTimers();
   });
 
-  it('calls onPress and fires the press haptic on press-in', () => {
+  it('calls onPress and fires the press haptic on press-in', async () => {
     const onPress = jest.fn();
-    renderWithPreferences(
+    await renderWithPreferences(
       <RoundButton
         icon={ColorIcon}
         accessibilityLabel="Download"
@@ -48,16 +48,16 @@ describe('RoundButton', () => {
     );
 
     const button = screen.getByRole('button', { name: 'Download' });
-    fireEvent(button, 'pressIn');
-    fireEvent.press(button);
+    await fireEvent(button, 'pressIn');
+    await fireEvent.press(button);
 
     expect(mockPress).toHaveBeenCalledTimes(1);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores presses, reports disabled and fades when disabled', () => {
+  it('ignores presses, reports disabled and fades when disabled', async () => {
     const onPress = jest.fn();
-    renderWithPreferences(
+    await renderWithPreferences(
       <RoundButton
         icon={ColorIcon}
         accessibilityLabel="Download"
@@ -68,7 +68,7 @@ describe('RoundButton', () => {
     );
 
     const button = screen.getByRole('button', { name: 'Download' });
-    fireEvent.press(button);
+    await fireEvent.press(button);
 
     expect(onPress).not.toHaveBeenCalled();
     expect(button.props.accessibilityState).toMatchObject({ disabled: true });
@@ -77,16 +77,18 @@ describe('RoundButton', () => {
     ).toMatchObject({ opacity: legacyTheme.opacity.disabled });
   });
 
-  it("isn't a button without onPress", () => {
-    render(<RoundButton icon={ColorIcon} accessibilityLabel="All synced" />);
+  it("isn't a button without onPress", async () => {
+    await render(
+      <RoundButton icon={ColorIcon} accessibilityLabel="All synced" />,
+    );
 
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.getByLabelText('All synced')).not.toBeDisabled();
   });
 
-  it('stretches into a pill with its label beside the icon', () => {
+  it('stretches into a pill with its label beside the icon', async () => {
     const onPress = jest.fn();
-    render(
+    await render(
       <RoundButton
         variant="flat"
         icon={ColorIcon}
@@ -101,17 +103,17 @@ describe('RoundButton', () => {
     expect(
       StyleSheet.flatten(screen.getByTestId('b').props.style),
     ).toMatchObject({ width: undefined, minWidth: 48 });
-    fireEvent.press(screen.getByLabelText('Listen'));
+    await fireEvent.press(screen.getByLabelText('Listen'));
     expect(onPress).toHaveBeenCalled();
   });
 
-  it('shows the rim on Soft only', () => {
-    const { rerender } = renderWithPreferences(
+  it('shows the rim on Soft only', async () => {
+    const { rerender } = await renderWithPreferences(
       <RoundButton icon={ColorIcon} accessibilityLabel="Download" testID="b" />,
     );
     expect(screen.getByTestId('b-rim')).toBeTruthy();
 
-    rerender(
+    await rerender(
       <RoundButton
         icon={ColorIcon}
         accessibilityLabel="Download"
@@ -122,11 +124,11 @@ describe('RoundButton', () => {
     expect(screen.queryByTestId('b-rim')).toBeNull();
   });
 
-  it('pins Flat to Canvas colors in Next, except on Accent', () => {
-    act(() => {
+  it('pins Flat to Canvas colors in Next, except on Accent', async () => {
+    await act(() => {
       setUiVersion('next');
     });
-    renderWithPreferences(
+    await renderWithPreferences(
       <RoundButton
         icon={ColorIcon}
         accessibilityLabel="Download"
@@ -137,7 +139,7 @@ describe('RoundButton', () => {
       resolveTheme('next', 'canvas').roles.fgPrimary,
     );
 
-    screen.rerender(
+    await screen.rerender(
       <ColorModeScope value="accent">
         <RoundButton
           icon={ColorIcon}
@@ -151,9 +153,9 @@ describe('RoundButton', () => {
     );
   });
 
-  it('fades the raised face out while pressed', () => {
+  it('fades the raised face out while pressed', async () => {
     jest.useFakeTimers();
-    renderWithPreferences(
+    await renderWithPreferences(
       <RoundButton
         icon={ColorIcon}
         accessibilityLabel="Download"
@@ -162,8 +164,11 @@ describe('RoundButton', () => {
       />,
     );
 
-    fireEvent(screen.getByRole('button', { name: 'Download' }), 'pressIn');
-    act(() => {
+    await fireEvent(
+      screen.getByRole('button', { name: 'Download' }),
+      'pressIn',
+    );
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
 

@@ -87,7 +87,7 @@ describe('bookStatus', () => {
 });
 
 describe('Books', () => {
-  it('opens the book page from a card, in the order given', () => {
+  it('opens the book page from a card, in the order given', async () => {
     const onOpen = jest.fn();
     const mark = book();
     const genesis = book({
@@ -98,7 +98,7 @@ describe('Books', () => {
       withOthers: 0,
       open: 50,
     });
-    render(<Books books={[mark, genesis]} onOpen={onOpen} />);
+    await render(<Books books={[mark, genesis]} onOpen={onOpen} />);
 
     expect(screen.getByText('Books')).toBeTruthy();
     expect(screen.getAllByText('Mark')).toHaveLength(1);
@@ -108,18 +108,18 @@ describe('Books', () => {
       'Genesis, Design team 1st · 50 open, Not recorded yet. Open book page.',
     ]);
 
-    fireEvent.press(cards[1]);
+    await fireEvent.press(cards[1]);
     expect(onOpen).toHaveBeenCalledWith(genesis);
   });
 
-  it("draws the book's meter on its cover, then a check", () => {
-    const { rerender } = render(
+  it("draws the book's meter on its cover, then a check", async () => {
+    const { rerender } = await render(
       <Books books={[book({ recordedChapters: 10 })]} onOpen={jest.fn()} />,
     );
-    measureFace('home-book-1:41-cover-face');
+    await measureFace('home-book-1:41-cover-face');
     expect(ringFill()).toBeCloseTo(0.2);
 
-    rerender(
+    await rerender(
       <Books
         books={[book({ recordedChapters: 50, checkedChapters: 50 })]}
         onOpen={jest.fn()}
@@ -128,8 +128,8 @@ describe('Books', () => {
     expect(screen.getByTestId('cover-badge-check', hidden)).toBeTruthy();
   });
 
-  it('draws every book on the darker night ground', () => {
-    render(
+  it('draws every book on the darker night ground', async () => {
+    await render(
       <UiVersionOverride value="next">
         <Books
           books={[book(), book({ key: '1:1', bookId: 1, bookName: 'Genesis' })]}
@@ -147,20 +147,22 @@ describe('Books', () => {
     }
   });
 
-  it("sets the book's name on its cover", () => {
-    render(<Books books={[book()]} onOpen={jest.fn()} />);
+  it("sets the book's name on its cover", async () => {
+    await render(<Books books={[book()]} onOpen={jest.fn()} />);
 
     const cover = screen.getByTestId('home-book-1:41-cover');
     expect(within(cover).getByText('Book')).toBeTruthy();
     expect(within(cover).getByText('Mark')).toBeTruthy();
   });
 
-  it('puts the milestone on its own line and the counts under it', () => {
-    const { rerender } = render(<Books books={[book()]} onOpen={jest.fn()} />);
+  it('puts the milestone on its own line and the counts under it', async () => {
+    const { rerender } = await render(
+      <Books books={[book()]} onOpen={jest.fn()} />,
+    );
     expect(screen.getByText('Design team 1st')).toBeTruthy();
     expect(screen.getByText('1 yours · 2 with others · 47 open')).toBeTruthy();
 
-    rerender(
+    await rerender(
       <Books
         books={[book({ mine: 0, withOthers: 0, open: 0 })]}
         onOpen={jest.fn()}
@@ -170,8 +172,8 @@ describe('Books', () => {
     expect(screen.queryByText(/yours|open/)).toBeNull();
   });
 
-  it('shows a milestone with no chapters yet, said once', () => {
-    render(
+  it('shows a milestone with no chapters yet, said once', async () => {
+    await render(
       <Books
         books={[
           book({
@@ -195,8 +197,8 @@ describe('Books', () => {
     );
   });
 
-  it('renders nothing without books', () => {
-    render(<Books books={[]} onOpen={jest.fn()} />);
+  it('renders nothing without books', async () => {
+    await render(<Books books={[]} onOpen={jest.fn()} />);
 
     expect(screen.queryByTestId('home-books')).toBeNull();
   });
@@ -218,49 +220,52 @@ describe('Books', () => {
     afterEach(() => {
       jest.restoreAllMocks();
     });
-    const nextFrame = () =>
-      act(() => {
+    const nextFrame = async () => {
+      await act(() => {
         const due = frames.splice(0);
         due.forEach(callback => callback(0));
       });
+    };
 
-    it('draws the first rows at once and the rest of a long list after them', () => {
+    it('draws the first rows at once and the rest of a long list after them', async () => {
       const books = Array.from({ length: FIRST_FRAME_BOOKS + 4 }, (_, i) =>
         book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
       );
-      render(<Books books={books} onOpen={jest.fn()} />);
+      await render(<Books books={books} onOpen={jest.fn()} />);
 
       expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
       expect(screen.queryByText(`Book ${FIRST_FRAME_BOOKS}`)).toBeNull();
       expect(frames).toHaveLength(1);
 
-      nextFrame();
+      await nextFrame();
 
       expect(screen.getAllByRole('button')).toHaveLength(books.length);
       expect(screen.getByText(`Book ${books.length - 1}`)).toBeTruthy();
     });
 
-    it('defers the rest of a long list that arrives after an empty one', () => {
+    it('defers the rest of a long list that arrives after an empty one', async () => {
       const books = Array.from({ length: FIRST_FRAME_BOOKS + 4 }, (_, i) =>
         book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
       );
-      const { rerender } = render(<Books books={[]} onOpen={jest.fn()} />);
+      const { rerender } = await render(
+        <Books books={[]} onOpen={jest.fn()} />,
+      );
       expect(frames).toHaveLength(0);
 
-      rerender(<Books books={books} onOpen={jest.fn()} />);
+      await rerender(<Books books={books} onOpen={jest.fn()} />);
 
       expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
 
-      nextFrame();
+      await nextFrame();
 
       expect(screen.getAllByRole('button')).toHaveLength(books.length);
     });
 
-    it('draws a short list whole without waiting for a frame', () => {
+    it('draws a short list whole without waiting for a frame', async () => {
       const books = Array.from({ length: FIRST_FRAME_BOOKS }, (_, i) =>
         book({ key: `1:${i}`, bookId: i, bookName: `Book ${i}` }),
       );
-      render(<Books books={books} onOpen={jest.fn()} />);
+      await render(<Books books={books} onOpen={jest.fn()} />);
 
       expect(screen.getAllByRole('button')).toHaveLength(FIRST_FRAME_BOOKS);
       expect(frames).toHaveLength(0);

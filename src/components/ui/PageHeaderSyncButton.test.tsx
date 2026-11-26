@@ -24,10 +24,10 @@ jest.mock('./CloudSyncStatusIcon', () => ({
 }));
 
 describe('PageHeaderSyncButton', () => {
-  it('renders sync status label and calls onPress when pressed', () => {
+  it('renders sync status label and calls onPress when pressed', async () => {
     const onPress = jest.fn();
 
-    render(
+    await render(
       <PageHeaderSyncButton syncStatus="online_synced" onPress={onPress} />,
     );
 
@@ -36,15 +36,15 @@ describe('PageHeaderSyncButton', () => {
       screen.getByLabelText('Online · all synced. Open Sync page.'),
     ).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId('home-sync-button'));
+    await fireEvent.press(screen.getByTestId('home-sync-button'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('forwards onPressIn for mid-tap diagnostics (#721)', () => {
+  it('forwards onPressIn for mid-tap diagnostics (#721)', async () => {
     const onPress = jest.fn();
     const onPressIn = jest.fn();
 
-    render(
+    await render(
       <PageHeaderSyncButton
         syncStatus="online_synced"
         onPress={onPress}
@@ -52,13 +52,13 @@ describe('PageHeaderSyncButton', () => {
       />,
     );
 
-    fireEvent(screen.getByTestId('home-sync-button'), 'pressIn');
+    await fireEvent(screen.getByTestId('home-sync-button'), 'pressIn');
     expect(onPressIn).toHaveBeenCalledTimes(1);
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  it('includes sanitized failure reason in the a11y label when uploads failed', () => {
-    render(
+  it('includes sanitized failure reason in the a11y label when uploads failed', async () => {
+    await render(
       <PageHeaderSyncButton
         syncStatus="online_failed"
         failedErrorText="Audio storage is currently unavailable. Try again later."

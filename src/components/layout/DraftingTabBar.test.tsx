@@ -24,9 +24,9 @@ describe('DraftingTabBar', () => {
     jest.clearAllMocks();
     mockPreferenceStore();
   });
-  it('renders Bible, Resources, Record in Lovable order with active top indicator', () => {
+  it('renders Bible, Resources, Record in Lovable order with active top indicator', async () => {
     const onTabChange = jest.fn();
-    render(
+    await render(
       <UiVersionOverride value="legacy">
         <DraftingTabBar activeTab="record" onTabChange={onTabChange} />
       </UiVersionOverride>,
@@ -47,12 +47,12 @@ describe('DraftingTabBar', () => {
     expect(screen.getByTestId('drafting-tab-record')).toBeTruthy();
     expect(tabs[2]?.props.accessibilityState?.selected).toBe(true);
 
-    fireEvent.press(screen.getByTestId('drafting-tab-resources'));
+    await fireEvent.press(screen.getByTestId('drafting-tab-resources'));
     expect(onTabChange).toHaveBeenCalledWith('resources');
   });
 });
 
-it('isolates Next drafting chrome and keeps safe insets and controlled selection', () => {
+it('isolates Next drafting chrome and keeps safe insets and controlled selection', async () => {
   mockPreferenceStore();
   const legacy = resolveTheme('legacy');
   const next = resolveTheme('next');
@@ -79,7 +79,7 @@ it('isolates Next drafting chrome and keeps safe insets and controlled selection
     colors.mutedForeground = '#345678';
     colors.border = '#456789';
     spacing.md = 23;
-    const { rerender } = render(tree('legacy', 'bible'));
+    const { rerender } = await render(tree('legacy', 'bible'));
     expect(screen.getByTestId('drafting-tab-bar')).toHaveStyle({
       backgroundColor: legacy.colors.tabBarBackground,
       paddingBottom: 16,
@@ -87,7 +87,7 @@ it('isolates Next drafting chrome and keeps safe insets and controlled selection
     expect(screen.getByText('Bible')).toHaveStyle({
       color: legacy.colors.primary,
     });
-    rerender(tree('next', 'bible'));
+    await rerender(tree('next', 'bible'));
     expect(screen.getByTestId('drafting-tab-bar')).toHaveStyle({
       backgroundColor: '#123456',
       borderTopColor: '#456789',
@@ -107,16 +107,16 @@ it('isolates Next drafting chrome and keeps safe insets and controlled selection
       'Resources',
       'Record',
     ]);
-    fireEvent.press(screen.getByTestId('drafting-tab-resources'));
+    await fireEvent.press(screen.getByTestId('drafting-tab-resources'));
     expect(onTabChange).toHaveBeenCalledWith('resources');
-    rerender(tree('next', 'resources'));
+    await rerender(tree('next', 'resources'));
     expect(screen.getByText('Resources')).toHaveStyle({ color: '#234567' });
     expect(screen.getByText('Bible')).toHaveStyle({ color: '#345678' });
     expect(
       screen.getByTestId('drafting-tab-resources').props.accessibilityState
         .selected,
     ).toBe(true);
-    rerender(tree('legacy', 'resources'));
+    await rerender(tree('legacy', 'resources'));
     expect(screen.getByTestId('drafting-tab-bar')).toHaveStyle({
       backgroundColor: legacy.colors.tabBarBackground,
       paddingBottom: 16,

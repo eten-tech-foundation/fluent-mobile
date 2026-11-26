@@ -83,7 +83,7 @@ it('updates a late subscriber after the real orchestrator reports 1/2', async ()
   expect(events[0]).toEqual({ type: 'start', totalChapters: 1 });
   // The store has not subscribed yet, so it missed the session start.
   expect(getSyncStatusSnapshot().uploadProgress).toBeNull();
-  const { result, unmount } = renderHook(() => {
+  const { result, unmount } = await renderHook(() => {
     const pending = usePendingUploads();
     const upload = useUploadSessionState({
       hasPendingUploads: pending.hasPendingUploads,
@@ -108,7 +108,7 @@ it('updates a late subscriber after the real orchestrator reports 1/2', async ()
     getSyncStatusSnapshot().uploadProgress?.currentChapter?.completedTakes,
   ).toBe(1);
   expect(result.current.upload.progressCurrentChapter?.completedTakes).toBe(1);
-  unmount();
+  await unmount();
   mockPendingCount = 0;
   finishChapter?.();
   await session;

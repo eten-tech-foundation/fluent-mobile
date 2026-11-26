@@ -317,7 +317,7 @@ describe('ObserverDraftScreen', () => {
   });
 
   it('shows exactly Bible and Draft tabs (no Resources / Record)', async () => {
-    renderScreen();
+    await renderScreen();
 
     await waitFor(() => {
       expect(screen.getByTestId('observer-draft-tab-bible')).toBeTruthy();
@@ -332,13 +332,13 @@ describe('ObserverDraftScreen', () => {
   });
 
   it('reuses BibleTab and wires ObserverDraftTab read-only with undecided policy', async () => {
-    renderScreen();
+    await renderScreen();
 
     await waitFor(() => {
       expect(screen.getByTestId('bible-tab')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('observer-draft-tab-draft'));
+    await fireEvent.press(screen.getByTestId('observer-draft-tab-draft'));
 
     await waitFor(() => {
       expect(screen.getByTestId('observer-draft-tab')).toBeTruthy();
@@ -348,7 +348,7 @@ describe('ObserverDraftScreen', () => {
   });
 
   it('never auto-starts draft download; only reads local bundle', async () => {
-    renderScreen();
+    await renderScreen();
 
     await waitFor(() => {
       expect(mockGetDraftChapterLocalBundle).toHaveBeenCalled();
@@ -370,7 +370,7 @@ describe('ObserverDraftScreen', () => {
   });
 
   it('hides prior content when Observer grant is lost', async () => {
-    renderScreen();
+    await renderScreen();
 
     await waitFor(() => {
       expect(screen.getByTestId('bible-tab')).toBeTruthy();
@@ -390,7 +390,7 @@ describe('ObserverDraftScreen', () => {
   });
 
   it('clears stale bundle content after grant loss mid-session', async () => {
-    renderScreen();
+    await renderScreen();
 
     await waitFor(() => {
       expect(screen.getByTestId('observer-draft-chapter-browse')).toBeTruthy();
@@ -418,7 +418,7 @@ describe('ObserverDraftScreen', () => {
   });
 
   it('browses same-unit chapters through destination guard', async () => {
-    renderScreen();
+    await renderScreen();
 
     await waitFor(() => {
       expect(
@@ -426,7 +426,9 @@ describe('ObserverDraftScreen', () => {
       ).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByTestId('observer-draft-chapter-chip-1002'));
+    await fireEvent.press(
+      screen.getByTestId('observer-draft-chapter-chip-1002'),
+    );
 
     await waitFor(() => {
       expect(mockGetObserverDraftDestination).toHaveBeenCalledWith({
@@ -457,11 +459,11 @@ describe('ObserverDraftScreen', () => {
       ],
     });
 
-    renderScreen();
+    await renderScreen();
     await waitFor(() => {
       expect(screen.getByTestId('observer-draft-tab-draft')).toBeTruthy();
     });
-    fireEvent.press(screen.getByTestId('observer-draft-tab-draft'));
+    await fireEvent.press(screen.getByTestId('observer-draft-tab-draft'));
 
     await waitFor(() => {
       expect(screen.getByTestId('mock-text-501')).toHaveTextContent(
@@ -475,7 +477,7 @@ describe('ObserverDraftScreen', () => {
 
   it('hides content for invalid route params', async () => {
     mockParams = { chapterAssignmentId: 'abc', projectId: '9' };
-    renderScreen();
+    await renderScreen();
 
     await waitFor(() => {
       expect(screen.getByTestId('observer-draft-no-access')).toBeTruthy();

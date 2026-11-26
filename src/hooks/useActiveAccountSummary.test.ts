@@ -30,7 +30,7 @@ describe('useActiveAccountSummary', () => {
   it('returns an empty summary when no active user is set', async () => {
     mockGetActiveUserId.mockReturnValue('');
 
-    const { result } = renderHook(() => useActiveAccountSummary());
+    const { result } = await renderHook(() => useActiveAccountSummary());
 
     await waitFor(() => {
       expect(result.current.activeUserId).toBe('');
@@ -51,7 +51,7 @@ describe('useActiveAccountSummary', () => {
       lastName: 'Hopper',
     });
 
-    const { result } = renderHook(() => useActiveAccountSummary());
+    const { result } = await renderHook(() => useActiveAccountSummary());
 
     await waitFor(() => {
       expect(result.current.email).toBe('db@example.com');
@@ -71,7 +71,7 @@ describe('useActiveAccountSummary', () => {
     mockGetUserById.mockResolvedValue(null);
     mockGetUserEmail.mockReturnValue('stored@example.com');
 
-    const { result } = renderHook(() => useActiveAccountSummary());
+    const { result } = await renderHook(() => useActiveAccountSummary());
 
     await waitFor(() => {
       expect(result.current.email).toBe('stored@example.com');
@@ -87,7 +87,7 @@ describe('useActiveAccountSummary', () => {
       lastName: 'User',
     });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ refreshKey }: { refreshKey: number }) =>
         useActiveAccountSummary(refreshKey),
       { initialProps: { refreshKey: 0 } },
@@ -104,7 +104,7 @@ describe('useActiveAccountSummary', () => {
       lastName: 'User',
     });
 
-    rerender({ refreshKey: 1 });
+    await rerender({ refreshKey: 1 });
 
     await waitFor(() => {
       expect(result.current.email).toBe('updated@example.com');

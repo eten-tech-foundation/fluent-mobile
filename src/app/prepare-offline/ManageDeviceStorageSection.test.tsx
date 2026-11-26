@@ -66,7 +66,7 @@ describe('ManageDeviceStorageSection', () => {
     });
   });
 
-  it('renders storage summary and empty-state copy when no other projects', () => {
+  it('renders storage summary and empty-state copy when no other projects', async () => {
     usePrepareOfflineStorageManagement.mockReturnValue({
       summary: {
         availableBytes: null,
@@ -85,7 +85,7 @@ describe('ManageDeviceStorageSection', () => {
       requestDeleteSelected: mockRequestDeleteSelected,
     });
 
-    render(<ManageDeviceStorageSection projectId={1} />);
+    await render(<ManageDeviceStorageSection projectId={1} />);
 
     expect(screen.getByText('MANAGE DEVICE STORAGE')).toBeTruthy();
     expect(screen.getByText('Available on device')).toBeTruthy();
@@ -98,18 +98,18 @@ describe('ManageDeviceStorageSection', () => {
     ).toHaveTextContent('No resources from other projects on this device.');
   });
 
-  it('disables delete selected when nothing is checked', () => {
-    render(<ManageDeviceStorageSection projectId={1} />);
+  it('disables delete selected when nothing is checked', async () => {
+    await render(<ManageDeviceStorageSection projectId={1} />);
 
     expect(screen.getByText('Select items to delete')).toBeTruthy();
 
     const deleteButton = screen.getByTestId('storage-delete-selected-button');
     expect(deleteButton.props.accessibilityState?.disabled).toBe(true);
-    fireEvent.press(deleteButton);
+    await fireEvent.press(deleteButton);
     expect(mockRequestDeleteSelected).not.toHaveBeenCalled();
   });
 
-  it('shows live freed-space counter and enables delete when selected', () => {
+  it('shows live freed-space counter and enables delete when selected', async () => {
     usePrepareOfflineStorageManagement.mockReturnValue({
       summary: {
         availableBytes: 12.4 * 1024 * 1024 * 1024,
@@ -144,7 +144,7 @@ describe('ManageDeviceStorageSection', () => {
       requestDeleteSelected: mockRequestDeleteSelected,
     });
 
-    render(<ManageDeviceStorageSection projectId={1} />);
+    await render(<ManageDeviceStorageSection projectId={1} />);
 
     expect(screen.getByTestId('storage-bytes-to-free')).toHaveTextContent(
       '250 B to free',
@@ -153,11 +153,11 @@ describe('ManageDeviceStorageSection', () => {
 
     const deleteButton = screen.getByTestId('storage-delete-selected-button');
     expect(deleteButton.props.accessibilityState?.disabled).toBe(false);
-    fireEvent.press(deleteButton);
+    await fireEvent.press(deleteButton);
     expect(mockRequestDeleteSelected).toHaveBeenCalledTimes(1);
   });
 
-  it('disables delete selected while a download is in progress', () => {
+  it('disables delete selected while a download is in progress', async () => {
     usePrepareOfflineStorageManagement.mockReturnValue({
       summary: {
         availableBytes: 12.4 * 1024 * 1024 * 1024,
@@ -192,18 +192,18 @@ describe('ManageDeviceStorageSection', () => {
       requestDeleteSelected: mockRequestDeleteSelected,
     });
 
-    render(
+    await render(
       <ManageDeviceStorageSection projectId={1} downloadInProgress={true} />,
     );
 
     const deleteButton = screen.getByTestId('storage-delete-selected-button');
     expect(deleteButton.props.accessibilityState?.disabled).toBe(true);
-    fireEvent.press(deleteButton);
+    await fireEvent.press(deleteButton);
     expect(mockRequestDeleteSelected).not.toHaveBeenCalled();
   });
 
-  it('renders formatted summary values when storage is available', () => {
-    render(<ManageDeviceStorageSection projectId={1} />);
+  it('renders formatted summary values when storage is available', async () => {
+    await render(<ManageDeviceStorageSection projectId={1} />);
 
     expect(screen.getByTestId('storage-available-bytes')).toHaveTextContent(
       '12.4 GB of 64 GB',
@@ -215,14 +215,14 @@ describe('ManageDeviceStorageSection', () => {
     expect(screen.getByText('Mark')).toBeTruthy();
   });
 
-  it('expands a project accordion when the header is pressed', () => {
-    render(<ManageDeviceStorageSection projectId={1} />);
+  it('expands a project accordion when the header is pressed', async () => {
+    await render(<ManageDeviceStorageSection projectId={1} />);
 
-    fireEvent.press(screen.getByText('Mark'));
+    await fireEvent.press(screen.getByText('Mark'));
     expect(mockToggleProjectExpanded).toHaveBeenCalledWith(2);
   });
 
-  it('toggles resource selection when an expanded row is pressed', () => {
+  it('toggles resource selection when an expanded row is pressed', async () => {
     usePrepareOfflineStorageManagement.mockReturnValue({
       summary: {
         availableBytes: 12.4 * 1024 * 1024 * 1024,
@@ -257,13 +257,15 @@ describe('ManageDeviceStorageSection', () => {
       requestDeleteSelected: mockRequestDeleteSelected,
     });
 
-    render(<ManageDeviceStorageSection projectId={1} />);
+    await render(<ManageDeviceStorageSection projectId={1} />);
 
-    fireEvent.press(screen.getByTestId('storage-resource-row-resource-b'));
+    await fireEvent.press(
+      screen.getByTestId('storage-resource-row-resource-b'),
+    );
     expect(mockToggleResourceSelected).toHaveBeenCalledWith('resource-b');
   });
 
-  it('disables delete selected while deletion is in progress', () => {
+  it('disables delete selected while deletion is in progress', async () => {
     usePrepareOfflineStorageManagement.mockReturnValue({
       summary: {
         availableBytes: 12.4 * 1024 * 1024 * 1024,
@@ -298,7 +300,7 @@ describe('ManageDeviceStorageSection', () => {
       requestDeleteSelected: mockRequestDeleteSelected,
     });
 
-    render(<ManageDeviceStorageSection projectId={1} />);
+    await render(<ManageDeviceStorageSection projectId={1} />);
 
     expect(screen.queryByTestId('storage-delete-spinner')).toBeNull();
     expect(screen.getByTestId('storage-delete-selected-button')).toHaveProp(

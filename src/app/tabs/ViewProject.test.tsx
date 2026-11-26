@@ -113,7 +113,7 @@ describe('ViewProject', () => {
       retry: jest.fn(),
     });
 
-    render(<ViewProject />);
+    await render(<ViewProject />);
 
     expect(await screen.findByText('Mark')).toBeTruthy();
     expect(await screen.findByText('Baka NT')).toBeTruthy();
@@ -132,7 +132,7 @@ describe('ViewProject', () => {
       retry: jest.fn(),
     });
 
-    render(<ViewProject />);
+    await render(<ViewProject />);
 
     expect(
       await screen.findByText('No chapters are available in this project yet.'),
@@ -150,12 +150,12 @@ describe('ViewProject', () => {
       retry,
     });
 
-    render(<ViewProject />);
+    await render(<ViewProject />);
 
     expect(
       await screen.findByText('Unable to load this project.'),
     ).toBeTruthy();
-    fireEvent.press(await screen.findByTestId('view-project-retry'));
+    await fireEvent.press(await screen.findByTestId('view-project-retry'));
     expect(retry).toHaveBeenCalled();
   });
 });

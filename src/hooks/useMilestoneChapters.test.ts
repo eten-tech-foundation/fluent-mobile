@@ -77,7 +77,7 @@ describe('useMilestoneChapters', () => {
         }),
     );
 
-    const { result } = renderHook(() => useMilestoneChapters(10, 100));
+    const { result } = await renderHook(() => useMilestoneChapters(10, 100));
 
     let resolveFresh!: (v: ProjectChapter[]) => void;
     mockGetMilestoneChapters.mockImplementationOnce(
@@ -102,7 +102,7 @@ describe('useMilestoneChapters', () => {
     const chapters = [makeChapter()];
     mockGetMilestoneChapters.mockResolvedValue(chapters);
 
-    const { result } = renderHook(() => useMilestoneChapters(10, 100));
+    const { result } = await renderHook(() => useMilestoneChapters(10, 100));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.chapters).toEqual(chapters);
@@ -112,7 +112,7 @@ describe('useMilestoneChapters', () => {
   it('clears chapters and skips the query when there is no active user', async () => {
     mockParseUserId.mockReturnValue(null);
 
-    const { result } = renderHook(() => useMilestoneChapters(10, 100));
+    const { result } = await renderHook(() => useMilestoneChapters(10, 100));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.chapters).toEqual([]);

@@ -331,7 +331,7 @@ describe('DraftingScreen onChapterClaimed', () => {
   });
 
   it('refetches chapter assignment without reloading verses', async () => {
-    render(<DraftingScreen />);
+    await render(<DraftingScreen />);
 
     await waitFor(() => {
       expect(screen.getByTestId('mock-record-tab-claim')).toBeTruthy();
@@ -341,7 +341,7 @@ describe('DraftingScreen onChapterClaimed', () => {
     // DraftingScreen + DraftingContext (#279) each load recorded verses on mount.
     expect(mockGetRecordedVerseNumbers).toHaveBeenCalledTimes(2);
 
-    fireEvent.press(screen.getByTestId('mock-record-tab-claim'));
+    await fireEvent.press(screen.getByTestId('mock-record-tab-claim'));
 
     await waitFor(() => {
       expect(mockGetChapterAssignmentById).toHaveBeenCalledTimes(2);
@@ -364,7 +364,7 @@ describe('DraftingScreen onChapterClaimed', () => {
       },
     ]);
 
-    render(<DraftingScreen />);
+    await render(<DraftingScreen />);
 
     await waitFor(() => {
       expect(syncBibleTexts).toHaveBeenCalledWith(undefined, {
@@ -374,7 +374,7 @@ describe('DraftingScreen onChapterClaimed', () => {
   });
 
   it('renders the shell source-audio bar slot above the tab bar', async () => {
-    render(<DraftingScreen />);
+    await render(<DraftingScreen />);
 
     await waitFor(() => {
       expect(screen.getByTestId('source-audio-bar-slot')).toBeTruthy();
@@ -386,11 +386,11 @@ describe('DraftingScreen onChapterClaimed', () => {
   describe('capture leave prompt (#49)', () => {
     /** Render with an active capture and return the discard handler. */
     async function renderWithActiveCapture() {
-      render(<DraftingScreen />);
+      await render(<DraftingScreen />);
       await waitFor(() => {
         expect(screen.getByTestId('mock-record-tab-activate')).toBeTruthy();
       });
-      fireEvent.press(screen.getByTestId('mock-record-tab-activate'));
+      await fireEvent.press(screen.getByTestId('mock-record-tab-activate'));
       expect(
         capturedRecordTabHandlers?.onRegisterCaptureControls,
       ).toBeDefined();
@@ -556,7 +556,7 @@ describe('DraftingScreen onChapterClaimed', () => {
 
     it('tab change while a take is saving stays on Record and shows the saving alert', async () => {
       mockRecordSession = { state: 'saving', captureActive: false };
-      render(<DraftingScreen />);
+      await render(<DraftingScreen />);
       await waitFor(() => {
         expect(screen.getByTestId('mock-record-tab-activate')).toBeTruthy();
       });
@@ -575,14 +575,14 @@ describe('DraftingScreen onChapterClaimed', () => {
     });
 
     it('inactive capture leaves navigation unguarded', async () => {
-      render(<DraftingScreen />);
+      await render(<DraftingScreen />);
       await waitFor(() => {
         expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
       });
 
-      fireEvent.press(screen.getByTestId('mock-record-tab-deactivate'));
+      await fireEvent.press(screen.getByTestId('mock-record-tab-deactivate'));
 
-      act(() => {
+      await act(() => {
         capturedTabBarHandlers?.onTabChange?.('bible');
         capturedHeaderHandlers?.onSyncPress?.();
       });
@@ -603,7 +603,7 @@ describe('DraftingScreen onChapterClaimed', () => {
     }
 
     async function renderDrafting() {
-      render(<DraftingScreen />);
+      await render(<DraftingScreen />);
       await waitFor(() => {
         expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
       });
@@ -663,7 +663,7 @@ describe('DraftingScreen onChapterClaimed', () => {
     }
 
     async function renderDrafting() {
-      render(<DraftingScreen />);
+      await render(<DraftingScreen />);
       await waitFor(() => {
         expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
       });
@@ -678,7 +678,7 @@ describe('DraftingScreen onChapterClaimed', () => {
 
     it('holds uploads on focus and releases them on blur and unmount', async () => {
       mockIsFocused.mockReturnValue(false);
-      const view = render(<DraftingScreen />);
+      const view = await render(<DraftingScreen />);
       await waitFor(() => {
         expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
       });
@@ -691,7 +691,7 @@ describe('DraftingScreen onChapterClaimed', () => {
       expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(false);
 
       mockSetDraftingUploadHold.mockClear();
-      view.unmount();
+      await view.unmount();
       expect(mockSetDraftingUploadHold).toHaveBeenCalledWith(false);
     });
 
@@ -721,7 +721,7 @@ describe('DraftingScreen onChapterClaimed', () => {
       lastNavigationListener('focus')();
       mockSetDraftingUploadHold.mockClear();
 
-      act(() => {
+      await act(() => {
         capturedTabBarHandlers?.onTabChange?.('resources');
         capturedTabBarHandlers?.onTabChange?.('bible');
       });
@@ -730,7 +730,7 @@ describe('DraftingScreen onChapterClaimed', () => {
     });
 
     it('does not flush uploads when the chapter id changes on the same screen', async () => {
-      const view = render(<DraftingScreen />);
+      const view = await render(<DraftingScreen />);
       await waitFor(() => {
         expect(screen.getByTestId('mock-record-tab-deactivate')).toBeTruthy();
       });
@@ -739,7 +739,7 @@ describe('DraftingScreen onChapterClaimed', () => {
       mockRouteParams.chapterId = '9';
       mockRouteParams.chapterName = 'Mark 15';
       await act(async () => {
-        view.rerender(<DraftingScreen />);
+        await view.rerender(<DraftingScreen />);
       });
 
       expect(mockSetDraftingUploadHold).not.toHaveBeenCalled();

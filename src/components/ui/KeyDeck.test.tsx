@@ -22,9 +22,9 @@ describe('KeyDeck', () => {
     mockPreferenceStore();
   });
 
-  it('frames its keys in surface/inverse with 2pt seams', () => {
-    act(() => setUiVersion('legacy'));
-    renderWithPreferences(
+  it('frames its keys in surface/inverse with 2pt seams', async () => {
+    await act(() => setUiVersion('legacy'));
+    await renderWithPreferences(
       <KeyDeck testID="deck">
         <Text>Play</Text>
       </KeyDeck>,
@@ -40,13 +40,13 @@ describe('KeyDeck', () => {
     expect(screen.getByText('Play')).toBeTruthy();
   });
 
-  it('follows independently scoped Next deck color and returns to Legacy', () => {
+  it('follows independently scoped Next deck color and returns to Legacy', async () => {
     const roles = resolveTheme('next').roles as { surfaceInverse: string };
     const original = roles.surfaceInverse;
     try {
       roles.surfaceInverse = '#123456';
-      act(() => setUiVersion('legacy'));
-      renderWithPreferences(
+      await act(() => setUiVersion('legacy'));
+      await renderWithPreferences(
         <KeyDeck testID="deck">
           <Text>Play</Text>
         </KeyDeck>,
@@ -55,9 +55,9 @@ describe('KeyDeck', () => {
         StyleSheet.flatten(screen.getByTestId('deck').props.style)
           .backgroundColor;
       expect(background()).toBe(legacyTheme.roles.surfaceInverse);
-      act(() => setUiVersion('next'));
+      await act(() => setUiVersion('next'));
       expect(background()).toBe('#123456');
-      act(() => setUiVersion('legacy'));
+      await act(() => setUiVersion('legacy'));
       expect(background()).toBe(legacyTheme.roles.surfaceInverse);
     } finally {
       roles.surfaceInverse = original;

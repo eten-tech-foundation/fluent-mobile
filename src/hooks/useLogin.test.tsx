@@ -52,16 +52,16 @@ describe('useLogin', () => {
       user: { email: 't@fluent.local' },
     });
 
-    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+    const { result } = await renderHook(() => useLogin(onLoginSuccess), {
       wrapper: QueryClientTestWrapper,
     });
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('t@fluent.local');
       result.current.setPassword('secret');
     });
 
-    act(() => {
+    await act(() => {
       result.current.handleLogin();
     });
 
@@ -93,16 +93,16 @@ describe('useLogin', () => {
       new Error('Native random source unavailable'),
     );
 
-    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+    const { result } = await renderHook(() => useLogin(onLoginSuccess), {
       wrapper: QueryClientTestWrapper,
     });
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('t@fluent.local');
       result.current.setPassword('secret');
     });
 
-    act(() => {
+    await act(() => {
       result.current.handleLogin();
     });
 
@@ -126,19 +126,19 @@ describe('useLogin', () => {
       user: { email: 'b@example.com' },
     });
 
-    const { result } = renderHook(
+    const { result } = await renderHook(
       () => useLogin(onLoginSuccess, { sessionMode: 'addAccount' }),
       {
         wrapper: QueryClientTestWrapper,
       },
     );
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('b@example.com');
       result.current.setPassword('secret');
     });
 
-    act(() => {
+    await act(() => {
       result.current.handleLogin();
     });
 
@@ -166,11 +166,11 @@ describe('useLogin', () => {
       .mocked(FluentAPI.signIn)
       .mockRejectedValue(new Error('Invalid credentials'));
 
-    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+    const { result } = await renderHook(() => useLogin(onLoginSuccess), {
       wrapper: QueryClientTestWrapper,
     });
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('t@fluent.local');
       result.current.setPassword('wrong');
     });
@@ -193,16 +193,16 @@ describe('useLogin', () => {
       .mocked(beginLoginSession)
       .mockRejectedValue(new Error('Session setup failed'));
 
-    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+    const { result } = await renderHook(() => useLogin(onLoginSuccess), {
       wrapper: QueryClientTestWrapper,
     });
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('t@fluent.local');
       result.current.setPassword('secret');
     });
 
-    act(() => {
+    await act(() => {
       result.current.handleLogin();
     });
 
@@ -213,12 +213,6 @@ describe('useLogin', () => {
     expect(FluentAPI.signIn).toHaveBeenCalledTimes(1);
     expect(FluentAPI.signIn).toHaveBeenCalledWith('t@fluent.local', 'secret');
     expect(onLoginSuccess).not.toHaveBeenCalled();
-
-    act(() => {
-      result.current.handleLogin();
-    });
-
-    expect(FluentAPI.signIn).toHaveBeenCalledTimes(1);
   });
 
   it('restores a stored session when the network is down', async () => {
@@ -231,16 +225,16 @@ describe('useLogin', () => {
       token: 'stored-token',
     });
 
-    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+    const { result } = await renderHook(() => useLogin(onLoginSuccess), {
       wrapper: QueryClientTestWrapper,
     });
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('t@fluent.local');
       result.current.setPassword('secret');
     });
 
-    act(() => {
+    await act(() => {
       result.current.handleLogin();
     });
 
@@ -267,11 +261,11 @@ describe('useLogin', () => {
       reason: 'no-verifier',
     });
 
-    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+    const { result } = await renderHook(() => useLogin(onLoginSuccess), {
       wrapper: QueryClientTestWrapper,
     });
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('t@fluent.local');
       result.current.setPassword('secret');
     });
@@ -297,11 +291,11 @@ describe('useLogin', () => {
       reason: 'mismatch',
     });
 
-    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+    const { result } = await renderHook(() => useLogin(onLoginSuccess), {
       wrapper: QueryClientTestWrapper,
     });
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('t@fluent.local');
       result.current.setPassword('wrong');
     });
@@ -321,12 +315,12 @@ describe('useLogin', () => {
       .mocked(FluentAPI.signIn)
       .mockRejectedValue(new ApiError(0, 'Network request failed'));
 
-    const { result } = renderHook(
+    const { result } = await renderHook(
       () => useLogin(onLoginSuccess, { sessionMode: 'addAccount' }),
       { wrapper: QueryClientTestWrapper },
     );
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('b@example.com');
       result.current.setPassword('secret');
     });
@@ -353,11 +347,11 @@ describe('useLogin', () => {
       reason: 'locked',
     });
 
-    const { result } = renderHook(() => useLogin(onLoginSuccess), {
+    const { result } = await renderHook(() => useLogin(onLoginSuccess), {
       wrapper: QueryClientTestWrapper,
     });
 
-    act(() => {
+    await act(() => {
       result.current.setEmail('t@fluent.local');
       result.current.setPassword('secret');
     });

@@ -96,7 +96,7 @@ describe('useTranslationNotesForUnit', () => {
   it('loads notes for units that have TN content', async () => {
     mockLoad.mockResolvedValue(loaded(SAMPLE_NOTES));
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTranslationNotesForUnit({
         projectId: 7,
         bookCode: 'MRK',
@@ -129,7 +129,7 @@ describe('useTranslationNotesForUnit', () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
     mockLoad.mockResolvedValueOnce(loaded(SAMPLE_NOTES));
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTranslationNotesForUnit({
         projectId: 7,
         bookCode: 'MRK',
@@ -173,7 +173,7 @@ describe('useTranslationNotesForUnit', () => {
       verseNumber: 1,
     };
     const seenByB: TranslationNotesLoadStateForTest[] = [];
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: { userId: number }) => {
         const out = useTranslationNotesForUnit({ ...unit, ...props });
         if (props.userId === 6) seenByB.push(out.state);
@@ -183,7 +183,7 @@ describe('useTranslationNotesForUnit', () => {
     );
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
 
-    rerender({ userId: 6 });
+    await rerender({ userId: 6 });
     expect(seenByB.length).toBeGreaterThan(0);
     expect(seenByB.every(state => state.status === 'loading')).toBe(true);
     const theirs: TranslationNoteItem[] = [
@@ -207,7 +207,7 @@ describe('useTranslationNotesForUnit', () => {
           pending.push(resolve);
         }),
     );
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTranslationNotesForUnit({
         projectId: 7,
         userId: 5,
@@ -218,7 +218,7 @@ describe('useTranslationNotesForUnit', () => {
     );
     await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(1));
 
-    act(() => {
+    await act(() => {
       clearPassageResourceReuse('5');
     });
     await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
@@ -252,7 +252,9 @@ describe('useTranslationNotesForUnit', () => {
 
     it('shows the verses that loaded and lists the ones that failed', async () => {
       mockLoad.mockResolvedValueOnce(partial([1, 3]));
-      const { result } = renderHook(() => useTranslationNotesForUnit(unit));
+      const { result } = await renderHook(() =>
+        useTranslationNotesForUnit(unit),
+      );
 
       await waitFor(() => expect(result.current.state.status).toBe('ready'));
       expect(result.current.state).toEqual({
@@ -267,7 +269,9 @@ describe('useTranslationNotesForUnit', () => {
       mockLoad
         .mockResolvedValueOnce(partial([1]))
         .mockResolvedValueOnce(partial([2], [2, 3]));
-      const { result } = renderHook(() => useTranslationNotesForUnit(unit));
+      const { result } = await renderHook(() =>
+        useTranslationNotesForUnit(unit),
+      );
       await waitFor(() => expect(result.current.state.status).toBe('ready'));
 
       await act(async () => {
@@ -295,7 +299,9 @@ describe('useTranslationNotesForUnit', () => {
       mockLoad
         .mockResolvedValueOnce(partial([]))
         .mockResolvedValueOnce(partial([1, 2, 3]));
-      const { result } = renderHook(() => useTranslationNotesForUnit(unit));
+      const { result } = await renderHook(() =>
+        useTranslationNotesForUnit(unit),
+      );
 
       await waitFor(() => expect(result.current.state.status).toBe('error'));
       expect(result.current.state).toMatchObject({
@@ -323,7 +329,7 @@ describe('useTranslationNotesForUnit', () => {
       .mockResolvedValueOnce(
         loaded([note(5)], [{ chapterNumber: 15, verseNumber: 5 }]),
       );
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: { chapterNumber: number; verseNumbers: number[] }) =>
         useTranslationNotesForUnit({
           projectId: 7,
@@ -335,7 +341,7 @@ describe('useTranslationNotesForUnit', () => {
     );
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
 
-    rerender({ chapterNumber: 15, verseNumbers: [5] });
+    await rerender({ chapterNumber: 15, verseNumbers: [5] });
     await waitFor(() => expect(result.current.state.status).toBe('error'));
     await act(async () => {
       await result.current.retry();
@@ -358,7 +364,7 @@ describe('useTranslationNotesForUnit', () => {
       signals.push(params.signal!);
       return new Promise(() => {});
     });
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTranslationNotesForUnit({
         projectId: 7,
         bookCode: 'MRK',
@@ -368,7 +374,7 @@ describe('useTranslationNotesForUnit', () => {
     );
     await waitFor(() => expect(signals).toHaveLength(1));
 
-    act(() => {
+    await act(() => {
       void result.current.retry();
     });
 
@@ -383,7 +389,7 @@ describe('useTranslationNotesForUnit', () => {
       signals.push(params.signal!);
       return new Promise(() => {});
     });
-    const { rerender, unmount } = renderHook(
+    const { rerender, unmount } = await renderHook(
       (props: { chapterNumber: number }) =>
         useTranslationNotesForUnit({
           projectId: 7,
@@ -395,12 +401,12 @@ describe('useTranslationNotesForUnit', () => {
     );
     await waitFor(() => expect(signals).toHaveLength(1));
 
-    rerender({ chapterNumber: 15 });
+    await rerender({ chapterNumber: 15 });
     await waitFor(() => expect(signals).toHaveLength(2));
     expect(signals[0]!.aborted).toBe(true);
     expect(signals[1]!.aborted).toBe(false);
 
-    unmount();
+    await unmount();
     expect(signals[1]!.aborted).toBe(true);
   });
 });

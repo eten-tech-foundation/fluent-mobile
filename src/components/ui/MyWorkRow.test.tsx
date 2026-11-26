@@ -179,9 +179,9 @@ describe('MyWorkRow', () => {
     });
   });
 
-  it('renders the conflict indicator beside cloud sync when hasConflict', () => {
+  it('renders the conflict indicator beside cloud sync when hasConflict', async () => {
     const onPress = jest.fn();
-    const { getByTestId, getByText } = render(
+    const { getByTestId, getByText } = await render(
       <MyWorkRow
         chapter={{ ...baseChapter, hasConflict: true }}
         onPress={onPress}
@@ -190,20 +190,20 @@ describe('MyWorkRow', () => {
 
     expect(getByText('Mark 1')).toBeTruthy();
     expect(getByTestId('chapter-conflict-indicator')).toBeTruthy();
-    fireEvent.press(getByText('Mark 1'));
+    await fireEvent.press(getByText('Mark 1'));
     expect(onPress).toHaveBeenCalled();
   });
 
-  it('omits the conflict indicator when hasConflict is false', () => {
-    const { queryByTestId } = render(
+  it('omits the conflict indicator when hasConflict is false', async () => {
+    const { queryByTestId } = await render(
       <MyWorkRow chapter={baseChapter} onPress={jest.fn()} />,
     );
 
     expect(queryByTestId('chapter-conflict-indicator')).toBeNull();
   });
 
-  it('shows only the conflict indicator when both conflict and ownership apply', () => {
-    const { getAllByTestId, queryByTestId } = render(
+  it('shows only the conflict indicator when both conflict and ownership apply', async () => {
+    const { getAllByTestId, queryByTestId } = await render(
       <MyWorkRow
         chapter={{ ...baseChapter, hasConflict: true }}
         onPress={jest.fn()}
@@ -216,8 +216,8 @@ describe('MyWorkRow', () => {
     expect(queryByTestId('chapter-ownership-mine')).toBeNull();
   });
 
-  it('shows the ownership indicator when there is no conflict', () => {
-    const { getAllByTestId } = render(
+  it('shows the ownership indicator when there is no conflict', async () => {
+    const { getAllByTestId } = await render(
       <MyWorkRow chapter={baseChapter} onPress={jest.fn()} />,
     );
 
@@ -228,8 +228,8 @@ describe('MyWorkRow', () => {
     ).toEqual(['chapter-cloud-sync-indicator', 'chapter-ownership-mine']);
   });
 
-  it('does not render the workflow status badge on the row', () => {
-    const { queryByText, getByText } = render(
+  it('does not render the workflow status badge on the row', async () => {
+    const { queryByText, getByText } = await render(
       <MyWorkRow chapter={baseChapter} onPress={jest.fn()} />,
     );
 
@@ -238,8 +238,8 @@ describe('MyWorkRow', () => {
     expect(queryByText('Draft')).toBeNull();
   });
 
-  it('keeps a stable chip column and omits the chip when ineligible', () => {
-    const { getByTestId, queryByTestId } = render(
+  it('keeps a stable chip column and omits the chip when ineligible', async () => {
+    const { getByTestId, queryByTestId } = await render(
       <MyWorkRow chapter={baseChapter} onPress={jest.fn()} />,
     );
 
@@ -248,22 +248,22 @@ describe('MyWorkRow', () => {
     expect(mockUseDraftDownload).toHaveBeenCalledWith(null);
   });
 
-  it('wires the download chip for assigned peer_check without auto-start or row navigation', () => {
+  it('wires the download chip for assigned peer_check without auto-start or row navigation', async () => {
     const onPress = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <MyWorkRow chapter={peerChapter} onPress={onPress} />,
     );
 
     expect(mockUseDraftDownload).toHaveBeenCalledWith(peerRequest);
     expect(mockStart).not.toHaveBeenCalled();
 
-    fireEvent.press(getByTestId('my-work-draft-download-2'));
+    await fireEvent.press(getByTestId('my-work-draft-download-2'));
     expect(mockStart).toHaveBeenCalledTimes(1);
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  it('nulls the download hook after account switch leaves a stale peer row', () => {
-    const { rerender, queryByTestId } = render(
+  it('nulls the download hook after account switch leaves a stale peer row', async () => {
+    const { rerender, queryByTestId } = await render(
       <MyWorkRow chapter={peerChapter} onPress={jest.fn()} />,
     );
 
@@ -272,18 +272,18 @@ describe('MyWorkRow', () => {
 
     mockGetActiveUserId.mockReturnValue('8');
     mockParseUserId.mockReturnValue(8);
-    rerender(<MyWorkRow chapter={peerChapter} onPress={jest.fn()} />);
+    await rerender(<MyWorkRow chapter={peerChapter} onPress={jest.fn()} />);
 
     expect(mockUseDraftDownload).toHaveBeenLastCalledWith(null);
     expect(queryByTestId('my-work-draft-download-2')).toBeNull();
     expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('nulls the download hook when synced id drifts from active account', () => {
+  it('nulls the download hook when synced id drifts from active account', async () => {
     mockGetActiveUserId.mockReturnValue('8');
     mockParseUserId.mockReturnValue(7);
 
-    const { queryByTestId } = render(
+    const { queryByTestId } = await render(
       <MyWorkRow chapter={peerChapter} onPress={jest.fn()} />,
     );
 
@@ -291,8 +291,8 @@ describe('MyWorkRow', () => {
     expect(queryByTestId('my-work-draft-download-2')).toBeNull();
   });
 
-  it('nulls the download hook when peer is assigned to another user', () => {
-    const { queryByTestId } = render(
+  it('nulls the download hook when peer is assigned to another user', async () => {
+    const { queryByTestId } = await render(
       <MyWorkRow
         chapter={{
           ...peerChapter,
@@ -306,14 +306,14 @@ describe('MyWorkRow', () => {
     expect(queryByTestId('my-work-draft-download-2')).toBeNull();
   });
 
-  it('nulls download hook on review stage without observer grant', () => {
+  it('nulls download hook on review stage without observer grant', async () => {
     (hasProjectObserverGrant as jest.Mock).mockReturnValue(false);
-    const { rerender, queryByTestId } = render(
+    const { rerender, queryByTestId } = await render(
       <MyWorkRow chapter={peerChapter} onPress={jest.fn()} />,
     );
     expect(mockUseDraftDownload).toHaveBeenLastCalledWith(peerRequest);
 
-    rerender(
+    await rerender(
       <MyWorkRow
         chapter={{
           ...peerChapter,
@@ -327,22 +327,22 @@ describe('MyWorkRow', () => {
     expect(queryByTestId('my-work-draft-download-2')).toBeNull();
   });
 
-  it('does not start Observer download when grant is revoked before tap without rerender', () => {
+  it('does not start Observer download when grant is revoked before tap without rerender', async () => {
     mockHasProjectObserverGrant.mockReturnValue(true);
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <MyWorkRow chapter={observerChapter} onPress={jest.fn()} />,
     );
 
     expect(mockUseDraftDownload).toHaveBeenCalledWith(observerRequest);
     mockHasProjectObserverGrant.mockReturnValue(false);
 
-    fireEvent.press(getByTestId('my-work-draft-download-3'));
+    await fireEvent.press(getByTestId('my-work-draft-download-3'));
     expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('does not start download when account switches before tap without rerender', () => {
+  it('does not start download when account switches before tap without rerender', async () => {
     mockHasProjectObserverGrant.mockReturnValue(true);
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <MyWorkRow chapter={observerChapter} onPress={jest.fn()} />,
     );
 
@@ -350,7 +350,7 @@ describe('MyWorkRow', () => {
     mockGetActiveUserId.mockReturnValue('8');
     mockParseUserId.mockReturnValue(8);
 
-    fireEvent.press(getByTestId('my-work-draft-download-3'));
+    await fireEvent.press(getByTestId('my-work-draft-download-3'));
     expect(mockStart).not.toHaveBeenCalled();
   });
 });

@@ -56,7 +56,9 @@ describe('usePrepareOfflineStorageManagement', () => {
   });
 
   it('loads storage summary and other-project inventory on mount', async () => {
-    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineStorageManagement(1),
+    );
 
     await waitFor(() => {
       expect(result.current.initialLoaded).toBe(true);
@@ -69,7 +71,7 @@ describe('usePrepareOfflineStorageManagement', () => {
   });
 
   it('clears state when projectId is null', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineStorageManagement(null),
     );
 
@@ -88,13 +90,15 @@ describe('usePrepareOfflineStorageManagement', () => {
   });
 
   it('toggles resource selection and tracks bytes to free', async () => {
-    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineStorageManagement(1),
+    );
 
     await waitFor(() => {
       expect(result.current.initialLoaded).toBe(true);
     });
 
-    act(() => {
+    await act(() => {
       result.current.toggleResourceSelected('resource-b');
     });
 
@@ -102,7 +106,7 @@ describe('usePrepareOfflineStorageManagement', () => {
     expect(result.current.bytesToFree).toBe(250);
     expect(result.current.selectedIds.has('resource-b')).toBe(true);
 
-    act(() => {
+    await act(() => {
       result.current.toggleResourceSelected('resource-b');
     });
 
@@ -111,18 +115,20 @@ describe('usePrepareOfflineStorageManagement', () => {
   });
 
   it('toggles project accordion expansion', async () => {
-    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineStorageManagement(1),
+    );
 
     await waitFor(() => {
       expect(result.current.initialLoaded).toBe(true);
     });
 
-    act(() => {
+    await act(() => {
       result.current.toggleProjectExpanded(2);
     });
     expect(result.current.expandedProjectIds.has(2)).toBe(true);
 
-    act(() => {
+    await act(() => {
       result.current.toggleProjectExpanded(2);
     });
     expect(result.current.expandedProjectIds.has(2)).toBe(false);
@@ -133,17 +139,19 @@ describe('usePrepareOfflineStorageManagement', () => {
       .spyOn(Alert, 'alert')
       .mockImplementation(() => undefined);
 
-    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineStorageManagement(1),
+    );
 
     await waitFor(() => {
       expect(result.current.initialLoaded).toBe(true);
     });
 
-    act(() => {
+    await act(() => {
       result.current.toggleResourceSelected('resource-b');
     });
 
-    act(() => {
+    await act(() => {
       result.current.requestDeleteSelected();
     });
 
@@ -170,7 +178,9 @@ describe('usePrepareOfflineStorageManagement', () => {
         confirm?.onPress?.();
       });
 
-    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineStorageManagement(1),
+    );
 
     await waitFor(() => {
       expect(result.current.initialLoaded).toBe(true);
@@ -179,11 +189,11 @@ describe('usePrepareOfflineStorageManagement', () => {
     mockGetDeviceStorageSummary.mockClear();
     mockGetOtherProjectsStorageInventory.mockClear();
 
-    act(() => {
+    await act(() => {
       result.current.toggleResourceSelected('resource-b');
     });
 
-    act(() => {
+    await act(() => {
       result.current.requestDeleteSelected();
     });
 
@@ -204,7 +214,7 @@ describe('usePrepareOfflineStorageManagement', () => {
   });
 
   it('reloads inventory when inventoryRefreshSignal changes after mount', async () => {
-    const { rerender } = renderHook(
+    const { rerender } = await renderHook(
       ({ signal }: { signal: string }) =>
         usePrepareOfflineStorageManagement(1, signal),
       { initialProps: { signal: '0' } },
@@ -217,7 +227,7 @@ describe('usePrepareOfflineStorageManagement', () => {
     mockGetDeviceStorageSummary.mockClear();
     mockGetOtherProjectsStorageInventory.mockClear();
 
-    rerender({ signal: '1' });
+    await rerender({ signal: '1' });
 
     await waitFor(() => {
       expect(mockGetDeviceStorageSummary).toHaveBeenCalledTimes(1);
@@ -226,13 +236,15 @@ describe('usePrepareOfflineStorageManagement', () => {
   });
 
   it('drops stale selected ids after inventory reload', async () => {
-    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineStorageManagement(1),
+    );
 
     await waitFor(() => {
       expect(result.current.initialLoaded).toBe(true);
     });
 
-    act(() => {
+    await act(() => {
       result.current.toggleResourceSelected('resource-b');
     });
 
@@ -277,7 +289,9 @@ describe('usePrepareOfflineStorageManagement', () => {
       return [];
     });
 
-    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineStorageManagement(1),
+    );
 
     await act(async () => {
       const firstReload = result.current.reload();
@@ -298,7 +312,9 @@ describe('usePrepareOfflineStorageManagement', () => {
   });
 
   it('clears inventory and avoids unhandled rejection when reload fails', async () => {
-    const { result } = renderHook(() => usePrepareOfflineStorageManagement(1));
+    const { result } = await renderHook(() =>
+      usePrepareOfflineStorageManagement(1),
+    );
 
     await waitFor(() => {
       expect(result.current.initialLoaded).toBe(true);

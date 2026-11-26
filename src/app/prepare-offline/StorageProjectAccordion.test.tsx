@@ -38,8 +38,8 @@ const group = {
 };
 
 describe('StorageProjectAccordion', () => {
-  it('shows project name and total while collapsed', () => {
-    render(
+  it('shows project name and total while collapsed', async () => {
+    await render(
       <StorageProjectAccordion
         group={group}
         expanded={false}
@@ -54,8 +54,8 @@ describe('StorageProjectAccordion', () => {
     expect(screen.queryByText('Source Bible')).toBeNull();
   });
 
-  it('shows grouped resources when expanded', () => {
-    render(
+  it('shows grouped resources when expanded', async () => {
+    await render(
       <StorageProjectAccordion
         group={group}
         expanded={true}
@@ -74,10 +74,10 @@ describe('StorageProjectAccordion', () => {
     );
   });
 
-  it('calls onToggleExpanded when header is pressed', () => {
+  it('calls onToggleExpanded when header is pressed', async () => {
     const onToggleExpanded = jest.fn();
 
-    render(
+    await render(
       <StorageProjectAccordion
         group={group}
         expanded={false}
@@ -87,14 +87,14 @@ describe('StorageProjectAccordion', () => {
       />,
     );
 
-    fireEvent.press(screen.getByText('Mark'));
+    await fireEvent.press(screen.getByText('Mark'));
     expect(onToggleExpanded).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onToggleResource when a row is pressed', () => {
+  it('calls onToggleResource when a row is pressed', async () => {
     const onToggleResource = jest.fn();
 
-    render(
+    await render(
       <StorageProjectAccordion
         group={group}
         expanded={true}
@@ -104,7 +104,7 @@ describe('StorageProjectAccordion', () => {
       />,
     );
 
-    fireEvent.press(screen.getByTestId('storage-resource-row-text-id'));
+    await fireEvent.press(screen.getByTestId('storage-resource-row-text-id'));
     expect(onToggleResource).toHaveBeenCalledWith('text-id');
   });
 });

@@ -1,10 +1,11 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { TabBar } from './TabBar';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { UiVersionOverride } from '../../theme/useTheme';
 import { resolveTheme } from '../../theme/uiVersion';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
+import { getAllByHostType } from '../../test/hostElements';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
@@ -25,8 +26,8 @@ describe('TabBar', () => {
     jest.clearAllMocks();
     mockPreferenceStore();
   });
-  it('labels the projects tab Milestones and keeps the existing testID', () => {
-    render(<TabBar activeTab="projects" onTabChange={jest.fn()} />);
+  it('labels the projects tab Milestones and keeps the existing testID', async () => {
+    await render(<TabBar activeTab="projects" onTabChange={jest.fn()} />);
 
     expect(screen.getByText('Milestones')).toBeTruthy();
     expect(screen.getByTestId('home-tab-projects')).toBeTruthy();
@@ -35,8 +36,7 @@ describe('TabBar', () => {
 });
 
 function tabContainer() {
-  const containers = screen
-    .UNSAFE_getAllByType(View)
+  const containers = getAllByHostType('View')
     .map(node => StyleSheet.flatten(node.props.style))
     .filter(
       style =>
@@ -46,7 +46,7 @@ function tabContainer() {
   return containers[0];
 }
 
-it('isolates scoped Next tab styles and updates activeTab without a theme change', () => {
+it('isolates scoped Next tab styles and updates activeTab without a theme change', async () => {
   mockPreferenceStore();
   const legacy = resolveTheme('legacy');
   const next = resolveTheme('next');
@@ -73,7 +73,7 @@ it('isolates scoped Next tab styles and updates activeTab without a theme change
     colors.mutedForeground = '#345678';
     colors.border = '#456789';
     spacing.md = 23;
-    const { rerender } = render(tree('legacy', 'projects'));
+    const { rerender } = await render(tree('legacy', 'projects'));
     expect(tabContainer()).toMatchObject({
       backgroundColor: legacy.colors.tabBarBackground,
       borderBottomColor: legacy.colors.border,
@@ -86,7 +86,7 @@ it('isolates scoped Next tab styles and updates activeTab without a theme change
       paddingBottom: legacy.spacing.md + 2,
       borderBottomWidth: 2,
     });
-    rerender(tree('next', 'projects'));
+    await rerender(tree('next', 'projects'));
     expect(tabContainer()).toMatchObject({
       backgroundColor: '#123456',
       borderBottomColor: '#456789',
@@ -98,15 +98,15 @@ it('isolates scoped Next tab styles and updates activeTab without a theme change
       paddingBottom: 25,
       borderBottomColor: '#234567',
     });
-    fireEvent.press(screen.getByTestId('home-tab-my-work'));
+    await fireEvent.press(screen.getByTestId('home-tab-my-work'));
     expect(onTabChange).toHaveBeenCalledWith('myWork');
-    rerender(tree('next', 'myWork'));
+    await rerender(tree('next', 'myWork'));
     expect(screen.getByText('My Work')).toHaveStyle({ color: '#234567' });
     expect(screen.getByText('Milestones')).toHaveStyle({ color: '#345678' });
     expect(
       screen.getByTestId('home-tab-my-work').props.accessibilityState.selected,
     ).toBe(true);
-    rerender(tree('legacy', 'myWork'));
+    await rerender(tree('legacy', 'myWork'));
     expect(tabContainer()).toMatchObject({
       backgroundColor: legacy.colors.tabBarBackground,
     });

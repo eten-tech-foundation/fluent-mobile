@@ -69,11 +69,11 @@ const mockGetUnuploadablePendingSummary =
 const mockUseFocusEffect = useFocusEffect as jest.Mock;
 
 /** Fire the focus callback the hook registered (simulate screen focus). */
-function fireFocusEffect(): void {
+async function fireFocusEffect(): Promise<void> {
   const effect = mockUseFocusEffect.mock.calls.at(-1)?.[0] as
     | (() => void | (() => void))
     | undefined;
-  act(() => {
+  await act(() => {
     effect?.();
   });
 }
@@ -122,7 +122,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       { bookId: 1, chapterNumber: 1 },
     ]);
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.pendingCount).toBe(2);
@@ -138,15 +138,15 @@ describe('usePendingUploads (shared sync-status store)', () => {
     mockPainted = false;
     mockGetPendingUploadCount.mockResolvedValue(2);
 
-    const { result } = renderHook(() => usePendingUploads(0));
-    fireFocusEffect();
+    const { result } = await renderHook(() => usePendingUploads(0));
+    await fireFocusEffect();
     await act(async () => {});
 
     expect(mockGetPendingUploadCount).not.toHaveBeenCalled();
     expect(result.current.pendingCount).toBe(0);
     expect(result.current.countsRead).toBe(false);
 
-    act(() => {
+    await act(() => {
       for (const run of mockPaintQueue.splice(0)) run();
     });
 
@@ -158,13 +158,13 @@ describe('usePendingUploads (shared sync-status store)', () => {
   });
 
   it('marks counts read even when every count is zero, and unread after a reset', async () => {
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
     await waitFor(() => {
       expect(result.current.countsRead).toBe(true);
     });
     expect(result.current.pendingCount).toBe(0);
 
-    act(() => {
+    await act(() => {
       resetSyncStatusStore();
     });
 
@@ -174,14 +174,14 @@ describe('usePendingUploads (shared sync-status store)', () => {
   it('re-reads when a take is saved (recording data changed)', async () => {
     mockGetPendingUploadCount.mockResolvedValueOnce(0).mockResolvedValueOnce(1);
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.pendingCount).toBe(0);
     });
 
     const versionBefore = getRecordingDataVersion();
-    act(() => {
+    await act(() => {
       emitRecordingDataChanged();
     });
 
@@ -194,14 +194,14 @@ describe('usePendingUploads (shared sync-status store)', () => {
   it('re-reads when a take is deleted (recording data changed)', async () => {
     mockGetPendingUploadCount.mockResolvedValue(1);
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.hasPendingUploads).toBe(true);
     });
 
     mockGetPendingUploadCount.mockResolvedValue(0);
-    act(() => {
+    await act(() => {
       emitRecordingDataChanged();
     });
 
@@ -217,7 +217,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       extraDistinctCount: 0,
     });
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.hasFailedUploads).toBe(true);
@@ -228,7 +228,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
 
     mockGetFailedUploadCount.mockResolvedValue(0);
     mockGetFailedUploadErrorSummary.mockResolvedValue(null);
-    act(() => {
+    await act(() => {
       emitRecordingDataChanged();
     });
 
@@ -241,13 +241,13 @@ describe('usePendingUploads (shared sync-status store)', () => {
   it('re-reads on focus', async () => {
     mockGetPendingUploadCount.mockResolvedValueOnce(0).mockResolvedValueOnce(3);
 
-    renderHook(() => usePendingUploads(0));
+    await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(mockGetPendingUploadCount).toHaveBeenCalledTimes(1);
     });
 
-    fireFocusEffect();
+    await fireFocusEffect();
 
     await waitFor(() => {
       expect(mockGetPendingUploadCount).toHaveBeenCalledTimes(2);
@@ -257,7 +257,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
   it('re-reads when refreshKey changes', async () => {
     mockGetPendingUploadCount.mockResolvedValue(0);
 
-    const { rerender } = renderHook(
+    const { rerender } = await renderHook(
       ({ refreshKey }: { refreshKey: number }) => usePendingUploads(refreshKey),
       { initialProps: { refreshKey: 0 } },
     );
@@ -266,7 +266,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       expect(mockGetPendingUploadCount).toHaveBeenCalledTimes(1);
     });
 
-    rerender({ refreshKey: 1 });
+    await rerender({ refreshKey: 1 });
 
     await waitFor(() => {
       expect(mockGetPendingUploadCount).toHaveBeenCalledTimes(2);
@@ -276,7 +276,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
   it('does not re-read when refreshKey is unchanged', async () => {
     mockGetPendingUploadCount.mockResolvedValue(0);
 
-    const { rerender } = renderHook(
+    const { rerender } = await renderHook(
       ({ refreshKey }: { refreshKey: number }) => usePendingUploads(refreshKey),
       { initialProps: { refreshKey: 0 } },
     );
@@ -285,7 +285,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       expect(mockGetPendingUploadCount).toHaveBeenCalledTimes(1);
     });
 
-    rerender({ refreshKey: 0 });
+    await rerender({ refreshKey: 0 });
 
     expect(mockGetPendingUploadCount).toHaveBeenCalledTimes(1);
   });
@@ -293,13 +293,13 @@ describe('usePendingUploads (shared sync-status store)', () => {
   it('refreshes counts when upload session events fire', async () => {
     mockGetPendingUploadCount.mockResolvedValueOnce(3).mockResolvedValueOnce(1);
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.pendingCount).toBe(3);
     });
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'start', totalChapters: 3 });
     });
 
@@ -312,7 +312,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       expect(result.current.pendingCount).toBe(1);
     });
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({
         type: 'progress',
         completedChapters: 2,
@@ -327,7 +327,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       });
     });
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'complete' });
     });
 
@@ -340,13 +340,13 @@ describe('usePendingUploads (shared sync-status store)', () => {
   it('does not flash stale pending counts when the upload completes (#621)', async () => {
     mockGetPendingUploadCount.mockResolvedValueOnce(2); // initial load
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.pendingCount).toBe(2);
     });
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
     });
     await waitFor(() => {
@@ -355,7 +355,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
 
     // Worker marks a row uploaded; the event-triggered re-read sees 1 left.
     mockGetPendingUploadCount.mockResolvedValue(1);
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({
         type: 'progress',
         completedChapters: 1,
@@ -379,7 +379,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       });
     });
     try {
-      act(() => {
+      await act(() => {
         emitUploadSessionEvent({ type: 'complete' });
       });
       await waitFor(() => {
@@ -399,29 +399,29 @@ describe('usePendingUploads (shared sync-status store)', () => {
   });
 
   it('flips isUploading off immediately on paused/waiting_wifi and keeps progress', async () => {
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
     });
     await waitFor(() => {
       expect(result.current.isUploading).toBe(true);
     });
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'paused', reason: 'connectivity' });
     });
     expect(result.current.isUploading).toBe(false);
     expect(result.current.uploadProgress).toEqual({ completed: 0, total: 2 });
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'start', totalChapters: 2 });
     });
     await waitFor(() => {
       expect(result.current.isUploading).toBe(true);
     });
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'waiting_wifi' });
     });
     expect(result.current.isUploading).toBe(false);
@@ -429,7 +429,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
 
   it('marks counts unknown when a pending query fails instead of treating it as zero', async () => {
     mockGetPendingUploadCount.mockRejectedValue(new Error('db'));
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.countsUnknown).toBe(true);
@@ -439,7 +439,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
 
   it('marks counts unknown when the unuploadable summary query fails', async () => {
     mockGetUnuploadablePendingSummary.mockRejectedValue(new Error('db'));
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.countsUnknown).toBe(true);
@@ -455,7 +455,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       total: 3,
     });
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.unuploadableCount).toBe(3);
@@ -475,7 +475,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       total: 3,
     });
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.pendingCount).toBe(3);
@@ -492,7 +492,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
       extraDistinctCount: 2,
     });
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(result.current.failedCount).toBe(0);
@@ -503,8 +503,8 @@ describe('usePendingUploads (shared sync-status store)', () => {
   it('shares one snapshot between two mounted consumers', async () => {
     mockGetPendingUploadCount.mockResolvedValue(4);
 
-    const first = renderHook(() => usePendingUploads(0));
-    const second = renderHook(() => usePendingUploads(0));
+    const first = await renderHook(() => usePendingUploads(0));
+    const second = await renderHook(() => usePendingUploads(0));
 
     await waitFor(() => {
       expect(first.result.current.pendingCount).toBe(4);
@@ -514,7 +514,7 @@ describe('usePendingUploads (shared sync-status store)', () => {
     // One emit updates both consumers without extra query calls.
     mockGetPendingUploadCount.mockResolvedValue(2);
     const callsBefore = mockGetPendingUploadCount.mock.calls.length;
-    act(() => {
+    await act(() => {
       emitRecordingDataChanged();
     });
 
@@ -528,12 +528,12 @@ describe('usePendingUploads (shared sync-status store)', () => {
   it('resetSyncStatusStore clears mounted consumers (user switch)', async () => {
     mockGetPendingUploadCount.mockResolvedValue(4);
 
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
     await waitFor(() => {
       expect(result.current.pendingCount).toBe(4);
     });
 
-    act(() => {
+    await act(() => {
       resetSyncStatusStore();
     });
 
@@ -576,9 +576,9 @@ describe('refreshSyncStatusStore', () => {
   });
 
   it('ends the upload when the final refresh rejects instead of wedging (#621)', async () => {
-    const { result } = renderHook(() => usePendingUploads(0));
+    const { result } = await renderHook(() => usePendingUploads(0));
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'start', totalChapters: 1 });
     });
     await waitFor(() => {
@@ -586,7 +586,7 @@ describe('refreshSyncStatusStore', () => {
     });
 
     mockGetPendingUploadCount.mockRejectedValueOnce(new Error('db gone'));
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'complete' });
     });
 
@@ -646,7 +646,7 @@ describe('refreshSyncStatusStore', () => {
       isUploading: boolean;
       pendingCount: number;
     }> = [];
-    const { result } = renderHook(() => {
+    const { result } = await renderHook(() => {
       const value = usePendingUploads(0);
       snapshots.push({
         isUploading: value.isUploading,
@@ -659,7 +659,7 @@ describe('refreshSyncStatusStore', () => {
       expect(result.current.pendingCount).toBe(3);
     });
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'start', totalChapters: 3 });
     });
 
@@ -670,7 +670,7 @@ describe('refreshSyncStatusStore', () => {
 
     snapshots.length = 0;
 
-    act(() => {
+    await act(() => {
       emitUploadSessionEvent({ type: 'complete' });
     });
 

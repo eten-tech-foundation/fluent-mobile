@@ -97,7 +97,7 @@ describe('useVerseAudio playback position', () => {
 
   async function playingHook(takes: Recording[]) {
     loadTakes.mockResolvedValue(takes);
-    const hook = renderHook(() =>
+    const hook = await renderHook(() =>
       useVerseAudio({
         bibleTextId: 42,
         chapterAssignmentId: null,

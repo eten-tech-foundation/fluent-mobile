@@ -16,9 +16,9 @@ describe('usePendingDelete', () => {
 
   it('commits a delete once the undo window closes', async () => {
     const commitDelete = jest.fn(async () => {});
-    const { result } = renderHook(() => usePendingDelete(commitDelete));
+    const { result } = await renderHook(() => usePendingDelete(commitDelete));
 
-    act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
+    await act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
     expect(result.current.pending).toEqual({ id: 'a', takeNumber: 1 });
     expect(commitDelete).not.toHaveBeenCalled();
 
@@ -30,13 +30,13 @@ describe('usePendingDelete', () => {
     expect(result.current.hiddenIds.size).toBe(0);
   });
 
-  it('never commits an undone delete', () => {
+  it('never commits an undone delete', async () => {
     const commitDelete = jest.fn(async () => {});
-    const { result } = renderHook(() => usePendingDelete(commitDelete));
+    const { result } = await renderHook(() => usePendingDelete(commitDelete));
 
-    act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
-    act(() => result.current.undo());
-    act(() => jest.advanceTimersByTime(UNDO_MS));
+    await act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
+    await act(() => result.current.undo());
+    await act(() => jest.advanceTimersByTime(UNDO_MS));
 
     expect(commitDelete).not.toHaveBeenCalled();
     expect(result.current.pending).toBeNull();
@@ -47,9 +47,9 @@ describe('usePendingDelete', () => {
     const commitDelete = jest.fn(
       () => new Promise<void>(resolve => (finish = resolve)),
     );
-    const { result } = renderHook(() => usePendingDelete(commitDelete));
+    const { result } = await renderHook(() => usePendingDelete(commitDelete));
 
-    act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
+    await act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
     await act(async () => void result.current.commit());
     expect(result.current.hiddenIds.has('a')).toBe(true);
 
@@ -62,14 +62,14 @@ describe('usePendingDelete', () => {
     const commitDelete = jest.fn(
       () => new Promise<void>(resolve => (finish = resolve)),
     );
-    const { result } = renderHook(() => usePendingDelete(commitDelete));
+    const { result } = await renderHook(() => usePendingDelete(commitDelete));
     let done = false;
 
-    act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
+    await act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
     await act(async () => {
       jest.advanceTimersByTime(UNDO_MS);
     });
-    act(() => {
+    await act(() => {
       void result.current.commit().then(() => (done = true));
     });
     await act(async () => {});
@@ -81,9 +81,9 @@ describe('usePendingDelete', () => {
 
   it('commits the first delete when a second one starts', async () => {
     const commitDelete = jest.fn(async () => {});
-    const { result } = renderHook(() => usePendingDelete(commitDelete));
+    const { result } = await renderHook(() => usePendingDelete(commitDelete));
 
-    act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
+    await act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
     await act(async () => result.current.remove({ id: 'b', takeNumber: 2 }));
 
     expect(commitDelete).toHaveBeenCalledWith('a');
@@ -92,12 +92,12 @@ describe('usePendingDelete', () => {
 
   it('commits a pending delete on unmount', async () => {
     const commitDelete = jest.fn(async () => {});
-    const { result, unmount } = renderHook(() =>
+    const { result, unmount } = await renderHook(() =>
       usePendingDelete(commitDelete),
     );
 
-    act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
-    unmount();
+    await act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
+    await unmount();
     await act(async () => {});
 
     expect(commitDelete).toHaveBeenCalledWith('a');
@@ -106,9 +106,9 @@ describe('usePendingDelete', () => {
   it('logs a failed delete and shows the take again', async () => {
     const error = new Error('db closed');
     const commitDelete = jest.fn(() => Promise.reject(error));
-    const { result } = renderHook(() => usePendingDelete(commitDelete));
+    const { result } = await renderHook(() => usePendingDelete(commitDelete));
 
-    act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
+    await act(() => result.current.remove({ id: 'a', takeNumber: 1 }));
     await act(async () => result.current.commit());
 
     expect(mockLogError).toHaveBeenCalledWith('Failed to delete take', {

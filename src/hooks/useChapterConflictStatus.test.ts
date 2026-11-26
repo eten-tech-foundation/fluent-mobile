@@ -21,7 +21,7 @@ describe('useChapterConflictStatus', () => {
   it('loads hasConflict from SQLite', async () => {
     jest.mocked(getChapterHasConflict).mockResolvedValue(true);
 
-    const { result } = renderHook(() => useChapterConflictStatus(42));
+    const { result } = await renderHook(() => useChapterConflictStatus(42));
 
     await waitFor(() => {
       expect(result.current).toEqual({ hasConflict: true });
@@ -30,7 +30,7 @@ describe('useChapterConflictStatus', () => {
   });
 
   it('returns no conflict when SQLite reports clean', async () => {
-    const { result } = renderHook(() => useChapterConflictStatus(1));
+    const { result } = await renderHook(() => useChapterConflictStatus(1));
 
     await waitFor(() => {
       expect(result.current).toEqual({ hasConflict: false });
@@ -43,7 +43,7 @@ describe('useChapterConflictStatus', () => {
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ id }: { id: number }) => useChapterConflictStatus(id),
       { initialProps: { id: 1 } },
     );
@@ -52,7 +52,7 @@ describe('useChapterConflictStatus', () => {
       expect(result.current).toEqual({ hasConflict: true });
     });
 
-    rerender({ id: 2 });
+    await rerender({ id: 2 });
 
     await waitFor(() => {
       expect(result.current).toEqual({ hasConflict: false });

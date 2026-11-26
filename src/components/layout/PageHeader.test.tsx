@@ -18,20 +18,20 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 describe('PageHeader', () => {
-  it('renders the Fluent logo when no title is provided', () => {
-    render(<PageHeader />);
+  it('renders the Fluent logo when no title is provided', async () => {
+    await render(<PageHeader />);
 
     expect(screen.getByTestId('fluent-logo')).toBeTruthy();
   });
 
-  it('renders a centered title when provided', () => {
-    render(<PageHeader title="Settings" />);
+  it('renders a centered title when provided', async () => {
+    await render(<PageHeader title="Settings" />);
 
     expect(screen.getByText('Settings')).toBeTruthy();
   });
 
-  it('renders left and right icon slots', () => {
-    render(
+  it('renders left and right icon slots', async () => {
+    await render(
       <PageHeader
         title="Settings"
         leftIcon={<Text testID="left-icon">Left</Text>}

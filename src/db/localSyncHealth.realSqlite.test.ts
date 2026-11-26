@@ -59,7 +59,7 @@ async function writeCount(db: DB): Promise<number> {
 }
 
 async function mountChecked() {
-  const hook = renderHook(() => useLocalSyncHealth());
+  const hook = await renderHook(() => useLocalSyncHealth());
   await waitFor(() => expect(hook.result.current.checking).toBe(false));
   return hook;
 }
@@ -109,7 +109,7 @@ describeReal('useLocalSyncHealth reuse (real SQLite)', () => {
   it("never reuses another database's check with the same write count", async () => {
     const first = await mountChecked();
     expect(first.result.current.missingTextChapters).toBe(1);
-    first.unmount();
+    await first.unmount();
     const previous = db;
     const replacement = await fixtureDb(8);
     expect(await writeCount(replacement)).toBe(await writeCount(previous));
@@ -124,7 +124,7 @@ describeReal('useLocalSyncHealth reuse (real SQLite)', () => {
 
   it('reads again after text saved while the count was out', async () => {
     const release = holdNextCount();
-    const first = renderHook(() => useLocalSyncHealth());
+    const first = await renderHook(() => useLocalSyncHealth());
     await waitFor(() => expect(countReads()).toBe(1));
     await realExecute(
       `INSERT INTO bible_texts(id, bible_id, book_id, chapter_number, verse_number, text)
@@ -133,7 +133,7 @@ describeReal('useLocalSyncHealth reuse (real SQLite)', () => {
     release();
     await waitFor(() => expect(first.result.current.checking).toBe(false));
     expect(first.result.current.missingTextChapters).toBe(1);
-    first.unmount();
+    await first.unmount();
 
     const { result } = await mountChecked();
 
@@ -143,7 +143,7 @@ describeReal('useLocalSyncHealth reuse (real SQLite)', () => {
 
   it("does not show the old account's check after a switch", async () => {
     const release = holdNextCount();
-    const older = renderHook(() => useLocalSyncHealth());
+    const older = await renderHook(() => useLocalSyncHealth());
     await waitFor(() => expect(countReads()).toBe(1));
     mockUserId = '8';
     const newer = await mountChecked();
@@ -152,8 +152,8 @@ describeReal('useLocalSyncHealth reuse (real SQLite)', () => {
 
     release();
     await waitFor(() => expect(older.result.current.checking).toBe(false));
-    older.unmount();
-    newer.unmount();
+    await older.unmount();
+    await newer.unmount();
 
     const { result } = await mountChecked();
 

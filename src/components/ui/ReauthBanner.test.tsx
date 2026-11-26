@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { ReauthBanner } from './ReauthBanner';
 import { UiVersionOverride } from '../../theme/useTheme';
@@ -9,6 +9,7 @@ import {
   REAUTH_PROMPT_SUBTITLE,
   REAUTH_PROMPT_TITLE,
 } from '../../constants/messages';
+import { getAllByHostType } from '../../test/hostElements';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
@@ -78,9 +79,8 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-function cardStyle(view: ReturnType<typeof render>) {
-  const cards = view
-    .UNSAFE_getAllByType(View)
+function cardStyle() {
+  const cards = getAllByHostType('View')
     .map(node => StyleSheet.flatten(node.props.style))
     .filter(
       style =>
@@ -91,14 +91,14 @@ function cardStyle(view: ReturnType<typeof render>) {
   return cards[0];
 }
 
-it('isolates scoped Next banner colors/layout, follows safe inset and calls the row callback', () => {
+it('isolates scoped Next banner colors/layout, follows safe inset and calls the row callback', async () => {
   const onSignInAgain = jest.fn();
   const tree = (version: 'legacy' | 'next') => (
     <UiVersionOverride value={version}>
       <ReauthBanner onSignInAgain={onSignInAgain} />
     </UiVersionOverride>
   );
-  const view = render(tree('legacy'));
+  const view = await render(tree('legacy'));
   expect(view.getByTestId('reauth-banner')).toHaveStyle({
     position: 'absolute',
     left: legacy.spacing.lg,
@@ -109,7 +109,7 @@ it('isolates scoped Next banner colors/layout, follows safe inset and calls the 
   expect(view.getByTestId('reauth-banner').props.pointerEvents).toBe(
     'box-none',
   );
-  expect(cardStyle(view)).toMatchObject({
+  expect(cardStyle()).toMatchObject({
     backgroundColor: legacy.colors.cardBackground,
     borderRadius: legacy.radius.lg,
     elevation: 2,
@@ -119,34 +119,34 @@ it('isolates scoped Next banner colors/layout, follows safe inset and calls the 
   );
   expect(view.getByText(REAUTH_PROMPT_TITLE)).toBeTruthy();
   expect(view.getByText(REAUTH_PROMPT_SUBTITLE)).toBeTruthy();
-  view.rerender(tree('next'));
+  await view.rerender(tree('next'));
   expect(view.getByTestId('reauth-banner')).toHaveStyle({
     left: 27,
     right: 27,
     bottom: 34,
     zIndex: 10,
   });
-  expect(cardStyle(view)).toMatchObject({
+  expect(cardStyle()).toMatchObject({
     backgroundColor: '#123456',
     borderRadius: 29,
     elevation: 2,
   });
-  expect(cardStyle(view).shadowColor).toBeUndefined();
+  expect(cardStyle().shadowColor).toBeUndefined();
   expect(view.getByTestId('reauth-warning-icon').props.color).toBe('#345678');
   expect(view.getByTestId('reauth-chevron-icon').props.color).toBe('#456789');
   expect(view.getByText(REAUTH_PROMPT_TITLE)).toHaveStyle({ color: '#234567' });
   mockBottomInset = 19;
-  view.rerender(tree('next'));
+  await view.rerender(tree('next'));
   expect(view.getByTestId('reauth-banner')).toHaveStyle({ bottom: 46 });
-  fireEvent.press(view.getByText(REAUTH_PROMPT_TITLE));
+  await fireEvent.press(view.getByText(REAUTH_PROMPT_TITLE));
   expect(onSignInAgain).toHaveBeenCalledTimes(1);
-  view.rerender(tree('legacy'));
+  await view.rerender(tree('legacy'));
   expect(view.getByTestId('reauth-banner')).toHaveStyle({
     left: legacy.spacing.lg,
     right: legacy.spacing.lg,
     bottom: legacy.spacing.lg + 19,
   });
-  expect(cardStyle(view)).toMatchObject({
+  expect(cardStyle()).toMatchObject({
     backgroundColor: legacy.colors.cardBackground,
     borderRadius: legacy.radius.lg,
     elevation: 2,
@@ -157,29 +157,29 @@ it('isolates scoped Next banner colors/layout, follows safe inset and calls the 
   expect(onSignInAgain).toHaveBeenCalledTimes(1);
 });
 
-it('preserves the existing iOS shadow selection while its color follows the scoped theme', () => {
+it('preserves the existing iOS shadow selection while its color follows the scoped theme', async () => {
   mockPlatform = 'ios';
   const tree = (version: 'legacy' | 'next') => (
     <UiVersionOverride value={version}>
       <ReauthBanner onSignInAgain={jest.fn()} />
     </UiVersionOverride>
   );
-  const view = render(tree('legacy'));
-  expect(cardStyle(view)).toMatchObject({
+  const view = await render(tree('legacy'));
+  expect(cardStyle()).toMatchObject({
     shadowColor: legacy.colors.foreground,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
   });
-  expect(cardStyle(view).elevation).toBeUndefined();
-  view.rerender(tree('next'));
-  expect(cardStyle(view)).toMatchObject({
+  expect(cardStyle().elevation).toBeUndefined();
+  await view.rerender(tree('next'));
+  expect(cardStyle()).toMatchObject({
     shadowColor: '#234567',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
   });
-  expect(cardStyle(view).elevation).toBeUndefined();
-  view.rerender(tree('legacy'));
-  expect(cardStyle(view).shadowColor).toBe(legacy.colors.foreground);
+  expect(cardStyle().elevation).toBeUndefined();
+  await view.rerender(tree('legacy'));
+  expect(cardStyle().shadowColor).toBe(legacy.colors.foreground);
 });

@@ -45,7 +45,7 @@ describe('useDraftDownload', () => {
         }),
     );
 
-    const { result } = renderHook(() => useDraftDownload(request));
+    const { result } = await renderHook(() => useDraftDownload(request));
 
     await waitFor(() => {
       expect(mockGetDraftDownloadState).toHaveBeenCalledTimes(1);
@@ -93,7 +93,7 @@ describe('useDraftDownload', () => {
       });
 
     try {
-      const { result } = renderHook(() => useDraftDownload(request));
+      const { result } = await renderHook(() => useDraftDownload(request));
 
       await waitFor(() => {
         expect(mockGetDraftDownloadState).toHaveBeenCalled();

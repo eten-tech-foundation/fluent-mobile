@@ -45,11 +45,11 @@ const mockSignOut = signOutCurrentDeviceAccount as jest.Mock;
 const mockConfirm = confirmUnsyncedSignOut as jest.Mock;
 const mockReset = resetNavigationAfterAccountSwitch as jest.Mock;
 
-function setup() {
+async function setup() {
   const close = jest.fn();
   const onUserSwitched = jest.fn();
   const onSignOut = jest.fn();
-  const { result } = renderHook(() =>
+  const { result } = await renderHook(() =>
     useAccountActions({ close, onUserSwitched, onSignOut }),
   );
   return { result, close, onUserSwitched, onSignOut };
@@ -64,7 +64,7 @@ describe('useAccountActions', () => {
 
   it('switches account, then resets navigation for the new one', async () => {
     mockSwitch.mockResolvedValue(undefined);
-    const { result, close, onUserSwitched } = setup();
+    const { result, close, onUserSwitched } = await setup();
 
     await act(() => result.current.switchTo('2'));
 
@@ -75,7 +75,7 @@ describe('useAccountActions', () => {
   });
 
   it('just closes when the account is already active', async () => {
-    const { result, close } = setup();
+    const { result, close } = await setup();
 
     await act(() => result.current.switchTo('1'));
 
@@ -85,10 +85,10 @@ describe('useAccountActions', () => {
 
   it('closes and explains instead of leaving a recording', async () => {
     setRecordCaptureGate(true);
-    const { result, close } = setup();
+    const { result, close } = await setup();
 
     await act(() => result.current.switchTo('2'));
-    act(() => result.current.addAccount());
+    await act(() => result.current.addAccount());
 
     expect(mockSwitch).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
@@ -100,10 +100,10 @@ describe('useAccountActions', () => {
     );
   });
 
-  it('opens Add user', () => {
-    const { result, close } = setup();
+  it('opens Add user', async () => {
+    const { result, close } = await setup();
 
-    act(() => result.current.addAccount());
+    await act(() => result.current.addAccount());
 
     expect(close).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith(hrefs.addUser);
@@ -112,7 +112,7 @@ describe('useAccountActions', () => {
   it('signs out, or moves to the next account on this device', async () => {
     mockConfirm.mockResolvedValue(true);
     mockSignOut.mockResolvedValueOnce({ kind: 'signed_out' });
-    const { result, onSignOut, onUserSwitched } = setup();
+    const { result, onSignOut, onUserSwitched } = await setup();
 
     await act(() => result.current.signOut());
     expect(onSignOut).toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe('useAccountActions', () => {
 
   it('stays signed in when unsynced work is kept', async () => {
     mockConfirm.mockResolvedValue(false);
-    const { result, close } = setup();
+    const { result, close } = await setup();
 
     await act(() => result.current.signOut());
 

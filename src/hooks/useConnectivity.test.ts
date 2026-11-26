@@ -57,7 +57,7 @@ describe('useConnectivity', () => {
   });
 
   it('marks connectivity as resolved after receiving a connectivity update', async () => {
-    const { result } = renderHook(() => useConnectivity());
+    const { result } = await renderHook(() => useConnectivity());
 
     await waitFor(() => {
       expect(result.current.hasResolved).toBe(true);
@@ -68,14 +68,14 @@ describe('useConnectivity', () => {
     });
   });
 
-  it('reports connectivity as pending before the first snapshot resolves', () => {
+  it('reports connectivity as pending before the first snapshot resolves', async () => {
     mockSubscribeToConnectivity.mockImplementation(() => jest.fn());
     mockSubscribeToTransferTransport.mockImplementation(() => jest.fn());
     mockGetTransferTransportSnapshot.mockReturnValue(
       new Promise(() => undefined),
     );
 
-    const { result } = renderHook(() => useConnectivity());
+    const { result } = await renderHook(() => useConnectivity());
 
     expect(result.current.connectivityPending).toBe(true);
     expect(result.current.hasResolved).toBe(false);
@@ -89,7 +89,7 @@ describe('useConnectivity', () => {
       return jest.fn();
     });
 
-    const { result } = renderHook(() => useConnectivity());
+    const { result } = await renderHook(() => useConnectivity());
 
     await waitFor(() => {
       expect(result.current.isOnline).toBe(false);

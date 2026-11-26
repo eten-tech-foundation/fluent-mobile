@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
-import type { ReactTestInstance } from 'react-test-renderer';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Key, type KeyIconProps } from './Key';
 import { setUiVersion } from '../../services/userPreferences';
@@ -51,22 +50,16 @@ describe('Key', () => {
     jest.useRealTimers();
   });
 
-  it('stays sunk after a quick tap latches it (onPressOut after onPress)', () => {
+  it('stays sunk after a quick tap latches it (onPressOut after onPress)', async () => {
     jest.useFakeTimers();
-    renderWithPreferences(<LatchingKey />);
+    await renderWithPreferences(<LatchingKey />);
     const button = screen.getByRole('button', { name: 'Play' });
 
-    // Pressability keeps the onPressOut from press-in time and can call it
-    // after onPress on a quick tap, so capture it before the latch toggles.
-    fireEvent(button, 'pressIn');
-    let pressable: ReactTestInstance | null = button;
-    while (pressable && !pressable.props.onPressOut) {
-      pressable = pressable.parent;
-    }
-    const stalePressOut = pressable?.props.onPressOut;
-    fireEvent.press(button);
-    act(() => {
-      stalePressOut();
+    await fireEvent(button, 'pressIn');
+    await fireEvent.press(button);
+    // A quick tap can deliver press-out after press; it must not un-latch.
+    await act(async () => {
+      await fireEvent(button, 'pressOut');
       jest.advanceTimersByTime(500);
     });
 
@@ -78,8 +71,8 @@ describe('Key', () => {
     });
   });
 
-  it('renders an accessible button that reports latched state', () => {
-    renderWithPreferences(
+  it('renders an accessible button that reports latched state', async () => {
+    await renderWithPreferences(
       <Key
         icon={ColorIcon}
         accessibilityLabel="Play"
@@ -95,8 +88,8 @@ describe('Key', () => {
     });
   });
 
-  it('can skip announcing the latch when the label names the action', () => {
-    renderWithPreferences(
+  it('can skip announcing the latch when the label names the action', async () => {
+    await renderWithPreferences(
       <Key
         icon={ColorIcon}
         accessibilityLabel="Pause"
@@ -110,23 +103,23 @@ describe('Key', () => {
     expect(button.props.accessibilityState).toMatchObject({ selected: false });
   });
 
-  it('calls onPress and fires the press haptic on press-in', () => {
+  it('calls onPress and fires the press haptic on press-in', async () => {
     const onPress = jest.fn();
-    renderWithPreferences(
+    await renderWithPreferences(
       <Key icon={ColorIcon} accessibilityLabel="Play" onPress={onPress} />,
     );
 
     const button = screen.getByRole('button', { name: 'Play' });
-    fireEvent(button, 'pressIn');
-    fireEvent.press(button);
+    await fireEvent(button, 'pressIn');
+    await fireEvent.press(button);
 
     expect(mockPress).toHaveBeenCalledTimes(1);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores presses and reports disabled when disabled', () => {
+  it('ignores presses and reports disabled when disabled', async () => {
     const onPress = jest.fn();
-    renderWithPreferences(
+    await renderWithPreferences(
       <Key
         icon={ColorIcon}
         accessibilityLabel="Play"
@@ -136,7 +129,7 @@ describe('Key', () => {
     );
 
     const button = screen.getByRole('button', { name: 'Play' });
-    fireEvent.press(button);
+    await fireEvent.press(button);
 
     expect(onPress).not.toHaveBeenCalled();
     expect(button.props.accessibilityState).toMatchObject({
@@ -145,11 +138,11 @@ describe('Key', () => {
     });
   });
 
-  it('fades only the icon when disabled, keeping the key solid', () => {
-    act(() => {
+  it('fades only the icon when disabled, keeping the key solid', async () => {
+    await act(() => {
       setUiVersion('legacy');
     });
-    renderWithPreferences(
+    await renderWithPreferences(
       <Key icon={ColorIcon} accessibilityLabel="Play" disabled testID="k" />,
     );
 
@@ -165,12 +158,12 @@ describe('Key', () => {
     ).not.toHaveProperty('opacity');
   });
 
-  it('keeps the disabled icon distinct from the key face in every mode', () => {
-    act(() => {
+  it('keeps the disabled icon distinct from the key face in every mode', async () => {
+    await act(() => {
       setUiVersion('next');
     });
     for (const mode of ['canvas', 'hardware', 'accent'] as const) {
-      const { unmount } = renderWithPreferences(
+      const { unmount } = await renderWithPreferences(
         <ColorModeScope value={mode}>
           <Key icon={ColorIcon} accessibilityLabel="Play" disabled />
         </ColorModeScope>,
@@ -179,16 +172,16 @@ describe('Key', () => {
       const [restIcon] = screen.getAllByTestId('key-icon');
       expect(restIcon).toHaveTextContent(roles.fgSecondary);
       expect(roles.fgSecondary).not.toBe(roles.surfaceDefault);
-      unmount();
+      await unmount();
     }
   });
 
-  it('fades fg/primary over fg/secondary as the key goes down', () => {
-    act(() => {
+  it('fades fg/primary over fg/secondary as the key goes down', async () => {
+    await act(() => {
       setUiVersion('legacy');
     });
     jest.useFakeTimers();
-    const { rerender } = renderWithPreferences(
+    const { rerender } = await renderWithPreferences(
       <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" />,
     );
     const [restIcon, downIcon] = screen.getAllByTestId('key-icon');
@@ -198,10 +191,10 @@ describe('Key', () => {
       opacity: 0,
     });
 
-    rerender(
+    await rerender(
       <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" active />,
     );
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
     expect(screen.getByTestId('k-down-icon')).toHaveAnimatedStyle({
@@ -209,19 +202,21 @@ describe('Key', () => {
     });
   });
 
-  it('follows independently scoped Next roles and returns to Legacy at runtime', () => {
+  it('follows independently scoped Next roles and returns to Legacy at runtime', async () => {
     const roles = resolveTheme('next').roles as { fgSecondary: string };
     const original = roles.fgSecondary;
     try {
       roles.fgSecondary = '#123456';
-      act(() => setUiVersion('legacy'));
-      renderWithPreferences(<Key icon={ColorIcon} accessibilityLabel="Play" />);
+      await act(() => setUiVersion('legacy'));
+      await renderWithPreferences(
+        <Key icon={ColorIcon} accessibilityLabel="Play" />,
+      );
       expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(
         legacyTheme.roles.fgSecondary,
       );
-      act(() => setUiVersion('next'));
+      await act(() => setUiVersion('next'));
       expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent('#123456');
-      act(() => setUiVersion('legacy'));
+      await act(() => setUiVersion('legacy'));
       expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(
         legacyTheme.roles.fgSecondary,
       );

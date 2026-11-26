@@ -120,27 +120,27 @@ describe('ObserverScreen refocus', () => {
   });
 
   it('keeps the old chapter hidden until the access re-check has run', async () => {
-    const view = render(tree());
+    const view = await render(tree());
     expect(screen.getByText('In the beginning')).toBeTruthy();
 
     mockFocused = false;
-    view.rerender(tree());
+    await view.rerender(tree());
     expect(screen.queryByText('In the beginning')).toBeNull();
 
     // Back in focus with the stored state still granting access.
     mockFocused = true;
-    view.rerender(tree());
+    await view.rerender(tree());
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('In the beginning')).toBeNull();
     expect(screen.getByTestId('observer-loading')).toBeTruthy();
 
     mockChapter = chapterState({ loading: true, hasAccess: false });
-    view.rerender(tree());
+    await view.rerender(tree());
     expect(screen.queryByText('In the beginning')).toBeNull();
 
     mockChapter = chapterState();
     await act(async () => {
-      view.rerender(tree());
+      await view.rerender(tree());
     });
     expect(screen.getByText('In the beginning')).toBeTruthy();
   });

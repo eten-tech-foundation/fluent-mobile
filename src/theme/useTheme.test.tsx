@@ -41,8 +41,8 @@ describe('useUiVersion / useTheme', () => {
     mockPreferenceStore();
   });
 
-  it('defaults to the Next theme', () => {
-    const { result } = renderHook(() => ({
+  it('defaults to the Next theme', async () => {
+    const { result } = await renderHook(() => ({
       version: useUiVersion(),
       theme: useTheme(),
     }));
@@ -51,9 +51,9 @@ describe('useUiVersion / useTheme', () => {
     expect(result.current.theme).toBe(nextTheme);
   });
 
-  it('keeps an explicit stored Legacy choice', () => {
+  it('keeps an explicit stored Legacy choice', async () => {
     mockPreferenceStore({ pref_ui_version: 'legacy' });
-    const { result } = renderHook(() => ({
+    const { result } = await renderHook(() => ({
       version: useUiVersion(),
       theme: useTheme(),
     }));
@@ -62,21 +62,21 @@ describe('useUiVersion / useTheme', () => {
     expect(result.current.theme).toBe(legacyTheme);
   });
 
-  it('loads a persisted Next preference when the root bridge mounts', () => {
+  it('loads a persisted Next preference when the root bridge mounts', async () => {
     mockPreferenceStore({ pref_ui_version: 'next' });
-    const { result } = renderHook(() => useTheme());
+    const { result } = await renderHook(() => useTheme());
     expect(result.current).toBe(nextTheme);
   });
 
-  it('switches theme at runtime without remounting', () => {
-    const { result } = renderHook(() => ({
+  it('switches theme at runtime without remounting', async () => {
+    const { result } = await renderHook(() => ({
       version: useUiVersion(),
       theme: useTheme(),
     }));
 
     expect(result.current.theme).toBe(nextTheme);
 
-    act(() => {
+    await act(() => {
       setUiVersion('legacy');
     });
 
@@ -91,8 +91,8 @@ describe('useThemedStyles', () => {
     mockPreferenceStore();
   });
 
-  it('recomputes styles when UI version changes', () => {
-    const { result } = renderHook(() =>
+  it('recomputes styles when UI version changes', async () => {
+    const { result } = await renderHook(() =>
       useThemedStyles(activeTheme => ({
         screen: { backgroundColor: activeTheme.colors.background },
       })),
@@ -100,7 +100,7 @@ describe('useThemedStyles', () => {
 
     const nextStyles = result.current;
 
-    act(() => {
+    await act(() => {
       setUiVersion('legacy');
     });
 
@@ -111,15 +111,15 @@ describe('useThemedStyles', () => {
     expect(nextStyles.screen.backgroundColor).toBe(nextTheme.colors.background);
   });
 
-  it('keeps the same style object when the theme does not change', () => {
-    const { result, rerender } = renderHook(() =>
+  it('keeps the same style object when the theme does not change', async () => {
+    const { result, rerender } = await renderHook(() =>
       useThemedStyles(activeTheme => ({
         screen: { backgroundColor: activeTheme.colors.background },
       })),
     );
 
     const first = result.current;
-    rerender({});
+    await rerender({});
     expect(result.current).toBe(first);
   });
 });
@@ -134,27 +134,31 @@ describe('ColorModeScope', () => {
     <ColorModeScope value="canvas">{children}</ColorModeScope>
   );
 
-  it('resolves the Canvas theme for its subtree in Next', () => {
-    act(() => {
+  it('resolves the Canvas theme for its subtree in Next', async () => {
+    await act(() => {
       setUiVersion('next');
     });
-    const { result } = renderHook(() => useTheme(), { wrapper: canvasWrapper });
+    const { result } = await renderHook(() => useTheme(), {
+      wrapper: canvasWrapper,
+    });
     expect(result.current).toBe(nextThemes.canvas);
   });
 
-  it('stays on Legacy when the UI version is Legacy', () => {
-    act(() => {
+  it('stays on Legacy when the UI version is Legacy', async () => {
+    await act(() => {
       setUiVersion('legacy');
     });
-    const { result } = renderHook(() => useTheme(), { wrapper: canvasWrapper });
+    const { result } = await renderHook(() => useTheme(), {
+      wrapper: canvasWrapper,
+    });
     expect(result.current).toBe(legacyTheme);
   });
 
-  it('defaults to Hardware without a scope', () => {
-    act(() => {
+  it('defaults to Hardware without a scope', async () => {
+    await act(() => {
       setUiVersion('next');
     });
-    const { result } = renderHook(() => useTheme());
+    const { result } = await renderHook(() => useTheme());
     expect(result.current).toBe(nextTheme);
   });
 });

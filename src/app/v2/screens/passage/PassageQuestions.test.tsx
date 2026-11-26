@@ -60,79 +60,79 @@ function sheet(props: Props = {}) {
 }
 
 describe('PassageQuestions', () => {
-  it('shows loading, not an empty or offline message', () => {
-    render(sheet({ state: { status: 'loading' } }));
+  it('shows loading, not an empty or offline message', async () => {
+    await render(sheet({ state: { status: 'loading' } }));
     expect(screen.getByTestId('passage-questions-loading')).toBeTruthy();
     expect(screen.queryByText(PASSAGE_QUESTIONS_EMPTY)).toBeNull();
     expect(screen.queryByText(PASSAGE_QUESTIONS_UNPREPARED)).toBeNull();
   });
 
-  it('tells empty, unprepared and failed apart', () => {
-    const { rerender } = render(
+  it('tells empty, unprepared and failed apart', async () => {
+    const { rerender } = await render(
       sheet({ state: { status: 'ready', questions: [] } }),
     );
     expect(screen.getByText(PASSAGE_QUESTIONS_EMPTY)).toBeTruthy();
 
-    rerender(sheet({ state: { status: 'unprepared' } }));
+    await rerender(sheet({ state: { status: 'unprepared' } }));
     expect(screen.getByText(PASSAGE_QUESTIONS_UNPREPARED)).toBeTruthy();
     expect(screen.queryByText(PASSAGE_QUESTIONS_EMPTY)).toBeNull();
 
-    rerender(sheet({ state: { status: 'noVerses' } }));
+    await rerender(sheet({ state: { status: 'noVerses' } }));
     expect(screen.getByText(PASSAGE_QUESTIONS_NO_TEXT)).toBeTruthy();
     expect(screen.queryByText(PASSAGE_QUESTIONS_EMPTY)).toBeNull();
 
-    rerender(sheet({ state: { status: 'failed' } }));
+    await rerender(sheet({ state: { status: 'failed' } }));
     expect(screen.getByText(TRANSLATION_QUESTIONS_LOAD_ERROR)).toBeTruthy();
     expect(screen.queryByText(PASSAGE_QUESTIONS_UNPREPARED)).toBeNull();
   });
 
-  it('offers Retry on a failure', () => {
+  it('offers Retry on a failure', async () => {
     const onRetry = jest.fn();
-    render(sheet({ state: { status: 'failed' }, onRetry }));
-    fireEvent.press(
+    await render(sheet({ state: { status: 'failed' }, onRetry }));
+    await fireEvent.press(
       screen.getByLabelText('Retry loading Translation Questions'),
     );
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it('opens and closes an answer, saying which it is', () => {
-    render(sheet());
+  it('opens and closes an answer, saying which it is', async () => {
+    await render(sheet());
     const toggle = screen.getByTestId('passage-question-q1-toggle');
     expect(toggle.props.accessibilityState).toEqual({ expanded: false });
     expect(toggle.props.accessibilityHint).toBe('Shows the answer');
     expect(screen.queryByText('The priests.')).toBeNull();
 
-    fireEvent.press(toggle);
+    await fireEvent.press(toggle);
     expect(screen.getByText('The priests.')).toBeTruthy();
     const open = screen.getByTestId('passage-question-q1-toggle');
     expect(open.props.accessibilityState).toEqual({ expanded: true });
     expect(open.props.accessibilityHint).toBe('Hides the answer');
 
-    fireEvent.press(open);
+    await fireEvent.press(open);
     expect(screen.queryByText('The priests.')).toBeNull();
   });
 
-  it('says when a question has no answer', () => {
-    render(sheet());
-    fireEvent.press(screen.getByTestId('passage-question-q2-toggle'));
+  it('says when a question has no answer', async () => {
+    await render(sheet());
+    await fireEvent.press(screen.getByTestId('passage-question-q2-toggle'));
     expect(screen.getByText(TRANSLATION_QUESTION_NO_ANSWER)).toBeTruthy();
   });
 
-  it('closes open answers when the questions are for something else', () => {
-    const { rerender } = render(sheet());
-    fireEvent.press(screen.getByTestId('passage-question-q1-toggle'));
+  it('closes open answers when the questions are for something else', async () => {
+    const { rerender } = await render(sheet());
+    await fireEvent.press(screen.getByTestId('passage-question-q1-toggle'));
     expect(screen.getByText('The priests.')).toBeTruthy();
 
-    rerender(sheet({ scope: 'b' }));
+    await rerender(sheet({ scope: 'b' }));
     expect(screen.queryByText('The priests.')).toBeNull();
   });
 
-  it('closes open answers with the sheet', () => {
-    const { rerender } = render(sheet());
-    fireEvent.press(screen.getByTestId('passage-question-q1-toggle'));
+  it('closes open answers with the sheet', async () => {
+    const { rerender } = await render(sheet());
+    await fireEvent.press(screen.getByTestId('passage-question-q1-toggle'));
 
-    rerender(sheet({ visible: false }));
-    rerender(sheet({ visible: true }));
+    await rerender(sheet({ visible: false }));
+    await rerender(sheet({ visible: true }));
     expect(screen.queryByText('The priests.')).toBeNull();
   });
 });

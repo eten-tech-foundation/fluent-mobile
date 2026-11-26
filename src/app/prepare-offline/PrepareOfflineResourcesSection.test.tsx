@@ -101,8 +101,8 @@ describe('PrepareOfflineResourcesSection', () => {
     jest.clearAllMocks();
   });
 
-  it('shows tier 1 summary by default with customize collapsed', () => {
-    render(<PrepareOfflineResourcesSection {...defaultProps} />);
+  it('shows tier 1 summary by default with customize collapsed', async () => {
+    await render(<PrepareOfflineResourcesSection {...defaultProps} />);
 
     expect(screen.getByText('RESOURCES TO DOWNLOAD')).toBeTruthy();
     expect(screen.getByTestId('prepare-offline-resource-summary')).toBeTruthy();
@@ -118,7 +118,7 @@ describe('PrepareOfflineResourcesSection', () => {
 
   it.each(['Source Bible Audio', 'Source Bible'])(
     'shows synced text and %s audio in one display group without renaming the catalog',
-    resourceName => {
+    async resourceName => {
       const manifest = buildManifestFixture().map(member =>
         member.resourceName === 'Source Bible Audio'
           ? { ...member, resourceName }
@@ -132,7 +132,7 @@ describe('PrepareOfflineResourcesSection', () => {
       });
       const beforeRender = JSON.stringify(sourceCatalog);
 
-      render(
+      await render(
         <PrepareOfflineResourcesSection
           {...defaultProps}
           catalog={sourceCatalog}
@@ -157,8 +157,8 @@ describe('PrepareOfflineResourcesSection', () => {
     },
   );
 
-  it('shows full-bleed dividers between tier 1 resource groups in the summary', () => {
-    render(<PrepareOfflineResourcesSection {...defaultProps} />);
+  it('shows full-bleed dividers between tier 1 resource groups in the summary', async () => {
+    await render(<PrepareOfflineResourcesSection {...defaultProps} />);
 
     const summary = screen.getByTestId('prepare-offline-resource-summary');
     const tier1Groups = catalog.groups.filter(
@@ -169,10 +169,10 @@ describe('PrepareOfflineResourcesSection', () => {
     expect(dividers.length).toBe(Math.max(0, tier1Groups.length - 1));
   });
 
-  it('expands customize panel with tier 2 and 3 sections only', () => {
-    render(<PrepareOfflineResourcesSection {...defaultProps} />);
+  it('expands customize panel with tier 2 and 3 sections only', async () => {
+    await render(<PrepareOfflineResourcesSection {...defaultProps} />);
 
-    fireEvent.press(screen.getByText('Customize download'));
+    await fireEvent.press(screen.getByText('Customize download'));
 
     const accordion = screen.getByTestId('customize-download-accordion');
 
@@ -184,10 +184,10 @@ describe('PrepareOfflineResourcesSection', () => {
     expect(within(accordion).queryByText('Translation Notes')).toBeNull();
   });
 
-  it('shows full-bleed dividers between resource groups in customize', () => {
-    render(<PrepareOfflineResourcesSection {...defaultProps} />);
+  it('shows full-bleed dividers between resource groups in customize', async () => {
+    await render(<PrepareOfflineResourcesSection {...defaultProps} />);
 
-    fireEvent.press(screen.getByText('Customize download'));
+    await fireEvent.press(screen.getByText('Customize download'));
 
     const accordion = screen.getByTestId('customize-download-accordion');
     const customizeGroups = catalog.groups.filter(
@@ -198,12 +198,12 @@ describe('PrepareOfflineResourcesSection', () => {
     expect(dividers.length).toBe(customizeGroups.length - 1);
   });
 
-  it('always shows tier 1 in the summary regardless of deselect state', () => {
+  it('always shows tier 1 in the summary regardless of deselect state', async () => {
     const tier1ItemIds = catalog.items
       .filter(item => item.tier === 1)
       .map(item => item.id);
 
-    render(
+    await render(
       <PrepareOfflineResourcesSection
         {...defaultProps}
         isItemSelected={itemId => !tier1ItemIds.includes(itemId)}
@@ -217,23 +217,23 @@ describe('PrepareOfflineResourcesSection', () => {
     expect(within(summary).queryByText('Reference Images')).toBeNull();
   });
 
-  it('locks completed tier 2 items in customize instead of showing a toggle', () => {
+  it('locks completed tier 2 items in customize instead of showing a toggle', async () => {
     const catalogWithInventory = buildSectionCatalog('completed');
 
-    render(
+    await render(
       <PrepareOfflineResourcesSection
         {...defaultProps}
         catalog={catalogWithInventory}
       />,
     );
-    fireEvent.press(screen.getByText('Customize download'));
+    await fireEvent.press(screen.getByText('Customize download'));
 
     const accordion = screen.getByTestId('customize-download-accordion');
     const wordsTextRow = within(accordion).getByTestId(
       'resource-row-Translation Words:text',
     );
-    fireEvent.press(wordsTextRow);
-    fireEvent.press(wordsTextRow);
+    await fireEvent.press(wordsTextRow);
+    await fireEvent.press(wordsTextRow);
 
     expect(defaultProps.onToggleItem).not.toHaveBeenCalled();
   });

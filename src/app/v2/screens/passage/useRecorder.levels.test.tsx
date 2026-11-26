@@ -159,18 +159,18 @@ describe('useRecorder take envelopes', () => {
   async function recordAndSave(id: string, n: number) {
     mockSession.state = 'recording';
     mockSession.captureActive = true;
-    const { result, rerender } = renderRecorder();
+    const { result, rerender } = await renderRecorder();
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-    act(() => jest.advanceTimersByTime(300));
+    await act(() => jest.advanceTimersByTime(300));
     mockSession.state = 'saving';
     mockSession.captureActive = false;
-    rerender({ passage });
+    await rerender({ passage });
     mockSession.state = 'idle';
     mockSession.takes = [take(id, n)];
-    rerender({ passage });
+    await rerender({ passage });
     return { result, rerender };
   }
 
@@ -186,20 +186,20 @@ describe('useRecorder take envelopes', () => {
   it('does not give a failed save its wave to a later take (#904)', async () => {
     mockSession.state = 'recording';
     mockSession.captureActive = true;
-    const { result, rerender } = renderRecorder();
+    const { result, rerender } = await renderRecorder();
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-    act(() => jest.advanceTimersByTime(300));
+    await act(() => jest.advanceTimersByTime(300));
     mockSession.state = 'saving';
     mockSession.captureActive = false;
-    rerender({ passage });
+    await rerender({ passage });
     mockSession.state = 'paused';
-    rerender({ passage });
+    await rerender({ passage });
     mockSession.state = 'idle';
     mockSession.takes = [take('other', 1)];
-    rerender({ passage });
+    await rerender({ passage });
 
     expect(result.current.footer.take.levels).toEqual([]);
   });
@@ -208,18 +208,18 @@ describe('useRecorder take envelopes', () => {
     const { result, rerender } = await recordAndSave('a', 1);
     const saved = result.current.footer.take.levels.slice();
 
-    act(() => result.current.fan.onDelete?.('a'));
+    await act(() => result.current.fan.onDelete?.('a'));
     expect(result.current.footer.take.levels).toEqual(saved);
 
-    act(() => result.current.footer.take.onUndo?.());
+    await act(() => result.current.footer.take.onUndo?.());
     expect(result.current.footer.take.levels).toEqual(saved);
     expect(mockSession.deleteTake).not.toHaveBeenCalled();
 
-    act(() => result.current.fan.onDelete?.('a'));
+    await act(() => result.current.fan.onDelete?.('a'));
     await act(async () => {
       jest.advanceTimersByTime(UNDO_MS);
     });
-    rerender({ passage });
+    await rerender({ passage });
 
     expect(mockSession.deleteTake).toHaveBeenCalledWith('a');
     expect(result.current.footer.take.levels).toEqual([]);
@@ -230,7 +230,7 @@ describe('useRecorder take envelopes', () => {
     const saved = result.current.footer.take.levels.slice();
     mockSession.deleteTake.mockRejectedValueOnce(new Error('db'));
 
-    act(() => result.current.fan.onDelete?.('a'));
+    await act(() => result.current.fan.onDelete?.('a'));
     await act(async () => {
       jest.advanceTimersByTime(UNDO_MS);
     });
@@ -243,11 +243,11 @@ describe('useRecorder take envelopes', () => {
     const { result, rerender } = await recordAndSave('a', 1);
     const saved = result.current.footer.take.levels.slice();
 
-    act(() => result.current.fan.onDelete?.('a'));
+    await act(() => result.current.fan.onDelete?.('a'));
     mockSession.takes = [take('b', 1)];
-    rerender({ passage });
+    await rerender({ passage });
     mockSession.takes = [take('a', 1)];
-    rerender({ passage });
+    await rerender({ passage });
 
     expect(result.current.footer.take.levels).toEqual(saved);
     expect(mockSession.deleteTake).not.toHaveBeenCalled();
@@ -258,12 +258,12 @@ describe('useRecorder take envelopes', () => {
     const saved = result.current.footer.take.levels.slice();
 
     mockSession.takes = [take('b', 1)];
-    rerender({ passage });
+    await rerender({ passage });
     mockSession.takes = [take('a', 1)];
-    rerender({ passage });
+    await rerender({ passage });
     expect(result.current.footer.take.levels).toEqual(saved);
 
-    rerender({
+    await rerender({
       passage: {
         ...passage,
         assignment: { ...passage.assignment, id: 99 },
@@ -277,22 +277,22 @@ describe('useRecorder take envelopes', () => {
     mockSession.meter = () => (sample++ === 0 ? 0 : -32);
     mockSession.state = 'recording';
     mockSession.captureActive = true;
-    const { result, rerender } = renderRecorder();
+    const { result, rerender } = await renderRecorder();
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-    act(() => jest.advanceTimersByTime((LIVE_LEVEL_BARS + 10) * 100));
+    await act(() => jest.advanceTimersByTime((LIVE_LEVEL_BARS + 10) * 100));
 
     expect(result.current.footer.take.levels).toHaveLength(LIVE_LEVEL_BARS);
     expect(result.current.footer.take.levels.includes(1)).toBe(false);
 
     mockSession.state = 'saving';
     mockSession.captureActive = false;
-    rerender({ passage });
+    await rerender({ passage });
     mockSession.state = 'idle';
     mockSession.takes = [take('a', 1)];
-    rerender({ passage });
+    await rerender({ passage });
 
     expect(Math.max(...result.current.footer.take.levels)).toBe(1);
   });

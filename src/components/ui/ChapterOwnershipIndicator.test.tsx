@@ -11,8 +11,8 @@ jest.mock('lucide-react-native', () => {
 });
 
 describe('ChapterOwnershipIndicator', () => {
-  it('renders nothing for unassigned', () => {
-    const { queryByTestId } = render(
+  it('renders nothing for unassigned', async () => {
+    const { queryByTestId } = await render(
       <ChapterOwnershipIndicator ownershipState="unassigned" />,
     );
 
@@ -20,8 +20,8 @@ describe('ChapterOwnershipIndicator', () => {
     expect(queryByTestId('chapter-ownership-other')).toBeNull();
   });
 
-  it('exposes mine testID and a11y label', () => {
-    const { getByTestId, getByLabelText } = render(
+  it('exposes mine testID and a11y label', async () => {
+    const { getByTestId, getByLabelText } = await render(
       <ChapterOwnershipIndicator ownershipState="mine" />,
     );
 
@@ -29,8 +29,8 @@ describe('ChapterOwnershipIndicator', () => {
     expect(getByLabelText('Assigned to you')).toBeTruthy();
   });
 
-  it('exposes other testID and a11y label', () => {
-    const { getByTestId, getByLabelText } = render(
+  it('exposes other testID and a11y label', async () => {
+    const { getByTestId, getByLabelText } = await render(
       <ChapterOwnershipIndicator ownershipState="other" />,
     );
 

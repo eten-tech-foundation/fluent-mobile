@@ -273,7 +273,7 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab isSyncing />);
+    await render(<MyWorkTab isSyncing />);
 
     expect(screen.getByTestId('loading-spinner')).toBeTruthy();
     expect(
@@ -291,7 +291,7 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
     expect(await screen.findByTestId('my-work-empty')).toBeTruthy();
     expect(
@@ -309,7 +309,7 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
     expect(await screen.findByText('Drafting (1)')).toBeTruthy();
     expect(await screen.findByText('Luke 4')).toBeTruthy();
@@ -327,7 +327,7 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
     expect(await screen.findByText('Drafting (1)')).toBeTruthy();
     expect(await screen.findByText('Luke 16')).toBeTruthy();
@@ -342,7 +342,7 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
     expect(await screen.findByText('Peer Check (1)')).toBeTruthy();
     expect(screen.getByText('Linguist Check (1)')).toBeTruthy();
@@ -360,10 +360,10 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
     expect(await screen.findByText('Luke 4')).toBeTruthy();
-    fireEvent.press(screen.getByTestId('my-work-stage-draft-toggle'));
+    await fireEvent.press(screen.getByTestId('my-work-stage-draft-toggle'));
     expect(screen.queryByText('Luke 4')).toBeNull();
   });
 
@@ -375,9 +375,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-10'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-10'));
     await waitFor(() =>
       expect(mockPush).toHaveBeenCalledWith({
         pathname: '/(app)/(stack)/verse-detail',
@@ -408,9 +408,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-10'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-10'));
 
     await waitFor(() =>
       expect(mockPush).toHaveBeenCalledWith({
@@ -440,9 +440,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-10'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-10'));
 
     expect(mockPush).not.toHaveBeenCalled();
   });
@@ -456,10 +456,10 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
     // Sole accordion auto-expands — do not toggle (would collapse).
-    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-13'));
 
     await waitFor(() => {
       expect(mockGetObserverDraftDestination).toHaveBeenCalledWith({
@@ -480,9 +480,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-13'));
 
     await waitFor(() => {
       expect(mockGetObserverDraftDestination).toHaveBeenCalled();
@@ -499,9 +499,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-13'));
 
     expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
     expect(mockIsUserProjectMember).not.toHaveBeenCalled();
@@ -518,9 +518,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-13'));
 
     await waitFor(() => {
       expect(mockIsUserProjectMember).toHaveBeenCalledWith(7, 3);
@@ -543,9 +543,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-13'));
 
     await waitFor(() => {
       expect(mockGetObserverDraftDestination).toHaveBeenCalled();
@@ -577,9 +577,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-12'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-12'));
 
     await waitFor(() =>
       expect(mockPush).toHaveBeenCalledWith({
@@ -610,9 +610,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-12'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-12'));
 
     expect(mockPush).not.toHaveBeenCalled();
   });
@@ -631,9 +631,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-13'));
 
     expect(mockGetObserverDraftDestination).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
@@ -650,9 +650,9 @@ describe('MyWorkTab', () => {
       refresh: jest.fn(),
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
-    fireEvent.press(await screen.findByTestId('my-work-row-13'));
+    await fireEvent.press(await screen.findByTestId('my-work-row-13'));
 
     await waitFor(() => {
       expect(mockGetObserverDraftDestination).toHaveBeenCalled();
@@ -679,13 +679,13 @@ describe('MyWorkTab', () => {
       refresh,
     });
 
-    render(<MyWorkTab />);
+    await render(<MyWorkTab />);
 
     const list = screen.getByTestId('my-work-list');
     expect(list.props.refreshing).toBe(true);
     expect(screen.getByTestId('my-work-list-end')).toBeTruthy();
     expect(screen.getByTestId('my-work-list-count-1')).toBeTruthy();
-    fireEvent(list, 'refresh');
+    await fireEvent(list, 'refresh');
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 });

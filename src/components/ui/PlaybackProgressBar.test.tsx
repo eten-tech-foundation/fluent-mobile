@@ -71,10 +71,10 @@ describe('stableTrackWidth', () => {
 });
 
 describe('PlaybackProgressBar', () => {
-  it('renders a playhead when showPlayhead is set', () => {
+  it('renders a playhead when showPlayhead is set', async () => {
     // fireEvent.layout only reaches onLayout when the row is seekable (RNTL);
     // the source-audio dock always passes onSeek when ready.
-    render(
+    await render(
       <PlaybackProgressBar
         positionMs={500}
         durationMs={1000}
@@ -84,14 +84,14 @@ describe('PlaybackProgressBar', () => {
       />,
     );
     const bar = screen.getByTestId('playback-progress');
-    fireEvent(bar, 'layout', {
+    await fireEvent(bar, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 200, height: 36 } },
     });
     expect(screen.getByTestId('playback-progress-playhead')).toBeTruthy();
   });
 
-  it('uses animated capture testID when animate+tall (live recording pulse)', () => {
-    render(
+  it('uses animated capture testID when animate+tall (live recording pulse)', async () => {
+    await render(
       <PlaybackProgressBar
         positionMs={1200}
         durationMs={1200}
@@ -104,24 +104,24 @@ describe('PlaybackProgressBar', () => {
     expect(screen.getByTestId('playback-progress-animated')).toBeTruthy();
   });
 
-  it('survives alternating near-equal onLayout widths without throwing', () => {
+  it('survives alternating near-equal onLayout widths without throwing', async () => {
     // Repro sketch for #298 / #596: content-vs-constraint measure jitter used
     // to setState → layout → setState until Maximum update depth exceeded.
-    render(
+    await render(
       <PlaybackProgressBar positionMs={0} durationMs={2000} barCount={24} />,
     );
     const bar = screen.getByTestId('playback-progress');
     for (let i = 0; i < 40; i += 1) {
       const width = i % 2 === 0 ? 60 : 55;
-      fireEvent(bar, 'layout', {
+      await fireEvent(bar, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width, height: 28 } },
       });
     }
     expect(screen.getByTestId('playback-progress')).toBeTruthy();
   });
 
-  it('survives source-dock barCount + playhead layout jitter without throwing (#596)', () => {
-    const { rerender } = render(
+  it('survives source-dock barCount + playhead layout jitter without throwing (#596)', async () => {
+    const { rerender } = await render(
       <PlaybackProgressBar
         positionMs={0}
         durationMs={60_000}
@@ -131,11 +131,11 @@ describe('PlaybackProgressBar', () => {
       />,
     );
     const bar = screen.getByTestId('playback-progress');
-    fireEvent(bar, 'layout', {
+    await fireEvent(bar, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 280, height: 36 } },
     });
     for (let i = 0; i < 60; i += 1) {
-      rerender(
+      await rerender(
         <PlaybackProgressBar
           positionMs={i * 100}
           durationMs={60_000}
@@ -145,16 +145,16 @@ describe('PlaybackProgressBar', () => {
         />,
       );
       const width = i % 2 === 0 ? 280 : 276;
-      fireEvent(bar, 'layout', {
+      await fireEvent(bar, 'layout', {
         nativeEvent: { layout: { x: 0, y: 0, width, height: 36 } },
       });
     }
     expect(screen.getByTestId('playback-progress-playhead')).toBeTruthy();
   });
 
-  it('invokes onSeek from responder grant when scrubbing is enabled', () => {
+  it('invokes onSeek from responder grant when scrubbing is enabled', async () => {
     const onSeek = jest.fn();
-    render(
+    await render(
       <PlaybackProgressBar
         positionMs={0}
         durationMs={2000}
@@ -163,18 +163,18 @@ describe('PlaybackProgressBar', () => {
       />,
     );
     const bar = screen.getByTestId('playback-progress');
-    fireEvent(bar, 'layout', {
+    await fireEvent(bar, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
     });
-    fireEvent(bar, 'responderGrant', {
+    await fireEvent(bar, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
     expect(onSeek).toHaveBeenCalledWith(1000);
   });
 
-  it('samples seeks while dragging and always seeks the released position', () => {
+  it('samples seeks while dragging and always seeks the released position', async () => {
     const onSeek = jest.fn();
-    render(
+    await render(
       <PlaybackProgressBar
         positionMs={0}
         durationMs={2000}
@@ -183,28 +183,30 @@ describe('PlaybackProgressBar', () => {
       />,
     );
     const bar = screen.getByTestId('playback-progress');
-    fireEvent(bar, 'layout', {
+    await fireEvent(bar, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 28 } },
     });
-    fireEvent(bar, 'responderGrant', { nativeEvent: { locationX: 10 } });
+    await fireEvent(bar, 'responderGrant', { nativeEvent: { locationX: 10 } });
     expect(onSeek).toHaveBeenCalledTimes(1);
     expect(onSeek).toHaveBeenLastCalledWith(200);
 
     // A device drag emits a move per touch frame — those must not each become
     // a native seek.
     for (let x = 20; x <= 80; x += 10) {
-      fireEvent(bar, 'responderMove', { nativeEvent: { locationX: x } });
+      await fireEvent(bar, 'responderMove', { nativeEvent: { locationX: x } });
     }
     expect(onSeek).toHaveBeenCalledTimes(1);
 
-    fireEvent(bar, 'responderRelease', { nativeEvent: { locationX: 80 } });
+    await fireEvent(bar, 'responderRelease', {
+      nativeEvent: { locationX: 80 },
+    });
     expect(onSeek).toHaveBeenCalledTimes(2);
     expect(onSeek).toHaveBeenLastCalledWith(1600);
   });
 
-  it('does not scrub while animate (capture) is on', () => {
+  it('does not scrub while animate (capture) is on', async () => {
     const onSeek = jest.fn();
-    render(
+    await render(
       <PlaybackProgressBar
         positionMs={0}
         durationMs={2000}
@@ -215,17 +217,17 @@ describe('PlaybackProgressBar', () => {
       />,
     );
     const bar = screen.getByTestId('playback-progress-animated');
-    fireEvent(bar, 'layout', {
+    await fireEvent(bar, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 100, height: 40 } },
     });
-    fireEvent(bar, 'responderGrant', {
+    await fireEvent(bar, 'responderGrant', {
       nativeEvent: { locationX: 50 },
     });
     expect(onSeek).not.toHaveBeenCalled();
   });
 
-  it('renders labeled verse-boundary ticks when tickMarks are provided', () => {
-    render(
+  it('renders labeled verse-boundary ticks when tickMarks are provided', async () => {
+    await render(
       <PlaybackProgressBar
         positionMs={0}
         durationMs={2000}
@@ -239,7 +241,7 @@ describe('PlaybackProgressBar', () => {
       />,
     );
     const bar = screen.getByTestId('playback-progress');
-    fireEvent(bar, 'layout', {
+    await fireEvent(bar, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 200, height: 36 } },
     });
     expect(screen.getByTestId('playback-progress-tick-16')).toHaveTextContent(
@@ -250,8 +252,8 @@ describe('PlaybackProgressBar', () => {
     );
   });
 
-  it('renders a plain scrubber when tickMarks are omitted', () => {
-    render(
+  it('renders a plain scrubber when tickMarks are omitted', async () => {
+    await render(
       <PlaybackProgressBar
         positionMs={0}
         durationMs={2000}
@@ -261,7 +263,7 @@ describe('PlaybackProgressBar', () => {
       />,
     );
     const bar = screen.getByTestId('playback-progress');
-    fireEvent(bar, 'layout', {
+    await fireEvent(bar, 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 200, height: 36 } },
     });
     expect(screen.queryByTestId('playback-progress-tick-16')).toBeNull();

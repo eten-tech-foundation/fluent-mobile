@@ -27,8 +27,8 @@ jest.mock('../app/v2/screens/HomeScreen', () => ({
 }));
 
 describe('home route', () => {
-  it('shows Legacy Home in Legacy', () => {
-    render(
+  it('shows Legacy Home in Legacy', async () => {
+    await render(
       <UiVersionOverride value="legacy">
         <HomeRoute />
       </UiVersionOverride>,
@@ -36,8 +36,8 @@ describe('home route', () => {
     expect(screen.getByText('Legacy home')).toBeTruthy();
   });
 
-  it('shows Next Home in Next', () => {
-    render(
+  it('shows Next Home in Next', async () => {
+    await render(
       <UiVersionOverride value="next">
         <HomeRoute />
       </UiVersionOverride>,

@@ -24,8 +24,8 @@ describe('LevelWave short', () => {
     mockPreferenceStore();
   });
 
-  it('rests as 16 dots with no input', () => {
-    render(
+  it('rests as 16 dots with no input', async () => {
+    await render(
       <LevelWave
         variant="short"
         levels={[]}
@@ -39,9 +39,9 @@ describe('LevelWave short', () => {
     expect(screen.queryByTestId('s-dot-16', hidden)).toBeNull();
   });
 
-  it('lifts the newest samples on the right and keeps the last 16', () => {
+  it('lifts the newest samples on the right and keeps the last 16', async () => {
     const levels = [...Array(20).fill(0), 0.5, 1];
-    render(
+    await render(
       <LevelWave
         variant="short"
         levels={levels}
@@ -55,8 +55,8 @@ describe('LevelWave short', () => {
     expect(heightOf('s-dot-13')).toBe(4);
   });
 
-  it('is read as one element with its status', () => {
-    render(
+  it('is read as one element with its status', async () => {
+    await render(
       <LevelWave
         variant="short"
         levels={[0.4]}
@@ -73,14 +73,14 @@ describe('LevelWave long', () => {
     mockPreferenceStore();
   });
 
-  function layout(width: number) {
-    fireEvent(screen.getByTestId('l'), 'layout', {
+  async function layout(width: number) {
+    await fireEvent(screen.getByTestId('l'), 'layout', {
       nativeEvent: { layout: { width, height: 80 } },
     });
   }
 
-  it('draws one bar per level, silence as the shortest bar', () => {
-    render(
+  it('draws one bar per level, silence as the shortest bar', async () => {
+    await render(
       <LevelWave
         variant="long"
         levels={[0, 1, 0.5]}
@@ -94,8 +94,8 @@ describe('LevelWave long', () => {
     expect(heightOf('l-bar-2')).toBe(36);
   });
 
-  it('shows the playhead only while recording a take', () => {
-    const { rerender } = render(
+  it('shows the playhead only while recording a take', async () => {
+    const { rerender } = await render(
       <LevelWave
         variant="long"
         levels={[0.3]}
@@ -106,7 +106,7 @@ describe('LevelWave long', () => {
     );
     expect(screen.getByTestId('l-playhead')).toBeTruthy();
 
-    rerender(
+    await rerender(
       <LevelWave
         variant="long"
         levels={[0.3]}
@@ -117,8 +117,8 @@ describe('LevelWave long', () => {
     expect(screen.queryByTestId('l-playhead')).toBeNull();
   });
 
-  it('skips bars that have scrolled well off the left edge', () => {
-    render(
+  it('skips bars that have scrolled well off the left edge', async () => {
+    await render(
       <LevelWave
         variant="long"
         levels={Array(400).fill(0.5)}
@@ -127,14 +127,14 @@ describe('LevelWave long', () => {
         testID="l"
       />,
     );
-    layout(300);
+    await layout(300);
 
     expect(screen.queryByTestId('l-bar-0', hidden)).toBeNull();
     expect(screen.getByTestId('l-bar-399', hidden)).toBeTruthy();
   });
 
-  it('keeps rest ticks on the bar grid once it scrolls', () => {
-    render(
+  it('keeps rest ticks on the bar grid once it scrolls', async () => {
+    await render(
       <LevelWave
         variant="long"
         levels={Array(400).fill(0.5)}
@@ -143,7 +143,7 @@ describe('LevelWave long', () => {
         testID="l"
       />,
     );
-    layout(328);
+    await layout(328);
 
     const leftOf = (id: string) =>
       StyleSheet.flatten(screen.getByTestId(id, hidden).props.style).left;

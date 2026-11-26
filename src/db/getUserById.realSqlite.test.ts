@@ -152,7 +152,7 @@ describeReal('getUserById (real SQLite)', () => {
     }
 
     it('reads the profile once and both consumers show the same account', async () => {
-      const { result } = renderHook(() => useBoth());
+      const { result } = await renderHook(() => useBoth());
 
       await waitFor(() => {
         expect(result.current.summary.firstName).toBe('Ada');
@@ -170,7 +170,7 @@ describeReal('getUserById (real SQLite)', () => {
     });
 
     it('lets a later refresh pick up a profile update', async () => {
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         ({ key }: { key: number }) => useBoth(key),
         { initialProps: { key: 0 } },
       );
@@ -179,7 +179,7 @@ describeReal('getUserById (real SQLite)', () => {
       await db.execute('UPDATE users SET first_name = ? WHERE id = 4', [
         'Grace',
       ]);
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() =>
         expect(result.current.summary.firstName).toBe('Grace'),
@@ -201,14 +201,14 @@ describeReal('getUserById (real SQLite)', () => {
       );
       mockGetKnownUserIds.mockReturnValue(['4', '5']);
 
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         ({ key }: { key: number }) => useActiveAccountSummary(key),
         { initialProps: { key: 0 } },
       );
 
       // Switch to account 5 while account 4's read is still out.
       mockGetActiveUserId.mockReturnValue('5');
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
       await waitFor(() => expect(result.current.firstName).toBe('Bo'));
 
       await act(async () => {

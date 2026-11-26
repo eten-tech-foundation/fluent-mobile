@@ -184,8 +184,8 @@ describe('usePrepareOfflineResources', () => {
     mockResourceData();
   });
 
-  it('disables download for unassigned users with no chapter selection', () => {
-    const { result } = renderHook(() =>
+  it('disables download for unassigned users with no chapter selection', async () => {
+    const { result } = await renderHook(() =>
       usePrepareOfflineResources(
         baseInput({ selectedIds: new Set<number>(), selectedCount: 0 }),
       ),
@@ -196,7 +196,7 @@ describe('usePrepareOfflineResources', () => {
   });
 
   it('enables download for assigned users when catalog is valid', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineResources(baseInput()),
     );
 
@@ -208,7 +208,7 @@ describe('usePrepareOfflineResources', () => {
   });
 
   it('enables download for unassigned users after selecting a chapter', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: UsePrepareOfflineResourcesInput) =>
         usePrepareOfflineResources(props),
       {
@@ -222,7 +222,7 @@ describe('usePrepareOfflineResources', () => {
 
     expect(result.current.canDownload).toBe(false);
 
-    rerender(baseInput({ isAssignedUser: false }));
+    await rerender(baseInput({ isAssignedUser: false }));
 
     await waitForCatalogItems(result);
 
@@ -230,7 +230,7 @@ describe('usePrepareOfflineResources', () => {
   });
 
   it('updates pending bytes when tier 2/3 rows are deselected', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineResources(baseInput()),
     );
 
@@ -239,7 +239,7 @@ describe('usePrepareOfflineResources', () => {
     const initialPending = result.current.pendingBytes;
     const initialTotal = result.current.totalBytes;
 
-    act(() => {
+    await act(() => {
       result.current.toggleItemSelected('Translation Questions:text');
     });
 
@@ -248,7 +248,7 @@ describe('usePrepareOfflineResources', () => {
   });
 
   it('resets deselected items when project changes', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: UsePrepareOfflineResourcesInput) =>
         usePrepareOfflineResources(props),
       { initialProps: baseInput() },
@@ -256,13 +256,13 @@ describe('usePrepareOfflineResources', () => {
 
     await waitForCatalogItems(result);
 
-    act(() => {
+    await act(() => {
       result.current.toggleItemSelected('Bible Commentary:text');
     });
 
     expect(result.current.isItemSelected('Bible Commentary:text')).toBe(false);
 
-    rerender(baseInput({ projectId: 2 }));
+    await rerender(baseInput({ projectId: 2 }));
 
     await waitForCatalogItems(result);
 
@@ -270,7 +270,7 @@ describe('usePrepareOfflineResources', () => {
   });
 
   it('resets deselected items when account changes on the same project', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       (props: UsePrepareOfflineResourcesInput) =>
         usePrepareOfflineResources(props),
       { initialProps: baseInput() },
@@ -278,13 +278,13 @@ describe('usePrepareOfflineResources', () => {
 
     await waitForCatalogItems(result);
 
-    act(() => {
+    await act(() => {
       result.current.toggleItemSelected('Bible Commentary:text');
     });
 
     expect(result.current.isItemSelected('Bible Commentary:text')).toBe(false);
 
-    rerender(baseInput({ userId: 99 }));
+    await rerender(baseInput({ userId: 99 }));
 
     await waitForCatalogItems(result);
 
@@ -297,7 +297,7 @@ describe('usePrepareOfflineResources', () => {
       getResourceStatus: () => 'completed',
     });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineResources(baseInput({ projectId: 374 })),
     );
 
@@ -309,7 +309,7 @@ describe('usePrepareOfflineResources', () => {
   });
 
   it('includes every tier in the package by default (#504 — no scenario deselects)', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineResources(baseInput()),
     );
 
@@ -326,7 +326,7 @@ describe('usePrepareOfflineResources', () => {
   });
 
   it('keeps tier 1 rows locked and tier 2/3 rows toggleable in customize', async () => {
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineResources(baseInput()),
     );
 
@@ -336,18 +336,18 @@ describe('usePrepareOfflineResources', () => {
     const tier2Id = 'Translation Words:text';
 
     // Tier 1 is locked — toggling must not change selection.
-    act(() => {
+    await act(() => {
       result.current.toggleItemSelected(tier1Id);
     });
     expect(result.current.isItemSelected(tier1Id)).toBe(true);
 
     // Tier 2 toggles freely.
-    act(() => {
+    await act(() => {
       result.current.toggleItemSelected(tier2Id);
     });
     expect(result.current.isItemSelected(tier2Id)).toBe(false);
 
-    act(() => {
+    await act(() => {
       result.current.toggleItemSelected(tier2Id);
     });
     expect(result.current.isItemSelected(tier2Id)).toBe(true);
@@ -355,13 +355,13 @@ describe('usePrepareOfflineResources', () => {
 
   it('locks completed tier 2 rows in customize instead of showing a toggle', async () => {
     setResourceStatus(1, 'tier-2-translation-words-text', 'completed');
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineResources(baseInput()),
     );
 
     await waitForCatalogItems(result);
 
-    act(() => {
+    await act(() => {
       result.current.toggleItemSelected('Translation Words:text');
     });
 
@@ -386,7 +386,7 @@ describe('Prepare Offline development failure diagnostic', () => {
         (globalThis as { __DEV__?: boolean }).__DEV__ = development;
         transport.mockClear();
         mockDiagnosticManifest.mockRejectedValue(error);
-        const { result, unmount } = renderHook(() =>
+        const { result, unmount } = await renderHook(() =>
           usePrepareOfflineResourceData(12, 10, [chapter(1)], new Set([1])),
         );
         await waitFor(() => expect(result.current.error).toBe(error));
@@ -417,7 +417,7 @@ describe('Prepare Offline development failure diagnostic', () => {
         } else {
           expect(transport).not.toHaveBeenCalled();
         }
-        unmount();
+        await unmount();
       }
     } finally {
       (globalThis as { __DEV__?: boolean }).__DEV__ = previousDev;
