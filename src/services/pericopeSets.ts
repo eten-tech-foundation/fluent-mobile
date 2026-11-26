@@ -83,11 +83,47 @@ function normalizeFiaRow(row: RawFiaPericopeRow): BundledPericopeVerse {
   };
 }
 
+type AssetReadTiming = {
+  bytes: number;
+  parseMs: number;
+};
+
+function monotonicNow(): number {
+  const perf = (globalThis as { performance?: { now?: () => number } })
+    .performance;
+  return typeof perf?.now === 'function' ? perf.now() : Date.now();
+}
+
+function elapsedMs(since: number): number {
+  return Math.round((monotonicNow() - since) * 10) / 10;
+}
+
+/**
+ * The dev logger is silent in a release APK. This line is the logcat
+ * trace for one bundled pericope read (#1003).
+ */
+function logAssetTiming(
+  setId: number,
+  bytes: number,
+  parseMs: number,
+  indexMs: number,
+): void {
+  // eslint-disable-next-line no-console
+  console.log(
+    `[pericope.asset.timing] ${JSON.stringify({
+      setId,
+      bytes,
+      parseMs,
+      indexMs,
+    })}`,
+  );
+}
+
 async function readBundledJson<T>(
   source: BundledModule<T>,
-): Promise<readonly T[]> {
+): Promise<{ rows: readonly T[]; timing: AssetReadTiming | null }> {
   if (typeof source !== 'number') {
-    return source;
+    return { rows: source, timing: null };
   }
   const asset = Asset.fromModule(source);
   const downloaded = asset.localUri ? asset : await asset.downloadAsync();
@@ -96,20 +132,38 @@ async function readBundledJson<T>(
     throw new Error('Bundled pericope JSON asset has no local URI');
   }
   const text = await FileSystem.readAsStringAsync(uri);
+  const parseStarted = monotonicNow();
   const parsed: unknown = JSON.parse(text);
+  const parseMs = elapsedMs(parseStarted);
   if (!Array.isArray(parsed)) {
     throw new Error('Bundled pericope JSON is not an array');
   }
-  return parsed as T[];
+  return {
+    rows: parsed as T[],
+    timing: { bytes: new TextEncoder().encode(text).length, parseMs },
+  };
 }
 
 function loadIndex<T extends { book: string }>(
+  setId: number,
   cache: IndexCache<T>,
   loadModule: () => BundledModule<T>,
 ): Promise<Map<string, T[]>> {
   if (cache.index) return cache.index;
   const pending = readBundledJson(loadModule())
-    .then(rows => buildIndex(rows))
+    .then(result => {
+      const indexStarted = monotonicNow();
+      const index = buildIndex(result.rows);
+      if (result.timing) {
+        logAssetTiming(
+          setId,
+          result.timing.bytes,
+          result.timing.parseMs,
+          elapsedMs(indexStarted),
+        );
+      }
+      return index;
+    })
     .catch((error: unknown) => {
       if (cache.index === pending) cache.index = null;
       throw error;
@@ -139,14 +193,14 @@ export async function loadBundledPericopeSet(
   if (!bookName) return null;
 
   if (pericopeSetId === FCBH_SET_ID) {
-    const index = await loadIndex(fcbhCache, requireFcbhJson);
+    const index = await loadIndex(FCBH_SET_ID, fcbhCache, requireFcbhJson);
     const rows = index.get(bookName);
     if (!rows || rows.length === 0) return null;
     return rows.map(normalizeFcbhRow).sort(sortByChapterVerse);
   }
 
   if (pericopeSetId === FIA_SET_ID) {
-    const index = await loadIndex(fiaCache, requireFiaJson);
+    const index = await loadIndex(FIA_SET_ID, fiaCache, requireFiaJson);
     const rows = index.get(bookName);
     if (!rows || rows.length === 0) return null;
     return rows.map(normalizeFiaRow).sort(sortByChapterVerse);

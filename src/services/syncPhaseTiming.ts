@@ -116,6 +116,18 @@ export function startPhase(name: string) {
         return;
       }
       log.info(SYNC_PHASE_LOG_MESSAGE, payload);
+      if (
+        !(globalThis as { __DEV__?: boolean }).__DEV__ &&
+        name.startsWith('Pericope sync')
+      ) {
+        const attempt =
+          payload.attempt === undefined ? '' : `, attempt: ${payload.attempt}`;
+        // The dev logger drops info on a release APK. QA reads this from logcat.
+        // eslint-disable-next-line no-console
+        console.log(
+          `[SyncPhase] ${SYNC_PHASE_LOG_MESSAGE} phase: ${payload.phase}, elapsedMs: ${payload.elapsedMs}${attempt}`,
+        );
+      }
     },
   };
 }

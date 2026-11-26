@@ -96,6 +96,32 @@ describe('syncPericopes', () => {
     expect(clearSyncError).toHaveBeenCalled();
   });
 
+  it('prints Pericope books checked on a release build', async () => {
+    const previousDev = (globalThis as { __DEV__?: boolean }).__DEV__;
+    const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
+    jest.mocked(getBundledPericopeSetVersion).mockReturnValue('bundled-v1');
+    jest.mocked(loadBundledPericopeSet).mockResolvedValue([
+      {
+        chapterNumber: 1,
+        verseNumber: 1,
+        section: 1,
+        pericopeNumber: '1',
+        pericopeTitle: null,
+      },
+    ]);
+
+    try {
+      await syncPericopes();
+      expect(consoleLog).toHaveBeenCalledWith(
+        '[Pericope] Pericope books checked bundledCurrent: 0, reseeded: 1, notModified: 0, fetched: 0',
+      );
+    } finally {
+      (globalThis as { __DEV__?: boolean }).__DEV__ = previousDev;
+      consoleLog.mockRestore();
+    }
+  });
+
   it('does not open the bundled asset for a book outside the export', async () => {
     jest.mocked(getChaptersNeedingPericopeSync).mockResolvedValue([
       {

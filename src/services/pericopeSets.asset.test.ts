@@ -7,7 +7,11 @@ import {
 
 const mockFcbhUri = 'file:///mock-pericope/fcbh.json';
 const mockFiaUri = 'file:///mock-pericope/fia.json';
-const mockPericopeAsset = { omitLocalUri: false };
+const mockPericopeAsset = {
+  omitLocalUri: false,
+  presetLocalUri: false,
+  downloadCount: 0,
+};
 
 jest.mock('../../assets/pericope-sets/FCBH-All-Books.pericope', () => 101);
 jest.mock('../../assets/pericope-sets/FIA-All-Books.pericope', () => 202);
@@ -17,8 +21,11 @@ jest.mock('expo-asset', () => ({
     fromModule: (id: number) => {
       const localUri = id === 101 ? mockFcbhUri : mockFiaUri;
       const asset = {
-        localUri: null as string | null,
+        localUri: (mockPericopeAsset.presetLocalUri ? localUri : null) as
+          | string
+          | null,
         downloadAsync: async () => {
+          mockPericopeAsset.downloadCount += 1;
           asset.localUri = mockPericopeAsset.omitLocalUri ? null : localUri;
           return asset;
         },
@@ -49,6 +56,8 @@ describe('loadBundledPericopeSet asset read', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockPericopeAsset.omitLocalUri = false;
+    mockPericopeAsset.presetLocalUri = false;
+    mockPericopeAsset.downloadCount = 0;
     __resetBundledPericopeCacheForTests();
     resetFileSystemMock();
     await FileSystem.writeAsStringAsync(mockFcbhUri, fcbhJson);
@@ -122,6 +131,13 @@ describe('loadBundledPericopeSet asset read', () => {
     await FileSystem.writeAsStringAsync(mockFcbhUri, fcbhJson);
     const verses = await loadBundledPericopeSet(1, 'GEN');
     expect(verses).toHaveLength(2);
+  });
+
+  it('does not download an asset that already has a local URI', async () => {
+    mockPericopeAsset.presetLocalUri = true;
+    const verses = await loadBundledPericopeSet(1, 'GEN');
+    expect(verses).toHaveLength(2);
+    expect(mockPericopeAsset.downloadCount).toBe(0);
   });
 
   it('does not read an asset for a set that is not bundled', async () => {
