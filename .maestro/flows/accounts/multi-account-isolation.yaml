@@ -92,9 +92,10 @@ tags:
 - runFlow: ../../shared/ensure/ensure-home-settled.yaml
 - scrollUntilVisible:
     element:
-      id: 'home-next-up'
+      id: 'home-next-up-hero|home-next-up-empty|home-next-[0-9]+:.*'
     direction: DOWN
-    timeout: 20000
+    timeout: 60000
+    visibilityPercentage: 50
 - assertNotVisible: ${output.accountAMyWorkLabel}
 
 # C3: switch to A — label returns

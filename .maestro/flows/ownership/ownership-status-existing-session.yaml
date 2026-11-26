@@ -31,8 +31,11 @@ tags:
 - runScript: ../../shared/scripts/ownership-status-values.js
 - evalScript: >-
     ${output.projectNameOnHome = (typeof MAESTRO_FIXTURE_PROJECT_NAME === 'undefined' || MAESTRO_FIXTURE_PROJECT_NAME === null) ? '' : String(MAESTRO_FIXTURE_PROJECT_NAME)}
+- evalScript: >-
+    ${output.fixtureChapterId = (typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_ID).trim()}
 - assertTrue: ${output.fixtureProjectName.length > 0}
 - assertTrue: ${output.fixtureChapterLabel.length > 0}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.fixtureChapterId)}
 - assertTrue: ${['mine','other','unassigned','conflict'].indexOf(output.expectOwnership) >= 0}
 - assertTrue: ${['none','taken','conflict'].indexOf(output.expectRecordWarning) >= 0}
 - assertTrue: ${typeof output.projectNameOnHome === 'string' && output.projectNameOnHome.length > 0}
@@ -77,72 +80,53 @@ tags:
             id: 'book-list'
           direction: DOWN
           duration: 250
+# Single-book gallery titles the section "Chapter N". The cover eyebrow is
+# the env label ("Psalms 3"), but that text is not a descendant Maestro can
+# scope under book-chapter-*. Pin the row by assignment id.
 - scrollUntilVisible:
     element:
-      text: ${output.chapterLabelRe}
+      id: '^book-chapter-${output.fixtureChapterId}$'
     direction: DOWN
     timeout: 90000
     visibilityPercentage: 50
 - assertVisible:
-    id: 'book-chapter-.*'
-    containsDescendants:
-      - text: ${output.chapterLabelRe}
+    id: '^book-chapter-${output.fixtureChapterId}$'
 
 - runFlow:
     when:
       true: ${output.expectOwnership == 'mine'}
     commands:
       - assertVisible:
-          id: 'book-chapter-[0-9]+-meta'
+          id: '^book-chapter-${output.fixtureChapterId}-meta$'
           text: '(.* · )?Yours( · .*)?'
-          childOf:
-            id: 'book-chapter-[0-9]+'
-            containsDescendants:
-              - text: ${output.chapterLabelRe}
 - runFlow:
     when:
       true: ${output.expectOwnership == 'other'}
     commands:
       - assertVisible:
-          id: 'book-chapter-[0-9]+-meta'
+          id: '^book-chapter-${output.fixtureChapterId}-meta$'
           text: "(.* · )?Someone else's( · .*)?"
-          childOf:
-            id: 'book-chapter-[0-9]+'
-            containsDescendants:
-              - text: ${output.chapterLabelRe}
 - runFlow:
     when:
       true: ${output.expectOwnership == 'unassigned'}
     commands:
       - assertVisible:
-          id: 'book-chapter-[0-9]+-meta'
+          id: '^book-chapter-${output.fixtureChapterId}-meta$'
           text: '(.* · )?Unassigned( · .*)?'
-          childOf:
-            id: 'book-chapter-[0-9]+'
-            containsDescendants:
-              - text: ${output.chapterLabelRe}
 - runFlow:
     when:
       true: ${output.expectOwnership == 'conflict'}
     commands:
       - assertVisible:
-          id: 'book-chapter-[0-9]+-meta'
+          id: '^book-chapter-${output.fixtureChapterId}-meta$'
           text: '.*Sync conflict.*'
-          childOf:
-            id: 'book-chapter-[0-9]+'
-            containsDescendants:
-              - text: ${output.chapterLabelRe}
 
 - runFlow:
     when:
       true: ${output.expectRecordWarning == 'taken' || output.expectRecordWarning == 'conflict'}
     commands:
       - tapOn:
-          id: 'book-passage-[0-9]+-.*'
-          childOf:
-            id: 'book-chapter-[0-9]+'
-            containsDescendants:
-              - text: ${output.chapterLabelRe}
+          id: '^book-passage-${output.fixtureChapterId}-.*'
       - extendedWaitUntil:
           visible:
             id: 'passage-header'

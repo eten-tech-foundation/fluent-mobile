@@ -1,6 +1,8 @@
 # Images grow in the Next resources card (passage-image-*-zoom), not Legacy
-# images-maps-maximize. Requires MAESTRO_FIXTURE_PROJECT_NAME +
-# MAESTRO_FIXTURE_MINE_LABEL (chapter with images).
+# images-maps-maximize. Opens the pinned chapter by id (Next up), not by
+# book-page label: a single-book gallery titles the section "Chapter N",
+# while the cover eyebrow is "Psalms N". Requires
+# MAESTRO_FIXTURE_CHAPTER_ID + MAESTRO_FIXTURE_MINE_LABEL.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -13,10 +15,8 @@ tags:
       id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow:
-    file: ../../shared/nav/open-fixture-chapter.yaml
-    env:
-      MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_MINE_LABEL}
+- assertTrue: ${typeof MAESTRO_FIXTURE_MINE_LABEL !== 'undefined' && String(MAESTRO_FIXTURE_MINE_LABEL).trim().length > 0}
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - assertVisible:
     id: 'passage-header'
 - tapOn:

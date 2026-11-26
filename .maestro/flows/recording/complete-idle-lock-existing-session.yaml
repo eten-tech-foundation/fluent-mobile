@@ -12,8 +12,10 @@
 # - MAESTRO_FIXTURE_PROJECT_NAME: substring matched on Next-up status /
 #   a11y label (milestoneName). Home book cards show bookName + milestoneName,
 #   not the API project name.
-# - MAESTRO_FIXTURE_CHAPTER_LABEL: exact chapter label shown on its row.
-# - MAESTRO_FIXTURE_CHAPTER_ID: positive digits (book-chapter-<id>).
+# - MAESTRO_FIXTURE_CHAPTER_LABEL: kept so a blank fixture file still fails
+#   closed. The gallery section title is "Chapter N", not this label.
+# - MAESTRO_FIXTURE_COMPLETE_CHAPTER_ID: positive digits (book-chapter-<id>)
+#   for the Complete stage. Do not reuse the draft MAESTRO_FIXTURE_CHAPTER_ID.
 # The chapter must be in the Complete stage. Cached takes on the phone
 # are not required (this fixture's takes live on the server).
 # Never taps capture/play/claim/stage or changes auth, data or preferences.
@@ -31,7 +33,7 @@ tags:
 - runScript: ../../shared/scripts/ownership-status-values.js
 # Copy env one key per evalScript. Do not store ^…$ in output (Maestro 2.10).
 - evalScript: >-
-    ${output.fixtureChapterId = (typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_ID).trim()}
+    ${output.fixtureChapterId = (typeof MAESTRO_FIXTURE_COMPLETE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_COMPLETE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_COMPLETE_CHAPTER_ID).trim()}
 - evalScript: >-
     ${output.projectNameOnHome = (typeof MAESTRO_FIXTURE_PROJECT_NAME === 'undefined' || MAESTRO_FIXTURE_PROJECT_NAME === null) ? '' : String(MAESTRO_FIXTURE_PROJECT_NAME)}
 - assertTrue: ${output.fixtureProjectName.length > 0}
@@ -61,18 +63,20 @@ tags:
     visibilityPercentage: 50
 - tapOn:
     text: '.+${output.projectNameOnHome}.+'
-- extendedWaitUntil:
-    visible:
-      id: 'passage-header'
-    timeout: 30000
-- tapOn:
-    id: 'passage-title'
-- extendedWaitUntil:
-    visible:
-      id: 'passage-title-sheet'
-    timeout: 15000
-- tapOn:
-    id: 'passage-book'
+# Next-up opens Passage. A book card opens the gallery directly.
+- runFlow:
+    when:
+      visible:
+        id: 'passage-header'
+    commands:
+      - tapOn:
+          id: 'passage-title'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-title-sheet'
+          timeout: 15000
+      - tapOn:
+          id: 'passage-book'
 - extendedWaitUntil:
     visible:
       id: 'book-header'
