@@ -473,7 +473,7 @@ export default function ObserverScreen() {
               <Text style={styles.notice} testID="observer-draft-notice">
                 {notice}
               </Text>
-            ) : null
+            ) : undefined
           }
         />
       )}
@@ -543,7 +543,7 @@ function SourcePane({
           <Text style={styles.notice} testID="observer-pericope-unavailable">
             {PERICOPE_UNAVAILABLE_WARNING}
           </Text>
-        ) : null
+        ) : undefined
       }
       renderItem={({ item }) => (
         <View style={styles.verse} testID={`observer-source-${item.key}`}>

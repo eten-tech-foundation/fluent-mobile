@@ -9,6 +9,7 @@ import {
   Platform,
   Image,
   ScrollView,
+  type TextInputInstance,
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useRouter } from 'expo-router';
@@ -62,7 +63,7 @@ export default function LoginScreen({
   const { signIn } = useAuthSession();
   const onLoginSuccess = onLoginSuccessProp ?? signIn;
   const router = useRouter();
-  const passwordInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInputInstance>(null);
   const {
     email,
     setEmail,

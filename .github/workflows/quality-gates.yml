@@ -3,7 +3,7 @@ name: Quality Gates
 # TypeScript + Expo health checks for PRs. PR CI is a frozen snapshot of this
 # commit (pinned Node via .nvmrc; lockfile expo-doctor — never @latest).
 # Dependency version validation is offline/deterministic (#422): Expo ships a
-# 57.0.x patch every ~3 days and the remote versions map advances with no
+# 58.0.x patch every ~3 days and the remote versions map advances with no
 # diff here. Freshness is handled by the scheduled expo-sdk-align workflow.
 # No native Gradle build — native compile is on-demand via EAS preview
 # (preview-build label) and nightly APK; post-merge QA uses nightly
@@ -64,7 +64,7 @@ jobs:
       - name: Run expo-doctor
         env:
           # Patch freshness is scheduled maintenance (#422), not a per-PR gate:
-          # Expo ships a 57.0.x patch every ~3 days and the remote versions map
+          # Expo ships a 58.0.x patch every ~3 days and the remote versions map
           # advances with no diff here. Dependency validation is still done
           # once, deterministically, by the expo install --check step below.
           EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: '1'

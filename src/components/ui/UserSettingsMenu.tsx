@@ -116,12 +116,7 @@ export function UserSettingsMenu({
 
   return (
     <>
-      {drawerStatus === 'open' ? (
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={theme.colors.cardBackground}
-        />
-      ) : null}
+      {drawerStatus === 'open' ? <StatusBar barStyle="dark-content" /> : null}
       <View style={styles.root} testID="settings-drawer-content">
         <DrawerContentScrollView
           {...drawerProps}

@@ -75,7 +75,7 @@ describe('parseJsonResponse', () => {
   });
 });
 
-// Pinned expo/fetch (SDK 57): only `credentials: 'omit'` gives OkHttp
+// Pinned expo/fetch (SDK 58): only `credentials: 'omit'` gives OkHttp
 // CookieJar.NO_COOKIES; unset and 'same-origin' become 'include', which routes
 // the request and its response through the WebView CookieManager.
 function usesWebViewCookieJar(init?: RequestInit): boolean {

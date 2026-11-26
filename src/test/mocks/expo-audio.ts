@@ -1,5 +1,5 @@
 /**
- * Jest mock for `expo-audio` — API surface aligned with SDK 57
+ * Jest mock for `expo-audio` — API surface aligned with SDK 58
  * (`record` / `pause` / `stop`, `play` / `seekTo`, permission helpers).
  */
 

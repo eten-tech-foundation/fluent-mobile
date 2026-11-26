@@ -171,7 +171,7 @@ export default function DraftingScreen() {
 
   // CHANGED: was `triggerSync`. Tapping the icon now navigates to the
   // Sync page instead of kicking off a sync directly (per #38 / #149).
-  // Sync pushes another route (beforeRemove may not fire) — guard explicitly.
+  // Sync pushes another route (the removal guard does not run on a push) — guard explicitly.
   const handleSyncPress = useCallback(() => {
     haltDraftPlayback();
     if (recordCaptureActive) {

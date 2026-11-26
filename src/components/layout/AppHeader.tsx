@@ -146,10 +146,7 @@ export function AppHeader({
         style,
       ]}
     >
-      <StatusBar
-        barStyle={palette.statusBar}
-        backgroundColor={palette.backgroundColor}
-      />
+      <StatusBar barStyle={palette.statusBar} />
       <View style={[styles.row, centered && styles.rowCentered]}>
         <View style={centered ? styles.sideSlot : styles.leading}>{left}</View>
 

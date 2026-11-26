@@ -28,9 +28,15 @@ import { getStageAdvanceDestination } from '../../../utils/stageAdvancement';
 const mockAddListener = jest.fn(
   (
     _event: string,
-    _listener: (event: { preventDefault: () => void }) => void,
+    _listener: (event: { data: { closing: boolean } }) => void,
   ) => jest.fn(),
 );
+/** What the screen last handed `usePreventRemove`; tests play the router. */
+const mockPreventRemove: {
+  enabled: boolean;
+  onPrevented?: (options: { repeat: () => void }) => void;
+} = { enabled: false };
+const mockRepeat = jest.fn();
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -129,6 +135,14 @@ jest.mock('expo-router', () => ({
     addListener: mockAddListener,
     isFocused: () => mockFocused,
   }),
+  usePreventRemove: (
+    enabled: boolean,
+    onPrevented?: (options: { repeat: () => void }) => void,
+  ) => {
+    mockPreventRemove.enabled = enabled;
+    mockPreventRemove.onPrevented = onPrevented;
+    return jest.fn();
+  },
 }));
 
 jest.mock('../../../hooks/useRecordSession', () => {
@@ -3570,14 +3584,16 @@ describe('PassageScreen', () => {
     expect(mockPush).not.toHaveBeenCalled();
     expect(alert).toHaveBeenCalled();
 
-    const beforeRemove = mockAddListener.mock.calls.filter(
-      call => call[0] === 'beforeRemove',
+    // A back removal is held, and the saving alert answers it.
+    expect(mockPreventRemove.enabled).toBe(true);
+    alert.mockClear();
+    mockPreventRemove.onPrevented?.({ repeat: mockRepeat });
+    expect(alert).toHaveBeenCalledWith(
+      'Saving take',
+      expect.any(String),
+      expect.any(Array),
     );
-    const listener = beforeRemove[beforeRemove.length - 1]?.[1];
-    if (!listener) throw new Error('beforeRemove was not registered');
-    const preventDefault = jest.fn();
-    listener({ preventDefault });
-    expect(preventDefault).toHaveBeenCalled();
+    expect(mockRepeat).not.toHaveBeenCalled();
     expect(mockBack).not.toHaveBeenCalled();
   });
 

@@ -26,6 +26,6 @@ export async function concatAdtsSegments(
     offset += chunk.length;
   }
 
-  new File(outputUri).write(merged);
+  await new File(outputUri).write(merged);
   return outputUri;
 }

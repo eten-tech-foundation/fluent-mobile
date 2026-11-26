@@ -18,10 +18,23 @@ const mockRouteParams = {
   chapterId: '5',
   chapterName: 'Mark 14',
 };
-type BeforeRemoveListener = (event: { preventDefault: () => void }) => void;
-const mockAddListener = jest.fn<jest.Mock, [string, BeforeRemoveListener]>(() =>
+type TransitionListener = (event: { data: { closing: boolean } }) => void;
+const mockAddListener = jest.fn<jest.Mock, [string, TransitionListener]>(() =>
   jest.fn(),
 );
+/** What the screen last handed `usePreventRemove`; tests play the router. */
+const mockPreventRemove: {
+  enabled: boolean;
+  onPrevented?: (options: { repeat: () => void }) => void;
+} = { enabled: false };
+const mockDisablePrevention = jest.fn();
+const mockRepeat = jest.fn();
+/** A removal attempt: held and handed to the prompt only while prevention is on. */
+function attemptRemoval(): boolean {
+  if (!mockPreventRemove.enabled) return false;
+  mockPreventRemove.onPrevented?.({ repeat: mockRepeat });
+  return true;
+}
 const mockIsFocused = jest.fn(() => true);
 const mockNavigation = {
   addListener: mockAddListener,
@@ -69,6 +82,14 @@ jest.mock('expo-router', () => ({
     push: mockPush,
   }),
   useNavigation: () => mockNavigation,
+  usePreventRemove: (
+    enabled: boolean,
+    onPrevented?: (options: { repeat: () => void }) => void,
+  ) => {
+    mockPreventRemove.enabled = enabled;
+    mockPreventRemove.onPrevented = onPrevented;
+    return mockDisablePrevention;
+  },
   useLocalSearchParams: () => mockRouteParams,
 }));
 
@@ -449,20 +470,14 @@ describe('DraftingScreen onChapterClaimed', () => {
       expect(setLastActiveTab).not.toHaveBeenCalled();
     });
 
-    it('header back offers Resume/Discard; Discard navigates back', async () => {
-      await renderWithActiveCapture(); // The guard re-registers when recordCaptureActive flips — use the
-      // latest registration (closes over recordCaptureActive=true).
-      const beforeRemoveCalls = mockAddListener.mock.calls.filter(
-        call => call[0] === 'beforeRemove',
-      );
-      expect(beforeRemoveCalls.length).toBeGreaterThan(0);
-      const beforeRemove = beforeRemoveCalls[beforeRemoveCalls.length - 1][1];
+    it('header back offers Resume/Discard; Discard continues the removal', async () => {
+      await renderWithActiveCapture();
+      expect(mockPreventRemove.enabled).toBe(true);
 
-      const preventDefault = jest.fn();
-      beforeRemove({ preventDefault });
+      expect(attemptRemoval()).toBe(true);
 
-      expect(preventDefault).toHaveBeenCalledTimes(1);
       expect(Alert.alert).toHaveBeenCalledTimes(1);
+      expect(mockRepeat).not.toHaveBeenCalled();
       lastAlertButtons()
         .find(b => b.text === 'Discard')
         ?.onPress?.();
@@ -471,8 +486,22 @@ describe('DraftingScreen onChapterClaimed', () => {
         expect(mockDiscard).toHaveBeenCalledTimes(1);
       });
       await waitFor(() => {
-        expect(mockBack).toHaveBeenCalledTimes(1);
+        expect(mockRepeat).toHaveBeenCalledTimes(1);
       });
+      expect(mockDisablePrevention).toHaveBeenCalled();
+    });
+
+    it('keeps the capture and the screen on Resume', async () => {
+      await renderWithActiveCapture();
+
+      attemptRemoval();
+      lastAlertButtons()
+        .find(b => b.text === 'Resume')
+        ?.onPress?.();
+
+      expect(mockDiscard).not.toHaveBeenCalled();
+      expect(mockRepeat).not.toHaveBeenCalled();
+      expect(mockPreventRemove.enabled).toBe(true);
     });
 
     it('blocks a second back while discard is pending, then allows exactly one pop', async () => {
@@ -485,37 +514,74 @@ describe('DraftingScreen onChapterClaimed', () => {
       );
       await renderWithActiveCapture();
 
-      const beforeRemoveCalls = mockAddListener.mock.calls.filter(
-        call => call[0] === 'beforeRemove',
-      );
-      const beforeRemove = beforeRemoveCalls[beforeRemoveCalls.length - 1][1];
-
       // 1st back → prompt → Discard (stop is now "in flight").
-      beforeRemove({ preventDefault: jest.fn() });
+      attemptRemoval();
       expect(Alert.alert).toHaveBeenCalledTimes(1);
       lastAlertButtons()
         .find(b => b.text === 'Discard')
         ?.onPress?.();
 
-      // 2nd back while discard is pending: blocked, no new prompt, no pop.
-      const secondPrevent = jest.fn();
-      beforeRemove({ preventDefault: secondPrevent });
-      expect(secondPrevent).toHaveBeenCalledTimes(1);
+      // 2nd back while discard is pending: still held, no new prompt, no pop.
+      expect(attemptRemoval()).toBe(true);
       expect(Alert.alert).toHaveBeenCalledTimes(1);
-      expect(mockBack).not.toHaveBeenCalled();
+      expect(mockRepeat).not.toHaveBeenCalled();
 
-      // Discard finishes → the deferred back runs exactly once.
-      resolveDiscard();
+      // Discard finishes → the held removal continues exactly once.
+      await act(async () => {
+        resolveDiscard();
+      });
       await waitFor(() => {
-        expect(mockBack).toHaveBeenCalledTimes(1);
+        expect(mockRepeat).toHaveBeenCalledTimes(1);
       });
 
-      // That pop passes the guard (one-shot suppress) and does not re-prompt.
-      const popPrevent = jest.fn();
-      beforeRemove({ preventDefault: popPrevent });
-      expect(popPrevent).not.toHaveBeenCalled();
+      // That pop passes the guard and does not re-prompt.
+      expect(mockPreventRemove.enabled).toBe(false);
+      expect(attemptRemoval()).toBe(false);
       expect(Alert.alert).toHaveBeenCalledTimes(1);
     });
+
+    it('prompts again after a failed discard instead of holding back silently', async () => {
+      mockDiscard.mockRejectedValueOnce(new Error('discard failed'));
+      await renderWithActiveCapture();
+
+      attemptRemoval();
+      lastAlertButtons()
+        .find(b => b.text === 'Discard')
+        ?.onPress?.();
+      await waitFor(() => {
+        expect(mockDiscard).toHaveBeenCalledTimes(1);
+      });
+      await act(async () => {});
+
+      // The removal never continued and the guard is still armed.
+      expect(mockRepeat).not.toHaveBeenCalled();
+      expect(mockPreventRemove.enabled).toBe(true);
+
+      // Back again: a second prompt, not a silent hold.
+      attemptRemoval();
+      expect(Alert.alert).toHaveBeenCalledTimes(2);
+    });
+
+    it('re-arms the guard when the next capture starts', async () => {
+      await renderWithActiveCapture();
+      attemptRemoval();
+      lastAlertButtons()
+        .find(b => b.text === 'Discard')
+        ?.onPress?.();
+      await waitFor(() => {
+        expect(mockPreventRemove.enabled).toBe(false);
+      });
+
+      await act(async () => {
+        capturedRecordTabHandlers?.onCaptureActiveChange?.(false);
+      });
+      await act(async () => {
+        capturedRecordTabHandlers?.onCaptureActiveChange?.(true);
+      });
+
+      expect(mockPreventRemove.enabled).toBe(true);
+    });
+
     it('Sync tap offers Resume/Discard; Discard pushes the Sync page', async () => {
       await renderWithActiveCapture();
 
@@ -594,9 +660,9 @@ describe('DraftingScreen onChapterClaimed', () => {
   });
 
   describe('draft playback halt on leave (#866)', () => {
-    function lastBeforeRemove(): BeforeRemoveListener {
+    function transitionListener(): TransitionListener {
       const calls = mockAddListener.mock.calls.filter(
-        call => call[0] === 'beforeRemove',
+        call => call[0] === 'transitionStart',
       );
       expect(calls.length).toBeGreaterThan(0);
       return calls[calls.length - 1][1];
@@ -609,13 +675,31 @@ describe('DraftingScreen onChapterClaimed', () => {
       });
     }
 
-    it('stops draft playback on header or system Back', async () => {
+    it('stops draft playback when the screen starts closing', async () => {
       await renderDrafting();
-      lastBeforeRemove()({ preventDefault: jest.fn() });
+      transitionListener()({ data: { closing: true } });
       expect(mockStopPlayback).toHaveBeenCalled();
     });
 
-    it('stops draft playback when opening Sync (beforeRemove may not fire)', async () => {
+    it('keeps draft playback going when the screen appears', async () => {
+      await renderDrafting();
+      mockStopPlayback.mockClear();
+      transitionListener()({ data: { closing: false } });
+      expect(mockStopPlayback).not.toHaveBeenCalled();
+    });
+
+    it('stops draft playback behind the leave prompt', async () => {
+      await render(<DraftingScreen />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-record-tab-activate')).toBeTruthy();
+      });
+      await fireEvent.press(screen.getByTestId('mock-record-tab-activate'));
+      mockStopPlayback.mockClear();
+      attemptRemoval();
+      expect(mockStopPlayback).toHaveBeenCalled();
+    });
+
+    it('stops draft playback when opening Sync (a push is not a removal)', async () => {
       await renderDrafting();
       capturedHeaderHandlers?.onSyncPress?.();
       expect(mockStopPlayback).toHaveBeenCalled();

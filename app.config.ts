@@ -100,11 +100,12 @@ const config: ExpoConfig = {
       'expo-build-properties',
       {
         android: {
-          compileSdkVersion: 36,
+          // SDK 58 modules require compileSdk 37; target stays 36. Kotlin comes
+          // from React Native's version catalog (2.2.0 on RN 0.88).
+          compileSdkVersion: 37,
           targetSdkVersion: 36,
           minSdkVersion: 24,
-          buildToolsVersion: '36.0.0',
-          kotlinVersion: '2.1.20',
+          buildToolsVersion: '37.0.0',
           usesCleartextTraffic,
           newArchEnabled: true,
         },

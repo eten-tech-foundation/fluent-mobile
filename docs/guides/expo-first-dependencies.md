@@ -1,6 +1,6 @@
 # Expo-first dependencies (Fluent Mobile)
 
-Fluent Mobile is an **Expo SDK 57** app (CNG, Android-only). For **new** dependencies and APIs, prefer **Expo-maintained** packages and modules when Expo provides a supported option.
+Fluent Mobile is an **Expo SDK 58** app (CNG, Android-only). For **new** dependencies and APIs, prefer **Expo-maintained** packages and modules when Expo provides a supported option.
 
 This is policy for agents and humans — **not** a mandate to rewrite existing stacks in the same PR.
 
@@ -20,7 +20,7 @@ Expo’s documented choice for Expo apps is **[Expo Router](https://docs.expo.de
 
 **This repo today:** **Expo Router** (`expo-router`) with file-based routes in `src/routes/`. Screens remain under `src/app/screens/` and `src/app/tabs/`; auth/session lives in `src/navigation/AuthSessionProvider.tsx`. Drawer layout uses `expo-router/drawer` (bundled in SDK 56+ — do **not** add `@react-navigation/drawer` / `@react-navigation/native` / `@react-navigation/stack` as direct app deps).
 
-**Direct `@react-navigation/*` packages (audit #368):** None. Former direct deps `@react-navigation/native` and `@react-navigation/stack` were unused (no app imports; Expo Router does not require them as root dependencies on SDK 57) and were removed. Do not re-add them unless Expo docs or `expo install` require a peer for a new navigation surface — prefer `expo-router` / `expo-router/drawer` / `expo-router/react-navigation` only.
+**Direct `@react-navigation/*` packages (audit #368):** None. Former direct deps `@react-navigation/native` and `@react-navigation/stack` were unused (no app imports; Expo Router does not require them as root dependencies on SDK 58) and were removed. Do not re-add them unless Expo docs or `expo install` require a peer for a new navigation surface — prefer `expo-router` / `expo-router/drawer` / `expo-router/react-navigation` only.
 
 **Agent rules:**
 

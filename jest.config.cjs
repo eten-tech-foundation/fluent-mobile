@@ -1,8 +1,15 @@
 module.exports = {
   preset: 'jest-expo',
+  // Reanimated 4.7 runs its JS (web) module variants under Jest; its resolver
+  // drops the `.native` extensions for those files. Jest 30 ignores the RN
+  // preset resolver's `packageFilter`, so nothing is lost by replacing it.
+  resolver: 'react-native-reanimated/jest/resolver',
   setupFiles: ['<rootDir>/jest.env.cjs', '<rootDir>/jest.setup.expo-fs.cjs'],
   // Reanimated setUpTests() needs the Jest env (Jest ≥28 → setupFilesAfterEnv).
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.reanimated.cjs'],
+  setupFilesAfterEnv: [
+    '<rootDir>/jest.setup.gesture-handler.cjs',
+    '<rootDir>/jest.setup.reanimated.cjs',
+  ],
   testPathIgnorePatterns: [
     '/node_modules/',
     '/android/',

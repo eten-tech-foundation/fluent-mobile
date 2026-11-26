@@ -173,6 +173,20 @@ export class File {
     return mockFileData(this.uri).slice();
   }
 
+  /** SDK 58 `File#write` is async; the bytes land before the promise settles. */
+  async write(content: string | Uint8Array): Promise<void> {
+    // The bytes land on a later turn, so a caller that skips `await` reads a
+    // missing file.
+    await new Promise<void>(resolve => setImmediate(resolve));
+    const path = resolveUri(this.uri);
+    if (typeof content === 'string') {
+      files.set(path, content);
+      fileBytes.delete(path);
+      return;
+    }
+    fileBytes.set(path, content.slice());
+  }
+
   open(_mode?: string) {
     const data = mockFileData(this.uri);
     let offset = 0;
@@ -183,7 +197,7 @@ export class File {
         return offset;
       },
       size: data.length,
-      readBytes(length: number): Uint8Array {
+      async readBytes(length: number): Promise<Uint8Array> {
         if (!open) throw new Error('file handle is closed');
         const out = data.slice(offset, offset + length);
         offset += out.length;
