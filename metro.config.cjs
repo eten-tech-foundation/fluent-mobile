@@ -21,7 +21,13 @@ config.transformer = {
 
 config.resolver = {
   ...config.resolver,
-  assetExts: config.resolver.assetExts.filter(ext => ext !== 'svg'),
+  assetExts: [
+    ...config.resolver.assetExts.filter(ext => ext !== 'svg'),
+    // Pericope sets are raw JSON text. `.json` is a Metro source extension
+    // and is always emitted as a JavaScript object literal, so these two
+    // files use their own asset extension (#1003).
+    'pericope',
+  ],
   sourceExts: [...config.resolver.sourceExts, 'svg'],
   blockList: [
     ...(Array.isArray(config.resolver.blockList)

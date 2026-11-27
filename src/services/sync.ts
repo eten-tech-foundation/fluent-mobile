@@ -68,6 +68,7 @@ import {
   refreshUserOrgGrants,
 } from './userOrgGrants';
 import { getTranslatorProjectIds } from '../utils/myWorkDraftDownload';
+import { BUNDLED_PERICOPE_BOOK_CODES } from '../../assets/pericope-sets/pericopeSetVersions';
 import { getPericopeBookVersion, setPericopeBookVersion } from './storage';
 import { runKvBatchSync } from './kvBatch';
 import {
@@ -2303,19 +2304,38 @@ export async function syncPericopes(
               continue;
             }
 
-            const verses = loadBundledPericopeSet(pericopeSetId, bookCode);
-            if (verses) {
-              if (await upsertPericopeSet(pericopeSetId, bookCode, verses)) {
-                setPericopeBookVersion(pericopeSetId, bookCode, bundledVersion);
-                pericopeBookCounts.reseeded += 1;
+            if (BUNDLED_PERICOPE_BOOK_CODES.has(bookCode)) {
+              const verses = await loadBundledPericopeSet(
+                pericopeSetId,
+                bookCode,
+              ).catch((error: unknown) => {
+                log.warn(
+                  'Bundled pericope asset read failed — falling back to GET /pericope-sets/{id}',
+                  {
+                    pericopeSetId,
+                    bookCode,
+                    error: getErrorMessage(error),
+                  },
+                );
+                return null;
+              });
+              if (verses) {
+                if (await upsertPericopeSet(pericopeSetId, bookCode, verses)) {
+                  setPericopeBookVersion(
+                    pericopeSetId,
+                    bookCode,
+                    bundledVersion,
+                  );
+                  pericopeBookCounts.reseeded += 1;
+                }
+                continue;
               }
-              continue;
-            }
 
-            log.debug(
-              'Book missing from bundled set — falling back to GET /pericope-sets/{id}',
-              { pericopeSetId, bookCode },
-            );
+              log.debug(
+                'Book missing from bundled set — falling back to GET /pericope-sets/{id}',
+                { pericopeSetId, bookCode },
+              );
+            }
           }
 
           const result = await FluentAPI.getPericopeSet(
@@ -2359,6 +2379,13 @@ export async function syncPericopes(
       }
 
       log.info('Pericope books checked', pericopeBookCounts);
+      if (!(globalThis as { __DEV__?: boolean }).__DEV__) {
+        // The dev logger drops info on a release APK. QA reads this from logcat.
+        // eslint-disable-next-line no-console
+        console.log(
+          `[Pericope] Pericope books checked bundledCurrent: ${pericopeBookCounts.bundledCurrent}, reseeded: ${pericopeBookCounts.reseeded}, notModified: ${pericopeBookCounts.notModified}, fetched: ${pericopeBookCounts.fetched}`,
+        );
+      }
     },
     failingUserId,
   );

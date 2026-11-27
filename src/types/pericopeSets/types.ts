@@ -1,10 +1,11 @@
 /**
  * Bundled pericope set types (#447).
  *
- * Raw row shapes mirror the source exports as-is (FCBH-All-Books.json /
- * FIA-All-Books.json, same files as fluent-api's data/ directory) --
- * bundled unmodified, no build-time preprocessing. Normalization to a
- * common shape happens at read time in pericopeSets.ts.
+ * Raw row shapes mirror the source exports as-is
+ * (FCBH-All-Books.pericope / FIA-All-Books.pericope, same bytes as
+ * fluent-api's data/ JSON files) -- bundled unmodified, no build-time
+ * preprocessing. Normalization to a common shape happens at read time in
+ * pericopeSets.ts.
  */
 
 export interface RawFiaPericopeRow {

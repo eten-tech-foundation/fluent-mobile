@@ -135,6 +135,28 @@ describe('syncPhaseTiming', () => {
       );
     });
 
+    it('prints pericope phase timings to logcat when __DEV__ is false', () => {
+      const previousDev = (globalThis as { __DEV__?: boolean }).__DEV__;
+      const consoleLog = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      (globalThis as { __DEV__?: boolean }).__DEV__ = false;
+      jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(2_000)
+        .mockReturnValueOnce(2_180);
+
+      try {
+        startPhase('Pericope sync.total').end({ attempt: 1 });
+        expect(consoleLog).toHaveBeenCalledWith(
+          '[SyncPhase] Sync phase timing phase: Pericope sync.total, elapsedMs: 180, attempt: 1',
+        );
+      } finally {
+        (globalThis as { __DEV__?: boolean }).__DEV__ = previousDev;
+        consoleLog.mockRestore();
+      }
+    });
+
     it('does not emit redacted fields even when end() is passed extras', () => {
       jest.spyOn(Date, 'now').mockReturnValue(5_000);
 

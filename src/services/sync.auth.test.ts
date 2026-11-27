@@ -4579,8 +4579,12 @@ describe('sync public API', () => {
  * bundled loader for set id 2 / 1PE — not a disconnected syncPericopes spy.
  */
 describe('refreshChapterMetadataIfOnline pericope hydration after metadata import', () => {
-  const fia1peVerses = loadBundledPericopeSet(FIA_SET_ID, '1PE');
+  let fia1peVerses: Awaited<ReturnType<typeof loadBundledPericopeSet>> = null;
   const bundledFiaVersion = getBundledPericopeSetVersion(FIA_SET_ID);
+
+  beforeAll(async () => {
+    fia1peVerses = await loadBundledPericopeSet(FIA_SET_ID, '1PE');
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
