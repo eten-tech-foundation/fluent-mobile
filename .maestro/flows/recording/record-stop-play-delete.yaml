@@ -20,7 +20,11 @@ tags:
       id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow: ../../shared/nav/open-my-work-chapter.yaml
+# Next up only lists five chapters. Pin the fixture row on the book page.
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_CHAPTER_ID}
 - assertVisible:
     id: 'passage-header'
 - runFlow: ../../shared/ensure/ensure-take-capacity.yaml

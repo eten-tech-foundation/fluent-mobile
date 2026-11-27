@@ -7,12 +7,16 @@
 #
 # Required env (fail if absent/invalid — no skip/auth/network/download fallback):
 # - MAESTRO_EXPECT_RESOURCES_POPULATED_FIXTURE
-#     Chapter assignment id for home-next-{id}:… (positive digits).
+#     Chapter assignment id. Opened on MAESTRO_FIXTURE_PROJECT_NAME by that
+#     id. Next up only lists five chapters, so this does not use home-next.
 # - MAESTRO_EXPECT_RESOURCES_POPULATED_SECTION
 #     Enum: translation_notes | translation_questions | images_maps
 # - MAESTRO_EXPECT_RESOURCES_CONTENT_MARKER
 #     Required nonempty exact body text visible only when the chosen section is
 #     expanded. Must NOT equal chrome labels.
+# - MAESTRO_EXPECT_RESOURCES_POPULATED_VERSE
+#     Required for translation_questions. Questions follow the verse Record is
+#     on; the passage may open on a verse with none. Positive verse number.
 #
 # Forbidden: clearState, login/warm-session, airplane/network toggles,
 # Prepare for Offline download, optional when: skip-green branches.
@@ -30,15 +34,13 @@ tags:
 - assertTrue: ${typeof output.contentMarker === 'string' && output.contentMarker.length > 0}
 - assertTrue: ${output.contentMarker !== 'Translation Notes' && output.contentMarker !== 'Translation Questions' && output.contentMarker !== 'Images & Maps'}
 - assertTrue: ${typeof output.contentMarkerRe === 'string' && output.contentMarkerRe.length > 0}
+- assertTrue: ${output.sectionEnum != 'translation_questions' || /^[1-9][0-9]*$/.test(output.populatedVerse)}
 - assertNotVisible:
     id: 'login-email-input'
-- runFlow: ../../shared/nav/goto-home.yaml
-# open-my-work-chapter copies MAESTRO_FIXTURE_CHAPTER_ID onto output — override
-# so this populated fixture is not replaced by the default draft chapter.
 - runFlow:
-    file: ../../shared/nav/open-my-work-chapter.yaml
+    file: ../../shared/nav/open-fixture-chapter.yaml
     env:
-      MAESTRO_FIXTURE_CHAPTER_ID: ${MAESTRO_EXPECT_RESOURCES_POPULATED_FIXTURE}
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_EXPECT_RESOURCES_POPULATED_FIXTURE}
 - assertVisible:
     id: 'passage-header'
 - runFlow:
@@ -65,6 +67,28 @@ tags:
     when:
       true: ${output.sectionEnum == 'translation_questions'}
     commands:
+      # Questions are for the verse Record is on, not the whole chapter.
+      - scrollUntilVisible:
+          element:
+            id: 'passage-verse-row-${output.populatedVerse}'
+          direction: DOWN
+          timeout: 30000
+      - tapOn:
+          id: 'passage-verse-row-${output.populatedVerse}'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-player'
+          timeout: 15000
+      - back
+      - runFlow:
+          when:
+            visible:
+              id: 'passage-player'
+          commands:
+            - extendedWaitUntil:
+                notVisible:
+                  id: 'passage-player'
+                timeout: 10000
       - tapOn:
           id: 'passage-title'
       - extendedWaitUntil:

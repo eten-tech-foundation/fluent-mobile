@@ -95,7 +95,11 @@ function parseFlowTags(yaml) {
 }
 
 function referencesFixtureChapter(yaml) {
-  return String(yaml).includes(FIXTURE_CHAPTER_HELPER);
+  const text = String(yaml);
+  return (
+    text.includes(FIXTURE_CHAPTER_HELPER) ||
+    text.includes('open-fixture-chapter.yaml')
+  );
 }
 
 // This alternative accepts only an actual unconditional scalar runFlow command
