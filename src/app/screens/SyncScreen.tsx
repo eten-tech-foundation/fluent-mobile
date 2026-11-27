@@ -6,6 +6,7 @@ import { usePreferences } from '../../hooks/usePreferences';
 import { useConnectivity } from '../../hooks/useConnectivity';
 import { usePendingUploads } from '../../hooks/usePendingUploads';
 import { useUploadSessionState } from '../../hooks/useUploadSessionState';
+import { useHeldRecordings } from '../../hooks/useHeldRecordings';
 import { useMetadataSyncActive } from '../../hooks/useMetadataSyncActive';
 import { SettingsToggleRow } from '../../components/ui/SettingsListRow';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
@@ -31,8 +32,8 @@ import {
 import { hrefs } from '../../navigation/hrefs';
 import { hideSplash } from '../../navigation/splashGate';
 import { SyncPageStatus } from '../../types/sync/types';
-import type { UploadTakeProgress } from '../../services/syncEvents';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { HeldRecordingsSection } from '../../components/ui/HeldRecordingsSection';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { logger } from '../../utils/logger';
 
@@ -78,10 +79,6 @@ export default function SyncScreen() {
       setRefreshKey(key => key + 1);
     },
   });
-  // Metadata passes started elsewhere (login, Home focus, another screen's
-  // Sync Now) are still "syncing" for this card (#886).
-  const metadataSyncActive = useMetadataSyncActive();
-  const isMetadataSyncing = isSyncing || metadataSyncActive;
 
   // Keep Sync Now visible while claims (or any Sync metadata error) still need
   // a push — otherwise uploadComplete hides the only way to retry (#611 F-alt).
@@ -108,6 +105,10 @@ export default function SyncScreen() {
     hasDownloads,
     uploadProgress,
   });
+
+  const { recordings: heldRecordings, loading: heldRecordingsLoading } =
+    useHeldRecordings();
+  const metadataSyncActive = useMetadataSyncActive();
 
   useEffect(() => {
     let cancelled = false;
@@ -198,6 +199,15 @@ export default function SyncScreen() {
   }, [cancel]);
 
   const status = pageStatus;
+  const currentChapter = progressCurrentChapter;
+  const heldRecordingsVisible =
+    !heldRecordingsLoading && heldRecordings.length > 0;
+  const metadataOnlySyncing =
+    metadataSyncActive &&
+    !isUploading &&
+    status !== 'syncing' &&
+    status !== 'paused' &&
+    status !== 'held';
   /** Show pause/cancel while uploading; prefer paused once user pauses. */
   const controlStatus: SyncPageStatus =
     status === 'paused'
@@ -209,19 +219,26 @@ export default function SyncScreen() {
     controlStatus === 'paused' ? false : isStartControlPending || isUploading;
 
   // Zero unread counts derive "All synced"; see the status section below.
-  const secondaryContent = countsRead
-    ? renderSecondaryContent(
-        status,
-        progressUploaded,
-        progressTotal,
-        nextRetryAt,
-        isUploading,
-        pendingChapterCount,
-        hasPendingUploads,
-        hasFailedUploads,
-        progressCurrentChapter,
-      )
-    : null;
+  // Held recordings suppress the "All synced"/"Upload complete" label, and a
+  // metadata-only sync has no upload progress to show.
+  const secondaryContent =
+    !countsRead ||
+    metadataOnlySyncing ||
+    (heldRecordingsVisible &&
+      !hasPendingUploads &&
+      (status === 'allComplete' || status === 'uploadComplete'))
+      ? null
+      : renderSecondaryContent(
+          status,
+          progressUploaded,
+          progressTotal,
+          nextRetryAt,
+          isUploading,
+          pendingChapterCount,
+          hasPendingUploads,
+          hasFailedUploads,
+          currentChapter,
+        );
 
   return (
     <ScreenContainer>
@@ -249,7 +266,8 @@ export default function SyncScreen() {
                 hasPendingUploads={hasPendingUploads || countsUnknown}
                 hasFailedUploads={hasFailedUploads}
                 isUploading={isUploading}
-                isMetadataSyncing={isMetadataSyncing}
+                isMetadataSyncing={metadataOnlySyncing}
+                hasHeldRecordings={heldRecordingsVisible}
               />
 
               {renderStatusLine(
@@ -262,7 +280,8 @@ export default function SyncScreen() {
                 hasUnuploadablePending,
                 pendingChapterCount,
                 countsUnknown,
-                isMetadataSyncing,
+                heldRecordingsVisible ? heldRecordings.length : 0,
+                metadataOnlySyncing,
               )}
             </>
           ) : null}
@@ -294,6 +313,9 @@ export default function SyncScreen() {
           <View style={styles.uploadSection} testID="sync-upload-section">
             {secondaryContent}
           </View>
+        ) : null}
+        {heldRecordingsVisible ? (
+          <HeldRecordingsSection recordings={heldRecordings} />
         ) : null}
         <View style={styles.controlsSection}>
           <SyncActionControls
@@ -359,7 +381,8 @@ function renderStatusLine(
   hasUnuploadablePending: boolean,
   pendingChapterCount: number,
   countsUnknown: boolean,
-  isMetadataSyncing = false,
+  heldCount: number,
+  metadataOnlySyncing: boolean,
 ) {
   // Paused wins over a lingering take-upload flag so the status line, the
   // progress card, and the controls all describe the same state (#600).
@@ -385,14 +408,12 @@ function renderStatusLine(
     );
   }
 
-  // A metadata pass (projects, assignments, milestones) is work too: the
-  // card must not read "all synced" while it is still running (#886).
-  if (isMetadataSyncing) {
+  if (metadataOnlySyncing) {
     return (
       <>
         <Text style={styles.statusTitle}>Syncing…</Text>
         <Text style={styles.statusSubtitle} testID="sync-metadata-syncing">
-          Refreshing projects and assignments from Fluent.
+          Syncing project data with Fluent.
         </Text>
       </>
     );
@@ -409,9 +430,6 @@ function renderStatusLine(
     );
   }
 
-  // Automatic uploads wait while drafting is open; the work is saved and
-  // Sync Now still uploads immediately (#886). Offline keeps its own copy
-  // below: the hold is not why uploads are waiting then.
   if (status === 'held' && isOnline && pendingChapterCount > 0) {
     return (
       <>
@@ -419,6 +437,22 @@ function renderStatusLine(
         <Text style={styles.statusSubtitle} testID="sync-held-subtitle">
           Saved on this device. Uploads start when you leave drafting, or tap
           Sync Now.
+        </Text>
+      </>
+    );
+  }
+
+  if (heldCount > 0 && !hasPendingUploads) {
+    return (
+      <>
+        <Text style={styles.statusTitle}>
+          {isOnline ? 'Online · recordings held' : 'Offline · recordings held'}
+        </Text>
+        <Text style={styles.statusSubtitle}>
+          {heldCount === 1
+            ? "1 recording wasn't uploaded because you were removed from its project."
+            : `${heldCount} recordings weren't uploaded because you were removed from their projects.`}
+          {!isOnline && ' Saved on this device until membership returns.'}
         </Text>
       </>
     );
@@ -513,7 +547,13 @@ function renderSecondaryContent(
   pendingChapterCount: number,
   hasPendingUploads: boolean,
   hasFailedUploads: boolean,
-  currentChapter: UploadTakeProgress | null = null,
+  currentChapter: {
+    bookId: number;
+    chapterNumber: number;
+    completedTakes: number;
+    failedTakes: number;
+    totalTakes: number;
+  } | null,
 ) {
   switch (status) {
     case 'syncing':

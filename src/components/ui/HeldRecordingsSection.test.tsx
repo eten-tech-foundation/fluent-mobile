@@ -1,0 +1,258 @@
+import React from 'react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
+import type { HeldRecording } from '../../db/repositories/heldRecordingsRepository';
+import {
+  formatHeldRecordingLabel,
+  groupHeldRecordings,
+  HeldRecordingsSection,
+} from './HeldRecordingsSection';
+
+const mockPlay = jest.fn(async () => undefined);
+const mockPause = jest.fn(async () => undefined);
+
+jest.mock('../../hooks/usePlaybackEngine', () => ({
+  usePlaybackEngine: () => ({
+    status: 'idle',
+    positionMs: 0,
+    durationMs: 0,
+    load: jest.fn(),
+    play: mockPlay,
+    resume: jest.fn(),
+    pause: mockPause,
+    seek: jest.fn(),
+    stop: jest.fn(),
+  }),
+}));
+
+jest.mock('lucide-react-native', () => {
+  const MockReact = require('react');
+  const { View } = require('react-native');
+  const MockIcon = () => MockReact.createElement(View);
+  return {
+    Circle: MockIcon,
+    CircleAlert: MockIcon,
+    CircleCheck: MockIcon,
+    Pause: MockIcon,
+    Play: MockIcon,
+    Trash2: MockIcon,
+  };
+});
+
+function held(overrides: Partial<HeldRecording> = {}): HeldRecording {
+  return {
+    id: 'held-1',
+    reason: 'removed',
+    projectId: 100,
+    projectName: 'Alpha',
+    bookId: 1,
+    bookName: 'Genesis',
+    chapterNumber: 1,
+    verseNumber: 5,
+    granularity: 'verse',
+    startChapter: null,
+    startVerse: null,
+    endChapter: null,
+    endVerse: null,
+    takeNumber: 1,
+    localFilePath: 'file:///mock-document/held-1.m4a',
+    durationMs: 2000,
+    ...overrides,
+  };
+}
+
+describe('HeldRecordingsSection (#855)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('labels verse and pericope takes', async () => {
+    expect(formatHeldRecordingLabel(held())).toBe('v. 5');
+    expect(
+      formatHeldRecordingLabel(
+        held({
+          granularity: 'pericope',
+          startChapter: 1,
+          startVerse: 5,
+          endChapter: 1,
+          endVerse: 7,
+        }),
+      ),
+    ).toBe('vv. 5–7');
+    expect(
+      formatHeldRecordingLabel(
+        held({
+          granularity: 'pericope',
+          startChapter: 1,
+          startVerse: 5,
+          endChapter: 2,
+          endVerse: 1,
+        }),
+      ),
+    ).toBe('1:5–2:1');
+    // Later takes of the same reference stay distinguishable.
+    expect(formatHeldRecordingLabel(held({ takeNumber: 2 }))).toBe(
+      'v. 5 · Take 2',
+    );
+    expect(
+      formatHeldRecordingLabel(
+        held({
+          takeNumber: 3,
+          granularity: 'pericope',
+          startChapter: 1,
+          startVerse: 5,
+          endChapter: 1,
+          endVerse: 7,
+        }),
+      ),
+    ).toBe('vv. 5–7 · Take 3');
+  });
+
+  it('groups by project and chapter in query order', async () => {
+    const groups = groupHeldRecordings([
+      held(),
+      held({ id: 'held-2', chapterNumber: 2 }),
+      held({ id: 'held-3', projectId: 200, projectName: 'Beta' }),
+      held({ id: 'held-4' }),
+    ]);
+
+    expect(groups.map(group => group.projectName)).toEqual(['Alpha', 'Beta']);
+    expect(groups[0]!.chapters.map(chapter => chapter.chapterNumber)).toEqual([
+      1, 2,
+    ]);
+    expect(groups[0]!.chapters[0]!.recordings.map(record => record.id)).toEqual(
+      ['held-1', 'held-4'],
+    );
+  });
+
+  it('plays a held recording from the device and pauses it again', async () => {
+    await render(<HeldRecordingsSection recordings={[held()]} />);
+
+    await fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await waitFor(() => {
+      expect(mockPlay).toHaveBeenCalledWith('file:///mock-document/held-1.m4a');
+    });
+
+    await fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await waitFor(() => {
+      expect(mockPause).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('stops playback when the playing row leaves the list', async () => {
+    const { rerender } = await render(
+      <HeldRecordingsSection recordings={[held(), held({ id: 'held-2' })]} />,
+    );
+    await fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await waitFor(() => {
+      expect(mockPlay).toHaveBeenCalledTimes(1);
+    });
+
+    await rerender(
+      <HeldRecordingsSection recordings={[held({ id: 'held-2' })]} />,
+    );
+
+    await waitFor(() => {
+      expect(mockPause).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('keeps playing while its row stays in the list', async () => {
+    const { rerender } = await render(
+      <HeldRecordingsSection recordings={[held(), held({ id: 'held-2' })]} />,
+    );
+    await fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await waitFor(() => {
+      expect(mockPlay).toHaveBeenCalledTimes(1);
+    });
+
+    await rerender(<HeldRecordingsSection recordings={[held()]} />);
+
+    expect(mockPause).not.toHaveBeenCalled();
+  });
+
+  it('says the chapter is not assigned when the account was added back', async () => {
+    await render(
+      <HeldRecordingsSection
+        recordings={[
+          held({ reason: 'unassigned' }),
+          held({ id: 'held-2', reason: 'unassigned' }),
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        '2 recordings were not sent. 2 are in chapters not assigned to you.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      'Ask your project manager to assign the chapter to you. Then these recordings will upload on their own. These recordings stay on this device.',
+    );
+    expect(screen.queryByText(/You were removed/)).toBeNull();
+  });
+
+  it('names both causes when removed and unassigned takes are held', async () => {
+    await render(
+      <HeldRecordingsSection
+        recordings={[
+          held(),
+          held({
+            id: 'held-2',
+            reason: 'unassigned',
+            projectId: 200,
+            projectName: 'Beta',
+          }),
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        'You were removed from Alpha. 2 recordings were not sent. 1 is in a chapter not assigned to you.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      /Contact your project manager if the removal seems wrong\. Ask your project manager to assign the chapter/,
+    );
+  });
+
+  it('says Fluent did not accept a take the server denied', async () => {
+    await render(
+      <HeldRecordingsSection recordings={[held({ reason: 'denied' })]} />,
+    );
+
+    expect(
+      screen.getByText(
+        '1 recording was not sent. Fluent did not accept it for its chapter.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      'Ask your project manager to check your chapter assignment. These recordings stay on this device.',
+    );
+  });
+
+  it('says a take waiting on its claim will upload by itself', async () => {
+    await render(
+      <HeldRecordingsSection recordings={[held({ reason: 'waiting' })]} />,
+    );
+
+    expect(
+      screen.getByText(
+        '1 recording was not sent. It will upload on the next sync.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      /^These recordings stay on this device\.$/,
+    );
+  });
+
+  it('renders nothing when there are no held recordings', async () => {
+    await render(<HeldRecordingsSection recordings={[]} />);
+    expect(screen.queryByTestId('sync-held-section')).toBeNull();
+  });
+});

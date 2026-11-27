@@ -360,13 +360,21 @@ export interface VerseRow {
   text: string;
 }
 
-/** Local recording upload lifecycle (`recordings.sync_status`). */
+/**
+ * Local recording upload lifecycle (`recordings.sync_status`).
+ *
+ * `held` keeps a take on the device when the account that recorded it is no
+ * longer a member of the take's project (#855). Held rows are not uploaded and
+ * are never marked failed; the next upload pass returns them to `pending` once
+ * membership is restored.
+ */
 export type RecordingSyncStatus =
   | 'pending'
   | 'uploading'
   | 'uploaded'
   | 'failed'
-  | 'conflicted';
+  | 'conflicted'
+  | 'held';
 
 export type RecordingGranularity = 'verse' | 'pericope';
 
@@ -454,6 +462,11 @@ export interface PendingRecording {
   isSelected: boolean;
   /** Incremented atomically when selection/canonical intent changes. */
   uploadIntentVersion?: number;
+  /**
+   * Last upload error. On a pending take it is only ever the released-from-hold
+   * marker (#855), which lets a still-denied upload return to `held`.
+   */
+  uploadError?: string | null;
 }
 
 /** A take deleted on device whose server copy is still to be removed (#716). */

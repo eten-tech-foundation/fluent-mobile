@@ -10,13 +10,14 @@ import {
   startUploadOrchestrator,
   stopUploadOrchestrator,
 } from './uploadOrchestrator';
-
 type ConnectivityListener = (
   online: boolean,
   wifi: boolean,
   cellular?: boolean,
   type?: string,
 ) => void;
+const mockReconcileHeldRecordings = jest.fn();
+const mockHasHeldRecordingsForUser = jest.fn();
 const mockListeners = new Set<ConnectivityListener>();
 const mockDrain = jest.fn();
 const mockClaimsDrain = jest.fn();
@@ -35,6 +36,26 @@ jest.mock('../db/queries', () => ({
 jest.mock('../db/stageAdvanceQueueRepository', () => ({
   getPendingStageAdvances: () => mockGetPendingStageAdvances(),
 }));
+jest.mock('../db/repositories/heldRecordingsRepository', () => ({
+  reconcileHeldRecordings: (...args: unknown[]) =>
+    mockReconcileHeldRecordings(...args),
+  getRecordingOwnerIds: async (id: number | null) => (id === null ? [] : [id]),
+  hasHeldRecordingsForUser: (userId: number) =>
+    mockHasHeldRecordingsForUser(userId),
+}));
+// Membership refresh is exercised in projectMembership.test.ts; here it must
+// resolve so these drain sessions still run (#848).
+jest.mock('./projectMembership', () => {
+  let verified = new Set<number>();
+  return {
+    refreshProjectMembership: async () => undefined,
+    refreshMembershipForOwners: async (ids: number[]) => {
+      verified = new Set(ids);
+      return verified;
+    },
+    getVerifiedMembershipOwners: () => verified,
+  };
+});
 jest.mock('./connectivity', () => ({
   subscribeToConnectivity: (listener: ConnectivityListener) => {
     mockListeners.add(listener);
@@ -66,8 +87,10 @@ jest.mock('./keychain', () => ({
   getCredentials: (id: string) => mockGetCredentials(id),
 }));
 jest.mock('./syncEvents', () => ({
+  emitHeldRecordingsChanged: jest.fn(),
   emitUploadSessionEvent: (event: UploadSessionEvent) => mockEmit(event),
   emitAuthReauthRequired: (id: string) => mockEmitReauth(id),
+  onSyncComplete: jest.fn(),
 }));
 jest.mock('../utils/logger', () => ({
   logger: {
@@ -86,7 +109,6 @@ type Timer = { callback: () => void; delay: number; cancelled: boolean };
 let timers: Timer[] = [];
 const schedule = (callback: () => void, delay: number) => {
   const timer: Timer = {
-    // A fired timer is no longer armed.
     callback: () => {
       timer.cancelled = true;
       callback();
@@ -106,7 +128,6 @@ const waitFor = async (condition: () => boolean): Promise<void> => {
   expect(condition()).toBe(true);
 };
 const settle = async (): Promise<void> => {
-  // Let already-resolved promise chains finish before asserting absence.
   await new Promise<void>(resolve => setTimeout(resolve, 20));
 };
 const armedTimers = () => timers.filter(timer => !timer.cancelled);
@@ -127,8 +148,9 @@ beforeEach(() => {
   mockGetPendingStageAdvances.mockResolvedValue([{ id: 1, userId: 10 }]);
   mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
   mockClaimsDrain.mockResolvedValue({ synced: 0, conflicts: 0, failed: 0 });
+  mockReconcileHeldRecordings.mockResolvedValue({ held: 0, released: 0 });
+  mockHasHeldRecordingsForUser.mockResolvedValue(false);
 });
-
 afterEach(() => {
   stopUploadOrchestrator();
 });
@@ -158,13 +180,11 @@ describe('stage drain result contract (#257)', () => {
     await waitFor(() => mockDrain.mock.calls.length === 1);
     await waitFor(() => armedTimers().length === 1);
 
-    // First pass left the row pending: no `complete`, one retry armed.
     expect(eventTypes()).not.toContain('complete');
     expect(armedTimers().map(timer => timer.delay)).toEqual([
       sessionRetryDelayMs(1),
     ]);
 
-    // Retry confirms the stage: only now does `complete` fire.
     armedTimers()[0]?.callback();
     await waitFor(() => eventTypes().includes('complete'));
     expect(mockDrain).toHaveBeenCalledTimes(2);
@@ -237,9 +257,6 @@ describe('stage drain result contract (#257)', () => {
       type: 'paused',
       reason: 'connectivity',
     });
-    // Connectivity pause, not a failed session: no `idle`, and the only timer
-    // is the transport recheck (same delay as the first retry, but it
-    // re-reads the connectivity snapshot instead of spending retry budget).
     expect(eventTypes()).not.toContain('complete');
     expect(eventTypes()).not.toContain('idle');
     expect(armedTimers()).toHaveLength(1);
@@ -317,6 +334,52 @@ describe('claim push result contract (#886)', () => {
     expect(mockHasPendingChapterClaimsForUser).toHaveBeenCalledWith(10);
     expect(mockClaimsDrain).toHaveBeenCalledWith(10, 'token-10');
     expect(stubWorker.uploadChapter).not.toHaveBeenCalled();
+  });
+
+  describe('a claim that lands for held takes (#855)', () => {
+    beforeEach(() => {
+      mockGetPendingStageAdvances.mockResolvedValue([]);
+      mockDrain.mockResolvedValue({
+        synced: 0,
+        dropped: 0,
+        failed: 0,
+        deferred: 0,
+      });
+      // The automatic claim stays queued until a push lands it.
+      let claimQueued = true;
+      mockHasPendingChapterClaimsForUser.mockImplementation(
+        async () => claimQueued,
+      );
+      mockClaimsDrain.mockImplementation(async () => {
+        const synced = claimQueued ? 1 : 0;
+        claimQueued = false;
+        return { synced, conflicts: 0, failed: 0 };
+      });
+    });
+
+    it('runs a follow-up session so the held takes release and upload', async () => {
+      mockHasHeldRecordingsForUser.mockResolvedValue(true);
+      startUploadOrchestrator({ schedule, worker: stubWorker });
+
+      connect();
+      await waitFor(() => mockReconcileHeldRecordings.mock.calls.length >= 2);
+      await settle();
+
+      expect(mockHasHeldRecordingsForUser).toHaveBeenCalledWith(10);
+      // One reconcile per session: the claim session, then the follow-up
+      // that releases the takes now that the claim has landed.
+      expect(mockReconcileHeldRecordings).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not run a follow-up session when the account holds nothing', async () => {
+      startUploadOrchestrator({ schedule, worker: stubWorker });
+
+      connect();
+      await waitFor(() => eventTypes().includes('complete'));
+      await settle();
+
+      expect(mockReconcileHeldRecordings).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('runs the claim push on reconnect when the claim queue cannot be read', async () => {

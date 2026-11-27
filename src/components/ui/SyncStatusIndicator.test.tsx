@@ -42,6 +42,54 @@ describe('SyncStatusIndicator', () => {
     [{ status: 'paused', isUploading: true }, 'online_syncing', true],
     [{ status: 'uploadComplete' }, 'online_synced', false],
     [{ status: 'allComplete' }, 'online_synced', false],
+    [
+      { status: 'allComplete', hasHeldRecordings: true },
+      'online_pending',
+      false,
+    ],
+    [
+      { status: 'allComplete', hasHeldRecordings: true, isOnline: false },
+      'offline_pending',
+      false,
+    ],
+    [{ status: 'held', hasHeldRecordings: true }, 'online_pending', false],
+    [
+      {
+        status: 'allComplete',
+        hasHeldRecordings: true,
+        hasPendingUploads: true,
+      },
+      'online_pending',
+      false,
+    ],
+    [
+      {
+        status: 'allComplete',
+        hasHeldRecordings: true,
+        hasPendingUploads: true,
+        isOnline: false,
+      },
+      'offline_pending',
+      false,
+    ],
+    [
+      {
+        status: 'uploadComplete',
+        hasHeldRecordings: true,
+        hasPendingUploads: true,
+      },
+      'online_pending',
+      false,
+    ],
+    [
+      {
+        status: 'pending',
+        hasHeldRecordings: true,
+        hasPendingUploads: true,
+      },
+      'online_pending',
+      false,
+    ],
   ] as const)(
     'preserves status mapping for %o',
     async (props, status, animated) => {

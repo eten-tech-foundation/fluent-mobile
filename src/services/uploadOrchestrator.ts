@@ -5,13 +5,28 @@ import {
   sameDatabaseWrites,
   type DatabaseWriteMark,
 } from '../db/queries';
+import {
+  getRecordingOwnerIds,
+  hasHeldRecordingsForUser,
+  hasRecordingsAffectedByMembership,
+  reconcileHeldRecordings,
+} from '../db/repositories/heldRecordingsRepository';
+import {
+  getVerifiedMembershipOwners,
+  refreshMembershipForOwners,
+} from './projectMembership';
 import { getPendingStageAdvances } from '../db/stageAdvanceQueueRepository';
 import {
   getConnectivitySnapshot,
   getRecentOnlineReachability,
   subscribeToConnectivity,
 } from './connectivity';
-import { emitAuthReauthRequired, emitUploadSessionEvent } from './syncEvents';
+import {
+  emitAuthReauthRequired,
+  emitHeldRecordingsChanged,
+  emitUploadSessionEvent,
+  onSyncComplete,
+} from './syncEvents';
 import { AuthError } from './authError';
 import { getCredentials } from './keychain';
 import {
@@ -82,6 +97,12 @@ async function pushPendingClaimsBeforeUpload(): Promise<void> {
   );
   if (!token) return;
   const result = await syncPendingChapterClaimsForUser(userId, token);
+  // Held takes on a chapter claimed back stay held until the claim lands, and
+  // this session already reconciled. Ask for a follow-up session so they
+  // release and upload with no user step (#855).
+  if (result.synced > 0 && (await hasHeldRecordingsForUser(userId))) {
+    notifyPendingUploads();
+  }
   // Offline at claim time is deferred work: the orchestrator takes its
   // connectivity-pause path (resume on reconnect) rather than uploading past
   // a claim that has not landed (#886).
@@ -127,6 +148,42 @@ async function pushPendingStageAdvancesAfterUpload(): Promise<void> {
       `Stage-advance drain deferred ${result.deferred} row(s): offline`,
     );
   }
+}
+
+/**
+ * Fresh server truth for every account that owns work on the device (#848).
+ * An owner that cannot be confirmed keeps its takes deferred (the passes and
+ * the reconcile below only act on verified owners) without blocking the rest;
+ * the session defers and retries only when no owner could be confirmed.
+ * Signed-out sessions keep the existing cache-only behavior.
+ */
+async function refreshMembershipBeforeUpload(): Promise<void> {
+  const activeUserId = Number(getActiveUserId());
+  if (!Number.isFinite(activeUserId) || activeUserId <= 0) {
+    return;
+  }
+  const owners = await getRecordingOwnerIds(activeUserId);
+  const verified = await refreshMembershipForOwners(owners);
+  if (verified.size === 0) {
+    throw new Error(
+      'Project membership could not be confirmed for any account',
+    );
+  }
+}
+
+async function reconcileHeldBeforeUpload(): Promise<{
+  held: number;
+  released: number;
+}> {
+  const activeUserId = Number(getActiveUserId());
+  const outcome = await reconcileHeldRecordings(
+    Number.isFinite(activeUserId) && activeUserId > 0 ? activeUserId : null,
+    [...getVerifiedMembershipOwners()],
+  );
+  if (outcome.held > 0 || outcome.released > 0) {
+    emitHeldRecordingsChanged();
+  }
+  return { held: outcome.held, released: outcome.released };
 }
 
 async function hasPendingStageAdvances(): Promise<boolean> {
@@ -199,6 +256,10 @@ export {
 /** Production singleton — worker registered by #100 via setChapterUploadWorker. */
 let chapterUploadWorker: ChapterUploadWorker | null = null;
 let singleton: UploadOrchestrator | null = null;
+/** #855: a metadata sync can restore project membership for held takes. Once
+ * it completes, evaluate pending work so those takes upload with no extra
+ * user action (the sync itself counts as "the next sync"). */
+let unsubSyncComplete: (() => void) | null = null;
 /** Survives stop/start (account switch) while Drafting stays focused. */
 let desiredDraftingHold = false;
 
@@ -258,6 +319,9 @@ export function startUploadOrchestrator(
     pushPendingClaimsBeforeUpload,
     pushPendingStageAdvancesAfterUpload,
     hasPendingStageAdvances,
+    refreshMembershipBeforeUpload,
+    reconcileHeldBeforeUpload,
+    hasRecordingsAffectedByMembership,
     hasPendingClaims,
     getQueueWriteMark,
     sameQueueWriteMark,
@@ -268,10 +332,14 @@ export function startUploadOrchestrator(
     initialDraftingHold: desiredDraftingHold,
   });
   singleton.start();
+  unsubSyncComplete?.();
+  unsubSyncComplete = onSyncComplete(() => notifyPendingUploads());
   return singleton;
 }
 
 export function stopUploadOrchestrator(): void {
+  unsubSyncComplete?.();
+  unsubSyncComplete = null;
   singleton?.stop();
   singleton = null;
 }

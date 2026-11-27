@@ -9,6 +9,7 @@ import {
 } from './uploadOrchestratorCore';
 import type { UploadSessionEvent } from './syncEvents';
 import type { PendingUploadChapter } from '../db/queries';
+import { ChapterUploadDeferredError } from '../utils/chapterDeferredError';
 import { UploadNetworkInterruptedError } from '../utils/networkError';
 import { AuthError } from './authError';
 
@@ -42,6 +43,8 @@ function createHarness(options?: {
   /** Block this chapter until abort without removing it from the pending set. */
   holdChapterNumber?: number;
   failUploads?: () => boolean;
+  /** Chapters whose takes stay deferred (unconfirmed owner): throw, stay pending. */
+  deferChapterNumbers?: number[];
   /** Throw once when upload reaches this chapterNumber, before drop (stays pending). */
   networkInterruptOnChapter?: number;
   getSessionTransportSnapshot?: UploadOrchestratorDeps['getSessionTransportSnapshot'];
@@ -50,6 +53,9 @@ function createHarness(options?: {
   pushPendingStageAdvancesAfterUpload?: UploadOrchestratorDeps['pushPendingStageAdvancesAfterUpload'];
   hasPendingStageAdvances?: UploadOrchestratorDeps['hasPendingStageAdvances'];
   hasPendingClaims?: UploadOrchestratorDeps['hasPendingClaims'];
+  refreshMembershipBeforeUpload?: UploadOrchestratorDeps['refreshMembershipBeforeUpload'];
+  reconcileHeldBeforeUpload?: UploadOrchestratorDeps['reconcileHeldBeforeUpload'];
+  hasRecordingsAffectedByMembership?: UploadOrchestratorDeps['hasRecordingsAffectedByMembership'];
   getQueueWriteMark?: UploadOrchestratorDeps['getQueueWriteMark'];
   sameQueueWriteMark?: UploadOrchestratorDeps['sameQueueWriteMark'];
   /** Worker-owned once-per-session delete drain (#886). */
@@ -104,6 +110,9 @@ function createHarness(options?: {
       options?.captureTakeProgress?.(onTakeProgress);
       if (options?.failUploads?.()) {
         throw new Error('upload failed');
+      }
+      if (options?.deferChapterNumbers?.includes(chapter.chapterNumber)) {
+        throw new ChapterUploadDeferredError('chapter deferred');
       }
       if (options?.takesPerChapter) {
         const { total, failed = 0, delayMs = 0 } = options.takesPerChapter;
@@ -217,6 +226,10 @@ function createHarness(options?: {
       options?.pushPendingStageAdvancesAfterUpload,
     hasPendingStageAdvances: options?.hasPendingStageAdvances,
     hasPendingClaims: options?.hasPendingClaims,
+    refreshMembershipBeforeUpload: options?.refreshMembershipBeforeUpload,
+    reconcileHeldBeforeUpload: options?.reconcileHeldBeforeUpload,
+    hasRecordingsAffectedByMembership:
+      options?.hasRecordingsAffectedByMembership,
     getQueueWriteMark: options?.getQueueWriteMark,
     sameQueueWriteMark: options?.sameQueueWriteMark,
   };
@@ -799,6 +812,30 @@ describe('uploadOrchestrator', () => {
       h.fireTimer(sessionRetryDelayMs(1));
       await h.waitFor(() => h.events.some(event => event.type === 'complete'));
       expect(drainPendingDeletions).toHaveBeenCalledTimes(2);
+    });
+
+    it('still uploads later chapters when an earlier chapter is deferred, then ends without complete and arms a retry (#855)', async () => {
+      // Chapter 1 holds a take whose owner's membership is unconfirmed; the
+      // worker defers it. Chapter 2 belongs to a verified account and must
+      // not wait behind it.
+      const h = createHarness({
+        chapters: [
+          { bookId: 1, chapterNumber: 1 },
+          { bookId: 1, chapterNumber: 2 },
+        ],
+        deferChapterNumbers: [1],
+      });
+      h.emitConnectivity(true, true);
+      await h.waitFor(() => h.uploaded.length === 1);
+      await h.flush();
+
+      expect(h.uploaded).toEqual([{ bookId: 1, chapterNumber: 2 }]);
+      expect(h.events.some(event => event.type === 'complete')).toBe(false);
+      expect(h.events.at(-1)).toEqual({ type: 'idle' });
+      // The deferred work is still retried, within the usual budget.
+      expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([
+        sessionRetryDelayMs(1),
+      ]);
     });
 
     it('a cancel during the drain uploads nothing and emits neither idle nor complete', async () => {
@@ -2621,5 +2658,222 @@ describe('uploadOrchestrator', () => {
       expect(rest.every(arg => arg === false)).toBe(true);
       h.orchestrator.stop();
     });
+  });
+
+  it('releases held takes before reading pending chapters (#855)', async () => {
+    const reconcile = jest.fn();
+    const h = createHarness({
+      chapters: [],
+      reconcileHeldBeforeUpload: async () => {
+        reconcile();
+        // Membership came back for a take that is still `held`: the release
+        // must happen before the read, or this chapter is never queued.
+        h.setChapters([{ bookId: 3, chapterNumber: 4 }]);
+        return { held: 0, released: 1 };
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(reconcile).toHaveBeenCalledTimes(1);
+    expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 4 }]);
+  });
+
+  it('uploads other pending chapters when reconciliation newly holds takes (#855)', async () => {
+    const h = createHarness({
+      reconcileHeldBeforeUpload: async () => ({ held: 1, released: 0 }),
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    // The held takes are excluded from the pending read, so the session must
+    // not stall work queued for the remaining chapters.
+    expect(h.uploaded).toEqual([
+      { bookId: 1, chapterNumber: 1 },
+      { bookId: 1, chapterNumber: 2 },
+    ]);
+    expect(h.events.some(e => e.type === 'start')).toBe(true);
+  });
+
+  it('schedules a backed-off retry when held reconciliation rejects (#855)', async () => {
+    const h = createHarness({
+      reconcileHeldBeforeUpload: async () => {
+        throw new Error('database unavailable');
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([]);
+    expect(h.events.some(e => e.type === 'start')).toBe(false);
+    // Attempt 1 backs off to 500ms instead of re-entering at the 0ms delay of
+    // attempt 0, which would spin on a persistent failure.
+    expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([500]);
+  });
+
+  it('refreshes project membership before reconciling held takes (#848)', async () => {
+    const calls: string[] = [];
+    const h = createHarness({
+      refreshMembershipBeforeUpload: async () => {
+        calls.push('refresh');
+      },
+      reconcileHeldBeforeUpload: async () => {
+        calls.push('reconcile');
+        return { held: 0, released: 0 };
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    // Server truth first, then the cache-based reconcile, once per session.
+    expect(calls).toEqual(['refresh', 'reconcile']);
+    expect(h.uploaded).toHaveLength(2);
+  });
+
+  it('defers uploads when the membership refresh fails on a stale cache (#848)', async () => {
+    const reconcile = jest.fn(async () => ({ held: 0, released: 0 }));
+    const h = createHarness({
+      refreshMembershipBeforeUpload: async () => {
+        throw new Error('projects unavailable');
+      },
+      reconcileHeldBeforeUpload: reconcile,
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    // No membership answer means the cache could still say "member" for a
+    // project the account has left: nothing may upload.
+    expect(h.uploaded).toEqual([]);
+    expect(reconcile).not.toHaveBeenCalled();
+    expect(h.events.some(e => e.type === 'start')).toBe(false);
+    expect(h.pendingTimers().map(timer => timer.delayMs)).toEqual([500]);
+  });
+
+  it('uploads once a later membership refresh succeeds (#848)', async () => {
+    let refreshAttempts = 0;
+    const h = createHarness({
+      refreshMembershipBeforeUpload: async () => {
+        refreshAttempts += 1;
+        if (refreshAttempts === 1) {
+          throw new Error('projects unavailable');
+        }
+      },
+      reconcileHeldBeforeUpload: async () => ({ held: 0, released: 0 }),
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+    expect(h.uploaded).toEqual([]);
+
+    h.fireTimer(500);
+    await h.flush();
+    await h.flush();
+
+    // The failed attempt left every take queued, so the retry uploads them
+    // with no extra user step.
+    expect(refreshAttempts).toBe(2);
+    expect(h.uploaded).toHaveLength(2);
+  });
+
+  it('emits idle when only held takes remain after reconciliation (#855)', async () => {
+    const h = createHarness({
+      chapters: [],
+      reconcileHeldBeforeUpload: async () => ({ held: 2, released: 0 }),
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(h.uploaded).toEqual([]);
+    expect(h.events.some(e => e.type === 'start')).toBe(false);
+    // Nothing else is queued, so the empty-queue path emits `idle`, which the
+    // Sync page uses to reload the held list (#855).
+    expect(h.events.some(e => e.type === 'idle')).toBe(true);
+    expect(h.orchestrator.getSnapshot().phase).toBe('idle');
+  });
+
+  it('makes no membership request or reconcile when nothing is on the device (#855)', async () => {
+    const refresh = jest.fn(async () => undefined);
+    const reconcile = jest.fn(async () => ({ held: 0, released: 0 }));
+    const h = createHarness({
+      chapters: [],
+      refreshMembershipBeforeUpload: refresh,
+      reconcileHeldBeforeUpload: reconcile,
+      hasRecordingsAffectedByMembership: async () => false,
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(refresh).not.toHaveBeenCalled();
+    expect(reconcile).not.toHaveBeenCalled();
+    expect(h.events.some(e => e.type === 'idle')).toBe(true);
+  });
+
+  it('makes no membership request while the transport gate blocks automatic uploads (#848)', async () => {
+    const refresh = jest.fn(async () => undefined);
+    const h = createHarness({
+      uploadOverCellular: false,
+      refreshMembershipBeforeUpload: refresh,
+      hasRecordingsAffectedByMembership: async () => true,
+    });
+
+    h.emitConnectivity(true, false);
+    await h.flush();
+    await h.flush();
+
+    expect(refresh).not.toHaveBeenCalled();
+    expect(h.uploaded).toEqual([]);
+    expect(h.orchestrator.getSnapshot().phase).toBe('waiting_wifi');
+  });
+
+  it('refreshes membership and releases held takes before the empty-queue shortcut when takes exist (#855)', async () => {
+    const refresh = jest.fn(async () => undefined);
+    const h = createHarness({
+      chapters: [],
+      refreshMembershipBeforeUpload: refresh,
+      hasRecordingsAffectedByMembership: async () => true,
+      reconcileHeldBeforeUpload: async () => {
+        h.setChapters([{ bookId: 3, chapterNumber: 4 }]);
+        return { held: 0, released: 1 };
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(h.uploaded).toEqual([{ bookId: 3, chapterNumber: 4 }]);
+  });
+
+  it('still checks membership when the affected-takes lookup fails (#848)', async () => {
+    const refresh = jest.fn(async () => undefined);
+    const h = createHarness({
+      refreshMembershipBeforeUpload: refresh,
+      hasRecordingsAffectedByMembership: async () => {
+        throw new Error('db busy');
+      },
+    });
+
+    h.emitConnectivity(true, true);
+    await h.flush();
+    await h.flush();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(h.uploaded.length).toBeGreaterThan(0);
   });
 });

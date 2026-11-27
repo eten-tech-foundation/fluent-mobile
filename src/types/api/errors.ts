@@ -1,3 +1,11 @@
+/**
+ * fluent-api message for a verse-audio request the caller may not make. The
+ * denial is masked as this 404 (existence non-disclosure), so after a project
+ * removal it means "not this chapter's drafter", not "missing recording".
+ */
+export const VERSE_AUDIO_ACCESS_DENIED_MESSAGE =
+  'Verse audio recording not found';
+
 /** Typed HTTP/API failure thrown by `httpClient` helpers. */
 export class ApiError extends Error {
   readonly status: number;
