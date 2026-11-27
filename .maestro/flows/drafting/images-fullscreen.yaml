@@ -33,20 +33,26 @@ tags:
     visible:
       id: 'passage-images-list'
     timeout: 30000
-# passage-image-* is on the collapsed tile. Caption exists only when grown.
+# The title is on the tile already. Next reveals the credit only once grown.
+# This fixture image has attribution and no API caption, so the caption
+# testID stays absent. passage-image-*-attribution is the grown detail.
+- assertNotVisible:
+    id: 'passage-image-.*-attribution'
 - assertNotVisible:
     id: 'passage-image-.*-caption'
 - tapOn:
     id: 'passage-image-.*-zoom'
 - extendedWaitUntil:
     visible:
-      id: 'passage-image-.*-caption'
+      id: 'passage-image-.*-attribution'
     timeout: 15000
+- assertNotVisible:
+    id: 'passage-image-.*-caption'
 - tapOn:
     id: 'passage-image-.*-toggle'
 - extendedWaitUntil:
     notVisible:
-      id: 'passage-image-.*-caption'
+      id: 'passage-image-.*-attribution'
     timeout: 15000
 - tapOn:
     id: 'passage-resources-collapse'
