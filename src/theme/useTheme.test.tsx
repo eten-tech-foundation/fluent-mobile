@@ -5,6 +5,7 @@ import {
 } from '@testing-library/react-native';
 import {
   ColorModeScope,
+  UiVersionOverride,
   useTheme,
   useThemedStyles,
   useUiVersion,
@@ -51,15 +52,15 @@ describe('useUiVersion / useTheme', () => {
     expect(result.current.theme).toBe(nextTheme);
   });
 
-  it('keeps an explicit stored Legacy choice', async () => {
+  it('shows Next on the first render when storage says Legacy', async () => {
     mockPreferenceStore({ pref_ui_version: 'legacy' });
     const { result } = await renderHook(() => ({
       version: useUiVersion(),
       theme: useTheme(),
     }));
 
-    expect(result.current.version).toBe('legacy');
-    expect(result.current.theme).toBe(legacyTheme);
+    expect(result.current.version).toBe('next');
+    expect(result.current.theme).toBe(nextTheme);
   });
 
   it('loads a persisted Next preference when the root bridge mounts', async () => {
@@ -68,7 +69,7 @@ describe('useUiVersion / useTheme', () => {
     expect(result.current).toBe(nextTheme);
   });
 
-  it('switches theme at runtime without remounting', async () => {
+  it('stays on Next when a legacy choice is written', async () => {
     const { result } = await renderHook(() => ({
       version: useUiVersion(),
       theme: useTheme(),
@@ -80,8 +81,8 @@ describe('useUiVersion / useTheme', () => {
       setUiVersion('legacy');
     });
 
-    expect(result.current.version).toBe('legacy');
-    expect(result.current.theme).toBe(legacyTheme);
+    expect(result.current.version).toBe('next');
+    expect(result.current.theme).toBe(nextTheme);
   });
 });
 
@@ -91,18 +92,23 @@ describe('useThemedStyles', () => {
     mockPreferenceStore();
   });
 
-  it('recomputes styles when UI version changes', async () => {
-    const { result } = await renderHook(() =>
-      useThemedStyles(activeTheme => ({
-        screen: { backgroundColor: activeTheme.colors.background },
-      })),
+  it('recomputes styles when a subtree override changes UI version', async () => {
+    let version: 'legacy' | 'next' = 'next';
+    const { result, rerender } = await renderHook(
+      () =>
+        useThemedStyles(activeTheme => ({
+          screen: { backgroundColor: activeTheme.colors.background },
+        })),
+      {
+        wrapper: ({ children }) => (
+          <UiVersionOverride value={version}>{children}</UiVersionOverride>
+        ),
+      },
     );
 
     const nextStyles = result.current;
-
-    await act(() => {
-      setUiVersion('legacy');
-    });
+    version = 'legacy';
+    await rerender({});
 
     expect(result.current).not.toBe(nextStyles);
     expect(result.current.screen.backgroundColor).toBe(
@@ -135,29 +141,25 @@ describe('ColorModeScope', () => {
   );
 
   it('resolves the Canvas theme for its subtree in Next', async () => {
-    await act(() => {
-      setUiVersion('next');
-    });
     const { result } = await renderHook(() => useTheme(), {
       wrapper: canvasWrapper,
     });
     expect(result.current).toBe(nextThemes.canvas);
   });
 
-  it('stays on Legacy when the UI version is Legacy', async () => {
-    await act(() => {
-      setUiVersion('legacy');
-    });
+  it('stays on Legacy when a subtree is pinned to Legacy', async () => {
+    const legacyCanvas = ({ children }: { children: React.ReactNode }) => (
+      <UiVersionOverride value="legacy">
+        <ColorModeScope value="canvas">{children}</ColorModeScope>
+      </UiVersionOverride>
+    );
     const { result } = await renderHook(() => useTheme(), {
-      wrapper: canvasWrapper,
+      wrapper: legacyCanvas,
     });
     expect(result.current).toBe(legacyTheme);
   });
 
   it('defaults to Hardware without a scope', async () => {
-    await act(() => {
-      setUiVersion('next');
-    });
     const { result } = await renderHook(() => useTheme());
     expect(result.current).toBe(nextTheme);
   });

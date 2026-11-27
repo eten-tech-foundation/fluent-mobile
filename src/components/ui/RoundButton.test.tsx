@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { RoundButton, type RoundButtonIconProps } from './RoundButton';
-import { setUiVersion } from '../../services/userPreferences';
 import { legacyTheme, resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
@@ -125,9 +124,6 @@ describe('RoundButton', () => {
   });
 
   it('pins Flat to Canvas colors in Next, except on Accent', async () => {
-    await act(() => {
-      setUiVersion('next');
-    });
     await renderWithPreferences(
       <RoundButton
         icon={ColorIcon}

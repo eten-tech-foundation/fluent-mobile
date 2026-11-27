@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Key, type KeyIconProps } from './Key';
-import { setUiVersion } from '../../services/userPreferences';
 import { legacyTheme, resolveTheme } from '../../theme';
-import { ColorModeScope } from '../../theme/useTheme';
+import { ColorModeScope, UiVersionOverride } from '../../theme/useTheme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
 
@@ -139,11 +138,10 @@ describe('Key', () => {
   });
 
   it('fades only the icon when disabled, keeping the key solid', async () => {
-    await act(() => {
-      setUiVersion('legacy');
-    });
     await renderWithPreferences(
-      <Key icon={ColorIcon} accessibilityLabel="Play" disabled testID="k" />,
+      <UiVersionOverride value="legacy">
+        <Key icon={ColorIcon} accessibilityLabel="Play" disabled testID="k" />
+      </UiVersionOverride>,
     );
 
     const [restIcon] = screen.getAllByTestId('key-icon');
@@ -159,9 +157,6 @@ describe('Key', () => {
   });
 
   it('keeps the disabled icon distinct from the key face in every mode', async () => {
-    await act(() => {
-      setUiVersion('next');
-    });
     for (const mode of ['canvas', 'hardware', 'accent'] as const) {
       const { unmount } = await renderWithPreferences(
         <ColorModeScope value={mode}>
@@ -177,12 +172,11 @@ describe('Key', () => {
   });
 
   it('fades fg/primary over fg/secondary as the key goes down', async () => {
-    await act(() => {
-      setUiVersion('legacy');
-    });
     jest.useFakeTimers();
     const { rerender } = await renderWithPreferences(
-      <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" />,
+      <UiVersionOverride value="legacy">
+        <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" />
+      </UiVersionOverride>,
     );
     const [restIcon, downIcon] = screen.getAllByTestId('key-icon');
     expect(restIcon).toHaveTextContent(legacyTheme.roles.fgSecondary);
@@ -192,7 +186,9 @@ describe('Key', () => {
     });
 
     await rerender(
-      <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" active />,
+      <UiVersionOverride value="legacy">
+        <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" active />
+      </UiVersionOverride>,
     );
     await act(() => {
       jest.advanceTimersByTime(500);
@@ -207,16 +203,25 @@ describe('Key', () => {
     const original = roles.fgSecondary;
     try {
       roles.fgSecondary = '#123456';
-      await act(() => setUiVersion('legacy'));
-      await renderWithPreferences(
-        <Key icon={ColorIcon} accessibilityLabel="Play" />,
+      const { rerender } = await renderWithPreferences(
+        <UiVersionOverride value="legacy">
+          <Key icon={ColorIcon} accessibilityLabel="Play" />
+        </UiVersionOverride>,
       );
       expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(
         legacyTheme.roles.fgSecondary,
       );
-      await act(() => setUiVersion('next'));
+      await rerender(
+        <UiVersionOverride value="next">
+          <Key icon={ColorIcon} accessibilityLabel="Play" />
+        </UiVersionOverride>,
+      );
       expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent('#123456');
-      await act(() => setUiVersion('legacy'));
+      await rerender(
+        <UiVersionOverride value="legacy">
+          <Key icon={ColorIcon} accessibilityLabel="Play" />
+        </UiVersionOverride>,
+      );
       expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(
         legacyTheme.roles.fgSecondary,
       );

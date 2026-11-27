@@ -75,19 +75,73 @@ describe('userPreferences', () => {
     expect(getUiVersion()).toBe('next');
   });
 
-  it('falls back to Next when stored uiVersion is invalid', () => {
-    mockPreferenceStore({ pref_ui_version: 'dark' });
+  it('does not store a legacy choice', () => {
+    setUserPreferences({ uiVersion: 'legacy', uploadOverCellular: true });
+    expect(mockSetItemSync).toHaveBeenCalledWith('pref_ui_version', 'next');
+    expect(mockSetItemSync).toHaveBeenCalledWith(
+      'pref_upload_over_cellular',
+      'true',
+    );
+    expect(mockSetItemSync).not.toHaveBeenCalledWith(
+      'pref_ui_version',
+      'legacy',
+    );
     expect(getUiVersion()).toBe('next');
+    expect(getUploadOverCellular()).toBe(true);
   });
 
-  it('keeps a stored legacy uiVersion', () => {
-    mockPreferenceStore({ pref_ui_version: 'legacy' });
-    expect(getUiVersion()).toBe('legacy');
-  });
+  it.each(['legacy', 'dark', ''])(
+    'rewrites a stored %j ui version to Next once',
+    stored => {
+      const store = mockPreferenceStore({
+        pref_ui_version: stored,
+        pref_upload_over_cellular: 'true',
+        '4:drafting_unit': 'pericope',
+        '9:drafting_unit': 'verse',
+      });
 
-  it('reads a stored next uiVersion', () => {
+      expect(getUiVersion()).toBe('next');
+      expect(store).toEqual({
+        pref_ui_version: 'next',
+        pref_upload_over_cellular: 'true',
+        '4:drafting_unit': 'pericope',
+        '9:drafting_unit': 'verse',
+      });
+      expect(mockSetItemSync).toHaveBeenCalledTimes(1);
+      expect(mockSetItemSync).toHaveBeenCalledWith('pref_ui_version', 'next');
+
+      getUserPreferences();
+      expect(mockSetItemSync).toHaveBeenCalledTimes(1);
+      expect(getUploadOverCellular()).toBe(true);
+    },
+  );
+
+  it.each([undefined, null])(
+    'leaves a missing ui version (%s) unset and still reports Next',
+    missing => {
+      const store = mockPreferenceStore({
+        pref_upload_over_cellular: 'true',
+        '4:drafting_unit': 'pericope',
+      });
+      const mockGetItemSync = kvStorage.getItemSync as jest.Mock;
+      mockGetItemSync.mockImplementation((key: string) =>
+        key === 'pref_ui_version' ? missing : store[key] ?? null,
+      );
+
+      expect(getUserPreferences()).toEqual({
+        uploadOverCellular: true,
+        uiVersion: 'next',
+      });
+      expect(mockSetItemSync).not.toHaveBeenCalled();
+      expect(store['4:drafting_unit']).toBe('pericope');
+      expect(store).not.toHaveProperty('pref_ui_version');
+    },
+  );
+
+  it('does not rewrite a stored Next value', () => {
     mockPreferenceStore({ pref_ui_version: 'next' });
     expect(getUiVersion()).toBe('next');
+    expect(mockSetItemSync).not.toHaveBeenCalled();
   });
 
   it('notifies key-specific subscribers when a value changes', () => {
@@ -103,16 +157,17 @@ describe('userPreferences', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('notifies uiVersion subscribers when the version changes', () => {
+  it('does not announce a legacy choice', () => {
     const listener = jest.fn();
 
     subscribeToPreference('uiVersion', listener);
     setUiVersion('legacy');
 
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith('legacy');
-
-    setUiVersion('legacy');
-    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).not.toHaveBeenCalled();
+    expect(getUiVersion()).toBe('next');
+    expect(mockSetItemSync).not.toHaveBeenCalledWith(
+      'pref_ui_version',
+      'legacy',
+    );
   });
 });

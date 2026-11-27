@@ -56,7 +56,27 @@ describe('usePreferences', () => {
     expect(result.current.uploadOverCellular).toBe(true);
   });
 
-  it('persists and updates uiVersion', async () => {
+  it('shows Next on the first read when storage says legacy', async () => {
+    const store = mockPreferenceStore({
+      pref_ui_version: 'legacy',
+      pref_upload_over_cellular: 'true',
+      '3:drafting_unit': 'pericope',
+      '8:drafting_unit': 'verse',
+    });
+
+    const { result } = await renderHook(() => usePreferences());
+
+    expect(result.current.uiVersion).toBe('next');
+    expect(result.current.uploadOverCellular).toBe(true);
+    expect(store).toMatchObject({
+      pref_ui_version: 'next',
+      pref_upload_over_cellular: 'true',
+      '3:drafting_unit': 'pericope',
+      '8:drafting_unit': 'verse',
+    });
+  });
+
+  it('does not adopt a legacy choice from the hook', async () => {
     const { result } = await renderHook(() => usePreferences());
 
     expect(result.current.uiVersion).toBe('next');
@@ -65,8 +85,27 @@ describe('usePreferences', () => {
       result.current.setUiVersion('legacy');
     });
 
-    expect(mockSetItemSync).toHaveBeenCalledWith('pref_ui_version', 'legacy');
-    expect(result.current.uiVersion).toBe('legacy');
+    expect(mockSetItemSync).toHaveBeenCalledWith('pref_ui_version', 'next');
+    expect(mockSetItemSync).not.toHaveBeenCalledWith(
+      'pref_ui_version',
+      'legacy',
+    );
+    expect(result.current.uiVersion).toBe('next');
+  });
+
+  it('normalizes a stored legacy value once across reloads', async () => {
+    mockPreferenceStore({ pref_ui_version: 'legacy' });
+    const { result } = await renderHook(() => usePreferences());
+
+    expect(result.current.uiVersion).toBe('next');
+    mockSetItemSync.mockClear();
+
+    await act(() => {
+      result.current.reload();
+    });
+
+    expect(mockSetItemSync).not.toHaveBeenCalled();
+    expect(result.current.uiVersion).toBe('next');
   });
 
   it('reload refreshes preferences from storage', async () => {
