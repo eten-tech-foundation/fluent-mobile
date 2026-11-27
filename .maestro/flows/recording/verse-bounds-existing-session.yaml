@@ -15,8 +15,10 @@
 #   JS numbers after Maestro JSON-round-trips output — coerce with String()
 #   before typeof/length checks. Anchored ^…$ text waits so the same
 #   passage-verse-position testID cannot pass on stale copyTextFrom.
-# - Fixture opens the player on the FIRST navigable verse so
-#   passage-key-previous is disabled and passage-key-next is enabled.
+# - Listen resumes the last place, so this selects the FIRST navigable
+#   verse before the boundary asserts. passage-key-previous is disabled
+#   there and passage-key-next is enabled. Source audio is paused so it
+#   cannot step the place before those asserts.
 #
 # Forbidden (command nodes — not this comment): clearState, ensure-on-login,
 # login-*, ensure-warm-home, ensure-warm-session, Discard, record-start /
@@ -48,11 +50,29 @@ tags:
 - runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - assertVisible:
     id: 'passage-header'
+# The verse row opens Listen on that verse. The hero Listen key resumes
+# whatever place the last visit left.
+- scrollUntilVisible:
+    element:
+      id: 'passage-verse-row-${output.verseRefFirst}'
+    direction: DOWN
+    timeout: 30000
 - tapOn:
-    id: 'passage-listen'
+    id: 'passage-verse-row-${output.verseRefFirst}'
 - extendedWaitUntil:
     visible:
       id: 'passage-player'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        text: 'Pause source audio'
+    commands:
+      - tapOn:
+          id: 'passage-key-listen'
+- extendedWaitUntil:
+    visible:
+      text: '^${output.verseRefFirst}$'
     timeout: 15000
 - assertVisible:
     id: 'passage-verse-position'
