@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import HomeRoute from '../routes/(app)/(stack)/index';
+import { mockPreferenceStore } from '../test/mocks/preferenceStore';
+import { UiVersionPreferenceProvider } from '../theme/UiVersionPreferenceProvider';
 import { UiVersionOverride } from '../theme/useTheme';
 
 jest.mock('../services/storage', () => ({
@@ -43,5 +45,16 @@ describe('home route', () => {
       </UiVersionOverride>,
     );
     expect(screen.getByText('Next home')).toBeTruthy();
+  });
+
+  it('shows Next Home on the first paint when storage says Legacy', async () => {
+    mockPreferenceStore({ pref_ui_version: 'legacy' });
+    await render(
+      <UiVersionPreferenceProvider>
+        <HomeRoute />
+      </UiVersionPreferenceProvider>,
+    );
+    expect(screen.getByText('Next home')).toBeTruthy();
+    expect(screen.queryByText('Legacy home')).toBeNull();
   });
 });

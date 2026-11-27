@@ -1,11 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { act, render, screen } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import { KeyDeck } from './KeyDeck';
-import { setUiVersion } from '../../services/userPreferences';
 import { legacyTheme, resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
+import { UiVersionOverride } from '../../theme/useTheme';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -23,11 +23,12 @@ describe('KeyDeck', () => {
   });
 
   it('frames its keys in surface/inverse with 2pt seams', async () => {
-    await act(() => setUiVersion('legacy'));
     await renderWithPreferences(
-      <KeyDeck testID="deck">
-        <Text>Play</Text>
-      </KeyDeck>,
+      <UiVersionOverride value="legacy">
+        <KeyDeck testID="deck">
+          <Text>Play</Text>
+        </KeyDeck>
+      </UiVersionOverride>,
     );
 
     expect(
@@ -45,19 +46,25 @@ describe('KeyDeck', () => {
     const original = roles.surfaceInverse;
     try {
       roles.surfaceInverse = '#123456';
-      await act(() => setUiVersion('legacy'));
-      await renderWithPreferences(
+      const deck = (
         <KeyDeck testID="deck">
           <Text>Play</Text>
-        </KeyDeck>,
+        </KeyDeck>
+      );
+      const { rerender } = await renderWithPreferences(
+        <UiVersionOverride value="legacy">{deck}</UiVersionOverride>,
       );
       const background = () =>
         StyleSheet.flatten(screen.getByTestId('deck').props.style)
           .backgroundColor;
       expect(background()).toBe(legacyTheme.roles.surfaceInverse);
-      await act(() => setUiVersion('next'));
+      await rerender(
+        <UiVersionOverride value="next">{deck}</UiVersionOverride>,
+      );
       expect(background()).toBe('#123456');
-      await act(() => setUiVersion('legacy'));
+      await rerender(
+        <UiVersionOverride value="legacy">{deck}</UiVersionOverride>,
+      );
       expect(background()).toBe(legacyTheme.roles.surfaceInverse);
     } finally {
       roles.surfaceInverse = original;

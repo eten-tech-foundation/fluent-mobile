@@ -4,7 +4,6 @@ import { renderHook as renderHookBase } from '@testing-library/react-native';
 import * as Haptics from 'expo-haptics';
 import { useHaptics } from './useHaptics';
 import { setMicActive } from '../audio/micActivity';
-import { setUiVersion } from '../services/userPreferences';
 import { UiVersionOverride } from '../theme/useTheme';
 import { UiVersionPreferenceProvider } from '../theme/UiVersionPreferenceProvider';
 import { mockPreferenceStore } from '../test/mocks/preferenceStore';
@@ -54,21 +53,22 @@ describe('useHaptics', () => {
   });
 
   it('is a no-op in Legacy', async () => {
-    setUiVersion('legacy');
-    const { result } = await renderHook(() => useHaptics());
+    const { result } = await renderHook(() => useHaptics(), {
+      wrapper: ({ children }) => (
+        <UiVersionOverride value="legacy">{children}</UiVersionOverride>
+      ),
+    });
     result.current.press();
     expect(perform).not.toHaveBeenCalled();
   });
 
   it('fires the virtual key haptic in Next', async () => {
-    setUiVersion('next');
     const { result } = await renderHook(() => useHaptics());
     result.current.press();
     expect(perform).toHaveBeenCalledWith('virtual-key');
   });
 
   it('maps toggle to the on and off haptics in Next', async () => {
-    setUiVersion('next');
     const { result } = await renderHook(() => useHaptics());
     result.current.toggle(true);
     result.current.toggle(false);
@@ -80,7 +80,6 @@ describe('useHaptics', () => {
 
   it('maps a drag pick-up and drop to the drag haptics in Next', async () => {
     jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
-    setUiVersion('next');
     const { result } = await renderHook(() => useHaptics());
     result.current.dragStart();
     result.current.dragEnd();
@@ -92,7 +91,6 @@ describe('useHaptics', () => {
 
   it('falls back to haptics older Android has for a drag', async () => {
     jest.spyOn(Platform, 'Version', 'get').mockReturnValue(29);
-    setUiVersion('next');
     const { result } = await renderHook(() => useHaptics());
     result.current.dragStart();
     result.current.dragEnd();
@@ -113,7 +111,6 @@ describe('useHaptics', () => {
   });
 
   it('stays silent until every mic owner has closed', async () => {
-    setUiVersion('next');
     setMicActive('test', true);
     setMicActive('other', true);
     setMicActive('test', false);
@@ -127,7 +124,6 @@ describe('useHaptics', () => {
   });
 
   it('stays silent while the mic is active', async () => {
-    setUiVersion('next');
     setMicActive('test', true);
     const { result } = await renderHook(() => useHaptics());
     result.current.press();

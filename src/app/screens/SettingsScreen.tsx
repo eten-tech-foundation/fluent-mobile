@@ -44,8 +44,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { signOut: onSignOut, notifyUserSwitched: onUserSwitched } =
     useAuthSession();
-  const { uploadOverCellular, setUploadOverCellular, uiVersion, setUiVersion } =
-    usePreferences();
+  const { uploadOverCellular, setUploadOverCellular } = usePreferences();
   const { draftingUnit, setDraftingUnit } = useDraftingUnit();
   const { reauthRequired } = useReauthRequired({ refreshOnFocus: true });
   const [atAccountLimit, setAtAccountLimit] = useState(
@@ -143,21 +142,10 @@ export default function SettingsScreen() {
               </View>
             </View>
           ) : null}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Interface</Text>
-            <View style={styles.sectionCard}>
-              <SettingsSegmentedRow
-                title="UI version"
-                subtitle="Next is the current design. Legacy stays available."
-                options={[
-                  { label: 'Legacy', value: 'legacy' },
-                  { label: 'Next', value: 'next' },
-                ]}
-                value={uiVersion}
-                onValueChange={setUiVersion}
-                testID="settings-ui-version"
-              />
-              {isComponentGalleryEnabled() ? (
+          {isComponentGalleryEnabled() ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Interface</Text>
+              <View style={styles.sectionCard}>
                 <SettingsNavigationRow
                   title="Component gallery"
                   subtitle="Review Next UI components in isolation"
@@ -171,9 +159,9 @@ export default function SettingsScreen() {
                   }
                   onPress={() => router.push(hrefs.gallery)}
                 />
-              ) : null}
+              </View>
             </View>
-          </View>
+          ) : null}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Offline</Text>
 

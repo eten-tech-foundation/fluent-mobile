@@ -4,13 +4,13 @@ Original Lovable source review and current issue ownership:
 [dated review and evidence map](../features/next-ui-redesign/lovable-review.md).
 Source/token evidence does not establish rendered visual fidelity.
 
-Fluent Mobile supports a runtime-selectable **UI version** while the redesign
-lands:
+Fluent Mobile still has Legacy and Next presentation, but the saved choice is
+no longer selectable. Every stored value resolves to Next:
 
 | Version | Meaning |
 | --- | --- |
-| `next` | Current design (default). An unset or invalid `pref_ui_version` resolves here. |
-| `legacy` | Previous design. Stays selected only when Settings stored `legacy`. |
+| `next` | Current design. Missing, invalid, `legacy`, and `next` values all resolve here on the first read. |
+| `legacy` | Previous design. Reachable only through a subtree `UiVersionOverride`, not a saved preference. |
 
 This is **not** light/dark mode. Prefer structural/token changes over scattering
 `isNextUI ? … : …` checks.
@@ -33,13 +33,13 @@ This is **not** light/dark mode. Prefer structural/token changes over scattering
 | `src/theme/uiVersion.ts` | `resolveTheme()` |
 | `src/theme/useTheme.ts` | `useUiVersion()`, `useTheme()`, `useThemedStyles()` — import from this module (not the `theme` barrel) so static consumers stay free of preference/storage |
 | `src/theme/UiVersionPreferenceProvider.tsx` | Root bridge from the stored preference into `useTheme()` |
-| `src/services/userPreferences.ts` | Device-level `pref_ui_version` (default `next`; a stored `legacy` or `next` is kept) |
+| `src/services/userPreferences.ts` | Device-level `pref_ui_version`. A missing key stays missing. Any other stored value is rewritten to `next` on read. |
 
-Settings → **Interface → UI version** toggles the preference. No app restart.
-Next is the default. Choosing Legacy writes `legacy` and is not migrated back.
-`UiVersionPreferenceProvider` at the application root bridges persistent
-preferences into the presentation context. Shared components import only the
-storage-free `useTheme` hooks; standalone components without a provider default
+Settings no longer offers a UI version switch. Upload-over-cellular, drafting
+unit, gallery, and account controls stay. `UiVersionPreferenceProvider` at the
+application root bridges the normalized preference into the presentation
+context. Shared components import only the storage-free `useTheme` hooks;
+standalone components without a provider default
 to Next. Subtree `UiVersionOverride` values take precedence within that root.
 
 ## Figma source (Next)
