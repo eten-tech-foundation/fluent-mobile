@@ -209,6 +209,7 @@ export function RecordTab({
     onChange: setSelectedVerse,
     audioState: verseAudio.state,
     discardCapture: verseAudio.discardCapture,
+    isStopPending: verseAudio.isStopPending,
     resetCapture,
   });
   const verseIndex = verseStep.index;
@@ -579,6 +580,10 @@ export function RecordTab({
 
   async function handleStart() {
     if (stageLocked || isTaken || peerCheckCaptureBlocked) return;
+    if (!verseAudio.takesLoaded) {
+      if (verseAudio.state === 'error') verseAudio.retryTakesLoad();
+      return;
+    }
     if (!(await ensureMic())) return;
     setElapsedMs(0);
     if (sourceAudioControl && sourceAudioControl.status !== 'idle') {
@@ -943,7 +948,11 @@ export function RecordTab({
                 onPress={() => {
                   void handleStart();
                 }}
-                disabled={captureDisabled || !verseAudio.canRecordNewTake}
+                disabled={
+                  captureDisabled ||
+                  recordDisabled ||
+                  (verseAudio.takesLoaded && !verseAudio.canRecordNewTake)
+                }
                 accessibilityLabel={`Record ${reference}`}
                 testID="record-start-button"
               >
@@ -1227,13 +1236,20 @@ export function RecordTab({
                 <TouchableOpacity
                   style={[
                     styles.newTakeButton,
-                    (captureDisabled || !verseAudio.canRecordNewTake) &&
+                    (captureDisabled ||
+                      recordDisabled ||
+                      (verseAudio.takesLoaded &&
+                        !verseAudio.canRecordNewTake)) &&
                       styles.disabled,
                   ]}
                   onPress={() => {
                     void handleStart();
                   }}
-                  disabled={captureDisabled || !verseAudio.canRecordNewTake}
+                  disabled={
+                    captureDisabled ||
+                    recordDisabled ||
+                    (verseAudio.takesLoaded && !verseAudio.canRecordNewTake)
+                  }
                   accessibilityRole="button"
                   accessibilityLabel="Record new take"
                   testID="record-new-take-button"

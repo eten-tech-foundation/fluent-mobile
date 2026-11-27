@@ -8,6 +8,7 @@ const verses = [{ verseNumber: 1 }, { verseNumber: 2 }, { verseNumber: 3 }];
 async function setup(
   selectedVerse: number,
   audioState: VerseAudioState = 'idle',
+  stopPending = false,
 ) {
   const onChange = jest.fn();
   const resetCapture = jest.fn();
@@ -19,6 +20,7 @@ async function setup(
       onChange,
       audioState,
       discardCapture,
+      isStopPending: () => stopPending,
       resetCapture,
     }),
   );
@@ -74,4 +76,20 @@ describe('useVerseStep', () => {
     expect(discardCapture).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith(2);
   });
+
+  it.each<VerseAudioState>(['recording', 'saving'])(
+    'does not step, prompt or discard while a Stop is pending (%s) (#979)',
+    async state => {
+      const { result, onChange, resetCapture, discardCapture } = await setup(
+        1,
+        state,
+        true,
+      );
+      await act(() => result.current.request(2));
+      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(discardCapture).not.toHaveBeenCalled();
+      expect(resetCapture).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+    },
+  );
 });

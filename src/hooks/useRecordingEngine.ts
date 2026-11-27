@@ -97,7 +97,9 @@ export function useRecordingEngine({
     return () => {
       const current = engine.getStatus();
       if (current === 'recording' || current === 'paused') {
-        void engine.stop().catch(() => {
+        // Teardown: skip the minimum-run hold (#979). The recorder is about to
+        // be released and a take nobody asked to keep needs no file.
+        void engine.stop({ immediate: true }).catch(() => {
           void releaseRecordingAudioMode();
         });
       } else {
