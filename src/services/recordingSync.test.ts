@@ -50,6 +50,7 @@ const mockRefreshMembershipForOwners = jest.fn();
 const mockGetVerifiedMembershipOwners = jest.fn();
 const mockGetRecordingOwnerIds = jest.fn();
 const mockEmitHeldRecordingsChanged = jest.fn();
+const mockReturnRecordingToHold = jest.fn();
 
 jest.mock('./projectMembership', () => ({
   refreshMembershipForOwners: (...args: unknown[]) =>
@@ -63,6 +64,9 @@ jest.mock('../db/repositories/heldRecordingsRepository', () => ({
     mockReconcileHeldRecordings(...args),
   getRecordingOwnerIds: (...args: unknown[]) =>
     mockGetRecordingOwnerIds(...args),
+  returnRecordingToHold: (...args: unknown[]) =>
+    mockReturnRecordingToHold(...args),
+  RELEASED_FROM_HOLD_MARKER: 'released_from_hold',
 }));
 
 jest.mock('../db/repository', () => ({
@@ -244,6 +248,7 @@ describe('recordingSync', () => {
     mockRaiseVerseVersionToken.mockResolvedValue(undefined);
     mockDeleteVerseAudioTake.mockResolvedValue({ versionToken: 3 });
     mockReconcileHeldRecordings.mockResolvedValue({ held: 0, released: 0 });
+    mockReturnRecordingToHold.mockResolvedValue(true);
     // Owners 2 (active), 7, 8 and 9 have work on the device and all verify.
     mockGetRecordingOwnerIds.mockResolvedValue([2, 7, 8, 9]);
     mockRefreshMembershipForOwners.mockImplementation(
@@ -1127,6 +1132,92 @@ describe('recordingSync', () => {
       'bad request',
       0,
     );
+  });
+
+  describe('masked 404 on a take released from hold (#855 review)', () => {
+    const denied = () => new ApiError(404, 'Verse audio recording not found');
+
+    it('returns the take to held instead of failing it', async () => {
+      mockGetPendingRecordings.mockResolvedValue([
+        pendingRecording({
+          uploadIntentVersion: 4,
+          uploadError: 'released_from_hold',
+        }),
+      ]);
+      mockUploadVerseAudio.mockRejectedValue(denied());
+
+      const result = await syncPendingRecordings('tok-1', { delay });
+
+      expect(mockReturnRecordingToHold).toHaveBeenCalledWith('rec-1', 4);
+      expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+      expect(mockUploadVerseAudio).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        uploaded: 0,
+        conflicted: 0,
+        failed: 0,
+        deferred: 0,
+        deletionsFailed: 0,
+      });
+      // The Sync page held list refreshes; like a take the reconcile newly
+      // held, it is not a failure of the pass.
+      expect(mockEmitHeldRecordingsChanged).toHaveBeenCalled();
+    });
+
+    it('defers when a newer local change owns the take', async () => {
+      mockGetPendingRecordings.mockResolvedValue([
+        pendingRecording({ uploadError: 'released_from_hold' }),
+      ]);
+      mockUploadVerseAudio.mockRejectedValue(denied());
+      mockReturnRecordingToHold.mockResolvedValue(false);
+
+      const result = await syncPendingRecordings('tok-1', { delay });
+
+      expect(result.deferred).toBe(1);
+      expect(mockMarkRecordingFailed).not.toHaveBeenCalled();
+    });
+
+    it('still fails a 404 on a take that was never held', async () => {
+      mockUploadVerseAudio.mockRejectedValue(denied());
+
+      const result = await syncPendingRecordings('tok-1', { delay });
+
+      expect(result.failed).toBe(1);
+      expect(mockReturnRecordingToHold).not.toHaveBeenCalled();
+      expect(mockMarkRecordingFailed).toHaveBeenCalledWith(
+        'rec-1',
+        'Verse audio recording not found',
+        0,
+      );
+    });
+
+    it('still fails a released take on a different 404', async () => {
+      mockGetPendingRecordings.mockResolvedValue([
+        pendingRecording({ uploadError: 'released_from_hold' }),
+      ]);
+      mockUploadVerseAudio.mockRejectedValue(
+        new ApiError(404, 'Chapter assignment not found'),
+      );
+
+      const result = await syncPendingRecordings('tok-1', { delay });
+
+      expect(result.failed).toBe(1);
+      expect(mockReturnRecordingToHold).not.toHaveBeenCalled();
+    });
+
+    it('still fails a released take on a non-404 rejection', async () => {
+      mockGetPendingRecordings.mockResolvedValue([
+        pendingRecording({ uploadError: 'released_from_hold' }),
+      ]);
+      // Same message, other status: only the masked 404 holds.
+      mockUploadVerseAudio.mockRejectedValue(
+        new ApiError(400, 'Verse audio recording not found'),
+      );
+
+      const result = await syncPendingRecordings('tok-1', { delay });
+
+      expect(result.failed).toBe(1);
+      expect(mockReturnRecordingToHold).not.toHaveBeenCalled();
+    });
   });
 
   it('treats 503 storage-unconfigured as terminal failure', async () => {

@@ -16,7 +16,10 @@ import {
 import {
   getRecordingOwnerIds,
   reconcileHeldRecordings,
+  RELEASED_FROM_HOLD_MARKER,
+  returnRecordingToHold,
 } from '../db/repositories/heldRecordingsRepository';
+import { VERSE_AUDIO_ACCESS_DENIED_MESSAGE } from '../types/api/errors';
 import {
   getVerifiedMembershipOwners,
   refreshMembershipForOwners,
@@ -1058,6 +1061,31 @@ async function uploadOneRecording(
         }
       }
 
+      // A take released from `held` that the server still denies (masked
+      // 404: the chapter is not assigned to its owner) goes back on hold
+      // instead of failing, and is released again once an upload can succeed
+      // (#855). Other 404s (a deleted assignment, a bad unit) keep failing
+      // visibly.
+      if (
+        isApiError(error) &&
+        error.status === 404 &&
+        error.message === VERSE_AUDIO_ACCESS_DENIED_MESSAGE &&
+        recording.uploadError === RELEASED_FROM_HOLD_MARKER
+      ) {
+        log.warn('Upload still denied after release; holding again', {
+          recordingId: recording.id,
+          message: lastMessage,
+        });
+        if (
+          (await returnRecordingToHold(
+            recording.id,
+            recording.uploadIntentVersion ?? 0,
+          )) === false
+        )
+          return 'deferred';
+        return 'held';
+      }
+
       if (!outcome.retryable || attempt === maxAttempts) {
         if (isNetworkTransportError(error)) {
           log.info('Upload paused after network failure; leaving pending', {
@@ -1123,7 +1151,13 @@ async function uploadOneRecording(
  * Per-take result of one upload attempt sequence. `deferred`: the row's
  * intent generation moved while this pass held it, so nothing was marked.
  */
-type TakeUploadOutcome = 'deferred' | 'uploaded' | 'conflicted' | 'failed';
+type TakeUploadOutcome =
+  | 'deferred'
+  | 'uploaded'
+  | 'conflicted'
+  | 'failed'
+  /** Back on hold: the server still denied a take released from `held`. */
+  | 'held';
 
 /** Distinct chapter in a pending pass. Orchestrator sessions key the same way. */
 function chapterKey(recording: PendingRecording): string {
@@ -1429,6 +1463,7 @@ async function runUploadPass(
   let conflicted = 0;
   let failed = 0;
   let deferred = 0;
+  let heldAgain = 0;
   const reportTakeProgress = (): void => {
     options.onTakeProgress?.({
       completedTakes: uploaded + conflicted,
@@ -1476,6 +1511,8 @@ async function runUploadPass(
         conflicted += 1;
       } else if (result === 'deferred') {
         deferred += 1;
+      } else if (result === 'held') {
+        heldAgain += 1;
       } else {
         failed += 1;
       }
@@ -1519,11 +1556,17 @@ async function runUploadPass(
           ? 'idle'
           : 'complete',
     });
+    // A take held again is not a failure of this pass, so it only refreshes
+    // the held list, as the reconcile does (#855).
+    if (heldAgain > 0) {
+      emitHeldRecordingsChanged();
+    }
     log.info('Recording upload pass finished', {
       uploaded,
       conflicted,
       failed,
       deferred,
+      heldAgain,
       deletionsFailed,
       deletionsDone: deletePass.deleted,
     });

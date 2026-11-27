@@ -51,28 +51,43 @@ export async function claimChapterOffline(
   const claimedAt = new Date().toISOString();
   let claimed = false;
   await db.transaction(async (tx: Transaction) => {
-    const updateResult = await tx.execute(
-      `UPDATE chapter_assignments
-       SET assigned_user_id = ?
-       WHERE id = ? AND assigned_user_id IS NULL`,
-      [userId, target.chapterAssignmentId],
-    );
-    if ((updateResult.rowsAffected ?? 0) !== 1) {
-      return;
-    }
-    await tx.execute(
-      `INSERT INTO chapter_claim_queue
-        (chapter_assignment_id, user_id, claimed_at, sync_status)
-       VALUES (?, ?, ?, 'pending')`,
-      [target.chapterAssignmentId, userId, claimedAt],
-    );
-    claimed = true;
-  });
-  if (claimed) {
-    log.info('Enqueued offline chapter claim', {
-      chapterAssignmentId: target.chapterAssignmentId,
+    claimed = await claimChapterInTransaction(
+      tx,
+      target.chapterAssignmentId,
       userId,
-    });
-  }
+      claimedAt,
+    );
+  });
   return claimed;
+}
+
+/**
+ * Assign an unassigned chapter locally and queue its claim, inside the
+ * caller's transaction. Resolves false when the chapter already has an
+ * assignee. Shared by a first recording (#268) and the automatic claim for
+ * held takes after the account is added back (#855).
+ */
+export async function claimChapterInTransaction(
+  tx: Transaction,
+  chapterAssignmentId: number,
+  userId: number,
+  claimedAt: string,
+): Promise<boolean> {
+  const updateResult = await tx.execute(
+    `UPDATE chapter_assignments
+     SET assigned_user_id = ?
+     WHERE id = ? AND assigned_user_id IS NULL`,
+    [userId, chapterAssignmentId],
+  );
+  if ((updateResult.rowsAffected ?? 0) !== 1) {
+    return false;
+  }
+  await tx.execute(
+    `INSERT INTO chapter_claim_queue
+      (chapter_assignment_id, user_id, claimed_at, sync_status)
+     VALUES (?, ?, ?, 'pending')`,
+    [chapterAssignmentId, userId, claimedAt],
+  );
+  log.info('Enqueued offline chapter claim', { chapterAssignmentId, userId });
+  return true;
 }

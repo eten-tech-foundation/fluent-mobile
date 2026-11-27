@@ -16,6 +16,8 @@ type ConnectivityListener = (
   cellular?: boolean,
   type?: string,
 ) => void;
+const mockReconcileHeldRecordings = jest.fn();
+const mockHasHeldRecordingsForUser = jest.fn();
 const mockListeners = new Set<ConnectivityListener>();
 const mockDrain = jest.fn();
 const mockClaimsDrain = jest.fn();
@@ -35,8 +37,11 @@ jest.mock('../db/stageAdvanceQueueRepository', () => ({
   getPendingStageAdvances: () => mockGetPendingStageAdvances(),
 }));
 jest.mock('../db/repositories/heldRecordingsRepository', () => ({
-  reconcileHeldRecordings: async () => ({ held: 0, released: 0 }),
+  reconcileHeldRecordings: (...args: unknown[]) =>
+    mockReconcileHeldRecordings(...args),
   getRecordingOwnerIds: async (id: number | null) => (id === null ? [] : [id]),
+  hasHeldRecordingsForUser: (userId: number) =>
+    mockHasHeldRecordingsForUser(userId),
 }));
 // Membership refresh is exercised in projectMembership.test.ts; here it must
 // resolve so these drain sessions still run (#848).
@@ -143,6 +148,8 @@ beforeEach(() => {
   mockGetPendingStageAdvances.mockResolvedValue([{ id: 1, userId: 10 }]);
   mockHasPendingChapterClaimsForUser.mockResolvedValue(false);
   mockClaimsDrain.mockResolvedValue({ synced: 0, conflicts: 0, failed: 0 });
+  mockReconcileHeldRecordings.mockResolvedValue({ held: 0, released: 0 });
+  mockHasHeldRecordingsForUser.mockResolvedValue(false);
 });
 afterEach(() => {
   stopUploadOrchestrator();
@@ -327,6 +334,52 @@ describe('claim push result contract (#886)', () => {
     expect(mockHasPendingChapterClaimsForUser).toHaveBeenCalledWith(10);
     expect(mockClaimsDrain).toHaveBeenCalledWith(10, 'token-10');
     expect(stubWorker.uploadChapter).not.toHaveBeenCalled();
+  });
+
+  describe('a claim that lands for held takes (#855)', () => {
+    beforeEach(() => {
+      mockGetPendingStageAdvances.mockResolvedValue([]);
+      mockDrain.mockResolvedValue({
+        synced: 0,
+        dropped: 0,
+        failed: 0,
+        deferred: 0,
+      });
+      // The automatic claim stays queued until a push lands it.
+      let claimQueued = true;
+      mockHasPendingChapterClaimsForUser.mockImplementation(
+        async () => claimQueued,
+      );
+      mockClaimsDrain.mockImplementation(async () => {
+        const synced = claimQueued ? 1 : 0;
+        claimQueued = false;
+        return { synced, conflicts: 0, failed: 0 };
+      });
+    });
+
+    it('runs a follow-up session so the held takes release and upload', async () => {
+      mockHasHeldRecordingsForUser.mockResolvedValue(true);
+      startUploadOrchestrator({ schedule, worker: stubWorker });
+
+      connect();
+      await waitFor(() => mockReconcileHeldRecordings.mock.calls.length >= 2);
+      await settle();
+
+      expect(mockHasHeldRecordingsForUser).toHaveBeenCalledWith(10);
+      // One reconcile per session: the claim session, then the follow-up
+      // that releases the takes now that the claim has landed.
+      expect(mockReconcileHeldRecordings).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not run a follow-up session when the account holds nothing', async () => {
+      startUploadOrchestrator({ schedule, worker: stubWorker });
+
+      connect();
+      await waitFor(() => eventTypes().includes('complete'));
+      await settle();
+
+      expect(mockReconcileHeldRecordings).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('runs the claim push on reconnect when the claim queue cannot be read', async () => {

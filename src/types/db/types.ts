@@ -462,6 +462,11 @@ export interface PendingRecording {
   isSelected: boolean;
   /** Incremented atomically when selection/canonical intent changes. */
   uploadIntentVersion?: number;
+  /**
+   * Last upload error. On a pending take it is only ever the released-from-hold
+   * marker (#855), which lets a still-denied upload return to `held`.
+   */
+  uploadError?: string | null;
 }
 
 /** A take deleted on device whose server copy is still to be removed (#716). */

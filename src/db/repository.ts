@@ -1413,6 +1413,7 @@ export async function getPendingRecordings(chapter?: {
        r.is_canonical AS is_canonical,
        r.is_selected AS is_selected,
        r.upload_intent_version AS upload_intent_version,
+       r.upload_error AS upload_error,
        bt.book_id AS book_id,
        bt.chapter_number AS chapter_number,
        ${uploadProjectUnitSql('r.project_unit_id')} AS project_unit_id
@@ -1487,6 +1488,10 @@ export async function getPendingRecordings(chapter?: {
       isCanonical: Number(row.is_canonical) === 1,
       isSelected: Number(row.is_selected) === 1,
       uploadIntentVersion: Number(row.upload_intent_version ?? 0),
+      uploadError:
+        row.upload_error === null || row.upload_error === undefined
+          ? null
+          : String(row.upload_error),
     };
   });
 }

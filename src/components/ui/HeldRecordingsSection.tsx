@@ -87,9 +87,10 @@ type HeldRecordingsSectionProps = {
 };
 
 /**
- * Held work on the Sync page (#855): says the account was removed from the
- * project, how many takes were kept on the device, and lets the user play each
- * one. Rows disappear once they upload (the query only returns `held` takes).
+ * Held work on the Sync page (#855): says why takes were kept on the device
+ * (the account was removed from the project, is not the chapter's drafter, or
+ * the server did not accept them), how many, and lets the user play each one.
+ * Rows disappear once they upload (the query only returns `held` takes).
  */
 export function HeldRecordingsSection({
   recordings,
@@ -140,27 +141,88 @@ export function HeldRecordingsSection({
     return null;
   }
 
-  const projectCount = groups.length;
+  const removedProjects = groups.filter(group =>
+    group.chapters.some(chapter =>
+      chapter.recordings.some(record => record.reason === 'removed'),
+    ),
+  );
+  const unassignedCount = recordings.filter(
+    record => record.reason === 'unassigned',
+  ).length;
+  const deniedCount = recordings.filter(
+    record => record.reason === 'denied',
+  ).length;
+  const waitingCount = recordings.filter(
+    record => record.reason === 'waiting',
+  ).length;
   const recordingCount = recordings.length;
   const removedFrom =
-    projectCount === 1
-      ? `You were removed from ${groups[0]!.projectName}.`
-      : `You were removed from ${projectCount} projects.`;
+    removedProjects.length === 0
+      ? null
+      : removedProjects.length === 1
+      ? `You were removed from ${removedProjects[0]!.projectName}.`
+      : `You were removed from ${removedProjects.length} projects.`;
   const notSent = `${recordingCount} ${
     recordingCount === 1 ? 'recording was' : 'recordings were'
   } not sent.`;
+  // Added back to the project, but the chapter has no drafter or another one
+  // (#855): only a reassignment lets these upload.
+  const unassigned =
+    unassignedCount === 0
+      ? null
+      : recordingCount === 1
+      ? 'Its chapter is not assigned to you.'
+      : unassignedCount === 1
+      ? '1 is in a chapter not assigned to you.'
+      : `${unassignedCount} are in chapters not assigned to you.`;
+  // Member and drafter as far as this device knows, but Fluent still denied
+  // the upload; it is retried once the chapter's assignment changes.
+  const denied =
+    deniedCount === 0
+      ? null
+      : recordingCount === 1
+      ? 'Fluent did not accept it for its chapter.'
+      : deniedCount === 1
+      ? 'Fluent did not accept 1 for its chapter.'
+      : `Fluent did not accept ${deniedCount} for their chapters.`;
+  // A claim sent from this device has not landed yet, or nothing stands in the
+  // way: these leave the list on their own.
+  const waiting =
+    waitingCount === 0
+      ? null
+      : recordingCount === 1
+      ? 'It will upload on the next sync.'
+      : waitingCount === 1
+      ? '1 will upload on the next sync.'
+      : `${waitingCount} will upload on the next sync.`;
+  const message = [removedFrom, notSent, unassigned, denied, waiting]
+    .filter(Boolean)
+    .join(' ');
+  const help = [
+    removedFrom
+      ? 'Contact your project manager if the removal seems wrong.'
+      : null,
+    unassigned
+      ? 'Ask your project manager to assign the chapter to you. Then these recordings will upload on their own.'
+      : null,
+    denied
+      ? 'Ask your project manager to check your chapter assignment.'
+      : null,
+    'These recordings stay on this device.',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <View style={styles.section} testID="sync-held-section">
       <WarningBanner
         variant="amber"
         icon={CircleAlert}
-        message={`${removedFrom} ${notSent}`}
+        message={message}
         testID="sync-held-banner"
       />
       <Text style={styles.help} testID="sync-held-help">
-        Contact your project manager if the removal seems wrong. These
-        recordings stay on this device.
+        {help}
       </Text>
       {playbackError ? (
         <Text style={styles.error} testID="sync-held-playback-error">

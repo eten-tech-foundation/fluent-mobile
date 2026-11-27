@@ -740,6 +740,7 @@ describe('SyncScreen', () => {
     mockHeldRecordings = [
       {
         id: 'held-1',
+        reason: 'removed',
         projectId: 100,
         projectName: 'Alpha',
         bookId: 1,
@@ -757,6 +758,7 @@ describe('SyncScreen', () => {
       },
       {
         id: 'held-2',
+        reason: 'removed',
         projectId: 100,
         projectName: 'Alpha',
         bookId: 1,

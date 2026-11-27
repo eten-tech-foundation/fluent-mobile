@@ -46,6 +46,7 @@ jest.mock('lucide-react-native', () => {
 function held(overrides: Partial<HeldRecording> = {}): HeldRecording {
   return {
     id: 'held-1',
+    reason: 'removed',
     projectId: 100,
     projectName: 'Alpha',
     bookId: 1,
@@ -172,6 +173,82 @@ describe('HeldRecordingsSection (#855)', () => {
     await rerender(<HeldRecordingsSection recordings={[held()]} />);
 
     expect(mockPause).not.toHaveBeenCalled();
+  });
+
+  it('says the chapter is not assigned when the account was added back', async () => {
+    await render(
+      <HeldRecordingsSection
+        recordings={[
+          held({ reason: 'unassigned' }),
+          held({ id: 'held-2', reason: 'unassigned' }),
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        '2 recordings were not sent. 2 are in chapters not assigned to you.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      'Ask your project manager to assign the chapter to you. Then these recordings will upload on their own. These recordings stay on this device.',
+    );
+    expect(screen.queryByText(/You were removed/)).toBeNull();
+  });
+
+  it('names both causes when removed and unassigned takes are held', async () => {
+    await render(
+      <HeldRecordingsSection
+        recordings={[
+          held(),
+          held({
+            id: 'held-2',
+            reason: 'unassigned',
+            projectId: 200,
+            projectName: 'Beta',
+          }),
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        'You were removed from Alpha. 2 recordings were not sent. 1 is in a chapter not assigned to you.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      /Contact your project manager if the removal seems wrong\. Ask your project manager to assign the chapter/,
+    );
+  });
+
+  it('says Fluent did not accept a take the server denied', async () => {
+    await render(
+      <HeldRecordingsSection recordings={[held({ reason: 'denied' })]} />,
+    );
+
+    expect(
+      screen.getByText(
+        '1 recording was not sent. Fluent did not accept it for its chapter.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      'Ask your project manager to check your chapter assignment. These recordings stay on this device.',
+    );
+  });
+
+  it('says a take waiting on its claim will upload by itself', async () => {
+    await render(
+      <HeldRecordingsSection recordings={[held({ reason: 'waiting' })]} />,
+    );
+
+    expect(
+      screen.getByText(
+        '1 recording was not sent. It will upload on the next sync.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('sync-held-help')).toHaveTextContent(
+      /^These recordings stay on this device\.$/,
+    );
   });
 
   it('renders nothing when there are no held recordings', async () => {

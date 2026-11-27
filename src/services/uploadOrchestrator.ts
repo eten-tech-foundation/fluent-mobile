@@ -7,6 +7,7 @@ import {
 } from '../db/queries';
 import {
   getRecordingOwnerIds,
+  hasHeldRecordingsForUser,
   hasRecordingsAffectedByMembership,
   reconcileHeldRecordings,
 } from '../db/repositories/heldRecordingsRepository';
@@ -96,6 +97,12 @@ async function pushPendingClaimsBeforeUpload(): Promise<void> {
   );
   if (!token) return;
   const result = await syncPendingChapterClaimsForUser(userId, token);
+  // Held takes on a chapter claimed back stay held until the claim lands, and
+  // this session already reconciled. Ask for a follow-up session so they
+  // release and upload with no user step (#855).
+  if (result.synced > 0 && (await hasHeldRecordingsForUser(userId))) {
+    notifyPendingUploads();
+  }
   // Offline at claim time is deferred work: the orchestrator takes its
   // connectivity-pause path (resume on reconnect) rather than uploading past
   // a claim that has not landed (#886).
