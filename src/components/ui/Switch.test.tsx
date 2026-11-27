@@ -38,24 +38,24 @@ describe('Switch', () => {
     jest.useRealTimers();
   });
 
-  it('toggles, reports checked and fires the matching haptic', () => {
-    render(<ControlledSwitch />);
+  it('toggles, reports checked and fires the matching haptic', async () => {
+    await render(<ControlledSwitch />);
     const control = screen.getByRole('switch', { name: 'Auto-play' });
     expect(control.props.accessibilityState).toMatchObject({ checked: false });
 
-    fireEvent.press(control);
+    await fireEvent.press(control);
     expect(control.props.accessibilityState).toMatchObject({ checked: true });
     expect(mockToggle).toHaveBeenLastCalledWith(true);
 
-    fireEvent.press(control);
+    await fireEvent.press(control);
     expect(mockToggle).toHaveBeenLastCalledWith(false);
   });
 
-  it('ignores presses and reports disabled when disabled', () => {
-    render(<ControlledSwitch disabled />);
+  it('ignores presses and reports disabled when disabled', async () => {
+    await render(<ControlledSwitch disabled />);
     const control = screen.getByRole('switch', { name: 'Auto-play' });
 
-    fireEvent.press(control);
+    await fireEvent.press(control);
 
     expect(control.props.accessibilityState).toMatchObject({
       checked: false,
@@ -64,12 +64,12 @@ describe('Switch', () => {
     expect(mockToggle).not.toHaveBeenCalled();
   });
 
-  it('slides the knob across the track when switched on', () => {
+  it('slides the knob across the track when switched on', async () => {
     jest.useFakeTimers();
-    render(<ControlledSwitch />);
+    await render(<ControlledSwitch />);
 
-    fireEvent.press(screen.getByRole('switch', { name: 'Auto-play' }));
-    act(() => {
+    await fireEvent.press(screen.getByRole('switch', { name: 'Auto-play' }));
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
 

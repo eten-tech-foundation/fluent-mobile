@@ -17,9 +17,9 @@ function renderNext(ui: React.ReactElement) {
 }
 
 describe('ListRow', () => {
-  it('speaks its title and subtitle and opens on press', () => {
+  it('speaks its title and subtitle and opens on press', async () => {
     const onPress = jest.fn();
-    renderNext(
+    await renderNext(
       <ListRow
         icon={Gear}
         title="Add account"
@@ -28,7 +28,7 @@ describe('ListRow', () => {
       />,
     );
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', {
         name: 'Add account, 2 of 3 on this device',
       }),
@@ -40,18 +40,20 @@ describe('ListRow', () => {
     ).toBe(next.roles.fgSecondary);
   });
 
-  it("can't be pressed when disabled", () => {
+  it("can't be pressed when disabled", async () => {
     const onPress = jest.fn();
-    renderNext(<ListRow title="Add account" disabled onPress={onPress} />);
+    await renderNext(
+      <ListRow title="Add account" disabled onPress={onPress} />,
+    );
 
     const row = screen.getByRole('button', { name: 'Add account' });
     expect(row.props.accessibilityState).toMatchObject({ disabled: true });
-    fireEvent.press(row);
+    await fireEvent.press(row);
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  it('marks the selected row, and holds a leading and trailing view', () => {
-    renderNext(
+  it('marks the selected row, and holds a leading and trailing view', async () => {
+    await renderNext(
       <ListRow
         title="Jordan Smith"
         leading={<Text>JS</Text>}
@@ -69,8 +71,8 @@ describe('ListRow', () => {
     expect(screen.getByText('✓')).toBeTruthy();
   });
 
-  it('is not a button without a press, leaving it to its control', () => {
-    renderNext(
+  it('is not a button without a press, leaving it to its control', async () => {
+    await renderNext(
       <ListRow title="Upload over cellular" trailing={<Text>on</Text>} />,
     );
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SyncStatusButton } from './SyncStatusButton';
+import { getAllByHostType } from '../../test/hostElements';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -13,14 +14,27 @@ jest.mock('../../hooks/useHaptics', () => ({
   useHaptics: () => ({ press: jest.fn() }),
 }));
 
+// Each cloud icon renders a host view named for it, so the test can tell them apart.
+jest.mock('./icons', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const icon = (name: string) => () =>
+    React.createElement(View, { testID: `icon-${name}` });
+  return {
+    Cloud: icon('Cloud'),
+    CloudArrowDown: icon('CloudArrowDown'),
+    CloudArrowUp: icon('CloudArrowUp'),
+    CloudCheck: icon('CloudCheck'),
+    CloudSlash: icon('CloudSlash'),
+    CloudWarning: icon('CloudWarning'),
+  };
+});
+
 function iconName() {
-  const icon = screen.UNSAFE_root.findAll(
-    node =>
-      typeof node.type === 'function' &&
-      'displayName' in node.type &&
-      String(node.type.displayName).startsWith('Cloud'),
-  )[0];
-  return (icon?.type as { displayName?: string } | undefined)?.displayName;
+  const icon = getAllByHostType('View').find(node =>
+    String(node.props.testID ?? '').startsWith('icon-'),
+  );
+  return icon?.props.testID.slice('icon-'.length);
 }
 
 describe('SyncStatusButton', () => {
@@ -33,14 +47,14 @@ describe('SyncStatusButton', () => {
     ['online_failed', 'CloudWarning'],
     ['offline_synced', 'CloudSlash'],
     ['offline_pending', 'CloudSlash'],
-  ] as const)('shows %s as %s', (status, icon) => {
-    render(<SyncStatusButton status={status} onPress={jest.fn()} />);
+  ] as const)('shows %s as %s', async (status, icon) => {
+    await render(<SyncStatusButton status={status} onPress={jest.fn()} />);
     expect(iconName()).toBe(icon);
   });
 
-  it('speaks the status, with the upload error when it failed', () => {
+  it('speaks the status, with the upload error when it failed', async () => {
     const onPress = jest.fn();
-    render(
+    await render(
       <SyncStatusButton
         status="online_failed"
         failedErrorText="Server busy."
@@ -51,12 +65,12 @@ describe('SyncStatusButton', () => {
     const button = screen.getByRole('button', {
       name: 'Upload failed. Open Sync page to retry. Server busy.',
     });
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it("speaks only the status when it doesn't open the Sync page", () => {
-    render(
+  it("speaks only the status when it doesn't open the Sync page", async () => {
+    await render(
       <SyncStatusButton
         status="online_failed"
         failedErrorText="Server busy."
@@ -67,8 +81,8 @@ describe('SyncStatusButton', () => {
     expect(screen.getByLabelText('Upload failed. Server busy.')).toBeTruthy();
   });
 
-  it('says pending uploads wait while drafting holds them', () => {
-    render(
+  it('says pending uploads wait while drafting holds them', async () => {
+    await render(
       <SyncStatusButton
         status="online_pending"
         heldForDrafting
@@ -87,8 +101,8 @@ describe('SyncStatusButton', () => {
 
   it.each(['online_synced', 'online_uploading', 'offline_pending'] as const)(
     'shows no visible word for %s even when drafting is open',
-    status => {
-      render(
+    async status => {
+      await render(
         <SyncStatusButton
           status={status}
           heldForDrafting

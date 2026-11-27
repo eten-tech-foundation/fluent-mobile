@@ -56,8 +56,8 @@ const baseChapter: ProjectChapter = {
 };
 
 describe('ProjectChapterRow', () => {
-  it('renders the conflict indicator when hasConflict', () => {
-    const { getByTestId } = render(
+  it('renders the conflict indicator when hasConflict', async () => {
+    const { getByTestId } = await render(
       <ProjectChapterRow
         chapter={{ ...baseChapter, hasConflict: true }}
         onPress={jest.fn()}
@@ -67,16 +67,16 @@ describe('ProjectChapterRow', () => {
     expect(getByTestId('chapter-conflict-indicator')).toBeTruthy();
   });
 
-  it('omits the conflict indicator when hasConflict is false', () => {
-    const { queryByTestId } = render(
+  it('omits the conflict indicator when hasConflict is false', async () => {
+    const { queryByTestId } = await render(
       <ProjectChapterRow chapter={baseChapter} onPress={jest.fn()} />,
     );
 
     expect(queryByTestId('chapter-conflict-indicator')).toBeNull();
   });
 
-  it('shows only the conflict indicator when both conflict and ownership apply', () => {
-    const { getAllByTestId, queryByTestId } = render(
+  it('shows only the conflict indicator when both conflict and ownership apply', async () => {
+    const { getAllByTestId, queryByTestId } = await render(
       <ProjectChapterRow
         chapter={{ ...baseChapter, hasConflict: true }}
         onPress={jest.fn()}
@@ -89,8 +89,8 @@ describe('ProjectChapterRow', () => {
     expect(queryByTestId('chapter-ownership-other')).toBeNull();
   });
 
-  it('shows the ownership indicator when there is no conflict', () => {
-    const { getAllByTestId } = render(
+  it('shows the ownership indicator when there is no conflict', async () => {
+    const { getAllByTestId } = await render(
       <ProjectChapterRow chapter={baseChapter} onPress={jest.fn()} />,
     );
 

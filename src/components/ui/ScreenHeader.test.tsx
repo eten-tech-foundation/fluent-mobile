@@ -25,11 +25,11 @@ function Screen() {
   );
 }
 
-function scrollTo(y: number) {
-  fireEvent.scroll(screen.getByTestId('list'), {
+async function scrollTo(y: number) {
+  await fireEvent.scroll(screen.getByTestId('list'), {
     nativeEvent: { contentOffset: { x: 0, y } },
   });
-  act(() => {
+  await act(() => {
     jest.advanceTimersByTime(500);
   });
 }
@@ -48,23 +48,23 @@ describe('ScreenHeader', () => {
     jest.useRealTimers();
   });
 
-  it('has no stroke at rest', () => {
-    render(<Screen />);
+  it('has no stroke at rest', async () => {
+    await render(<Screen />);
     expectStroke(0);
   });
 
-  it('fades the stroke in once the content scrolls under it, and out at the top', () => {
-    render(<Screen />);
+  it('fades the stroke in once the content scrolls under it, and out at the top', async () => {
+    await render(<Screen />);
 
-    scrollTo(40);
+    await scrollTo(40);
     expectStroke(1);
 
-    scrollTo(0);
+    await scrollTo(0);
     expectStroke(0);
   });
 
-  it('keeps the stroke out of touches', () => {
-    render(<Screen />);
+  it('keeps the stroke out of touches', async () => {
+    await render(<Screen />);
     expect(screen.getByTestId('h-stroke').props.pointerEvents).toBe('none');
   });
 });

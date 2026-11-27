@@ -44,7 +44,7 @@ describe('useDeviceAccounts', () => {
   });
 
   it('does not load accounts when the panel is hidden', async () => {
-    const { result } = renderHook(() => useDeviceAccounts(false));
+    const { result } = await renderHook(() => useDeviceAccounts(false));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -66,7 +66,7 @@ describe('useDeviceAccounts', () => {
         : null,
     );
 
-    const { result } = renderHook(() => useDeviceAccounts(true));
+    const { result } = await renderHook(() => useDeviceAccounts(true));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -95,7 +95,7 @@ describe('useDeviceAccounts', () => {
   it('reports account limit when known ids reach MAX_DEVICE_ACCOUNTS', async () => {
     mockGetKnownUserIds.mockReturnValue(['1', '2', '3']);
 
-    const { result } = renderHook(() => useDeviceAccounts(true));
+    const { result } = await renderHook(() => useDeviceAccounts(true));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -107,12 +107,12 @@ describe('useDeviceAccounts', () => {
   it('reload refreshes accounts after visibility is enabled', async () => {
     mockGetKnownUserIds.mockReturnValue(['1']);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ visible }: { visible: boolean }) => useDeviceAccounts(visible),
       { initialProps: { visible: false } },
     );
 
-    rerender({ visible: true });
+    await rerender({ visible: true });
 
     await waitFor(() => {
       expect(result.current.accounts).toHaveLength(1);

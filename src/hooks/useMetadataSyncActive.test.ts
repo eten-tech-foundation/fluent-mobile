@@ -18,45 +18,45 @@ describe('useMetadataSyncActive (#886)', () => {
     jest.useRealTimers();
   });
 
-  it('samples the in-flight state on mount, so a consumer mounted mid-sync sees it', () => {
+  it('samples the in-flight state on mount, so a consumer mounted mid-sync sees it', async () => {
     mockIsMetadataSyncActive.mockReturnValue(true);
 
-    const { result } = renderHook(() => useMetadataSyncActive());
+    const { result } = await renderHook(() => useMetadataSyncActive());
 
     expect(result.current).toBe(true);
   });
 
-  it('flips on syncStart and off after syncComplete once the pass has settled', () => {
-    const { result } = renderHook(() => useMetadataSyncActive());
+  it('flips on syncStart and off after syncComplete once the pass has settled', async () => {
+    const { result } = await renderHook(() => useMetadataSyncActive());
     expect(result.current).toBe(false);
 
     mockIsMetadataSyncActive.mockReturnValue(true);
-    act(() => {
+    await act(() => {
       emitSyncStart();
     });
     expect(result.current).toBe(true);
 
     // A full sync emits syncComplete before its single-flight entry is
     // released: the synchronous sample still reads "active" …
-    act(() => {
+    await act(() => {
       emitSyncComplete();
     });
     expect(result.current).toBe(true);
 
     // … and the deferred sample reads the settled state.
     mockIsMetadataSyncActive.mockReturnValue(false);
-    act(() => {
+    await act(() => {
       jest.runOnlyPendingTimers();
     });
     expect(result.current).toBe(false);
   });
 
-  it('stops sampling after unmount', () => {
-    const { unmount } = renderHook(() => useMetadataSyncActive());
-    unmount();
+  it('stops sampling after unmount', async () => {
+    const { unmount } = await renderHook(() => useMetadataSyncActive());
+    await unmount();
     mockIsMetadataSyncActive.mockClear();
 
-    act(() => {
+    await act(() => {
       emitSyncStart();
       jest.runOnlyPendingTimers();
     });

@@ -207,8 +207,8 @@ describe('usePrepareOfflineDownload', () => {
     mockRefresh.mockResolvedValue(undefined);
   });
 
-  it('starts in idle session', () => {
-    const { result } = renderHook(() =>
+  it('starts in idle session', async () => {
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -233,7 +233,7 @@ describe('usePrepareOfflineDownload', () => {
         }),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -246,7 +246,7 @@ describe('usePrepareOfflineDownload', () => {
     );
 
     let downloadPromise!: Promise<void>;
-    act(() => {
+    await act(() => {
       downloadPromise = result.current.handleDownload();
     });
 
@@ -269,7 +269,7 @@ describe('usePrepareOfflineDownload', () => {
         }),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -282,7 +282,7 @@ describe('usePrepareOfflineDownload', () => {
     );
 
     let downloadPromise!: Promise<void>;
-    act(() => {
+    await act(() => {
       downloadPromise = result.current.handleDownload();
     });
 
@@ -311,7 +311,7 @@ describe('usePrepareOfflineDownload', () => {
         }),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -324,7 +324,7 @@ describe('usePrepareOfflineDownload', () => {
     );
 
     let downloadPromise!: Promise<void>;
-    act(() => {
+    await act(() => {
       downloadPromise = result.current.handleDownload();
     });
 
@@ -356,7 +356,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ];
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -391,7 +391,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ];
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -428,7 +428,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ];
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -451,7 +451,7 @@ describe('usePrepareOfflineDownload', () => {
     ).toHaveBeenCalledWith(1);
   });
 
-  it('stays idle when worker is paused for a different project', () => {
+  it('stays idle when worker is paused for a different project', async () => {
     mockWorkerState = 'paused';
     mockSnapshot.items = [
       {
@@ -464,7 +464,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ];
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -479,7 +479,7 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.session).toBe('idle');
   });
 
-  it('stays idle with queued rows when worker is idle (no fake pause controls)', () => {
+  it('stays idle with queued rows when worker is idle (no fake pause controls)', async () => {
     mockWorkerState = 'idle';
     mockSnapshot.items = [
       {
@@ -492,7 +492,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ];
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -516,7 +516,7 @@ describe('usePrepareOfflineDownload', () => {
         }),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -528,7 +528,7 @@ describe('usePrepareOfflineDownload', () => {
       }),
     );
 
-    act(() => {
+    await act(() => {
       void result.current.pause();
     });
 
@@ -554,7 +554,7 @@ describe('usePrepareOfflineDownload', () => {
         }),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -566,7 +566,7 @@ describe('usePrepareOfflineDownload', () => {
       }),
     );
 
-    act(() => {
+    await act(() => {
       void result.current.pause();
       void result.current.pause();
     });
@@ -589,19 +589,7 @@ describe('usePrepareOfflineDownload', () => {
     const { getDownloadedResourcesByProject } =
       jest.requireMock('../db/repository');
 
-    getDownloadedResourcesByProject.mockResolvedValue([
-      {
-        id: 'tier-1-source-bible-text',
-        tier: 1,
-        label: 'Text',
-        progress: 1,
-        status: 'completed',
-        projectId: 1,
-        userId: 42,
-      },
-    ]);
-
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -617,8 +605,21 @@ describe('usePrepareOfflineDownload', () => {
       await result.current.handleDownload();
     });
 
-    mockSnapshot.items = [];
-    rerender(undefined);
+    // The text lands as downloaded and the queue drains. A new snapshot object
+    // makes the hook re-read the downloaded rows.
+    getDownloadedResourcesByProject.mockResolvedValue([
+      {
+        id: 'tier-1-source-bible-text',
+        tier: 1,
+        label: 'Text',
+        progress: 1,
+        status: 'completed',
+        projectId: 1,
+        userId: 42,
+      },
+    ]);
+    mockSnapshot = { ...mockSnapshot, items: [] };
+    await rerender(undefined);
 
     await waitFor(() => {
       expect(result.current.session).toBe('complete');
@@ -651,7 +652,7 @@ describe('usePrepareOfflineDownload', () => {
       groups: [],
     };
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -713,7 +714,7 @@ describe('usePrepareOfflineDownload', () => {
       aggregateProgress: 0.125,
     };
 
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -735,7 +736,7 @@ describe('usePrepareOfflineDownload', () => {
       completedCount: 1,
       aggregateProgress: 0.5,
     };
-    rerender(undefined);
+    await rerender(undefined);
 
     expect(result.current.session).toBe('downloading');
     expect(result.current.inventoryRefreshSignal).toBe('0');
@@ -764,7 +765,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ];
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -791,7 +792,7 @@ describe('usePrepareOfflineDownload', () => {
     );
   });
 
-  it('blocks download when transport is not allowed on cellular', () => {
+  it('blocks download when transport is not allowed on cellular', async () => {
     mockConnectivity = {
       isOnline: true,
       isLinkOnline: true,
@@ -804,7 +805,7 @@ describe('usePrepareOfflineDownload', () => {
       transferConnectivityPending: false,
     };
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -837,7 +838,7 @@ describe('usePrepareOfflineDownload', () => {
       transferConnectivityPending: false,
     };
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -864,7 +865,7 @@ describe('usePrepareOfflineDownload', () => {
     );
     syncBibleTextsForChapters.mockRejectedValueOnce(new Error('sync down'));
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -908,7 +909,7 @@ describe('usePrepareOfflineDownload', () => {
       new Error('No content returned for text item x'),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -951,7 +952,7 @@ describe('usePrepareOfflineDownload', () => {
       new Error('queue write failed'),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -993,7 +994,7 @@ describe('usePrepareOfflineDownload', () => {
       new Error('unexpected meta failure'),
     );
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1029,7 +1030,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ];
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1064,7 +1065,7 @@ describe('usePrepareOfflineDownload', () => {
       transferConnectivityPending: false,
     };
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1086,7 +1087,7 @@ describe('usePrepareOfflineDownload', () => {
   it('surfaces a message when resume is rejected by the transfer gate', async () => {
     mockResume.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1107,7 +1108,7 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.transportBlockedMessage).toContain('WiFi');
   });
 
-  it('does not treat Fluent health-down as transport offline while the link is up', () => {
+  it('does not treat Fluent health-down as transport offline while the link is up', async () => {
     mockConnectivity = {
       isOnline: false,
       isLinkOnline: true,
@@ -1120,7 +1121,7 @@ describe('usePrepareOfflineDownload', () => {
       transferConnectivityPending: false,
     };
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1136,7 +1137,7 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.transportBlockedMessage).toBeUndefined();
   });
 
-  it('does not show the waiting-WiFi message while connectivity is still resolving', () => {
+  it('does not show the waiting-WiFi message while connectivity is still resolving', async () => {
     mockConnectivity = {
       isOnline: true,
       isLinkOnline: true,
@@ -1149,7 +1150,7 @@ describe('usePrepareOfflineDownload', () => {
       transferConnectivityPending: true,
     };
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1166,7 +1167,7 @@ describe('usePrepareOfflineDownload', () => {
     expect(result.current.transportBlockedMessage).toBeUndefined();
   });
 
-  it('shows the offline message when prepare download is blocked without a link', () => {
+  it('shows the offline message when prepare download is blocked without a link', async () => {
     mockConnectivity = {
       isOnline: false,
       isLinkOnline: false,
@@ -1179,7 +1180,7 @@ describe('usePrepareOfflineDownload', () => {
       transferConnectivityPending: false,
     };
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1204,7 +1205,7 @@ describe('usePrepareOfflineDownload', () => {
       jest.requireMock('../db/repository');
     mockStart.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1233,7 +1234,7 @@ describe('usePrepareOfflineDownload', () => {
   it('clears a start-gate transport error when the session changes', async () => {
     mockStart.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ projectId }: { projectId: number }) =>
         usePrepareOfflineDownload({
           projectId,
@@ -1253,7 +1254,7 @@ describe('usePrepareOfflineDownload', () => {
 
     expect(result.current.transportBlocked).toBe(true);
 
-    rerender({ projectId: 2 });
+    await rerender({ projectId: 2 });
 
     expect(result.current.transportBlocked).toBe(false);
     expect(result.current.transportBlockedMessage).toBeUndefined();
@@ -1262,7 +1263,7 @@ describe('usePrepareOfflineDownload', () => {
   it('clears a start-gate transport error when connectivity changes', async () => {
     mockStart.mockResolvedValue({ ok: false, gate: 'waiting_wifi' });
 
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1284,7 +1285,7 @@ describe('usePrepareOfflineDownload', () => {
       ...mockConnectivity,
       connectionType: 'ethernet',
     };
-    rerender({});
+    await rerender({});
 
     expect(result.current.transportBlocked).toBe(false);
     expect(result.current.transportBlockedMessage).toBeUndefined();
@@ -1302,7 +1303,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ];
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1319,7 +1320,7 @@ describe('usePrepareOfflineDownload', () => {
     });
   });
 
-  it('keeps Download disabled for unassigned zero-chapter selection even with leftover resumable queue rows', () => {
+  it('keeps Download disabled for unassigned zero-chapter selection even with leftover resumable queue rows', async () => {
     // #580 / B.7: leftover queued/cancelled/failed/paused rows must not
     // enable Download when pendingBytes is 0 (no chapter selected). Resume
     // those rows through pause/resume controls instead.
@@ -1344,7 +1345,7 @@ describe('usePrepareOfflineDownload', () => {
 
     const emptyCatalog: PrepareOfflineCatalog = { items: [], groups: [] };
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1378,7 +1379,7 @@ describe('usePrepareOfflineDownload', () => {
 
     const emptyCatalog: PrepareOfflineCatalog = { items: [], groups: [] };
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1479,7 +1480,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ]);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,
@@ -1565,7 +1566,7 @@ describe('usePrepareOfflineDownload', () => {
       },
     ]);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       usePrepareOfflineDownload({
         projectId: 1,
         userId: 42,

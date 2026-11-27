@@ -66,9 +66,9 @@ describe('LoginScreen', () => {
   });
 
   it('shows validation errors for empty fields', async () => {
-    renderLoginScreen();
+    await renderLoginScreen();
 
-    fireEvent.press(screen.getByTestId('login-submit-button'));
+    await fireEvent.press(screen.getByTestId('login-submit-button'));
 
     expect(await screen.findByTestId('login-email-error')).toBeTruthy();
     expect(screen.getByTestId('login-password-error')).toBeTruthy();
@@ -81,14 +81,17 @@ describe('LoginScreen', () => {
       user: { email: 't@fluent.local' },
     });
 
-    renderLoginScreen();
+    await renderLoginScreen();
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByTestId('login-email-input'),
       't@fluent.local',
     );
-    fireEvent.changeText(screen.getByTestId('login-password-input'), 'secret');
-    fireEvent.press(screen.getByTestId('login-submit-button'));
+    await fireEvent.changeText(
+      screen.getByTestId('login-password-input'),
+      'secret',
+    );
+    await fireEvent.press(screen.getByTestId('login-submit-button'));
 
     await waitFor(() => {
       expect(FluentAPI.signIn).toHaveBeenCalledWith('t@fluent.local', 'secret');
@@ -108,21 +111,24 @@ describe('LoginScreen', () => {
       .mocked(FluentAPI.signIn)
       .mockRejectedValue(new Error('Invalid credentials'));
 
-    renderLoginScreen();
+    await renderLoginScreen();
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByTestId('login-email-input'),
       't@fluent.local',
     );
-    fireEvent.changeText(screen.getByTestId('login-password-input'), 'wrong');
-    fireEvent.press(screen.getByTestId('login-submit-button'));
+    await fireEvent.changeText(
+      screen.getByTestId('login-password-input'),
+      'wrong',
+    );
+    await fireEvent.press(screen.getByTestId('login-submit-button'));
 
     expect(await screen.findByText('Invalid credentials')).toBeTruthy();
     expect(onLoginSuccess).not.toHaveBeenCalled();
   });
 
-  it('hides forgot-password and legal footer in reauth variant', () => {
-    render(
+  it('hides forgot-password and legal footer in reauth variant', async () => {
+    await render(
       <LoginScreen
         onLoginSuccess={onLoginSuccess}
         initialEmail="t@fluent.local"
@@ -143,8 +149,8 @@ describe('LoginScreen', () => {
     ['app', 'addAccount', '/(app)/privacy-policy', '/(app)/terms-of-use'],
   ] as const)(
     'routes legal footer links to the %s group for %s login',
-    (legalLinksGroup, variant, privacy, terms) => {
-      render(
+    async (legalLinksGroup, variant, privacy, terms) => {
+      await render(
         <LoginScreen
           onLoginSuccess={onLoginSuccess}
           legalLinksGroup={legalLinksGroup}
@@ -152,8 +158,8 @@ describe('LoginScreen', () => {
         />,
         { wrapper: QueryClientTestWrapper },
       );
-      fireEvent.press(screen.getByTestId('login-privacy-link'));
-      fireEvent.press(screen.getByTestId('login-terms-link'));
+      await fireEvent.press(screen.getByTestId('login-privacy-link'));
+      await fireEvent.press(screen.getByTestId('login-terms-link'));
       expect(mockPush).toHaveBeenCalledTimes(2);
       expect(mockPush).toHaveBeenNthCalledWith(1, privacy);
       expect(mockPush).toHaveBeenNthCalledWith(2, terms);

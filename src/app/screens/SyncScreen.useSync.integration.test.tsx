@@ -165,21 +165,21 @@ describe('SyncScreen metadata error via real useSync', () => {
     mockGetSyncError.mockReturnValue(undefined);
   });
 
-  it('renders SYNC_ERROR_CHAPTER_CLAIMS from KV through useSync', () => {
+  it('renders SYNC_ERROR_CHAPTER_CLAIMS from KV through useSync', async () => {
     mockGetSyncError.mockImplementation((key: string) =>
       key === KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS
         ? 'Failed to sync 1 pending chapter claim(s)'
         : undefined,
     );
 
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-metadata-error')).toHaveTextContent(
       'Sync failed: chapter claims',
     );
   });
 
-  it('joins multiple metadata sync failures from KV', () => {
+  it('joins multiple metadata sync failures from KV', async () => {
     mockGetSyncError.mockImplementation((key: string) => {
       if (key === KV_KEYS.SYNC_ERROR_CHAPTER_CLAIMS) {
         return 'claim fail';
@@ -190,7 +190,7 @@ describe('SyncScreen metadata error via real useSync', () => {
       return undefined;
     });
 
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-metadata-error')).toHaveTextContent(
       'Sync failed: chapter claims, chapter assignments',

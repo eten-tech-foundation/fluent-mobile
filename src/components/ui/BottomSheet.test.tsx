@@ -1,8 +1,9 @@
 import React from 'react';
-import { Modal, Text } from 'react-native';
+import { Text } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { BottomSheet } from './BottomSheet';
 import { UiVersionOverride } from '../../theme/useTheme';
+import { getByHostType } from '../../test/hostElements';
 
 jest.mock('react-native-gesture-handler', () => {
   const pan = {
@@ -46,8 +47,8 @@ describe('BottomSheet', () => {
     jest.useRealTimers();
   });
 
-  it('shows its title and content when open', () => {
-    render(sheet(true));
+  it('shows its title and content when open', async () => {
+    await render(sheet(true));
 
     expect(
       screen.getByRole('header', { name: 'Accounts on this device' }),
@@ -55,29 +56,29 @@ describe('BottomSheet', () => {
     expect(screen.getByText('Jordan Smith')).toBeTruthy();
   });
 
-  it('closes from the scrim', () => {
+  it('closes from the scrim', async () => {
     const onClose = jest.fn();
-    render(sheet(true, onClose));
+    await render(sheet(true, onClose));
 
-    fireEvent.press(screen.getByTestId('sheet-scrim'));
+    await fireEvent.press(screen.getByTestId('sheet-scrim'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('slides away, then leaves', () => {
+  it('slides away, then leaves', async () => {
     jest.useFakeTimers();
-    const { rerender } = render(sheet(true));
+    const { rerender } = await render(sheet(true));
 
-    rerender(sheet(false));
+    await rerender(sheet(false));
     expect(screen.getByText('Jordan Smith')).toBeTruthy();
-    act(() => jest.advanceTimersByTime(1000));
+    await act(() => jest.advanceTimersByTime(1000));
     expect(screen.queryByText('Jordan Smith')).toBeNull();
   });
 
-  it('closes on Back', () => {
+  it('closes on Back', async () => {
     const onClose = jest.fn();
-    render(sheet(true, onClose));
+    await render(sheet(true, onClose));
 
-    fireEvent(screen.UNSAFE_getByType(Modal), 'requestClose');
+    await fireEvent(getByHostType('Modal'), 'requestClose');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

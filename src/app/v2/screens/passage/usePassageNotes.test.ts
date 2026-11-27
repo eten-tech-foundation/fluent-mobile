@@ -49,9 +49,9 @@ describe('usePassageNotes', () => {
     mockConnectivity = { isOnline: true, hasResolved: true };
   });
 
-  it("keeps notes through the same account's reload, never into another account's", () => {
+  it("keeps notes through the same account's reload, never into another account's", async () => {
     mockState = ready();
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ userId }: { userId: number }) =>
         usePassageNotes(passage, userId, true),
       { initialProps: { userId: 5 } },
@@ -59,23 +59,23 @@ describe('usePassageNotes', () => {
     expect(result.current.notes).toEqual([{ id: 'a' }]);
 
     mockState = { status: 'loading' };
-    rerender({ userId: 5 });
+    await rerender({ userId: 5 });
     expect(result.current.notes).toEqual([{ id: 'a' }]);
 
-    rerender({ userId: 6 });
+    await rerender({ userId: 6 });
     expect(result.current.notes).toEqual([]);
   });
 
-  it('does not keep notes into another project, book or passage', () => {
+  it('does not keep notes into another project, book or passage', async () => {
     mockState = ready();
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ p }: { p: Ready }) => usePassageNotes(p, 5, true),
       { initialProps: { p: passage } },
     );
     expect(result.current.notes).toEqual([{ id: 'a' }]);
     mockState = { status: 'error', message: 'nope', failedRefs: [] };
 
-    rerender({
+    await rerender({
       p: {
         ...passage,
         assignment: { ...passage.assignment, projectId: 8 },
@@ -83,7 +83,7 @@ describe('usePassageNotes', () => {
     });
     expect(result.current.notes).toEqual([]);
 
-    rerender({
+    await rerender({
       p: {
         ...passage,
         assignment: { ...passage.assignment, bookCode: 'LUK' },
@@ -91,7 +91,7 @@ describe('usePassageNotes', () => {
     });
     expect(result.current.notes).toEqual([]);
 
-    rerender({
+    await rerender({
       p: {
         ...passage,
         verses: [{ chapterNumber: 14, verseNumber: 2 }],
@@ -100,16 +100,16 @@ describe('usePassageNotes', () => {
     expect(result.current.notes).toEqual([]);
   });
 
-  it('does not keep notes into another source language', () => {
+  it('does not keep notes into another source language', async () => {
     mockState = ready();
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ p }: { p: Ready }) => usePassageNotes(p, 5, true),
       { initialProps: { p: passage } },
     );
     expect(result.current.notes).toEqual([{ id: 'a' }]);
 
     mockState = { status: 'error', message: 'nope', failedRefs: [] };
-    rerender({
+    await rerender({
       p: {
         ...passage,
         assignment: { ...passage.assignment, sourceLanguageCode: 'fra' },
@@ -118,7 +118,7 @@ describe('usePassageNotes', () => {
     expect(result.current.notes).toEqual([]);
   });
 
-  it("doesn't call a passage's fresh load a retry after switching away mid-retry", () => {
+  it("doesn't call a passage's fresh load a retry after switching away mid-retry", async () => {
     mockState = { status: 'error', message: 'nope', failedRefs: [] };
     mockRetry.mockImplementation(() => {
       mockState = { status: 'loading' };
@@ -127,36 +127,40 @@ describe('usePassageNotes', () => {
       ...passage,
       assignment: { ...passage.assignment, projectId: 8 },
     } as Ready;
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ p }: { p: Ready }) => usePassageNotes(p, 5, true),
       { initialProps: { p: passage } },
     );
-    act(() => result.current.retry());
+    await act(() => result.current.retry());
     expect(result.current.status).toBe('retrying');
 
-    rerender({ p: other });
+    await rerender({ p: other });
     expect(result.current.status).toBe('loading');
-    rerender({ p: passage });
+    await rerender({ p: passage });
     expect(result.current.status).toBe('loading');
   });
 
-  it('asks once for two taps in the same frame', () => {
+  it('asks once for two taps in the same frame', async () => {
     mockState = { status: 'error', message: 'nope', failedRefs: [] };
-    const { result } = renderHook(() => usePassageNotes(passage, 5, true));
-    act(() => {
+    const { result } = await renderHook(() =>
+      usePassageNotes(passage, 5, true),
+    );
+    await act(() => {
       result.current.retry();
       result.current.retry();
     });
     expect(mockRetry).toHaveBeenCalledTimes(1);
   });
 
-  it('does not keep notes from before a grant clear when the reload fails', () => {
+  it('does not keep notes from before a grant clear when the reload fails', async () => {
     mockState = ready();
-    const { result } = renderHook(() => usePassageNotes(passage, 5, true));
+    const { result } = await renderHook(() =>
+      usePassageNotes(passage, 5, true),
+    );
     expect(result.current.notes).toEqual([{ id: 'a' }]);
 
     mockState = { status: 'error', message: 'nope', failedRefs: [] };
-    act(() => {
+    await act(() => {
       clearPassageResourceReuse('5');
     });
     expect(result.current.notes).toEqual([]);
@@ -176,61 +180,67 @@ describe('usePassageNotes', () => {
       { status: 'error', message: 'nope', failedRefs: [] },
       'failed',
     ],
-  ])('reports %s as %s', (_name, state, status) => {
+  ])('reports %s as %s', async (_name, state, status) => {
     mockState = state;
-    const { result } = renderHook(() => usePassageNotes(passage, 5, true));
+    const { result } = await renderHook(() =>
+      usePassageNotes(passage, 5, true),
+    );
     expect(result.current.status).toBe(status);
   });
 
-  it('is idle until enabled', () => {
+  it('is idle until enabled', async () => {
     mockState = ready();
-    const { result } = renderHook(() => usePassageNotes(passage, 5, false));
+    const { result } = await renderHook(() =>
+      usePassageNotes(passage, 5, false),
+    );
     expect(result.current.status).toBe('idle');
   });
 
-  it('calls out offline verses only once connectivity is known', () => {
+  it('calls out offline verses only once connectivity is known', async () => {
     mockState = ready({
       unavailableOfflineRefs: [{ chapterNumber: 14, verseNumber: 1 }],
     });
     mockConnectivity = { isOnline: false, hasResolved: false };
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       usePassageNotes(passage, 5, true),
     );
     expect(result.current.status).toBe('loading');
 
     mockConnectivity = { isOnline: false, hasResolved: true };
-    rerender({});
+    await rerender({});
     expect(result.current.status).toBe('offline');
   });
 
-  it('retries once at a time, and reports the retry until it settles', () => {
+  it('retries once at a time, and reports the retry until it settles', async () => {
     mockState = { status: 'error', message: 'nope', failedRefs: [] };
     mockRetry.mockImplementation(() => {
       mockState = { status: 'loading' };
     });
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender } = await renderHook(() =>
       usePassageNotes(passage, 5, true),
     );
 
-    act(() => result.current.retry());
+    await act(() => result.current.retry());
     expect(result.current.status).toBe('retrying');
-    act(() => result.current.retry());
+    await act(() => result.current.retry());
     expect(mockRetry).toHaveBeenCalledTimes(1);
 
     mockState = ready();
-    rerender({});
+    await rerender({});
     expect(result.current.status).toBe('complete');
 
     // A later reload that isn't a retry reads as plain loading.
     mockState = { status: 'loading' };
-    rerender({});
+    await rerender({});
     expect(result.current.status).toBe('loading');
   });
 
-  it('does not retry before the player asks for notes', () => {
+  it('does not retry before the player asks for notes', async () => {
     mockState = { status: 'error', message: 'nope', failedRefs: [] };
-    const { result } = renderHook(() => usePassageNotes(passage, 5, false));
-    act(() => result.current.retry());
+    const { result } = await renderHook(() =>
+      usePassageNotes(passage, 5, false),
+    );
+    await act(() => result.current.retry());
     expect(mockRetry).not.toHaveBeenCalled();
   });
 });

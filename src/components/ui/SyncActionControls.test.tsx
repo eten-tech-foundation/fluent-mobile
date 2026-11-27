@@ -47,8 +47,8 @@ describe('SyncActionControls', () => {
     );
   }
 
-  it('shows Pause and Cancel while syncing', () => {
-    const { getByTestId, queryByTestId } = renderControls({
+  it('shows Pause and Cancel while syncing', async () => {
+    const { getByTestId, queryByTestId } = await renderControls({
       status: 'syncing',
     });
 
@@ -57,16 +57,16 @@ describe('SyncActionControls', () => {
     expect(queryByTestId('sync-action-sync-now')).toBeNull();
   });
 
-  it('shows Resume, Sync Now, and Cancel while paused', () => {
-    const { getByTestId } = renderControls({ status: 'paused' });
+  it('shows Resume, Sync Now, and Cancel while paused', async () => {
+    const { getByTestId } = await renderControls({ status: 'paused' });
 
     expect(getByTestId('sync-action-resume')).toBeTruthy();
     expect(getByTestId('sync-action-sync-now')).toBeTruthy();
     expect(getByTestId('sync-action-cancel')).toBeTruthy();
   });
 
-  it('shows Sync Now while pending', () => {
-    const { getByTestId, queryByTestId } = renderControls({
+  it('shows Sync Now while pending', async () => {
+    const { getByTestId, queryByTestId } = await renderControls({
       status: 'pending',
     });
 
@@ -74,16 +74,16 @@ describe('SyncActionControls', () => {
     expect(queryByTestId('sync-action-pause')).toBeNull();
   });
 
-  it('hides controls for uploadComplete and allComplete', () => {
-    const uploadComplete = renderControls({ status: 'uploadComplete' });
+  it('hides controls for uploadComplete and allComplete', async () => {
+    const uploadComplete = await renderControls({ status: 'uploadComplete' });
     expect(uploadComplete.toJSON()).toBeNull();
 
-    const allComplete = renderControls({ status: 'allComplete' });
+    const allComplete = await renderControls({ status: 'allComplete' });
     expect(allComplete.toJSON()).toBeNull();
   });
 
-  it('disables Sync Now without hint when syncNowDisabled and no hint', () => {
-    const { getByTestId, queryByText } = renderControls({
+  it('disables Sync Now without hint when syncNowDisabled and no hint', async () => {
+    const { getByTestId, queryByText } = await renderControls({
       status: 'pending',
       syncNowDisabled: true,
     });
@@ -94,8 +94,8 @@ describe('SyncActionControls', () => {
     expect(queryByText(SYNC_NOW_CELLULAR_DISABLED_MESSAGE)).toBeNull();
   });
 
-  it('disables Sync Now and shows explanation when hint provided', () => {
-    const { getByTestId, getByText } = renderControls({
+  it('disables Sync Now and shows explanation when hint provided', async () => {
+    const { getByTestId, getByText } = await renderControls({
       status: 'pending',
       syncNowDisabled: true,
       syncNowDisabledHint: SYNC_NOW_CELLULAR_DISABLED_MESSAGE,
@@ -107,8 +107,8 @@ describe('SyncActionControls', () => {
     expect(getByText(SYNC_NOW_CELLULAR_DISABLED_MESSAGE)).toBeTruthy();
   });
 
-  it('disables Sync Now and shows a custom explanation when provided', () => {
-    const { getByTestId, getByText, queryByText } = renderControls({
+  it('disables Sync Now and shows a custom explanation when provided', async () => {
+    const { getByTestId, getByText, queryByText } = await renderControls({
       status: 'pending',
       syncNowDisabled: true,
       syncNowDisabledHint: TRANSFER_OFFLINE_MESSAGE,
@@ -122,30 +122,30 @@ describe('SyncActionControls', () => {
     expect(queryByText(SYNC_NOW_CELLULAR_DISABLED_MESSAGE)).toBeNull();
   });
 
-  it('invokes callbacks for syncing controls', () => {
-    const { getByTestId } = renderControls({ status: 'syncing' });
+  it('invokes callbacks for syncing controls', async () => {
+    const { getByTestId } = await renderControls({ status: 'syncing' });
 
-    fireEvent.press(getByTestId('sync-action-pause'));
-    fireEvent.press(getByTestId('sync-action-cancel'));
+    await fireEvent.press(getByTestId('sync-action-pause'));
+    await fireEvent.press(getByTestId('sync-action-cancel'));
 
     expect(onPause).toHaveBeenCalledTimes(1);
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('invokes callbacks for paused controls', () => {
-    const { getByTestId } = renderControls({ status: 'paused' });
+  it('invokes callbacks for paused controls', async () => {
+    const { getByTestId } = await renderControls({ status: 'paused' });
 
-    fireEvent.press(getByTestId('sync-action-resume'));
-    fireEvent.press(getByTestId('sync-action-sync-now'));
-    fireEvent.press(getByTestId('sync-action-cancel'));
+    await fireEvent.press(getByTestId('sync-action-resume'));
+    await fireEvent.press(getByTestId('sync-action-sync-now'));
+    await fireEvent.press(getByTestId('sync-action-cancel'));
 
     expect(onResume).toHaveBeenCalledTimes(1);
     expect(onSyncNow).toHaveBeenCalledTimes(1);
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps Pause and Cancel enabled while busy during syncing', () => {
-    const { getByTestId } = renderControls({
+  it('keeps Pause and Cancel enabled while busy during syncing', async () => {
+    const { getByTestId } = await renderControls({
       status: 'syncing',
       busy: true,
     });
@@ -158,8 +158,8 @@ describe('SyncActionControls', () => {
     );
   });
 
-  it('disables Pause and Cancel while controlPending in syncing state', () => {
-    const { getByTestId } = renderControls({
+  it('disables Pause and Cancel while controlPending in syncing state', async () => {
+    const { getByTestId } = await renderControls({
       status: 'syncing',
       controlPending: true,
     });
@@ -172,8 +172,8 @@ describe('SyncActionControls', () => {
     );
   });
 
-  it('disables Resume and Cancel while controlPending in paused state', () => {
-    const { getByTestId } = renderControls({
+  it('disables Resume and Cancel while controlPending in paused state', async () => {
+    const { getByTestId } = await renderControls({
       status: 'paused',
       controlPending: true,
     });
@@ -186,8 +186,8 @@ describe('SyncActionControls', () => {
     );
   });
 
-  it('enables Resume in paused state when only metadata sync is busy', () => {
-    const { getByTestId } = renderControls({
+  it('enables Resume in paused state when only metadata sync is busy', async () => {
+    const { getByTestId } = await renderControls({
       status: 'paused',
       busy: true,
       controlPending: false,
@@ -198,8 +198,8 @@ describe('SyncActionControls', () => {
     );
   });
 
-  it('disables Sync Now while busy in pending state', () => {
-    const { getByTestId } = renderControls({
+  it('disables Sync Now while busy in pending state', async () => {
+    const { getByTestId } = await renderControls({
       status: 'pending',
       busy: true,
     });
@@ -209,17 +209,17 @@ describe('SyncActionControls', () => {
     ).toEqual(expect.objectContaining({ disabled: true }));
   });
 
-  it('does not call onSyncNow when Sync Now is disabled', () => {
-    const { getByTestId } = renderControls({
+  it('does not call onSyncNow when Sync Now is disabled', async () => {
+    const { getByTestId } = await renderControls({
       status: 'pending',
       syncNowDisabled: true,
     });
 
-    fireEvent.press(getByTestId('sync-action-sync-now'));
+    await fireEvent.press(getByTestId('sync-action-sync-now'));
     expect(onSyncNow).not.toHaveBeenCalled();
   });
 
-  it('isolates Next controls while controlled busy and status changes keep their semantics', () => {
+  it('isolates Next controls while controlled busy and status changes keep their semantics', async () => {
     const legacy = resolveTheme('legacy');
     const next = resolveTheme('next');
     const colors = next.colors as {
@@ -263,7 +263,7 @@ describe('SyncActionControls', () => {
       });
       spacing.sm = 19;
       radius.lg = 23;
-      const view = render(tree('legacy'));
+      const view = await render(tree('legacy'));
       const button = () => view.getByTestId('sync-action-sync-now');
       const iconColor = (id: string) =>
         within(view.getByTestId(id)).getByTestId('sync-action-test-icon').props
@@ -276,7 +276,7 @@ describe('SyncActionControls', () => {
       expect(view.getByText('Sync Now')).toHaveStyle({
         color: legacy.colors.primaryForeground,
       });
-      view.rerender(tree('next'));
+      await view.rerender(tree('next'));
       expect(button()).toHaveStyle({
         backgroundColor: '#345678',
         borderColor: '#345678',
@@ -285,7 +285,7 @@ describe('SyncActionControls', () => {
       });
       expect(view.getByText('Sync Now')).toHaveStyle({ color: '#456789' });
       expect(iconColor('sync-action-sync-now')).toBe('#456789');
-      view.rerender(
+      await view.rerender(
         tree('next', {
           busy: true,
           syncNowDisabled: true,
@@ -298,9 +298,9 @@ describe('SyncActionControls', () => {
         view.getByTestId('sync-action-sync-now-disabled-hint'),
       ).toHaveStyle({ color: '#56789a' });
       expect(iconColor('sync-action-sync-now')).toBe('#56789a');
-      fireEvent.press(button());
+      await fireEvent.press(button());
       expect(onSyncNow).not.toHaveBeenCalled();
-      view.rerender(tree('next', { status: 'paused', busy: true }));
+      await view.rerender(tree('next', { status: 'paused', busy: true }));
       expect(
         view.getByTestId('sync-action-resume').props.accessibilityState
           .disabled,
@@ -310,26 +310,28 @@ describe('SyncActionControls', () => {
         backgroundColor: '#123456',
         borderColor: '#6789ab',
       });
-      fireEvent.press(view.getByTestId('sync-action-resume'));
+      await fireEvent.press(view.getByTestId('sync-action-resume'));
       expect(onResume).toHaveBeenCalledTimes(1);
-      view.rerender(tree('next', { status: 'paused', controlPending: true }));
+      await view.rerender(
+        tree('next', { status: 'paused', controlPending: true }),
+      );
       expect(
         view.getByTestId('sync-action-resume').props.accessibilityState
           .disabled,
       ).toBe(true);
       expect(view.getByText('Resume')).toHaveStyle({ color: '#56789a' });
-      fireEvent.press(view.getByTestId('sync-action-resume'));
+      await fireEvent.press(view.getByTestId('sync-action-resume'));
       expect(onResume).toHaveBeenCalledTimes(1);
-      view.rerender(tree('next', { status: 'syncing', busy: true }));
+      await view.rerender(tree('next', { status: 'syncing', busy: true }));
       expect(view.queryByTestId('sync-action-sync-now')).toBeNull();
       expect(
         view.getByTestId('sync-action-pause').props.accessibilityState.disabled,
       ).toBe(false);
       expect(view.getByText('Pause')).toHaveStyle({ color: '#234567' });
       expect(iconColor('sync-action-pause')).toBe('#234567');
-      fireEvent.press(view.getByTestId('sync-action-pause'));
+      await fireEvent.press(view.getByTestId('sync-action-pause'));
       expect(onPause).toHaveBeenCalledTimes(1);
-      view.rerender(tree('legacy', { status: 'syncing', busy: true }));
+      await view.rerender(tree('legacy', { status: 'syncing', busy: true }));
       expect(view.getByTestId('sync-action-pause')).toHaveStyle({
         backgroundColor: legacy.colors.cardBackground,
         borderColor: legacy.colors.border,
@@ -340,7 +342,7 @@ describe('SyncActionControls', () => {
         color: legacy.colors.foreground,
       });
       expect(iconColor('sync-action-pause')).toBe(legacy.colors.foreground);
-      view.rerender(tree('legacy', { status: 'allComplete' }));
+      await view.rerender(tree('legacy', { status: 'allComplete' }));
       expect(view.toJSON()).toBeNull();
     } finally {
       Object.assign(colors, original.colors);

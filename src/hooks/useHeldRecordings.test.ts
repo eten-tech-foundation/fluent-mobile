@@ -65,7 +65,7 @@ describe('useHeldRecordings (#855)', () => {
   it('publishes the active account rows', async () => {
     rowsFor = async () => [held('a')];
 
-    const { result } = renderHook(() => useHeldRecordings());
+    const { result } = await renderHook(() => useHeldRecordings());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(mockGetHeldRecordings).toHaveBeenCalledWith(1);
@@ -74,7 +74,7 @@ describe('useHeldRecordings (#855)', () => {
 
   it('reloads when held recordings change', async () => {
     rowsFor = async () => [held('a')];
-    const { result } = renderHook(() => useHeldRecordings());
+    const { result } = await renderHook(() => useHeldRecordings());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     rowsFor = async () => [held('a'), held('b')];
@@ -90,7 +90,7 @@ describe('useHeldRecordings (#855)', () => {
   it('drops a load that resolves after the active account changed', async () => {
     const slow = deferred<HeldRecording[]>();
     rowsFor = () => slow.promise;
-    const { result } = renderHook(() => useHeldRecordings());
+    const { result } = await renderHook(() => useHeldRecordings());
 
     // The account switches while account 1's load is still in flight.
     mockActiveUserId = '2';
@@ -104,7 +104,7 @@ describe('useHeldRecordings (#855)', () => {
 
   it("clears the previous account's rows as soon as the next load runs", async () => {
     rowsFor = async () => [held('account-1-take')];
-    const { result } = renderHook(() => useHeldRecordings());
+    const { result } = await renderHook(() => useHeldRecordings());
     await waitFor(() =>
       expect(result.current.recordings.map(r => r.id)).toEqual([
         'account-1-take',
@@ -132,7 +132,7 @@ describe('useHeldRecordings (#855)', () => {
 
   it("hides the previous account's rows on render after a switch, before any reload", async () => {
     rowsFor = async () => [held('account-1-take')];
-    const { result, rerender } = renderHook(() => useHeldRecordings());
+    const { result, rerender } = await renderHook(() => useHeldRecordings());
     await waitFor(() =>
       expect(result.current.recordings.map(r => r.id)).toEqual([
         'account-1-take',
@@ -143,7 +143,7 @@ describe('useHeldRecordings (#855)', () => {
     // The screen stays mounted through the switch: no load, no event, only a
     // re-render (focus return, connectivity change, ...).
     mockActiveUserId = '2';
-    rerender({});
+    await rerender({});
 
     expect(result.current.recordings).toEqual([]);
     expect(mockGetHeldRecordings.mock.calls.length).toBe(loadsBeforeSwitch);
@@ -151,7 +151,7 @@ describe('useHeldRecordings (#855)', () => {
 
   it("loads the new account's rows when the switch epoch bumps while mounted", async () => {
     rowsFor = async userId => [held(`account-${userId}-take`)];
-    const { result, rerender } = renderHook(() => useHeldRecordings());
+    const { result, rerender } = await renderHook(() => useHeldRecordings());
     await waitFor(() =>
       expect(result.current.recordings.map(r => r.id)).toEqual([
         'account-1-take',
@@ -162,7 +162,7 @@ describe('useHeldRecordings (#855)', () => {
     // focus change and no held-changed event.
     mockActiveUserId = '2';
     mockEpoch = 1;
-    rerender({});
+    await rerender({});
 
     await waitFor(() =>
       expect(result.current.recordings.map(r => r.id)).toEqual([
@@ -173,7 +173,7 @@ describe('useHeldRecordings (#855)', () => {
 
   it('clears the list when nobody is signed in', async () => {
     rowsFor = async () => [held('a')];
-    const { result } = renderHook(() => useHeldRecordings());
+    const { result } = await renderHook(() => useHeldRecordings());
     await waitFor(() => expect(result.current.recordings).toHaveLength(1));
 
     mockActiveUserId = null;

@@ -106,6 +106,7 @@ function setupEngines() {
 }
 
 async function stopAfterStart(hookResult: { current: VerseAudioResult }) {
+  await waitFor(() => expect(hookResult.current.takesLoaded).toBe(true));
   await act(async () => {
     await hookResult.current.start();
   });
@@ -162,7 +163,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
 
     it('claims the chapter when offline with a known user', async () => {
       const onChapterClaimed = jest.fn();
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs(),
           persistTake,
@@ -182,7 +183,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
     });
 
     it('does not claim when userId is null, even offline', async () => {
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs({ userId: null }),
           persistTake,
@@ -197,7 +198,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
     });
 
     it('does not claim when chapterAssignmentId is null, even offline', async () => {
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs({ chapterAssignmentId: null }),
           persistTake,
@@ -213,7 +214,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
     it('still saves the take when offline claim throws, and logs the failure', async () => {
       mockClaimChapterOffline.mockRejectedValue(new Error('db locked'));
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs(),
           persistTake,
@@ -246,7 +247,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
           }),
       );
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs(),
           persistTake,
@@ -254,6 +255,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
         }),
       );
 
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
       await act(async () => {
         await result.current.start();
       });
@@ -277,7 +279,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
 
     it('syncs claim when the chapter is unassigned and online', async () => {
       const onChapterClaimed = jest.fn();
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs(),
           persistTake,
@@ -297,7 +299,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
     });
 
     it('retries claim on a later take while the chapter remains unassigned', async () => {
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs(),
           persistTake,
@@ -314,7 +316,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
     });
 
     it('does not claim again after a successful online claim in the same session', async () => {
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs(),
           persistTake,
@@ -329,7 +331,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
     });
 
     it('does not claim online when the chapter is already assigned locally', async () => {
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs({
             chapterClaim: { ...chapterClaim, assignedUserId: 99 },
@@ -346,7 +348,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
     });
 
     it('does not claim when chapterClaim context is omitted', async () => {
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useVerseAudio({
           ...verseAudioArgs({ chapterClaim: null }),
           persistTake,

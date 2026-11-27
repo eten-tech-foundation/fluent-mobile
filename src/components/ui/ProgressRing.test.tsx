@@ -16,8 +16,10 @@ describe('ProgressRing', () => {
     mockPreferenceStore();
   });
 
-  it('shows nothing at 0 (Figma None) but still announces progress', () => {
-    render(<ProgressRing value={0} accessibilityLabel="Download" testID="r" />);
+  it('shows nothing at 0 (Figma None) but still announces progress', async () => {
+    await render(
+      <ProgressRing value={0} accessibilityLabel="Download" testID="r" />,
+    );
 
     expect(screen.queryByTestId('r-arc')).toBeNull();
     expect(screen.getByRole('progressbar').props.accessibilityValue).toEqual({
@@ -27,8 +29,8 @@ describe('ProgressRing', () => {
     });
   });
 
-  it('draws the ring and reports the percent while in progress', () => {
-    render(
+  it('draws the ring and reports the percent while in progress', async () => {
+    await render(
       <ProgressRing value={0.5} accessibilityLabel="Download" testID="r" />,
     );
 
@@ -40,22 +42,22 @@ describe('ProgressRing', () => {
     });
   });
 
-  it('clamps values outside 0–1', () => {
-    const { rerender } = render(
+  it('clamps values outside 0–1', async () => {
+    const { rerender } = await render(
       <ProgressRing value={1.7} accessibilityLabel="Download" />,
     );
     expect(screen.getByRole('progressbar').props.accessibilityValue.now).toBe(
       100,
     );
 
-    rerender(<ProgressRing value={-0.2} accessibilityLabel="Download" />);
+    await rerender(<ProgressRing value={-0.2} accessibilityLabel="Download" />);
     expect(screen.getByRole('progressbar').props.accessibilityValue.now).toBe(
       0,
     );
   });
 
-  it('keeps its child separately focusable from the progress', () => {
-    render(
+  it('keeps its child separately focusable from the progress', async () => {
+    await render(
       <ProgressRing value={0.25} accessibilityLabel="Download">
         <Pressable accessibilityRole="button" accessibilityLabel="Start">
           <Text>button</Text>

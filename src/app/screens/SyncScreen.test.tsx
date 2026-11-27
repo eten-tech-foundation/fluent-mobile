@@ -268,10 +268,10 @@ describe('SyncScreen', () => {
   });
 
   it('takes the splash down when opened straight from the upload notification', async () => {
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
     expect(mockHideSplash).not.toHaveBeenCalled();
 
-    fireEvent(screen.getByTestId('sync-screen'), 'layout', {
+    await fireEvent(screen.getByTestId('sync-screen'), 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 640 } },
     });
 
@@ -291,12 +291,12 @@ describe('SyncScreen', () => {
     };
     mockHasPendingChapterClaimsForUser.mockResolvedValue(true);
 
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     await waitFor(() => {
       expect(screen.getByTestId('sync-action-sync-now')).toBeTruthy();
     });
-    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    await fireEvent.press(screen.getByTestId('sync-action-sync-now'));
     await waitFor(() => {
       expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
       expect(mockTriggerSync).toHaveBeenCalledTimes(1);
@@ -314,7 +314,7 @@ describe('SyncScreen', () => {
       pendingChapterCount: 0,
     };
 
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-action-sync-now')).toBeTruthy();
     expect(screen.getByTestId('sync-metadata-error')).toHaveTextContent(
@@ -323,9 +323,9 @@ describe('SyncScreen', () => {
   });
 
   it('calls syncNowUploads and triggerSync when Sync Now is pressed', async () => {
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
-    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    await fireEvent.press(screen.getByTestId('sync-action-sync-now'));
 
     await waitFor(() => {
       expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
@@ -335,9 +335,9 @@ describe('SyncScreen', () => {
 
   it('calls pause when Pause is pressed during syncing', async () => {
     mockPageStatus = 'syncing';
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
-    fireEvent.press(screen.getByTestId('sync-action-pause'));
+    await fireEvent.press(screen.getByTestId('sync-action-pause'));
 
     await waitFor(() => {
       expect(mockPause).toHaveBeenCalledTimes(1);
@@ -346,18 +346,18 @@ describe('SyncScreen', () => {
 
   it('calls cancel when Cancel is pressed during syncing', async () => {
     mockPageStatus = 'syncing';
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
     expect(screen.getByText('Uploading')).toBeTruthy();
     expect(screen.getByText('0 of 3 chapters uploaded')).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId('sync-action-cancel'));
+    await fireEvent.press(screen.getByTestId('sync-action-cancel'));
 
     await waitFor(() => {
       expect(mockCancel).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('shows Paused instead of All synced when the session is paused', () => {
+  it('shows Paused instead of All synced when the session is paused', async () => {
     mockPageStatus = 'paused';
     mockPendingUploads = {
       ...mockPendingUploads,
@@ -366,7 +366,7 @@ describe('SyncScreen', () => {
       pendingChapterCount: 0,
       isUploading: true,
     };
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getAllByText('Paused').length).toBeGreaterThan(0);
     expect(screen.queryByText('Syncing…')).toBeNull();
@@ -380,9 +380,9 @@ describe('SyncScreen', () => {
 
   it('calls syncNowUploads and triggerSync when Resume is pressed', async () => {
     mockPageStatus = 'paused';
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
-    fireEvent.press(screen.getByTestId('sync-action-resume'));
+    await fireEvent.press(screen.getByTestId('sync-action-resume'));
 
     await waitFor(() => {
       expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
@@ -393,9 +393,9 @@ describe('SyncScreen', () => {
   it('calls syncNowUploads but not triggerSync on Resume when metadata sync is in flight', async () => {
     mockPageStatus = 'paused';
     mockIsSyncing = true;
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
-    fireEvent.press(screen.getByTestId('sync-action-resume'));
+    await fireEvent.press(screen.getByTestId('sync-action-resume'));
 
     await waitFor(() => {
       expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
@@ -405,9 +405,9 @@ describe('SyncScreen', () => {
 
   it('still calls syncNowUploads when Sync Now is pressed during metadata sync', async () => {
     mockIsSyncing = true;
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
-    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    await fireEvent.press(screen.getByTestId('sync-action-sync-now'));
 
     await waitFor(() => {
       expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
@@ -415,9 +415,9 @@ describe('SyncScreen', () => {
     });
   });
 
-  it('disables Sync Now when cellular is blocked', () => {
+  it('disables Sync Now when cellular is blocked', async () => {
     mockCellularBlocked = true;
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
     expect(
@@ -425,17 +425,17 @@ describe('SyncScreen', () => {
     ).toHaveTextContent(SYNC_NOW_CELLULAR_DISABLED_MESSAGE);
   });
 
-  it('disables Sync Now with an offline reason when transport is offline', () => {
+  it('disables Sync Now with an offline reason when transport is offline', async () => {
     mockIsOnline = false;
     mockIsLinkOnline = false;
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
     expect(
       screen.getByTestId('sync-action-sync-now-disabled-hint'),
     ).toHaveTextContent(SYNC_NOW_OFFLINE_MESSAGE);
 
-    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    await fireEvent.press(screen.getByTestId('sync-action-sync-now'));
     expect(mockSyncNowFromHook).not.toHaveBeenCalled();
     expect(mockTriggerSync).not.toHaveBeenCalled();
   });
@@ -446,10 +446,10 @@ describe('SyncScreen', () => {
     ['online idle queue', true, true],
   ] as const)(
     'does not describe pending work as Uploading with no active session: %s',
-    (_label, isOnline, isLinkOnline) => {
+    async (_label, isOnline, isLinkOnline) => {
       mockIsOnline = isOnline;
       mockIsLinkOnline = isLinkOnline;
-      render(<SyncScreen />);
+      await render(<SyncScreen />);
 
       expect(
         screen.getByText(
@@ -465,7 +465,7 @@ describe('SyncScreen', () => {
   );
 
   describe('truthful progress (#886)', () => {
-    it('shows Syncing… instead of all synced while a metadata pass started elsewhere is in flight', () => {
+    it('shows Syncing… instead of all synced while a metadata pass started elsewhere is in flight', async () => {
       mockPageStatus = 'allComplete';
       mockMetadataSyncActive = true;
       mockPendingUploads = {
@@ -474,7 +474,7 @@ describe('SyncScreen', () => {
         pendingCount: 0,
         pendingChapterCount: 0,
       };
-      render(<SyncScreen />);
+      await render(<SyncScreen />);
 
       expect(screen.getByText('Syncing…')).toBeTruthy();
       expect(screen.getByTestId('sync-metadata-syncing')).toBeTruthy();
@@ -485,10 +485,10 @@ describe('SyncScreen', () => {
       expect(screen.queryByText('Online · all synced')).toBeNull();
     });
 
-    it('keeps the upload copy when takes are uploading during a metadata pass', () => {
+    it('keeps the upload copy when takes are uploading during a metadata pass', async () => {
       mockPageStatus = 'syncing';
       mockMetadataSyncActive = true;
-      render(<SyncScreen />);
+      await render(<SyncScreen />);
 
       expect(
         screen.getByText('Uploading your recordings to Fluent.'),
@@ -496,9 +496,9 @@ describe('SyncScreen', () => {
       expect(screen.queryByTestId('sync-metadata-syncing')).toBeNull();
     });
 
-    it('shows the held state with Sync Now while drafting holds automatic uploads', () => {
+    it('shows the held state with Sync Now while drafting holds automatic uploads', async () => {
       mockPageStatus = 'held';
-      render(<SyncScreen />);
+      await render(<SyncScreen />);
 
       expect(screen.getByText('Upload waiting · drafting open')).toBeTruthy();
       expect(screen.getByTestId('sync-held-subtitle')).toBeTruthy();
@@ -507,7 +507,7 @@ describe('SyncScreen', () => {
       expect(screen.queryByTestId('sync-upload-section')).toBeNull();
     });
 
-    it('shows per-take progress for the chapter uploading now', () => {
+    it('shows per-take progress for the chapter uploading now', async () => {
       mockPageStatus = 'syncing';
       mockProgressCurrentChapter = {
         bookId: 1,
@@ -516,7 +516,7 @@ describe('SyncScreen', () => {
         failedTakes: 0,
         totalTakes: 10,
       };
-      render(<SyncScreen />);
+      await render(<SyncScreen />);
 
       expect(screen.getByText('0 of 3 chapters uploaded')).toBeTruthy();
       expect(
@@ -525,13 +525,13 @@ describe('SyncScreen', () => {
     });
   });
 
-  it('keeps the upload section while pending and an upload session is active', () => {
+  it('keeps the upload section while pending and an upload session is active', async () => {
     mockPageStatus = 'pending';
     mockPendingUploads = {
       ...mockPendingUploads,
       isUploading: true,
     };
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-upload-section')).toBeTruthy();
     expect(screen.getByText('Uploading')).toBeTruthy();
@@ -539,10 +539,10 @@ describe('SyncScreen', () => {
     expect(screen.getByText('0 of 3 chapters uploaded')).toBeTruthy();
   });
 
-  it('does not show the transport-offline hint when only Fluent health is down', () => {
+  it('does not show the transport-offline hint when only Fluent health is down', async () => {
     mockIsOnline = false;
     mockIsLinkOnline = true;
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
     expect(
@@ -550,17 +550,17 @@ describe('SyncScreen', () => {
     ).toBeNull();
   });
 
-  it('disables Sync Now until connectivity has resolved', () => {
+  it('disables Sync Now until connectivity has resolved', async () => {
     mockConnectivityPending = true;
     mockTransferConnectivityPending = true;
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-action-sync-now')).toBeDisabled();
     expect(
       screen.queryByTestId('sync-action-sync-now-disabled-hint'),
     ).toBeNull();
 
-    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    await fireEvent.press(screen.getByTestId('sync-action-sync-now'));
     expect(mockSyncNowFromHook).not.toHaveBeenCalled();
   });
 
@@ -575,19 +575,19 @@ describe('SyncScreen', () => {
       unuploadableCount: 1,
       hasUnuploadablePending: true,
     };
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByText("Online · some takes can't upload")).toBeTruthy();
     expect(screen.queryByText('Online · upload pending')).toBeNull();
     expect(screen.getByTestId('sync-action-sync-now')).not.toBeDisabled();
-    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    await fireEvent.press(screen.getByTestId('sync-action-sync-now'));
     await waitFor(() => {
       expect(mockSyncNowFromHook).toHaveBeenCalledTimes(1);
       expect(mockTriggerSync).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('shows no status until the first count read lands (#1002)', () => {
+  it('shows no status until the first count read lands (#1002)', async () => {
     mockPageStatus = 'allComplete';
     mockPendingUploads = {
       ...mockPendingUploads,
@@ -596,20 +596,20 @@ describe('SyncScreen', () => {
       pendingChapterCount: 0,
       countsRead: false,
     };
-    const { rerender } = render(<SyncScreen />);
+    const { rerender } = await render(<SyncScreen />);
 
     expect(screen.queryByText('Online · all synced')).toBeNull();
     expect(screen.queryByText('Offline · nothing pending')).toBeNull();
     expect(screen.queryByText('All synced')).toBeNull();
 
     mockPendingUploads = { ...mockPendingUploads, countsRead: true };
-    rerender(<SyncScreen />);
+    await rerender(<SyncScreen />);
 
     expect(screen.getByText('Online · all synced')).toBeTruthy();
     expect(screen.getByText('All synced')).toBeTruthy();
   });
 
-  it('does not show All synced when pending counts are unknown', () => {
+  it('does not show All synced when pending counts are unknown', async () => {
     mockPageStatus = 'pending';
     mockPendingUploads = {
       ...mockPendingUploads,
@@ -620,7 +620,7 @@ describe('SyncScreen', () => {
       hasUnuploadablePending: false,
       countsUnknown: true,
     };
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.queryByText('Online · all synced')).toBeNull();
     expect(screen.queryByText('Upload complete')).toBeNull();
@@ -630,7 +630,7 @@ describe('SyncScreen', () => {
     expect(screen.getByText("Couldn't check pending uploads")).toBeTruthy();
   });
 
-  it('surfaces unuploadable pending instead of a successful no-op', () => {
+  it('surfaces unuploadable pending instead of a successful no-op', async () => {
     mockPendingUploads = {
       ...mockPendingUploads,
       hasPendingUploads: false,
@@ -639,7 +639,7 @@ describe('SyncScreen', () => {
       unuploadableCount: 3,
       hasUnuploadablePending: true,
     };
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-unuploadable-error')).toHaveTextContent(
       formatUnuploadablePendingMessage(3),
@@ -656,7 +656,7 @@ describe('SyncScreen', () => {
     ).toBeNull();
   });
 
-  it('does not promise a successful upload when count>0 but chapters are empty', () => {
+  it('does not promise a successful upload when count>0 but chapters are empty', async () => {
     mockPendingUploads = {
       ...mockPendingUploads,
       hasPendingUploads: true,
@@ -665,7 +665,7 @@ describe('SyncScreen', () => {
       unuploadableCount: 3,
       hasUnuploadablePending: true,
     };
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-unuploadable-error')).toHaveTextContent(
       formatUnuploadablePendingMessage(3),
@@ -684,25 +684,25 @@ describe('SyncScreen', () => {
   it('does not start sync while connectivity is still pending', async () => {
     mockConnectivityPending = true;
     mockTransferConnectivityPending = true;
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
-    fireEvent.press(screen.getByTestId('sync-action-sync-now'));
+    await fireEvent.press(screen.getByTestId('sync-action-sync-now'));
 
     expect(mockSyncNowFromHook).not.toHaveBeenCalled();
     expect(mockTriggerSync).not.toHaveBeenCalled();
   });
 
-  it('shows metadata sync failures from useSync', () => {
+  it('shows metadata sync failures from useSync', async () => {
     mockStateType = 'error';
     mockDisplayText = 'Sync failed: chapter claims';
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-metadata-error')).toHaveTextContent(
       'Sync failed: chapter claims',
     );
   });
 
-  it('shows sanitized upload_error when selected takes have failed', () => {
+  it('shows sanitized upload_error when selected takes have failed', async () => {
     mockPendingUploads = {
       ...mockPendingUploads,
       hasFailedUploads: true,
@@ -710,26 +710,26 @@ describe('SyncScreen', () => {
       failedErrorText:
         'Audio storage is currently unavailable. Try again later.',
     };
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-failed-error')).toHaveTextContent(
       'Audio storage is currently unavailable. Try again later.',
     );
   });
 
-  it('does not show sync-failed-error when failed uploads have no upload_error text', () => {
+  it('does not show sync-failed-error when failed uploads have no upload_error text', async () => {
     mockPendingUploads = {
       ...mockPendingUploads,
       hasFailedUploads: true,
       failedCount: 1,
       failedErrorText: null,
     };
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.queryByTestId('sync-failed-error')).toBeNull();
   });
 
-  it('shows held recordings grouped by project and chapter with playback rows (#855)', () => {
+  it('shows held recordings grouped by project and chapter with playback rows (#855)', async () => {
     mockPageStatus = 'allComplete';
     mockPendingUploads = {
       ...mockPendingUploads,
@@ -774,7 +774,7 @@ describe('SyncScreen', () => {
       },
     ];
 
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-held-section')).toBeTruthy();
     expect(
@@ -805,14 +805,14 @@ describe('SyncScreen', () => {
     ).toBeNull();
   });
 
-  it('does not render the held section when nothing is held', () => {
-    render(<SyncScreen />);
+  it('does not render the held section when nothing is held', async () => {
+    await render(<SyncScreen />);
 
     expect(screen.queryByTestId('sync-held-section')).toBeNull();
     expect(screen.queryByTestId('sync-held-banner')).toBeNull();
   });
 
-  it('shows failed upload detail while offline', () => {
+  it('shows failed upload detail while offline', async () => {
     mockIsOnline = false;
     mockIsLinkOnline = false;
     mockPendingUploads = {
@@ -823,7 +823,7 @@ describe('SyncScreen', () => {
       failedErrorText:
         'Missing projectUnitId for recording (no matching chapter assignment)',
     };
-    render(<SyncScreen />);
+    await render(<SyncScreen />);
 
     expect(screen.getByTestId('sync-failed-error')).toHaveTextContent(
       'Missing projectUnitId for recording (no matching chapter assignment)',

@@ -90,14 +90,22 @@ describe('SyncStatusIndicator', () => {
       'online_pending',
       false,
     ],
-  ] as const)('preserves status mapping for %o', (props, status, animated) => {
-    const view = render(<SyncStatusIndicator {...props} />);
-    expect(view.getByTestId('indicator-cloud').props).toEqual(
-      expect.objectContaining({ status, animated, size: 48, decorative: true }),
-    );
-  });
+  ] as const)(
+    'preserves status mapping for %o',
+    async (props, status, animated) => {
+      const view = await render(<SyncStatusIndicator {...props} />);
+      expect(view.getByTestId('indicator-cloud').props).toEqual(
+        expect.objectContaining({
+          status,
+          animated,
+          size: 48,
+          decorative: true,
+        }),
+      );
+    },
+  );
 
-  it('uses the scoped palette while status changes and Legacy return stay independent', () => {
+  it('uses the scoped palette while status changes and Legacy return stay independent', async () => {
     const legacy = resolveTheme('legacy');
     const next = resolveTheme('next');
     const colors = next.colors as {
@@ -121,7 +129,7 @@ describe('SyncStatusIndicator', () => {
         cardBackground: '#123456',
         mutedForeground: '#456789',
       });
-      const view = render(tree('legacy'));
+      const view = await render(tree('legacy'));
       const cloud = () => view.getByTestId('indicator-cloud');
       expect(cloud().props.cloudColor).toBe(legacy.colors.mutedForeground);
       expect(view.root).toHaveStyle({
@@ -130,7 +138,7 @@ describe('SyncStatusIndicator', () => {
         height: 96,
         borderRadius: 48,
       });
-      view.rerender(tree('next'));
+      await view.rerender(tree('next'));
       expect(cloud().props.cloudColor).toBe('#456789');
       expect(view.root).toHaveStyle({
         backgroundColor: '#123456',
@@ -138,7 +146,7 @@ describe('SyncStatusIndicator', () => {
         height: 96,
         borderRadius: 48,
       });
-      view.rerender(tree('next', 'paused'));
+      await view.rerender(tree('next', 'paused'));
       expect(cloud().props).toEqual(
         expect.objectContaining({
           status: 'online_syncing',
@@ -146,7 +154,7 @@ describe('SyncStatusIndicator', () => {
           cloudColor: '#456789',
         }),
       );
-      view.rerender(tree('legacy'));
+      await view.rerender(tree('legacy'));
       expect(cloud().props.cloudColor).toBe(legacy.colors.mutedForeground);
       expect(view.root).toHaveStyle({
         backgroundColor: legacy.colors.cardBackground,

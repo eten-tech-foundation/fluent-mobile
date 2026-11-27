@@ -152,7 +152,7 @@ async function flushPlaybackEffects(): Promise<void> {
 async function renderTab(
   overrides: Partial<ObserverDraftTabProps> = {},
 ): Promise<RenderResult> {
-  const view = render(<ObserverDraftTab {...defaultProps(overrides)} />);
+  const view = await render(<ObserverDraftTab {...defaultProps(overrides)} />);
   await flushPlaybackEffects();
   return view;
 }
@@ -161,7 +161,7 @@ async function rerenderTab(
   view: RenderResult,
   overrides: Partial<ObserverDraftTabProps>,
 ): Promise<void> {
-  view.rerender(<ObserverDraftTab {...defaultProps(overrides)} />);
+  await view.rerender(<ObserverDraftTab {...defaultProps(overrides)} />);
   await flushPlaybackEffects();
 }
 
@@ -184,7 +184,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
 
   afterEach(async () => {
     await act(async () => {
-      view?.unmount();
+      await view?.unmount();
     });
     await flushPlaybackEffects();
     view = undefined;
@@ -193,7 +193,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
   it('reuses usePlaybackEngine load+resume for the canonical unit URI', async () => {
     view = await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
 
     await waitFor(() => {
       expect(mockPlaybackLoad).toHaveBeenCalledTimes(1);
@@ -273,7 +273,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
   it('stops playback when the tab is hidden', async () => {
     view = await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackResume).toHaveBeenCalled();
     });
@@ -291,7 +291,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
   it('stops playback on account change', async () => {
     view = await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackResume).toHaveBeenCalled();
     });
@@ -310,7 +310,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
     const onSelectUnit = jest.fn();
     view = await renderTab({ onSelectUnit });
 
-    fireEvent.press(screen.getByTestId('observer-draft-verse-row-3'));
+    await fireEvent.press(screen.getByTestId('observer-draft-verse-row-3'));
     expect(onSelectUnit).toHaveBeenCalledWith({
       bibleTextId: 101,
       verseNumber: 3,
@@ -319,7 +319,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
     });
     expect(screen.getByLabelText(/selected/i)).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackResume).toHaveBeenCalled();
     });
@@ -357,7 +357,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
   it('stops playback on access loss', async () => {
     view = await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackResume).toHaveBeenCalled();
     });
@@ -375,7 +375,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
   it('stops when canonical URI is replaced while playing', async () => {
     view = await renderTab();
 
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackResume).toHaveBeenCalled();
     });
@@ -398,7 +398,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
       unresolvedConflictPlaybackPolicy: 'allow',
     });
 
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackResume).toHaveBeenCalled();
     });
@@ -429,7 +429,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
     );
 
     view = await renderTab();
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
 
     await waitFor(() => {
       expect(mockPlaybackLoad).toHaveBeenCalled();
@@ -456,7 +456,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
     );
 
     view = await renderTab();
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackLoad).toHaveBeenCalledTimes(1);
     });
@@ -482,7 +482,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
     );
 
     view = await renderTab();
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackLoad).toHaveBeenCalledTimes(1);
       expect(mockPlaybackLoad).toHaveBeenCalledWith('file:///canonical/55.m4a');
@@ -516,7 +516,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
       units: [unit({ conflictStatus: 'conflict' })],
       unresolvedConflictPlaybackPolicy: 'allow',
     });
-    fireEvent.press(screen.getByTestId('record-play-button-55'));
+    await fireEvent.press(screen.getByTestId('record-play-button-55'));
     await waitFor(() => {
       expect(mockPlaybackLoad).toHaveBeenCalledTimes(1);
     });
@@ -543,7 +543,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
     const onSelectUnit = jest.fn();
     view = await renderTab({ onSelectUnit });
 
-    fireEvent.press(screen.getByTestId('observer-draft-verse-row-3'));
+    await fireEvent.press(screen.getByTestId('observer-draft-verse-row-3'));
 
     expect(onSelectUnit).toHaveBeenCalledWith({
       bibleTextId: 101,
@@ -562,7 +562,7 @@ describe('ObserverDraftTab (#452 partial read-only)', () => {
         unresolvedConflictPlaybackPolicy: 'allow',
       });
 
-      fireEvent.press(screen.getByTestId('record-play-button-55'));
+      await fireEvent.press(screen.getByTestId('record-play-button-55'));
       await waitFor(() => {
         expect(mockPlaybackLoad).toHaveBeenCalledWith(
           'file:///canonical/55.m4a',

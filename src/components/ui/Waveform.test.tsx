@@ -36,8 +36,8 @@ describe('Waveform', () => {
     mockPreferenceStore();
   });
 
-  it('draws each bar at its amplitude and reports the percent', () => {
-    render(
+  it('draws each bar at its amplitude and reports the percent', async () => {
+    await render(
       <Waveform
         verses={VERSES}
         progress={0.5}
@@ -56,8 +56,8 @@ describe('Waveform', () => {
     ).toEqual({ min: 0, max: 100, now: 50 });
   });
 
-  it('colors bars before the playhead as played', () => {
-    render(
+  it('colors bars before the playhead as played', async () => {
+    await render(
       <Waveform
         verses={VERSES}
         progress={0.5}
@@ -72,8 +72,8 @@ describe('Waveform', () => {
     expect(colorOf('w-bar-7')).toBe(colorOf('w-bar-4'));
   });
 
-  it('marks verse chips current once playback reaches them', () => {
-    const { rerender } = render(
+  it('marks verse chips current once playback reaches them', async () => {
+    const { rerender } = await render(
       <Waveform
         verses={VERSES}
         progress={0.25}
@@ -85,7 +85,7 @@ describe('Waveform', () => {
     const ahead = colorOf('w-verse-23');
     expect(ahead).not.toBe(reached);
 
-    rerender(
+    await rerender(
       <Waveform
         verses={VERSES}
         progress={0.5}
@@ -96,13 +96,13 @@ describe('Waveform', () => {
     expect(colorOf('w-verse-23')).toBe(reached);
   });
 
-  it('lands exactly on a verse start for ratios that do not divide evenly', () => {
+  it('lands exactly on a verse start for ratios that do not divide evenly', async () => {
     const verses = [
       { verse: 1, bars: Array(7).fill(10) },
       { verse: 2, bars: Array(7).fill(10) },
       { verse: 3, bars: Array(7).fill(10) },
     ];
-    render(
+    await render(
       <Waveform
         verses={verses}
         progress={7 / 21}
@@ -116,8 +116,8 @@ describe('Waveform', () => {
     expect(colorOf('w-verse-2')).toBe(colorOf('w-verse-1'));
   });
 
-  it('clamps progress outside 0–1', () => {
-    render(
+  it('clamps progress outside 0–1', async () => {
+    await render(
       <Waveform
         verses={VERSES}
         progress={1.4}
@@ -132,8 +132,8 @@ describe('Waveform', () => {
     expect(colorOf('w-bar-7')).toBe(colorOf('w-bar-0'));
   });
 
-  it('hides the bars and chips from TalkBack', () => {
-    render(
+  it('hides the bars and chips from TalkBack', async () => {
+    await render(
       <Waveform
         verses={VERSES}
         progress={0}
@@ -152,12 +152,12 @@ describe('Waveform windowing and chips', () => {
     mockPreferenceStore();
   });
 
-  it('only mounts bars for verses near the frame', () => {
+  it('only mounts bars for verses near the frame', async () => {
     const long = Array.from({ length: 30 }, (_, i) => ({
       verse: i + 1,
       bars: Array(20).fill(10),
     }));
-    render(
+    await render(
       <Waveform
         verses={long}
         progress={0}
@@ -170,12 +170,12 @@ describe('Waveform windowing and chips', () => {
     expect(screen.queryByTestId('w-bar-580', hidden)).toBeNull();
   });
 
-  it('still mounts only nearby bars without verse chips', () => {
+  it('still mounts only nearby bars without verse chips', async () => {
     const long = Array.from({ length: 30 }, () => ({
       verse: null,
       bars: Array(20).fill(10),
     }));
-    render(
+    await render(
       <Waveform
         verses={long}
         progress={0}
@@ -189,13 +189,13 @@ describe('Waveform windowing and chips', () => {
     expect(screen.queryByTestId('w-verse-1', hidden)).toBeNull();
   });
 
-  it('keeps the way mounted while a seek glides, then trims it', () => {
+  it('keeps the way mounted while a seek glides, then trims it', async () => {
     jest.useFakeTimers();
     const long = Array.from({ length: 30 }, (_, i) => ({
       verse: i + 1,
       bars: Array(20).fill(10),
     }));
-    const { rerender } = render(
+    const { rerender } = await render(
       <Waveform
         verses={long}
         progress={0}
@@ -203,10 +203,10 @@ describe('Waveform windowing and chips', () => {
         testID="w"
       />,
     );
-    fireEvent(screen.getByTestId('w'), 'layout', {
+    await fireEvent(screen.getByTestId('w'), 'layout', {
       nativeEvent: { layout: { width: 360, height: 52 } },
     });
-    rerender(
+    await rerender(
       <Waveform
         verses={long}
         progress={0.5}
@@ -218,7 +218,7 @@ describe('Waveform windowing and chips', () => {
     expect(screen.getByTestId('w-bar-300', hidden)).toBeTruthy();
     expect(screen.getByTestId('w-bar-0', hidden)).toBeTruthy();
 
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
     expect(screen.getByTestId('w-bar-300', hidden)).toBeTruthy();
@@ -226,14 +226,14 @@ describe('Waveform windowing and chips', () => {
     jest.useRealTimers();
   });
 
-  it('keeps the strip in the frame when pinned at the recording front', () => {
+  it('keeps the strip in the frame when pinned at the recording front', async () => {
     const long = [
       {
         verse: null as number | null,
         bars: Array(80).fill(10) as number[],
       },
     ];
-    render(
+    await render(
       <Waveform
         verses={long}
         progress={1}
@@ -242,7 +242,7 @@ describe('Waveform windowing and chips', () => {
         testID="w"
       />,
     );
-    fireEvent(screen.getByTestId('w'), 'layout', {
+    await fireEvent(screen.getByTestId('w'), 'layout', {
       nativeEvent: { layout: { width: 360, height: 52 } },
     });
 
@@ -250,8 +250,8 @@ describe('Waveform windowing and chips', () => {
     expect(screen.getByTestId('w-bar-79', hidden)).toBeTruthy();
   });
 
-  it('widens the chip for three-digit verses', () => {
-    render(
+  it('widens the chip for three-digit verses', async () => {
+    await render(
       <Waveform
         verses={[
           { verse: 99, bars: [10] },
@@ -336,9 +336,9 @@ describe('Waveform scrubbing', () => {
     mockPreferenceStore();
   });
 
-  it('steps a seekable waveform with TalkBack', () => {
+  it('steps a seekable waveform with TalkBack', async () => {
     const onSeek = jest.fn();
-    render(
+    await render(
       <Waveform
         verses={VERSES}
         progress={0.5}
@@ -349,20 +349,20 @@ describe('Waveform scrubbing', () => {
     const wave = screen.getByLabelText('Take 1 playback');
 
     expect(wave.props.accessibilityRole).toBe('adjustable');
-    fireEvent(wave, 'accessibilityAction', {
+    await fireEvent(wave, 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' },
     });
-    fireEvent(wave, 'accessibilityAction', {
+    await fireEvent(wave, 'accessibilityAction', {
       nativeEvent: { actionName: 'decrement' },
     });
-    fireEvent(wave, 'accessibilityAction', {
+    await fireEvent(wave, 'accessibilityAction', {
       nativeEvent: { actionName: 'activate' },
     });
     expect(onSeek.mock.calls.map(call => call[0])).toEqual([0.55, 0.45]);
   });
 
-  it('stays a plain progress bar without onSeek', () => {
-    render(
+  it('stays a plain progress bar without onSeek', async () => {
+    await render(
       <Waveform verses={VERSES} progress={0.5} accessibilityLabel="Source" />,
     );
 

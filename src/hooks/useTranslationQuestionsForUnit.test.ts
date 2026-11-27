@@ -39,7 +39,7 @@ describe('useTranslationQuestionsForUnit', () => {
   it('loads questions for units that have TQ content', async () => {
     mockLoad.mockResolvedValue(SAMPLE_QUESTIONS);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTranslationQuestionsForUnit({
         projectId: 7,
         bookCode: 'MRK',
@@ -70,7 +70,7 @@ describe('useTranslationQuestionsForUnit', () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
     mockLoad.mockResolvedValueOnce(SAMPLE_QUESTIONS);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useTranslationQuestionsForUnit({
         projectId: 7,
         bookCode: 'MRK',
@@ -100,7 +100,7 @@ describe('useTranslationQuestionsForUnit', () => {
   it('does not show the previous unit while the next load is still pending', async () => {
     mockLoad.mockResolvedValue(SAMPLE_QUESTIONS);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({
         projectId,
         bookCode,
@@ -147,7 +147,7 @@ describe('useTranslationQuestionsForUnit', () => {
     });
     mockLoad.mockReturnValueOnce(pendingLoad);
 
-    rerender({
+    await rerender({
       projectId: 7,
       bookCode: 'MRK',
       chapterNumber: 14,
@@ -169,4 +169,39 @@ describe('useTranslationQuestionsForUnit', () => {
     }
     expect(result.current.state.questions).toEqual([]);
   });
+
+  it.each([
+    ['account', { userId: 6 }],
+    ['language', { languageCode: 'spa' }],
+  ])(
+    "never renders the previous %s's questions after a switch",
+    async (_name, change) => {
+      mockLoad.mockResolvedValueOnce(SAMPLE_QUESTIONS);
+      const rendered: string[] = [];
+      const base = {
+        projectId: 7,
+        userId: 5 as number | null,
+        languageCode: 'eng',
+        bookCode: 'MRK',
+        chapterNumber: 14,
+        verseNumber: 2,
+      };
+      const { result, rerender } = await renderHook(
+        (props: typeof base) => {
+          const hook = useTranslationQuestionsForUnit(props);
+          rendered.push(hook.state.status);
+          return hook;
+        },
+        { initialProps: base },
+      );
+      await waitFor(() => {
+        expect(result.current.state.status).toBe('ready');
+      });
+
+      mockLoad.mockReturnValueOnce(new Promise(() => {}));
+      const from = rendered.length;
+      await rerender({ ...base, ...change });
+      expect(rendered.slice(from)).not.toContain('ready');
+    },
+  );
 });

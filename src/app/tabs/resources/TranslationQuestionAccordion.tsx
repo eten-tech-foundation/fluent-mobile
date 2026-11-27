@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import { TRANSLATION_QUESTION_NO_ANSWER } from '../../../constants/messages';
 import { theme, iconSizes, listIconStrokeWidth } from '../../../theme';
 
 if (Platform.OS === 'android') {
@@ -33,9 +34,7 @@ export function TranslationQuestionAccordion({
   onToggle,
   testID,
 }: TranslationQuestionAccordionProps) {
-  const answerBody = answer.trim()
-    ? answer
-    : 'No answer available for this question.';
+  const answerBody = answer.trim() ? answer : TRANSLATION_QUESTION_NO_ANSWER;
 
   return (
     <View style={styles.card} testID={testID}>

@@ -13,8 +13,8 @@ jest.mock('../../services/storage', () => ({
 
 const hidden = { includeHiddenElements: true };
 
-function renderBook(recorded: number, peerChecked = false) {
-  render(
+async function renderBook(recorded: number, peerChecked = false) {
+  await render(
     <BookCover
       bookName="Mark"
       recorded={recorded}
@@ -22,7 +22,7 @@ function renderBook(recorded: number, peerChecked = false) {
       testID="book"
     />,
   );
-  measureFace('book-face');
+  await measureFace('book-face');
 }
 
 describe('BookCover', () => {
@@ -30,19 +30,19 @@ describe('BookCover', () => {
     mockPreferenceStore();
   });
 
-  it('has no badge before a chapter is recorded', () => {
-    renderBook(0);
+  it('has no badge before a chapter is recorded', async () => {
+    await renderBook(0);
     expect(screen.queryByTestId('cover-badge', hidden)).toBeNull();
   });
 
-  it('fills the ring as its chapters are recorded', () => {
-    renderBook(0.4);
+  it('fills the ring as its chapters are recorded', async () => {
+    await renderBook(0.4);
     expect(ringFill()).toBeCloseTo(0.4);
     expect(screen.queryByTestId('cover-badge-check', hidden)).toBeNull();
   });
 
-  it('shows a check once every chapter passes peer check', () => {
-    renderBook(1, true);
+  it('shows a check once every chapter passes peer check', async () => {
+    await renderBook(1, true);
     expect(screen.getByTestId('cover-badge-check', hidden)).toBeTruthy();
     expect(screen.queryByTestId('cover-badge-ring', hidden)).toBeNull();
   });

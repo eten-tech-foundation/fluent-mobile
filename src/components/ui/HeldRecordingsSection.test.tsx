@@ -69,7 +69,7 @@ describe('HeldRecordingsSection (#855)', () => {
     jest.clearAllMocks();
   });
 
-  it('labels verse and pericope takes', () => {
+  it('labels verse and pericope takes', async () => {
     expect(formatHeldRecordingLabel(held())).toBe('v. 5');
     expect(
       formatHeldRecordingLabel(
@@ -111,7 +111,7 @@ describe('HeldRecordingsSection (#855)', () => {
     ).toBe('vv. 5–7 · Take 3');
   });
 
-  it('groups by project and chapter in query order', () => {
+  it('groups by project and chapter in query order', async () => {
     const groups = groupHeldRecordings([
       held(),
       held({ id: 'held-2', chapterNumber: 2 }),
@@ -129,29 +129,31 @@ describe('HeldRecordingsSection (#855)', () => {
   });
 
   it('plays a held recording from the device and pauses it again', async () => {
-    render(<HeldRecordingsSection recordings={[held()]} />);
+    await render(<HeldRecordingsSection recordings={[held()]} />);
 
-    fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await fireEvent.press(screen.getByTestId('record-play-button-held-1'));
     await waitFor(() => {
       expect(mockPlay).toHaveBeenCalledWith('file:///mock-document/held-1.m4a');
     });
 
-    fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await fireEvent.press(screen.getByTestId('record-play-button-held-1'));
     await waitFor(() => {
       expect(mockPause).toHaveBeenCalledTimes(1);
     });
   });
 
   it('stops playback when the playing row leaves the list', async () => {
-    const { rerender } = render(
+    const { rerender } = await render(
       <HeldRecordingsSection recordings={[held(), held({ id: 'held-2' })]} />,
     );
-    fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await fireEvent.press(screen.getByTestId('record-play-button-held-1'));
     await waitFor(() => {
       expect(mockPlay).toHaveBeenCalledTimes(1);
     });
 
-    rerender(<HeldRecordingsSection recordings={[held({ id: 'held-2' })]} />);
+    await rerender(
+      <HeldRecordingsSection recordings={[held({ id: 'held-2' })]} />,
+    );
 
     await waitFor(() => {
       expect(mockPause).toHaveBeenCalledTimes(1);
@@ -159,21 +161,21 @@ describe('HeldRecordingsSection (#855)', () => {
   });
 
   it('keeps playing while its row stays in the list', async () => {
-    const { rerender } = render(
+    const { rerender } = await render(
       <HeldRecordingsSection recordings={[held(), held({ id: 'held-2' })]} />,
     );
-    fireEvent.press(screen.getByTestId('record-play-button-held-1'));
+    await fireEvent.press(screen.getByTestId('record-play-button-held-1'));
     await waitFor(() => {
       expect(mockPlay).toHaveBeenCalledTimes(1);
     });
 
-    rerender(<HeldRecordingsSection recordings={[held()]} />);
+    await rerender(<HeldRecordingsSection recordings={[held()]} />);
 
     expect(mockPause).not.toHaveBeenCalled();
   });
 
-  it('renders nothing when there are no held recordings', () => {
-    render(<HeldRecordingsSection recordings={[]} />);
+  it('renders nothing when there are no held recordings', async () => {
+    await render(<HeldRecordingsSection recordings={[]} />);
     expect(screen.queryByTestId('sync-held-section')).toBeNull();
   });
 });

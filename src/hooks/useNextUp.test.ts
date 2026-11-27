@@ -167,7 +167,7 @@ describe('useNextUp', () => {
     );
 
     const chapters = [chapter(1), chapter(2)];
-    const { result } = renderHook(() => useNextUp(chapters));
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual(['2a', ['1a']]);
@@ -176,13 +176,22 @@ describe('useNextUp', () => {
   it('shows loading, not the old list, while the other unit loads', async () => {
     mockLoad.mockResolvedValue([passage('1a')]);
     const chapters = [chapter(1)];
-    const { result, rerender } = renderHook(() => useNextUp(chapters));
+    const { result, rerender } = await renderHook(() => useNextUp(chapters));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
+    // Hold the new unit's read open: RNTL 14's async rerender would otherwise
+    // flush an immediately-resolved read before this check.
+    let finishRead!: (passages: BookPassage[]) => void;
+    mockLoad.mockReturnValue(
+      new Promise<BookPassage[]>(resolve => {
+        finishRead = resolve;
+      }),
+    );
     mockUnit = 'verse';
-    rerender({});
+    await rerender({});
 
     expect(result.current.status).toBe('loading');
+    await act(async () => finishRead([passage('1a')]));
     await waitFor(() => expect(result.current.status).toBe('ready'));
   });
 
@@ -190,7 +199,8 @@ describe('useNextUp', () => {
     mockUnit = 'verse';
     mockLoad.mockResolvedValue([passage('1a')]);
 
-    const { result } = renderHook(() => useNextUp([chapter(1)]));
+    const chapters = [chapter(1)];
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(mockSetId).not.toHaveBeenCalled();
@@ -216,7 +226,7 @@ describe('useNextUp', () => {
     );
 
     const chapters = [first, older, latest];
-    const { result } = renderHook(() => useNextUp(chapters));
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual(['3b', ['1a', '1b', '2a']]);
@@ -231,7 +241,7 @@ describe('useNextUp', () => {
     );
 
     const chapters = [chapter(1), chapter(2), chapter(3), chapter(4)];
-    const { result } = renderHook(() => useNextUp(chapters));
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual(['1b', ['1c', '2a', '2b', '3a']]);
@@ -245,7 +255,7 @@ describe('useNextUp', () => {
     const chapters = Array.from({ length: LOAD_BATCH + 3 }, (_, i) =>
       chapter(i + 1),
     );
-    const { result } = renderHook(() => useNextUp(chapters));
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual(['1a', ['2a', '3a', '4a', '5a']]);
@@ -266,7 +276,7 @@ describe('useNextUp', () => {
     const chapters = Array.from({ length: LOAD_BATCH + 2 }, (_, i) =>
       chapter(i + 1),
     );
-    const { result } = renderHook(() => useNextUp(chapters));
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual(['6a', ['7a']]);
@@ -283,7 +293,7 @@ describe('useNextUp', () => {
       chapter(2, { workflowStage: 'peer_check' }),
       chapter(3),
     ];
-    const { result } = renderHook(() => useNextUp(chapters));
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual(['3a', []]);
@@ -293,7 +303,7 @@ describe('useNextUp', () => {
     mockLoad.mockRejectedValue(new Error('db closed'));
 
     const chapters = [chapter(1)];
-    const { result } = renderHook(() => useNextUp(chapters));
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual(['chapter:1', []]);
@@ -303,7 +313,7 @@ describe('useNextUp', () => {
     mockSetId.mockRejectedValue(new Error('db closed'));
 
     const chapters = [chapter(1)];
-    const { result } = renderHook(() => useNextUp(chapters));
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual(['chapter:1', []]);
@@ -318,7 +328,7 @@ describe('useNextUp', () => {
     );
 
     const chapters = [chapter(1), chapter(2)];
-    const { result } = renderHook(() => useNextUp(chapters));
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(keys(result.current)).toEqual([
@@ -339,9 +349,9 @@ describe('useNextUp', () => {
     const chapters = Array.from({ length: LOAD_BATCH + 1 }, (_, i) =>
       chapter(i + 1),
     );
-    const { result, unmount } = renderHook(() => useNextUp(chapters));
+    const { result, unmount } = await renderHook(() => useNextUp(chapters));
     await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(LOAD_BATCH));
-    unmount();
+    await unmount();
     finish([passage('1a', 'recorded')]);
     await new Promise<void>(resolve => setImmediate(resolve));
 
@@ -351,7 +361,8 @@ describe('useNextUp', () => {
 
   it('has nothing to record, only to check, when I have nothing to draft', async () => {
     const peer = chapter(1, { workflowStage: 'peer_check' });
-    const { result } = renderHook(() => useNextUp([peer]));
+    const chapters = [peer];
+    const { result } = await renderHook(() => useNextUp(chapters));
 
     await waitFor(() =>
       expect(result.current).toEqual({
@@ -377,13 +388,13 @@ describe('useNextUp', () => {
         finish = resolve;
       }),
     );
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ chapters }: { chapters: MyWorkChapter[] }) => useNextUp(chapters),
       { initialProps: { chapters: [] } },
     );
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
-    rerender({ chapters: [chapter(1)] });
+    await rerender({ chapters: [chapter(1)] });
     expect(result.current).toEqual({ status: 'loading' });
 
     finish([passage('1a')]);
@@ -393,14 +404,14 @@ describe('useNextUp', () => {
   it('marks Next up ready for the launch trace only once chapters are read', async () => {
     resetStartupTraceForTests();
     mockLoad.mockResolvedValue([passage('1a')]);
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ chapters }: { chapters: MyWorkChapter[] }) => useNextUp(chapters),
       { initialProps: { chapters: [] } },
     );
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(hasStartupMark('nextup_ready')).toBe(false);
 
-    rerender({ chapters: [chapter(1)] });
+    await rerender({ chapters: [chapter(1)] });
     await waitFor(() => expect(keys(result.current)).toEqual(['1a', []]));
     expect(hasStartupMark('nextup_ready')).toBe(true);
   });
@@ -413,7 +424,7 @@ describe('useNextUp', () => {
     async (_label, arrived) => {
       mockLoad.mockResolvedValue([passage('1a')]);
       const renders: [number, NextUp['status']][] = [];
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         ({ chapters }: { chapters: MyWorkChapter[] }) => {
           const nextUp = useNextUp(chapters);
           renders.push([chapters.length, nextUp.status]);
@@ -424,7 +435,7 @@ describe('useNextUp', () => {
       await waitFor(() => expect(result.current.status).toBe('ready'));
       const before = renders.length;
 
-      rerender({ chapters: [arrived] });
+      await rerender({ chapters: [arrived] });
       await waitFor(() => expect(result.current.status).toBe('ready'));
 
       expect(renders[before]).toEqual([1, 'loading']);
@@ -444,7 +455,7 @@ describe('useNextUp', () => {
       mockUnit = 'verse';
       mockLoad.mockResolvedValue([passage('chapter:1', status)]);
       const seen: string[] = [];
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         ({ chapters }: { chapters: MyWorkChapter[] }) => {
           const nextUp = useNextUp(chapters);
           seen.push(JSON.stringify(keys(nextUp)) + nextUp.status);
@@ -455,7 +466,7 @@ describe('useNextUp', () => {
       await waitFor(() => expect(result.current.status).toBe('ready'));
       const before = seen.length;
 
-      rerender({ chapters: [chapter(1, { totalVerses: 25 })] });
+      await rerender({ chapters: [chapter(1, { totalVerses: 25 })] });
       await waitFor(() => expect(keys(result.current)).toEqual(shape));
 
       const shapes = seen.slice(before);
@@ -467,13 +478,13 @@ describe('useNextUp', () => {
 
   it('stays empty, without loading again, when every draft is recorded', async () => {
     mockLoad.mockResolvedValue([passage('1a', 'recorded')]);
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ chapters }: { chapters: MyWorkChapter[] }) => useNextUp(chapters),
       { initialProps: { chapters: [chapter(1)] } },
     );
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
-    rerender({ chapters: [chapter(1)] });
+    await rerender({ chapters: [chapter(1)] });
     expect(keys(result.current)).toEqual([null, []]);
     expect(result.current.status).toBe('ready');
     await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(2));
@@ -487,7 +498,8 @@ describe('useNextUp', () => {
     ]);
     mockLoad.mockResolvedValue([passage('14a')]);
 
-    const { result } = renderHook(() => useNextUp([chapter(14)]));
+    const chapters = [chapter(14)];
+    const { result } = await renderHook(() => useNextUp(chapters));
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     expect(mockStages).toHaveBeenCalledWith(3, 4);
@@ -516,7 +528,7 @@ describe('useNextUp', () => {
     });
 
     async function readyOn(chapters: MyWorkChapter[]) {
-      const hook = renderHook(() => useNextUp(chapters));
+      const hook = await renderHook(() => useNextUp(chapters));
       await waitFor(() => expect(hook.result.current.status).toBe('ready'));
       return hook;
     }
@@ -550,14 +562,14 @@ describe('useNextUp', () => {
     });
 
     it('reads the new chapters when My Work hands it a new list', async () => {
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         ({ chapters }: { chapters: MyWorkChapter[] }) => useNextUp(chapters),
         { initialProps: { chapters: [chapter(1)] } },
       );
       await waitFor(() => expect(keys(result.current)).toEqual(['1a', []]));
       mockLoad.mockResolvedValue([passage('2a')]);
 
-      rerender({ chapters: [chapter(2)] });
+      await rerender({ chapters: [chapter(2)] });
 
       await waitFor(() => expect(keys(result.current)).toEqual(['2a', []]));
       expect(mockLoad).toHaveBeenCalledTimes(2);
@@ -624,7 +636,7 @@ describe('useNextUp', () => {
           }),
       );
       const chapters = [chapter(1)];
-      const { result } = renderHook(() => useNextUp(chapters));
+      const { result } = await renderHook(() => useNextUp(chapters));
       await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(1));
       changes = 1;
       await act(async () => release());

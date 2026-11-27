@@ -2499,7 +2499,9 @@ describe('uploadOrchestrator', () => {
     const marks = () => {
       let changes = 0;
       const getQueueWriteMark = jest.fn(
-        async (): Promise<object | null> => ({ changes }),
+        async (): Promise<object | null> => ({
+          changes,
+        }),
       );
       return {
         getQueueWriteMark,

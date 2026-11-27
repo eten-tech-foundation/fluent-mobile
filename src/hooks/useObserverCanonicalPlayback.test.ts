@@ -122,7 +122,7 @@ describe('useObserverCanonicalPlayback', () => {
   }
 
   async function mount() {
-    const view = renderHook(
+    const view = await renderHook(
       (props: ObserverCanonicalPlaybackScope) =>
         useObserverCanonicalPlayback(props),
       { initialProps: scope() },
@@ -143,10 +143,10 @@ describe('useObserverCanonicalPlayback', () => {
     mockLoad.mockReturnValueOnce(pending.promise);
 
     let play!: Promise<void>;
-    act(() => {
+    await act(() => {
       play = view.result.current.playPause(first);
     });
-    view.rerender(scope({ accountId: '8' }));
+    await view.rerender(scope({ accountId: '8' }));
     await act(async () => {
       pending.resolve();
       await play;
@@ -165,7 +165,7 @@ describe('useObserverCanonicalPlayback', () => {
     expect(view.result.current.playingBibleTextId).toBe(501);
     mockStop.mockClear();
 
-    view.rerender(
+    await view.rerender(
       scope({
         units: [{ ...first, localPlaybackUri: 'file:///canonical/99.m4a' }],
       }),
@@ -182,17 +182,17 @@ describe('useObserverCanonicalPlayback', () => {
     mockLoad.mockReturnValueOnce(pending.promise);
 
     let firstPlay!: Promise<void>;
-    act(() => {
+    await act(() => {
       firstPlay = view.result.current.playPause(first);
     });
     // Identity change queues a stop barrier behind the held load.
-    view.rerender(
+    await view.rerender(
       scope({
         units: [{ ...first, activeTakeId: 99 }, second],
       }),
     );
     let secondPlay!: Promise<void>;
-    act(() => {
+    await act(() => {
       secondPlay = view.result.current.playPause(second);
     });
     await act(async () => {
@@ -213,10 +213,10 @@ describe('useObserverCanonicalPlayback', () => {
 
     let firstTap!: Promise<void>;
     let secondTap!: Promise<void>;
-    act(() => {
+    await act(() => {
       firstTap = view.result.current.playPause(first);
     });
-    act(() => {
+    await act(() => {
       secondTap = view.result.current.playPause(first);
     });
     await act(async () => {
@@ -234,9 +234,9 @@ describe('useObserverCanonicalPlayback', () => {
       await view.result.current.playPause(first);
     });
 
-    act(() => view.result.current.seekUnit(second, 4000));
+    await act(() => view.result.current.seekUnit(second, 4000));
     expect(mockSeek).not.toHaveBeenCalled();
-    act(() => view.result.current.seekUnit(first, 4000));
+    await act(() => view.result.current.seekUnit(first, 4000));
     expect(mockSeek).toHaveBeenCalledWith(4000);
   });
 });

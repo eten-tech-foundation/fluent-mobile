@@ -18,6 +18,7 @@ export function useVerseStep({
   onChange,
   audioState,
   discardCapture,
+  isStopPending,
   resetCapture,
 }: {
   verses: readonly { verseNumber: number }[];
@@ -25,6 +26,8 @@ export function useVerseStep({
   onChange: (verseNumber: number) => void;
   audioState: VerseAudioState;
   discardCapture: () => Promise<void>;
+  /** True from the Stop press until it has saved or dropped the take (#979). */
+  isStopPending: () => boolean;
   /** The session's, so the old verse's text id and unit don't carry over. */
   resetCapture: () => void;
 }) {
@@ -40,6 +43,10 @@ export function useVerseStep({
   function request(verseNumber: number) {
     // Resetting without a move would leave the capture with no text id.
     if (verseNumber === selectedVerse) return;
+    // Stop is still settling: the audio state reads `recording` or `saving`, so
+    // neither the Discard prompt nor a plain step is safe. Ignore the tap; the
+    // take lands on this verse, then stepping works as usual (#979).
+    if (isStopPending()) return;
     if (audioState === 'paused' || audioState === 'recording') {
       Alert.alert(CAPTURE_LEAVE_TITLE, CAPTURE_LEAVE_MESSAGE, [
         { text: CAPTURE_LEAVE_RESUME, style: 'cancel' },

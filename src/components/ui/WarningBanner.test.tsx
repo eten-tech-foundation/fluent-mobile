@@ -8,15 +8,15 @@ import {
 import { WarningBanner } from './WarningBanner';
 
 describe('WarningBanner', () => {
-  it('renders default info variant with message and no icon', () => {
-    render(<WarningBanner message={RECORD_TAKEN_CHAPTER_WARNING} />);
+  it('renders default info variant with message and no icon', async () => {
+    await render(<WarningBanner message={RECORD_TAKEN_CHAPTER_WARNING} />);
 
     expect(screen.getByTestId('warning-banner')).toBeTruthy();
     expect(screen.getByText(RECORD_TAKEN_CHAPTER_WARNING)).toBeTruthy();
   });
 
-  it('renders amber variant with icon and message', () => {
-    render(
+  it('renders amber variant with icon and message', async () => {
+    await render(
       <WarningBanner
         variant="amber"
         icon={TriangleAlert}

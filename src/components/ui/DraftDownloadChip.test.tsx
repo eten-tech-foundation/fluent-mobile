@@ -21,18 +21,18 @@ const baseState: DraftDownloadState = {
 };
 
 describe('DraftDownloadChip', () => {
-  it('invokes onPress for idle/failed chips (manual start / retry)', () => {
+  it('invokes onPress for idle/failed chips (manual start / retry)', async () => {
     const onPress = jest.fn();
-    const view = render(
+    const view = await render(
       <DraftDownloadChip state={baseState} onPress={onPress} />,
     );
-    fireEvent.press(view.getByTestId('draft-download-chip'));
+    await fireEvent.press(view.getByTestId('draft-download-chip'));
     expect(onPress).toHaveBeenCalled();
   });
 
-  it('shows ready cloud-check and disables press', () => {
+  it('shows ready cloud-check and disables press', async () => {
     const onPress = jest.fn();
-    const view = render(
+    const view = await render(
       <DraftDownloadChip
         state={{
           ...baseState,
@@ -45,12 +45,12 @@ describe('DraftDownloadChip', () => {
       />,
     );
     expect(view.getByTestId('draft-download-chip-ready')).toBeTruthy();
-    fireEvent.press(view.getByTestId('draft-download-chip'));
+    await fireEvent.press(view.getByTestId('draft-download-chip'));
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  it('labels an unchecked offline snapshot as ready but not confirmed current', () => {
-    const view = render(
+  it('labels an unchecked offline snapshot as ready but not confirmed current', async () => {
+    const view = await render(
       <DraftDownloadChip
         state={{
           ...baseState,
@@ -71,8 +71,8 @@ describe('DraftDownloadChip', () => {
     ).toBeTruthy();
   });
 
-  it('renders progress ring state while downloading', () => {
-    const view = render(
+  it('renders progress ring state while downloading', async () => {
+    const view = await render(
       <DraftDownloadChip
         state={{
           ...baseState,

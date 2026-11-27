@@ -41,42 +41,42 @@ describe('useReauthRequired', () => {
     });
   });
 
-  it('reflects the current reauth flag on mount', () => {
+  it('reflects the current reauth flag on mount', async () => {
     jest.mocked(isReauthRequiredForActiveUser).mockReturnValue(true);
 
-    const { result } = renderHook(() => useReauthRequired());
+    const { result } = await renderHook(() => useReauthRequired());
 
     expect(result.current.reauthRequired).toBe(true);
     expect(onAuthReauthRequired).toHaveBeenCalled();
     expect(onAuthReauthResolved).toHaveBeenCalled();
   });
 
-  it('updates when auth reauth required and resolved events fire', () => {
-    const { result } = renderHook(() => useReauthRequired());
+  it('updates when auth reauth required and resolved events fire', async () => {
+    const { result } = await renderHook(() => useReauthRequired());
 
-    act(() => {
+    await act(() => {
       jest.mocked(isReauthRequiredForActiveUser).mockReturnValue(true);
       reauthRequiredListener('2');
     });
     expect(result.current.reauthRequired).toBe(true);
 
-    act(() => {
+    await act(() => {
       jest.mocked(isReauthRequiredForActiveUser).mockReturnValue(false);
       reauthResolvedListener('2');
     });
     expect(result.current.reauthRequired).toBe(false);
   });
 
-  it('refreshes on focus when refreshOnFocus is enabled', () => {
+  it('refreshes on focus when refreshOnFocus is enabled', async () => {
     jest.mocked(isReauthRequiredForActiveUser).mockReturnValue(false);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useReauthRequired({ refreshOnFocus: true }),
     );
 
     expect(focusEffectCallback).toBeDefined();
 
-    act(() => {
+    await act(() => {
       jest.mocked(isReauthRequiredForActiveUser).mockReturnValue(true);
       focusEffectCallback?.();
     });

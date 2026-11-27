@@ -26,9 +26,9 @@ describe('TrackRow', () => {
     jest.useRealTimers();
   });
 
-  it("marks a track you haven't heard and opens it from the row", () => {
+  it("marks a track you haven't heard and opens it from the row", async () => {
     const onPress = jest.fn();
-    render(
+    await render(
       <TrackRow
         title="Hear & Heart"
         meta="Mark 14:22–25"
@@ -40,14 +40,14 @@ describe('TrackRow', () => {
 
     expect(screen.getByTestId('t-unheard', hidden)).toBeTruthy();
     expect(screen.queryByTestId('t-toggle')).toBeNull();
-    fireEvent.press(screen.getByLabelText('Hear & Heart, not heard yet'));
+    await fireEvent.press(screen.getByLabelText('Hear & Heart, not heard yet'));
     expect(onPress).toHaveBeenCalled();
   });
 
-  it('gives only the live row a button, which pauses in place', () => {
+  it('gives only the live row a button, which pauses in place', async () => {
     const onToggle = jest.fn();
     const onPress = jest.fn();
-    render(
+    await render(
       <TrackRow
         title="Hear & Heart"
         meta="Mark 14:22–25"
@@ -59,13 +59,13 @@ describe('TrackRow', () => {
       />,
     );
 
-    fireEvent.press(screen.getByLabelText('Pause Hear & Heart'));
+    await fireEvent.press(screen.getByLabelText('Pause Hear & Heart'));
     expect(onToggle).toHaveBeenCalled();
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  it('keeps the button while it sinks back, then removes it', () => {
-    const { rerender } = render(
+  it('keeps the button while it sinks back, then removes it', async () => {
+    const { rerender } = await render(
       <TrackRow
         title="Hear & Heart"
         meta="Mark 14:22–25"
@@ -76,7 +76,7 @@ describe('TrackRow', () => {
     );
     expect(screen.getByLabelText('Play Hear & Heart')).toBeTruthy();
 
-    rerender(
+    await rerender(
       <TrackRow
         title="Hear & Heart"
         meta="Mark 14:22–25"
@@ -86,7 +86,7 @@ describe('TrackRow', () => {
     );
     expect(screen.getByLabelText('Play Hear & Heart')).toBeTruthy();
 
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(2000);
     });
     expect(screen.queryByLabelText('Play Hear & Heart')).toBeNull();

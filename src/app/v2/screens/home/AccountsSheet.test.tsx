@@ -92,9 +92,9 @@ describe('AccountsSheet', () => {
     ];
   });
 
-  it("lists this device's accounts and switches to another", () => {
+  it("lists this device's accounts and switches to another", async () => {
     const onClose = jest.fn();
-    render(<AccountsSheet visible onClose={onClose} />);
+    await render(<AccountsSheet visible onClose={onClose} />);
 
     expect(
       screen.getByRole('button', { name: 'Jordan Smith, signed in' }).props
@@ -102,16 +102,16 @@ describe('AccountsSheet', () => {
     ).toMatchObject({ selected: true });
     expect(screen.getByText('ravi@example.org')).toBeTruthy();
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', { name: 'Switch to Ravi Kumar' }),
     );
     expect(mockSwitchTo).toHaveBeenCalledWith('2');
   });
 
-  it('counts accounts toward the limit and adds one', () => {
-    render(<AccountsSheet visible onClose={jest.fn()} />);
+  it('counts accounts toward the limit and adds one', async () => {
+    await render(<AccountsSheet visible onClose={jest.fn()} />);
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', {
         name: 'Add account, 2 of 3 on this device',
       }),
@@ -119,12 +119,12 @@ describe('AccountsSheet', () => {
     expect(mockAddAccount).toHaveBeenCalled();
   });
 
-  it("can't add a fourth account", () => {
+  it("can't add a fourth account", async () => {
     mockAtLimit = true;
     mockAccounts = [...mockAccounts, account('3', 'Ana Lima', false)];
-    render(<AccountsSheet visible onClose={jest.fn()} />);
+    await render(<AccountsSheet visible onClose={jest.fn()} />);
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', {
         name: 'Add account, 3 of 3 on this device',
       }),
@@ -132,48 +132,48 @@ describe('AccountsSheet', () => {
     expect(mockAddAccount).not.toHaveBeenCalled();
   });
 
-  it('opens Settings, unless a take is recording', () => {
+  it('opens Settings, unless a take is recording', async () => {
     const onClose = jest.fn();
-    render(<AccountsSheet visible onClose={onClose} />);
+    await render(<AccountsSheet visible onClose={onClose} />);
 
-    fireEvent.press(screen.getByRole('button', { name: 'Settings' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Settings' }));
     expect(onClose).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith(hrefs.settings);
 
     mockPush.mockClear();
     mockBlocked = true;
-    fireEvent.press(screen.getByRole('button', { name: 'Settings' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Settings' }));
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it('opens the privacy policy and terms of use', () => {
+  it('opens the privacy policy and terms of use', async () => {
     const onClose = jest.fn();
-    render(<AccountsSheet visible onClose={onClose} />);
+    await render(<AccountsSheet visible onClose={onClose} />);
 
-    fireEvent.press(screen.getByTestId('home-accounts-privacy'));
+    await fireEvent.press(screen.getByTestId('home-accounts-privacy'));
     expect(mockPush).toHaveBeenCalledWith(hrefs.privacyPolicyApp);
-    fireEvent.press(screen.getByTestId('home-accounts-terms'));
+    await fireEvent.press(screen.getByTestId('home-accounts-terms'));
     expect(mockPush).toHaveBeenCalledWith(hrefs.termsOfUseApp);
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
-  it('logs out of the active account', () => {
-    render(<AccountsSheet visible onClose={jest.fn()} />);
+  it('logs out of the active account', async () => {
+    await render(<AccountsSheet visible onClose={jest.fn()} />);
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', { name: 'Log out, Jordan Smith' }),
     );
     expect(mockSignOut).toHaveBeenCalled();
   });
 
-  it('shows just the name when it is the email', () => {
+  it('shows just the name when it is the email', async () => {
     mockAccounts = [
       {
         ...account('1', 'Jordan Smith', true),
         displayName: 'jordan@example.org',
       },
     ];
-    render(<AccountsSheet visible onClose={jest.fn()} />);
+    await render(<AccountsSheet visible onClose={jest.fn()} />);
 
     expect(screen.getAllByText('jordan@example.org')).toHaveLength(2);
     expect(
@@ -181,10 +181,10 @@ describe('AccountsSheet', () => {
     ).toBeTruthy();
   });
 
-  it('waits for the accounts before counting them', () => {
+  it('waits for the accounts before counting them', async () => {
     mockLoading = true;
     mockAccounts = [];
-    render(<AccountsSheet visible onClose={jest.fn()} />);
+    await render(<AccountsSheet visible onClose={jest.fn()} />);
 
     expect(screen.getByTestId('home-accounts-loading')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add account' })).toBeTruthy();

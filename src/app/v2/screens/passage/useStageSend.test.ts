@@ -63,7 +63,7 @@ const sendable = (
 
 type Props = { passage: Ready; userId: number | null; capturing: boolean };
 
-function setup(
+async function setup(
   initial: {
     passage?: Ready;
     userId?: number | null;
@@ -71,7 +71,7 @@ function setup(
   } = {},
 ) {
   const onSent = jest.fn();
-  const hook = renderHook(
+  const hook = await renderHook(
     (props: Props) => useStageSend({ ...props, onSent }),
     {
       initialProps: {
@@ -92,7 +92,7 @@ describe('useStageSend', () => {
 
   it('offers Send for the passage chapter only, naming it', async () => {
     mockRead.mockResolvedValue(sendable());
-    const { result } = setup();
+    const { result } = await setup();
     await waitFor(() =>
       expect(result.current.row).toEqual({
         kind: 'send',
@@ -110,16 +110,16 @@ describe('useStageSend', () => {
 
   it('hides Send when the gate does not offer it', async () => {
     mockRead.mockResolvedValue(null);
-    const { result } = setup();
+    const { result } = await setup();
     await waitFor(() => expect(mockRead).toHaveBeenCalled());
     expect(result.current.row).toBeNull();
-    act(() => result.current.open());
+    await act(() => result.current.open());
     expect(result.current.dialog).toBeNull();
   });
 
   it('shows a conflict as a disabled Send that will not open', async () => {
     mockRead.mockResolvedValue(sendable({ disabled: true, hasConflict: true }));
-    const { result } = setup();
+    const { result } = await setup();
     await waitFor(() =>
       expect(result.current.row).toEqual({
         kind: 'send',
@@ -128,13 +128,13 @@ describe('useStageSend', () => {
         detail: RECORD_AUDIO_CONFLICT_WARNING,
       }),
     );
-    act(() => result.current.open());
+    await act(() => result.current.open());
     expect(result.current.dialog).toBeNull();
   });
 
   it('waits for a take in progress', async () => {
     mockRead.mockResolvedValue(sendable());
-    const { result } = setup({ capturing: true });
+    const { result } = await setup({ capturing: true });
     await waitFor(() =>
       expect(result.current.row).toEqual({
         kind: 'send',
@@ -147,14 +147,14 @@ describe('useStageSend', () => {
 
   it('confirms naming the chapter and Peer Check; Cancel sends nothing', async () => {
     mockRead.mockResolvedValue(sendable());
-    const { result } = setup();
+    const { result } = await setup();
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
+    await act(() => result.current.open());
     expect(result.current.dialog?.title).toBe('Send to Peer Check?');
     expect(result.current.dialog?.message).toContain('Mark 14');
     expect(result.current.dialog?.message).toContain('Peer Check');
     expect(result.current.dialog?.confirmLabel).toBe(STAGE_SEND_CONFIRM);
-    act(() => result.current.dialog?.onCancel());
+    await act(() => result.current.dialog?.onCancel());
     expect(result.current.dialog).toBeNull();
     expect(mockSend).not.toHaveBeenCalled();
   });
@@ -163,17 +163,17 @@ describe('useStageSend', () => {
     mockRead.mockResolvedValue(sendable());
     let resolve!: (v: string) => void;
     mockSend.mockReturnValue(new Promise(r => (resolve = r)));
-    const { result, onSent } = setup();
+    const { result, onSent } = await setup();
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
-    act(() => {
+    await act(() => result.current.open());
+    await act(() => {
       result.current.dialog?.onConfirm();
       result.current.dialog?.onConfirm();
     });
     expect(result.current.dialog?.confirmLabel).toBe(STAGE_SEND_SENDING);
-    act(() => result.current.dialog?.onCancel());
+    await act(() => result.current.dialog?.onCancel());
     expect(result.current.dialog).not.toBeNull();
-    act(() => result.current.dialog?.onConfirm());
+    await act(() => result.current.dialog?.onConfirm());
     expect(mockSend).toHaveBeenCalledTimes(1);
     expect(mockSend).toHaveBeenCalledWith({
       chapterAssignmentId: 7,
@@ -188,20 +188,20 @@ describe('useStageSend', () => {
 
   it("tells the drafter's queued send from one the server confirmed", async () => {
     mockRead.mockResolvedValue(null);
-    const { result, rerender } = setup({
+    const { result, rerender } = await setup({
       passage: makePassage({ status: 'peer_check' }, true),
     });
     expect(result.current.row).toEqual({
       kind: 'queued',
       title: 'Waiting to send to Peer Check',
     });
-    rerender({
+    await rerender({
       passage: makePassage({ status: 'peer_check' }, false),
       userId: 4,
       capturing: false,
     });
     expect(result.current.row).toEqual({ kind: 'sent' });
-    rerender({
+    await rerender({
       passage: makePassage({ status: 'peer_check' }, false),
       userId: 5,
       capturing: false,
@@ -211,7 +211,7 @@ describe('useStageSend', () => {
 
   it('shows a queued later stage as waiting, and offers nothing more until it sends', async () => {
     mockRead.mockResolvedValue(sendable({ from: 'linguist_check' }));
-    const { result } = setup({
+    const { result } = await setup({
       passage: makePassage({ status: 'linguist_check' }, true),
       userId: 5,
     });
@@ -221,7 +221,7 @@ describe('useStageSend', () => {
       kind: 'queued',
       title: 'Waiting to send to Linguist Check',
     });
-    act(() => result.current.open());
+    await act(() => result.current.open());
     expect(result.current.dialog).toBeNull();
   });
 
@@ -236,7 +236,7 @@ describe('useStageSend', () => {
     async (from, label, to) => {
       mockRead.mockResolvedValue(sendable({ from }));
       mockSend.mockResolvedValue('confirmed');
-      const { result, onSent } = setup({
+      const { result, onSent } = await setup({
         passage: makePassage({ status: from }),
         userId: 5,
       });
@@ -248,7 +248,7 @@ describe('useStageSend', () => {
           detail: 'Mark 14',
         }),
       );
-      act(() => result.current.open());
+      await act(() => result.current.open());
       expect(result.current.dialog?.title).toBe(`${label}?`);
       await act(async () => result.current.dialog?.onConfirm());
       expect(mockSend).toHaveBeenCalledWith({
@@ -264,13 +264,13 @@ describe('useStageSend', () => {
 
   it('offers nothing on a Complete chapter', async () => {
     mockRead.mockResolvedValue(null);
-    const { result } = setup({
+    const { result } = await setup({
       passage: makePassage({ status: 'complete' }),
       userId: 5,
     });
     await waitFor(() => expect(mockRead).toHaveBeenCalled());
     expect(result.current.row).toBeNull();
-    act(() => result.current.open());
+    await act(() => result.current.open());
     expect(result.current.dialog).toBeNull();
   });
 
@@ -278,13 +278,13 @@ describe('useStageSend', () => {
     mockRead.mockResolvedValue(sendable({ from: 'consultant_check' }));
     let reject!: (e: Error) => void;
     mockSend.mockReturnValueOnce(new Promise((_r, j) => (reject = j)));
-    const { result, onSent } = setup({
+    const { result, onSent } = await setup({
       passage: makePassage({ status: 'consultant_check' }),
       userId: 5,
     });
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
-    act(() => result.current.dialog?.onConfirm());
+    await act(() => result.current.open());
+    await act(() => result.current.dialog?.onConfirm());
     expect(result.current.dialog?.confirmLabel).toBe(STAGE_SEND_SENDING);
     expect(onSent).not.toHaveBeenCalled();
 
@@ -305,16 +305,16 @@ describe('useStageSend', () => {
 
   it('drops an unanswered question once the chapter moved to another stage', async () => {
     mockRead.mockResolvedValue(sendable({ from: 'community_review' }));
-    const { result, rerender } = setup({
+    const { result, rerender } = await setup({
       passage: makePassage({ status: 'community_review' }),
       userId: 5,
     });
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
+    await act(() => result.current.open());
     expect(result.current.dialog?.title).toBe('Send to Linguist Check?');
 
     mockRead.mockResolvedValue(sendable({ from: 'linguist_check' }));
-    rerender({
+    await rerender({
       passage: makePassage({ status: 'linguist_check' }),
       userId: 5,
       capturing: false,
@@ -330,12 +330,12 @@ describe('useStageSend', () => {
 
   it("doesn't bring back a question dropped while Send was unavailable", async () => {
     mockRead.mockResolvedValue(sendable({ from: 'community_review' }));
-    const { result, rerender } = setup({
+    const { result, rerender } = await setup({
       passage: makePassage({ status: 'community_review' }),
       userId: 5,
     });
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
+    await act(() => result.current.open());
     expect(result.current.dialog).not.toBeNull();
 
     const props = {
@@ -346,14 +346,14 @@ describe('useStageSend', () => {
     mockRead.mockResolvedValue(
       sendable({ from: 'community_review', disabled: true, hasConflict: true }),
     );
-    rerender(props);
+    await rerender(props);
     await waitFor(() =>
       expect(result.current.row).toMatchObject({ disabled: true }),
     );
     expect(result.current.dialog).toBeNull();
 
     mockRead.mockResolvedValue(sendable({ from: 'community_review' }));
-    rerender({
+    await rerender({
       ...props,
       passage: makePassage({ status: 'community_review' }),
     });
@@ -366,17 +366,17 @@ describe('useStageSend', () => {
   it('closes a failed Complete once a reload shows the chapter Complete', async () => {
     mockRead.mockResolvedValue(sendable({ from: 'consultant_check' }));
     mockSend.mockRejectedValueOnce(new Error('timeout'));
-    const { result, rerender } = setup({
+    const { result, rerender } = await setup({
       passage: makePassage({ status: 'consultant_check' }),
       userId: 5,
     });
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
+    await act(() => result.current.open());
     await act(async () => result.current.dialog?.onConfirm());
     expect(result.current.dialog?.message).toBe(STAGE_SEND_COMPLETE_FAILED);
 
     mockRead.mockResolvedValue(null);
-    rerender({
+    await rerender({
       passage: makePassage({ status: 'complete' }),
       userId: 5,
       capturing: false,
@@ -387,7 +387,7 @@ describe('useStageSend', () => {
 
     // Dropped for good: a later reload back at Consultant Check doesn't revive it.
     mockRead.mockResolvedValue(sendable({ from: 'consultant_check' }));
-    rerender({
+    await rerender({
       passage: makePassage({ status: 'consultant_check' }),
       userId: 5,
       capturing: false,
@@ -399,18 +399,18 @@ describe('useStageSend', () => {
   it('retries the stage it asked about, not one the chapter moved to', async () => {
     mockRead.mockResolvedValue(sendable({ from: 'community_review' }));
     mockSend.mockRejectedValueOnce(new Error('disk'));
-    const { result, rerender } = setup({
+    const { result, rerender } = await setup({
       passage: makePassage({ status: 'community_review' }),
       userId: 5,
     });
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
+    await act(() => result.current.open());
     await act(async () => result.current.dialog?.onConfirm());
     expect(result.current.dialog?.confirmLabel).toBe(STAGE_SEND_RETRY);
 
     // A sync puts it back a stage; the failure stays up with Try again.
     mockRead.mockResolvedValue(sendable({ from: 'peer_check' }));
-    rerender({
+    await rerender({
       passage: makePassage({ status: 'peer_check' }),
       userId: 5,
       capturing: false,
@@ -432,17 +432,17 @@ describe('useStageSend', () => {
   it('closes a failure once the chapter has reached the stage it asked about', async () => {
     mockRead.mockResolvedValue(sendable({ from: 'community_review' }));
     mockSend.mockRejectedValueOnce(new Error('disk'));
-    const { result, rerender } = setup({
+    const { result, rerender } = await setup({
       passage: makePassage({ status: 'community_review' }),
       userId: 5,
     });
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
+    await act(() => result.current.open());
     await act(async () => result.current.dialog?.onConfirm());
     expect(result.current.dialog?.confirmLabel).toBe(STAGE_SEND_RETRY);
 
     mockRead.mockResolvedValue(sendable({ from: 'linguist_check' }));
-    rerender({
+    await rerender({
       passage: makePassage({ status: 'linguist_check' }),
       userId: 5,
       capturing: false,
@@ -454,9 +454,9 @@ describe('useStageSend', () => {
   it('keeps the dialog on a failure and sends again on Try again', async () => {
     mockRead.mockResolvedValue(sendable());
     mockSend.mockRejectedValueOnce(new Error('disk'));
-    const { result, onSent } = setup();
+    const { result, onSent } = await setup();
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
+    await act(() => result.current.open());
     await act(async () => result.current.dialog?.onConfirm());
     expect(result.current.dialog?.message).toBe(STAGE_SEND_FAILED);
     expect(result.current.dialog?.confirmLabel).toBe(STAGE_SEND_RETRY);
@@ -475,12 +475,12 @@ describe('useStageSend', () => {
     );
     mockRead.mockResolvedValue(sendable({ from: 'community_review' }));
     mockSend.mockRejectedValueOnce(new StageSendBlockedError());
-    const { result, onSent } = setup({
+    const { result, onSent } = await setup({
       passage: makePassage({ status: 'community_review' }),
       userId: 5,
     });
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
+    await act(() => result.current.open());
     await act(async () => result.current.dialog?.onConfirm());
     expect(result.current.dialog?.message).toBe(
       stageSendBlocked('Linguist Check'),
@@ -492,7 +492,7 @@ describe('useStageSend', () => {
     expect(result.current.dialog?.confirmLabel).toBe(STAGE_SEND_OK);
     expect(onSent).toHaveBeenCalledTimes(1);
 
-    act(() => result.current.dialog?.onConfirm());
+    await act(() => result.current.dialog?.onConfirm());
     expect(result.current.dialog).toBeNull();
     expect(mockSend).toHaveBeenCalledTimes(2);
   });
@@ -501,17 +501,17 @@ describe('useStageSend', () => {
     mockRead.mockResolvedValue(sendable());
     let reject!: (e: Error) => void;
     mockSend.mockReturnValue(new Promise((_r, j) => (reject = j)));
-    const { result, rerender, onSent } = setup();
+    const { result, rerender, onSent } = await setup();
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
-    act(() => result.current.dialog?.onConfirm());
-    rerender({ passage: makePassage(), userId: 5, capturing: false });
+    await act(() => result.current.open());
+    await act(() => result.current.dialog?.onConfirm());
+    await rerender({ passage: makePassage(), userId: 5, capturing: false });
     expect(result.current.dialog).toBeNull();
     await act(async () => reject(new Error('late')));
     expect(result.current.dialog).toBeNull();
     expect(onSent).not.toHaveBeenCalled();
 
-    rerender({ passage: makePassage(), userId: 4, capturing: false });
+    await rerender({ passage: makePassage(), userId: 4, capturing: false });
     expect(result.current.dialog).toBeNull();
   });
 
@@ -519,15 +519,15 @@ describe('useStageSend', () => {
     mockRead.mockResolvedValue(sendable());
     let resolve!: (v: string) => void;
     mockSend.mockReturnValue(new Promise(r => (resolve = r)));
-    const { result, rerender, onSent } = setup();
+    const { result, rerender, onSent } = await setup();
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
-    act(() => result.current.dialog?.onConfirm());
-    rerender({ passage: makePassage(), userId: 5, capturing: false });
+    await act(() => result.current.open());
+    await act(() => result.current.dialog?.onConfirm());
+    await rerender({ passage: makePassage(), userId: 5, capturing: false });
     await act(async () => resolve('confirmed'));
     expect(onSent).not.toHaveBeenCalled();
 
-    rerender({ passage: makePassage(), userId: 4, capturing: false });
+    await rerender({ passage: makePassage(), userId: 4, capturing: false });
     expect(result.current.dialog).toBeNull();
   });
 
@@ -535,11 +535,11 @@ describe('useStageSend', () => {
     mockRead.mockResolvedValue(sendable());
     let resolve!: (v: string) => void;
     mockSend.mockReturnValue(new Promise(r => (resolve = r)));
-    const { result, unmount, onSent } = setup();
+    const { result, unmount, onSent } = await setup();
     await waitFor(() => expect(result.current.row?.kind).toBe('send'));
-    act(() => result.current.open());
-    act(() => result.current.dialog?.onConfirm());
-    unmount();
+    await act(() => result.current.open());
+    await act(() => result.current.dialog?.onConfirm());
+    await unmount();
     await act(async () => resolve('confirmed'));
     expect(onSent).not.toHaveBeenCalled();
   });

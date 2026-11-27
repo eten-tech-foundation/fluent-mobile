@@ -114,7 +114,7 @@ describe('useHomeBooks', () => {
   });
 
   it('loads the books for the signed-in user', async () => {
-    const { result } = renderHook(() => useHomeBooks());
+    const { result } = await renderHook(() => useHomeBooks());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.books).toEqual([MARK]);
@@ -134,7 +134,7 @@ describe('useHomeBooks', () => {
         }),
     );
 
-    const { result } = renderHook(() => useHomeBooks());
+    const { result } = await renderHook(() => useHomeBooks());
 
     await waitFor(() => expect(mockGetHomeBookSummaries).toHaveBeenCalled());
     expect(
@@ -155,7 +155,7 @@ describe('useHomeBooks', () => {
   it('is empty without a user', async () => {
     mockParseUserId.mockReturnValue(null);
 
-    const { result } = renderHook(() => useHomeBooks());
+    const { result } = await renderHook(() => useHomeBooks());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.books).toEqual([]);
@@ -164,11 +164,11 @@ describe('useHomeBooks', () => {
 
   it('defers the first-focus metadata refresh until the first paint', async () => {
     mockAfterFirstPaint.mockImplementationOnce(() => {});
-    const { result } = renderHook(() => useHomeBooks());
+    const { result } = await renderHook(() => useHomeBooks());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(mockRefresh).not.toHaveBeenCalled();
-    act(() => {
+    await act(() => {
       mockAfterFirstPaint.mock.calls[0][0]();
     });
     expect(mockRefresh).toHaveBeenCalledWith(7);
@@ -176,11 +176,11 @@ describe('useHomeBooks', () => {
 
   it('skips the deferred refresh when the user signed out before the paint', async () => {
     mockAfterFirstPaint.mockImplementationOnce(() => {});
-    const { result } = renderHook(() => useHomeBooks());
+    const { result } = await renderHook(() => useHomeBooks());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockGetActiveUserId.mockReturnValue('');
-    act(() => {
+    await act(() => {
       mockAfterFirstPaint.mock.calls[0][0]();
     });
     expect(mockRefresh).not.toHaveBeenCalled();
@@ -188,11 +188,11 @@ describe('useHomeBooks', () => {
 
   it('drops the deferred refresh when the hook unmounts before the paint', async () => {
     mockAfterFirstPaint.mockImplementationOnce(() => {});
-    const { result, unmount } = renderHook(() => useHomeBooks());
+    const { result, unmount } = await renderHook(() => useHomeBooks());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    unmount();
-    act(() => {
+    await unmount();
+    await act(() => {
       mockAfterFirstPaint.mock.calls[0][0]();
     });
     expect(mockRefresh).not.toHaveBeenCalled();
@@ -201,7 +201,7 @@ describe('useHomeBooks', () => {
   it('reads once on mount, leaving the metadata refresh to the refresh key', async () => {
     const mountMetadata = deferred();
     mockRefresh.mockReturnValueOnce(mountMetadata.promise);
-    const { result } = renderHook(() => useHomeBooks());
+    const { result } = await renderHook(() => useHomeBooks());
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => {
       mountMetadata.resolve();
@@ -214,7 +214,7 @@ describe('useHomeBooks', () => {
 
   describe('on regaining focus', () => {
     async function mounted() {
-      const hook = renderHook(() => useHomeBooks());
+      const hook = await renderHook(() => useHomeBooks());
       await waitFor(() => expect(hook.result.current.loading).toBe(false));
       return hook;
     }
@@ -281,7 +281,7 @@ describe('useHomeBooks', () => {
     });
 
     it('retries after the last read failed', async () => {
-      const { rerender } = renderHook(
+      const { rerender } = await renderHook(
         ({ key }: { key: number }) => useHomeBooks(key),
         { initialProps: { key: 0 } },
       );
@@ -290,7 +290,7 @@ describe('useHomeBooks', () => {
         new Error('disk I/O error'),
       );
       mockWrites = 1;
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
       await waitFor(() =>
         expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
       );
@@ -321,7 +321,7 @@ describe('useHomeBooks', () => {
   });
 
   it('keeps the same books array when a reread finds nothing changed', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ key }: { key: number }) => useHomeBooks(key),
       { initialProps: { key: 0 } },
     );
@@ -330,7 +330,7 @@ describe('useHomeBooks', () => {
 
     mockGetHomeBookSummaries.mockResolvedValueOnce([{ ...MARK }]);
     mockWrites = 1;
-    rerender({ key: 1 });
+    await rerender({ key: 1 });
     await waitFor(() =>
       expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
     );
@@ -347,12 +347,12 @@ describe('useHomeBooks', () => {
           resolveOld = resolve;
         }),
     );
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ key }: { key: number }) => useHomeBooks(key),
       { initialProps: { key: 0 } },
     );
 
-    rerender({ key: 1 });
+    await rerender({ key: 1 });
     await waitFor(() => expect(result.current.books).toEqual([MARK]));
 
     await act(async () => {
@@ -362,7 +362,7 @@ describe('useHomeBooks', () => {
   });
 
   it('keeps the books already shown when a later read fails', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ key }: { key: number }) => useHomeBooks(key),
       { initialProps: { key: 0 } },
     );
@@ -370,7 +370,7 @@ describe('useHomeBooks', () => {
 
     mockGetHomeBookSummaries.mockRejectedValueOnce(new Error('disk I/O error'));
     mockWrites = 1;
-    rerender({ key: 1 });
+    await rerender({ key: 1 });
 
     await waitFor(() => expect(result.current.error).toBe(true));
     expect(result.current.loading).toBe(false);
@@ -378,13 +378,13 @@ describe('useHomeBooks', () => {
 
     // The next read that lands clears it.
     mockWrites = 2;
-    rerender({ key: 2 });
+    await rerender({ key: 2 });
     await waitFor(() => expect(result.current.error).toBe(false));
   });
 
   it('reports a failed first read, so Home can tell it from no books', async () => {
     mockGetHomeBookSummaries.mockRejectedValueOnce(new Error('disk I/O error'));
-    const { result } = renderHook(() => useHomeBooks());
+    const { result } = await renderHook(() => useHomeBooks());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe(true);
@@ -392,7 +392,7 @@ describe('useHomeBooks', () => {
   });
 
   it('stays reading until the refresh-key read lands', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ key }: { key: number }) => useHomeBooks(key),
       { initialProps: { key: 0 } },
     );
@@ -408,7 +408,7 @@ describe('useHomeBooks', () => {
         }),
     );
     mockWrites = 1;
-    rerender({ key: 1 });
+    await rerender({ key: 1 });
 
     expect(result.current.reading).toBe(true);
     expect(result.current.books).toEqual([MARK]);
@@ -422,7 +422,7 @@ describe('useHomeBooks', () => {
   });
 
   it('reads in full when the check cannot read the write mark', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ key }: { key: number }) => useHomeBooks(key),
       { initialProps: { key: 0 } },
     );
@@ -435,7 +435,7 @@ describe('useHomeBooks', () => {
       { ...MARK, bookName: 'Luke' },
     ]);
 
-    rerender({ key: 1 });
+    await rerender({ key: 1 });
 
     await waitFor(() => expect(result.current.books[0]?.bookName).toBe('Luke'));
     expect(result.current.error).toBe(false);
@@ -443,7 +443,7 @@ describe('useHomeBooks', () => {
   });
 
   it('reports the error, keeping the books, when the database is down', async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ key }: { key: number }) => useHomeBooks(key),
       { initialProps: { key: 0 } },
     );
@@ -454,7 +454,7 @@ describe('useHomeBooks', () => {
     queries.getDatabaseWriteMark.mockResolvedValueOnce(null);
     mockGetHomeBookSummaries.mockRejectedValueOnce(new Error('db down'));
 
-    rerender({ key: 1 });
+    await rerender({ key: 1 });
 
     await waitFor(() => expect(result.current.error).toBe(true));
     expect(result.current.reading).toBe(false);
@@ -462,7 +462,7 @@ describe('useHomeBooks', () => {
   });
 
   it("stays reading when an earlier sync's read lands while the next sync's check is out", async () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({ key }: { key: number }) => useHomeBooks(key),
       { initialProps: { key: 0 } },
     );
@@ -479,7 +479,7 @@ describe('useHomeBooks', () => {
         }),
     );
     mockWrites = 1;
-    rerender({ key: 1 });
+    await rerender({ key: 1 });
     await waitFor(() =>
       expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
     );
@@ -490,7 +490,7 @@ describe('useHomeBooks', () => {
       await mark.promise;
       return { connection: mockConnection, changes: 2 };
     });
-    rerender({ key: 2 });
+    await rerender({ key: 2 });
     await act(async () => {
       resolveFirst([]);
     });
@@ -527,7 +527,7 @@ describe('useHomeBooks', () => {
     let staleStarted = false;
 
     try {
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         ({ key }: { key: number }) => useHomeBooks(key),
         { initialProps: { key: 0 } },
       );
@@ -551,7 +551,7 @@ describe('useHomeBooks', () => {
           }),
       );
       mockWrites = 1;
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
       await act(async () => {
         for (const effect of deferredPassives.splice(0)) {
           effect();
@@ -565,7 +565,7 @@ describe('useHomeBooks', () => {
         return { connection: mockConnection, changes: 2 };
       });
 
-      rerender({ key: 2 });
+      await rerender({ key: 2 });
       expect(result.current.reading).toBe(true);
 
       await act(async () => {
@@ -593,9 +593,12 @@ describe('useHomeBooks', () => {
 
   describe('when the refresh key changes', () => {
     async function mountedWithKey() {
-      const hook = renderHook(({ key }: { key: number }) => useHomeBooks(key), {
-        initialProps: { key: 0 },
-      });
+      const hook = await renderHook(
+        ({ key }: { key: number }) => useHomeBooks(key),
+        {
+          initialProps: { key: 0 },
+        },
+      );
       await waitFor(() => expect(hook.result.current.loading).toBe(false));
       return hook;
     }
@@ -604,7 +607,7 @@ describe('useHomeBooks', () => {
       const { rerender } = await mountedWithKey();
 
       mockWrites = 1;
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() =>
         expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
@@ -615,7 +618,7 @@ describe('useHomeBooks', () => {
       const { result, rerender } = await mountedWithKey();
       const shown = result.current.books;
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
       await act(async () => {});
 
       expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(1);
@@ -629,7 +632,7 @@ describe('useHomeBooks', () => {
       });
       const { rerender } = await mountedWithKey();
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() =>
         expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
@@ -640,7 +643,7 @@ describe('useHomeBooks', () => {
       const { rerender } = await mountedWithKey();
 
       mockParseUserId.mockReturnValue(8);
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() =>
         expect(mockGetHomeBookSummaries).toHaveBeenLastCalledWith(8),
@@ -651,7 +654,7 @@ describe('useHomeBooks', () => {
       const { rerender } = await mountedWithKey();
 
       mockWrites = null;
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() =>
         expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2),
@@ -664,12 +667,12 @@ describe('useHomeBooks', () => {
         await first.promise;
         return [];
       });
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         ({ key }: { key: number }) => useHomeBooks(key),
         { initialProps: { key: 0 } },
       );
 
-      rerender({ key: 1 });
+      await rerender({ key: 1 });
 
       await waitFor(() => expect(result.current.books).toEqual([MARK]));
       expect(mockGetHomeBookSummaries).toHaveBeenCalledTimes(2);

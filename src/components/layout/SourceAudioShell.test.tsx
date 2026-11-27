@@ -127,31 +127,31 @@ describe('SourceAudioBarSlot', () => {
     jest.clearAllMocks();
   });
 
-  it('shows the player on the Bible tab', () => {
-    renderSlot('bible');
+  it('shows the player on the Bible tab', async () => {
+    await renderSlot('bible');
     expect(screen.getByTestId('source-audio-bar')).toBeTruthy();
     expect(screen.getByTestId('source-audio-label')).toHaveTextContent(
       'BSB Source Audio · Verse 3 / 3',
     );
   });
 
-  it('shows the player on the Record tab', () => {
-    renderSlot('record');
+  it('shows the player on the Record tab', async () => {
+    await renderSlot('record');
     expect(screen.getByTestId('source-audio-bar')).toBeTruthy();
   });
 
-  it('hides the player on the Resources tab', () => {
-    renderSlot('resources');
+  it('hides the player on the Resources tab', async () => {
+    await renderSlot('resources');
     expect(screen.queryByTestId('source-audio-bar')).toBeNull();
   });
 
-  it('hides the player while recording is active', () => {
-    renderSlot('record', true);
+  it('hides the player while recording is active', async () => {
+    await renderSlot('record', true);
     expect(screen.queryByTestId('source-audio-bar')).toBeNull();
   });
 
-  it('wires useSourceAudio to the selected drafting verse', () => {
-    renderSlot('bible');
+  it('wires useSourceAudio to the selected drafting verse', async () => {
+    await renderSlot('bible');
     expect(mockUseSourceAudio).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: 1,
@@ -190,7 +190,7 @@ describe('useSourceAudioRecordTabIntegration', () => {
     jest.clearAllMocks();
   });
 
-  it('stops source audio when draft take playback starts', () => {
+  it('stops source audio when draft take playback starts', async () => {
     mockUseSourceAudio.mockReturnValue({
       loadState: 'ready',
       status: 'playing',
@@ -204,7 +204,7 @@ describe('useSourceAudioRecordTabIntegration', () => {
       retry: jest.fn(),
     });
 
-    render(
+    await render(
       <DraftingProvider verses={verses} initialVerse={3}>
         <SourceAudioProvider
           chapterData={chapterData}
@@ -219,7 +219,7 @@ describe('useSourceAudioRecordTabIntegration', () => {
     expect(mockStop).toHaveBeenCalled();
   });
 
-  it('does not re-enable source audio on positionMs ticks while disabled (#596)', () => {
+  it('does not re-enable source audio on positionMs ticks while disabled (#596)', async () => {
     // Context value used to change every positionMs tick; effects depended on
     // `ctx` and toggled recordTabSourceEnabled in cleanup/setup → depth error.
     // On the Record tab, enabled mirrors recordTabSourceEnabled — assert it
@@ -242,7 +242,7 @@ describe('useSourceAudioRecordTabIntegration', () => {
 
     const pauseDraft = jest.fn().mockResolvedValue(undefined);
 
-    const { rerender } = render(
+    const { rerender } = await render(
       <DraftingProvider verses={verses} initialVerse={3}>
         <SourceAudioProvider
           chapterData={chapterData}
@@ -262,7 +262,7 @@ describe('useSourceAudioRecordTabIntegration', () => {
 
     for (let i = 1; i <= 50; i += 1) {
       positionMs = i * 100;
-      rerender(
+      await rerender(
         <DraftingProvider verses={verses} initialVerse={3}>
           <SourceAudioProvider
             chapterData={chapterData}

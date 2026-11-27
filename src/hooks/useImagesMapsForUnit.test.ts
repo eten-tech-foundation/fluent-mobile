@@ -40,7 +40,7 @@ describe('useImagesMapsForUnit', () => {
   it('loads items for units that have Images & Maps', async () => {
     mockLoad.mockResolvedValue(SAMPLE_ITEMS);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useImagesMapsForUnit({
         projectId: 7,
         bookCode: 'MRK',
@@ -71,7 +71,7 @@ describe('useImagesMapsForUnit', () => {
     mockLoad.mockRejectedValueOnce(new Error('boom'));
     mockLoad.mockResolvedValueOnce(SAMPLE_ITEMS);
 
-    const { result } = renderHook(() =>
+    const { result } = await renderHook(() =>
       useImagesMapsForUnit({
         projectId: 7,
         bookCode: 'MRK',
@@ -101,7 +101,7 @@ describe('useImagesMapsForUnit', () => {
   it('does not show the previous unit while the next load is still pending', async () => {
     mockLoad.mockResolvedValue(SAMPLE_ITEMS);
 
-    const { result, rerender } = renderHook(
+    const { result, rerender } = await renderHook(
       ({
         projectId,
         bookCode,
@@ -148,7 +148,7 @@ describe('useImagesMapsForUnit', () => {
     });
     mockLoad.mockReturnValueOnce(pendingLoad);
 
-    rerender({
+    await rerender({
       projectId: 7,
       bookCode: 'MRK',
       chapterNumber: 1,
@@ -189,7 +189,7 @@ describe('useImagesMapsForUnit', () => {
         chapterNumber: 14,
         verseNumber: 2,
       };
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         (props: typeof base) => {
           const hook = useImagesMapsForUnit(props);
           rendered.push(hook.state.status);
@@ -203,7 +203,7 @@ describe('useImagesMapsForUnit', () => {
 
       mockLoad.mockReturnValueOnce(new Promise(() => {}));
       const from = rendered.length;
-      rerender({ ...base, ...change });
+      await rerender({ ...base, ...change });
       expect(rendered.slice(from)).not.toContain('ready');
     },
   );

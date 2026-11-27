@@ -200,6 +200,7 @@ export function useRecorder({
     onChange: setVerse,
     audioState: verseAudio.state,
     discardCapture: verseAudio.discardCapture,
+    isStopPending: verseAudio.isStopPending,
     resetCapture: session.resetCapture,
   });
   // The passage's own assignment row, reloaded with it on focus and sync.
@@ -246,6 +247,23 @@ export function useRecorder({
   const capturing = session.captureActive;
   const live = verseAudio.state === 'recording';
   const paused = verseAudio.state === 'paused';
+  const saving = verseAudio.state === 'saving';
+  const held = capturing || saving;
+  // The take being saved joins the list before saving settles. Hold it back
+  // from the moment saving starts, so the in-progress tile neither renumbers
+  // nor doubles beside its own saved tile for a moment (#979). Snapshotting at
+  // `saving` rather than at record start keeps a late initial load of existing
+  // takes visible while recording; Record waits on that load (`takesLoaded`),
+  // so the snapshot is always taken from a complete list.
+  const savingTakeIds = useRef<Set<string> | null>(null);
+  if (!saving) {
+    savingTakeIds.current = null;
+  } else if (savingTakeIds.current === null) {
+    savingTakeIds.current = new Set(verseAudio.takes.map(t => t.id));
+  }
+  const savingIds = savingTakeIds.current;
+  const listedBeforeSave = (id: string) =>
+    savingIds === null || savingIds.has(id);
   // A take found paused without recording here was recovered after a crash.
   // A failed save also lands on paused, so saving keeps what came before.
   const [wentLive, setWentLive] = useState(false);
@@ -275,6 +293,11 @@ export function useRecorder({
   // record() awaits a commit, then starts from the session as it is by then.
   const latestAudio = useRef(verseAudio);
   latestAudio.current = verseAudio;
+  const takeListReady = (audio: typeof verseAudio) => {
+    if (audio.takesLoaded) return true;
+    if (audio.state === 'error') audio.retryTakesLoad();
+    return false;
+  };
   // Capture can become active while the sheet is still in Listen. Treat that
   // as Record showing so a pending delete is not committed and Eject can run.
   const shown = showing || capturing;
@@ -313,6 +336,7 @@ export function useRecorder({
     (verseMode
       ? t.granularity !== 'pericope'
       : session.effectiveUnit !== 'pericope' || t.granularity === 'pericope') &&
+    listedBeforeSave(t.id) &&
     !deletion.hiddenIds.has(t.id);
   const coverTakes = verseMode
     ? verseAudio.takes
@@ -416,6 +440,11 @@ export function useRecorder({
   const versesSelected =
     !verseMode &&
     verseAudio.takes.some(t => t.granularity !== 'pericope' && t.isSelected);
+  // What a new take would replace, for record() to tell, after its awaits,
+  // whether the replacement the user confirmed is still the one at stake.
+  const replacementKey = `${coveringTake?.id ?? ''}|${versesSelected}`;
+  const replacementRef = useRef(replacementKey);
+  replacementRef.current = replacementKey;
   const first = passage.verses[0];
   const last = passage.verses[passage.verses.length - 1];
   const othersOfficial =
@@ -439,7 +468,6 @@ export function useRecorder({
   const [stepping, setStepping] = useState(false);
   const steppingRef = useRef(false);
   const steps = useRef(0);
-  const held = capturing || verseAudio.state === 'saving';
   const pendingId = deletion.pending?.id ?? null;
   // Only while that take's undo is open; after that the selected take leads.
   const overrideId = frontOverride === pendingId ? frontOverride : null;
@@ -849,6 +877,13 @@ export function useRecorder({
       await verseAudio.resume();
       return;
     }
+    // A new take waits for the verse's takes to load, so its tile number and
+    // the take cap are counted from the full list (#979).
+    if (!takeListReady(latestAudio.current)) {
+      // A failed initial query leaves Record available as a retry affordance;
+      // never begin a capture from its incomplete result.
+      return;
+    }
     if (
       session.stageLocked ||
       session.drafterCaptureBlocked ||
@@ -859,6 +894,9 @@ export function useRecorder({
       return;
     }
     const stepsBefore = steps.current;
+    // The replacement the confirms below are about. A save deselects what it
+    // overlaps, so a start must not go ahead on one the user has not seen.
+    const confirmedReplacement = replacementKey;
     if (
       coveringTake &&
       !(await confirmRecordOver(
@@ -879,6 +917,12 @@ export function useRecorder({
     }
     // A denied mic shows its own Settings alert and resolves false.
     if (!(await explainSetupFailure(() => session.ensureMic()))) return;
+    // Permission can remain open while pericope capture metadata resolves and
+    // starts a wider take query. Recheck the latest query before proceeding.
+    if (!takeListReady(latestAudio.current)) return;
+    // A wider take query may have listed takes to replace during the prompt.
+    // Stop here: the next Record tap asks about them.
+    if (replacementRef.current !== confirmedReplacement) return;
     // A new take counts toward the limit, so a pending delete goes first.
     await deletion.commit();
     // The player may have closed while the delete ran; don't record hidden.
@@ -889,6 +933,8 @@ export function useRecorder({
     ) {
       return;
     }
+    if (!takeListReady(latestAudio.current)) return;
+    if (replacementRef.current !== confirmedReplacement) return;
     session.setElapsedMs(0);
     // start() reports recorder failures itself (Audio error); only its take
     // count, read before the recorder starts, rejects.
@@ -1065,9 +1111,10 @@ export function useRecorder({
       !capturing &&
       (held ||
         stepping ||
+        (!verseAudio.takesLoaded && verseAudio.state !== 'error') ||
         observerOnly ||
         classicReason !== null ||
-        atCap ||
+        (verseAudio.takesLoaded && atCap) ||
         session.captureDisabled ||
         session.isTaken),
     onRecord: () => void oneAtATime(record),

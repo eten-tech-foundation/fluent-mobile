@@ -14,8 +14,8 @@ jest.mock('lucide-react-native', () => {
 });
 
 describe('ChapterConflictIndicator', () => {
-  it('exposes an accessibility label for unresolved conflicts', () => {
-    const { getByLabelText, getByTestId } = render(
+  it('exposes an accessibility label for unresolved conflicts', async () => {
+    const { getByLabelText, getByTestId } = await render(
       <ChapterConflictIndicator />,
     );
 

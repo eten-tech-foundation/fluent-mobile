@@ -67,14 +67,16 @@ describe('CloudSyncStatusIcon', () => {
     mockPreferenceStore();
   });
 
-  it.each(ALL_STATUSES)('renders for status %s', status => {
-    const { getByLabelText } = render(<CloudSyncStatusIcon status={status} />);
+  it.each(ALL_STATUSES)('renders for status %s', async status => {
+    const { getByLabelText } = await render(
+      <CloudSyncStatusIcon status={status} />,
+    );
 
     expect(getByLabelText(SYNC_STATUS_LABELS[status])).toBeTruthy();
   });
 
-  it('#38: offline_synced draws gray cloud-check, not cloud-off', () => {
-    render(<CloudSyncStatusIcon status="offline_synced" />);
+  it('#38: offline_synced draws gray cloud-check, not cloud-off', async () => {
+    await render(<CloudSyncStatusIcon status="offline_synced" />);
 
     const cloud = renderedPaths.find(p => p.d.startsWith(CLOUD_PATH_PREFIX));
     const check = renderedPaths.find(p => p.d === CHECK_PATH);
@@ -87,7 +89,7 @@ describe('CloudSyncStatusIcon', () => {
     expect(check?.stroke).toBe(theme.colors.syncStatusOffline);
   });
 
-  it('isolates Next glyph colors across status/override changes and restores Legacy colors', () => {
+  it('isolates Next glyph colors across status/override changes and restores Legacy colors', async () => {
     const legacy = resolveTheme('legacy');
     const next = resolveTheme('next');
     const colors = next.colors as {
@@ -121,48 +123,48 @@ describe('CloudSyncStatusIcon', () => {
         syncStatusOffline: '#404142',
         destructive: '#505152',
       });
-      const view = render(tree('legacy', 'online_synced'));
+      const view = await render(tree('legacy', 'online_synced'));
       expect(stroke(CLOUD_PATH_PREFIX)).toBe(legacy.colors.primaryForeground);
       expect(stroke(CHECK_PATH)).toBe(legacy.colors.syncStatusSynced);
-      const show = (
+      const show = async (
         version: 'legacy' | 'next',
         status: SyncStatus,
         cloudColor?: string,
       ) => {
         renderedPaths.length = 0;
-        view.rerender(tree(version, status, cloudColor));
+        await view.rerender(tree(version, status, cloudColor));
       };
-      show('next', 'online_synced');
+      await show('next', 'online_synced');
       expect(stroke(CLOUD_PATH_PREFIX)).toBe('#101112');
       expect(stroke(CHECK_PATH)).toBe('#202122');
-      show('next', 'online_synced', '#abcdef');
+      await show('next', 'online_synced', '#abcdef');
       expect(stroke(CLOUD_PATH_PREFIX)).toBe('#abcdef');
       expect(stroke(CHECK_PATH)).toBe('#202122');
-      show('next', 'online_pending');
+      await show('next', 'online_pending');
       expect(stroke(CLOUD_PATH_PREFIX)).toBe('#101112');
       expect(stroke('M12 13v8')).toBe('#303132');
-      show('next', 'online_failed');
+      await show('next', 'online_failed');
       expect(stroke('M12 13v8')).toBe('#505152');
-      show('next', 'online_needs_sync', '#abcdef');
+      await show('next', 'online_needs_sync', '#abcdef');
       expect(stroke(CLOUD_PATH_PREFIX)).toBe('#abcdef');
       expect(stroke('M3 12a9')).toBe('#303132');
       for (const status of ['online_syncing', 'online_uploading'] as const) {
-        show('next', status);
+        await show('next', status);
         expect(stroke(CLOUD_PATH_PREFIX)).toBe('#101112');
         expect(stroke('M3 12a9')).toBe('#202122');
       }
-      show('next', 'offline_synced');
+      await show('next', 'offline_synced');
       expect(stroke(CLOUD_PATH_PREFIX)).toBe('#404142');
       expect(stroke(CHECK_PATH)).toBe('#404142');
-      show('next', 'offline_pending');
+      await show('next', 'offline_pending');
       expect(view.getByTestId('cloud-off-unsynced-glyph').props.color).toBe(
         '#404142',
       );
-      show('next', 'offline_pending', '#abcdef');
+      await show('next', 'offline_pending', '#abcdef');
       expect(view.getByTestId('cloud-off-unsynced-glyph').props.color).toBe(
         '#abcdef',
       );
-      show('legacy', 'online_synced');
+      await show('legacy', 'online_synced');
       expect(stroke(CLOUD_PATH_PREFIX)).toBe(legacy.colors.primaryForeground);
       expect(stroke(CHECK_PATH)).toBe(legacy.colors.syncStatusSynced);
       expect(

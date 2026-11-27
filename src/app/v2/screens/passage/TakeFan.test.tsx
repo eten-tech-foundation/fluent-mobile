@@ -42,9 +42,9 @@ describe('overBin', () => {
 describe('TakeFan', () => {
   beforeEach(() => mockPreferenceStore());
 
-  it('brings a take to the front when tapped and marks the official one', () => {
+  it('brings a take to the front when tapped and marks the official one', async () => {
     const onSelect = jest.fn();
-    render(
+    await render(
       <TakeFan
         takes={[
           { id: 'a', takeNumber: 1, official: true },
@@ -56,13 +56,13 @@ describe('TakeFan', () => {
     );
 
     expect(screen.getByLabelText('Take 2, selected')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('Take 1, official'));
+    await fireEvent.press(screen.getByLabelText('Take 1, official'));
     expect(onSelect).toHaveBeenCalledWith('a');
   });
 
-  it("doesn't select the take still being recorded", () => {
+  it("doesn't select the take still being recorded", async () => {
     const onSelect = jest.fn();
-    render(
+    await render(
       <TakeFan
         takes={[
           { id: 'recording', takeNumber: 3, official: false, recording: true },
@@ -72,13 +72,13 @@ describe('TakeFan', () => {
       />,
     );
 
-    fireEvent.press(screen.getByLabelText('Take 3, recording'));
+    await fireEvent.press(screen.getByLabelText('Take 3, recording'));
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it('ends with an empty dashed slot for the next take', () => {
+  it('ends with an empty dashed slot for the next take', async () => {
     const onSelect = jest.fn();
-    render(
+    await render(
       <TakeFan
         takes={[
           { id: 'a', takeNumber: 1, official: false },
@@ -94,15 +94,15 @@ describe('TakeFan', () => {
       />,
     );
 
-    fireEvent.press(screen.getByLabelText('Take 2, not recorded yet'));
+    await fireEvent.press(screen.getByLabelText('Take 2, not recorded yet'));
     expect(onSelect).not.toHaveBeenCalled();
     expect(screen.queryByText('2')).toBeNull();
   });
 
-  it('offers Delete to TalkBack, and undoes a deleted take on tap', () => {
+  it('offers Delete to TalkBack, and undoes a deleted take on tap', async () => {
     const onSelect = jest.fn();
     const onDelete = jest.fn();
-    const { rerender } = render(
+    const { rerender } = await render(
       <TakeFan
         takes={[{ id: 'a', takeNumber: 1, official: false, selected: true }]}
         frontId="a"
@@ -111,7 +111,7 @@ describe('TakeFan', () => {
       />,
     );
 
-    fireEvent(
+    await fireEvent(
       screen.getByLabelText('Take 1, selected'),
       'accessibilityAction',
       {
@@ -120,7 +120,7 @@ describe('TakeFan', () => {
     );
     expect(onDelete).toHaveBeenCalledWith('a');
 
-    rerender(
+    await rerender(
       <TakeFan
         takes={[{ id: 'a', takeNumber: 1, official: false, deleted: true }]}
         frontId="a"
@@ -128,7 +128,7 @@ describe('TakeFan', () => {
         onDelete={onDelete}
       />,
     );
-    fireEvent.press(screen.getByLabelText('Take 1, deleted'));
+    await fireEvent.press(screen.getByLabelText('Take 1, deleted'));
     expect(onSelect).toHaveBeenCalledWith('a');
     expect(
       screen.getByLabelText('Take 1, deleted').props.accessibilityActions,
