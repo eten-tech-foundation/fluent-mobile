@@ -49,6 +49,25 @@ describe('useUploadSyncNotificationTap', () => {
     mockGetLastNotificationResponse.mockReturnValue(null);
   });
 
+  it('waits until bootstrap finishes before a tap can open Sync', async () => {
+    mockIsLoading = true;
+    mockGetLastNotificationResponse.mockReturnValue({
+      notification: uploadNotification,
+    });
+
+    const view = await renderHook(() => useUploadSyncNotificationTap());
+
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+
+    mockIsLoading = false;
+    await view.rerender(undefined);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/(app)/(stack)/sync');
+    });
+  });
+
   it('opens Sync when a logged-in user taps the local upload notification', async () => {
     mockGetLastNotificationResponse.mockReturnValue({
       notification: uploadNotification,

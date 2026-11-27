@@ -45,10 +45,11 @@ describe('reauthNavigation', () => {
       expect(router.replace).not.toHaveBeenCalled();
     });
 
-    it('falls back to home replace when stack cannot go back', () => {
+    it('falls back to the Next home route when stack cannot go back', () => {
       const router = createRouter({ canGoBack: () => false });
       navigateFromReauth(router, undefined);
       expect(router.replace).toHaveBeenCalledWith(hrefs.home());
+      expect(hrefs.home().pathname).toBe('/(app)/(stack)');
     });
   });
 });

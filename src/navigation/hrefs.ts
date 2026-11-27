@@ -50,7 +50,7 @@ export const hrefs = {
     projectName: string;
     milestoneName: string;
     language: string;
-    /** Next's book page opens scrolled to this chapter; Legacy ignores it. */
+    /** Book page opens scrolled to this chapter. */
     focusChapterId?: number;
   }) =>
     ({

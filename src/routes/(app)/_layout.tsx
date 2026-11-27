@@ -5,7 +5,7 @@ import { useWindowDimensions, type ColorValue } from 'react-native';
 import { Drawer, type DrawerContentComponentProps } from 'expo-router/drawer';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useAuthSession } from '../../navigation/AuthSessionProvider';
-import { useRecordCaptureGate } from '../../navigation/useRecordCaptureGate';
+import { isPausedTakeForeign } from '../../services/pausedTakeOwner';
 import { useLaunchRecoveryPrompt } from '../../services/useLaunchRecoveryPrompt';
 import {
   DRAWER_MENU_ICON_SIZE,
@@ -13,8 +13,9 @@ import {
   drawerMenuItemStyle,
   useDrawerMenuLabelStyles,
 } from '../../components/ui/UserSettingsMenu';
-import { useTheme, useUiVersion } from '../../theme/useTheme';
+import { useTheme } from '../../theme/useTheme';
 import { logger } from '../../utils/logger';
+import { parseUserId } from '../../utils/parseUserId';
 import { markStartup } from '../../utils/startupTrace';
 
 const log = logger.create('AppDrawerLayout');
@@ -48,14 +49,23 @@ export default function AppDrawerLayout() {
   const drawerLabelStyles = useDrawerMenuLabelStyles();
   const router = useRouter();
 
-  const uiVersion = useUiVersion();
-
   useLaunchRecoveryPrompt({
     onResume: async marker => {
+      const userId = parseUserId();
+      if (isPausedTakeForeign(marker, userId)) return false;
       try {
-        const href = await resolveRecoveryHref(marker, uiVersion);
-        if (!href) return false;
-        router.navigate(href);
+        const result = await resolveRecoveryHref(
+          marker,
+          () => parseUserId() === userId,
+        );
+        if (result.status !== 'open') return false;
+        if (
+          parseUserId() !== userId ||
+          isPausedTakeForeign(marker, parseUserId())
+        ) {
+          return false;
+        }
+        router.navigate(result.href);
         return true;
       } catch (error) {
         log.warn('Resume navigation failed', { error });
@@ -64,7 +74,6 @@ export default function AppDrawerLayout() {
     },
   });
   const drawerWidth = Math.min(320, width * 0.82);
-  const recordCaptureActive = useRecordCaptureGate();
 
   return (
     <Drawer
@@ -72,9 +81,9 @@ export default function AppDrawerLayout() {
       screenOptions={{
         headerShown: false,
         drawerType: 'front',
-        // Disabled while a take is recording/paused so swipe cannot leave drafting (#568).
-        // Next has no drawer button; its accounts sheet opens from the avatar.
-        swipeEnabled: !recordCaptureActive && uiVersion !== 'next',
+        // Next has no drawer edge swipe; accounts open from the avatar.
+        // A take's leave guard stays on the screen that owns the capture.
+        swipeEnabled: false,
         // Drawer draws under the status bar; content pads via DrawerContentScrollView.
         overlayColor: theme.colors.drawerOverlay,
         drawerActiveTintColor: theme.colors.primary,

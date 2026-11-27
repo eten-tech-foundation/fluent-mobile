@@ -40,6 +40,7 @@ describe('hrefs', () => {
         projectName: 'Baka NT',
         milestoneName: 'Mark',
         language: 'en',
+        focusChapterId: 5,
       }),
     ).toEqual({
       pathname: '/(app)/(stack)/chapters',
@@ -49,6 +50,7 @@ describe('hrefs', () => {
         projectName: 'Baka NT',
         milestoneName: 'Mark',
         language: 'en',
+        focusChapterId: '5',
       },
     });
   });

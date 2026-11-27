@@ -100,6 +100,38 @@ describe('root layout launch entry (#886)', () => {
     expect(mockScreens['(app)']).toBeUndefined();
   });
 
+  it('keeps a signed-out verse-detail link on login', async () => {
+    mockAuth = { isAuthenticated: false, isLoading: false };
+    mockSegments = ['(app)', '(stack)', 'verse-detail'];
+    await render(<RootLayout />);
+    expect(mockRedirects).toEqual(['/(auth)/login']);
+    expect(mockScreens['(app)']).toBeUndefined();
+  });
+
+  it('keeps a signed-out observer link on login', async () => {
+    mockAuth = { isAuthenticated: false, isLoading: false };
+    mockSegments = ['(app)', '(stack)', 'observer-draft'];
+    await render(<RootLayout />);
+    expect(mockRedirects).toEqual(['/(auth)/login']);
+    expect(mockScreens['(app)']).toBeUndefined();
+  });
+
+  it('does not open the app while a protected link is still restoring', async () => {
+    mockAuth = { isAuthenticated: true, isLoading: true };
+    mockSegments = ['(app)', '(stack)', 'verse-detail'];
+    await render(<RootLayout />);
+    expect(mockRedirects).toEqual([]);
+    expect(mockScreens['(app)']).toBeUndefined();
+  });
+
+  it('restores an authenticated session into the app group', async () => {
+    mockAuth = { isAuthenticated: true, isLoading: false };
+    await render(<RootLayout />);
+    expect(mockRedirects).toEqual([]);
+    expect(mockScreens['(app)']).toEqual(NO_ANIMATION);
+    expect(mockScreens['(auth)']).toBeUndefined();
+  });
+
   it('keeps the default transition into Home after signing in', async () => {
     mockAuth = { isAuthenticated: false, isLoading: false };
     mockSegments = ['(auth)', 'login'];
