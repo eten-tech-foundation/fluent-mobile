@@ -2,7 +2,7 @@
 # Next map: chapter-row + chapter-ownership-* → book-chapter-*-meta
 # ("Yours" / "Someone else's" / "Unassigned"); record-taken-warning →
 # passage-notices-taken. Requires MAESTRO_FIXTURE_PROJECT_NAME plus
-# MINE / OTHER / UNASSIGNED labels.
+# MINE / OTHER / UNASSIGNED chapter assignment ids.
 appId: com.eten.fluent
 tags:
   - ownership
@@ -48,63 +48,55 @@ tags:
           direction: DOWN
           duration: 250
 
+# Single-book galleries title the section "Chapter N". That title is not a
+# descendant Maestro can scope under book-chapter-*. Pin each row by id.
+- evalScript: >-
+    ${output.mineChapterId = (typeof MAESTRO_FIXTURE_MINE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_MINE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_MINE_CHAPTER_ID).trim()}
+- evalScript: >-
+    ${output.otherChapterId = (typeof MAESTRO_FIXTURE_OTHER_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_OTHER_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_OTHER_CHAPTER_ID).trim()}
+- evalScript: >-
+    ${output.unassignedChapterId = (typeof MAESTRO_FIXTURE_UNASSIGNED_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_UNASSIGNED_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_UNASSIGNED_CHAPTER_ID).trim()}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.mineChapterId)}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.otherChapterId)}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.unassignedChapterId)}
+
 # Mine — chapterMeta is "Draft · Yours · …" (full-string match on Maestro 2.10).
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_MINE_LABEL}
+      id: '^book-chapter-${output.mineChapterId}$'
     direction: DOWN
     timeout: 90000
     visibilityPercentage: 50
 - assertVisible:
-    id: 'book-chapter-[0-9]+-meta'
+    id: '^book-chapter-${output.mineChapterId}-meta$'
     text: '(.* · )?Yours( · .*)?'
-    childOf:
-      id: 'book-chapter-[0-9]+'
-      containsDescendants:
-        - text: ${MAESTRO_FIXTURE_MINE_LABEL}
 
 # Other
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_OTHER_LABEL}
+      id: '^book-chapter-${output.otherChapterId}$'
     direction: DOWN
     timeout: 90000
     visibilityPercentage: 50
 - assertVisible:
-    id: 'book-chapter-[0-9]+-meta'
+    id: '^book-chapter-${output.otherChapterId}-meta$'
     text: "(.* · )?Someone else's( · .*)?"
-    childOf:
-      id: 'book-chapter-[0-9]+'
-      containsDescendants:
-        - text: ${MAESTRO_FIXTURE_OTHER_LABEL}
 
 # Unassigned → open that chapter's Passage; Record has no taken notice
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
+      id: '^book-chapter-${output.unassignedChapterId}$'
     direction: DOWN
     timeout: 90000
     visibilityPercentage: 50
 - assertVisible:
-    id: 'book-chapter-[0-9]+-meta'
+    id: '^book-chapter-${output.unassignedChapterId}-meta$'
     text: '(.* · )?Unassigned( · .*)?'
-    childOf:
-      id: 'book-chapter-[0-9]+'
-      containsDescendants:
-        - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
 - assertNotVisible:
-    id: 'book-chapter-[0-9]+-meta'
+    id: '^book-chapter-${output.unassignedChapterId}-meta$'
     text: '(.* · )?Yours( · .*)?'
-    childOf:
-      id: 'book-chapter-[0-9]+'
-      containsDescendants:
-        - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
 - tapOn:
-    id: 'book-passage-[0-9]+-.*'
-    childOf:
-      id: 'book-chapter-[0-9]+'
-      containsDescendants:
-        - text: ${MAESTRO_FIXTURE_UNASSIGNED_LABEL}
+    id: '^book-passage-${output.unassignedChapterId}-.*'
 - extendedWaitUntil:
     visible:
       id: 'passage-header'

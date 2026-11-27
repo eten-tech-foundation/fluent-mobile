@@ -16,6 +16,7 @@ tags:
     file: ../../shared/nav/open-fixture-chapter.yaml
     env:
       MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_OTHER_LABEL}
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_OTHER_CHAPTER_ID}
 - assertVisible:
     id: 'passage-header'
 - assertVisible:

@@ -9,6 +9,10 @@ appId: com.eten.fluent
     ${output.fixtureProjectName = (typeof MAESTRO_FIXTURE_PROJECT_NAME === 'undefined' || MAESTRO_FIXTURE_PROJECT_NAME === null) ? '' : String(MAESTRO_FIXTURE_PROJECT_NAME).trim()}
 - evalScript: >-
     ${output.fixtureChapterLabel = (typeof MAESTRO_FIXTURE_CHAPTER_LABEL === 'undefined' || MAESTRO_FIXTURE_CHAPTER_LABEL === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_LABEL).trim()}
+- evalScript: >-
+    ${output.openChapterId = (typeof MAESTRO_FIXTURE_OPEN_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_OPEN_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_OPEN_CHAPTER_ID).trim()}
+- evalScript: >-
+    ${output.pinChapter = output.openChapterId.length > 0 ? 'yes' : 'no'}
 - assertTrue: ${typeof output.fixtureProjectName === 'string' && output.fixtureProjectName.length > 0}
 - assertTrue: ${typeof output.fixtureChapterLabel === 'string' && output.fixtureChapterLabel.length > 0}
 - runFlow: goto-home.yaml
@@ -52,38 +56,62 @@ appId: com.eten.fluent
             id: 'book-list'
           direction: DOWN
           duration: 250
-- scrollUntilVisible:
-    element:
-      text: ${output.fixtureChapterLabel}
-    direction: DOWN
-    timeout: 90000
-    visibilityPercentage: 50
-- tapOn:
-    id: 'book-passage-.*'
-    childOf:
-      id: 'book-chapter-.*'
-      containsDescendants:
-        - text: ${output.fixtureChapterLabel}
-- repeat:
-    times: 8
-    while:
-      notVisible:
-        id: 'passage-header|observer-screen'
+# Single-book galleries title the section "Chapter N". That text is not a
+# descendant Maestro can scope under book-chapter-*. Callers that pass
+# MAESTRO_FIXTURE_OPEN_CHAPTER_ID pin the row. Label matching stays for
+# multi-book rows whose visible title is the chapter label.
+- runFlow:
+    when:
+      true: ${output.pinChapter == 'yes'}
     commands:
-      - runFlow: ../ensure/ensure-no-modal.yaml
-      - runFlow:
-          when:
-            visible:
-              id: 'book-passage-.*'
+      - scrollUntilVisible:
+          element:
+            id: '^book-passage-${output.openChapterId}-.*'
+          direction: DOWN
+          timeout: 90000
+          visibilityPercentage: 50
+      - tapOn:
+          id: '^book-passage-${output.openChapterId}-.*'
+- runFlow:
+    when:
+      true: ${output.pinChapter == 'no'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: ${output.fixtureChapterLabel}
+          direction: DOWN
+          timeout: 90000
+          visibilityPercentage: 50
+      - tapOn:
+          id: 'book-passage-.*'
+          childOf:
+            id: 'book-chapter-.*'
+            containsDescendants:
+              - text: ${output.fixtureChapterLabel}
+- runFlow:
+    when:
+      true: ${output.pinChapter == 'no'}
+    commands:
+      - repeat:
+          times: 8
+          while:
+            notVisible:
+              id: 'passage-header|observer-screen'
           commands:
-            - tapOn:
-                id: 'book-passage-.*'
-                childOf:
-                  id: 'book-chapter-.*'
-                  containsDescendants:
-                    - text: ${output.fixtureChapterLabel}
-      - waitForAnimationToEnd:
-          timeout: 2000
+            - runFlow: ../ensure/ensure-no-modal.yaml
+            - runFlow:
+                when:
+                  visible:
+                    id: 'book-passage-.*'
+                commands:
+                  - tapOn:
+                      id: 'book-passage-.*'
+                      childOf:
+                        id: 'book-chapter-.*'
+                        containsDescendants:
+                          - text: ${output.fixtureChapterLabel}
+            - waitForAnimationToEnd:
+                timeout: 2000
 - extendedWaitUntil:
     visible:
       id: 'passage-header|observer-screen'

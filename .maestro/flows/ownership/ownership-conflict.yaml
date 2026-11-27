@@ -17,32 +17,26 @@ tags:
     file: ../../shared/nav/open-fixture-chapter.yaml
     env:
       MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_CONFLICT_CHAPTER_ID}
 - back
 - extendedWaitUntil:
     visible:
       id: 'book-header'
     timeout: 30000
+- evalScript: >-
+    ${output.conflictChapterId = (typeof MAESTRO_FIXTURE_CONFLICT_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CONFLICT_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CONFLICT_CHAPTER_ID).trim()}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.conflictChapterId)}
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+      id: '^book-chapter-${output.conflictChapterId}$'
     direction: DOWN
     timeout: 90000
     visibilityPercentage: 50
 - assertVisible:
-    text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
-- assertVisible:
-    id: 'book-chapter-[0-9]+-meta'
+    id: '^book-chapter-${output.conflictChapterId}-meta$'
     text: '.*Sync conflict.*'
-    childOf:
-      id: 'book-chapter-[0-9]+'
-      containsDescendants:
-        - text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
 - tapOn:
-    id: 'book-passage-[0-9]+-.*'
-    childOf:
-      id: 'book-chapter-[0-9]+'
-      containsDescendants:
-        - text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+    id: '^book-passage-${output.conflictChapterId}-.*'
 - extendedWaitUntil:
     visible:
       id: 'passage-header'

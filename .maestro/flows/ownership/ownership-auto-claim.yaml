@@ -18,6 +18,7 @@ tags:
     file: ../../shared/nav/open-fixture-chapter.yaml
     env:
       MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_CLAIM_CHAPTER_ID}
 - assertVisible:
     id: 'passage-header'
 - assertNotVisible:
@@ -60,16 +61,15 @@ tags:
     visible:
       id: 'book-header'
     timeout: 30000
+- evalScript: >-
+    ${output.claimChapterId = (typeof MAESTRO_FIXTURE_CLAIM_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CLAIM_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CLAIM_CHAPTER_ID).trim()}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.claimChapterId)}
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+      id: '^book-chapter-${output.claimChapterId}$'
     direction: DOWN
     timeout: 90000
     visibilityPercentage: 50
 - assertVisible:
-    id: 'book-chapter-[0-9]+-meta'
+    id: '^book-chapter-${output.claimChapterId}-meta$'
     text: '(.* · )?Yours( · .*)?'
-    childOf:
-      id: 'book-chapter-[0-9]+'
-      containsDescendants:
-        - text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
