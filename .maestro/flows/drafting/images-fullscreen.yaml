@@ -3,10 +3,11 @@
 # while the cover eyebrow is "Psalms N". Next up only lists five chapters,
 # so this opens the book by project name and pins the row by assignment id.
 # Requires MAESTRO_FIXTURE_CHAPTER_ID + MAESTRO_FIXTURE_MINE_LABEL.
+# fixture-blocked keeps default lanes from selecting this without that id.
 appId: com.eten.fluent
 tags:
-  - smoke
   - drafting
+  - fixture-blocked
 ---
 - runFlow: ../../shared/ensure/ensure-on-login.yaml
 - runFlow: ../../shared/auth/login-translator.yaml

@@ -13,7 +13,8 @@
 #     Enum: translation_notes | translation_questions | images_maps
 # - MAESTRO_EXPECT_RESOURCES_CONTENT_MARKER
 #     Required nonempty exact body text visible only when the chosen section is
-#     expanded. Must NOT equal chrome labels.
+#     expanded. Must NOT equal chrome labels. For translation_notes this is the
+#     body of the note the first script chip opens, after Listen.
 # - MAESTRO_EXPECT_RESOURCES_POPULATED_VERSE
 #     Required for translation_questions. Questions follow the verse Record is
 #     on; the passage may open on a verse with none. Positive verse number.
@@ -114,10 +115,34 @@ tags:
     when:
       true: ${output.sectionEnum == 'translation_notes'}
     commands:
+      # Notes load only after the player has opened, and the body is on the
+      # note screen. Listen, then the first chip. The marker must be that body.
+      - tapOn:
+          id: 'passage-listen'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-player'
+          timeout: 15000
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-note-chip-.*|passage-verse-note-.*'
+          timeout: 30000
+      - tapOn:
+          id: 'passage-note-chip-.*|passage-verse-note-.*'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-note'
+          timeout: 15000
       - extendedWaitUntil:
           visible:
             text: ${output.contentMarkerRe}
           timeout: 30000
+      - tapOn:
+          id: 'passage-note-close'
+      - extendedWaitUntil:
+          notVisible:
+            id: 'passage-note'
+          timeout: 15000
 - runFlow: ../../shared/nav/goto-home.yaml
 - extendedWaitUntil:
     visible:

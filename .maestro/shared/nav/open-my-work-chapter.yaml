@@ -1,8 +1,10 @@
 # Open the fixture chapter by id into Next Passage. Requires
 # MAESTRO_FIXTURE_CHAPTER_ID. Missing id is a failed precondition (runner
 # preflight reports BLOCKED).
-# Prefer Next up (`home-next-{id}:…`); else Changes requested. There is no
-# Book-page fallback here — a chapter outside those rails times out (Blocked).
+# Prefer Next up (`home-next-{id}:…`); else Changes requested. The tiles
+# after the hero sit in a horizontal rail, so a vertical search can miss
+# one that is already in Next up. There is no Book-page fallback here — a
+# chapter outside those rails times out (Blocked).
 # Callers that pin a different chapter (resources empty/populated) must pass
 # `env: MAESTRO_FIXTURE_CHAPTER_ID` on `runFlow`; this helper copies env onto
 # output and would overwrite a caller-set output.fixtureChapterId.
@@ -41,11 +43,25 @@ tags:
       notVisible:
         id: 'passage-header|observer-screen'
     commands:
+      # Bring the section on screen, then the horizontal rail if the tile
+      # is past the hero and outside the viewport.
       - scrollUntilVisible:
           element:
-            id: '^home-next-${output.fixtureChapterId}:.*'
+            id: 'home-next-up'
           direction: DOWN
           timeout: 30000
+          visibilityPercentage: 50
+      - runFlow:
+          when:
+            notVisible:
+              id: '^home-next-${output.fixtureChapterId}:.*'
+          commands:
+            - scrollUntilVisible:
+                element:
+                  id: '^home-next-${output.fixtureChapterId}:.*'
+                direction: RIGHT
+                timeout: 30000
+                visibilityPercentage: 50
       - runFlow: ../ensure/ensure-no-modal.yaml
       - tapOn:
           id: '^home-next-${output.fixtureChapterId}:.*'
