@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ScrollViewInstance,
 } from 'react-native';
 import {
   BookOpen,
@@ -113,7 +114,7 @@ export function ResourcesTab({
   } = useDraftingContext();
   const { isOnline, hasResolved } = useConnectivity();
   const online = hasResolved && isOnline;
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const scrollOffsetRef = useRef(0);
 
   const { units, activeIndex, unitsPending, effectiveUnit } = useBibleTabUnits({

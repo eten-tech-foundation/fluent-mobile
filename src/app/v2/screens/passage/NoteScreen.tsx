@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import {
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+  type HostInstance,
+  type ScrollViewInstance,
+} from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -61,8 +68,8 @@ export function NoteScreen({
   const { motion, fontScale, roles } = useTheme();
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
-  const pagerRef = useRef<ScrollView>(null);
-  const screenRef = useRef<View>(null);
+  const pagerRef = useRef<ScrollViewInstance>(null);
+  const screenRef = useRef<HostInstance>(null);
   // The window until measured, so the first frame's circle already covers
   // and the pager mounts on the tapped note.
   const win = useWindowDimensions();

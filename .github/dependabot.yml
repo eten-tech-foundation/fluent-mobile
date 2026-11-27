@@ -10,24 +10,24 @@ updates:
       time: '09:00'
     open-pull-requests-limit: 5
     ignore:
-      # Hold React Native to the 0.86.x line — upgrade in a dedicated ticket
+      # Hold React Native to the 0.88.x line — upgrade in a dedicated ticket
       - dependency-name: 'react-native'
         versions:
-          - '>=0.87.0'
+          - '>=0.89.0'
       - dependency-name: 'react-native-*'
         versions:
-          - '>=0.87.0'
+          - '>=0.89.0'
       - dependency-name: '@react-native/*'
         versions:
-          - '>=0.87.0'
+          - '>=0.89.0'
       # Intentional holds until dedicated upgrade tickets exist (#435).
       # Without these, closed majors/pin-drift PRs refill open-pull-requests-limit: 5.
-      # React must stay Expo SDK 57 / RN 0.86 pin (package.json) — ignore ALL updates
-      # (patch drift like 19.2.3→19.2.8 still opens when only major/minor are ignored).
+      # React must stay Expo SDK 58 / RN 0.88 pin (package.json) — ignore ALL updates
+      # (patch drift like 19.3.0→19.3.x still opens when only major/minor are ignored).
       - dependency-name: 'react'
       - dependency-name: 'react-dom'
       - dependency-name: 'react-test-renderer'
-      # Jest 30 / RTL 14 — semver-major only (migration ticket)
+      # Jest 31 / RTL 15 — semver-major only (migration ticket)
       - dependency-name: 'jest'
         update-types:
           - 'version-update:semver-major'

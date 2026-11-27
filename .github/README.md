@@ -67,7 +67,7 @@ Scheduled (and manually dispatchable) workflow [`.github/workflows/nightly-previ
   - **skipped** — HEAD matches the last successful nightly (no new commits)
   - **failed before APK** — CI gate failed before EAS (message names the step, e.g. Expo doctor)
   - **APK build failed** — EAS step failed
-- Expo health on nightly matches Quality Gates: `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK` + offline `expo:check`. Online patch freshness stays on `expo-sdk-align.yml` (#422) — do not fail the APK job on upstream 57.0.x map drift.
+- Expo health on nightly matches Quality Gates: `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK` + offline `expo:check`. Online patch freshness stays on `expo-sdk-align.yml` (#422) — do not fail the APK job on upstream 58.0.x map drift.
 
 ### Secrets
 

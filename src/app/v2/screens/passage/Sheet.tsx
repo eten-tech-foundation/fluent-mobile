@@ -7,10 +7,10 @@ import React, {
 } from 'react';
 import {
   BackHandler,
-  ScrollView,
   StyleSheet,
   View,
   type LayoutChangeEvent,
+  type ScrollViewInstance,
 } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -236,7 +236,7 @@ export function Sheet({
   const [panel, setPanel] = useState(0);
   const [keys, setKeys] = useState(0);
   const progress = useSharedValue(0);
-  const scriptRef = useRef<ScrollView>(null);
+  const scriptRef = useRef<ScrollViewInstance>(null);
 
   const headerBottom = insets.top + header;
   const scriptTop = headerBottom + spacing.sm;

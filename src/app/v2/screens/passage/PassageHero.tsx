@@ -1,5 +1,5 @@
 import React, { type RefObject } from 'react';
-import type { ScrollView } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import {
   GestureDetector,
   type GestureType,
@@ -84,7 +84,7 @@ export function PassageHero({
   layout: HeroLayout;
   openGesture: GestureType;
   closeGesture: GestureType;
-  scriptRef: RefObject<ScrollView | null>;
+  scriptRef: RefObject<ScrollViewInstance | null>;
   onHeaderLayout: (height: number) => void;
   onActionsLayout: (height: number) => void;
   /** The passage's translation notes, as chips in the script. */

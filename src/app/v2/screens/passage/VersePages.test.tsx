@@ -188,7 +188,7 @@ describe('VersePages', () => {
         screen.getByTestId('passage-verse-note-11-0-0'),
       ).getByText('Verse');
       const flat = (style: unknown) =>
-        StyleSheet.flatten(style as TextStyle).lineHeight;
+        StyleSheet.flatten(style as TextStyle)?.lineHeight;
       return { text: flat(text.props.style), chip: flat(chip.props.style) };
     };
     // Next: lead 40/32, readingMax 1.3; a chip is a space/2 and two
@@ -241,7 +241,7 @@ describe('VersePages', () => {
       const next = resolveTheme('next');
       const text = StyleSheet.flatten(
         screen.getByLabelText('Verse 11 text').props.style as TextStyle,
-      );
+      ) as TextStyle;
       expect(legacy.roles.fgPrimary).not.toBe(next.roles.fgPrimary);
       expect(text.color).toBe(legacy.roles.fgPrimary);
       expect(text.lineHeight).toBeCloseTo(

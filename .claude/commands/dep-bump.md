@@ -14,7 +14,7 @@ Proceed autonomously and report what you did; only stop at hard gates below.
 
 ## Critical facts
 
-- **Use `npx expo install <pkg>`** for anything Expo knows about (resolves SDK 57–compatible versions). Use plain `npm install` only for pure-JS packages Expo has no opinion on — then still re-run the checks.
+- **Use `npx expo install <pkg>`** for anything Expo knows about (resolves SDK 58–compatible versions). Use plain `npm install` only for pure-JS packages Expo has no opinion on — then still re-run the checks.
 - **`npm run prebuild` is destructive** (`expo prebuild --clean --platform android`). Run it only when the change adds/removes a **native** module or config plugin. Pure-JS deps do not need it. **Never** pass `--platform ios` or omit the platform.
 - Package manager is **npm** only (`package-lock.json`). Do not use yarn/pnpm.
 - Agent-authored lockfile / doctor fixes still need a **ticketed PR** — never push to `main` ([delivery.mdc](../../.cursor/rules/delivery.mdc)).

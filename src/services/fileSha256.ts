@@ -287,7 +287,7 @@ export async function sha256File(
     for (let position = 0; position < size; ) {
       checkAbort();
       const length = Math.min(FILE_HASH_READ_BYTES, size - position);
-      const bytes = handle.readBytes(length);
+      const bytes = await handle.readBytes(length);
       if (bytes.length !== length) {
         throw new Error(CHANGED_MESSAGE);
       }
@@ -303,7 +303,7 @@ export async function sha256File(
       }
       position += length;
     }
-    const extra = handle.readBytes(1);
+    const extra = await handle.readBytes(1);
     if (extra.length !== 0) {
       throw new Error(CHANGED_MESSAGE);
     }

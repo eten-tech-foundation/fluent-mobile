@@ -1,6 +1,6 @@
 name: Expo SDK Align
 
-# Scheduled freshness for Expo SDK 57 patch versions (#422).
+# Scheduled freshness for Expo SDK 58 patch versions (#422).
 # PR Quality Gates validate dependencies offline (EXPO_OFFLINE) so a new upstream
 # patch does not turn CI red with no repo diff. This job is where online
 # `expo install --fix` belongs: it opens/updates one rolling PR.
@@ -127,16 +127,16 @@ jobs:
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ steps.token.outputs.token }}
-          commit-message: 'chore(expo): align Expo SDK 57 patch versions'
+          commit-message: 'chore(expo): align Expo SDK 58 patch versions'
           branch: chore/expo-sdk-align
           base: main
           delete-branch: false
-          title: 'chore(expo): align Expo SDK 57 patch versions'
+          title: 'chore(expo): align Expo SDK 58 patch versions'
           labels: dependencies,automated
           body: |
             ### TLDR
 
-            Scheduled Expo SDK 57 patch realignment via `npx expo install --fix` (`expo-sdk-align.yml`). Brings lockfile/`package.json` in line with Expo's published compatibility map for the current SDK line.
+            Scheduled Expo SDK 58 patch realignment via `npx expo install --fix` (`expo-sdk-align.yml`). Brings lockfile/`package.json` in line with Expo's published compatibility map for the current SDK line.
 
             ### Reviewer checklist
 
@@ -168,7 +168,7 @@ jobs:
 
             #### Technical changes
 
-            - `package.json` / `package-lock.json` — `npx expo install --fix` for current SDK 57 expected patches
+            - `package.json` / `package-lock.json` — `npx expo install --fix` for current SDK 58 expected patches
 
             #### Testing
 
@@ -177,7 +177,7 @@ jobs:
 
             ### How to verify
 
-            1. Confirm `expo` major.minor is unchanged (still SDK 57).
+            1. Confirm `expo` major.minor is unchanged (still SDK 58).
             2. Confirm Quality Gates / lint / tests are green on this PR.
             3. If native-linked packages moved: `npm ci && npm run prebuild`, install a fresh dev client, smoke launch + one record path.
 

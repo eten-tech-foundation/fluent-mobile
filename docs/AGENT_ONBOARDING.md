@@ -1,6 +1,6 @@
 # Agent onboarding — Fluent Mobile
 
-Quick map for Cursor agents, other coding tools, and new contributors. Verified against Expo SDK 57 + CNG (Android-only).
+Quick map for Cursor agents, other coding tools, and new contributors. Verified against Expo SDK 58 + CNG (Android-only).
 
 **Delivery judgment** (acceptance criteria, scope, abstraction budget, human device QA): root [`AGENTS.md`](../AGENTS.md).
 
@@ -16,7 +16,7 @@ Source audio (architecture, not a device pass): [`src/components/layout/SourceAu
 
 | Area | Choice |
 |------|--------|
-| Framework | Expo SDK **57**, React Native **0.86**, React **19.2.3** |
+| Framework | Expo SDK **58**, React Native **0.88**, React **19.3.0** |
 | Native | **CNG, Android-only** — `android/` generated via `npm run prebuild` (`--platform android`; not committed) |
 | Language | TypeScript ~6.0 |
 | Package manager | **npm** (`package-lock.json`). `yarn` in-repo is shimmed to npm; pnpm is blocked. |

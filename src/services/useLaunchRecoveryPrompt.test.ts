@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { useLaunchRecoveryPrompt } from './useLaunchRecoveryPrompt';
 import { collectLaunchRecoveries } from './pausedTakeLaunchRecovery';
+import { launchRecoveryGate } from './launchRecoveryGate';
 
 jest.mock('./pausedTakeLaunchRecovery', () => ({
   collectLaunchRecoveries: jest.fn(),
@@ -109,5 +110,40 @@ describe('useLaunchRecoveryPrompt', () => {
     expect(mockClear).toHaveBeenCalledWith('5:23');
     expect(mockDelete).toHaveBeenCalledWith('file:///a.aac');
     alert.mockRestore();
+  });
+
+  it('settles the gate only after the redirect goes idle once Resume succeeds (#567)', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const idleCallbacks: (() => void)[] = [];
+    const original = globalThis.requestIdleCallback;
+    globalThis.requestIdleCallback = ((callback: () => void) => {
+      idleCallbacks.push(callback);
+      return idleCallbacks.length;
+    }) as typeof requestIdleCallback;
+    launchRecoveryGate.reset();
+    mockCollect.mockResolvedValue([take(7)]);
+    const onResume = jest.fn(() => true);
+
+    try {
+      await renderHook(() => useLaunchRecoveryPrompt({ onResume }));
+      await waitFor(() => expect(alert).toHaveBeenCalled());
+      const buttons = alert.mock.calls[0]![2] as {
+        text: string;
+        onPress: () => void;
+      }[];
+      buttons.find(b => b.text === 'Resume')!.onPress();
+      await waitFor(() => expect(idleCallbacks).toHaveLength(1));
+
+      // Navigation has been issued, but Home has not blurred yet.
+      expect(onResume).toHaveBeenCalledTimes(1);
+      expect(launchRecoveryGate.isSettled()).toBe(false);
+
+      idleCallbacks[0]!();
+      expect(launchRecoveryGate.isSettled()).toBe(true);
+    } finally {
+      globalThis.requestIdleCallback = original;
+      launchRecoveryGate.reset();
+      alert.mockRestore();
+    }
   });
 });

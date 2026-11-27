@@ -1,5 +1,10 @@
 import React, { useMemo, useState, type RefObject } from 'react';
-import { Pressable, ScrollView, Text } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  type ScrollViewInstance,
+} from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -63,7 +68,7 @@ export function ScriptPager({
   /** Where the script sits, hero then player. */
   top: readonly [number, number];
   height: readonly [number, number];
-  scriptRef: RefObject<ScrollView | null>;
+  scriptRef: RefObject<ScrollViewInstance | null>;
   /** Tapping the hero's script opens the player. */
   onOpen: () => void;
   notes?: ScriptNotes;

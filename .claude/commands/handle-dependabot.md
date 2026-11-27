@@ -49,7 +49,7 @@ npm run typecheck
 npm test -- --ci
 ```
 
-If `npm run doctor` fails: `npx expo install --check`. If red overnight with no change on this bot, wait for #422 then rebase. SDK 57 patch drift caused by this PR: `npx expo install --fix` on the PR branch; do not merge until clean.
+If `npm run doctor` fails: `npx expo install --check`. If red overnight with no change on this bot, wait for #422 then rebase. SDK 58 patch drift caused by this PR: `npx expo install --fix` on the PR branch; do not merge until clean.
 
 Risky PRs (`react`, `react-native`, `@react-navigation/*`, native modules): add Android smoke test (`npm run android`).
 
@@ -57,7 +57,7 @@ Risky PRs (`react`, `react-native`, `@react-navigation/*`, native modules): add 
 
 - Expo Doctor / any required check failed
 - `react` / `react-native` / navigation / `@op-engineering/op-sqlite` major groups (unless user approves a dedicated upgrade)
-- Deferred majors covered by `.github/dependabot.yml` ignores (React pin, Jest 30, Babel 8, ESLint 10, lucide v1, …): close only when the ignore will hold **or** a dedicated ticket is opened/linked — no orphan “needs ticket” comments
+- Deferred majors covered by `.github/dependabot.yml` ignores (React pin, Jest 31, Babel 8, ESLint 10, lucide v1, …): close only when the ignore will hold **or** a dedicated ticket is opened/linked — no orphan “needs ticket” comments
 - `mergeable: CONFLICTING` after one rebase retry
 
 ## Useful commands

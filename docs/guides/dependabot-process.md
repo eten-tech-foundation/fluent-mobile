@@ -1,6 +1,6 @@
 # Dependabot PR handling process
 
-Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Priority: keep the app stable on **Expo SDK 57 (RN 0.86) with Expo CNG**.
+Repeatable process for safely managing Dependabot PRs in **Fluent Mobile**. Priority: keep the app stable on **Expo SDK 58 (RN 0.88) with Expo CNG**.
 
 ## One-at-a-time checklist
 
@@ -10,7 +10,7 @@ Use this for **every** Dependabot merge (copy into PR comment or issue when tria
 - [ ] Required GitHub checks green: Lint & Format, Unit Tests, Quality Gates (TypeScript, expo-doctor, expo install --check)
 - [ ] **Safe** (lockfile-only / non-native patch, or Actions SHA bump with Action pins green): CI-first is enough — local checkout optional
 - [ ] **Risky** / native / Expo ecosystem: checkout → `npm ci` → **`npm run doctor`** → `format:check` → `lint` → `architecture-guard` → `typecheck` → `npm test -- --ci` (+ Android smoke)
-- [ ] If `--check` is red **with no package change on this PR**: wait for the Expo compatibility sync ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), rebase — do not `--fix` on an unrelated feature ticket. If this **is** a deps PR and drift is SDK 57 patch-only: `npx expo install --fix` on that branch
+- [ ] If `--check` is red **with no package change on this PR**: wait for the Expo compatibility sync ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), rebase — do not `--fix` on an unrelated feature ticket. If this **is** a deps PR and drift is SDK 58 patch-only: `npx expo install --fix` on that branch
 - [ ] Approve + **squash merge exactly one** lockfile PR (Actions PRs: merge when pins + required checks green — do **not** skip by default)
 - [ ] Wait for **`main` CI green** before the next merge
 - [ ] Comment **`@dependabot rebase`** on **all other open** Dependabot PRs (parallel prep)
@@ -21,14 +21,14 @@ Risky bumps (`react`, `react-native`, navigation, native modules): add Android s
 
 ## Core principles
 
-1. **Stability first**: Never merge updates that break Expo SDK 57 / RN 0.86 compatibility or native module ABI.
+1. **Stability first**: Never merge updates that break Expo SDK 58 / RN 0.88 compatibility or native module ABI.
 2. **CI-first for safe PRs**: Required GitHub checks green is enough for lockfile-only / non-native patch bumps (and Actions SHA bumps with Action pins green). Local `npm ci` + doctor remains mandatory for risky / native / Expo ecosystem bumps.
 3. **Verified authors**: Only process PRs from `app/dependabot` or `dependabot[bot]`.
 4. **Targeted merges**: Prefer squash merges into `main` via **Dependabot PRs only** — agent-authored fixes and resolution-log catch-up use a separate ticketed PR ([delivery.mdc](../../.cursor/rules/delivery.mdc)). Never commit on `main`.
 5. **Version lock-stepping**: `react`, `react-dom`, `react-test-renderer`, and `react-native` are pinned — `dependabot.yml` ignores all React updates; validate the **final merged state** on `main` after any related work.
 6. **Runtime testing**: Static checks miss renderer mismatches — smoke test on Android for risky bumps.
 7. **One lockfile merge at a time**: Merge **one** lockfile PR, let **`main` CI go green**, then **`@dependabot rebase` all other open bots in parallel** before the next merge.
-8. **Expo health after rebases**: Every `@dependabot rebase` triggers Quality Gates (`npm run doctor` + `expo install --check`). `--check` can go red overnight when Expo publishes new SDK 57 patches ([two-clock model](../ci.md#two-clocks--pr-ci-vs-scheduled-expo-health)). Recover via the weekday sync PR ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), not a drive-by `--fix` on every open bot. Until #422 lands, `--fix` only on a dedicated deps ticket.
+8. **Expo health after rebases**: Every `@dependabot rebase` triggers Quality Gates (`npm run doctor` + `expo install --check`). `--check` can go red overnight when Expo publishes new SDK 58 patches ([two-clock model](../ci.md#two-clocks--pr-ci-vs-scheduled-expo-health)). Recover via the weekday sync PR ([#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422)), not a drive-by `--fix` on every open bot. Until #422 lands, `--fix` only on a dedicated deps ticket.
 9. **Automate the queue**: Agents should run the full safe queue without per-PR confirmation (thin Cursor adapter: [`.cursor/rules/dependabot-workflow.mdc`](../../.cursor/rules/dependabot-workflow.mdc) — autonomous trigger + hard constraints; procedure lives in this guide).
 10. **Deferred upgrades**: When closing a bot as “needs dedicated ticket”, open/link that ticket **or** rely on ignore rules in `.github/dependabot.yml` — no orphan “needs ticket” comments.
 
@@ -50,9 +50,9 @@ Renovate/Dependabot do not understand Expo’s SDK pin matrix — this repo uses
 
 1. `npx expo install --check` — list mismatches
 2. If the failure is **only** Expo’s published matrix moving (no change in this bot’s packages): wait for [#422](https://github.com/eten-tech-foundation/fluent-mobile/issues/422) (or a dedicated `--fix` ticket until that job exists), rebase
-3. If this bot caused SDK 57 patch drift: `npx expo install --fix` on the PR branch, push, re-run doctor
+3. If this bot caused SDK 58 patch drift: `npx expo install --fix` on the PR branch, push, re-run doctor
 4. If duplicate native modules: `npm why <pkg>`, `npm dedupe`, or targeted `overrides` (see Expo FYI)
-5. If the bump is incompatible with SDK 57: close the PR or defer to an SDK upgrade ticket
+5. If the bump is incompatible with SDK 58: close the PR or defer to an SDK upgrade ticket
 
 Dependabot still owns Expo/RN groups until [#424](https://github.com/eten-tech-foundation/fluent-mobile/issues/424).
 
@@ -60,7 +60,7 @@ Dependabot still owns Expo/RN groups until [#424](https://github.com/eten-tech-f
 
 | Category | Action | Example |
 |----------|--------|---------|
-| **RN line upgrade / ignored majors** | Close; open/link dedicated ticket **or** rely on `dependabot.yml` ignores | `react-native` `>=0.87`, React pin drift, Jest 30, Babel 8, ESLint 10, lucide v1 |
+| **RN line upgrade / ignored majors** | Close; open/link dedicated ticket **or** rely on `dependabot.yml` ignores | `react-native` `>=0.89`, React pin drift, Jest 31, Babel 8, ESLint 10, lucide v1 |
 | **Safe updates** | CI-first merge when required checks green | Lockfile-only / non-native patch bumps; GitHub Actions SHA bumps (Action pins green) |
 | **Risky updates** | Local doctor + full gate + Android smoke | `react`, navigation libs, `@op-engineering/op-sqlite`, Expo ecosystem, UI/native modules |
 
@@ -73,7 +73,7 @@ gh pr view <PR_NUMBER> --json author,title,body
 ```
 
 - If author is NOT Dependabot → **stop**.
-- If it is an RN line upgrade (`>=0.87`) or an ignored major/pin-drift bump → close with a comment; open/link a dedicated ticket **or** confirm the ignore rule will hold.
+- If it is an RN line upgrade (`>=0.89`) or an ignored major/pin-drift bump → close with a comment; open/link a dedicated ticket **or** confirm the ignore rule will hold.
 
 ### 2. Validation (tiered)
 
@@ -190,21 +190,21 @@ If CI fails on `npm ci` with lockfile errors after several Dependabot merges:
 3. Open a small fix PR; merge after CI passes
 4. Enforce **one merge + rebase** going forward
 
-### Pinned versions (Expo SDK 57 / RN 0.86.3)
+### Pinned versions (Expo SDK 58 / RN 0.88.1)
 
 These are exact pins in `package.json` — Dependabot is configured to avoid most drift, but verify after any manual conflict resolution:
 
 | Package | Pin |
 |---------|-----|
-| `react` | `19.2.3` |
-| `react-native` | `0.86.3` |
-| `react-test-renderer` | `19.2.3` |
-| `@react-native/jest-preset` | `0.86.3` |
-| `@react-native/typescript-config` | `0.86.3` |
+| `react` | `19.3.0` |
+| `react-native` | `0.88.1` |
+| `react-test-renderer` | `19.3.0` |
+| `@react-native/jest-preset` | `0.88.1` |
+| `@react-native/typescript-config` | `0.88.1` |
 
 `@react-native/jest-preset` and `@react-native/typescript-config` must move with `react-native` — RN peers the jest preset at the exact patch, so a lone `react-native` bump fails `npm install` with `ERESOLVE`.
 
-Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.86.3&to=0.86.3) when aligning versions during an RN upgrade ticket.
+Use the [RN upgrade helper](https://react-native-community.github.io/upgrade-helper/?from=0.88.1&to=0.88.1) when aligning versions during an RN upgrade ticket.
 
 ## Automating (any agent)
 

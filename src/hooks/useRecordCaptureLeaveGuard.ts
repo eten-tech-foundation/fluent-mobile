@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
-import { useNavigation, useRouter } from 'expo-router';
+import {
+  useNavigation,
+  usePreventRemove,
+  type NativeStackNavigationProp,
+} from 'expo-router';
 import {
   CAPTURE_LEAVE_DISCARD,
   CAPTURE_LEAVE_MESSAGE,
@@ -16,11 +20,18 @@ import type { CaptureControls } from '../types/captureControls';
  * Capture gate and leave prompt for Legacy drafting and the Next passage
  * screen. While a take is recording, paused, recovered or saving, drawer and
  * account exits see the shared gate, and removing this route prompts first.
+ *
+ * `onLeaveAttempt` runs when the route starts disappearing (a pop, or another
+ * screen opening over it) and again when a removal is blocked by the prompt,
+ * so callers can stop playback before the user answers.
  */
-export function useRecordCaptureLeaveGuard(onBeforeRemove?: () => void) {
-  const router = useRouter();
-  const navigation = useNavigation();
+export function useRecordCaptureLeaveGuard(onLeaveAttempt?: () => void) {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<Record<string, undefined>>>();
   const [recordCaptureActive, setRecordCaptureActive] = useState(false);
+  // True once a discard has succeeded for the current capture, so the pop that
+  // follows (and any later removal) passes the guard without a second prompt.
+  const [leaveAllowed, setLeaveAllowed] = useState(false);
   const [captureControls, setCaptureControls] =
     useState<CaptureControls | null>(null);
   const controlsRef = useRef<CaptureControls | null>(null);
@@ -31,8 +42,14 @@ export function useRecordCaptureLeaveGuard(onBeforeRemove?: () => void) {
     },
     [],
   );
-  const suppressNextBeforeRemove = useRef(false);
-  const discardPendingBeforeRemove = useRef(false);
+  // A fresh capture re-arms the guard even if a previous discard never
+  // consumed its allowance (e.g. discard via tab change, so no pop follows).
+  const onCaptureActiveChange = useCallback((active: boolean) => {
+    setRecordCaptureActive(active);
+    if (active) setLeaveAllowed(false);
+  }, []);
+  const discardPendingRemoval = useRef(false);
+  const disablePreventionRef = useRef<() => void>(() => {});
 
   const alertRecordingInProgress = useCallback(
     (continueAfterDiscard?: () => void) => {
@@ -49,21 +66,25 @@ export function useRecordCaptureLeaveGuard(onBeforeRemove?: () => void) {
           text: CAPTURE_LEAVE_DISCARD,
           style: 'destructive',
           onPress: () => {
-            discardPendingBeforeRemove.current = true;
-            // Reset the pending flag before continuing. router.back() emits
-            // beforeRemove synchronously, and that listener bails while the
-            // flag is set. Continue only after discard succeeds.
+            // A second removal while the discard is in flight stays blocked
+            // without a new prompt. Reset the flag before continuing, since
+            // the continuation can itself remove this route.
+            discardPendingRemoval.current = true;
             void controls
               .discardCapture()
               .then(
                 () => {
-                  suppressNextBeforeRemove.current = true;
+                  // Keep the prop and the hook in sync: state says leave is
+                  // allowed, and the hook is disabled now so the continuation
+                  // does not wait for the next render.
+                  setLeaveAllowed(true);
+                  disablePreventionRef.current();
                   return true;
                 },
                 () => false,
               )
               .finally(() => {
-                discardPendingBeforeRemove.current = false;
+                discardPendingRemoval.current = false;
               })
               .then(succeeded => {
                 if (succeeded) continueAfterDiscard?.();
@@ -75,13 +96,25 @@ export function useRecordCaptureLeaveGuard(onBeforeRemove?: () => void) {
     [],
   );
 
-  // A fresh capture re-arms the guard even if a previous discard never
-  // consumed its suppression (e.g. discard via tab change — no pop follows).
+  const disablePrevention = usePreventRemove(
+    recordCaptureActive && !leaveAllowed,
+    ({ repeat }) => {
+      onLeaveAttempt?.();
+      if (discardPendingRemoval.current) return;
+      alertRecordingInProgress(repeat);
+    },
+  );
   useEffect(() => {
-    if (recordCaptureActive) {
-      suppressNextBeforeRemove.current = false;
-    }
-  }, [recordCaptureActive]);
+    disablePreventionRef.current = disablePrevention;
+  }, [disablePrevention]);
+
+  // Playback should stop as soon as the screen starts disappearing (a pop, or
+  // a push over it), not after the transition finishes.
+  useEffect(() => {
+    return navigation.addListener('transitionStart', event => {
+      if (event.data.closing) onLeaveAttempt?.();
+    });
+  }, [navigation, onLeaveAttempt]);
 
   useEffect(() => {
     setRecordCaptureGate(recordCaptureActive);
@@ -89,31 +122,6 @@ export function useRecordCaptureLeaveGuard(onBeforeRemove?: () => void) {
       setRecordCaptureGate(false);
     };
   }, [recordCaptureActive]);
-
-  useEffect(() => {
-    return navigation.addListener('beforeRemove', e => {
-      onBeforeRemove?.();
-      if (discardPendingBeforeRemove.current) {
-        e.preventDefault();
-        return;
-      }
-      if (!recordCaptureActive) {
-        return;
-      }
-      if (suppressNextBeforeRemove.current) {
-        suppressNextBeforeRemove.current = false;
-        return;
-      }
-      e.preventDefault();
-      alertRecordingInProgress(() => router.back());
-    });
-  }, [
-    alertRecordingInProgress,
-    navigation,
-    onBeforeRemove,
-    recordCaptureActive,
-    router,
-  ]);
 
   const guardAction = useCallback(
     (action: () => void) => {
@@ -129,7 +137,7 @@ export function useRecordCaptureLeaveGuard(onBeforeRemove?: () => void) {
   return {
     recordCaptureActive,
     captureControls,
-    onCaptureActiveChange: setRecordCaptureActive,
+    onCaptureActiveChange,
     onRegisterCaptureControls,
     alertRecordingInProgress,
     guardAction,

@@ -10,8 +10,8 @@ import { Image } from 'expo-image';
 import {
   Gesture,
   GestureDetector,
-  type GestureStateManager,
   type GestureTouchEvent,
+  type LegacyGestureStateManager,
 } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -166,7 +166,7 @@ export function ZoomableImage({
   // and two quick pinches never read as a double tap that resets the zoom.
   const failOnSecondFinger = (
     event: GestureTouchEvent,
-    manager: GestureStateManager,
+    manager: LegacyGestureStateManager,
   ) => {
     'worklet';
     if (event.numberOfTouches > 1) manager.fail();

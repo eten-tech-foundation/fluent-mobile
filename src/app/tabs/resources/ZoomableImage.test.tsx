@@ -7,6 +7,18 @@ import {
 } from 'react-native-gesture-handler/jest-utils';
 import { clampScale, clampTranslate, ZoomableImage } from './ZoomableImage';
 
+/** Builder internals the v3 types don't expose; the legacy `Gesture.*()` API keeps them. */
+type LegacyGestureInternals = {
+  handlers: {
+    onTouchesDown: (
+      event: { numberOfTouches: number },
+      manager: { fail: () => void },
+    ) => void;
+  };
+  config: { maxDist?: number };
+};
+const legacyInternals = (gesture: unknown) => gesture as LegacyGestureInternals;
+
 // The shared expo-image mock fires onLoad itself with a 1 × 1 source; this file
 // keeps the handler so it can report the image's own size.
 let mockImageOnLoad: ((event: unknown) => void) | undefined;
@@ -70,10 +82,7 @@ describe('ZoomableImage', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
 
     // A second finger, a pinch starting, fails the tap; one finger doesn't.
-    const touchesDown = tap.handlers.onTouchesDown as unknown as (
-      event: { numberOfTouches: number },
-      manager: { fail: () => void },
-    ) => void;
+    const touchesDown = legacyInternals(tap).handlers.onTouchesDown;
     const fail = jest.fn();
     touchesDown({ numberOfTouches: 1 }, { fail });
     expect(fail).not.toHaveBeenCalled();
@@ -81,21 +90,18 @@ describe('ZoomableImage', () => {
     expect(fail).toHaveBeenCalledTimes(1);
 
     // A finger that moves past a small slop isn't a tap either.
-    expect((tap.config as { maxDist?: number }).maxDist).toBe(10);
+    expect(legacyInternals(tap).config.maxDist).toBe(10);
   });
 
   it('never reads two quick pinches as a double tap that resets the zoom', async () => {
     await render(<ZoomableImage uri="file:///map.jpg" />);
     const doubleTap = getByGestureTestId('zoomable-image-double-tap');
-    const touchesDown = doubleTap.handlers.onTouchesDown as unknown as (
-      event: { numberOfTouches: number },
-      manager: { fail: () => void },
-    ) => void;
+    const touchesDown = legacyInternals(doubleTap).handlers.onTouchesDown;
     const fail = jest.fn();
     touchesDown({ numberOfTouches: 1 }, { fail });
     expect(fail).not.toHaveBeenCalled();
     touchesDown({ numberOfTouches: 2 }, { fail });
     expect(fail).toHaveBeenCalledTimes(1);
-    expect((doubleTap.config as { maxDist?: number }).maxDist).toBe(10);
+    expect(legacyInternals(doubleTap).config.maxDist).toBe(10);
   });
 });

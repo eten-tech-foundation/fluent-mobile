@@ -29,7 +29,7 @@ interface AccountSwitcherPanelProps {
   /**
    * Fired before pushing Add Account. Drafting stays mounted under that
    * stack screen, so callers must halt review audio here (#866) — the same
-   * hole as Sync (`beforeRemove` may not fire on push).
+   * hole as Sync (the removal guard does not run on a push).
    */
   onBeforeAddAccount?: () => void;
 }
