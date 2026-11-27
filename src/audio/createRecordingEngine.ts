@@ -21,8 +21,17 @@ export type EngineRecorder = {
   readonly currentTime: number;
 };
 
+/**
+ * A recorder asked to pause or stop right after it started may not have a
+ * file yet: native stop then throws or yields no URI and the take is lost
+ * (#979). Pause and stop wait until the recorder has run this long.
+ */
+export const MIN_RECORDING_MS = 500;
+
 export type RecordingEngineDeps = {
   recorder: EngineRecorder;
+  /** How long the recorder must have run before pause/stop; tests set 0. */
+  minRecordingMs?: number;
   /** Optional audio-mode setup before first start (injectable for tests). */
   prepareAudioMode?: () => Promise<void>;
   /**
@@ -34,10 +43,19 @@ export type RecordingEngineDeps = {
   onStatusChange?: (status: RecorderStatus) => void;
 };
 
-export type RecordingEngine = RecorderApi & {
+export type RecordingEngine = Omit<RecorderApi, 'stop'> & {
+  /**
+   * `immediate` skips the hold for teardown, where the recorder is about to
+   * be released and a take nobody asked to keep needs no file (#979).
+   */
+  stop(options?: { immediate?: boolean }): Promise<StopResult | null>;
   getStatus(): RecorderStatus;
   syncPausedNativeState(): void;
 };
+
+/** Monotonic, so a device clock change cannot skip or stretch the hold. */
+declare const performance: { now(): number };
+const monotonicNow = (): number => performance.now();
 
 /**
  * UI/storage-agnostic recording engine around an expo-audio recorder instance.
@@ -47,8 +65,16 @@ export function createRecordingEngine(
   deps: RecordingEngineDeps,
 ): RecordingEngine {
   const { recorder, prepareAudioMode, releaseAudioMode, onStatusChange } = deps;
+  const minRecordingMs = deps.minRecordingMs ?? MIN_RECORDING_MS;
   let status: RecorderStatus = 'idle';
   let prepared = false;
+  // When native record() was called for the current take; null while idle.
+  let startedAt: number | null = null;
+  // One hold shared by every pause/stop waiting on the same start, so a
+  // teardown stop can release it early.
+  let hold: { promise: Promise<void>; release: () => void } | null = null;
+  // The stop in flight (holding or in the native call); later stops join it.
+  let stopping: Promise<StopResult | null> | null = null;
 
   function setStatus(next: RecorderStatus): void {
     status = next;
@@ -66,6 +92,34 @@ export function createRecordingEngine(
     prepared = true;
   }
 
+  /**
+   * Holds a pause/stop that comes right after start until the recorder has
+   * run long enough to have a file. Waits before the native call: after a
+   * failed native stop the recorder is already released and cannot retry.
+   */
+  function holdForMinimum(): Promise<void> {
+    if (startedAt === null) {
+      return Promise.resolve();
+    }
+    const wait = startedAt + minRecordingMs - monotonicNow();
+    if (wait <= 0) {
+      return Promise.resolve();
+    }
+    if (!hold) {
+      let release!: () => void;
+      const promise = new Promise<void>(resolve => {
+        const timer = setTimeout(() => release(), wait);
+        release = () => {
+          clearTimeout(timer);
+          hold = null;
+          resolve();
+        };
+      });
+      hold = { promise, release };
+    }
+    return hold.promise;
+  }
+
   async function releaseMode(): Promise<void> {
     if (!releaseAudioMode) {
       return;
@@ -77,6 +131,38 @@ export function createRecordingEngine(
     }
   }
 
+  async function runStop(immediate: boolean): Promise<StopResult | null> {
+    if (!immediate) {
+      await holdForMinimum();
+    }
+    let uri: string | null = null;
+    let durationMs = 0;
+
+    try {
+      // A pause may have landed while this stop waited; stop works from either.
+      // Read inside the try: a recorder already released on unmount throws on
+      // property reads, and the finally below must still reset the state.
+      durationMs = Math.max(0, Math.round(recorder.currentTime * 1000));
+      await recorder.stop();
+      uri = recorder.uri;
+    } finally {
+      prepared = false;
+      startedAt = null;
+      // Nothing may keep waiting on this take's hold, and the next take needs
+      // a hold of its own rather than this one's spent deadline.
+      hold?.release();
+      setStatus('idle');
+      await releaseMode();
+    }
+    if (!uri) {
+      // Nothing was written, so there is no take to keep. Not an error: the
+      // caller drops the take quietly (#979).
+      log.warn('Recording stopped without a file URI');
+      return null;
+    }
+    return { uri, durationMs };
+  }
+
   return {
     get status() {
       return status;
@@ -85,15 +171,27 @@ export function createRecordingEngine(
       return status;
     },
     async start() {
+      // The previous take's stop (native stop plus audio-mode release) must
+      // finish first: its release would otherwise land on this take, and a
+      // stop for this take would join the old one's promise.
+      if (stopping) {
+        await stopping.catch(() => {});
+      }
       if (status === 'recording') {
         return;
       }
       await ensurePrepared();
       recorder.record();
+      startedAt = monotonicNow();
       setStatus('recording');
     },
     async pause(): Promise<PauseResult | null> {
-      if (status !== 'recording') {
+      if (status !== 'recording' || stopping) {
+        return null;
+      }
+      await holdForMinimum();
+      // A stop (or another pause) may have landed while this one waited.
+      if (status !== 'recording' || stopping) {
         return null;
       }
       recorder.pause();
@@ -131,27 +229,24 @@ export function createRecordingEngine(
         recorder.pause();
       }
     },
-    async stop(): Promise<StopResult> {
+    stop(options): Promise<StopResult | null> {
+      if (stopping) {
+        // Double tap, or teardown while a stop is holding: share the one stop.
+        if (options?.immediate) {
+          hold?.release();
+        }
+        return stopping;
+      }
       if (status !== 'recording' && status !== 'paused') {
-        throw new Error('Cannot stop recorder while idle');
+        return Promise.reject(new Error('Cannot stop recorder while idle'));
       }
-
-      const durationMs = Math.max(0, Math.round(recorder.currentTime * 1000));
-
-      let uri: string | null = null;
-
-      try {
-        await recorder.stop();
-        uri = recorder.uri;
-      } finally {
-        prepared = false;
-        setStatus('idle');
-        await releaseMode();
+      if (options?.immediate) {
+        hold?.release();
       }
-      if (!uri) {
-        throw new Error('Recording stopped without a file URI');
-      }
-      return { uri, durationMs };
+      stopping = runStop(options?.immediate === true).finally(() => {
+        stopping = null;
+      });
+      return stopping;
     },
   };
 }

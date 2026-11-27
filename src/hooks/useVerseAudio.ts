@@ -374,8 +374,32 @@ export function useVerseAudio({
     'idle' as VerseAudioState,
   );
   const [takes, setTakes] = useState<Recording[]>([]);
+  // Latest rows, for async callbacks that must not act on the list as it
+  // was when they started.
+  const takesRef = useRef<typeof takes>([]);
   const [allTakes, setAllTakes] = useState<RecordingWithOwner[]>([]);
   const [hasMultipleRecorders, setHasMultipleRecorders] = useState(false);
+  const [takesLoadAttempt, setTakesLoadAttempt] = useState(0);
+  // Key hydration to the exact take query. Pericope capture can resolve after
+  // the verse query has loaded, which must immediately make the wider list
+  // unready until that query completes (#979).
+  const takesLoadKey = JSON.stringify([
+    bibleTextId,
+    chapterAssignmentId,
+    chapterNumber,
+    verseNumber,
+    draftingUnit,
+    projectUnitId,
+    coveredViewsKey,
+    takesLoadAttempt,
+  ]);
+  const [loadedTakesKey, setLoadedTakesKey] = useState<string | null>(null);
+  const takesLoaded = bibleTextId === null || loadedTakesKey === takesLoadKey;
+  const takesLoadedRef = useRef(takesLoaded);
+  takesLoadedRef.current = takesLoaded;
+  const takesLoadKeyRef = useRef(takesLoadKey);
+  takesLoadKeyRef.current = takesLoadKey;
+  takesRef.current = takes;
   const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
   /**
    * Take currently prepared in the player. Outlives `playingTakeId` (which
@@ -385,12 +409,30 @@ export function useVerseAudio({
   const [loadedTakeId, setLoadedTakeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const capturePersistRef = useRef<CapturePersistSnapshot | null>(null);
+  // The Stop in flight, from the press until it has saved or dropped the take.
+  // Set synchronously, because Stop clears `capturePersistRef` at once while the
+  // reducer still reads `recording`, so a verse step in that gap would offer a
+  // Discard that does nothing and then publish the old verse's rows (#979).
+  const stopInFlightRef = useRef<Promise<void> | null>(null);
+  const isStopPending = useCallback(() => stopInFlightRef.current !== null, []);
   const [recoveredElapsedMs, setRecoveredElapsedMs] = useState(0);
   const recoveredSegmentsRef = useRef<string[]>([]);
   const recoveredElapsedMsRef = useRef(0);
   const allTakesRequestIdRef = useRef(0);
   const chapterAssignedRef = useRef(false);
   const activeBibleTextIdRef = useRef<number | null>(null);
+  // Counts every activation of the take-load effect, even one that repeats an
+  // earlier key (A -> B -> A). A delete started under one activation must not
+  // publish rows or readiness under a later one (#979).
+  const activationRef = useRef(0);
+  // The key whose own load, paused-take check included, finished successfully.
+  // A delete reload may mark a key ready only after that, so it cannot open
+  // Record while recovery is still restoring its refs (#979).
+  const loadSettledKeyRef = useRef<string | null>(null);
+  // The key whose load failed, in the rows or in the paused-take check. Recovery
+  // did not complete for it, so a delete reload retries the load instead of
+  // marking it ready.
+  const loadFailedKeyRef = useRef<string | null>(null);
   /**
    * `playback.play` / `load` briefly leave the engine `idle` while `replace`
    * runs. If verse state is already `playing` (Take 1 → Take 2), the natural-end
@@ -561,11 +603,29 @@ export function useVerseAudio({
     // chapterAssignmentId changes).
     const isStale = () =>
       cancelled || activeBibleTextIdRef.current !== bibleTextId;
-
+    // Ready means the rows AND the paused-take check are settled. Marking it
+    // earlier lets start() run before recovery has restored its refs, and the
+    // late recovery would then overwrite the new capture's snapshot.
+    const markLoaded = () => {
+      if (isStale()) return;
+      loadSettledKeyRef.current = takesLoadKey;
+      setLoadedTakesKey(takesLoadKey);
+    };
     setLoadedTakeId(null);
     setPlayingTakeId(null);
     clearStitchQueue();
     activeBibleTextIdRef.current = bibleTextId;
+    activationRef.current += 1;
+    loadSettledKeyRef.current = null;
+    loadFailedKeyRef.current = null;
+    // An All Takes refresh still in flight belongs to the previous activation;
+    // invalidate it so it cannot publish old rows over this query's.
+    allTakesRequestIdRef.current += 1;
+    // Activating a different query un-readies whatever was loaded before it.
+    // Without this, returning to an earlier key before the newer load finishes
+    // would match the old `loadedTakesKey` and mark stale rows ready. A re-run
+    // for the same key keeps its rows ready, so there is no flicker.
+    setLoadedTakesKey(prev => (prev === takesLoadKey ? prev : null));
     // Stop any in-flight draft playback when the active verse unit changes (#235).
     void playback.stop();
     (async () => {
@@ -575,6 +635,8 @@ export function useVerseAudio({
         setAllTakes([]);
         setHasMultipleRecorders(false);
         dispatch({ type: 'REHYDRATE', hasTake: false });
+        loadSettledKeyRef.current = takesLoadKey;
+        setLoadedTakesKey(takesLoadKey);
         return;
       }
       try {
@@ -594,6 +656,7 @@ export function useVerseAudio({
           m => m.sessionKey === key && !isPausedTakeForeign(m, userId),
         );
         if (!marker) {
+          markLoaded();
           return;
         }
         const existingFiles = new Set<string>();
@@ -632,6 +695,7 @@ export function useVerseAudio({
             setRecoveredElapsedMs(m.elapsedMs);
             dispatch({ type: 'RECOVER' }); // idle/recorded -> paused
           }
+          markLoaded();
           return;
         }
         clearPausedTake(marker.sessionKey);
@@ -645,9 +709,11 @@ export function useVerseAudio({
             }),
           ),
         );
+        markLoaded();
       } catch (error) {
         log.error('Failed to load takes', { error });
         if (!isStale()) {
+          loadFailedKeyRef.current = takesLoadKey;
           dispatch({
             type: 'ERROR',
             message: error instanceof Error ? error.message : 'load failed',
@@ -668,7 +734,13 @@ export function useVerseAudio({
     loadTakesFn,
     refreshAllTakes,
     clearStitchQueue,
+    takesLoadAttempt,
+    takesLoadKey,
   ]);
+
+  const retryTakesLoad = useCallback(() => {
+    if (bibleTextId !== null) setTakesLoadAttempt(attempt => attempt + 1);
+  }, [bibleTextId]);
 
   // A dual-mounted Record tab keeps its take list across navigation. Upload
   // events update SQLite without changing the verse ID; refresh only row data
@@ -703,6 +775,8 @@ export function useVerseAudio({
 
   const start = useCallback(async () => {
     if (bibleTextId === null) return;
+    const startTakesLoadKey = takesLoadKey;
+    if (!takesLoadedRef.current) return;
     // The last take is still saving; the reducer would drop this START and
     // leave the mic running with nothing on screen.
     if (state === 'saving') return;
@@ -731,6 +805,12 @@ export function useVerseAudio({
       const counts = await Promise.all(
         recordingUnit.coveredViews.map(view => countTakesAtView(view)),
       );
+      if (
+        !takesLoadedRef.current ||
+        takesLoadKeyRef.current !== startTakesLoadKey
+      ) {
+        return;
+      }
       if (counts.some(c => c >= MAX_RECORDING_TAKES)) {
         setErrorMessage(
           'Maximum of 5 takes reached. Delete a take before recording another.',
@@ -744,12 +824,24 @@ export function useVerseAudio({
       return;
     }
     try {
+      if (
+        !takesLoadedRef.current ||
+        takesLoadKeyRef.current !== startTakesLoadKey
+      ) {
+        return;
+      }
       // Stop review playback first so re-record from `playing` can transition
       // and so audio mode is free for the mic (see createRecordingEngine).
       try {
         await playback.stop();
       } catch {
         // Ignore — recorder start below is what matters.
+      }
+      if (
+        !takesLoadedRef.current ||
+        takesLoadKeyRef.current !== startTakesLoadKey
+      ) {
+        return;
       }
       setPlayingTakeId(null);
       setLoadedTakeId(null);
@@ -795,6 +887,7 @@ export function useVerseAudio({
     recordingUnit,
     sessionKey,
     state,
+    takesLoadKey,
     userId,
     verseNumber,
   ]);
@@ -868,21 +961,32 @@ export function useVerseAudio({
    * paused segments and their marker (#567): `start()` no longer does.
    */
   const discardCapture = useCallback(async () => {
+    // A Stop already took the capture. Let it finish (the take is saved, not
+    // discarded) so a caller that navigates after this resolves does so only once
+    // Stop has settled, never while it can still publish into the next view (#979).
+    const stopping = stopInFlightRef.current;
+    if (stopping !== null) {
+      await stopping;
+      return;
+    }
     if (state === 'saving') return;
     if (capturePersistRef.current === null) return;
     try {
-      const { uri } = await recording.stop();
-      await deleteFile(uri).catch(deleteError => {
-        // Best-effort: the take was never persisted, so a stray temp file
-        // must not block the discard or surface as an error state. Log it so
-        // leaked temp files are visible.
-        log.warn('discardCapture temp file delete failed', {
-          message:
-            deleteError instanceof Error
-              ? deleteError.message
-              : String(deleteError),
+      const stopped = await recording.stop();
+      // No file means nothing was written, so there is nothing to delete.
+      if (stopped) {
+        await deleteFile(stopped.uri).catch(deleteError => {
+          // Best-effort: the take was never persisted, so a stray temp file
+          // must not block the discard or surface as an error state. Log it so
+          // leaked temp files are visible.
+          log.warn('discardCapture temp file delete failed', {
+            message:
+              deleteError instanceof Error
+                ? deleteError.message
+                : String(deleteError),
+          });
         });
-      });
+      }
     } catch (error) {
       log.warn('discardCapture recorder stop failed', {
         message: error instanceof Error ? error.message : String(error),
@@ -914,14 +1018,28 @@ export function useVerseAudio({
       // prior state: REHYDRATE restores Review when takes remain (same as
       // deleteTake), otherwise it stays idle. Without it, Play is ignored — PLAY
       // only fires from `recorded`.
-      dispatch({ type: 'REHYDRATE', hasTake: takes.length > 0 });
+      dispatch({ type: 'REHYDRATE', hasTake: takesRef.current.length > 0 });
     }
-  }, [recording, sessionKey, state, takes]);
+  }, [recording, sessionKey, state]);
 
-  const stop = useCallback(async () => {
+  const runStop = useCallback(async () => {
     const snapshot = capturePersistRef.current;
     if (snapshot === null) return;
     capturePersistRef.current = null;
+    // The take query this Stop began on. The persisted take always belongs to
+    // `snapshot`, but the hook's refs, rows and reducer belong to whichever query
+    // is active now: once it differs, finishing must not publish into it (#979).
+    const stopKey = takesLoadKeyRef.current;
+    const isCurrent = () => takesLoadKeyRef.current === stopKey;
+    // The reducer outlives a verse change and ignores REHYDRATE while recording
+    // or saving. Leave those states the same way a finished capture would, so a
+    // stale Stop cannot strand the new view in `saving`. Nothing else is
+    // touched: the refs belong to the new query now (#979).
+    const settleAbandoned = () => {
+      dispatch({ type: 'DISCARD' }); // recording / paused -> idle
+      dispatch({ type: 'SAVED' }); // saving -> recorded
+      dispatch({ type: 'REHYDRATE', hasTake: takesRef.current.length > 0 });
+    };
     try {
       const recoveredOnly =
         recording.status === 'idle' && recoveredSegmentsRef.current.length > 0;
@@ -933,10 +1051,38 @@ export function useVerseAudio({
         uri = tempUris[tempUris.length - 1]!;
         durationMs = 0;
       } else {
-        ({ uri, durationMs } = await recording.stop());
-        tempUris = appendSegment(recoveredSegmentsRef.current, uri);
+        const stopped = await recording.stop();
+        if (stopped === null && recoveredSegmentsRef.current.length === 0) {
+          // The recorder wrote no file and nothing was saved before it: there
+          // is no take. Drop it like a discard, with no error or alert (#979).
+          if (!isCurrent()) {
+            settleAbandoned();
+            return;
+          }
+          recoveredElapsedMsRef.current = 0;
+          setRecoveredElapsedMs(0);
+          if (sessionKey !== null) {
+            clearPausedTake(sessionKey);
+          }
+          setErrorMessage(null);
+          dispatch({ type: 'DISCARD' });
+          // A refresh may have added a take while the recorder was stopping.
+          dispatch({ type: 'REHYDRATE', hasTake: takesRef.current.length > 0 });
+          return;
+        }
+        if (stopped === null) {
+          // Earlier segments are on disk: save those, as a recovered stop does.
+          tempUris = [...recoveredSegmentsRef.current];
+          uri = tempUris[tempUris.length - 1]!;
+          durationMs = 0;
+        } else {
+          ({ uri, durationMs } = stopped);
+          tempUris = appendSegment(recoveredSegmentsRef.current, uri);
+        }
       }
-      dispatch({ type: 'STOP' });
+      // Persisting still happens for the old verse; only the saving state is
+      // skipped when another query owns the reducer now (#979).
+      if (isCurrent()) dispatch({ type: 'STOP' });
       const persistMeta = {
         ...snapshot,
         tempUri: uri,
@@ -968,6 +1114,13 @@ export function useVerseAudio({
             capture: toMarkerCapture(snapshot),
             userId: userId ?? undefined,
           });
+        }
+        // The marker above is keyed to the old verse, so recovery finds this take
+        // when the user returns. The refs and reducer now belong to another
+        // query; writing the old snapshot into them would plant it there (#979).
+        if (!isCurrent()) {
+          settleAbandoned();
+          return;
         }
         // Keep everything needed to retry Stop (or Resume) and stay paused,
         // like a failed recovered-resume. Do NOT dispatch ERROR: it drops the
@@ -1039,14 +1192,32 @@ export function useVerseAudio({
       notifyPendingUploads();
 
       const rows = await loadTakesFn(snapshot.viewBibleTextId);
+      // The take is saved either way. If the view changed meanwhile, `rows` are
+      // the old verse's: leave the new query's rows, refs and state to its own
+      // load (#979).
+      if (!isCurrent()) {
+        settleAbandoned();
+        return;
+      }
       setTakes(rows);
       await refreshAllTakes(snapshot.viewBibleTextId);
+      if (!isCurrent()) {
+        settleAbandoned();
+        return;
+      }
       recoveredSegmentsRef.current = [];
       recoveredElapsedMsRef.current = 0;
       setRecoveredElapsedMs(0);
       capturePersistRef.current = null;
       dispatch({ type: 'SAVED' });
     } catch (error) {
+      if (!isCurrent()) {
+        log.warn('stop failed after the view changed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        settleAbandoned();
+        return;
+      }
       capturePersistRef.current = null;
       recoveredSegmentsRef.current = [];
       recoveredElapsedMsRef.current = 0;
@@ -1067,6 +1238,19 @@ export function useVerseAudio({
     verseNumber,
     refreshAllTakes,
   ]);
+
+  // Marks Stop pending in the same tick as the press, before the first await, so
+  // a verse step right after it sees the flag. A second Stop joins the first (#979).
+  const stop = useCallback((): Promise<void> => {
+    const inFlight = stopInFlightRef.current;
+    if (inFlight !== null) return inFlight;
+    if (capturePersistRef.current === null) return Promise.resolve();
+    const run: Promise<void> = runStop().finally(() => {
+      if (stopInFlightRef.current === run) stopInFlightRef.current = null;
+    });
+    stopInFlightRef.current = run;
+    return run;
+  }, [runStop]);
 
   /** File checks + engine play, shared by single takes and stitched segments. */
   const playUri = useCallback(
@@ -1452,6 +1636,14 @@ export function useVerseAudio({
 
   const deleteTake = useCallback(
     async (id: string) => {
+      // Bound to the query this callback was built for, not the current one: a
+      // retained callback (RecordTab keeps it in a confirmation alert) would
+      // otherwise read the new key while still using the old verse's loader.
+      const queryKey = takesLoadKey;
+      const activation = activationRef.current;
+      const isCurrent = () =>
+        takesLoadKeyRef.current === queryKey &&
+        activationRef.current === activation;
       try {
         const target = takes.find(t => t.id === id);
         // A deleted take may be a stitched segment — drop the queue either way.
@@ -1474,10 +1666,22 @@ export function useVerseAudio({
           });
         }
         const rows = bibleTextId !== null ? await loadTakesFn(bibleTextId) : [];
+        // The query changed or was re-activated while this ran: the active
+        // query loads its own rows, so these must not replace them or mark that
+        // list loaded. The delete itself is already done.
+        if (!isCurrent()) return;
         setTakes(rows);
+        // Ready only once this key's own load, paused-take check included, has
+        // settled; while that is still running it marks the list ready itself.
+        // After a failed load the delete reload is not enough (recovery never
+        // completed), so retry the whole load once the delete is published.
+        if (loadSettledKeyRef.current === queryKey) {
+          setLoadedTakesKey(queryKey);
+        }
         if (bibleTextId !== null) {
           await refreshAllTakes(bibleTextId);
         }
+        if (!isCurrent()) return;
         // Another take still playing keeps playing; REHYDRATE would drop
         // the state to recorded under it.
         if (!(state === 'playing' && loadedTakeId !== id)) {
@@ -1487,7 +1691,22 @@ export function useVerseAudio({
               : { type: 'DELETE' },
           );
         }
+        // Last, because it changes the query key. Leaving `error` above must
+        // not leave Record off with nothing to retry. Read here, not earlier:
+        // the paused-take check can fail while the awaits above are pending.
+        if (
+          loadFailedKeyRef.current === queryKey &&
+          loadSettledKeyRef.current !== queryKey
+        ) {
+          setTakesLoadAttempt(attempt => attempt + 1);
+        }
       } catch (error) {
+        if (!isCurrent()) {
+          log.warn('deleteTake failed for a verse that is no longer active', {
+            message: error instanceof Error ? error.message : String(error),
+          });
+          return;
+        }
         const message =
           error instanceof Error ? error.message : 'delete failed';
         setErrorMessage(message);
@@ -1502,6 +1721,7 @@ export function useVerseAudio({
       playback,
       state,
       takes,
+      takesLoadKey,
       deleteTakeFn,
       refreshAllTakes,
     ],
@@ -1634,6 +1854,8 @@ export function useVerseAudio({
     loadedTakeId,
     playbackStatus: playback.status,
     errorMessage,
+    takesLoaded,
+    retryTakesLoad,
     recoveredElapsedMs,
     /** Live input level in dBFS while recording, for the Level wave. */
     getMetering: recording.getMetering,
@@ -1643,6 +1865,7 @@ export function useVerseAudio({
     pause,
     resume,
     stop,
+    isStopPending,
     discardCapture,
     playTake,
     playStitched,
