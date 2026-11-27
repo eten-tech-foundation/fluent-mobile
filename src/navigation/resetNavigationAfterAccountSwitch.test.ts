@@ -12,6 +12,7 @@ describe('resetNavigationAfterAccountSwitch', () => {
     expect(canDismiss).toHaveBeenCalled();
     expect(dismissAll).toHaveBeenCalled();
     expect(replace).toHaveBeenCalledWith(hrefs.home({ newUserLoading: false }));
+    expect(hrefs.home().pathname).toBe('/(app)/(stack)');
   });
 
   it('skips dismissAll when the stack cannot dismiss', () => {

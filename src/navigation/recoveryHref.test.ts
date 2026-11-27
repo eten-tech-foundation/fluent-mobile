@@ -86,13 +86,15 @@ describe('resolveRecoveryHref', () => {
     mockNames.mockResolvedValue(names);
   });
 
-  describe.each(Object.entries(fixtures))('in Next, %s', (_name, marker) => {
+  describe.each(Object.entries(fixtures))('%s', (_name, marker) => {
     it('opens its passage with the saved key and verse, not the passage start', async () => {
-      const href = await resolveRecoveryHref(marker, 'next');
+      const result = await resolveRecoveryHref(marker);
 
-      expect(href).toEqual(nextHref({}));
-      expect(href?.pathname).toBe('/(app)/(stack)/passage');
-      expect(href?.params).toMatchObject({
+      expect(result).toEqual({ status: 'open', href: nextHref({}) });
+      if (result.status !== 'open') return;
+      expect(result.href.pathname).toBe('/(app)/(stack)/passage');
+      expect(result.href.pathname).not.toBe('/(app)/(stack)/verse-detail');
+      expect(result.href.params).toMatchObject({
         recoverSessionKey: '5:23',
         recoverVerse: '23',
         anchorVerse: '23',
@@ -101,36 +103,28 @@ describe('resolveRecoveryHref', () => {
 
     it("leaves the marker as it's stored", async () => {
       const before = JSON.parse(JSON.stringify(marker));
-      await resolveRecoveryHref(marker, 'next');
+      await resolveRecoveryHref(marker);
       expect(marker).toEqual(before);
     });
   });
 
-  it('opens Legacy drafting on the saved take in Legacy', async () => {
-    await expect(
-      resolveRecoveryHref(fixtures['a verse take'], 'legacy'),
-    ).resolves.toEqual(
-      hrefs.verseDetail({
-        chapterId: 5,
-        chapterName: 'Mark 14',
-        projectName: '',
-        language: '',
-        recoverSessionKey: '5:23',
-        recoverVerse: 23,
-      }),
-    );
-    expect(mockNames).not.toHaveBeenCalled();
+  it('opens the passage for a marker that used to open classic drafting', async () => {
+    const result = await resolveRecoveryHref(fixtures['a verse take']);
+    expect(result).toEqual({ status: 'open', href: nextHref({}) });
+    expect(mockNames).toHaveBeenCalledTimes(1);
   });
 
-  it("is null while the chapter's names can't be read, and opens once they can", async () => {
+  it("is unread while the chapter's names can't be read, and opens the same session once they can", async () => {
     const marker = fixtures['a passage take paused after the passage start'];
     mockNames.mockResolvedValueOnce(null);
 
-    // Null makes the prompt offer Retry, with the marker and audio kept.
-    await expect(resolveRecoveryHref(marker, 'next')).resolves.toBeNull();
-    await expect(resolveRecoveryHref(marker, 'next')).resolves.toEqual(
-      nextHref({}),
-    );
+    await expect(resolveRecoveryHref(marker)).resolves.toEqual({
+      status: 'unread',
+    });
+    await expect(resolveRecoveryHref(marker)).resolves.toEqual({
+      status: 'open',
+      href: nextHref({}),
+    });
   });
 
   it('opens with blank labels when the project rows have none', async () => {
@@ -141,10 +135,11 @@ describe('resolveRecoveryHref', () => {
     });
 
     await expect(
-      resolveRecoveryHref(fixtures['a verse take'], 'next'),
-    ).resolves.toEqual(
-      nextHref({ projectName: '', milestoneName: '', language: '' }),
-    );
+      resolveRecoveryHref(fixtures['a verse take']),
+    ).resolves.toEqual({
+      status: 'open',
+      href: nextHref({ projectName: '', milestoneName: '', language: '' }),
+    });
   });
 
   it('opens without a project id when the chapter row has none', async () => {
@@ -157,18 +152,62 @@ describe('resolveRecoveryHref', () => {
       chapterNumber: 14,
     });
 
-    const href = await resolveRecoveryHref(fixtures['a verse take'], 'next');
+    const result = await resolveRecoveryHref(fixtures['a verse take']);
 
-    expect(href).toEqual(nextHref({ projectId: null }));
-    expect(href?.params).not.toHaveProperty('projectId');
+    expect(result).toEqual({
+      status: 'open',
+      href: nextHref({ projectId: null }),
+    });
+    if (result.status === 'open') {
+      expect(result.href.params).not.toHaveProperty('projectId');
+    }
   });
 
-  it('is null when the marker has no chapter or the chapter is gone', async () => {
+  it('is missing when the marker has no chapter or the chapter is gone', async () => {
     const marker = fixtures['a verse take'];
     await expect(
-      resolveRecoveryHref({ ...marker, verseNumber: undefined }, 'next'),
-    ).resolves.toBeNull();
+      resolveRecoveryHref({ ...marker, verseNumber: undefined }),
+    ).resolves.toEqual({ status: 'missing' });
+    expect(mockAssignment).not.toHaveBeenCalled();
+
     mockAssignment.mockResolvedValueOnce(null);
-    await expect(resolveRecoveryHref(marker, 'next')).resolves.toBeNull();
+    await expect(resolveRecoveryHref(marker)).resolves.toEqual({
+      status: 'missing',
+    });
+    expect(mockNames).not.toHaveBeenCalled();
+  });
+
+  it('stops before reading when the account already changed', async () => {
+    await expect(
+      resolveRecoveryHref(fixtures['a verse take'], () => false),
+    ).resolves.toEqual({ status: 'stale' });
+    expect(mockAssignment).not.toHaveBeenCalled();
+  });
+
+  it('does not open a chapter read that finishes after the account changes', async () => {
+    let current = true;
+    let release: (value: unknown) => void = () => {};
+    mockAssignment.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          release = resolve;
+        }),
+    );
+
+    const pending = resolveRecoveryHref(
+      fixtures['a verse take'],
+      () => current,
+    );
+    current = false;
+    release({
+      id: 5,
+      projectId: 9,
+      projectUnitId: 3,
+      bookName: 'Mark',
+      chapterNumber: 14,
+    });
+
+    await expect(pending).resolves.toEqual({ status: 'stale' });
+    expect(mockNames).not.toHaveBeenCalled();
   });
 });

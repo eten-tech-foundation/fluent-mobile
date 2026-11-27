@@ -1,12 +1,20 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
-import { getChapterAssignmentById, getChapterRouteNames } from '../db/queries';
+import {
+  getChapterAssignmentById,
+  getChapterRouteNames,
+  getPericopeForVerse,
+} from '../db/queries';
 import { useRecordSession } from '../hooks/useRecordSession';
 import type { DraftingUnit } from '../services/draftingUnitPreference';
 import type { PausedTakeMarker } from '../services/pausedTakes';
 import type { ChapterAssignmentData } from '../types/db/types';
 import { readPassageRecovery, type PassageRecovery } from './passageRecovery';
 import { resolveRecoveryHref } from './recoveryHref';
+import {
+  classifyVerseDetailLink,
+  openVerseDetailRecovery,
+} from './verseDetailLink';
 
 /**
  * #914: follows a stored marker from Resume into the recorder the Next
@@ -178,9 +186,9 @@ const passageCapture = {
 
 /** What Resume opens, and the recovery the passage page reads from it. */
 async function recover(): Promise<PassageRecovery | null> {
-  const href = await resolveRecoveryHref(mockPausedMarkers[0]!, 'next');
-  if (!href || href.pathname !== '/(app)/(stack)/passage') return null;
-  const params = href.params as Record<string, string | undefined>;
+  const result = await resolveRecoveryHref(mockPausedMarkers[0]!);
+  if (result.status !== 'open') return null;
+  const params = result.href.params as Record<string, string | undefined>;
   return readPassageRecovery(
     {
       chapterId: Number(params.chapterId),
@@ -314,6 +322,107 @@ describe('resuming a saved take in Next (#914)', () => {
       expect(result.current.verseAudio.state).toBe('recorded');
     },
   );
+
+  it('finishes an old verse-detail recovery link as the saved passage take', async () => {
+    const stored = marker({ capture: passageCapture });
+    mockPausedMarkers.push(stored);
+    const pericope = getPericopeForVerse as jest.Mock;
+    pericope.mockClear();
+
+    const classified = classifyVerseDetailLink({
+      chapterId: '5',
+      chapterName: 'Mark 14',
+      projectName: 'wrong project',
+      language: 'wrong language',
+      recoverSessionKey: stored.sessionKey,
+      recoverVerse: String(stored.verseNumber),
+    });
+    expect(classified).toEqual({
+      kind: 'recover',
+      chapterId: 5,
+      verse: 23,
+      sessionKey: '5:23',
+    });
+    if (classified.kind !== 'recover') return;
+
+    mockNames.mockResolvedValueOnce(null);
+    await expect(openVerseDetailRecovery(classified)).resolves.toEqual({
+      kind: 'unread',
+    });
+    expect(mockClearPausedTake).not.toHaveBeenCalled();
+    expect(mockPausedMarkers).toEqual([stored]);
+
+    const direct = await resolveRecoveryHref(stored);
+    const link = await openVerseDetailRecovery(classified);
+    expect(pericope).not.toHaveBeenCalled();
+    expect(direct.status).toBe('open');
+    expect(link.kind).toBe('passage');
+    if (direct.status !== 'open' || link.kind !== 'passage') return;
+    expect(link.href).toEqual(direct.href);
+    expect(link.href.params).toMatchObject({
+      anchorVerse: '23',
+      recoverSessionKey: '5:23',
+      recoverVerse: '23',
+      projectName: 'Mark Telugu',
+    });
+
+    const params = link.href.params as Record<string, string | undefined>;
+    const recovery = readPassageRecovery(
+      {
+        chapterId: Number(params.chapterId),
+        sessionKey: params.recoverSessionKey,
+        verse: Number(params.recoverVerse),
+      },
+      7,
+    );
+    expect(recovery).toEqual({ verse: 23, unit: 'pericope' });
+    const { result } = await renderSession(recovery!);
+    await waitFor(() => expect(result.current.verseAudio.state).toBe('paused'));
+    await resumeAndFinish(result);
+    expect(mockPersistTake).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...passageCapture,
+        tempUris: [SAVED, 'file:///tmp/take.m4a'],
+      }),
+    );
+  });
+
+  it('finishes a capture-less old link as a verse take on the saved verse', async () => {
+    const stored = JSON.parse(
+      '{"sessionKey":"5:23","segments":["file:///paused.aac"],"elapsedMs":4000,' +
+        '"startedAt":"2026-08-01T10:00:00Z","chapterAssignmentId":5,"verseNumber":23}',
+    );
+    mockPausedMarkers.push(stored);
+    const classified = classifyVerseDetailLink({
+      chapterId: '5',
+      recoverSessionKey: '5:23',
+      recoverVerse: '23',
+    });
+    if (classified.kind !== 'recover') throw new Error('expected recover');
+    const link = await openVerseDetailRecovery(classified);
+    expect(link.kind).toBe('passage');
+    if (link.kind !== 'passage') return;
+    expect(link.href.params).toMatchObject({
+      anchorVerse: '23',
+      verse: '23',
+      recoverVerse: '23',
+    });
+    const recovery = readPassageRecovery(
+      { chapterId: 5, sessionKey: '5:23', verse: 23 },
+      7,
+    );
+    expect(recovery).toEqual({ verse: 23, unit: 'verse' });
+    const { result } = await renderSession(recovery!);
+    await waitFor(() => expect(result.current.verseAudio.state).toBe('paused'));
+    await resumeAndFinish(result);
+    expect(mockPersistTake).toHaveBeenCalledWith(
+      expect.objectContaining({
+        granularity: 'verse',
+        startVerse: 23,
+        endVerse: 23,
+      }),
+    );
+  });
 
   it('keeps a verse take a verse take after a failed names read, then opens it', async () => {
     mockPausedMarkers.push(marker({ capture: verseCapture }));
