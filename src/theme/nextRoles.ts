@@ -1,5 +1,5 @@
 import { nextPrimitives } from './nextPrimitives';
-import { DEFAULT_COLOR_MODE, type ColorMode } from './uiVersionTypes';
+import { DEFAULT_COLOR_MODE, type ColorMode } from './colorMode';
 
 const { bone, blue, red, white, black, opacity } = nextPrimitives;
 

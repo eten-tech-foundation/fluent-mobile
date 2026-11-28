@@ -91,10 +91,8 @@ function mockOnlineWifi() {
   });
   mockUsePreferences.mockReturnValue({
     uploadOverCellular: false,
-    uiVersion: 'legacy',
-    preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
+    preferences: { uploadOverCellular: false },
     setUploadOverCellular: jest.fn(),
-    setUiVersion: jest.fn(),
     setPreferences: jest.fn(),
     reload: jest.fn(),
   });
@@ -144,10 +142,8 @@ describe('useSyncStatus cellular gate', () => {
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: false,
-      uiVersion: 'legacy',
-      preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
+      preferences: { uploadOverCellular: false },
       setUploadOverCellular: jest.fn(),
-      setUiVersion: jest.fn(),
       setPreferences: jest.fn(),
       reload: jest.fn(),
     });
@@ -176,10 +172,8 @@ describe('useSyncStatus cellular gate', () => {
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: false,
-      uiVersion: 'legacy',
-      preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
+      preferences: { uploadOverCellular: false },
       setUploadOverCellular: jest.fn(),
-      setUiVersion: jest.fn(),
       setPreferences: jest.fn(),
       reload: jest.fn(),
     });
@@ -222,10 +216,8 @@ describe('useSyncStatus cellular gate', () => {
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: false,
-      uiVersion: 'legacy',
-      preferences: { uploadOverCellular: false, uiVersion: 'legacy' },
+      preferences: { uploadOverCellular: false },
       setUploadOverCellular: jest.fn(),
-      setUiVersion: jest.fn(),
       setPreferences: jest.fn(),
       reload: jest.fn(),
     });
@@ -254,10 +246,8 @@ describe('useSyncStatus cellular gate', () => {
     });
     mockUsePreferences.mockReturnValue({
       uploadOverCellular: true,
-      uiVersion: 'legacy',
-      preferences: { uploadOverCellular: true, uiVersion: 'legacy' },
+      preferences: { uploadOverCellular: true },
       setUploadOverCellular: jest.fn(),
-      setUiVersion: jest.fn(),
       setPreferences: jest.fn(),
       reload: jest.fn(),
     });

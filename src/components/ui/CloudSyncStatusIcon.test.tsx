@@ -3,8 +3,7 @@ import { render } from '@testing-library/react-native';
 import { CloudSyncStatusIcon } from './CloudSyncStatusIcon';
 import { SyncStatus, SYNC_STATUS_LABELS } from '../../utils/syncStatusState';
 import { theme } from '../../theme';
-import { UiVersionOverride } from '../../theme/useTheme';
-import { resolveTheme } from '../../theme/uiVersion';
+import { resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
 jest.mock('../../services/storage', () => ({
@@ -89,9 +88,8 @@ describe('CloudSyncStatusIcon', () => {
     expect(check?.stroke).toBe(theme.colors.syncStatusOffline);
   });
 
-  it('isolates Next glyph colors across status/override changes and restores Legacy colors', async () => {
-    const legacy = resolveTheme('legacy');
-    const next = resolveTheme('next');
+  it('keeps glyph colors on the active theme across status and override changes', async () => {
+    const next = resolveTheme();
     const colors = next.colors as {
       primaryForeground: string;
       syncStatusSynced: string;
@@ -101,17 +99,15 @@ describe('CloudSyncStatusIcon', () => {
     };
     const original = { ...colors };
     const tree = (
-      version: 'legacy' | 'next',
+      _version: 'legacy' | 'next',
       status: SyncStatus,
       cloudColor?: string,
     ) => (
-      <UiVersionOverride value={version}>
-        <CloudSyncStatusIcon
-          status={status}
-          animated={false}
-          cloudColor={cloudColor}
-        />
-      </UiVersionOverride>
+      <CloudSyncStatusIcon
+        status={status}
+        animated={false}
+        cloudColor={cloudColor}
+      />
     );
     const stroke = (prefix: string) =>
       renderedPaths.find(path => path.d.startsWith(prefix))?.stroke;
@@ -124,8 +120,8 @@ describe('CloudSyncStatusIcon', () => {
         destructive: '#505152',
       });
       const view = await render(tree('legacy', 'online_synced'));
-      expect(stroke(CLOUD_PATH_PREFIX)).toBe(legacy.colors.primaryForeground);
-      expect(stroke(CHECK_PATH)).toBe(legacy.colors.syncStatusSynced);
+      expect(stroke(CLOUD_PATH_PREFIX)).toBe(next.colors.primaryForeground);
+      expect(stroke(CHECK_PATH)).toBe(next.colors.syncStatusSynced);
       const show = async (
         version: 'legacy' | 'next',
         status: SyncStatus,
@@ -165,8 +161,8 @@ describe('CloudSyncStatusIcon', () => {
         '#abcdef',
       );
       await show('legacy', 'online_synced');
-      expect(stroke(CLOUD_PATH_PREFIX)).toBe(legacy.colors.primaryForeground);
-      expect(stroke(CHECK_PATH)).toBe(legacy.colors.syncStatusSynced);
+      expect(stroke(CLOUD_PATH_PREFIX)).toBe(next.colors.primaryForeground);
+      expect(stroke(CHECK_PATH)).toBe(next.colors.syncStatusSynced);
       expect(
         view.getByLabelText(SYNC_STATUS_LABELS.online_synced),
       ).toBeTruthy();

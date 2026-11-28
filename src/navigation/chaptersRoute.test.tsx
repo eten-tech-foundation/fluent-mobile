@@ -2,7 +2,6 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import ChaptersRoute from '../routes/(app)/(stack)/chapters';
 import { hrefs } from './hrefs';
-import { UiVersionOverride } from '../theme/useTheme';
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({
@@ -43,12 +42,8 @@ jest.mock('../app/v2/screens/BookScreen', () => ({
 }));
 
 describe('chapters route', () => {
-  it('shows the book page when a subtree is pinned to Legacy', async () => {
-    await render(
-      <UiVersionOverride value="legacy">
-        <ChaptersRoute />
-      </UiVersionOverride>,
-    );
+  it('shows the book page', async () => {
+    await render(<ChaptersRoute />);
     expect(screen.getByText('Next book 9 3 5')).toBeTruthy();
     expect(screen.queryByText('Legacy chapters')).toBeNull();
   });

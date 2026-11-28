@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import {
   fireEvent,
   render,
@@ -6,6 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import LoginScreen from './LoginScreen';
+import { resolveTheme } from '../../theme';
 import { FluentAPI } from '../../services/api';
 import { beginLoginSession } from '../../services/authSession';
 import { QueryClientTestWrapper } from '../../test/queryClientWrapper';
@@ -63,6 +65,15 @@ describe('LoginScreen', () => {
   beforeEach(() => {
     onLoginSuccess = jest.fn();
     jest.clearAllMocks();
+  });
+
+  it('paints the signed-out form with the Next Hardware theme', async () => {
+    await renderLoginScreen();
+    const hardware = resolveTheme('hardware');
+    expect(
+      StyleSheet.flatten(screen.getByText('Welcome').props.style).color,
+    ).toBe(hardware.colors.foreground);
+    expect(hardware.colors.foreground).not.toBe('#1A1A1A');
   });
 
   it('shows validation errors for empty fields', async () => {

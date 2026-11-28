@@ -40,7 +40,7 @@ const baseUrl = getApiBaseUrl();
 ## React Native
 
 - Functional components + hooks.
-- **Styling:** For UI that must follow the active Legacy/Next UI version, use `useTheme()` / `useThemedStyles()` from `src/theme/useTheme`. The static `theme` export from `src/theme` is **Legacy-pinned** (safe for existing module-level StyleSheets). Do **not** add new hardcoded hex values in new StyleSheets — put tokens in `src/theme/tokens.ts` (Legacy) or overrides in `src/theme/next.ts` (Next). See [docs/guides/ui-version-theming.md](../../docs/guides/ui-version-theming.md).
+- **Styling:** The static `theme` export from `src/theme` is Next Hardware, for module-level StyleSheets on chrome that does not change color mode. UI inside a `ColorModeScope` uses `useTheme()` / `useThemedStyles()` from `src/theme/useTheme` so Canvas and Accent recompute. Do **not** import `src/theme/next` directly, and do **not** add new hardcoded hex values in StyleSheets — put colors on the Next theme. See [docs/guides/ui-version-theming.md](../../docs/guides/ui-version-theming.md).
 - `src/app/appStyles.ts` is **legacy** shared styles — reuse existing keys if needed, but prefer tokens for anything new; migrate to `useTheme()` / `useThemedStyles()` from `src/theme/useTheme` when touching a file for Next-aware UI.
 - Icons: Next UI uses `src/components/ui/icons` (Phosphor, one module per icon; see [docs/guides/figma-to-component.md](../../docs/guides/figma-to-component.md)). Legacy keeps `@react-native-vector-icons/ionicons` / `lucide-react-native` (match neighbors).
 - SVG: default import as component (e.g. `FluentLogo`).

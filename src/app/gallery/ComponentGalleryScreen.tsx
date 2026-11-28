@@ -12,7 +12,6 @@ import {
 import type { ColorMode } from '../../theme';
 import {
   ColorModeScope,
-  UiVersionOverride,
   useTheme,
   useThemedStyles,
 } from '../../theme/useTheme';
@@ -26,15 +25,11 @@ const MODE_OPTIONS: { label: string; value: ColorMode }[] = [
 
 /**
  * Review screen for Next UI components: live demos to tap and feel.
- * Always renders Next, whatever the device's UI version preference.
  * Registered only when `isComponentGalleryEnabled()`; works signed out.
+ * Hardware, Canvas, and Accent are the real color modes, not a second UI version.
  */
 export default function ComponentGalleryScreen() {
-  return (
-    <UiVersionOverride value="next">
-      <Gallery />
-    </UiVersionOverride>
-  );
+  return <Gallery />;
 }
 
 function Gallery() {

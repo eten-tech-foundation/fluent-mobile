@@ -1,4 +1,4 @@
-import { legacyTheme, theme } from './legacy';
+import { theme } from './index';
 import {
   NEXT_DEFAULT_COLOR_MODE,
   mapRolesToThemeColors,
@@ -9,9 +9,9 @@ import {
   nextTheme,
   nextThemes,
   nextTypeStyles,
+  resolveTheme,
 } from './next';
 import { nextBaseline } from './nextBaseline';
-import { resolveTheme } from './uiVersion';
 
 function expectIndependentGroups(left: unknown, right: unknown): void {
   if (left === null || typeof left !== 'object') return;
@@ -24,29 +24,28 @@ function expectIndependentGroups(left: unknown, right: unknown): void {
   }
 }
 
-describe('legacyTheme', () => {
-  it('exports theme as an alias of legacyTheme', () => {
-    expect(theme).toBe(legacyTheme);
-  });
-
-  it('matches the frozen Legacy snapshot', () => {
-    expect(legacyTheme).toMatchSnapshot();
+describe('static theme', () => {
+  it('is the Next Hardware theme', () => {
+    expect(theme).toBe(nextTheme);
+    expect(theme).toBe(nextThemes.hardware);
   });
 });
 
 describe('resolveTheme', () => {
-  it('returns legacyTheme for legacy', () => {
-    expect(resolveTheme('legacy')).toBe(legacyTheme);
-  });
-
-  it('returns nextTheme for next', () => {
-    expect(resolveTheme('next')).toBe(nextTheme);
+  it('defaults to Hardware and returns each mode object', () => {
+    expect(resolveTheme()).toBe(nextThemes.hardware);
+    expect(resolveTheme('hardware')).toBe(nextThemes.hardware);
+    expect(resolveTheme('canvas')).toBe(nextThemes.canvas);
+    expect(resolveTheme('accent')).toBe(nextThemes.accent);
+    expect(nextTheme).toBe(nextThemes.hardware);
   });
 });
 
 describe('nextTheme (Figma Foundations / Hardware)', () => {
-  it('is a distinct object from legacyTheme (runtime switch identity)', () => {
-    expect(nextTheme).not.toBe(legacyTheme);
+  it('does not share identity with the baseline or another mode', () => {
+    expect(nextTheme).not.toBe(nextBaseline);
+    expect(nextTheme).not.toBe(nextThemes.canvas);
+    expect(nextTheme).not.toBe(nextThemes.accent);
   });
 
   it('defaults Next chrome to Hardware mode', () => {
@@ -79,7 +78,7 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     );
     // reading (42) must not alias onto display (record timer)
     expect(nextTheme.typography.sizes.display).toBe(
-      legacyTheme.typography.sizes.display,
+      nextBaseline.typography.sizes.display,
     );
     expect(nextTypeStyles.reading.fontSize).toBe(42);
   });
@@ -96,9 +95,9 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     expect(nextTheme.headerLayout.paddingVertical).toBe(nextTheme.spacing.md);
   });
 
-  it('keeps Legacy sync/warning colors until redesign defines them', () => {
-    expect(nextTheme.colors.syncSynced).toBe(legacyTheme.colors.syncSynced);
-    expect(nextTheme.colors.warning).toBe(legacyTheme.colors.warning);
+  it('keeps baseline sync and warning colors until redesign defines them', () => {
+    expect(nextTheme.colors.syncSynced).toBe(nextBaseline.colors.syncSynced);
+    expect(nextTheme.colors.warning).toBe(nextBaseline.colors.warning);
   });
 
   it('exposes Hardware roles, role-built elevation and Foundations motion', () => {
@@ -155,17 +154,10 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     }
   });
 
-  it('keeps Legacy on system fonts', () => {
-    expect(legacyTheme.type.title).not.toHaveProperty('fontFamily');
-    expect(legacyTheme.type.meta.fontFamily).toBe('monospace');
-    expect(legacyTheme.type.meta.textTransform).toBe('uppercase');
-    expect(legacyTheme.type.heading.lineHeight).toBe(48);
-  });
-
-  it('keeps the same role keys in Legacy so components never branch', () => {
-    expect(Object.keys(legacyTheme.roles).sort()).toEqual(
-      Object.keys(nextTheme.roles).sort(),
-    );
+  it('keeps the same role keys in every mode so components never branch', () => {
+    const hardwareKeys = Object.keys(nextThemes.hardware.roles).sort();
+    expect(Object.keys(nextThemes.canvas.roles).sort()).toEqual(hardwareKeys);
+    expect(Object.keys(nextThemes.accent.roles).sort()).toEqual(hardwareKeys);
   });
 
   it('uses the Figma record red per mode', () => {
@@ -174,9 +166,9 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     expect(nextColorRoles.accent.accentRecord).toBe(nextPrimitives.red[300]);
   });
 
-  it('resolves a Next theme per color mode, and ignores modes in Legacy', () => {
+  it('resolves a distinct theme per color mode', () => {
     for (const mode of ['canvas', 'hardware', 'accent'] as const) {
-      const resolved = resolveTheme('next', mode);
+      const resolved = resolveTheme(mode);
       expect(resolved).toBe(nextThemes[mode]);
       expect(resolved.roles).toEqual(nextColorRoles[mode]);
       expect(resolved.colors.background).toBe(nextColorRoles[mode].bgDefault);
@@ -187,10 +179,7 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
       expect(resolved.fade.reading).toBe(
         `linear-gradient(to bottom, ${nextColorRoles[mode].bgClear}, ${nextColorRoles[mode].bgDefault})`,
       );
-      expect(resolveTheme('legacy', mode)).toBe(legacyTheme);
     }
-    expect(resolveTheme('next')).toBe(nextThemes.hardware);
-    expect(nextTheme).toBe(nextThemes.hardware);
   });
 
   it('exposes Canvas and Accent role tables for future surfaces', () => {
@@ -205,16 +194,14 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
     expectIndependentGroups(nextThemes.hardware, nextThemes.canvas);
     expectIndependentGroups(nextThemes.hardware, nextThemes.accent);
     expectIndependentGroups(nextThemes.canvas, nextThemes.accent);
-    expectIndependentGroups(legacyTheme, nextTheme);
     expectIndependentGroups(nextBaseline, nextTheme);
   });
 
-  it('does not bleed a Next token edit into Legacy, its baseline or another mode', () => {
+  it('does not bleed a mode edit into the baseline or another mode', () => {
     const colors = nextThemes.hardware.colors as { primary: string };
     const sizes = nextThemes.hardware.typography.sizes as { lg: number };
     const waveform = nextThemes.hardware.waveform as { barGap: number };
     const originalPrimary = colors.primary;
-    const legacyPrimary = legacyTheme.colors.primary;
     const baselinePrimary = nextBaseline.colors.primary;
     const originalSize = sizes.lg;
     const originalGap = waveform.barGap;
@@ -222,7 +209,6 @@ describe('nextTheme (Figma Foundations / Hardware)', () => {
       colors.primary = '#123456';
       sizes.lg = 99;
       waveform.barGap = 11;
-      expect(legacyTheme.colors.primary).toBe(legacyPrimary);
       expect(nextBaseline.colors.primary).toBe(baselinePrimary);
       expect(nextBaseline.typography.sizes.lg).toBe(originalSize);
       expect(nextBaseline.waveform.barGap).toBe(originalGap);

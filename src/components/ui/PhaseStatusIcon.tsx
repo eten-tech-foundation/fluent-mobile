@@ -8,7 +8,7 @@ import {
   UsersRound,
 } from 'lucide-react-native';
 import { WorkflowBadgeStage } from '../../types/db/types';
-import { theme, workflowStages } from '../../theme';
+import { theme } from '../../theme';
 import { iconSizes, phaseIconStrokeWidth } from '../../theme/iconSpecs';
 
 interface PhaseStatusIconProps {
@@ -24,7 +24,7 @@ const PHASE_ICONS = {
 } as const;
 
 export function PhaseStatusIcon({ stage }: PhaseStatusIconProps) {
-  const config = workflowStages[stage];
+  const config = theme.workflowStages[stage];
 
   if (!config.phaseColor || !config.phaseTint || !config.phaseIcon) {
     return null;

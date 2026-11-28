@@ -3,7 +3,6 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Avatar } from './Avatar';
 import { resolveTheme } from '../../theme';
-import { UiVersionOverride } from '../../theme/useTheme';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -12,20 +11,18 @@ jest.mock('../../services/storage', () => ({
   },
 }));
 
-const next = resolveTheme('next');
+const next = resolveTheme();
 
 describe('Avatar', () => {
   it('shows the initials on surface/inverse and opens on press', async () => {
     const onPress = jest.fn();
     await render(
-      <UiVersionOverride value="next">
-        <Avatar
-          initials="JS"
-          accessibilityLabel="Jordan Smith. Accounts"
-          onPress={onPress}
-          testID="avatar"
-        />
-      </UiVersionOverride>,
+      <Avatar
+        initials="JS"
+        accessibilityLabel="Jordan Smith. Accounts"
+        onPress={onPress}
+        testID="avatar"
+      />,
     );
 
     const button = screen.getByRole('button', {
@@ -43,11 +40,7 @@ describe('Avatar', () => {
   });
 
   it('is a plain picture without a press, left to its row to speak', async () => {
-    await render(
-      <UiVersionOverride value="next">
-        <Avatar initials="RK" testID="avatar" />
-      </UiVersionOverride>,
-    );
+    await render(<Avatar initials="RK" testID="avatar" />);
 
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.queryByText('RK')).toBeNull();

@@ -1,10 +1,8 @@
-import type { Theme } from './legacy';
-
 /**
- * Independently owned Next baseline for the current matching-design phase.
- * Values start equal to the frozen mobile Legacy baseline. Do not import
- * Legacy values here: future edits to either UI version must stay isolated.
- * Figma primitives/roles remain separate inputs for a future Next divergence.
+ * Independently owned baseline for every Next mode. Do not import another
+ * theme object here: Hardware, Canvas, and Accent must stay isolated from
+ * this copy and from each other. Figma primitives and roles are applied
+ * later, per mode.
  */
 export const nextBaseline = {
   colors: {
@@ -337,4 +335,22 @@ export const nextBaseline = {
       phaseTint: '#e7560d26',
     },
   },
-} as const satisfies Theme;
+} as const;
+
+/**
+ * Named type styles. Families are optional so a mode can set Next fonts
+ * without the baseline object declaring every family.
+ */
+type TypeStyle = {
+  fontFamily?: string;
+  fontSize: number;
+  lineHeight: number;
+  fontWeight: '400' | '500' | '600' | '700';
+  includeFontPadding: boolean;
+  textTransform?: 'uppercase' | 'none';
+};
+
+/** Shared theme shape. Modes copy the baseline, then replace presentation leaves. */
+export type Theme = Omit<typeof nextBaseline, 'type'> & {
+  type: { [K in keyof typeof nextBaseline.type]: TypeStyle };
+};

@@ -77,8 +77,6 @@ jest.mock('../../hooks/usePreferences', () => ({
   usePreferences: () => ({
     uploadOverCellular: false,
     setUploadOverCellular: jest.fn(),
-    uiVersion: 'legacy',
-    setUiVersion: jest.fn(),
   }),
 }));
 

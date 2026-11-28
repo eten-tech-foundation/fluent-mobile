@@ -4,16 +4,15 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ListRow } from './ListRow';
 import { Gear } from './icons';
 import { resolveTheme } from '../../theme';
-import { UiVersionOverride } from '../../theme/useTheme';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: { getItemSync: jest.fn(), setItemSync: jest.fn() },
 }));
 
-const next = resolveTheme('next');
+const next = resolveTheme();
 
 function renderNext(ui: React.ReactElement) {
-  return render(<UiVersionOverride value="next">{ui}</UiVersionOverride>);
+  return render(ui);
 }
 
 describe('ListRow', () => {

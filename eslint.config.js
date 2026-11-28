@@ -47,7 +47,7 @@ const handoffAntiPatternImports = {
     {
       group: ['**/theme/next', '**/theme/next.*'],
       message:
-        'Do not import Next theme tokens directly — use useTheme() / useThemedStyles() from src/theme/useTheme so runtime UI-version switching stays centralized.',
+        'Do not import Next theme tokens directly — use useTheme() / useThemedStyles() from src/theme/useTheme, or the static theme barrel for Hardware module styles.',
     },
   ],
 };

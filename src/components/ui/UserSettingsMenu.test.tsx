@@ -9,8 +9,7 @@ import {
 import { UserSettingsMenu } from './UserSettingsMenu';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { hrefs } from '../../navigation/hrefs';
-import { UiVersionOverride } from '../../theme/useTheme';
-import { resolveTheme } from '../../theme/uiVersion';
+import { resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import {
   RECORDING_IN_PROGRESS_MESSAGE,
@@ -500,9 +499,8 @@ describe('UserSettingsMenu', () => {
     );
   });
 
-  it('scopes drawer colors, label weights and spacing while preserving Legacy and account behavior', async () => {
-    const legacy = resolveTheme('legacy');
-    const next = resolveTheme('next');
+  it('scopes drawer colors, label weights and spacing while account behavior stays controlled', async () => {
+    const next = resolveTheme();
     const colors = next.colors as {
       cardBackground: string;
       foreground: string;
@@ -523,14 +521,12 @@ describe('UserSettingsMenu', () => {
       spacing: spacing.xs,
     };
     const props = { ...drawerProps, state: { ...drawerProps.state, index: 1 } };
-    const menu = (version: 'legacy' | 'next') => (
-      <UiVersionOverride value={version}>
-        <UserSettingsMenu
-          {...props}
-          onSignOut={onSignOut}
-          onUserSwitched={onUserSwitched}
-        />
-      </UiVersionOverride>
+    const menu = () => (
+      <UserSettingsMenu
+        {...props}
+        onSignOut={onSignOut}
+        onUserSwitched={onUserSwitched}
+      />
     );
     try {
       Object.assign(colors, {
@@ -544,7 +540,7 @@ describe('UserSettingsMenu', () => {
       weights.semibold = '800';
       lineHeights.tight = 27;
       spacing.xs = 13;
-      const view = await render(menu('legacy'));
+      const view = await render(menu());
       const more = () => view.getByTestId('settings-menu-more-settings');
       const label = (id: string) =>
         StyleSheet.flatten(view.getByTestId(id).props.labelStyle);
@@ -560,19 +556,19 @@ describe('UserSettingsMenu', () => {
         return footers[0];
       };
       expect(view.getByTestId('settings-drawer-content')).toHaveStyle({
-        backgroundColor: legacy.colors.cardBackground,
+        backgroundColor: next.colors.cardBackground,
       });
-      expect(more().props.activeTintColor).toBe(legacy.colors.primary);
+      expect(more().props.activeTintColor).toBe(next.colors.primary);
       expect(label('settings-menu-more-settings')).toMatchObject({
         fontSize: 14,
-        fontWeight: legacy.typography.weights.semibold,
-        lineHeight: legacy.typography.lineHeights.tight,
+        fontWeight: next.typography.weights.semibold,
+        lineHeight: next.typography.lineHeights.tight,
       });
       expect(footer()).toMatchObject({
-        backgroundColor: legacy.colors.cardBackground,
-        paddingBottom: legacy.spacing.xs,
+        backgroundColor: next.colors.cardBackground,
+        paddingBottom: next.spacing.xs,
       });
-      await view.rerender(menu('next'));
+      await view.rerender(menu());
       expect(view.getByTestId('settings-drawer-content')).toHaveStyle({
         backgroundColor: '#123456',
       });
@@ -612,17 +608,17 @@ describe('UserSettingsMenu', () => {
         backgroundColor: '#123456',
         paddingBottom: 13,
       });
-      await view.rerender(menu('legacy'));
+      await view.rerender(menu());
       expect(view.getByTestId('settings-drawer-content')).toHaveStyle({
-        backgroundColor: legacy.colors.cardBackground,
+        backgroundColor: next.colors.cardBackground,
       });
-      expect(more().props.activeTintColor).toBe(legacy.colors.primary);
+      expect(more().props.activeTintColor).toBe(next.colors.primary);
       expect(label('settings-menu-more-settings')).toMatchObject({
         fontSize: 14,
-        fontWeight: legacy.typography.weights.semibold,
-        lineHeight: legacy.typography.lineHeights.tight,
+        fontWeight: next.typography.weights.semibold,
+        lineHeight: next.typography.lineHeights.tight,
       });
-      expect(footer()).toMatchObject({ paddingBottom: legacy.spacing.xs });
+      expect(footer()).toMatchObject({ paddingBottom: next.spacing.xs });
       expect(mockSwitchToDeviceAccount).not.toHaveBeenCalled();
       expect(mockSignOutCurrentDeviceAccount).not.toHaveBeenCalled();
       expect(mockNavigate).not.toHaveBeenCalled();
