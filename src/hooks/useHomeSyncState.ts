@@ -276,7 +276,7 @@ export function useHomeSyncState({
 
   // Discard / nothing to recover: the gate settles while Home is focused, so
   // Prepare for Offline may present immediately. Resume: the gate settles after
-  // the redirect to the Record tab, Home is blurred, evaluate bails on focus,
+  // the redirect to the passage, Home is blurred, evaluate bails on focus,
   // and the eligibility effect below re-runs it when the user returns (#567).
   useEffect(() => {
     let cancelled = false;

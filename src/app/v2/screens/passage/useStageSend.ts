@@ -54,7 +54,7 @@ type Asking = {
 
 /**
  * Sends the passage's chapter on to its next stage, from Draft through
- * Complete, with the Record tab's gate and queue. Only the chapter the
+ * Complete, with the stage gate and queue. Only the chapter the
  * passage is recorded under is sent, never another chapter a passage runs
  * into. A send is bound to the account and chapter that started it; a result
  * that lands after either changed is dropped.

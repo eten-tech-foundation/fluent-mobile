@@ -90,8 +90,8 @@ export function useRecordingEngine({
     [recorder],
   );
 
-  // Dual-mount Record tab keeps this hook alive across Bible/Resources. On
-  // true unmount (leave drafting), force-stop so the SharedObject release
+  // The hook stays alive while the passage does. On unmount, force-stop so
+  // the SharedObject release
   // isn't the only path that drops the mic.
   useEffect(() => {
     return () => {

@@ -2083,7 +2083,7 @@ describe('PassageScreen', () => {
     ).toMatchObject({ disabled: true });
     expect(
       screen.getByText(
-        'A verse here has 5 takes. Delete one in classic drafting to record.',
+        'A verse here has 5 takes. Switch to verse by verse in Settings and delete one to record.',
       ),
     ).toBeTruthy();
   });
@@ -2108,10 +2108,11 @@ describe('PassageScreen', () => {
       mockDraftingUnit = 'verse';
     });
 
-    it('records inside the passage instead of sending it to classic drafting', async () => {
+    it('records inside the passage', async () => {
       await render(<PassageScreen />);
 
       expect(screen.queryByTestId('passage-notices-classic')).toBeNull();
+      expect(screen.queryByText('Open in classic drafting')).toBeNull();
       expect(lastSession()).toMatchObject({
         draftingUnit: 'verse',
         selectedVerse: 22,
@@ -3049,22 +3050,17 @@ describe('PassageScreen', () => {
     });
   });
 
-  it('opens classic drafting from the title sheet', async () => {
+  it('does not offer classic drafting from the title sheet', async () => {
     await renderSettled();
     await fireEvent.press(
       screen.getByRole('button', { name: 'The Last Supper. Show details.' }),
     );
     await settle();
-    await fireEvent.press(screen.getByTestId('passage-classic'));
 
-    expect(mockPush).toHaveBeenCalledWith(
-      hrefs.verseDetail({
-        chapterId: 5,
-        chapterName: 'Mark 14',
-        projectName: 'Mark Telugu',
-        language: 'Telugu',
-      }),
-    );
+    expect(screen.queryByTestId('passage-classic')).toBeNull();
+    expect(screen.queryByText('Open in classic drafting')).toBeNull();
+    expect(screen.getByTestId('passage-open-questions')).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("won't let an observer record, and says so", async () => {
@@ -4145,7 +4141,8 @@ describe('PassageScreen', () => {
     it('offers no Send where the gate does not', async () => {
       await openTitleSheet();
       expect(screen.queryByTestId('passage-send')).toBeNull();
-      expect(screen.getByTestId('passage-classic')).toBeTruthy();
+      expect(screen.queryByTestId('passage-classic')).toBeNull();
+      expect(screen.getByTestId('passage-open-questions')).toBeTruthy();
     });
 
     it('shows a queued send apart from one the server has', async () => {
@@ -4236,9 +4233,8 @@ describe('PassageScreen', () => {
       await settle();
       expect(screen.getByTestId('passage-send')).toBeTruthy();
       expect(screen.getByTestId('passage-open-review')).toBeTruthy();
-      expect(
-        within(screen.getByTestId('passage-classic')).getByText('Resources'),
-      ).toBeTruthy();
+      expect(screen.queryByTestId('passage-classic')).toBeNull();
+      expect(screen.getByTestId('passage-open-questions')).toBeTruthy();
 
       await fireEvent.press(screen.getByTestId('passage-send'));
       await settle();
@@ -4259,7 +4255,8 @@ describe('PassageScreen', () => {
       await fireEvent.press(screen.getByTestId('passage-title'));
       await settle();
       expect(screen.queryByTestId('passage-open-review')).toBeNull();
-      expect(screen.getByTestId('passage-classic')).toBeTruthy();
+      expect(screen.queryByTestId('passage-classic')).toBeNull();
+      expect(screen.queryByText('Open in classic drafting')).toBeNull();
     });
 
     it('groups every take by owner, with range and official state', async () => {

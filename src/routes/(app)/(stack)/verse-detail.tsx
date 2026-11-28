@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import DraftingScreen from '../../../app/screens/DraftingScreen';
 import { hrefs } from '../../../navigation/hrefs';
 import { parseOptionalString } from '../../../navigation/routeParams';
+import {
+  openVerseDetailChapter,
+  type VerseDetailChapterResult,
+} from '../../../navigation/verseDetailChapter';
 import {
   classifyVerseDetailLink,
   openVerseDetailRecovery,
@@ -26,11 +29,13 @@ function paramText(value: string | string[] | undefined): string {
   return parseOptionalString(value) ?? '';
 }
 
+type Opened = VerseDetailRecoveryResult | VerseDetailChapterResult;
+
 /**
  * Existing verse-detail URLs. A saved recovery link redirects to the Next
- * passage. Anything else that is still a chapter draft opens classic
- * drafting, which #920 removes. Malformed, missing and unreadable links
- * stay here instead of throwing or opening the wrong chapter.
+ * passage and keeps its recovery parameters. A chapter link opens that
+ * chapter in Next. Malformed, missing and unreadable links stay here
+ * instead of throwing or opening the wrong chapter.
  */
 export default function VerseDetailRoute() {
   const raw = useLocalSearchParams<VerseDetailLinkParams>();
@@ -49,27 +54,37 @@ export default function VerseDetailRoute() {
     [chapterId, chapterName, recoverSessionKey, recoverVerse],
   );
   const [attempt, setAttempt] = useState(0);
-  const [recovery, setRecovery] = useState<VerseDetailRecoveryResult | null>(
-    null,
-  );
+  const [opened, setOpened] = useState<Opened | null>(null);
+  const [openedFor, setOpenedFor] = useState(classified);
+  // Drop a resolved link before paint when the URL changes, so a Redirect
+  // cannot leave for the previous chapter while the next lookup is in flight.
+  if (openedFor !== classified) {
+    setOpenedFor(classified);
+    setOpened(null);
+  }
 
   useEffect(() => {
-    if (classified.kind !== 'recover') return;
+    if (classified.kind !== 'recover' && classified.kind !== 'chapter') return;
     const userId = parseUserId();
     let cancelled = false;
-    setRecovery(null);
-    void openVerseDetailRecovery(classified, () => parseUserId() === userId)
+    setOpened(null);
+    const isCurrent = () => parseUserId() === userId;
+    const pending =
+      classified.kind === 'recover'
+        ? openVerseDetailRecovery(classified, isCurrent)
+        : openVerseDetailChapter(classified, isCurrent);
+    void pending
       .then(next => {
         if (cancelled) return;
         if (parseUserId() !== userId) {
-          setRecovery({ kind: 'stale' });
+          setOpened({ kind: 'stale' });
           return;
         }
-        setRecovery(next);
+        setOpened(next);
       })
       .catch(() => {
         if (cancelled) return;
-        setRecovery(
+        setOpened(
           parseUserId() !== userId ? { kind: 'stale' } : { kind: 'unread' },
         );
       });
@@ -78,15 +93,16 @@ export default function VerseDetailRoute() {
     };
   }, [classified, attempt]);
 
-  if (classified.kind === 'classic') return <DraftingScreen />;
   if (classified.kind === 'invalid') return <SafeLink kind="invalid" />;
-  if (recovery === null) return <PendingLink />;
-  if (recovery.kind === 'passage') return <Redirect href={recovery.href} />;
+  if (opened === null) return <PendingLink />;
+  if (opened.kind === 'passage' || opened.kind === 'observer') {
+    return <Redirect href={opened.href} />;
+  }
   return (
     <SafeLink
-      kind={recovery.kind}
+      kind={opened.kind}
       onRetry={
-        recovery.kind === 'unread' || recovery.kind === 'stale'
+        opened.kind === 'unread' || opened.kind === 'stale'
           ? () => setAttempt(value => value + 1)
           : undefined
       }

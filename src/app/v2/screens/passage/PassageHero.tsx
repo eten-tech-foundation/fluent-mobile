@@ -60,7 +60,6 @@ export function PassageHero({
   onClose,
   sync,
   onDownload,
-  onOpenClassic,
   onTitlePress,
   covered = false,
 }: {
@@ -95,7 +94,6 @@ export function PassageHero({
   onClose: () => void;
   sync: HeaderSync;
   onDownload: () => void;
-  onOpenClassic?: () => void;
   onTitlePress?: () => void;
   /** Under a note; TalkBack skips it. */
   covered?: boolean;
@@ -143,7 +141,6 @@ export function PassageHero({
           onListen={() => onOpen(false)}
           onRecord={() => onOpen(true)}
           onDownload={onDownload}
-          onOpenClassic={onOpenClassic}
         />
         <HeroHeader
           title={title}

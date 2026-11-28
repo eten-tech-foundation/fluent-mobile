@@ -1,6 +1,8 @@
 import { getChapterAssignmentById, getChapterRouteNames } from '../db/queries';
+import { resolveAssignmentOpen } from './chapterOpen';
 import { hrefs } from './hrefs';
 import { resolveRecoveryHref } from './recoveryHref';
+import { openVerseDetailChapter } from './verseDetailChapter';
 import {
   classifyVerseDetailLink,
   openVerseDetailRecovery,
@@ -11,8 +13,13 @@ jest.mock('../db/queries', () => ({
   getChapterRouteNames: jest.fn(),
 }));
 
+jest.mock('./chapterOpen', () => ({
+  resolveAssignmentOpen: jest.fn(),
+}));
+
 const mockAssignment = getChapterAssignmentById as jest.Mock;
 const mockNames = getChapterRouteNames as jest.Mock;
+const mockOpen = resolveAssignmentOpen as jest.Mock;
 
 const names = {
   projectName: 'Mark Telugu',
@@ -32,18 +39,164 @@ describe('verse-detail links', () => {
       chapterNumber: 14,
     });
     mockNames.mockResolvedValue(names);
+    mockOpen.mockResolvedValue({ kind: 'work' });
   });
 
-  it('keeps a chapter link with no recovery on classic drafting', () => {
+  it('classifies a chapter link without looking the chapter up', () => {
     expect(
       classifyVerseDetailLink({
         chapterId: '5',
         chapterName: 'Mark 14',
-        projectName: 'Mark Telugu',
-        language: 'Telugu',
+        projectName: 'wrong project',
+        language: 'wrong language',
       }),
-    ).toEqual({ kind: 'classic' });
+    ).toEqual({ kind: 'chapter', chapterId: 5 });
     expect(mockAssignment).not.toHaveBeenCalled();
+  });
+
+  it('opens a chapter link on the Next passage at verse 1, without recovery', async () => {
+    const classified = classifyVerseDetailLink({
+      chapterId: '5',
+      chapterName: 'stale label',
+      projectName: 'wrong project',
+      language: 'wrong language',
+    });
+    if (classified.kind !== 'chapter') throw new Error('expected chapter');
+
+    const opened = await openVerseDetailChapter(classified);
+
+    expect(opened.kind).toBe('passage');
+    if (opened.kind !== 'passage') return;
+    expect(opened.href).toEqual(
+      hrefs.passage({
+        chapterId: 5,
+        anchorVerse: 1,
+        projectId: 9,
+        projectUnitId: 3,
+        chapterName: 'Mark 14',
+        ...names,
+      }),
+    );
+    expect(opened.href.pathname).toBe('/(app)/(stack)/passage');
+    expect(opened.href.params).not.toHaveProperty('recoverSessionKey');
+    expect(opened.href.params).not.toHaveProperty('recoverVerse');
+    expect(opened.href.params).not.toHaveProperty('verse');
+  });
+
+  it('sends an observer chapter to the read-only screen', async () => {
+    const observer = {
+      pathname: '/(app)/(stack)/observer-draft' as const,
+      params: { chapterAssignmentId: '5', projectId: '9' },
+    };
+    mockOpen.mockResolvedValueOnce({ kind: 'observer', href: observer });
+    const classified = classifyVerseDetailLink({
+      chapterId: '5',
+      chapterName: 'Mark 14',
+    });
+    if (classified.kind !== 'chapter') throw new Error('expected chapter');
+
+    await expect(openVerseDetailChapter(classified)).resolves.toEqual({
+      kind: 'observer',
+      href: observer,
+    });
+    expect(mockNames).not.toHaveBeenCalled();
+  });
+
+  it('does not open the editor when access cannot be confirmed', async () => {
+    mockOpen.mockResolvedValueOnce(null);
+    const classified = classifyVerseDetailLink({
+      chapterId: '5',
+      chapterName: 'Mark 14',
+    });
+    if (classified.kind !== 'chapter') throw new Error('expected chapter');
+
+    await expect(openVerseDetailChapter(classified)).resolves.toEqual({
+      kind: 'stale',
+    });
+    expect(mockNames).not.toHaveBeenCalled();
+  });
+
+  it('does not open the editor when the chapter has no project', async () => {
+    mockAssignment.mockResolvedValueOnce({
+      id: 5,
+      projectId: null,
+      projectUnitId: 3,
+      bookName: 'Mark',
+      chapterNumber: 14,
+    });
+    const classified = classifyVerseDetailLink({
+      chapterId: '5',
+      chapterName: 'Mark 14',
+    });
+    if (classified.kind !== 'chapter') throw new Error('expected chapter');
+
+    await expect(openVerseDetailChapter(classified)).resolves.toEqual({
+      kind: 'stale',
+    });
+    expect(mockOpen).not.toHaveBeenCalled();
+    expect(mockNames).not.toHaveBeenCalled();
+  });
+
+  it('stays unread, then opens the chapter, when names fail and then succeed', async () => {
+    const classified = classifyVerseDetailLink({
+      chapterId: '5',
+      chapterName: 'Mark 14',
+    });
+    if (classified.kind !== 'chapter') throw new Error('expected chapter');
+    mockNames.mockResolvedValueOnce(null);
+
+    await expect(openVerseDetailChapter(classified)).resolves.toEqual({
+      kind: 'unread',
+    });
+    const opened = await openVerseDetailChapter(classified);
+    expect(opened.kind).toBe('passage');
+    if (opened.kind !== 'passage') return;
+    expect(opened.href.params).toMatchObject({ anchorVerse: '1' });
+    expect(opened.href.params).not.toHaveProperty('recoverSessionKey');
+  });
+
+  it('is missing when the chapter is gone', async () => {
+    const classified = classifyVerseDetailLink({
+      chapterId: '5',
+      chapterName: 'Mark 14',
+    });
+    if (classified.kind !== 'chapter') throw new Error('expected chapter');
+    mockAssignment.mockResolvedValueOnce(null);
+
+    await expect(openVerseDetailChapter(classified)).resolves.toEqual({
+      kind: 'missing',
+    });
+    expect(mockOpen).not.toHaveBeenCalled();
+    expect(mockNames).not.toHaveBeenCalled();
+  });
+
+  it('does not open a chapter link resolved after the account changes', async () => {
+    const classified = classifyVerseDetailLink({
+      chapterId: '5',
+      chapterName: 'Mark 14',
+    });
+    if (classified.kind !== 'chapter') throw new Error('expected chapter');
+    let current = true;
+    let release: (value: unknown) => void = () => {};
+    mockAssignment.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          release = resolve;
+        }),
+    );
+
+    const pending = openVerseDetailChapter(classified, () => current);
+    current = false;
+    release({
+      id: 5,
+      projectId: 9,
+      projectUnitId: 3,
+      bookName: 'Mark',
+      chapterNumber: 14,
+    });
+
+    await expect(pending).resolves.toEqual({ kind: 'stale' });
+    expect(mockOpen).not.toHaveBeenCalled();
   });
 
   it.each([

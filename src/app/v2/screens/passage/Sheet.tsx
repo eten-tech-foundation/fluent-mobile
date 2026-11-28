@@ -183,7 +183,6 @@ export function Sheet({
   milestoneName,
   onBack,
   onOpenBook,
-  onOpenClassic,
   sync,
   onDownload,
   downloadState,
@@ -205,8 +204,6 @@ export function Sheet({
   milestoneName: string;
   onBack: () => void;
   onOpenBook: () => void;
-  /** Legacy drafting for this chapter, for what Next can't do yet. */
-  onOpenClassic: () => void;
   sync: HeaderSync;
   onDownload: () => void;
   downloadState: ReturnType<typeof usePassage>['downloadState'];
@@ -347,8 +344,6 @@ export function Sheet({
         : undefined,
     [atRest, notes, lastNote, showRecord, openNote],
   );
-  // Leaving mid-take would ask first; the bridge waits until it's done.
-  const openClassic = capturing ? undefined : onOpenClassic;
   const { isOnline, hasResolved } = useConnectivity();
   const [playingVerse, setPlayingVerse] = useState<number | null>(null);
   const steps = recorder.verse;
@@ -583,7 +578,7 @@ export function Sheet({
     [animateTo, capturing],
   );
 
-  // A take in progress asks first, like leaving a verse in the Record tab.
+  // A take in progress asks first, the same leave prompt as backing out.
   const { discardCapture } = recorder;
   const [leaving, setLeaving] = useState(false);
   // Nothing to leave once the take ends on its own.
@@ -715,7 +710,6 @@ export function Sheet({
           onClose={close}
           sync={sync}
           onDownload={onDownload}
-          onOpenClassic={openClassic}
           // Its book link would leave without asking, unlike Close.
           onTitlePress={capturing ? undefined : () => setTitleSheetOpen(true)}
           covered={noteOpen}
@@ -766,7 +760,6 @@ export function Sheet({
             setQuestionsAsked(true);
             setQuestionsOpen(true);
           }}
-          onOpenClassic={onOpenClassic}
           onOpenReview={
             review.available && !capturing
               ? () => {
@@ -823,7 +816,6 @@ export function Sheet({
                 <NotesStatus status={notes.status} onRetry={notes.retry} />
               ) : null
             }
-            onOpenClassic={openClassic}
             dimmed={lifted}
           />
         }

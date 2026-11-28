@@ -39,8 +39,8 @@ function Gallery() {
   const [mode, setMode] = useState<ColorMode>('hardware');
   const [simulateRecording, setSimulateRecording] = useState(false);
 
-  // Only touch mic state while simulating, so a real take on the dual-mounted
-  // Record tab isn't cleared when the gallery mounts or unmounts.
+  // Only touch mic state while simulating, so a real take isn't cleared
+  // when the gallery mounts or unmounts.
   useEffect(() => {
     if (!simulateRecording) {
       return;

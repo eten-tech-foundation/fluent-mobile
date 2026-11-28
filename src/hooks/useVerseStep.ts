@@ -10,7 +10,7 @@ import type { VerseAudioState } from './verseAudioReducer';
 /**
  * Stepping verse by verse in a record session: the verses either side, and a
  * move that offers Resume or Discard first while a take is in progress (#49).
- * Shared by Legacy's Record tab and the Next player.
+ * The passage player steps a verse this way.
  */
 export function useVerseStep({
   verses,

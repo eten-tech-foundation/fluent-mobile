@@ -171,7 +171,7 @@ export const galleryEntries: GalleryEntry[] = [
     Component: BannerEntry,
   },
   {
-    // No Figma component: Legacy's Record-tab banners in Next's type.
+    // No Figma component: the passage player's banners.
     id: 'passage-notices',
     name: 'Passage notices',
     section: 'Notices',

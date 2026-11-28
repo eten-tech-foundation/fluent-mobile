@@ -23,9 +23,9 @@ import { Sheet } from './passage/Sheet';
 /**
  * Next passage page: a dark hero with the script, Listen and Record, and the
  * takes, which grows into the full player. The title opens a sheet linking up
- * to the book page and into classic drafting, which covers what the player
- * has no design for yet. Listen plays this chapter's source audio here. The
- * FIA listening steps are hidden until their audio exists (Q11).
+ * to the book page, Send, everyone's takes and Translation Questions.
+ * Resources sit on the page. Listen plays this chapter's source audio here.
+ * The FIA listening steps are hidden until their audio exists (Q11).
  */
 export default function PassageScreen() {
   const router = useRouter();
@@ -129,14 +129,6 @@ export default function PassageScreen() {
     chapterId,
     guardAction,
   ]);
-  // Legacy drafting is always the route for this chapter, whatever the UI.
-  const openClassic = useCallback(() => {
-    guardAction(() =>
-      router.push(
-        hrefs.verseDetail({ chapterId, chapterName, projectName, language }),
-      ),
-    );
-  }, [router, chapterId, chapterName, projectName, language, guardAction]);
 
   if (passage.status === 'loading') {
     return (
@@ -173,7 +165,6 @@ export default function PassageScreen() {
         recovery={recovery}
         onBack={() => guardAction(() => router.back())}
         onOpenBook={openBook}
-        onOpenClassic={openClassic}
         sync={sync}
         onCaptureActiveChange={onCaptureActiveChange}
         onRegisterCaptureControls={onRegisterCaptureControls}

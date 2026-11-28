@@ -742,7 +742,7 @@ export function useVerseAudio({
     if (bibleTextId !== null) setTakesLoadAttempt(attempt => attempt + 1);
   }, [bibleTextId]);
 
-  // A dual-mounted Record tab keeps its take list across navigation. Upload
+  // The take list stays across navigation. Upload
   // events update SQLite without changing the verse ID; refresh only row data
   // here so a status badge update never stops playback or resets capture state.
   useEffect(() => {
@@ -1637,7 +1637,7 @@ export function useVerseAudio({
   const deleteTake = useCallback(
     async (id: string) => {
       // Bound to the query this callback was built for, not the current one: a
-      // retained callback (RecordTab keeps it in a confirmation alert) would
+      // retained callback (a confirmation can outlive the verse) would
       // otherwise read the new key while still using the old verse's loader.
       const queryKey = takesLoadKey;
       const activation = activationRef.current;

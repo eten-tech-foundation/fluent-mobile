@@ -21,21 +21,18 @@ const SITUATIONS: { label: string; notice: RecordNotice }[] = [
   },
   {
     label: 'No passage breaks',
-    notice: { id: 'classic', message: RECORD_NO_PERICOPE, classic: true },
+    notice: { id: 'no-pericope', message: RECORD_NO_PERICOPE },
   },
 ];
 
 /**
  * Above the player's waveform: what's wrong with this chapter, announced as
- * it appears. One that only classic drafting can fix adds the way there.
- * Turn each situation on to see them stack.
+ * it appears. Turn each situation on to see them stack.
  */
 export function PassageNoticesEntry() {
   const [on, setOn] = useState<string[]>(['conflict']);
-  const [opened, setOpened] = useState(false);
   const styles = useThemedStyles(t => ({
     demo: { gap: t.spacing.md },
-    status: { ...t.type.meta, color: t.roles.fgSecondary },
     links: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.lg },
     link: { ...t.type.label, color: t.roles.accentPrimary },
     off: { color: t.roles.fgSecondary },
@@ -44,18 +41,14 @@ export function PassageNoticesEntry() {
     s => s.notice,
   );
   const toggle = (id: string) => {
-    setOpened(false);
     setOn(ids => (ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]));
   };
 
   return (
     <View style={styles.demo}>
       <ColorModeScope value="canvas">
-        <Footer notices={notices} onOpenClassic={() => setOpened(true)} />
+        <Footer notices={notices} />
       </ColorModeScope>
-      {opened ? (
-        <Text style={styles.status}>Opens the chapter in classic drafting</Text>
-      ) : null}
       <View style={styles.links}>
         {SITUATIONS.map(({ label, notice }) => (
           <Pressable
@@ -75,13 +68,7 @@ export function PassageNoticesEntry() {
 }
 
 /** The player footer the notices sit in, read inside its Canvas scope. */
-function Footer({
-  notices,
-  onOpenClassic,
-}: {
-  notices: RecordNotice[];
-  onOpenClassic: () => void;
-}) {
+function Footer({ notices }: { notices: RecordNotice[] }) {
   const styles = useThemedStyles(t => ({
     footer: {
       backgroundColor: t.roles.bgDefault,
@@ -95,11 +82,7 @@ function Footer({
   return (
     <View style={styles.footer}>
       {notices.length > 0 ? (
-        <PassageNotices
-          notices={notices}
-          onOpenClassic={onOpenClassic}
-          testID="gallery-notices"
-        />
+        <PassageNotices notices={notices} testID="gallery-notices" />
       ) : (
         <Text style={styles.empty}>Nothing to say about this chapter</Text>
       )}

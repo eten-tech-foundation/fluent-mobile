@@ -1698,7 +1698,7 @@ describe('sync step orchestration', () => {
 
   describe('syncBibleTexts', () => {
     beforeEach(() => {
-      // Bare ensure (DraftingScreen) scopes to active user only.
+      // Bare ensure (passage page) scopes to active user only.
       (getActiveUserId as jest.Mock).mockReturnValue('1');
       (getKnownUserIds as jest.Mock).mockReturnValue(['1', '2']);
     });

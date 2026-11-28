@@ -55,8 +55,8 @@ export interface RecordSessionArgs {
 /**
  * Capturing a take for one verse or pericope: the capture unit and text id,
  * useVerseAudio, the timer and crash recovery, the mic, and the rules for
- * who can record here and when. Shared by Legacy's Record tab and the Next
- * player so recording behaves the same in both UIs.
+ * who can record here and when. The passage player records through this
+ * session.
  */
 export function useRecordSession({
   chapterData,

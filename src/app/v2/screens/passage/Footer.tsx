@@ -24,9 +24,8 @@ import type { RecordNotice } from './useRecorder';
 import { BAR_MAX, BAR_MIN, TakeCard, WAVE_H, type FrontTake } from './TakeCard';
 
 /**
- * What Listen warns about: the chapter's state. Why Record is off, and the
- * takes only classic drafting shows, wait for Record, so they don't read as
- * Listen being blocked.
+ * What Listen warns about: the chapter's state. Why Record is off waits for
+ * Record, so it doesn't read as Listen being blocked.
  */
 const LISTEN_NOTICES = new Set(['conflict', 'unuploadable', 'taken']);
 
@@ -63,7 +62,6 @@ export function Footer({
   listen,
   notices,
   notesStatus,
-  onOpenClassic,
   dimmed = false,
 }: {
   passage: Ready;
@@ -72,9 +70,8 @@ export function Footer({
   listen: ListenWave;
   /** How the notes load went; Listen's, so it goes with the waveform. */
   notesStatus?: React.ReactNode;
-  /** Legacy's Record-tab banners, in both modes. */
+  /** The passage's banners, in both modes. */
   notices: RecordNotice[];
-  onOpenClassic?: () => void;
   /** A take is lifted: dim everything above the keys but the fan. */
   dimmed?: boolean;
 }) {
@@ -151,7 +148,6 @@ export function Footer({
               ? notices.filter(n => n.message !== record.blockedReason)
               : notices.filter(n => LISTEN_NOTICES.has(n.id))
           }
-          onOpenClassic={onOpenClassic}
           testID="player-notices"
         />
         {/* In flow, it would leave a gap above Record's take card. */}

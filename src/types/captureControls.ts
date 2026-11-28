@@ -1,6 +1,6 @@
 /**
- * Capture controls surfaced by the Record tab while a take is in progress
- * (recording/paused) so the drafting screen can implement the #49 leave
+ * Capture controls surfaced while a take is in progress (recording/paused)
+ * so the passage screen can implement the #49 leave
  * prompt: Resume the capture, or Discard it (stop the recorder, delete the
  * temp file, create no take row) and let the requested navigation proceed.
  */

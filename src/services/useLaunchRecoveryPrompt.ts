@@ -29,7 +29,7 @@ type UseLaunchRecoveryPromptOptions = {
  *
  * Discard settles the gate straight away (Home is still focused, so Prepare for
  * Offline may present). A successful Resume settles it only after the redirect
- * to the Record tab has finished, so Home is already blurred and Prepare for
+ * to the passage has finished, so Home is already blurred and Prepare for
  * Offline waits until the user returns to Home.
  */
 export function useLaunchRecoveryPrompt({

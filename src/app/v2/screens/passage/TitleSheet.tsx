@@ -2,8 +2,6 @@ import React from 'react';
 import { BottomSheet } from '../../../../components/ui/BottomSheet';
 import { ListRow } from '../../../../components/ui/ListRow';
 import {
-  OPEN_CLASSIC_DRAFTING,
-  OPEN_CLASSIC_DRAFTING_DETAIL,
   PASSAGE_QUESTIONS_OPEN_DETAIL,
   PASSAGE_QUESTIONS_TITLE,
   PEER_CHECK_SENT_DETAIL,
@@ -16,7 +14,7 @@ import type { StageSendRow } from './useStageSend';
 
 /**
  * The title's sheet: the book page, sending to the chapter's next stage,
- * everyone's takes, Translation Questions, and classic drafting.
+ * everyone's takes, and Translation Questions.
  */
 export function TitleSheet({
   visible,
@@ -28,7 +26,6 @@ export function TitleSheet({
   onClose,
   onOpenBook,
   onOpenQuestions,
-  onOpenClassic,
   onOpenReview,
 }: {
   visible: boolean;
@@ -42,7 +39,6 @@ export function TitleSheet({
   onClose: () => void;
   onOpenBook: () => void;
   onOpenQuestions: () => void;
-  onOpenClassic: () => void;
   /** Absent when no other account has takes here. */
   onOpenReview?: () => void;
 }) {
@@ -111,16 +107,6 @@ export function TitleSheet({
           onOpenQuestions();
         }}
         testID="passage-open-questions"
-      />
-      <ListRow
-        title={OPEN_CLASSIC_DRAFTING}
-        subtitle={OPEN_CLASSIC_DRAFTING_DETAIL}
-        trailing="chevron"
-        onPress={() => {
-          onClose();
-          onOpenClassic();
-        }}
-        testID="passage-classic"
       />
     </BottomSheet>
   );

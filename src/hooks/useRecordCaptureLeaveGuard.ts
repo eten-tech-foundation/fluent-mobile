@@ -13,8 +13,8 @@ import { setRecordCaptureGate } from '../navigation/recordCaptureGate';
 import type { CaptureControls } from '../types/captureControls';
 
 /**
- * Capture gate and leave prompt for Legacy drafting and the Next passage
- * screen. While a take is recording, paused, recovered or saving, drawer and
+ * Capture gate and leave prompt for the passage screen. While a take is
+ * recording, paused, recovered or saving, drawer and
  * account exits see the shared gate, and removing this route prompts first.
  */
 export function useRecordCaptureLeaveGuard(onBeforeRemove?: () => void) {

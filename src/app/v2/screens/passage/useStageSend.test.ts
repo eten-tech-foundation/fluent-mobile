@@ -47,7 +47,7 @@ const makePassage = (
     waitingToSend: waiting,
   } as unknown as Ready);
 
-/** What the gate offers from `from`, labelled as the Record tab labels it. */
+/** What the gate offers from `from`, with the passage Send label. */
 const sendable = (
   over: { disabled?: boolean; hasConflict?: boolean; from?: string } = {},
 ) => ({
