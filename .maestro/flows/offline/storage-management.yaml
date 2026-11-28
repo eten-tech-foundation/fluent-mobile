@@ -23,13 +23,17 @@ tags:
     visible:
       id: 'prepare-offline-screen'
     timeout: 30000
-- runFlow:
-    when:
-      visible:
-        id: 'project-row-.*'
-    commands:
-      - tapOn:
-          id: 'project-row-.*'
+# The first project row can have an empty catalog. That hides
+# prepare-offline-resources-section. Open the fixture project.
+- assertTrue: ${typeof MAESTRO_FIXTURE_PROJECT_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_PROJECT_ID))}
+- scrollUntilVisible:
+    element:
+      id: '^project-row-${MAESTRO_FIXTURE_PROJECT_ID}$'
+    direction: DOWN
+    timeout: 60000
+    visibilityPercentage: 50
+- tapOn:
+    id: '^project-row-${MAESTRO_FIXTURE_PROJECT_ID}$'
 - extendedWaitUntil:
     visible:
       id: 'prepare-offline-resources-section'
