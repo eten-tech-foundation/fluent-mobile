@@ -1,4 +1,4 @@
-# Login happy path → Home tabs visible.
+# Login happy path → Next Home visible.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -7,6 +7,6 @@ tags:
 - runFlow: ../../shared/ensure/ensure-on-login.yaml
 - runFlow: ../../shared/ensure/ensure-signed-in.yaml
 - assertVisible:
-    id: 'home-tab-projects'
+    id: 'home-header'
 - assertVisible:
-    id: 'home-settings-button'
+    id: 'home-account'

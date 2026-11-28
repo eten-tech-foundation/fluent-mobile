@@ -137,8 +137,9 @@ describe('C-0051-06 Matthew1 small download static contract', () => {
       'prepare-offline-download-cancel',
       'prepare-offline-download-complete',
       'project-row-13',
-      'settings-menu-account-9',
-      'settings-menu-account-12',
+      'home-account-9',
+      'home-account-12',
+      'home-accounts-settings',
     ]) {
       assert.ok(text.includes(id), `missing id ${id}`);
     }
@@ -205,10 +206,13 @@ describe('C-0051-06 Matthew1 small download static contract', () => {
     const afterDownload = commands.slice(tapIdx);
     // Host owns active12 restore after settle — YAML must not switch.
     assert.ok(
-      !/tapOn:\s*\n\s*id:\s*'settings-menu-account-12'/.test(afterDownload),
+      !/tapOn:\s*\n\s*id:\s*'(?:settings-menu-account|home-account)-12'/.test(
+        afterDownload,
+      ),
     );
     assert.ok(!afterDownload.includes("id: 'settings-menu-active-12'"));
-    assert.ok(afterDownload.includes("id: 'settings-menu-active-9'"));
+    assert.ok(afterDownload.includes("id: 'home-account-9'"));
+    assert.ok(afterDownload.includes("text: '.+, signed in'"));
     assert.ok(afterDownload.includes('pressKey: Back'));
     assert.ok(!/^\s*-\s*(delete|wipe|clearCache)\b/im.test(commands));
     assert.ok(!/rm\s+-rf/i.test(commands));

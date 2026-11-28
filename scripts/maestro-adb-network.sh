@@ -28,5 +28,8 @@ else
   adb "${SERIAL_ARGS[@]}" shell cmd connectivity airplane-mode disable
   adb "${SERIAL_ARGS[@]}" shell settings put global airplane_mode_on 0
   adb "${SERIAL_ARGS[@]}" shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false >/dev/null 2>&1 || true
+  # Airplane off does not always restore emulator Wi-Fi (device 2026-11-26).
+  adb "${SERIAL_ARGS[@]}" shell svc wifi enable >/dev/null 2>&1 || true
+  adb "${SERIAL_ARGS[@]}" shell cmd -w wifi connect-network AndroidWifi open >/dev/null 2>&1 || true
   echo "OK: airplane mode disabled"
 fi

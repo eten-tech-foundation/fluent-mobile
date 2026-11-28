@@ -1,4 +1,4 @@
-# Session restore: relaunch without clearState → Home, no login screen.
+# Session restore: relaunch without clearState → Next Home, no login screen.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -8,7 +8,7 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - stopApp
 - launchApp
@@ -18,9 +18,9 @@ tags:
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - assertNotVisible:
     id: 'login-email-input'
 - assertVisible:
-    id: 'home-tab-projects'
+    id: 'home-account'

@@ -1,15 +1,20 @@
 # Offline login from a signed-out screen: airplane mode → submit → connection error.
-# ensure-on-login reaches login with no stored session, so there is no password
-# verifier to accept. A successful offline sign-in (#1001) needs a prior online
-# sign-in that saved the verifier and left the token on the device.
-# Requires scripts/maestro-adb-network.sh offline before this flow (shell wrapper).
+# Wrapper boots to login WHILE ONLINE (Metro cannot load JS in airplane), then
+# enables airplane, then this flow. No ensure-on-login / clearState here.
+# A successful offline sign-in (#1001) needs a prior online sign-in that saved
+# the verifier and left the token on the device.
+# Requires scripts/maestro-test-offline-login.sh (not a bare maestro run).
 # Tagged offline — excluded from default smoke runs.
 appId: com.eten.fluent
 tags:
   - offline
   - edges
 ---
-- runFlow: ../../shared/ensure/ensure-on-login.yaml
+- launchApp:
+    stopApp: false
+    clearState: false
+- assertVisible:
+    id: 'login-email-input'
 - tapOn:
     id: 'login-email-input'
 - eraseText
@@ -18,7 +23,7 @@ tags:
     id: 'login-password-input'
 - eraseText
 - inputText: ${MAESTRO_PASSWORD}
-- hideKeyboard
+# Do not hideKeyboard: Android BACK backgrounds the app (same as login-validation).
 - tapOn:
     id: 'login-submit-button'
 - extendedWaitUntil:

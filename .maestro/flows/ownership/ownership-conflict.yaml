@@ -1,4 +1,6 @@
-# Conflict list indicator + Record conflict banner (#607 / #574).
+# Conflict on the Next book page + Passage notice (#607 / #574).
+# Next map: chapter-conflict-indicator → book-chapter meta "Sync conflict";
+# record-conflict-warning → passage-notices-conflict.
 appId: com.eten.fluent
 tags:
   - ownership
@@ -8,37 +10,36 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow:
     file: ../../shared/nav/open-fixture-chapter.yaml
     env:
       MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_CONFLICT_CHAPTER_ID}
 - back
 - extendedWaitUntil:
     visible:
-      id: 'chapter-row-.*'
+      id: 'book-header'
     timeout: 30000
+- evalScript: >-
+    ${output.conflictChapterId = (typeof MAESTRO_FIXTURE_CONFLICT_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CONFLICT_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CONFLICT_CHAPTER_ID).trim()}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.conflictChapterId)}
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+      id: '^book-chapter-${output.conflictChapterId}$'
     direction: DOWN
     timeout: 90000
+    visibilityPercentage: 50
 - assertVisible:
-    text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
-- assertVisible:
-    id: 'chapter-conflict-indicator'
-- assertVisible: 'Unresolved recording conflict'
+    id: '^book-chapter-${output.conflictChapterId}-meta$'
+    text: '.*Sync conflict.*'
 - tapOn:
-    text: ${MAESTRO_FIXTURE_CONFLICT_LABEL}
+    id: '^book-passage-${output.conflictChapterId}-.*'
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'passage-header'
     timeout: 60000
-- tapOn:
-    id: 'drafting-tab-record'
 - assertVisible:
-    id: 'record-tab'
-- assertVisible:
-    id: 'record-conflict-warning'
+    id: 'passage-notices-conflict'

@@ -1,0 +1,69 @@
+# Observer journey on Next (`observer-screen`). The signed-in account must be
+# a Project Observer. Opens MAESTRO_FIXTURE_OBSERVER_CHAPTER_ID inside
+# home-book-${MAESTRO_FIXTURE_OBSERVER_MILESTONE_ID}. Review stages only
+# (community_review and later). A translator lands on Passage and this fails.
+# Do not skip-green on Passage. The section title "Chapter N" is not a
+# descendant Maestro can scope under book-chapter-*.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - existing-session
+  - fixture-blocked
+---
+- assertNotVisible:
+    id: 'login-email-input'
+- runFlow: ../../shared/nav/goto-home.yaml
+- assertVisible:
+    id: 'home-header'
+- evalScript: >-
+    ${output.observerMilestoneId = (typeof MAESTRO_FIXTURE_OBSERVER_MILESTONE_ID === 'undefined' || MAESTRO_FIXTURE_OBSERVER_MILESTONE_ID === null) ? '' : String(MAESTRO_FIXTURE_OBSERVER_MILESTONE_ID).trim()}
+- evalScript: >-
+    ${output.observerChapterId = (typeof MAESTRO_FIXTURE_OBSERVER_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_OBSERVER_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_OBSERVER_CHAPTER_ID).trim()}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.observerMilestoneId)}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.observerChapterId)}
+- scrollUntilVisible:
+    element:
+      id: '^home-book-${output.observerMilestoneId}:.*'
+    direction: DOWN
+    timeout: 60000
+    visibilityPercentage: 50
+- tapOn:
+    id: '^home-book-${output.observerMilestoneId}:.*'
+- extendedWaitUntil:
+    visible:
+      id: 'book-header'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: '^book-chapter-${output.observerChapterId}$'
+    direction: DOWN
+    timeout: 90000
+    visibilityPercentage: 50
+- tapOn:
+    id: '^book-passage-${output.observerChapterId}-.*'
+- assertVisible:
+    id: 'observer-screen'
+- assertVisible:
+    id: 'observer-back'
+- assertVisible:
+    id: 'observer-tab-.*|observer-draft-list|observer-source-list|observer-chapters'
+- tapOn:
+    id: 'observer-back'
+# Opened from the book gallery, so the first back returns there.
+- extendedWaitUntil:
+    visible:
+      id: 'book-header|home-header'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'book-header'
+    commands:
+      - tapOn:
+          id: 'book-back'
+- extendedWaitUntil:
+    visible:
+      id: 'home-header'
+    timeout: 30000
+- assertNotVisible:
+    id: 'login-email-input'

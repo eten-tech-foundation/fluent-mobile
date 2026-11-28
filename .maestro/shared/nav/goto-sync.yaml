@@ -1,4 +1,4 @@
-# Home → Sync screen via header sync button.
+# Home → Sync screen via header cloud.
 # Local Debug+Metro: Expo Dev Menu can steal the sync tap — dismiss and retry.
 # Maestro 2.10 can report the tap COMPLETED mid-activeOpacity while sync-screen
 # never mounts (#721): settle first and press the element centre via `point`
@@ -12,7 +12,7 @@ tags:
 - waitForAnimationToEnd:
     timeout: 3000
 - repeat:
-    times: 4
+    times: 8
     while:
       notVisible:
         id: 'sync-screen'
@@ -21,10 +21,10 @@ tags:
       - runFlow:
           when:
             visible:
-              id: 'home-sync-button'
+              id: 'home-sync'
           commands:
             - tapOn:
-                id: 'home-sync-button'
+                id: 'home-sync'
                 point: '50%,50%'
       - waitForAnimationToEnd:
           timeout: 2000

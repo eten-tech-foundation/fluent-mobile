@@ -1,6 +1,11 @@
-# Record → stop → play → delete (mic pre-granted). Cleans up the take created.
+# Record → finish → play → delete (mic pre-granted) on Next Passage.
+# Cleans up the take created (drag to bin; undo window then commits on close).
 # Mutating: requires MAESTRO_FIXTURE_CHAPTER_ID on an allowlisted project.
 # fixture-blocked keeps default lanes from running this without that fixture.
+# Next map: record-start → passage-record + passage-key-record;
+# record-stop → passage-key-eject (Finish take); record-play-button-* →
+# passage-key-play; record-delete-selected-button-* → drag passage-fan-* to
+# passage-bin, proven by passage-take-undo.
 appId: com.eten.fluent
 tags:
   - record
@@ -12,56 +17,75 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- runFlow: ../../shared/nav/open-my-work-chapter.yaml
-- tapOn:
-    id: 'drafting-tab-record'
+# Next up only lists five chapters. Pin the fixture row on the book page.
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_CHAPTER_ID}
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-header'
 - runFlow: ../../shared/ensure/ensure-take-capacity.yaml
-- runFlow:
-    when:
-      visible:
-        id: 'record-start-button'
-        enabled: true
-    commands:
-      - tapOn:
-          id: 'record-start-button'
-- runFlow:
-    when:
-      visible:
-        id: 'record-new-take-button'
-        enabled: true
-    commands:
-      - tapOn:
-          id: 'record-new-take-button'
+# Hero Record opens the player in record mode.
+- tapOn:
+    id: 'passage-record'
 - extendedWaitUntil:
     visible:
-      id: 'record-stop-button'
+      id: 'passage-player'
     timeout: 15000
+- assertVisible:
+    id: 'passage-key-record'
+    enabled: true
+- tapOn:
+    id: 'passage-key-record'
+# Live take: key relabels to Pause, Finish enabled, mode locked.
 - extendedWaitUntil:
-    visible:
-      id: 'record-duration'
-    timeout: 10000
+    visible: 'Pause recording'
+    timeout: 15000
+- assertVisible:
+    id: 'passage-key-eject'
+    enabled: true
 - waitForAnimationToEnd
 - tapOn:
-    id: 'record-stop-button'
+    id: 'passage-key-eject'
 - extendedWaitUntil:
     visible:
-      id: 'record-play-button-.*'
+      id: 'passage-fan-[0-9]+'
     timeout: 30000
+- assertVisible:
+    id: 'passage-key-play'
+    enabled: true
 - tapOn:
-    id: 'record-play-button-.*'
+    id: 'passage-key-play'
 - extendedWaitUntil:
-    visible: 'Pause draft'
+    visible: 'Pause take'
+    timeout: 10000
+# Release playback before delete.
+- tapOn:
+    id: 'passage-key-play'
+- extendedWaitUntil:
+    visible: 'Play take'
     timeout: 10000
 - assertVisible:
-    id: 'record-tab'
-- tapOn:
-    id: 'record-delete-selected-button-.*'
-- tapOn:
-    text: 'Delete'
+    id: 'passage-player'
+# Delete: long-press drag the front take up onto the bin.
+# Next delete is Pan.activateAfterLongPress(300) onto passage-bin
+# (center 202dp above the front chip, 86dp hit radius). Maestro 2.10 has no
+# hold-then-drag: longPressOn then swipe is two gestures (chip drops);
+# direction:UP overshoots the bin; a 12s percent swipe never activates the
+# pan. Device 2026-11-26: record/play/eject Pass; this undo assert Blocked.
+- longPressOn:
+    id: 'passage-fan-[0-9]+'
+- swipe:
+    from:
+      id: 'passage-fan-[0-9]+'
+    direction: UP
+    duration: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'passage-take-undo'
+    timeout: 10000
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-player'

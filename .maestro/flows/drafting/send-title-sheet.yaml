@@ -1,0 +1,105 @@
+# Send / later-stage on Next: title sheet rows passage-send /
+# passage-send-queued / passage-send-sent. Never taps passage-classic.
+# clearState drops local takes, and server audio is not copied into
+# recordings, so this session records every verse of a disposable
+# 3-verse chapter (MAESTRO_FIXTURE_SEND_*) before the title sheet.
+# Psalms stays the suite default. If Send is still absent, the assert
+# fails visibly — do not skip-green.
+appId: com.eten.fluent
+tags:
+  - drafting
+  - fixture-blocked
+---
+- evalScript: >-
+    ${output.sendChapterId = (typeof MAESTRO_FIXTURE_SEND_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_SEND_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_SEND_CHAPTER_ID).trim()}
+- evalScript: >-
+    ${output.sendProjectName = (typeof MAESTRO_FIXTURE_SEND_PROJECT_NAME === 'undefined' || MAESTRO_FIXTURE_SEND_PROJECT_NAME === null) ? '' : String(MAESTRO_FIXTURE_SEND_PROJECT_NAME).trim()}
+- evalScript: >-
+    ${output.sendLabel = (typeof MAESTRO_FIXTURE_SEND_LABEL === 'undefined' || MAESTRO_FIXTURE_SEND_LABEL === null) ? '' : String(MAESTRO_FIXTURE_SEND_LABEL).trim()}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.sendChapterId)}
+- assertTrue: ${output.sendProjectName.length > 0 && output.sendLabel.length > 0}
+- runFlow: ../../helpers/launch-android-mic-allow.yaml
+- runFlow: ../../helpers/boot-past-dev-launcher.yaml
+- runFlow: ../../shared/auth/login-translator.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'home-header'
+    timeout: 180000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+    env:
+      MAESTRO_FIXTURE_PROJECT_NAME: ${MAESTRO_FIXTURE_SEND_PROJECT_NAME}
+      MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_SEND_LABEL}
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_SEND_CHAPTER_ID}
+- assertVisible:
+    id: 'passage-header'
+- assertNotVisible:
+    id: 'passage-notices-taken'
+- runFlow: ../../shared/ensure/ensure-take-capacity.yaml
+- tapOn:
+    id: 'passage-record'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-key-record'
+    timeout: 15000
+# Two verses, then advance. Next verse is a Listen key, so leave Record
+# mode, step, and come back. The third verse is the last in this chapter.
+- repeat:
+    times: 2
+    commands:
+      - tapOn:
+          id: 'passage-key-record'
+      - waitForAnimationToEnd
+      - tapOn:
+          id: 'passage-key-eject'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-key-play|passage-fan-[0-9]+'
+          timeout: 30000
+      - tapOn:
+          text: '^Record mode$'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-key-next'
+          timeout: 15000
+      - tapOn:
+          id: 'passage-key-next'
+      - tapOn:
+          text: '^Record mode$'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-key-record'
+          timeout: 15000
+- tapOn:
+    id: 'passage-key-record'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'passage-key-eject'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-key-play|passage-fan-[0-9]+'
+    timeout: 30000
+- back
+- runFlow:
+    when:
+      visible:
+        id: 'passage-player'
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: 'passage-player'
+          timeout: 10000
+- tapOn:
+    id: 'passage-title'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-title-sheet'
+    timeout: 15000
+- assertVisible:
+    id: 'passage-send|passage-send-queued|passage-send-sent'
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'passage-header'
+    timeout: 15000

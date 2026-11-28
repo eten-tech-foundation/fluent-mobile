@@ -177,43 +177,45 @@ export function NextUp({
         Next up
       </Text>
       {hero ? (
-        <Pressable
-          onPress={() => onOpen(hero)}
-          android_disableSound
-          accessibilityRole="button"
-          accessibilityLabel={`${heroLabel(hero)}, ${nextUpStatusLine(
-            hero,
-          )}. ${nextUpAction(hero)}.`}
-          style={({ pressed }) => [styles.hero, pressed && styles.pressed]}
-          testID="home-next-up-hero"
-        >
-          <PassageCoverFace
-            eyebrow={hero.chapter.displayLabel}
-            verses={hero.passage.verses}
-            seed={hero.passage.seed}
-            groupSeed={hero.passage.groupSeed}
-            recordedVerses={hero.passage.recordedVerses}
-            totalVerses={hero.passage.totalVerses}
-            style={styles.cover}
-          />
-          <View style={styles.heroText}>
-            {hero.passage.title ? (
-              <Text style={styles.heroTitle} numberOfLines={2}>
-                {hero.passage.title}
+        <View testID="home-next-up-hero">
+          <Pressable
+            onPress={() => onOpen(hero)}
+            android_disableSound
+            accessibilityRole="button"
+            accessibilityLabel={`${heroLabel(hero)}, ${nextUpStatusLine(
+              hero,
+            )}. ${nextUpAction(hero)}.`}
+            style={({ pressed }) => [styles.hero, pressed && styles.pressed]}
+            testID={`home-next-${hero.key}`}
+          >
+            <PassageCoverFace
+              eyebrow={hero.chapter.displayLabel}
+              verses={hero.passage.verses}
+              seed={hero.passage.seed}
+              groupSeed={hero.passage.groupSeed}
+              recordedVerses={hero.passage.recordedVerses}
+              totalVerses={hero.passage.totalVerses}
+              style={styles.cover}
+            />
+            <View style={styles.heroText}>
+              {hero.passage.title ? (
+                <Text style={styles.heroTitle} numberOfLines={2}>
+                  {hero.passage.title}
+                </Text>
+              ) : null}
+              <Text style={styles.meta} numberOfLines={2}>
+                {nextUpStatusLine(hero)}
               </Text>
-            ) : null}
-            <Text style={styles.meta} numberOfLines={2}>
-              {nextUpStatusLine(hero)}
-            </Text>
-            <View style={styles.action}>
-              <Text style={styles.actionLabel}>{nextUpAction(hero)}</Text>
-              <ArrowRight
-                color={theme.roles.accentPrimary}
-                size={theme.controlSizes.icon20}
-              />
+              <View style={styles.action}>
+                <Text style={styles.actionLabel}>{nextUpAction(hero)}</Text>
+                <ArrowRight
+                  color={theme.roles.accentPrimary}
+                  size={theme.controlSizes.icon20}
+                />
+              </View>
             </View>
-          </View>
-        </Pressable>
+          </Pressable>
+        </View>
       ) : (
         <Text style={styles.empty} testID="home-next-up-empty">
           {NEXT_UP_EMPTY_MESSAGE}

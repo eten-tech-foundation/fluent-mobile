@@ -64,8 +64,27 @@ fi
 echo "Verifying ownership fixtures against API…"
 node "${ROOT}/scripts/maestro-ownership-fixtures.mjs" verify
 
-exec bash "${ROOT}/scripts/maestro-test.sh" \
+# ownership-status-existing-session does not launch or log in. Run it after
+# the other ownership flows so the app is already open and signed in.
+# --flow-list cannot own this suite: the other flows launch with clearState,
+# which ordered journeys reject.
+set +e
+bash "${ROOT}/scripts/maestro-test.sh" \
   --config .maestro/config.yaml \
   --include-tags ownership \
+  --exclude-tags existing-session \
   .maestro \
   "$@"
+suite_status=$?
+
+echo "Running ownership-status-existing-session last…"
+bash "${ROOT}/scripts/maestro-test.sh" \
+  --config .maestro/config.yaml \
+  .maestro/flows/ownership/ownership-status-existing-session.yaml
+status_flow=$?
+set -e
+
+if [[ "${suite_status}" -ne 0 ]]; then
+  exit "${suite_status}"
+fi
+exit "${status_flow}"

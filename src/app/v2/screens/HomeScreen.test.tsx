@@ -443,6 +443,7 @@ describe('Next HomeScreen', () => {
     await screen.rerender(<HomeScreen />);
 
     expect(screen.getByTestId('home-next-up-hero')).toBeTruthy();
+    expect(screen.getByTestId('home-next-1:chapter:14')).toBeTruthy();
     expect(screen.queryByText('Then')).toBeNull();
     // Books ahead of Next up in the scroll content.
     const order = testIdsInOrder(screen.toJSON());
@@ -658,7 +659,7 @@ describe('Next HomeScreen', () => {
       await render(<HomeScreen />);
 
       await act(async () => {
-        await fireEvent.press(screen.getByTestId('home-next-up-hero'));
+        await fireEvent.press(screen.getByTestId('home-next-1:pericope::2'));
       });
       expect(mockPush).toHaveBeenCalledWith(observerHref);
       expect(mockPush).toHaveBeenCalledTimes(1);
@@ -669,7 +670,7 @@ describe('Next HomeScreen', () => {
       await render(<HomeScreen />);
 
       await act(async () => {
-        await fireEvent.press(screen.getByTestId('home-next-up-hero'));
+        await fireEvent.press(screen.getByTestId('home-next-1:pericope::2'));
       });
       expect(mockPush).not.toHaveBeenCalled();
     });

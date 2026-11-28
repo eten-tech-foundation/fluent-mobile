@@ -1,6 +1,7 @@
-# Bible unit tap opens Record (shell contract #47 / #564).
-# Asserts onOpenRecord without an extra drafting-tab-record tap.
-# Tap a visible verse-row ID (regex) — BibleTab may scroll past early completed verses.
+# Selecting a verse on Next Passage opens Listen on the same screen
+# (no drafting-tab-record hop). passage-script-verse-* is a non-pressable
+# Text; the row (VerseList) is the tap target. Verse-mode fixture required —
+# pericope script-only Passages have no verse rows (Blocked, not skip-green).
 appId: com.eten.fluent
 tags:
   - smoke
@@ -9,20 +10,20 @@ tags:
 - runFlow: ../../shared/ensure/ensure-on-login.yaml
 - runFlow: ../../shared/ensure/ensure-signed-in.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
-- tapOn:
-    id: 'drafting-tab-bible'
 - assertVisible:
-    id: 'bible-tab'
-- extendedWaitUntil:
-    visible:
-      id: 'bible-verse-row-[0-9]+'
+    id: 'passage-header'
+- assertVisible:
+    id: 'passage-record|passage-listen'
+- scrollUntilVisible:
+    element:
+      id: 'passage-verse-row-[0-9]+'
+    direction: DOWN
     timeout: 30000
-# Unit press must open Record without tapping drafting-tab-record
 - tapOn:
-    id: 'bible-verse-row-[0-9]+'
+    id: 'passage-verse-row-[0-9]+'
 - extendedWaitUntil:
     visible:
-      id: 'record-tab'
+      id: 'passage-player'
     timeout: 15000
 - assertVisible:
-    id: 'record-verse-reference'
+    id: 'passage-verse-position'

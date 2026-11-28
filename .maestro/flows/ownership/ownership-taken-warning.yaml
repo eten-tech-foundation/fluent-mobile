@@ -1,4 +1,5 @@
 # Taken-chapter Record warning (#269 / #574). Uses OTHER fixture chapter.
+# Next map: record-taken-warning → passage-notices-taken.
 appId: com.eten.fluent
 tags:
   - ownership
@@ -8,34 +9,17 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow:
     file: ../../shared/nav/open-fixture-chapter.yaml
     env:
       MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_OTHER_LABEL}
-- tapOn:
-    id: 'drafting-tab-record'
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_OTHER_CHAPTER_ID}
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-header'
 - assertVisible:
-    id: 'record-taken-warning'
-- runFlow:
-    when:
-      notVisible:
-        id: 'record-start-button'
-        enabled: true
-    commands:
-      - assertVisible:
-          id: 'record-new-take-button'
-          enabled: true
-- runFlow:
-    when:
-      visible:
-        id: 'record-start-button'
-        enabled: true
-    commands:
-      - assertVisible:
-          id: 'record-start-button'
-          enabled: true
+    id: 'passage-notices-taken'
+- assertVisible:
+    id: 'passage-record|passage-listen'

@@ -194,7 +194,8 @@ describe('pfo-download admission — negatives (default deny)', () => {
   it('BLOCKED wrong actor account', () => {
     const yaml = fs
       .readFileSync(flow, 'utf8')
-      .replace(/settings-menu-account-9/g, 'settings-menu-account-8');
+      .replace(/settings-menu-account-9/g, 'settings-menu-account-8')
+      .replace(/home-account-9/g, 'home-account-8');
     const result = evaluateChapterPreflight({
       chapterId: '',
       projectId: '13',
@@ -213,7 +214,7 @@ describe('pfo-download admission — negatives (default deny)', () => {
   it('BLOCKED tap of non-admitted account while actor account present', () => {
     const yaml =
       fs.readFileSync(flow, 'utf8') +
-      "\n- tapOn:\n    id: 'settings-menu-account-12'\n";
+      "\n- tapOn:\n    id: 'home-account-12'\n";
     const result = evaluateChapterPreflight({
       chapterId: '',
       projectId: '13',

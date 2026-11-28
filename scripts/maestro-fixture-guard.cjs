@@ -95,7 +95,11 @@ function parseFlowTags(yaml) {
 }
 
 function referencesFixtureChapter(yaml) {
-  return String(yaml).includes(FIXTURE_CHAPTER_HELPER);
+  const text = String(yaml);
+  return (
+    text.includes(FIXTURE_CHAPTER_HELPER) ||
+    text.includes('open-fixture-chapter.yaml')
+  );
 }
 
 // This alternative accepts only an actual unconditional scalar runFlow command
@@ -437,7 +441,11 @@ function scanPfoDownloadFlowBody(yaml, adm, flowPath) {
       flows: [flowPath],
     };
   }
-  if (!new RegExp(`settings-menu-account-${adm.actorUserId}`).test(body)) {
+  if (
+    !new RegExp(
+      `(?:settings-menu-account|home-account)-${adm.actorUserId}`,
+    ).test(body)
+  ) {
     return {
       ok: false,
       status: 'BLOCKED',
@@ -447,7 +455,7 @@ function scanPfoDownloadFlowBody(yaml, adm, flowPath) {
   }
   if (
     new RegExp(
-      String.raw`(?:tapOn|longPressOn):\s*\n\s*id:\s*['"]?settings-menu-account-(?!${adm.actorUserId}\b)\d+`,
+      String.raw`(?:tapOn|longPressOn):\s*\n\s*id:\s*['"]?(?:settings-menu-account|home-account)-(?!${adm.actorUserId}\b)\d+`,
     ).test(body)
   ) {
     return {

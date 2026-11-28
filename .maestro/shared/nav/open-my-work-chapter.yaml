@@ -1,22 +1,89 @@
-# Open the fixture chapter by id. Requires MAESTRO_FIXTURE_CHAPTER_ID.
-# Missing id is a failed precondition (runner preflight reports BLOCKED).
-# Anchored ids: chapter 12 must not match my-work-row-123 or my-work-row-title-12.
+# Open the fixture chapter by id into Next Passage. Requires
+# MAESTRO_FIXTURE_CHAPTER_ID. Missing id is a failed precondition (runner
+# preflight reports BLOCKED).
+# Prefer Next up (`home-next-{id}:…`); else Changes requested. The tiles
+# after the hero sit in a horizontal rail, so a vertical search can miss
+# one that is already in Next up. Next up only renders a few drafting
+# passages, so a chapter outside that window opens from its milestone book
+# (`MAESTRO_FIXTURE_MILESTONE_ID`). A caller that overrides
+# MAESTRO_FIXTURE_CHAPTER_ID must point that id at a chapter in that book.
+# Callers that pin a different chapter (resources empty/populated) must pass
+# `env: MAESTRO_FIXTURE_CHAPTER_ID` on `runFlow`; this helper copies env onto
+# output and would overwrite a caller-set output.fixtureChapterId.
+# YAML ${MAESTRO_FIXTURE_CHAPTER_ID} is the literal "undefined" when the key
+# is missing on Maestro 2.10.0.
 appId: com.eten.fluent
 tags:
   - ordered-readonly
 ---
-- assertTrue: ${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID))}
+- evalScript: >-
+    ${output.fixtureChapterId = (typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_ID).trim()}
+- assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId)}
 - runFlow: goto-home.yaml
-- tapOn:
-    id: 'home-tab-my-work'
-- extendedWaitUntil:
-    visible:
-      id: '^my-work-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
-    timeout: 30000
 - runFlow: ../ensure/ensure-no-modal.yaml
-- tapOn:
-    id: '^my-work-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+- runFlow:
+    when:
+      visible:
+        id: '^home-next-${output.fixtureChapterId}:.*'
+    commands:
+      - tapOn:
+          id: '^home-next-${output.fixtureChapterId}:.*'
+- runFlow:
+    when:
+      notVisible:
+        id: 'passage-header|observer-screen'
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: '^home-changes-requested-${output.fixtureChapterId}$'
+          commands:
+            - tapOn:
+                id: '^home-changes-requested-${output.fixtureChapterId}$'
+- runFlow:
+    when:
+      notVisible:
+        id: 'passage-header|observer-screen'
+    commands:
+      # Bring the section on screen, then the horizontal rail if the tile
+      # is past the hero and outside the viewport. A miss is not a failure:
+      # the book path below opens a chapter the rail did not render.
+      - scrollUntilVisible:
+          element:
+            id: 'home-next-up'
+          direction: DOWN
+          timeout: 30000
+          visibilityPercentage: 50
+      - scrollUntilVisible:
+          element:
+            id: '^home-next-${output.fixtureChapterId}:.*'
+          direction: RIGHT
+          timeout: 15000
+          visibilityPercentage: 50
+          optional: true
+      - runFlow:
+          when:
+            visible:
+              id: '^home-next-${output.fixtureChapterId}:.*'
+          commands:
+            - runFlow: ../ensure/ensure-no-modal.yaml
+            - tapOn:
+                id: '^home-next-${output.fixtureChapterId}:.*'
+- runFlow:
+    when:
+      notVisible:
+        id: 'passage-header|observer-screen'
+    commands:
+      # Books sit above Next up. The book helper only searches downward.
+      - scrollUntilVisible:
+          element:
+            id: '^home-book-${MAESTRO_FIXTURE_MILESTONE_ID}:.*'
+          direction: UP
+          timeout: 20000
+          visibilityPercentage: 50
+          optional: true
+      - runFlow: open-fixture-chapter-from-milestone.yaml
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'passage-header|observer-screen'
     timeout: 30000

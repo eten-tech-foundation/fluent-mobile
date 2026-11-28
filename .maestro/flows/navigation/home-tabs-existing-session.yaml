@@ -1,6 +1,6 @@
-# Home My Work <-> Projects tab roundtrip on an already signed-in session.
-# Requires: logged-in app on Home with at least one Projects milestone row and
-# one My Work row. No login, clearState, or warm-session helpers.
+# Next Home Books ↔ Next up roundtrip on an already signed-in session.
+# Requires: logged-in app on Home with at least one book and Next up.
+# No login, clearState, or warm-session helpers.
 appId: com.eten.fluent
 tags:
   - nav
@@ -10,41 +10,38 @@ tags:
 - assertNotVisible:
     id: 'login-email-input'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertVisible:
-    id: 'home-tab-projects'
+    id: 'home-scroll'
 
-- tapOn:
-    id: 'home-tab-projects'
-- extendedWaitUntil:
-    visible:
-      id: 'milestone-row-.*'
+- scrollUntilVisible:
+    element:
+      id: 'home-books'
+    direction: DOWN
     timeout: 60000
 - assertVisible:
-    id: 'milestone-row-.*'
+    id: 'home-book-.*'
 - assertNotVisible:
     id: 'login-email-input'
 
-- tapOn:
-    id: 'home-tab-my-work'
-- extendedWaitUntil:
-    visible:
-      id: 'my-work-row-\d+$'
+- scrollUntilVisible:
+    element:
+      id: 'home-next-up'
+    direction: DOWN
     timeout: 60000
 - assertVisible:
-    id: 'my-work-row-\d+$'
+    id: 'home-next-up'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertNotVisible:
     id: 'login-email-input'
 
-- tapOn:
-    id: 'home-tab-projects'
-- extendedWaitUntil:
-    visible:
-      id: 'milestone-row-.*'
+- scrollUntilVisible:
+    element:
+      id: 'home-books'
+    direction: UP
     timeout: 60000
 - assertVisible:
-    id: 'milestone-row-.*'
+    id: 'home-book-.*'
 - assertNotVisible:
     id: 'login-email-input'

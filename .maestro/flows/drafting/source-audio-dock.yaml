@@ -1,4 +1,5 @@
-# Source audio dock chrome on drafting (when dock present).
+# Source audio on Next Passage is the Listen player (passage-listen), not a
+# Bible-tab dock. Assert the player chrome when Listen is offered.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -8,18 +9,22 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
-- tapOn:
-    id: 'drafting-tab-bible'
-- runFlow:
-    when:
-      visible:
-        id: 'source-audio-time-elapsed'
-    commands:
-      - assertVisible:
-          id: 'source-audio-time-elapsed'
 - assertVisible:
-    id: 'bible-tab'
+    id: 'passage-header'
+- assertVisible:
+    id: 'passage-listen'
+- tapOn:
+    id: 'passage-listen'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-player'
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'passage-header'
+    timeout: 15000

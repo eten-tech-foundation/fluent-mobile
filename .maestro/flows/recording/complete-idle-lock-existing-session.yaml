@@ -1,11 +1,27 @@
-# READ-ONLY idle lock on a Complete-stage chapter with no takes (existing session).
+# READ-ONLY idle lock on a Complete-stage chapter (existing session).
+# Next map: home-tab-projects/milestone-row-* → Home books (`home-book-*`) or
+# a same-project Next-up row (status line is milestoneName, not the API
+# project name) → passage-title → passage-book → book page;
+# chapter-row-{id} → book-chapter-{id} (+ -meta stage text); drafting-tab-bar
+# → passage-header; record-start-button disabled → passage-record absent
+# (isRecordingLockedByStage) + passage-notices-blocked ("Recording isn't open…").
+# Complete work still shows passage-takes-meta ("Takes aren't on this phone");
+# that is not a take list. Fan tiles stay absent until takes are on the phone.
+# drafting-header-back / stack-header-back → passage-back / book-back.
 # Required env pins the fixture selectors; missing values fail before any UI:
-# - MAESTRO_FIXTURE_PROJECT_NAME: exact project name shown in Projects.
-# - MAESTRO_FIXTURE_CHAPTER_LABEL: exact chapter label shown on its row.
-# - MAESTRO_FIXTURE_CHAPTER_ID: positive digits (chapter-row-<id>).
-# The chapter must be in the Complete stage and have no cached takes.
+# - MAESTRO_FIXTURE_PROJECT_NAME: substring matched on Next-up status /
+#   a11y label (milestoneName). Home book cards show bookName + milestoneName,
+#   not the API project name.
+# - MAESTRO_FIXTURE_CHAPTER_LABEL: kept so a blank fixture file still fails
+#   closed. The gallery section title is "Chapter N", not this label.
+# - MAESTRO_FIXTURE_COMPLETE_CHAPTER_ID: positive digits (book-chapter-<id>)
+#   for the Complete stage. Do not reuse the draft MAESTRO_FIXTURE_CHAPTER_ID.
+# The chapter must be in the Complete stage. Cached takes on the phone
+# are not required (this fixture's takes live on the server).
 # Never taps capture/play/claim/stage or changes auth, data or preferences.
 # Proves idle controls only, not populated Review or native playback.
+# Close the expanded player with system Back — passage-close sits in a header
+# GestureDetector and Maestro tap does not fire onPress.
 appId: com.eten.fluent
 tags:
   - record
@@ -15,102 +31,135 @@ tags:
   - fixture-blocked
 ---
 - runScript: ../../shared/scripts/ownership-status-values.js
+# Copy env one key per evalScript. Do not store ^…$ in output (Maestro 2.10).
+- evalScript: >-
+    ${output.fixtureChapterId = (typeof MAESTRO_FIXTURE_COMPLETE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_COMPLETE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_COMPLETE_CHAPTER_ID).trim()}
+- evalScript: >-
+    ${output.projectNameOnHome = (typeof MAESTRO_FIXTURE_PROJECT_NAME === 'undefined' || MAESTRO_FIXTURE_PROJECT_NAME === null) ? '' : String(MAESTRO_FIXTURE_PROJECT_NAME)}
 - assertTrue: ${output.fixtureProjectName.length > 0}
 - assertTrue: ${output.fixtureChapterLabel.length > 0}
-- assertTrue: ${typeof MAESTRO_FIXTURE_CHAPTER_ID !== 'undefined' && /^[1-9][0-9]*$/.test(String(MAESTRO_FIXTURE_CHAPTER_ID).trim())}
-- assertTrue: ${typeof output.projectNameRe === 'string' && output.projectNameRe.length > 0}
+- assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId)}
+- assertTrue: ${typeof output.projectNameOnHome === 'string' && output.projectNameOnHome.length > 0}
 - assertTrue: ${typeof output.chapterLabelRe === 'string' && output.chapterLabelRe.length > 0}
 - assertNotVisible:
     id: 'login-email-input'
 - runFlow: ../../shared/nav/goto-home.yaml
 - assertVisible:
-    id: 'home-tab-my-work'
-- tapOn:
-    id: 'home-tab-projects'
+    id: 'home-header'
 - extendedWaitUntil:
     visible:
-      id: 'milestone-row-.*'
+      id: 'home-books'
     timeout: 30000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
+# Book cards do not render the API project name. A same-project Next-up
+# status line is "Draft · {milestoneName} · …". This fixture's env value
+# matches that milestone substring. Tap that, then the title sheet book
+# row, so the book page lists the Complete chapter.
 - scrollUntilVisible:
     element:
-      text: ${output.projectNameRe}
+      text: '.+${output.projectNameOnHome}.+'
     direction: DOWN
     timeout: 30000
+    visibilityPercentage: 50
 - tapOn:
-    text: ${output.projectNameRe}
+    text: '.+${output.projectNameOnHome}.+'
+# Next-up opens Passage. A book card opens the gallery directly.
+- runFlow:
+    when:
+      visible:
+        id: 'passage-header'
+    commands:
+      - tapOn:
+          id: 'passage-title'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-title-sheet'
+          timeout: 15000
+      - tapOn:
+          id: 'passage-book'
 - extendedWaitUntil:
     visible:
-      id: 'chapter-row-.*'
+      id: 'book-header'
     timeout: 30000
+# passage-book opens the gallery on the Next-up chapter (later in the book).
+# The Complete fixture sits above — scroll toward the start of book-list first.
 - scrollUntilVisible:
     element:
-      id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
-    direction: DOWN
-    timeout: 30000
+      id: '^book-chapter-${output.fixtureChapterId}$'
+    direction: UP
+    timeout: 45000
+    visibilityPercentage: 50
+    speed: 80
 # Guard actual selected chapter and stage, not only an env declaration.
+# Cover eyebrow is "Psalms 1"; the section title in a single-book gallery is
+# "Chapter 1". Pin the row by id + Complete meta, not an anchored label regex.
 - assertVisible:
-    id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
-    containsDescendants:
-      - text: ${output.chapterLabelRe}
-      - text: '^Complete$'
+    id: '^book-chapter-${output.fixtureChapterId}$'
+- assertVisible:
+    id: '^book-chapter-${output.fixtureChapterId}-meta$'
+    text: 'Complete.*'
+- scrollUntilVisible:
+    element:
+      id: '^book-passage-${output.fixtureChapterId}-.*'
+    direction: DOWN
+    timeout: 15000
+    visibilityPercentage: 50
 - tapOn:
-    id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
+    id: '^book-passage-${output.fixtureChapterId}-.*'
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'passage-header'
     timeout: 30000
 # Stop before Record if the previously observed HTTP error UI recurs.
 - assertNotVisible:
     text: '^Console Error$'
 - assertNotVisible:
     text: '^.*\[HTTP\].*API error.*$'
+- assertVisible:
+    id: 'passage-listen'
+# Complete stage: Record is not offered. The takes line names server takes
+# that are not on this phone; that is not a live take list.
+- assertNotVisible:
+    id: 'passage-record'
+- assertVisible:
+    id: 'passage-takes-meta'
+- assertVisible:
+    id: 'passage-notices-blocked'
 - tapOn:
-    id: 'drafting-tab-record'
+    id: 'passage-listen'
 - extendedWaitUntil:
     visible:
-      id: 'record-tab'
+      id: 'passage-player'
+    timeout: 15000
+- assertNotVisible:
+    id: 'passage-key-record'
+- assertNotVisible:
+    id: 'passage-key-eject'
+- assertNotVisible:
+    id: 'passage-fan-[0-9]+'
+- assertNotVisible: 'Pause recording'
+- back
+- waitForAnimationToEnd:
+    timeout: 2000
+- runFlow:
+    when:
+      visible:
+        id: 'passage-back'
+    commands:
+      - tapOn:
+          id: 'passage-back'
+- extendedWaitUntil:
+    visible:
+      id: '^book-chapter-${output.fixtureChapterId}$'
     timeout: 30000
 - assertVisible:
-    id: 'record-tab'
-- assertVisible:
-    id: 'record-verse-reference'
-# A missing source text can also disable recording; reject that false positive.
-- assertNotVisible:
-    id: 'record-syncing-hint'
-- assertVisible:
-    id: 'record-start-button'
-    enabled: false
-- assertVisible:
-    id: 'record-play-idle-placeholder'
-    enabled: false
-- assertNotVisible:
-    id: 'record-new-take-button'
-- assertNotVisible:
-    id: 'record-take-list'
-- assertNotVisible:
-    id: 'record-all-take-list'
-- assertNotVisible:
-    id: 'record-stop-button'
-- assertNotVisible:
-    id: 'record-pause-button'
-- assertNotVisible:
-    id: 'record-resume-button'
-- assertNotVisible:
-    id: 'record-duration'
+    id: 'book-back'
 - tapOn:
-    id: 'drafting-header-back'
+    id: 'book-back'
+- runFlow: ../../shared/nav/goto-home.yaml
 - extendedWaitUntil:
     visible:
-      id: '^chapter-row-${MAESTRO_FIXTURE_CHAPTER_ID}$'
-    timeout: 30000
-- assertVisible:
-    id: 'stack-header-back'
-- tapOn:
-    id: 'stack-header-back'
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 30000
 - assertNotVisible:
     id: 'login-email-input'

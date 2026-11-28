@@ -1,4 +1,6 @@
 # Online first-recording auto-claim on disposable CLAIM fixture (#607 / #574).
+# Next map: record-start → passage-record / passage-key-record; stop →
+# passage-key-eject; chapter-ownership-mine → book-chapter meta "Yours".
 appId: com.eten.fluent
 tags:
   - ownership
@@ -9,68 +11,65 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow:
     file: ../../shared/nav/open-fixture-chapter.yaml
     env:
       MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_CLAIM_LABEL}
-- tapOn:
-    id: 'drafting-tab-record'
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_CLAIM_CHAPTER_ID}
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-header'
 - assertNotVisible:
-    id: 'record-taken-warning'
+    id: 'passage-notices-taken'
 - runFlow: ../../shared/ensure/ensure-take-capacity.yaml
-- runFlow:
-    when:
-      visible:
-        id: 'record-start-button'
-        enabled: true
-    commands:
-      - tapOn:
-          id: 'record-start-button'
-- runFlow:
-    when:
-      visible:
-        id: 'record-new-take-button'
-        enabled: true
-    commands:
-      - tapOn:
-          id: 'record-new-take-button'
+- tapOn:
+    id: 'passage-record'
 - extendedWaitUntil:
     visible:
-      id: 'record-stop-button'
+      id: 'passage-key-record'
     timeout: 15000
+- tapOn:
+    id: 'passage-key-record'
 - waitForAnimationToEnd
 - tapOn:
-    id: 'record-stop-button'
+    id: 'passage-key-eject'
 - extendedWaitUntil:
     visible:
-      id: 'record-play-button-.*'
+      id: 'passage-key-play|passage-fan-[0-9]+'
     timeout: 30000
-- tapOn:
-    id: 'record-delete-selected-button-.*'
-- tapOn:
-    text: 'Delete'
+# Hardware Back closes the expanded player (Sheet.tsx); it does not leave Passage.
 - back
+- runFlow:
+    when:
+      visible:
+        id: 'passage-player'
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: 'passage-player'
+          timeout: 10000
+- runFlow:
+    when:
+      visible:
+        id: 'passage-header'
+    commands:
+      - tapOn:
+          id: 'passage-back'
 - extendedWaitUntil:
     visible:
-      id: 'chapter-row-.*'
+      id: 'book-header'
     timeout: 30000
+- evalScript: >-
+    ${output.claimChapterId = (typeof MAESTRO_FIXTURE_CLAIM_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CLAIM_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CLAIM_CHAPTER_ID).trim()}
+- assertTrue: ${/^[1-9][0-9]*$/.test(output.claimChapterId)}
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
+      id: '^book-chapter-${output.claimChapterId}$'
     direction: DOWN
     timeout: 90000
+    visibilityPercentage: 50
 - assertVisible:
-    id: 'chapter-row-.*'
-    containsDescendants:
-      - text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
-      - id: 'chapter-ownership-mine'
-- assertVisible:
-    id: 'chapter-row-.*'
-    containsDescendants:
-      - text: ${MAESTRO_FIXTURE_CLAIM_LABEL}
-      - text: 'Assigned to you'
+    id: '^book-chapter-${output.claimChapterId}-meta$'
+    text: '(.* · )?Yours( · .*)?'

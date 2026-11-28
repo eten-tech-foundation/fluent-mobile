@@ -1,44 +1,60 @@
-# Images & Maps fullscreen open/close on a fixture chapter known to have images.
-# Requires MAESTRO_FIXTURE_PROJECT_NAME + MAESTRO_FIXTURE_MINE_LABEL (Mark 1 in the
-# disposable ownership fixture — assessment confirmed images on Mark 1).
+# Images grow in the Next resources card (passage-image-*-zoom), not Legacy
+# images-maps-maximize. A single-book gallery titles the section "Chapter N",
+# while the cover eyebrow is "Psalms N". Next up only lists five chapters,
+# so this opens the book by project name and pins the row by assignment id.
+# Requires MAESTRO_FIXTURE_CHAPTER_ID + MAESTRO_FIXTURE_MINE_LABEL.
+# fixture-blocked keeps default lanes from selecting this without that id.
 appId: com.eten.fluent
 tags:
-  - smoke
   - drafting
+  - fixture-blocked
 ---
 - runFlow: ../../shared/ensure/ensure-on-login.yaml
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
+- assertTrue: ${typeof MAESTRO_FIXTURE_MINE_LABEL !== 'undefined' && String(MAESTRO_FIXTURE_MINE_LABEL).trim().length > 0}
 - runFlow:
     file: ../../shared/nav/open-fixture-chapter.yaml
     env:
-      MAESTRO_FIXTURE_CHAPTER_LABEL: ${MAESTRO_FIXTURE_MINE_LABEL}
-- tapOn:
-    id: 'drafting-tab-resources'
+      MAESTRO_FIXTURE_OPEN_CHAPTER_ID: ${MAESTRO_FIXTURE_CHAPTER_ID}
 - assertVisible:
-    id: 'resources-tab'
-- extendedWaitUntil:
-    visible:
-      id: 'resources-section-imagesMaps-toggle'
-    timeout: 30000
+    id: 'passage-header'
 - tapOn:
-    id: 'resources-section-imagesMaps-toggle'
-# Maximize control (not the removed images-maps-thumbnail-* id) — required (#597).
+    id: 'passage-resources-open'
 - extendedWaitUntil:
     visible:
-      id: 'images-maps-maximize-.*'
+      id: 'passage-resources'
     timeout: 30000
-- tapOn:
-    id: 'images-maps-maximize-.*'
 - extendedWaitUntil:
     visible:
-      id: 'images-maps-fullscreen-close'
+      id: 'passage-images-list'
+    timeout: 30000
+# The title is on the tile already. Next reveals the credit only once grown.
+# This fixture image has attribution and no API caption, so the caption
+# testID stays absent. passage-image-*-attribution is the grown detail.
+- assertNotVisible:
+    id: 'passage-image-.*-attribution'
+- assertNotVisible:
+    id: 'passage-image-.*-caption'
+- tapOn:
+    id: 'passage-image-.*-zoom'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-image-.*-attribution'
+    timeout: 15000
+- assertNotVisible:
+    id: 'passage-image-.*-caption'
+- tapOn:
+    id: 'passage-image-.*-toggle'
+- extendedWaitUntil:
+    notVisible:
+      id: 'passage-image-.*-attribution'
     timeout: 15000
 - tapOn:
-    id: 'images-maps-fullscreen-close'
+    id: 'passage-resources-collapse'
 - assertVisible:
-    id: 'resources-tab'
+    id: 'passage-header'

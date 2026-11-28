@@ -1,4 +1,8 @@
-# Take view toggle chrome when multiple recorders are present (optional).
+# Others' takes on Next Passage. Legacy mine/all take-view-toggle →
+# Next Review (passage-open-review in the title sheet), offered only when
+# the passage has takes from more than one recorder (hasMultipleRecorders),
+# the same condition the Legacy toggle used. The fixture-pinned hard check is
+# take-view-existing-session.yaml.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -8,26 +12,38 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
-- tapOn:
-    id: 'drafting-tab-record'
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-header'
+- assertVisible:
+    id: 'passage-record|passage-listen'
+- tapOn:
+    id: 'passage-title'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-title-sheet'
+    timeout: 10000
 - runFlow:
     when:
       visible:
-        id: 'take-view-toggle'
+        id: 'passage-open-review'
     commands:
       - tapOn:
-          id: 'take-view-all'
+          id: 'passage-open-review'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-review'
+          timeout: 10000
       - assertVisible:
-          id: 'take-view-all'
-      - tapOn:
-          id: 'take-view-mine'
-      - assertVisible:
-          id: 'take-view-mine'
+          id: 'passage-review-owner-.*'
+      - back
+      - extendedWaitUntil:
+          notVisible:
+            id: 'passage-review'
+          timeout: 10000
+- runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - assertVisible:
-    id: 'record-tab'
+    id: 'passage-header'

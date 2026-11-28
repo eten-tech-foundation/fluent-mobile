@@ -61,6 +61,8 @@ describe('resources-populated-values', () => {
     assertExact(out.contentMarkerRe, 'Map (1).png');
     assertExact(out.myWorkRowIdRe, 'my-work-row-7');
     assert.ok(!new RegExp(out.myWorkRowIdRe).test('my-work-row-70'));
+    assertExact(out.homeNextIdRe, 'home-next-7:foo');
+    assert.ok(!new RegExp(out.homeNextIdRe).test('home-next-70:foo'));
   });
 
   it('exports empty selectors when env is missing', () => {
@@ -68,6 +70,7 @@ describe('resources-populated-values', () => {
     assert.equal(out.sectionId, '');
     assert.equal(out.sectionToggleId, '');
     assert.equal(out.myWorkRowIdRe, '');
+    assert.equal(out.homeNextIdRe, '');
   });
 });
 
@@ -91,6 +94,8 @@ describe('fixture chapter row exporters', () => {
     });
     assertExact(out.myWorkRowIdRe, 'my-work-row-12');
     assert.ok(!new RegExp(out.myWorkRowIdRe).test('my-work-row-123'));
+    assertExact(out.homeNextIdRe, 'home-next-12:x');
+    assert.ok(!new RegExp(out.homeNextIdRe).test('home-next-120:x'));
     assertExact(out.takeViewAllMarkerRe, 'All takes');
   });
 
@@ -109,13 +114,24 @@ describe('fixture chapter row exporters', () => {
     const out = run('fixture-row-values', {}, { fixtureChapterId: '9' });
     assertExact(out.myWorkRowIdRe, 'my-work-row-9');
     assert.ok(!new RegExp(out.myWorkRowIdRe).test('my-work-row-90'));
+    assertExact(out.homeNextIdRe, 'home-next-9:foo');
+    assert.ok(!new RegExp(out.homeNextIdRe).test('home-next-90:foo'));
+    assertExact(out.homeChangesIdRe, 'home-changes-requested-9');
+    assertExact(out.bookChapterIdRe, 'book-chapter-9');
+    assertExact(out.bookPassageIdRe, 'book-passage-9-chapter:1');
+    assert.ok(!new RegExp(out.bookPassageIdRe).test('book-passage-90-x'));
   });
 
   it('fixture-row-values exports empty when the chapter id is missing', () => {
     assert.equal(run('fixture-row-values').myWorkRowIdRe, '');
+    assert.equal(run('fixture-row-values').homeNextIdRe, '');
     for (const fixtureChapterId of [undefined, null, '', '  ']) {
       const out = run('fixture-row-values', {}, { fixtureChapterId });
       assert.equal(out.myWorkRowIdRe, '');
+      assert.equal(out.homeNextIdRe, '');
+      assert.equal(out.homeChangesIdRe, '');
+      assert.equal(out.bookChapterIdRe, '');
+      assert.equal(out.bookPassageIdRe, '');
     }
   });
 
@@ -127,6 +143,8 @@ describe('fixture chapter row exporters', () => {
     });
     assertExact(out.myWorkRowIdRe, 'my-work-row-3');
     assertExact(out.bibleVerseRowIdRe, 'bible-verse-row-4');
+    assertExact(out.passageScriptVerseIdRe, 'passage-script-verse-4');
+    assertExact(out.passageVerseRowIdRe, 'passage-verse-row-4');
     assertExact(out.recordReferenceRe, 'Mark 1:4');
     assert.ok(!new RegExp(out.myWorkRowIdRe).test('my-work-row-30'));
   });
@@ -146,10 +164,13 @@ describe('fixture chapter row exporters', () => {
 
   it('chapter-id exporters stay empty without MAESTRO_FIXTURE_CHAPTER_ID', () => {
     assert.equal(run('take-view-values').myWorkRowIdRe, '');
+    assert.equal(run('take-view-values').homeNextIdRe, '');
     assert.equal(run('verse-bounds-values').myWorkRowIdRe, '');
     const bible = run('bible-record-values');
     assert.equal(bible.myWorkRowIdRe, '');
     assert.equal(bible.bibleVerseRowIdRe, '');
+    assert.equal(bible.passageScriptVerseIdRe, '');
+    assert.equal(bible.passageVerseRowIdRe, '');
     assert.equal(bible.recordReferenceRe, '');
   });
 });

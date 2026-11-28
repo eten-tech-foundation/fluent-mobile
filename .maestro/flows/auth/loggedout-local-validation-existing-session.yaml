@@ -23,7 +23,7 @@ tags:
 - assertVisible:
     id: '^login-submit-button$'
 - assertNotVisible:
-    id: '^home-tab-my-work$'
+    id: '^home-header$'
 - tapOn:
     id: '^login-email-input$'
 - eraseText
@@ -55,5 +55,5 @@ tags:
     id: '^login-email-input$'
     text: '^invalid$'
 - assertNotVisible:
-    id: '^home-tab-my-work$'
+    id: '^home-header$'
 - takeScreenshot: loggedout-invalid-email-validation

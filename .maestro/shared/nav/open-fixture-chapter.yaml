@@ -1,50 +1,118 @@
-# Open Projects → disposable fixture project → chapter label → drafting.
+# Open Home → fixture project/book → chapter label → Next Passage.
 # Env: MAESTRO_FIXTURE_PROJECT_NAME, MAESTRO_FIXTURE_CHAPTER_LABEL
+# Home book cards show bookName + milestoneName, not the API project name.
+# Match the project name as a substring (Next-up status or a11y label), then
+# if that opened a passage, use the title sheet to reach the book page.
 appId: com.eten.fluent
 ---
+- evalScript: >-
+    ${output.fixtureProjectName = (typeof MAESTRO_FIXTURE_PROJECT_NAME === 'undefined' || MAESTRO_FIXTURE_PROJECT_NAME === null) ? '' : String(MAESTRO_FIXTURE_PROJECT_NAME).trim()}
+- evalScript: >-
+    ${output.fixtureChapterLabel = (typeof MAESTRO_FIXTURE_CHAPTER_LABEL === 'undefined' || MAESTRO_FIXTURE_CHAPTER_LABEL === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_LABEL).trim()}
+- evalScript: >-
+    ${output.openChapterId = (typeof MAESTRO_FIXTURE_OPEN_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_OPEN_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_OPEN_CHAPTER_ID).trim()}
+- evalScript: >-
+    ${output.pinChapter = output.openChapterId.length > 0 ? 'yes' : 'no'}
+- assertTrue: ${typeof output.fixtureProjectName === 'string' && output.fixtureProjectName.length > 0}
+- assertTrue: ${typeof output.fixtureChapterLabel === 'string' && output.fixtureChapterLabel.length > 0}
 - runFlow: goto-home.yaml
-- tapOn:
-    id: 'home-tab-projects'
 - extendedWaitUntil:
     visible:
-      id: 'milestone-row-.*'
+      id: 'home-books'
     timeout: 60000
 - runFlow: ../ensure/ensure-no-modal.yaml
 - scrollUntilVisible:
     element:
-      text: ${MAESTRO_FIXTURE_PROJECT_NAME}
+      text: '.*${output.fixtureProjectName}.*'
     direction: DOWN
     timeout: 60000
+    visibilityPercentage: 50
 - tapOn:
-    text: ${MAESTRO_FIXTURE_PROJECT_NAME}
-- extendedWaitUntil:
-    visible:
-      id: 'chapter-row-.*'
-    timeout: 60000
-- scrollUntilVisible:
-    element:
-      text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
-    direction: DOWN
-    timeout: 90000
-- tapOn:
-    text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
-- repeat:
-    times: 8
-    while:
-      notVisible:
-        id: 'drafting-tab-bar'
+    text: '.*${output.fixtureProjectName}.*'
+- runFlow:
+    when:
+      visible:
+        id: 'passage-header'
     commands:
-      - runFlow: ../ensure/ensure-no-modal.yaml
-      - runFlow:
-          when:
-            visible:
-              text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
-          commands:
-            - tapOn:
-                text: ${MAESTRO_FIXTURE_CHAPTER_LABEL}
-      - waitForAnimationToEnd:
-          timeout: 2000
+      - tapOn:
+          id: 'passage-title'
+      - extendedWaitUntil:
+          visible:
+            id: 'passage-title-sheet'
+          timeout: 15000
+      - tapOn:
+          id: 'passage-book'
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'book-header'
+    timeout: 60000
+# Gallery may open focused on a later chapter. Fling toward the start, then
+# search down for the fixture label.
+- repeat:
+    times: 12
+    commands:
+      - swipe:
+          from:
+            id: 'book-list'
+          direction: DOWN
+          duration: 250
+# Single-book galleries title the section "Chapter N". That text is not a
+# descendant Maestro can scope under book-chapter-*. Callers that pass
+# MAESTRO_FIXTURE_OPEN_CHAPTER_ID pin the row. Label matching stays for
+# multi-book rows whose visible title is the chapter label.
+- runFlow:
+    when:
+      true: ${output.pinChapter == 'yes'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: '^book-passage-${output.openChapterId}-.*'
+          direction: DOWN
+          timeout: 90000
+          visibilityPercentage: 50
+      - tapOn:
+          id: '^book-passage-${output.openChapterId}-.*'
+- runFlow:
+    when:
+      true: ${output.pinChapter == 'no'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: ${output.fixtureChapterLabel}
+          direction: DOWN
+          timeout: 90000
+          visibilityPercentage: 50
+      - tapOn:
+          id: 'book-passage-.*'
+          childOf:
+            id: 'book-chapter-.*'
+            containsDescendants:
+              - text: ${output.fixtureChapterLabel}
+- runFlow:
+    when:
+      true: ${output.pinChapter == 'no'}
+    commands:
+      - repeat:
+          times: 8
+          while:
+            notVisible:
+              id: 'passage-header|observer-screen'
+          commands:
+            - runFlow: ../ensure/ensure-no-modal.yaml
+            - runFlow:
+                when:
+                  visible:
+                    id: 'book-passage-.*'
+                commands:
+                  - tapOn:
+                      id: 'book-passage-.*'
+                      childOf:
+                        id: 'book-chapter-.*'
+                        containsDescendants:
+                          - text: ${output.fixtureChapterLabel}
+            - waitForAnimationToEnd:
+                timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: 'passage-header|observer-screen'
     timeout: 60000

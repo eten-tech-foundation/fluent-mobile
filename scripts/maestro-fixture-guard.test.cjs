@@ -120,6 +120,31 @@ tags:
     expect(result.flows).toEqual(['record-stop-play-delete.yaml']);
   });
 
+  it('treats a book-page pin as the fixture chapter', () => {
+    const result = evaluateChapterPreflight({
+      chapterId: '42',
+      projectId: '6',
+      allowlist: '6',
+      denylist: '',
+      includeTags: [],
+      excludeTags: [],
+      flows: [
+        {
+          path: 'record-stop-play-delete.yaml',
+          yaml: `
+tags:
+  - record
+  - mutating
+---
+- runFlow:
+    file: ../../shared/nav/open-fixture-chapter.yaml
+`,
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('blocks a pinned mutating flow when the project is not allowlisted', () => {
     const mutating = `
 tags:

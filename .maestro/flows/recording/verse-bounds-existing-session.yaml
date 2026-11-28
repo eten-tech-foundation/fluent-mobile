@@ -1,16 +1,24 @@
-# Record verse prev/next — existing session only (read-only chrome).
+# Verse previous/next in the Next Passage player — existing session only
+# (read-only chrome). Next map: my-work-row-* → home-next-{id}: via
+# open-my-work-chapter; drafting-tab-record → passage-listen (player);
+# record-verse-reference → passage-verse-position; record-prev-verse /
+# record-next-verse → passage-key-previous / passage-key-next.
 #
 # Preconditions (fail visibly if unmet — no skip/auth fallback):
 # - App already running with a logged-in session (not login screen).
-# - Home reachable; My Work contains my-work-row for fixture chapter id.
+# - Home reachable; Next up (or the book page) shows the fixture chapter id.
 # - MAESTRO_FIXTURE_CHAPTER_ID: nonempty digits /^[1-9][0-9]*$/ (typeof-safe
 #   guard below; no bare undefined dereference).
 # - MAESTRO_FIXTURE_VERSE_REF_FIRST / MAESTRO_FIXTURE_VERSE_REF_NEXT: required
-#   exact reference labels for the first unit and the unit after next
-#   (must differ). Used as anchored ^…$ escaped text waits so the same
-#   record-verse-reference testID cannot pass on stale copyTextFrom.
-# - Fixture opens Record on the FIRST navigable unit so record-prev-verse is
-#   disabled and record-next-verse is enabled.
+#   exact labels for the first unit and the unit after next (must differ).
+#   Next chips are the verse numbers ("1", "2"). Digit-only values become
+#   JS numbers after Maestro JSON-round-trips output — coerce with String()
+#   before typeof/length checks. Anchored ^…$ text waits so the same
+#   passage-verse-position testID cannot pass on stale copyTextFrom.
+# - Listen resumes the last place, so this selects the FIRST navigable
+#   verse before the boundary asserts. passage-key-previous is disabled
+#   there and passage-key-next is enabled. Source audio is paused so it
+#   cannot step the place before those asserts.
 #
 # Forbidden (command nodes — not this comment): clearState, ensure-on-login,
 # login-*, ensure-warm-home, ensure-warm-session, Discard, record-start /
@@ -20,96 +28,95 @@
 # Tags: record, existing-session, fixture-blocked. The fixture-blocked tag keeps
 # default lanes from running it without the fixture.
 #
-# Complex selector values use an external runScript. Primitive exports avoid
-# the installed engine's undefined inline concat/regex output; guards stay strict.
+# Copy env one key per evalScript. Do not store ^…$ in output — Maestro 2.10
+# JSON-round-trips `^1$` and typeof/length on verseRef*Re then fail.
 appId: com.eten.fluent
 tags:
   - record
   - existing-session
   - fixture-blocked
 ---
-# Normalize + validate env before any UI (typeof-safe; block scalar for : / regex).
-- runScript: ../../shared/scripts/verse-bounds-values.js
+- evalScript: >-
+    ${output.fixtureChapterId = (typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined' || MAESTRO_FIXTURE_CHAPTER_ID === null) ? '' : String(MAESTRO_FIXTURE_CHAPTER_ID).trim()}
+- evalScript: >-
+    ${output.verseRefFirst = (typeof MAESTRO_FIXTURE_VERSE_REF_FIRST === 'undefined' || MAESTRO_FIXTURE_VERSE_REF_FIRST === null) ? '' : String(MAESTRO_FIXTURE_VERSE_REF_FIRST)}
+- evalScript: >-
+    ${output.verseRefNext = (typeof MAESTRO_FIXTURE_VERSE_REF_NEXT === 'undefined' || MAESTRO_FIXTURE_VERSE_REF_NEXT === null) ? '' : String(MAESTRO_FIXTURE_VERSE_REF_NEXT)}
 - assertTrue: ${typeof output.fixtureChapterId === 'string' && /^[1-9][0-9]*$/.test(output.fixtureChapterId)}
-- assertTrue: ${typeof output.verseRefFirst === 'string' && output.verseRefFirst.length > 0 && typeof output.verseRefNext === 'string' && output.verseRefNext.length > 0 && output.verseRefFirst !== output.verseRefNext}
-- assertTrue: ${typeof output.verseRefFirstRe === 'string' && output.verseRefFirstRe.length > 0 && typeof output.verseRefNextRe === 'string' && output.verseRefNextRe.length > 0 && typeof output.myWorkRowIdRe === 'string' && output.myWorkRowIdRe.length > 0}
-- assertTrue: ${RegExp(output.verseRefFirstRe).test(output.verseRefFirst) === true}
-- assertTrue: ${RegExp(output.verseRefNextRe).test(output.verseRefNext) === true}
-- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId) === true}
-- assertTrue: ${RegExp(output.verseRefFirstRe).test(output.verseRefFirst + 'X') === false && RegExp(output.verseRefFirstRe).test('X' + output.verseRefFirst) === false}
-- assertTrue: ${RegExp(output.verseRefNextRe).test(output.verseRefNext + 'X') === false && RegExp(output.verseRefNextRe).test('X' + output.verseRefNext) === false}
-- assertTrue: ${RegExp(output.myWorkRowIdRe).test('my-work-row-' + output.fixtureChapterId + '0') === false && RegExp(output.myWorkRowIdRe).test('my-work-row-0' + output.fixtureChapterId) === false}
+- assertTrue: ${output.verseRefFirst != null && output.verseRefNext != null && ('' + output.verseRefFirst) != '' && ('' + output.verseRefNext) != '' && ('' + output.verseRefFirst) != ('' + output.verseRefNext)}
 
 - assertNotVisible:
     id: 'login-email-input'
-- runFlow: ../../shared/nav/goto-home.yaml
+- runFlow: ../../shared/nav/open-my-work-chapter.yaml
 - assertVisible:
-    id: 'home-tab-my-work'
-- tapOn:
-    id: 'home-tab-my-work'
+    id: 'passage-header'
+# The verse row opens Listen on that verse. The hero Listen key resumes
+# whatever place the last visit left.
 - scrollUntilVisible:
     element:
-      id: ${output.myWorkRowIdRe}
+      id: 'passage-verse-row-${output.verseRefFirst}'
     direction: DOWN
     timeout: 30000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - tapOn:
-    id: ${output.myWorkRowIdRe}
+    id: 'passage-verse-row-${output.verseRefFirst}'
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
-    timeout: 30000
-- tapOn:
-    id: 'drafting-tab-record'
+      id: 'passage-player'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        text: 'Pause source audio'
+    commands:
+      - tapOn:
+          id: 'passage-key-listen'
+- extendedWaitUntil:
+    visible:
+      text: '^${output.verseRefFirst}$'
+    timeout: 15000
 - assertVisible:
-    id: 'record-tab'
-- assertVisible:
-    id: 'record-verse-reference'
+    id: 'passage-verse-position'
 # Boundary at first unit + next available (fixture contract) — do not weaken.
 - assertVisible:
-    id: 'record-prev-verse'
+    id: 'passage-key-previous'
     enabled: false
 - assertVisible:
-    id: 'record-next-verse'
+    id: 'passage-key-next'
     enabled: true
-# Anchored exact FIRST reference (not copyTextFrom-only).
+# Anchored exact FIRST chip/label (not copyTextFrom-only).
 - extendedWaitUntil:
     visible:
-      text: ${output.verseRefFirstRe}
+      text: '^${output.verseRefFirst}$'
     timeout: 15000
 - tapOn:
-    id: 'record-next-verse'
+    id: 'passage-key-next'
 # Wait for NEXT label so stale same-testID text cannot pass.
 - extendedWaitUntil:
     visible:
-      text: ${output.verseRefNextRe}
+      text: '^${output.verseRefNext}$'
     timeout: 15000
 - assertVisible:
-    id: 'record-verse-reference'
-# After leaving first unit, prev must be enabled.
+    id: 'passage-verse-position'
+# After leaving first unit, previous must be enabled.
 - assertVisible:
-    id: 'record-prev-verse'
+    id: 'passage-key-previous'
     enabled: true
 - tapOn:
-    id: 'record-prev-verse'
+    id: 'passage-key-previous'
 - extendedWaitUntil:
     visible:
-      text: ${output.verseRefFirstRe}
+      text: '^${output.verseRefFirst}$'
     timeout: 15000
 - assertVisible:
-    id: 'record-verse-reference'
+    id: 'passage-verse-position'
 # Boundary restored.
 - assertVisible:
-    id: 'record-prev-verse'
+    id: 'passage-key-previous'
     enabled: false
 - assertVisible:
-    id: 'record-next-verse'
+    id: 'passage-key-next'
     enabled: true
-- tapOn:
-    id: 'drafting-header-back'
-- extendedWaitUntil:
-    visible:
-      id: 'home-tab-my-work'
-    timeout: 30000
+- back
+- runFlow: ../../shared/nav/goto-home.yaml
 - assertNotVisible:
     id: 'login-email-input'

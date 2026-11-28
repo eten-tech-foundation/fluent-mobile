@@ -18,7 +18,7 @@ tags:
     id: 'login-email-input'
 - eraseText
 - inputText: not-an-email
-- hideKeyboard
+# hideKeyboard on Android sends BACK and can background the app.
 - tapOn:
     id: 'login-submit-button'
 - assertVisible:
@@ -32,7 +32,6 @@ tags:
 - tapOn:
     id: 'login-password-input'
 - eraseText
-- hideKeyboard
 - tapOn:
     id: 'login-submit-button'
 - assertVisible:

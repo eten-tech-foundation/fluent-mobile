@@ -9,26 +9,30 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/sync-now-and-return.yaml
 
-- tapOn:
-    id: 'home-tab-my-work'
 - extendedWaitUntil:
     visible:
-      id: 'my-work-row-title-.*'
+      id: 'home-next-[0-9]+:.*|home-book-.*'
     timeout: 60000
+# Next lists Books above Next up — scroll past the gallery to copy the card.
+- scrollUntilVisible:
+    element:
+      id: 'home-next-[0-9]+:.*'
+    direction: DOWN
+    timeout: 20000
 - copyTextFrom:
-    id: 'my-work-row-title-.*'
+    id: 'home-next-[0-9]+:.*'
 - evalScript: ${output.accountAMyWorkLabel = maestro.copiedText}
 - assertTrue: ${output.accountAMyWorkLabel != null && output.accountAMyWorkLabel != ''}
 
 # A2: Add User → Account B
 - runFlow: ../../shared/nav/open-drawer.yaml
 - tapOn:
-    id: 'settings-menu-add-user'
+    id: 'home-accounts-add'
 - extendedWaitUntil:
     visible:
       id: 'login-email-input'
@@ -36,7 +40,7 @@ tags:
 - runFlow: ../../shared/auth/login-account-b.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/sync-now-and-return.yaml
@@ -46,11 +50,11 @@ tags:
 - assertVisible: ${MAESTRO_EMAIL}
 - assertVisible: ${MAESTRO_EMAIL_2}
 - assertVisible:
-    id: 'settings-menu-active-.*'
+    id: 'home-account-.*'
 - pressKey: Back
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 15000
 
 # B: switch B → A, then A → B
@@ -58,33 +62,40 @@ tags:
 - tapOn: ${MAESTRO_EMAIL}
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/goto-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: 'settings-log-out'
+    direction: DOWN
+    timeout: 15000
 - assertVisible:
     id: 'settings-log-out'
 - back
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 30000
 
 - runFlow: ../../shared/nav/open-drawer.yaml
 - tapOn: ${MAESTRO_EMAIL_2}
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 
-# C1: Account B empty My Work — then prove A's label is absent
-- tapOn:
-    id: 'home-tab-my-work'
-- extendedWaitUntil:
-    visible:
-      id: 'my-work-empty'
+# C1: Account B Home settled. B may have its own Next up — do not require
+# home-empty. A's copied card must not appear in B's Next-up section.
+- runFlow: ../../shared/ensure/ensure-home-settled.yaml
+- scrollUntilVisible:
+    element:
+      id: 'home-next-up-hero|home-next-up-empty|home-next-[0-9]+:.*'
+    direction: DOWN
     timeout: 60000
+    visibilityPercentage: 50
 - assertNotVisible: ${output.accountAMyWorkLabel}
 
 # C3: switch to A — label returns
@@ -92,15 +103,18 @@ tags:
 - tapOn: ${MAESTRO_EMAIL}
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- tapOn:
-    id: 'home-tab-my-work'
 - extendedWaitUntil:
     visible:
-      id: 'my-work-row-\d+$'
+      id: 'home-next-[0-9]+:.*|home-book-.*'
     timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'home-next-[0-9]+:.*'
+    direction: DOWN
+    timeout: 20000
 - assertVisible: ${output.accountAMyWorkLabel}
 
 # D: sync on active user

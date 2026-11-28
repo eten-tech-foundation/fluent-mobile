@@ -27,28 +27,26 @@ tags:
 - assertNotVisible:
     id: 'login-email-input'
 - assertNotVisible:
-    id: 'settings-drawer-content'
-- assertNotVisible:
-    id: 'settings-menu-more-settings'
+    id: 'home-accounts'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertVisible:
-    id: 'home-settings-button'
-# Cached switch → PM9
+    id: 'home-account'
+# Cached switch → PM9 (Next accounts sheet)
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
 - assertVisible:
-    id: 'settings-menu-account-9'
+    id: 'home-account-9'
 - assertVisible:
-    id: 'settings-menu-account-10'
+    id: 'home-account-10'
 - assertVisible:
-    id: 'settings-menu-account-12'
+    id: 'home-account-12'
 - tapOn:
-    id: 'settings-menu-account-9'
+    id: 'home-account-9'
 - repeat:
     times: 4
     while:
@@ -61,18 +59,21 @@ tags:
           timeout: 2000
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 90000
+- assertNotVisible:
+    id: 'home-accounts'
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
 - assertVisible:
-    id: 'settings-menu-active-9'
+    id: 'home-account-9'
+    text: '.+, signed in'
 - tapOn:
-    id: 'settings-menu-more-settings'
+    id: 'home-accounts-settings'
 - scrollUntilVisible:
     element:
       id: 'settings-prepare-offline'
@@ -238,28 +239,29 @@ tags:
     id: 'stack-header-back'
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 90000
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
 - assertVisible:
-    id: 'settings-menu-active-9'
+    id: 'home-account-9'
+    text: '.+, signed in'
 - assertVisible:
-    id: 'settings-menu-account-10'
+    id: 'home-account-10'
 - assertVisible:
-    id: 'settings-menu-account-9'
+    id: 'home-account-9'
 - assertVisible:
-    id: 'settings-menu-account-12'
+    id: 'home-account-12'
 - pressKey: Back
 - assertNotVisible:
-    id: 'settings-drawer-content'
+    id: 'home-accounts'
 - assertVisible:
-    id: 'home-tab-my-work'
+    id: 'home-header'
 - assertVisible:
-    id: 'home-settings-button'
+    id: 'home-account'
 - assertNotVisible:
     id: 'login-email-input'

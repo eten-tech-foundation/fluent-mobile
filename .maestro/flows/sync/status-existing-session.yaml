@@ -170,7 +170,7 @@ tags:
     id: 'stack-header-back'
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 15000
 - assertNotVisible:
     id: 'login-email-input'

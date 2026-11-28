@@ -10,6 +10,11 @@ restore_network() {
 }
 trap restore_network EXIT
 
+# Metro cannot load JS while airplane is on. Reach login first, then go offline.
+bash "${ROOT}/scripts/maestro-adb-network.sh" online || true
+bash "${ROOT}/scripts/maestro-test.sh" \
+  --config .maestro/config.yaml \
+  .maestro/flows/harness/launch.yaml
 bash "${ROOT}/scripts/maestro-adb-network.sh" offline
 # Do not exec — EXIT trap must restore network after the child finishes.
 bash "${ROOT}/scripts/maestro-test.sh" \

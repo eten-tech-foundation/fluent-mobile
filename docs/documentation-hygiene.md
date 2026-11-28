@@ -44,6 +44,7 @@ them rather than weakening their rules.
 | 19–22 | api-client / recordings-sync / pericope / ui-version guides | current | Engineering contract guides |
 | 23–28 | [features/next-ui-redesign/](./features/next-ui-redesign/README.md) (6 files) | design/historical | Working drafts + dated Lovable / Figma reviews |
 | — | [features/next-ui-redesign/retirement-checklist.md](./features/next-ui-redesign/retirement-checklist.md) | design | #907 checklist. Added 2026-11-13. Not in the 2026-10-23 count. |
+| — | [features/next-ui-redesign/915-maestro-next-plan.md](./features/next-ui-redesign/915-maestro-next-plan.md) | design | #915 Maestro Next slices. Added 2026-11-25. |
 | 29 | [features/record-tab/design/README.md](./features/record-tab/design/README.md) | design | Historical notice applied |
 | 30 | [assessments/README.md](./assessments/README.md) | historical | Assessment index; #717 ledger archive pointer |
 | 31–38 | [assessments/](./assessments/README.md) #526 audits (7 READMEs + 1 ticket) | historical | Matrices preserved |

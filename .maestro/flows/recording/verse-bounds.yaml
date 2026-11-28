@@ -1,4 +1,7 @@
-# Verse prev/next chrome present on Record tab.
+# Verse previous/next chrome present in the Next Passage player.
+# Next map: drafting-tab-record → passage-listen (opens the player);
+# record-verse-reference → passage-verse-position; record-prev-verse /
+# record-next-verse → passage-key-previous / passage-key-next.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -8,23 +11,29 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
 - runFlow: ../../shared/nav/open-any-chapter.yaml
+- assertVisible:
+    id: 'passage-header'
 - tapOn:
-    id: 'drafting-tab-record'
+    id: 'passage-listen'
+- extendedWaitUntil:
+    visible:
+      id: 'passage-player'
+    timeout: 15000
 - assertVisible:
-    id: 'record-verse-reference'
+    id: 'passage-verse-position'
 - assertVisible:
-    id: 'record-prev-verse'
+    id: 'passage-key-previous'
 - assertVisible:
-    id: 'record-next-verse'
+    id: 'passage-key-next'
 - tapOn:
-    id: 'record-next-verse'
+    id: 'passage-key-next'
 - assertVisible:
-    id: 'record-verse-reference'
+    id: 'passage-verse-position'
 - tapOn:
-    id: 'record-prev-verse'
+    id: 'passage-key-previous'
 - assertVisible:
-    id: 'record-verse-reference'
+    id: 'passage-verse-position'

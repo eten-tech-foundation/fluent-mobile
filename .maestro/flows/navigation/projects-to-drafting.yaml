@@ -1,4 +1,4 @@
-# Home Milestones tab → milestone → chapter → drafting.
+# Next Home Books → book page → passage cover → Passage.
 appId: com.eten.fluent
 tags:
   - smoke
@@ -8,30 +8,29 @@ tags:
 - runFlow: ../../shared/auth/login-translator.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 180000
 - runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- tapOn:
-    id: 'home-tab-projects'
-- extendedWaitUntil:
-    visible:
-      id: 'milestone-row-.*'
+- scrollUntilVisible:
+    element:
+      id: 'home-book-.*'
+    direction: DOWN
     timeout: 60000
 - tapOn:
-    id: 'milestone-row-.*'
+    id: 'home-book-.*'
 - extendedWaitUntil:
     visible:
-      id: 'chapter-row-.*'
+      id: 'book-header'
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: 'book-passage-.*'
     timeout: 60000
 - tapOn:
-    id: 'chapter-row-.*'
+    id: 'book-passage-.*'
 - extendedWaitUntil:
     visible:
-      id: 'drafting-tab-bar'
+      id: 'passage-header'
     timeout: 60000
 - assertVisible:
-    id: 'drafting-tab-bible'
-- assertVisible:
-    id: 'drafting-tab-resources'
-- assertVisible:
-    id: 'drafting-tab-record'
+    id: 'passage-record|passage-listen|observer-screen'

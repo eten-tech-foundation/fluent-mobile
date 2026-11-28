@@ -1,12 +1,19 @@
-# On Record tab: fail fast if neither start nor enabled new-take is available (at cap).
+# Fail fast on Legacy when Record is absent (at cap). Next capacity is
+# asserted in the recording flows (`passage-key-record` enabled) — a visible
+# `passage-record` here is not a capacity signal (blocked Record still shows).
 appId: com.eten.fluent
 ---
 - runFlow:
     when:
       notVisible:
-        id: 'record-start-button'
-        enabled: true
+        id: 'passage-record'
     commands:
-      - assertVisible:
-          id: 'record-new-take-button'
-          enabled: true
+      - runFlow:
+          when:
+            notVisible:
+              id: 'record-start-button'
+              enabled: true
+          commands:
+            - assertVisible:
+                id: 'record-new-take-button'
+                enabled: true

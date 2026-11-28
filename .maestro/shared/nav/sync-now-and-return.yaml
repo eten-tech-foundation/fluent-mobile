@@ -28,5 +28,5 @@ appId: com.eten.fluent
 - runFlow: ../ensure/ensure-no-modal.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 30000

@@ -22,4 +22,16 @@ tags:
         id: 'settings-drawer-content'
     commands:
       - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: 'home-accounts'
+    commands:
+      - pressKey: Back
+- runFlow:
+    when:
+      visible:
+        id: 'passage-title-sheet'
+    commands:
+      - pressKey: Back
 - runFlow: ../../helpers/dismiss-expo-dev-menu.yaml

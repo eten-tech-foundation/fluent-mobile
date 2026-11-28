@@ -366,10 +366,20 @@ function ImageCard({
           {item.title}
         </Text>
         {grown && item.caption ? (
-          <Text style={styles.caption}>{item.caption}</Text>
+          <Text
+            style={styles.caption}
+            testID={`passage-image-${item.id}-caption`}
+          >
+            {item.caption}
+          </Text>
         ) : null}
         {grown && item.attribution ? (
-          <Text style={styles.attribution}>{item.attribution}</Text>
+          <Text
+            style={styles.attribution}
+            testID={`passage-image-${item.id}-attribution`}
+          >
+            {item.attribution}
+          </Text>
         ) : null}
       </Pressable>
     </Animated.View>

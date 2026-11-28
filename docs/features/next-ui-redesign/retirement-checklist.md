@@ -90,7 +90,7 @@ No step waits on a later step.
 
 1. #907 is this checklist. It does not wait for implementations.
 2. #908, #909, #910, #911, #912, #913, and #914 may start once this checklist is accepted. They do not wait on each other.
-3. #915 starts after #908–#914 and proves those Next journeys. It can close before #916 and #917. It does not require #917 to be closed.
+3. #915 starts after #908–#914 and proves those Next journeys. It can close before #916 and #917. It does not require #917 to be closed. Slices: [915-maestro-next-plan.md](915-maestro-next-plan.md).
 4. #916 migrates saved Legacy UI choices only after #915.
 5. #917 then points startup and existing links at Next only, and removes the Legacy branch from the home and book route files.
 6. #918 then removes the second theme system. #913 does not wait for it.

@@ -1,32 +1,68 @@
-# Reach Home tabs from Sync / Settings / Prepare Offline / drafting.
+# Reach Next Home from Sync / Settings / Prepare Offline / Passage / Book.
 appId: com.eten.fluent
 tags:
   - ordered-readonly
 ---
 - runFlow: ../ensure/ensure-no-modal.yaml
-- runFlow:
-    when:
-      visible:
-        id: 'sync-screen'
+- repeat:
+    times: 8
+    while:
+      notVisible:
+        id: 'home-header'
     commands:
-      - back
-- runFlow:
-    when:
-      visible:
-        id: 'drafting-tab-bar'
-    commands:
-      - back
-- runFlow:
-    when:
-      visible:
-        id: 'settings-prepare-offline'
-    commands:
-      - back
+      - runFlow: ../ensure/ensure-no-modal.yaml
+      - runFlow:
+          when:
+            visible:
+              id: 'sync-screen'
+          commands:
+            - back
+      - runFlow:
+          when:
+            visible:
+              id: 'passage-close'
+          commands:
+            - back
+      - runFlow:
+          when:
+            visible:
+              id: 'passage-back'
+          commands:
+            - tapOn:
+                id: 'passage-back'
+      - runFlow:
+          when:
+            visible:
+              id: 'book-back'
+          commands:
+            - tapOn:
+                id: 'book-back'
+      - runFlow:
+          when:
+            visible:
+              id: 'observer-back'
+          commands:
+            - tapOn:
+                id: 'observer-back'
+      - runFlow:
+          when:
+            visible:
+              id: 'drafting-tab-bar'
+          commands:
+            - back
+      - runFlow:
+          when:
+            visible:
+              id: 'settings-prepare-offline'
+          commands:
+            - back
+      - waitForAnimationToEnd:
+          timeout: 1000
 # prepare-offline-screen: do NOT use system `back` here — ensure-no-modal
-# (above and below) already dismisses it with stack-header-back only, because
-# system Back can overshoot to the Android launcher. No redundant PFO branch.
+# already dismisses it with stack-header-back only, because system Back can
+# overshoot to the Android launcher.
 - runFlow: ../ensure/ensure-no-modal.yaml
 - extendedWaitUntil:
     visible:
-      id: 'home-tab-my-work'
+      id: 'home-header'
     timeout: 30000

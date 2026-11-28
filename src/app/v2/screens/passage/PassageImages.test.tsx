@@ -187,9 +187,17 @@ describe('PassageImages', () => {
     expect(within(map()).getByText('Jerusalem')).toBeTruthy();
     expect(within(map()).queryByText('The city and the temple')).toBeNull();
 
+    expect(screen.queryByTestId('passage-image-img-api-1-caption')).toBeNull();
+    expect(
+      screen.queryByTestId('passage-image-img-api-1-attribution'),
+    ).toBeNull();
     await grow('Jerusalem');
     expect(within(map()).getByText('The city and the temple')).toBeTruthy();
+    expect(screen.getByTestId('passage-image-img-api-1-caption')).toBeTruthy();
     expect(within(map()).getByText('Bible Journey Maps')).toBeTruthy();
+    expect(
+      screen.getByTestId('passage-image-img-api-1-attribution'),
+    ).toBeTruthy();
 
     await grow('Upper room');
     const room = screen.getByTestId('passage-image-img-api-2');

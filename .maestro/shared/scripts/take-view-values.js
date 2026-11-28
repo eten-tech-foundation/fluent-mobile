@@ -3,3 +3,4 @@ output.fixtureChapterId = (typeof MAESTRO_FIXTURE_CHAPTER_ID === 'undefined' || 
 output.takeViewAllMarker = (typeof MAESTRO_FIXTURE_TAKE_VIEW_ALL_MARKER === 'undefined' || MAESTRO_FIXTURE_TAKE_VIEW_ALL_MARKER === null) ? '' : String(MAESTRO_FIXTURE_TAKE_VIEW_ALL_MARKER);
 output.takeViewAllMarkerRe = output.takeViewAllMarker.length > 0 ? ('^' + String(output.takeViewAllMarker).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '$') : '';
 output.myWorkRowIdRe = output.fixtureChapterId.length > 0 ? ('^my-work-row-' + String(output.fixtureChapterId).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + '$') : '';
+output.homeNextIdRe = output.fixtureChapterId.length > 0 ? ('^home-next-' + String(output.fixtureChapterId).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&') + ':.*') : '';

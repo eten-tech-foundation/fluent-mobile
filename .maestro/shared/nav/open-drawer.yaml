@@ -1,10 +1,10 @@
-# Open the Home settings drawer (Accounts / More Settings).
+# Open the Next Home accounts sheet (Settings / sign-out live here).
 appId: com.eten.fluent
 ---
 - runFlow: goto-home.yaml
 - tapOn:
-    id: 'home-settings-button'
+    id: 'home-account'
 - extendedWaitUntil:
     visible:
-      id: 'settings-drawer-content'
+      id: 'home-accounts'
     timeout: 15000
