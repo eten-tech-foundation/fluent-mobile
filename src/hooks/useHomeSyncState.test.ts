@@ -1,11 +1,14 @@
 import { useEffect } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
+import * as syncEvents from '../services/syncEvents';
 import { useHomeSyncState } from './useHomeSyncState';
+
+const mockSearchParams: { newUserLoading?: string } = {};
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn() }),
   useIsFocused: () => true,
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => mockSearchParams,
 }));
 
 jest.mock('./usePreferences', () => ({
@@ -69,12 +72,6 @@ jest.mock('../services/launchRecoveryGate', () => ({
   },
 }));
 
-jest.mock('../services/syncEvents', () => ({
-  onSyncComplete: () => () => {},
-  onSyncStart: () => () => {},
-  onUploadSessionEvent: () => () => {},
-}));
-
 jest.mock('../services/storage', () => ({
   getPrepareOfflineDownloadStarted: jest.fn(),
 }));
@@ -96,6 +93,8 @@ jest.mock('../utils/parseUserId', () => ({
 
 describe('useHomeSyncState', () => {
   beforeEach(() => {
+    delete mockSearchParams.newUserLoading;
+    syncEvents.emitSyncComplete();
     mockHomeFlags.reauthRequired = false;
     mockHomeFlags.hasResolved = true;
     mockHomeFlags.isOnline = true;
@@ -235,5 +234,74 @@ describe('useHomeSyncState', () => {
       expect(hook.result.current.showSessionExpiredBanner).toBe(true);
     });
     expect(hook.result.current.signInToSyncLabel).toBe('Sign in to sync');
+  });
+
+  it('drops the full-screen loader when the first sync ends while a later sync is still running', async () => {
+    mockSearchParams.newUserLoading = 'true';
+    const hook = await renderHook(
+      ({ active }: { active: boolean }) =>
+        useHomeSyncState({ postLoginSyncActive: active, userSwitchEpoch: 0 }),
+      { initialProps: { active: true } },
+    );
+    expect(hook.result.current.showLoading).toBe(true);
+
+    await act(async () => {
+      syncEvents.emitSyncStart();
+    });
+    expect(hook.result.current.showLoading).toBe(true);
+    expect(hook.result.current.isSyncingChapters).toBe(true);
+
+    await hook.rerender({ active: false });
+    await waitFor(() => {
+      expect(hook.result.current.showLoading).toBe(false);
+    });
+    // The route loader is gone; chapter reads still know a sync is in flight.
+    expect(hook.result.current.isSyncingChapters).toBe(true);
+  });
+
+  it('re-reads lists when an upload session completes, not on progress', async () => {
+    const hook = await renderHook(() =>
+      useHomeSyncState({ postLoginSyncActive: false, userSwitchEpoch: 0 }),
+    );
+    const before = hook.result.current.refreshKey;
+
+    await act(async () => {
+      syncEvents.emitUploadSessionEvent({ type: 'start', totalChapters: 1 });
+      syncEvents.emitUploadSessionEvent({
+        type: 'progress',
+        completedChapters: 0,
+        totalChapters: 1,
+      });
+    });
+    expect(hook.result.current.refreshKey).toBe(before);
+
+    await act(async () => {
+      syncEvents.emitUploadSessionEvent({ type: 'complete' });
+    });
+    expect(hook.result.current.refreshKey).toBe(before + 1);
+  });
+
+  it('drops the upload-session subscription when Home unmounts', async () => {
+    let subscriptions = 0;
+    const unsubscribe = jest.fn(() => {
+      subscriptions -= 1;
+    });
+    const spy = jest
+      .spyOn(syncEvents, 'onUploadSessionEvent')
+      .mockImplementation(() => {
+        subscriptions += 1;
+        return unsubscribe;
+      });
+
+    const hook = await renderHook(() =>
+      useHomeSyncState({ postLoginSyncActive: false, userSwitchEpoch: 0 }),
+    );
+    expect(spy).toHaveBeenCalled();
+    expect(subscriptions).toBeGreaterThan(0);
+    await hook.unmount();
+    expect(unsubscribe).toHaveBeenCalled();
+    expect(subscriptions).toBe(0);
+
+    spy.mockRestore();
   });
 });
