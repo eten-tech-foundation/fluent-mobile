@@ -349,7 +349,7 @@ thing reviewers check the screen against:
 
 | UI element | Status | Source | Offline? | Dev check |
 | --- | --- | --- | --- | --- |
-| Chapter list | Wired | `useProjectChapters` (`src/hooks/useProjectChapters.ts`) | Yes | Same hook, same sort |
+| Chapter list | Wired | `useMilestoneChapters` (`src/hooks/useMilestoneChapters.ts`) | Yes | Same hook, same sort |
 | Chapter progress ring | Available | `GET /projects/{projectId}/chapter-assignments/progress` | No | OK to add a `FluentAPI` method? |
 | Presence ("someone else is editing") | Missing on mobile | `POST /chapter-assignments/{id}/presence` (web only) | No | Follow-up #NNN |
 

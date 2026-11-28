@@ -39,7 +39,7 @@ Source audio (architecture, not a device pass): the passage player calls [`useSo
 | [`src/routes/`](../src/routes/) | Expo Router layouts/routes (auth + app groups, drawer) |
 | [`src/app/v2/screens/`](../src/app/v2/screens/) | Product screens: Home, book, passage, Observer |
 | [`src/app/screens/`](../src/app/screens/) | Retained operational screens: Settings, Sync, Prepare for offline |
-| [`src/app/tabs/`](../src/app/tabs/) | Login and forgot-password |
+| [`src/app/tabs/`](../src/app/tabs/) | Login, forgot-password, Privacy Policy, and Terms of Use |
 | [`src/components/`](../src/components/) | Shared `layout/` + `ui/` |
 | [`src/theme/`](../src/theme/) | One theme. Static `theme` is Next Hardware. `useTheme()` / `useThemedStyles()` from [`src/theme/useTheme`](../src/theme/useTheme.ts) follow Canvas and Accent ([ui-version-theming.md](guides/ui-version-theming.md)) |
 | [`src/navigation/`](../src/navigation/) | Auth session provider, href helpers, auth gate |
