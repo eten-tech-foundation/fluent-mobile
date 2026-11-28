@@ -3,8 +3,10 @@
 # preflight reports BLOCKED).
 # Prefer Next up (`home-next-{id}:…`); else Changes requested. The tiles
 # after the hero sit in a horizontal rail, so a vertical search can miss
-# one that is already in Next up. There is no Book-page fallback here — a
-# chapter outside those rails times out (Blocked).
+# one that is already in Next up. Next up only renders a few drafting
+# passages, so a chapter outside that window opens from its milestone book
+# (`MAESTRO_FIXTURE_MILESTONE_ID`). A caller that overrides
+# MAESTRO_FIXTURE_CHAPTER_ID must point that id at a chapter in that book.
 # Callers that pin a different chapter (resources empty/populated) must pass
 # `env: MAESTRO_FIXTURE_CHAPTER_ID` on `runFlow`; this helper copies env onto
 # output and would overwrite a caller-set output.fixtureChapterId.
@@ -44,27 +46,43 @@ tags:
         id: 'passage-header|observer-screen'
     commands:
       # Bring the section on screen, then the horizontal rail if the tile
-      # is past the hero and outside the viewport.
+      # is past the hero and outside the viewport. A miss is not a failure:
+      # the book path below opens a chapter the rail did not render.
       - scrollUntilVisible:
           element:
             id: 'home-next-up'
           direction: DOWN
           timeout: 30000
           visibilityPercentage: 50
+      - scrollUntilVisible:
+          element:
+            id: '^home-next-${output.fixtureChapterId}:.*'
+          direction: RIGHT
+          timeout: 15000
+          visibilityPercentage: 50
+          optional: true
       - runFlow:
           when:
-            notVisible:
+            visible:
               id: '^home-next-${output.fixtureChapterId}:.*'
           commands:
-            - scrollUntilVisible:
-                element:
-                  id: '^home-next-${output.fixtureChapterId}:.*'
-                direction: RIGHT
-                timeout: 30000
-                visibilityPercentage: 50
-      - runFlow: ../ensure/ensure-no-modal.yaml
-      - tapOn:
-          id: '^home-next-${output.fixtureChapterId}:.*'
+            - runFlow: ../ensure/ensure-no-modal.yaml
+            - tapOn:
+                id: '^home-next-${output.fixtureChapterId}:.*'
+- runFlow:
+    when:
+      notVisible:
+        id: 'passage-header|observer-screen'
+    commands:
+      # Books sit above Next up. The book helper only searches downward.
+      - scrollUntilVisible:
+          element:
+            id: '^home-book-${MAESTRO_FIXTURE_MILESTONE_ID}:.*'
+          direction: UP
+          timeout: 20000
+          visibilityPercentage: 50
+          optional: true
+      - runFlow: open-fixture-chapter-from-milestone.yaml
 - extendedWaitUntil:
     visible:
       id: 'passage-header|observer-screen'
