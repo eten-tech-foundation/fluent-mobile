@@ -106,6 +106,7 @@ function setupEngines() {
 }
 
 async function stopAfterStart(hookResult: { current: VerseAudioResult }) {
+  await waitFor(() => expect(hookResult.current.takesLoaded).toBe(true));
   await act(async () => {
     await hookResult.current.start();
   });
@@ -254,6 +255,7 @@ describe('useVerseAudio chapter claim (#268 / #270)', () => {
         }),
       );
 
+      await waitFor(() => expect(result.current.takesLoaded).toBe(true));
       await act(async () => {
         await result.current.start();
       });

@@ -185,6 +185,8 @@ const idleAudio: VerseAudioApi = {
   selectedTake: null,
   canRecordNewTake: true,
   playingTakeId: null,
+  takesLoaded: true,
+  retryTakesLoad: jest.fn(),
   loadedTakeId: null,
   playbackStatus: 'idle' as const,
   errorMessage: null,
@@ -196,6 +198,7 @@ const idleAudio: VerseAudioApi = {
   pause: jest.fn(),
   resume: jest.fn(),
   stop: jest.fn(),
+  isStopPending: jest.fn(() => false),
   discardCapture: jest.fn().mockResolvedValue(undefined),
   playTake: jest.fn(),
   playStitched: jest.fn(),
@@ -359,6 +362,52 @@ describe('RecordTab', () => {
       },
       { timeout: 3000 },
     );
+  });
+
+  it('keeps Record disabled while the active take query is loading', async () => {
+    mockUseVerseAudio.mockReturnValue({ ...idleAudio, takesLoaded: false });
+
+    renderTab();
+    // Past the Bible-text gate, so only the take-loading gate can disable it.
+    await waitForCaptureReady();
+
+    expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    fireEvent.press(screen.getByTestId('record-start-button'));
+    expect(idleAudio.start).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed take load from the Record control', async () => {
+    const retryTakesLoad = jest.fn();
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'error',
+      takesLoaded: false,
+      retryTakesLoad,
+    });
+
+    renderTab();
+    await waitForCaptureReady();
+    fireEvent.press(screen.getByTestId('record-start-button'));
+
+    expect(retryTakesLoad).toHaveBeenCalledTimes(1);
+    expect(idleAudio.start).not.toHaveBeenCalled();
+  });
+
+  it('keeps Record off at the take cap after an error that is not a failed load', async () => {
+    // e.g. a failed delete or stop: the list is loaded and still full.
+    mockUseVerseAudio.mockReturnValue({
+      ...idleAudio,
+      state: 'error',
+      takesLoaded: true,
+      canRecordNewTake: false,
+    });
+
+    renderTab();
+    await waitForCaptureReady();
+
+    expect(screen.getByTestId('record-start-button')).toBeDisabled();
+    fireEvent.press(screen.getByTestId('record-start-button'));
+    expect(idleAudio.start).not.toHaveBeenCalled();
   });
 
   it('disables record until bible text resolves for the active verse', async () => {
