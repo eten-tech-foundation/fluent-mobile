@@ -2,9 +2,8 @@ import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { RoundButton, type RoundButtonIconProps } from './RoundButton';
-import { legacyTheme, resolveTheme } from '../../theme';
+import { resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
-import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
 import { ColorModeScope } from '../../theme/useTheme';
 
 jest.mock('../../services/storage', () => ({
@@ -23,8 +22,7 @@ function ColorIcon({ color }: RoundButtonIconProps) {
   return <Text testID="round-icon">{color}</Text>;
 }
 
-const renderWithPreferences = (ui: React.ReactElement) =>
-  render(ui, { wrapper: UiVersionPreferenceProvider });
+const renderWithPreferences = (ui: React.ReactElement) => render(ui);
 
 describe('RoundButton', () => {
   beforeEach(() => {
@@ -73,7 +71,7 @@ describe('RoundButton', () => {
     expect(button.props.accessibilityState).toMatchObject({ disabled: true });
     expect(
       StyleSheet.flatten(screen.getByTestId('b').props.style),
-    ).toMatchObject({ opacity: legacyTheme.opacity.disabled });
+    ).toMatchObject({ opacity: resolveTheme().opacity.disabled });
   });
 
   it("isn't a button without onPress", async () => {
@@ -132,7 +130,7 @@ describe('RoundButton', () => {
       />,
     );
     expect(screen.getByTestId('round-icon')).toHaveTextContent(
-      resolveTheme('next', 'canvas').roles.fgPrimary,
+      resolveTheme('canvas').roles.fgPrimary,
     );
 
     await screen.rerender(
@@ -145,7 +143,7 @@ describe('RoundButton', () => {
       </ColorModeScope>,
     );
     expect(screen.getByTestId('round-icon')).toHaveTextContent(
-      resolveTheme('next', 'accent').roles.fgPrimary,
+      resolveTheme('accent').roles.fgPrimary,
     );
   });
 

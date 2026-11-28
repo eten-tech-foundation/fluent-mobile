@@ -15,7 +15,6 @@ import {
   FIRST_FRAME_BOOKS,
 } from './Books';
 import { resolveTheme } from '../../../../theme';
-import { UiVersionOverride } from '../../../../theme/useTheme';
 import { measureFace, ringFill } from '../../../../test/coverBadge';
 import type { HomeBookSummary } from '../../../../types/db/types';
 
@@ -130,15 +129,13 @@ describe('Books', () => {
 
   it('draws every book on the darker night ground', async () => {
     await render(
-      <UiVersionOverride value="next">
-        <Books
-          books={[book(), book({ key: '1:1', bookId: 1, bookName: 'Genesis' })]}
-          onOpen={jest.fn()}
-        />
-      </UiVersionOverride>,
+      <Books
+        books={[book(), book({ key: '1:1', bookId: 1, bookName: 'Genesis' })]}
+        onOpen={jest.fn()}
+      />,
     );
 
-    const { surfaceSunken } = resolveTheme('next', 'canvas').roles;
+    const { surfaceSunken } = resolveTheme('canvas').roles;
     for (const key of ['1:41', '1:1']) {
       const face = screen.getByTestId(`home-book-${key}-cover-face`);
       expect(StyleSheet.flatten(face.props.style).backgroundColor).toBe(

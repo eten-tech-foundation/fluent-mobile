@@ -7,8 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { theme } from '../../theme';
 import { DraftingTabBar } from './DraftingTabBar';
-import { UiVersionOverride } from '../../theme/useTheme';
-import { resolveTheme } from '../../theme/uiVersion';
+import { resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
 jest.mock('../../services/storage', () => ({
@@ -27,9 +26,7 @@ describe('DraftingTabBar', () => {
   it('renders Bible, Resources, Record in Lovable order with active top indicator', async () => {
     const onTabChange = jest.fn();
     await render(
-      <UiVersionOverride value="legacy">
-        <DraftingTabBar activeTab="record" onTabChange={onTabChange} />
-      </UiVersionOverride>,
+      <DraftingTabBar activeTab="record" onTabChange={onTabChange} />,
     );
 
     const bar = screen.getByTestId('drafting-tab-bar');
@@ -54,8 +51,7 @@ describe('DraftingTabBar', () => {
 
 it('isolates Next drafting chrome and keeps safe insets and controlled selection', async () => {
   mockPreferenceStore();
-  const legacy = resolveTheme('legacy');
-  const next = resolveTheme('next');
+  const next = resolveTheme();
   const colors = next.colors as {
     tabBarBackground: string;
     primary: string;
@@ -66,13 +62,9 @@ it('isolates Next drafting chrome and keeps safe insets and controlled selection
   const original = { ...colors, md: spacing.md };
   const onTabChange = jest.fn();
   const tree = (
-    version: 'legacy' | 'next',
+    _version: 'legacy' | 'next',
     activeTab: 'bible' | 'resources' | 'record',
-  ) => (
-    <UiVersionOverride value={version}>
-      <DraftingTabBar activeTab={activeTab} onTabChange={onTabChange} />
-    </UiVersionOverride>
-  );
+  ) => <DraftingTabBar activeTab={activeTab} onTabChange={onTabChange} />;
   try {
     colors.tabBarBackground = '#123456';
     colors.primary = '#234567';
@@ -81,11 +73,11 @@ it('isolates Next drafting chrome and keeps safe insets and controlled selection
     spacing.md = 23;
     const { rerender } = await render(tree('legacy', 'bible'));
     expect(screen.getByTestId('drafting-tab-bar')).toHaveStyle({
-      backgroundColor: legacy.colors.tabBarBackground,
+      backgroundColor: next.colors.tabBarBackground,
       paddingBottom: 16,
     });
     expect(screen.getByText('Bible')).toHaveStyle({
-      color: legacy.colors.primary,
+      color: next.colors.primary,
     });
     await rerender(tree('next', 'bible'));
     expect(screen.getByTestId('drafting-tab-bar')).toHaveStyle({
@@ -118,11 +110,11 @@ it('isolates Next drafting chrome and keeps safe insets and controlled selection
     ).toBe(true);
     await rerender(tree('legacy', 'resources'));
     expect(screen.getByTestId('drafting-tab-bar')).toHaveStyle({
-      backgroundColor: legacy.colors.tabBarBackground,
+      backgroundColor: next.colors.tabBarBackground,
       paddingBottom: 16,
     });
     expect(screen.getByText('Resources')).toHaveStyle({
-      color: legacy.colors.primary,
+      color: next.colors.primary,
     });
   } finally {
     const { md, ...originalColors } = original;

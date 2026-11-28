@@ -2,7 +2,6 @@ import React from 'react';
 import { Text } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { BottomSheet } from './BottomSheet';
-import { UiVersionOverride } from '../../theme/useTheme';
 import { getByHostType } from '../../test/hostElements';
 
 jest.mock('react-native-gesture-handler', () => {
@@ -29,16 +28,14 @@ jest.mock('../../services/storage', () => ({
 
 function sheet(visible: boolean, onClose = jest.fn()) {
   return (
-    <UiVersionOverride value="next">
-      <BottomSheet
-        visible={visible}
-        onClose={onClose}
-        title="Accounts on this device"
-        testID="sheet"
-      >
-        <Text>Jordan Smith</Text>
-      </BottomSheet>
-    </UiVersionOverride>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title="Accounts on this device"
+      testID="sheet"
+    >
+      <Text>Jordan Smith</Text>
+    </BottomSheet>
   );
 }
 

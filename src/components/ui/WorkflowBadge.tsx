@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { WorkflowBadgeStage } from '../../types/db/types';
-import { theme, workflowStages } from '../../theme';
+import { theme } from '../../theme';
 import { getWorkflowStageLabel } from '../../utils/workflowStage';
 
 interface WorkflowBadgeProps {
@@ -8,7 +8,7 @@ interface WorkflowBadgeProps {
 }
 
 export function WorkflowBadge({ stage }: WorkflowBadgeProps) {
-  const { badgeBorder } = workflowStages[stage];
+  const { badgeBorder } = theme.workflowStages[stage];
 
   return (
     <View

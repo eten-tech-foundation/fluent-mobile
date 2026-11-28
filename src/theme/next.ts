@@ -1,4 +1,5 @@
-import type { Theme } from './legacy';
+import { DEFAULT_COLOR_MODE, type ColorMode } from './colorMode';
+import type { Theme } from './nextBaseline';
 import { nextBaseline } from './nextBaseline';
 import { buildElevation } from './elevation';
 import { buildFades } from './gradients';
@@ -188,7 +189,7 @@ function buildNextOverrides(mode: NextColorRoleMode): ThemeOverrides {
  *
  * Source: https://www.figma.com/design/VZ23XV2pxvIIAMn12wI4YI/ETEN-x-Fluent?node-id=2308-6
  */
-/** One mode, copied from the baseline so it shares no nested object with Legacy or another mode. */
+/** One mode, copied from the baseline so it shares no nested object with the baseline or another mode. */
 function createNextTheme(mode: NextColorRoleMode): Theme {
   const baseline = JSON.parse(JSON.stringify(nextBaseline)) as Theme;
   return applyThemeOverrides(baseline, buildNextOverrides(mode));
@@ -202,6 +203,13 @@ export const nextThemes: Record<NextColorRoleMode, Theme> = {
 
 /** Resolved Next theme in the default (Hardware) mode. */
 export const nextTheme: Theme = nextThemes[NEXT_DEFAULT_COLOR_MODE];
+
+/** Theme for one color-role mode. Hardware when the mode is omitted. */
+export function resolveTheme(mode: ColorMode = DEFAULT_COLOR_MODE): Theme {
+  return nextThemes[mode];
+}
+
+export type { Theme };
 
 export { nextPrimitives } from './nextPrimitives';
 export {

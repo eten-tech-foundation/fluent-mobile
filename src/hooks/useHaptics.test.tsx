@@ -1,12 +1,8 @@
-import React from 'react';
 import { Platform } from 'react-native';
-import { renderHook as renderHookBase } from '@testing-library/react-native';
+import { renderHook, act } from '@testing-library/react-native';
 import * as Haptics from 'expo-haptics';
 import { useHaptics } from './useHaptics';
 import { setMicActive } from '../audio/micActivity';
-import { UiVersionOverride } from '../theme/useTheme';
-import { UiVersionPreferenceProvider } from '../theme/UiVersionPreferenceProvider';
-import { mockPreferenceStore } from '../test/mocks/preferenceStore';
 
 jest.mock('expo-haptics', () => ({
   AndroidHaptics: {
@@ -20,26 +16,6 @@ jest.mock('expo-haptics', () => ({
   performAndroidHapticsAsync: jest.fn(() => Promise.resolve()),
 }));
 
-jest.mock('../services/storage', () => ({
-  kvStorage: {
-    getItemSync: jest.fn(),
-    setItemSync: jest.fn(),
-  },
-}));
-
-function renderHook<T>(
-  callback: () => T,
-  options?: { wrapper: React.ComponentType<{ children: React.ReactNode }> },
-) {
-  const Scope = options?.wrapper;
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <UiVersionPreferenceProvider>
-      {Scope ? <Scope>{children}</Scope> : children}
-    </UiVersionPreferenceProvider>
-  );
-  return renderHookBase(callback, { wrapper });
-}
-
 const perform = jest.mocked(Haptics.performAndroidHapticsAsync);
 
 describe('useHaptics', () => {
@@ -47,28 +23,19 @@ describe('useHaptics', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPreferenceStore();
     setMicActive('test', false);
     setMicActive('other', false);
+    setMicActive('recording-engine', false);
+    perform.mockImplementation(() => Promise.resolve());
   });
 
-  it('is a no-op in Legacy', async () => {
-    const { result } = await renderHook(() => useHaptics(), {
-      wrapper: ({ children }) => (
-        <UiVersionOverride value="legacy">{children}</UiVersionOverride>
-      ),
-    });
-    result.current.press();
-    expect(perform).not.toHaveBeenCalled();
-  });
-
-  it('fires the virtual key haptic in Next', async () => {
+  it('fires the virtual key haptic on press', async () => {
     const { result } = await renderHook(() => useHaptics());
     result.current.press();
     expect(perform).toHaveBeenCalledWith('virtual-key');
   });
 
-  it('maps toggle to the on and off haptics in Next', async () => {
+  it('maps toggle to the on and off haptics', async () => {
     const { result } = await renderHook(() => useHaptics());
     result.current.toggle(true);
     result.current.toggle(false);
@@ -78,7 +45,7 @@ describe('useHaptics', () => {
     ]);
   });
 
-  it('maps a drag pick-up and drop to the drag haptics in Next', async () => {
+  it('maps a drag pick-up and drop to the drag haptics', async () => {
     jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
     const { result } = await renderHook(() => useHaptics());
     result.current.dragStart();
@@ -100,16 +67,6 @@ describe('useHaptics', () => {
     ]);
   });
 
-  it('follows a UiVersionOverride even when the preference is Legacy', async () => {
-    const { result } = await renderHook(() => useHaptics(), {
-      wrapper: ({ children }) => (
-        <UiVersionOverride value="next">{children}</UiVersionOverride>
-      ),
-    });
-    result.current.press();
-    expect(perform).toHaveBeenCalledWith('virtual-key');
-  });
-
   it('stays silent until every mic owner has closed', async () => {
     setMicActive('test', true);
     setMicActive('other', true);
@@ -123,10 +80,23 @@ describe('useHaptics', () => {
     expect(perform).toHaveBeenCalledWith('virtual-key');
   });
 
-  it('stays silent while the mic is active', async () => {
-    setMicActive('test', true);
+  it('stays silent while a take is recording or paused', async () => {
+    setMicActive('recording-engine', true);
     const { result } = await renderHook(() => useHaptics());
     result.current.press();
+    result.current.toggle(true);
+    result.current.dragStart();
+    result.current.dragEnd();
     expect(perform).not.toHaveBeenCalled();
+  });
+
+  it('swallows a rejected haptic call', async () => {
+    perform.mockRejectedValueOnce(new Error('motor unavailable'));
+    const { result } = await renderHook(() => useHaptics());
+    expect(() => result.current.press()).not.toThrow();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(perform).toHaveBeenCalledWith('virtual-key');
   });
 });

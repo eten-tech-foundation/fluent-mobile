@@ -1,8 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
-import { UiVersionOverride } from '../../theme/useTheme';
-import { resolveTheme } from '../../theme/uiVersion';
+import { resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
 jest.mock('../../services/storage', () => ({
@@ -57,9 +56,8 @@ describe('SyncStatusIndicator', () => {
     },
   );
 
-  it('uses the scoped palette while status changes and Legacy return stay independent', async () => {
-    const legacy = resolveTheme('legacy');
-    const next = resolveTheme('next');
+  it('uses the active palette while status changes stay independent', async () => {
+    const next = resolveTheme();
     const colors = next.colors as {
       cardBackground: string;
       mutedForeground: string;
@@ -69,13 +67,9 @@ describe('SyncStatusIndicator', () => {
       mutedForeground: colors.mutedForeground,
     };
     const tree = (
-      version: 'legacy' | 'next',
+      _version: 'legacy' | 'next',
       status: 'pending' | 'paused' = 'pending',
-    ) => (
-      <UiVersionOverride value={version}>
-        <SyncStatusIndicator status={status} />
-      </UiVersionOverride>
-    );
+    ) => <SyncStatusIndicator status={status} />;
     try {
       Object.assign(colors, {
         cardBackground: '#123456',
@@ -83,9 +77,9 @@ describe('SyncStatusIndicator', () => {
       });
       const view = await render(tree('legacy'));
       const cloud = () => view.getByTestId('indicator-cloud');
-      expect(cloud().props.cloudColor).toBe(legacy.colors.mutedForeground);
+      expect(cloud().props.cloudColor).toBe(next.colors.mutedForeground);
       expect(view.root).toHaveStyle({
-        backgroundColor: legacy.colors.cardBackground,
+        backgroundColor: next.colors.cardBackground,
         width: 96,
         height: 96,
         borderRadius: 48,
@@ -107,9 +101,9 @@ describe('SyncStatusIndicator', () => {
         }),
       );
       await view.rerender(tree('legacy'));
-      expect(cloud().props.cloudColor).toBe(legacy.colors.mutedForeground);
+      expect(cloud().props.cloudColor).toBe(next.colors.mutedForeground);
       expect(view.root).toHaveStyle({
-        backgroundColor: legacy.colors.cardBackground,
+        backgroundColor: next.colors.cardBackground,
       });
     } finally {
       Object.assign(colors, original);

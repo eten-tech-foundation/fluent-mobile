@@ -5,19 +5,18 @@ jest.mock('../services/userPreferences', () => {
   throw new Error('Presentation theme must not import persistent preferences');
 });
 
-import { UiVersionOverride, useTheme } from './useTheme';
-import { legacyTheme } from './legacy';
-import { nextTheme } from './next';
+import { ColorModeScope, useTheme } from './useTheme';
+import { nextTheme, nextThemes } from './next';
 
 describe('presentation theme without native preference storage', () => {
-  it('resolves default and explicitly scoped themes without importing preferences', async () => {
+  it('resolves Hardware and a scoped mode without importing preferences', async () => {
     const { result } = await renderHook(() => useTheme());
     expect(result.current).toBe(nextTheme);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <UiVersionOverride value="legacy">{children}</UiVersionOverride>
+      <ColorModeScope value="canvas">{children}</ColorModeScope>
     );
     const scoped = await renderHook(() => useTheme(), { wrapper });
-    expect(scoped.result.current).toBe(legacyTheme);
+    expect(scoped.result.current).toBe(nextThemes.canvas);
   });
 });

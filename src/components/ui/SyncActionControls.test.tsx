@@ -6,8 +6,7 @@ import {
   SyncActionControls,
 } from './SyncActionControls';
 import { TRANSFER_OFFLINE_MESSAGE } from '../../constants/messages';
-import { UiVersionOverride } from '../../theme/useTheme';
-import { resolveTheme } from '../../theme/uiVersion';
+import { resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
 jest.mock('../../services/storage', () => ({
@@ -220,8 +219,7 @@ describe('SyncActionControls', () => {
   });
 
   it('isolates Next controls while controlled busy and status changes keep their semantics', async () => {
-    const legacy = resolveTheme('legacy');
-    const next = resolveTheme('next');
+    const next = resolveTheme();
     const colors = next.colors as {
       cardBackground: string;
       foreground: string;
@@ -238,19 +236,17 @@ describe('SyncActionControls', () => {
       radius: radius.lg,
     };
     const tree = (
-      version: 'legacy' | 'next',
+      _version: 'legacy' | 'next',
       overrides: Partial<React.ComponentProps<typeof SyncActionControls>> = {},
     ) => (
-      <UiVersionOverride value={version}>
-        <SyncActionControls
-          status="pending"
-          onPause={onPause}
-          onResume={onResume}
-          onCancel={onCancel}
-          onSyncNow={onSyncNow}
-          {...overrides}
-        />
-      </UiVersionOverride>
+      <SyncActionControls
+        status="pending"
+        onPause={onPause}
+        onResume={onResume}
+        onCancel={onCancel}
+        onSyncNow={onSyncNow}
+        {...overrides}
+      />
     );
     try {
       Object.assign(colors, {
@@ -269,12 +265,12 @@ describe('SyncActionControls', () => {
         within(view.getByTestId(id)).getByTestId('sync-action-test-icon').props
           .color;
       expect(button()).toHaveStyle({
-        backgroundColor: legacy.colors.primary,
-        borderRadius: legacy.radius.lg,
-        paddingVertical: legacy.spacing.sm,
+        backgroundColor: next.colors.primary,
+        borderRadius: next.radius.lg,
+        paddingVertical: next.spacing.sm,
       });
       expect(view.getByText('Sync Now')).toHaveStyle({
-        color: legacy.colors.primaryForeground,
+        color: next.colors.primaryForeground,
       });
       await view.rerender(tree('next'));
       expect(button()).toHaveStyle({
@@ -333,15 +329,15 @@ describe('SyncActionControls', () => {
       expect(onPause).toHaveBeenCalledTimes(1);
       await view.rerender(tree('legacy', { status: 'syncing', busy: true }));
       expect(view.getByTestId('sync-action-pause')).toHaveStyle({
-        backgroundColor: legacy.colors.cardBackground,
-        borderColor: legacy.colors.border,
-        borderRadius: legacy.radius.lg,
-        paddingVertical: legacy.spacing.sm,
+        backgroundColor: next.colors.cardBackground,
+        borderColor: next.colors.border,
+        borderRadius: next.radius.lg,
+        paddingVertical: next.spacing.sm,
       });
       expect(view.getByText('Pause')).toHaveStyle({
-        color: legacy.colors.foreground,
+        color: next.colors.foreground,
       });
-      expect(iconColor('sync-action-pause')).toBe(legacy.colors.foreground);
+      expect(iconColor('sync-action-pause')).toBe(next.colors.foreground);
       await view.rerender(tree('legacy', { status: 'allComplete' }));
       expect(view.toJSON()).toBeNull();
     } finally {

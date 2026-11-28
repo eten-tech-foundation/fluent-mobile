@@ -3,7 +3,6 @@ import { AccessibilityInfo, StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Banner } from './Banner';
 import { resolveTheme } from '../../theme';
-import { UiVersionOverride } from '../../theme/useTheme';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -12,20 +11,18 @@ jest.mock('../../services/storage', () => ({
   },
 }));
 
-const next = resolveTheme('next');
+const next = resolveTheme();
 
 describe('Banner', () => {
   it('shows the message on surface/inverse and runs its action', async () => {
     const onAction = jest.fn();
     await render(
-      <UiVersionOverride value="next">
-        <Banner
-          message="Session expired. Enter your password to keep syncing."
-          actionLabel="Sign in"
-          onAction={onAction}
-          testID="banner"
-        />
-      </UiVersionOverride>,
+      <Banner
+        message="Session expired. Enter your password to keep syncing."
+        actionLabel="Sign in"
+        onAction={onAction}
+        testID="banner"
+      />,
     );
 
     expect(

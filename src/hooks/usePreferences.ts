@@ -5,7 +5,6 @@ import {
   notifyUserPreferencesChanged,
   setUserPreferences,
   subscribeToUserPreferences,
-  type UiVersion,
   type UserPreferences,
 } from '../services/userPreferences';
 
@@ -21,11 +20,10 @@ export function usePreference<K extends keyof UserPreferences>(
 
 export function usePreferences() {
   const uploadOverCellular = usePreference('uploadOverCellular');
-  const uiVersion = usePreference('uiVersion');
 
   const preferences = useMemo(
-    (): UserPreferences => ({ uploadOverCellular, uiVersion }),
-    [uploadOverCellular, uiVersion],
+    (): UserPreferences => ({ uploadOverCellular }),
+    [uploadOverCellular],
   );
 
   useFocusEffect(
@@ -45,20 +43,11 @@ export function usePreferences() {
     [setPreferences],
   );
 
-  const setUiVersion = useCallback(
-    (version: UiVersion) => {
-      setPreferences({ uiVersion: version });
-    },
-    [setPreferences],
-  );
-
   return {
     preferences,
     uploadOverCellular,
-    uiVersion,
     setPreferences,
     setUploadOverCellular,
-    setUiVersion,
     reload: notifyUserPreferencesChanged,
   };
 }

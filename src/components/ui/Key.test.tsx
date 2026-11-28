@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Key, type KeyIconProps } from './Key';
-import { legacyTheme, resolveTheme } from '../../theme';
-import { ColorModeScope, UiVersionOverride } from '../../theme/useTheme';
+import { resolveTheme } from '../../theme';
+import { ColorModeScope } from '../../theme/useTheme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
-import { UiVersionPreferenceProvider } from '../../theme/UiVersionPreferenceProvider';
 
 jest.mock('../../services/storage', () => ({
   kvStorage: {
@@ -36,8 +35,7 @@ function LatchingKey() {
   );
 }
 
-const renderWithPreferences = (ui: React.ReactElement) =>
-  render(ui, { wrapper: UiVersionPreferenceProvider });
+const renderWithPreferences = (ui: React.ReactElement) => render(ui);
 
 describe('Key', () => {
   beforeEach(() => {
@@ -139,17 +137,15 @@ describe('Key', () => {
 
   it('fades only the icon when disabled, keeping the key solid', async () => {
     await renderWithPreferences(
-      <UiVersionOverride value="legacy">
-        <Key icon={ColorIcon} accessibilityLabel="Play" disabled testID="k" />
-      </UiVersionOverride>,
+      <Key icon={ColorIcon} accessibilityLabel="Play" disabled testID="k" />,
     );
 
     const [restIcon] = screen.getAllByTestId('key-icon');
-    expect(restIcon).toHaveTextContent(legacyTheme.roles.fgSecondary);
+    expect(restIcon).toHaveTextContent(resolveTheme().roles.fgSecondary);
     expect(
       StyleSheet.flatten(screen.getByTestId('k-icon').props.style),
     ).toMatchObject({
-      opacity: legacyTheme.opacity.disabled,
+      opacity: resolveTheme().opacity.disabled,
     });
     expect(
       StyleSheet.flatten(screen.getByTestId('k').props.style),
@@ -163,7 +159,7 @@ describe('Key', () => {
           <Key icon={ColorIcon} accessibilityLabel="Play" disabled />
         </ColorModeScope>,
       );
-      const roles = resolveTheme('next', mode).roles;
+      const roles = resolveTheme(mode).roles;
       const [restIcon] = screen.getAllByTestId('key-icon');
       expect(restIcon).toHaveTextContent(roles.fgSecondary);
       expect(roles.fgSecondary).not.toBe(roles.surfaceDefault);
@@ -174,21 +170,17 @@ describe('Key', () => {
   it('fades fg/primary over fg/secondary as the key goes down', async () => {
     jest.useFakeTimers();
     const { rerender } = await renderWithPreferences(
-      <UiVersionOverride value="legacy">
-        <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" />
-      </UiVersionOverride>,
+      <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" />,
     );
     const [restIcon, downIcon] = screen.getAllByTestId('key-icon');
-    expect(restIcon).toHaveTextContent(legacyTheme.roles.fgSecondary);
-    expect(downIcon).toHaveTextContent(legacyTheme.roles.fgPrimary);
+    expect(restIcon).toHaveTextContent(resolveTheme().roles.fgSecondary);
+    expect(downIcon).toHaveTextContent(resolveTheme().roles.fgPrimary);
     expect(screen.getByTestId('k-down-icon')).toHaveAnimatedStyle({
       opacity: 0,
     });
 
     await rerender(
-      <UiVersionOverride value="legacy">
-        <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" active />
-      </UiVersionOverride>,
+      <Key icon={ColorIcon} accessibilityLabel="Play" testID="k" active />,
     );
     await act(() => {
       jest.advanceTimersByTime(500);
@@ -198,35 +190,18 @@ describe('Key', () => {
     });
   });
 
-  it('follows independently scoped Next roles and returns to Legacy at runtime', async () => {
-    const roles = resolveTheme('next').roles as { fgSecondary: string };
-    const original = roles.fgSecondary;
-    try {
-      roles.fgSecondary = '#123456';
-      const { rerender } = await renderWithPreferences(
-        <UiVersionOverride value="legacy">
-          <Key icon={ColorIcon} accessibilityLabel="Play" />
-        </UiVersionOverride>,
-      );
-      expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(
-        legacyTheme.roles.fgSecondary,
-      );
-      await rerender(
-        <UiVersionOverride value="next">
-          <Key icon={ColorIcon} accessibilityLabel="Play" />
-        </UiVersionOverride>,
-      );
-      expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent('#123456');
-      await rerender(
-        <UiVersionOverride value="legacy">
-          <Key icon={ColorIcon} accessibilityLabel="Play" />
-        </UiVersionOverride>,
-      );
-      expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(
-        legacyTheme.roles.fgSecondary,
-      );
-    } finally {
-      roles.fgSecondary = original;
-    }
+  it('follows a color mode and returns to Hardware', async () => {
+    const hardware = resolveTheme('hardware').roles.fgSecondary;
+    const canvas = resolveTheme('canvas').roles.fgSecondary;
+    expect(hardware).not.toBe(canvas);
+    const key = <Key icon={ColorIcon} accessibilityLabel="Play" />;
+    const { rerender } = await renderWithPreferences(
+      <ColorModeScope value="hardware">{key}</ColorModeScope>,
+    );
+    expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(hardware);
+    await rerender(<ColorModeScope value="canvas">{key}</ColorModeScope>);
+    expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(canvas);
+    await rerender(<ColorModeScope value="hardware">{key}</ColorModeScope>);
+    expect(screen.getAllByTestId('key-icon')[0]).toHaveTextContent(hardware);
   });
 });

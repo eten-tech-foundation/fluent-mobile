@@ -1,17 +1,4 @@
 export {
-  colors,
-  spacing,
-  radius,
-  typography,
-  workflowBadges,
-  workflowStages,
-  recordControlSizes,
-  shadows,
-  waveform,
-  hslToHex,
-} from './tokens';
-export type { WorkflowStageId } from './tokens';
-export {
   iconSizes,
   logoSize,
   headerLayout,
@@ -22,17 +9,11 @@ export {
   touchHitSlop,
   syncStatusIcon,
 } from './iconSpecs';
-export { homeListContent, listCard, workflowBadge } from './layout';
+export type { WorkflowStageId } from './tokens';
 
-export { legacyTheme, theme, type Theme } from './legacy';
-export {
-  DEFAULT_COLOR_MODE,
-  DEFAULT_UI_VERSION,
-  isUiVersion,
-  type ColorMode,
-  type UiVersion,
-} from './uiVersionTypes';
-export { resolveTheme } from './uiVersion';
+/** Static Next Hardware theme for module-level StyleSheets. */
+export { nextTheme as theme, resolveTheme, type Theme } from './next';
+export { DEFAULT_COLOR_MODE, type ColorMode } from './colorMode';
 
 // Runtime hooks live in `./useTheme` — import them from there (not this barrel)
-// so static `theme` consumers do not pull preference/storage into the module graph.
+// so static `theme` consumers do not pull React context into the module graph.

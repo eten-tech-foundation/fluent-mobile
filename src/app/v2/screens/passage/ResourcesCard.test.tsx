@@ -8,7 +8,7 @@ import {
   getByGestureTestId,
 } from 'react-native-gesture-handler/jest-utils';
 import type { ImagesMapsItem } from '../../../../types/resources/imagesMaps';
-import { resolveTheme } from '../../../../theme/uiVersion';
+import { resolveTheme } from '../../../../theme';
 import { getAllByHostType } from '../../../../test/hostElements';
 import { centerOffset, ResourcesCard } from './ResourcesCard';
 
@@ -83,7 +83,7 @@ jest.mock('react-native-safe-area-context', () => ({
 const GROWN = 500;
 const HEADER = 80;
 /** Open, it floats this far above the bottom edge (no gesture bar here). */
-const LIFT = resolveTheme('next').spacing.md;
+const LIFT = resolveTheme().spacing.md;
 /** Where it sits, against its place if it reached the bottom edge. */
 const OPEN = -LIFT;
 const DOCKED = GROWN - LIFT - HEADER;

@@ -1,21 +1,15 @@
 import { kvStorage } from './storage';
-import { DEFAULT_UI_VERSION, type UiVersion } from '../theme/uiVersionTypes';
 
 const PREFERENCE_KEYS = {
   UPLOAD_OVER_CELLULAR: 'pref_upload_over_cellular',
-  UI_VERSION: 'pref_ui_version',
 } as const;
-
-export type { UiVersion };
 
 export type UserPreferences = {
   uploadOverCellular: boolean;
-  uiVersion: UiVersion;
 };
 
 const DEFAULT_USER_PREFERENCES: UserPreferences = {
   uploadOverCellular: false,
-  uiVersion: DEFAULT_UI_VERSION,
 };
 
 type PreferencesListener = () => void;
@@ -28,35 +22,14 @@ function readUploadOverCellularFromStorage(): boolean {
   return kvStorage.getItemSync(PREFERENCE_KEYS.UPLOAD_OVER_CELLULAR) === 'true';
 }
 
-/**
- * Missing, invalid, legacy, and next values all resolve to Next on this read.
- * A present value other than Next is rewritten in place. A missing key stays
- * missing. No other preference key is touched.
- */
-function readUiVersionFromStorage(): UiVersion {
-  const stored = kvStorage.getItemSync(PREFERENCE_KEYS.UI_VERSION);
-  if (
-    stored !== null &&
-    stored !== undefined &&
-    stored !== DEFAULT_UI_VERSION
-  ) {
-    kvStorage.setItemSync(PREFERENCE_KEYS.UI_VERSION, DEFAULT_UI_VERSION);
-  }
-  return DEFAULT_UI_VERSION;
-}
-
 function refreshCachedPreferences(): UserPreferences {
   const uploadOverCellular = readUploadOverCellularFromStorage();
-  const uiVersion = readUiVersionFromStorage();
 
-  if (
-    cachedPreferences.uploadOverCellular === uploadOverCellular &&
-    cachedPreferences.uiVersion === uiVersion
-  ) {
+  if (cachedPreferences.uploadOverCellular === uploadOverCellular) {
     return cachedPreferences;
   }
 
-  cachedPreferences = { uploadOverCellular, uiVersion };
+  cachedPreferences = { uploadOverCellular };
   return cachedPreferences;
 }
 
@@ -110,10 +83,6 @@ export function setUserPreferences(updates: Partial<UserPreferences>): void {
     );
   }
 
-  if (updates.uiVersion !== undefined) {
-    kvStorage.setItemSync(PREFERENCE_KEYS.UI_VERSION, DEFAULT_UI_VERSION);
-  }
-
   notifyUserPreferencesChanged();
 }
 
@@ -123,12 +92,4 @@ export function getUploadOverCellular(): boolean {
 
 export function setUploadOverCellular(enabled: boolean): void {
   setUserPreferences({ uploadOverCellular: enabled });
-}
-
-export function getUiVersion(): UiVersion {
-  return getUserPreferenceValue('uiVersion');
-}
-
-export function setUiVersion(_version: UiVersion): void {
-  setUserPreferences({ uiVersion: DEFAULT_UI_VERSION });
 }

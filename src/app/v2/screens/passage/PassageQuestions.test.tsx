@@ -7,7 +7,6 @@ import {
   TRANSLATION_QUESTION_NO_ANSWER,
   TRANSLATION_QUESTIONS_LOAD_ERROR,
 } from '../../../../constants/messages';
-import { UiVersionOverride } from '../../../../theme/useTheme';
 import { PassageQuestions } from './PassageQuestions';
 import type { PassageQuestionsState } from './usePassageQuestions';
 
@@ -45,17 +44,15 @@ type Props = Partial<React.ComponentProps<typeof PassageQuestions>>;
 
 function sheet(props: Props = {}) {
   return (
-    <UiVersionOverride value="next">
-      <PassageQuestions
-        visible
-        scopeLabel="Mark 14:1-2"
-        scope="a"
-        state={READY}
-        onRetry={jest.fn()}
-        onClose={jest.fn()}
-        {...props}
-      />
-    </UiVersionOverride>
+    <PassageQuestions
+      visible
+      scopeLabel="Mark 14:1-2"
+      scope="a"
+      state={READY}
+      onRetry={jest.fn()}
+      onClose={jest.fn()}
+      {...props}
+    />
   );
 }
 

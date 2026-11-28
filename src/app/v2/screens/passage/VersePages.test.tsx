@@ -8,8 +8,9 @@ import {
   within,
 } from '@testing-library/react-native';
 import type { PassageVerse } from '../../../../hooks/usePassage';
-import { UiVersionOverride } from '../../../../theme/useTheme';
-import { resolveTheme } from '../../../../theme/uiVersion';
+import { ColorModeScope } from '../../../../theme/useTheme';
+import { resolveTheme } from '../../../../theme';
+import type { ColorMode } from '../../../../theme';
 import type { ScriptNotes } from './noteWords';
 import type { VerseSteps } from './useRecorder';
 import { VersePages } from './VersePages';
@@ -177,10 +178,10 @@ describe('VersePages', () => {
       unplaced: 0,
       unplacedAt: new Map(),
     };
-    const page = (version: 'next' | 'legacy' = 'next') => (
-      <UiVersionOverride value={version}>
+    const page = (mode: ColorMode = 'hardware') => (
+      <ColorModeScope value={mode}>
         <VersePages steps={steps()} notes={notes} />
-      </UiVersionOverride>
+      </ColorModeScope>
     );
     const lineHeights = () => {
       const text = screen.getByLabelText('Verse 11 text');
@@ -232,20 +233,21 @@ describe('VersePages', () => {
       expectLine(40);
     });
 
-    it('still follows a theme change at the current text size', async () => {
+    it('keeps the capped line height when the color mode changes', async () => {
       await mounted();
       await setFontScale(2);
-      await screen.rerender(page('legacy'));
+      await screen.rerender(page('canvas'));
 
-      const legacy = resolveTheme('legacy');
-      const next = resolveTheme('next');
+      const hardware = resolveTheme('hardware');
+      const canvas = resolveTheme('canvas');
       const text = StyleSheet.flatten(
         screen.getByLabelText('Verse 11 text').props.style as TextStyle,
       );
-      expect(legacy.roles.fgPrimary).not.toBe(next.roles.fgPrimary);
-      expect(text.color).toBe(legacy.roles.fgPrimary);
+      expect(canvas.roles.fgPrimary).not.toBe(hardware.roles.fgPrimary);
+      expect(canvas.type.lead.lineHeight).toBe(hardware.type.lead.lineHeight);
+      expect(text.color).toBe(canvas.roles.fgPrimary);
       expect(text.lineHeight).toBeCloseTo(
-        (legacy.type.lead.lineHeight * 1.3) / 2,
+        (canvas.type.lead.lineHeight * 1.3) / 2,
       );
     });
   });

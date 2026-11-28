@@ -7,8 +7,7 @@ import {
   SettingsSegmentedRow,
   SettingsToggleRow,
 } from './SettingsListRow';
-import { UiVersionOverride } from '../../theme/useTheme';
-import { resolveTheme } from '../../theme/uiVersion';
+import { resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import { getByHostType } from '../../test/hostElements';
 
@@ -24,8 +23,7 @@ jest.mock('lucide-react-native', () => {
   };
 });
 
-const legacy = resolveTheme('legacy');
-const next = resolveTheme('next');
+const next = resolveTheme();
 const nextColors = next.colors as {
   foreground: string;
   mutedForeground: string;
@@ -37,9 +35,7 @@ const nextColors = next.colors as {
   destructive: string;
 };
 const originalColors = { ...nextColors };
-const scope = (version: 'legacy' | 'next', child: React.ReactNode) => (
-  <UiVersionOverride value={version}>{child}</UiVersionOverride>
-);
+const scope = (child: React.ReactElement) => child;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -60,7 +56,6 @@ afterEach(() => Object.assign(nextColors, originalColors));
 it('dims a row that mounts disabled', async () => {
   await render(
     scope(
-      'legacy',
       <SettingsNavigationRow
         title="Navigate"
         subtitle="Enabled detail"
@@ -89,21 +84,21 @@ it('scopes navigation colors while disabled and press behavior stays controlled'
       testID="navigation-row"
     />
   );
-  const { rerender } = await render(scope('legacy', row()));
+  const { rerender } = await render(scope(row()));
   expect(screen.getByText('Navigate')).toHaveStyle({
-    color: legacy.colors.foreground,
+    color: next.colors.foreground,
   });
   expect(screen.getByTestId('navigation-row')).toHaveStyle({
-    paddingHorizontal: legacy.spacing.lg,
-    paddingVertical: legacy.spacing.md,
+    paddingHorizontal: next.spacing.lg,
+    paddingVertical: next.spacing.md,
   });
-  await rerender(scope('next', row()));
+  await rerender(scope(row()));
   expect(screen.getByText('Navigate')).toHaveStyle({ color: '#123456' });
   expect(screen.getByText('Enabled detail')).toHaveStyle({ color: '#234567' });
   expect(screen.getByTestId('row-chevron').props.color).toBe('#234567');
   await fireEvent.press(screen.getByTestId('navigation-row'));
   expect(onPress).toHaveBeenCalledTimes(1);
-  await rerender(scope('next', row(true)));
+  await rerender(scope(row(true)));
   expect(screen.getByText('Navigate')).toHaveStyle({ color: '#234567' });
   expect(
     screen.getByTestId('navigation-row').props.accessibilityState.disabled,
@@ -112,9 +107,9 @@ it('scopes navigation colors while disabled and press behavior stays controlled'
   expect(screen.queryByTestId('row-chevron')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-row'));
   expect(onPress).toHaveBeenCalledTimes(1);
-  await rerender(scope('legacy', row()));
+  await rerender(scope(row()));
   expect(screen.getByText('Navigate')).toHaveStyle({
-    color: legacy.colors.foreground,
+    color: next.colors.foreground,
   });
 });
 
@@ -135,12 +130,12 @@ it('scopes Switch colors without changing controlled value or callback', async (
       testID="toggle-row"
     />
   );
-  const { rerender } = await render(scope('legacy', row(false)));
+  const { rerender } = await render(scope(row(false)));
   expect(trackColors()).toEqual({
-    false: legacy.colors.border,
-    true: legacy.colors.primary,
+    false: next.colors.border,
+    true: next.colors.primary,
   });
-  await rerender(scope('next', row(false)));
+  await rerender(scope(row(false)));
   expect(trackColors()).toEqual({
     false: '#56789a',
     true: '#345678',
@@ -150,11 +145,11 @@ it('scopes Switch colors without changing controlled value or callback', async (
   expect(getByHostType('RCTSwitch').props.value).toBe(false);
   await fireEvent(getByHostType('RCTSwitch'), 'valueChange', true);
   expect(onValueChange).toHaveBeenCalledWith(true);
-  await rerender(scope('next', row(true)));
+  await rerender(scope(row(true)));
   expect(getByHostType('RCTSwitch').props.value).toBe(true);
-  await rerender(scope('legacy', row(true)));
+  await rerender(scope(row(true)));
   expect(getByHostType('RCTSwitch').props.thumbTintColor).toBe(
-    legacy.colors.primaryForeground,
+    next.colors.primaryForeground,
   );
 });
 
@@ -173,11 +168,11 @@ it('scopes segmented selection while responding to value changes without theme c
       testID="unit"
     />
   );
-  const { rerender } = await render(scope('legacy', row('verse')));
+  const { rerender } = await render(scope(row('verse')));
   expect(screen.getByTestId('unit-verse')).toHaveStyle({
-    backgroundColor: legacy.colors.background,
+    backgroundColor: next.colors.background,
   });
-  await rerender(scope('next', row('verse')));
+  await rerender(scope(row('verse')));
   expect(screen.getByTestId('unit-verse')).toHaveStyle({
     backgroundColor: '#6789ab',
   });
@@ -185,7 +180,7 @@ it('scopes segmented selection while responding to value changes without theme c
   expect(screen.getByText('Pericope')).toHaveStyle({ color: '#234567' });
   await fireEvent.press(screen.getByTestId('unit-pericope'));
   expect(onValueChange).toHaveBeenCalledWith('pericope');
-  await rerender(scope('next', row('pericope')));
+  await rerender(scope(row('pericope')));
   expect(
     screen.getByTestId('unit-pericope').props.accessibilityState.selected,
   ).toBe(true);
@@ -197,9 +192,9 @@ it('scopes segmented selection while responding to value changes without theme c
   });
   expect(screen.getByText('Pericope')).toHaveStyle({ color: '#123456' });
   expect(screen.getByText('Verse')).toHaveStyle({ color: '#234567' });
-  await rerender(scope('legacy', row('pericope')));
+  await rerender(scope(row('pericope')));
   expect(screen.getByText('Pericope')).toHaveStyle({
-    color: legacy.colors.foreground,
+    color: next.colors.foreground,
   });
 });
 
@@ -213,18 +208,18 @@ it('scopes destructive text without changing press behavior', async () => {
       testID="destructive-row"
     />
   );
-  const { rerender } = await render(scope('legacy', row));
+  const { rerender } = await render(scope(row));
   expect(screen.getByText('Destructive action')).toHaveStyle({
-    color: legacy.colors.destructive,
+    color: next.colors.destructive,
   });
-  await rerender(scope('next', row));
+  await rerender(scope(row));
   expect(screen.getByText('Destructive action')).toHaveStyle({
     color: '#89abcd',
   });
   await fireEvent.press(screen.getByTestId('destructive-row'));
   expect(onPress).toHaveBeenCalledTimes(1);
-  await rerender(scope('legacy', row));
+  await rerender(scope(row));
   expect(screen.getByText('Destructive action')).toHaveStyle({
-    color: legacy.colors.destructive,
+    color: next.colors.destructive,
   });
 });

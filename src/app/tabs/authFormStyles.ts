@@ -1,7 +1,7 @@
 import { Platform, StyleSheet } from 'react-native';
 import { theme } from '../../theme';
 
-const cardBackground = '#fffef9';
+const cardBackground = theme.colors.cardBackground;
 
 export const authFormStyles = StyleSheet.create({
   container: {

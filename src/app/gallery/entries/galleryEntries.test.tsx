@@ -9,7 +9,6 @@ import { WaveformEntry } from './WaveformEntry';
 import * as icons from '../../../components/ui/icons';
 import { UNDO_MS } from '../../../hooks/usePendingDelete';
 import { mockPreferenceStore } from '../../../test/mocks/preferenceStore';
-import { UiVersionOverride } from '../../../theme/useTheme';
 
 jest.mock('../../../assets/icons/trash-open.svg', () => {
   const MockReact = require('react');
@@ -30,7 +29,7 @@ function renderNext(node: React.ReactElement) {
         insets: { top: 0, left: 0, right: 0, bottom: 0 },
       }}
     >
-      <UiVersionOverride value="next">{node}</UiVersionOverride>
+      {node}
     </SafeAreaProvider>,
   );
 }

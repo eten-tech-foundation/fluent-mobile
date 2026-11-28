@@ -7,8 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { AccountSwitcherPanel } from './AccountSwitcherPanel';
 import { StyleSheet } from 'react-native';
-import { UiVersionOverride } from '../../theme/useTheme';
-import { resolveTheme } from '../../theme/uiVersion';
+import { resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import { getAllByHostType } from '../../test/hostElements';
 
@@ -279,9 +278,8 @@ describe('AccountSwitcherPanel', () => {
     expect(queryByTestId('account-switcher-add-account')).toBeNull();
   });
 
-  it('isolates Next panel colors and spacing while preserving Legacy and session behavior', async () => {
-    const legacy = resolveTheme('legacy');
-    const next = resolveTheme('next');
+  it('isolates panel colors and spacing while session behavior stays controlled', async () => {
+    const next = resolveTheme();
     const colors = next.colors as {
       background: string;
       foreground: string;
@@ -298,11 +296,7 @@ describe('AccountSwitcherPanel', () => {
       radius: radius.lg,
       titleSize: sizes.xl,
     };
-    const panel = (version: 'legacy' | 'next') => (
-      <UiVersionOverride value={version}>
-        <AccountSwitcherPanel visible onClose={onClose} />
-      </UiVersionOverride>
-    );
+    const panel = () => <AccountSwitcherPanel visible onClose={onClose} />;
     const surfaces = () => {
       const styles = getAllByHostType('View').map(node =>
         StyleSheet.flatten(node.props.style),
@@ -333,20 +327,20 @@ describe('AccountSwitcherPanel', () => {
       spacing.lg = 27;
       radius.lg = 29;
       sizes.xl = 31;
-      const { rerender } = await render(panel('legacy'));
+      const { rerender } = await render(panel());
       expect(surfaces()[0]).toMatchObject({
-        backgroundColor: legacy.colors.drawerOverlay,
+        backgroundColor: next.colors.drawerOverlay,
       });
       expect(surfaces()[1]).toMatchObject({
-        backgroundColor: legacy.colors.background,
-        borderTopLeftRadius: legacy.radius.lg,
-        paddingBottom: legacy.spacing.lg,
+        backgroundColor: next.colors.background,
+        borderTopLeftRadius: next.radius.lg,
+        paddingBottom: next.spacing.lg,
       });
       expect(screen.getByText('Accounts on this device')).toHaveStyle({
-        color: legacy.colors.foreground,
-        fontSize: legacy.typography.sizes.xl,
+        color: next.colors.foreground,
+        fontSize: next.typography.sizes.xl,
       });
-      await rerender(panel('next'));
+      await rerender(panel());
       expect(surfaces()[0]).toMatchObject({
         backgroundColor: 'rgba(1, 2, 3, 0.5)',
       });
@@ -369,20 +363,20 @@ describe('AccountSwitcherPanel', () => {
         borderTopColor: '#345678',
       });
       mockBottomInset = 11;
-      await rerender(panel('next'));
+      await rerender(panel());
       expect(surfaces()[1]).toMatchObject({ paddingBottom: 38 });
-      await rerender(panel('legacy'));
+      await rerender(panel());
       expect(surfaces()[0]).toMatchObject({
-        backgroundColor: legacy.colors.drawerOverlay,
+        backgroundColor: next.colors.drawerOverlay,
       });
       expect(surfaces()[1]).toMatchObject({
-        backgroundColor: legacy.colors.background,
-        borderTopLeftRadius: legacy.radius.lg,
-        paddingBottom: legacy.spacing.lg + 11,
+        backgroundColor: next.colors.background,
+        borderTopLeftRadius: next.radius.lg,
+        paddingBottom: next.spacing.lg + 11,
       });
       expect(screen.getByText('Accounts on this device')).toHaveStyle({
-        color: legacy.colors.foreground,
-        fontSize: legacy.typography.sizes.xl,
+        color: next.colors.foreground,
+        fontSize: next.typography.sizes.xl,
       });
       expect(mockGetCredentials).not.toHaveBeenCalled();
       expect(mockAuthTokenSet).not.toHaveBeenCalled();

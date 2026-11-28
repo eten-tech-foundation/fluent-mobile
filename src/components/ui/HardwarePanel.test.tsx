@@ -37,8 +37,7 @@ function Panel({ locked = false }: { locked?: boolean }) {
 describe('HardwarePanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // The panel only ever renders in Next.
-    mockPreferenceStore({ pref_ui_version: 'next' });
+    mockPreferenceStore();
   });
 
   it('flips between Listen and Record from the mode toggle', async () => {

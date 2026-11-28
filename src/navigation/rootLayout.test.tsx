@@ -47,10 +47,6 @@ jest.mock('../app/appStyles', () => ({ appStyles: { appRoot: {} } }));
 jest.mock('../theme/useTheme', () => ({
   useTheme: () => ({ colors: { background: '#ffffff' } }),
 }));
-jest.mock('../theme/UiVersionPreferenceProvider', () => ({
-  UiVersionPreferenceProvider: ({ children }: { children: React.ReactNode }) =>
-    children,
-}));
 jest.mock('../config/componentGallery', () => ({
   isComponentGalleryEnabled: () => false,
 }));

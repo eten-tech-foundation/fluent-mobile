@@ -1,7 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Dialog } from './Dialog';
-import { UiVersionOverride } from '../../theme/useTheme';
 import { getByHostType } from '../../test/hostElements';
 
 jest.mock('../../services/storage', () => ({
@@ -10,18 +9,16 @@ jest.mock('../../services/storage', () => ({
 
 function dialog(visible: boolean, onConfirm = jest.fn(), onCancel = jest.fn()) {
   return (
-    <UiVersionOverride value="next">
-      <Dialog
-        visible={visible}
-        title="Send Mark 14 to Peer Check?"
-        message="This marks Mark 14 as ready for Peer Check."
-        confirmLabel="Send"
-        onConfirm={onConfirm}
-        cancelLabel="Not yet"
-        onCancel={onCancel}
-        testID="dialog"
-      />
-    </UiVersionOverride>
+    <Dialog
+      visible={visible}
+      title="Send Mark 14 to Peer Check?"
+      message="This marks Mark 14 as ready for Peer Check."
+      confirmLabel="Send"
+      onConfirm={onConfirm}
+      cancelLabel="Not yet"
+      onCancel={onCancel}
+      testID="dialog"
+    />
   );
 }
 

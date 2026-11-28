@@ -4,7 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { PassageCover, type PassageCoverProps } from './PassageCover';
 import * as generator from './coverArt/generator';
 import { resolveTheme } from '../../theme';
-import { UiVersionOverride } from '../../theme/useTheme';
 import { measureFace } from '../../test/coverBadge';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 
@@ -76,11 +75,11 @@ describe('PassageCover', () => {
   });
 
   it('draws on the lighter surface ground', async () => {
-    await render(<UiVersionOverride value="next">{cover()}</UiVersionOverride>);
+    await render(cover());
 
     const face = screen.getByTestId('cover-face');
     expect(StyleSheet.flatten(face.props.style).backgroundColor).toBe(
-      resolveTheme('next', 'canvas').roles.surfaceDefault,
+      resolveTheme('canvas').roles.surfaceDefault,
     );
   });
 

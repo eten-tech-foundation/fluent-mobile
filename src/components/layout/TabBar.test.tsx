@@ -2,8 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { TabBar } from './TabBar';
 import { StyleSheet } from 'react-native';
-import { UiVersionOverride } from '../../theme/useTheme';
-import { resolveTheme } from '../../theme/uiVersion';
+import { resolveTheme } from '../../theme';
 import { mockPreferenceStore } from '../../test/mocks/preferenceStore';
 import { getAllByHostType } from '../../test/hostElements';
 
@@ -48,8 +47,7 @@ function tabContainer() {
 
 it('isolates scoped Next tab styles and updates activeTab without a theme change', async () => {
   mockPreferenceStore();
-  const legacy = resolveTheme('legacy');
-  const next = resolveTheme('next');
+  const next = resolveTheme();
   const colors = next.colors as {
     tabBarBackground: string;
     primary: string;
@@ -60,13 +58,9 @@ it('isolates scoped Next tab styles and updates activeTab without a theme change
   const original = { ...colors, md: spacing.md };
   const onTabChange = jest.fn();
   const tree = (
-    version: 'legacy' | 'next',
+    _version: 'legacy' | 'next',
     activeTab: 'projects' | 'myWork',
-  ) => (
-    <UiVersionOverride value={version}>
-      <TabBar activeTab={activeTab} onTabChange={onTabChange} />
-    </UiVersionOverride>
-  );
+  ) => <TabBar activeTab={activeTab} onTabChange={onTabChange} />;
   try {
     colors.tabBarBackground = '#123456';
     colors.primary = '#234567';
@@ -75,15 +69,15 @@ it('isolates scoped Next tab styles and updates activeTab without a theme change
     spacing.md = 23;
     const { rerender } = await render(tree('legacy', 'projects'));
     expect(tabContainer()).toMatchObject({
-      backgroundColor: legacy.colors.tabBarBackground,
-      borderBottomColor: legacy.colors.border,
+      backgroundColor: next.colors.tabBarBackground,
+      borderBottomColor: next.colors.border,
     });
     expect(screen.getByText('Milestones')).toHaveStyle({
-      color: legacy.colors.primary,
+      color: next.colors.primary,
     });
     expect(screen.getByTestId('home-tab-projects')).toHaveStyle({
-      paddingTop: legacy.spacing.md,
-      paddingBottom: legacy.spacing.md + 2,
+      paddingTop: next.spacing.md,
+      paddingBottom: next.spacing.md + 2,
       borderBottomWidth: 2,
     });
     await rerender(tree('next', 'projects'));
@@ -108,10 +102,10 @@ it('isolates scoped Next tab styles and updates activeTab without a theme change
     ).toBe(true);
     await rerender(tree('legacy', 'myWork'));
     expect(tabContainer()).toMatchObject({
-      backgroundColor: legacy.colors.tabBarBackground,
+      backgroundColor: next.colors.tabBarBackground,
     });
     expect(screen.getByText('My Work')).toHaveStyle({
-      color: legacy.colors.primary,
+      color: next.colors.primary,
     });
   } finally {
     const { md, ...originalColors } = original;

@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import ObserverDraftRoute from '../routes/(app)/(stack)/observer-draft';
-import { UiVersionOverride } from '../theme/useTheme';
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({
@@ -31,12 +30,8 @@ jest.mock('../app/v2/screens/ObserverScreen', () => ({
 }));
 
 describe('observer-draft route', () => {
-  it('shows the Next Observer screen when a subtree is pinned to Legacy', async () => {
-    await render(
-      <UiVersionOverride value="legacy">
-        <ObserverDraftRoute />
-      </UiVersionOverride>,
-    );
+  it('shows the Next Observer screen', async () => {
+    await render(<ObserverDraftRoute />);
     expect(screen.getByText('Next observer 1001 9')).toBeTruthy();
     expect(screen.queryByText('Legacy observer')).toBeNull();
   });
