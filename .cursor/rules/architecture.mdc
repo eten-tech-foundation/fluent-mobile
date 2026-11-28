@@ -43,10 +43,10 @@ alwaysApply: true
 
 ## Adding a screen
 
-1. Prefer a component in `src/app/screens/` for stack routes (or `src/app/tabs/` for nested drafting/list surfaces)
-2. Add a route file under `src/routes/(app)/(stack)/` or `src/routes/(auth)/`
-3. Add an `hrefs` helper in `src/navigation/hrefs.ts` when the screen takes params
-4. **Next UI screens** live in `src/app/v2/screens/`. Route files render them directly. There is one presentation theme (Next) with Hardware, Canvas, and Accent color modes — not a selectable Legacy version. There's no separate v2 route tree.
+1. Product screens live in `src/app/v2/screens/`. The route file under `src/routes/(app)/(stack)/` re-exports that screen. Do not branch the route on a UI version, and do not add a second route tree.
+2. Retained operational screens stay put and use the same theme: Settings, Sync, and Prepare for offline in `src/app/screens/`; login and forgot-password in `src/app/tabs/`.
+3. Add an `hrefs` helper in `src/navigation/hrefs.ts` when the screen takes params.
+4. One presentation theme (Hardware, Canvas, Accent). See [docs/guides/ui-version-theming.md](../../docs/guides/ui-version-theming.md). Auth, audio, SQLite, sync, downloads, and stage advance stay in their services.
 
 ## Database cautions
 
@@ -56,7 +56,9 @@ alwaysApply: true
 
 ## Navigation stack
 
-Authenticated routes live under `src/routes/(app)/` (Drawer + stack). Auth routes under `src/routes/(auth)/`. Pass IDs via search params / `hrefs`; load detail in screen `useEffect` / hooks. Sync and Settings are stack destinations; settings/accounts open via the Drawer (`UserSettingsMenu`).
+Authenticated routes live under `src/routes/(app)/` (drawer group + stack). Auth routes under `src/routes/(auth)/`. Pass IDs via search params / `hrefs`; load detail in screen hooks. Home, the book page, the passage, and Observer are the product routes. Sync and Prepare for offline are stack destinations.
+
+Accounts, Settings, legal pages, and log out open from the Home avatar sheet. Drawer swipe is off and the drawer rows are hidden. `verse-detail` is an adapter for old URLs: a saved recovery link redirects to the passage with `recoverSessionKey` and `recoverVerse`; a chapter link opens Observer or the passage. Paused-take markers in KV (`paused_take_markers_v1`) resume on that same passage. See [docs/features/next-ui-redesign/README.md](../../docs/features/next-ui-redesign/README.md).
 
 ## Native (Expo CNG, Android-only)
 

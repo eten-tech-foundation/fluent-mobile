@@ -58,10 +58,10 @@ reference/device fidelity remains unverified and is tracked separately in #738.
 | [guides/api-client-standard.md](./guides/api-client-standard.md) | current | API client contract |
 | [guides/recordings-sync-contract.md](./guides/recordings-sync-contract.md) | current | Recordings / sync contract |
 | [guides/pericope-set-bundling.md](./guides/pericope-set-bundling.md) | current | Pericope bundling |
-| [guides/ui-version-theming.md](./guides/ui-version-theming.md) | current | UI version / theming |
+| [guides/ui-version-theming.md](./guides/ui-version-theming.md) | current | One theme: Hardware, Canvas, Accent |
 | [documentation-hygiene.md](./documentation-hygiene.md) | current | Full inventory + ownership |
-| [features/next-ui-redesign/README.md](./features/next-ui-redesign/README.md) | design | Next UI redesign planning |
-| [features/next-ui-redesign/retirement-checklist.md](./features/next-ui-redesign/retirement-checklist.md) | design | #907 workflow parity checklist |
+| [features/next-ui-redesign/README.md](./features/next-ui-redesign/README.md) | current | Next UI routes, recovery, shared services |
+| [features/next-ui-redesign/retirement-checklist.md](./features/next-ui-redesign/retirement-checklist.md) | current | Route and workflow map after #916–#920 |
 | [features/next-ui-redesign/lovable-review.md](./features/next-ui-redesign/lovable-review.md) | design/historical | Original Lovable source review |
 | [features/next-ui-redesign/theme-figma-audit.md](./features/next-ui-redesign/theme-figma-audit.md) | design/historical | Theme Figma audit |
 | [features/record-tab/design/README.md](./features/record-tab/design/README.md) | design | Record tab design |

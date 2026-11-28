@@ -92,9 +92,9 @@ export const nextTypeStyles = {
 /**
  * Partial `Theme.typography` overrides, read from the named styles.
  * `sm`/`lg`/`xl` ← label/title/overline.
- * Do **not** map Figma `reading` (42) onto `sizes.display` — that key is the
- * record capture timer in Legacy. New text should use `Theme.type` instead.
- * `md` (16) and `xs` (12) have no Foundations style — left to Legacy via merge.
+ * Do **not** map Figma `reading` (42) onto `sizes.display` — that key stays
+ * the baseline record-timer size. New text should use `Theme.type` instead.
+ * `md` (16) and `xs` (12) have no Foundations style and stay on the baseline.
  */
 export const nextTypography = {
   fontFamily: 'System',

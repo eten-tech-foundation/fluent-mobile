@@ -1,61 +1,143 @@
-# Next UI redesign (v2)
+# Next UI
 
-> **Working draft.** The approach and the [v2 feature manifest](v2-feature-manifest.md)
-> are still changing as we prototype, review and learn from devices. Treat both as
-> the current direction, not settled decisions.
+The signed-in app is this UI. Home, the book page, the passage, and Observer
+are the product screens. Settings, Sync, Prepare for offline, login, and
+legal pages stay on their existing routes and use the same theme. There is
+no UI version switch and no classic drafting screen.
 
 ## Where things live
 
 | Doc | What it's for |
 | --- | --- |
-| [v2 feature manifest](v2-feature-manifest.md) | The plan: v1 features, gaps, backend parity, summit MVP, beta |
-| [Open questions](open-questions.md) | Product and design questions still to answer |
-| [Retirement checklist](retirement-checklist.md) | #907 workflow parity before classic routes go |
+| [Theme](../../guides/ui-version-theming.md) | Hardware, Canvas, Accent, script type, large text |
+| [Retirement checklist](retirement-checklist.md) | Route map and workflow owners after #916–#920 |
+| [QA process](../../guides/qa-process.md#next-nightly-scenarios) | Upgrade, offline, role, accessibility, and recovery on the nightly |
 | [Figma to component](../../guides/figma-to-component.md) | How a Figma component becomes code |
-| [UI version theming](../../guides/ui-version-theming.md) | Legacy vs Next tokens and color modes |
-| [Theme and Figma audit](theme-figma-audit.md) | How code tokens line up with Figma Foundations |
+| [Theme and Figma audit](theme-figma-audit.md) | How code tokens line up with Figma Foundations. Dated audit. |
+| [v2 feature manifest](v2-feature-manifest.md) | October 2026 plan. Historical. |
+| [Open questions](open-questions.md) | Dated design and product questions. Historical record of those answers. |
+
+## Routes
+
+Screens live in `src/app/v2/screens/`. The route file re-exports that screen.
+Params, the back stack, and `hrefs` stay on the existing paths. There is no
+`/v2` tree and no branch inside the route file.
+
+| Path | Screen | Who |
+| --- | --- | --- |
+| `(stack)/index` | `HomeScreen` | Signed-in home. Avatar opens Accounts. Sync status opens Sync. |
+| `(stack)/chapters` | `BookScreen` | One book. |
+| `(stack)/passage` | `PassageScreen` | Listen, Record, resources, questions, Send, recovery. |
+| `(stack)/observer-draft` | `ObserverScreen` | Read-only. Home and the book page get here from `resolveChapterOpen`. |
+| `(stack)/verse-detail` | Adapter | Old URLs only. Redirects into the passage or Observer. |
+| `(app)/settings` | `SettingsScreen` | Prepare for offline, cellular uploads, drafting unit, clear cache, add user, log out. |
+| `(stack)/sync` | `SyncScreen` | Sync, including the upload-notification tap. |
+| `(stack)/prepare-for-offline` | `PrepareForOfflineScreen` | Downloads. |
+| `(auth)/login`, `reauth`, `add-user` | `LoginScreen` | Sign-in. |
+
+`chapterOpen` decides a chapter tap: editable work opens the passage, an
+Observer grant plus project membership opens `observer-draft`, and a failed
+grant check does not open the editor. A chapter with no project does not open
+the editor. Roles: [roles and permissions](../../product-behavior/roles-and-permissions.md).
+
+The passage title sheet (`passage-title-sheet`) holds the book link, Send
+when this account may send (`passage-send`), Translation Questions, and
+Everyone's takes when another account has takes here. The Resources card is
+images and maps. Notes open from the script (Understanding). Record and Listen
+are the passage keys. The Official toggle selects the take that may replace
+another device's selection ([recordings sync contract](../../guides/recordings-sync-contract.md)).
+
+## Theme
+
+Hardware, Canvas, and Accent are color modes of one theme. The passage hero
+and player use Canvas. Note overlays use Accent. Chrome stays Hardware.
+Script type is Plus Jakarta Sans and Atkinson Hyperlegible Next, linked for
+Android in `app.config.ts`. Large-text behavior is
+`theme.fontScale.readingMax` (1.3) plus a hand-capped line height. Details:
+[theme guide](../../guides/ui-version-theming.md).
+
+## What stays shared
+
+These are not a second presentation. Retirement did not replace them:
+
+- Auth and launch: `AuthSessionProvider`, `authGate`, `useLaunchEntry`
+- Recording: `useRecordSession`, paused-take recovery (`pausedTakes`)
+- Listen: `useSourceAudio` (the passage player)
+- Observer grants: `userOrgGrants`, `getObserverDraftDestination`
+- Stages: stage policy and `stage_advance_queue`. Send on the passage reads that queue.
+- Sync, upload, and downloads
+- SQLite via `src/db/`
+
+## Saved links and recovery
+
+### Old `/verse-detail` URLs
+
+`src/routes/(app)/(stack)/verse-detail.tsx` classifies the link in
+`verseDetailLink.ts` and resolves it in `verseDetailChapter.ts`.
+
+| Link | Result |
+| --- | --- |
+| `recoverSessionKey` and `recoverVerse` | `resolveRecoveryHref` → passage with that key and verse. The passage keeps those recovery params. |
+| Chapter id and chapter name, no recovery | Observer when this account may only observe. Otherwise the passage at verse 1, with names read from the chapter. No recovery params. |
+| Missing chapter, no project, unreadable names, or the account changed while resolving | Stays on the adapter. Unread and stale offer **Try again**. Every safe state offers **Go back**. |
+| Malformed (no positive chapter id, or a recovery missing the key or verse) | "This link isn't valid." |
+
+The adapter never renders classic drafting.
+
+`hrefs.verseDetail` still builds this path so an already-saved link can be
+opened. New chapter navigation uses `hrefs.passage` or the observer href.
+
+### Paused-take markers
+
+`paused_take_markers_v1` in KV is a JSON array of `PausedTakeMarker`
+(`src/services/pausedTakes.ts`). A marker needs `sessionKey`, `elapsedMs`,
+`startedAt`, and string `segments`. Recovery also needs a positive
+`chapterAssignmentId` and `verseNumber`. Optional `capture` freezes the unit
+(verse or pericope) from when the take started. Optional `userId` is the
+account that paused it; markers from before that field are anyone's, and the
+launch prompt still refuses a marker owned by someone else.
+
+`resolveRecoveryHref` (`src/navigation/recoveryHref.ts`) opens the passage
+with the saved key and verse. It does not read today's drafting unit or where
+the passage now starts. Callers:
+
+- The signed-in layout's launch prompt (`useLaunchRecoveryPrompt`). Resume
+  navigates to the passage. A failed resume shows the same alert with
+  **Retry** and **Discard**.
+- The verse-detail recovery adapter, which copies the same href.
+
+| Status | Meaning |
+| --- | --- |
+| `open` | Passage href. |
+| `missing` | Marker or chapter is gone. |
+| `unread` | Names could not be read. Retry can try again. |
+| `stale` | The account changed during the read. The result must not be opened. |
 
 ## Design direction
 
-These come from the wayfinding prototype in the component gallery and are still
-being tested.
+From the wayfinding prototype. Still the visual rules for new components:
 
-- **Tactile means listen or record.** Raised hardware controls only show up in the
-  full-page player and the Now playing bar. Browsing screens stay flat.
-- **Each level has its own shape.** We borrow from music apps: a book is an artist,
-  its passages are albums, and each passage's listening steps are tracks. The
-  player is a full-page cover.
-- **Takes are the progress.** Status counts takes. Listening steps only get a
-  small dot until you've heard them.
-- **The computer voice is always labelled.** Text to speech fills in when there's
-  no recording, is never mistaken for one, and is off when the license forbids it.
-  Press and hold a passage, or use Hear all, to pick by ear.
-- **Status lives in the Now playing bar.** It only shows mid-session. A small wave
-  shows what's sounding (red for the mic, blue for the computer voice), and the
-  Key shows the one thing you can do next.
-- **No breadcrumbs, swipe paging or "do this next" callouts.**
+- **Tactile means listen or record.** Raised hardware controls show up in the
+  player. Browsing screens stay flat.
+- **Each level has its own shape.** A book is the container, its passages are
+  the next level, and the player is the full-page cover.
+- **Takes are the progress.**
+- **The computer voice is always labelled** when a later ticket connects it.
+  Text to speech is not a connected track yet (no API; see the manifest).
+- **No breadcrumbs, swipe paging, or "do this next" callouts.**
 
-## How we build
+## Still open
 
-- Components come from Figma Foundations through the
-  [figma-to-component guide](../../guides/figma-to-component.md). Patterns that
-  aren't Figma components are fine when they're built only from Foundations tokens
-  and components.
-- v2 screens live in `src/app/v2/screens/`. Route files under `(app)` pick the
-  Legacy or Next screen by UI version, so there's one signed-in shell.
-- v2 calls the same hooks and services as Legacy and doesn't change Legacy screens.
-- v2 ships as a beta behind Settings → UI version until it can be the default.
+Unbuilt Figma work stays linked. It is not a hidden screen in this app.
 
-## How we work
+- Voice-comment review rounds (#451, #703; [open questions](open-questions.md) Q21–Q23). Everyone's takes on the passage is the owner list, not that design.
+- FIA listened-progress tracks (open questions Q11, Q13).
+- Known device bugs that predate this UI stay on their issues (the manifest's carry-over list). Do not treat that list as re-verified.
 
-- **Full screens first, as working demos.** We build a screen whole on sample
-  data in the component gallery, try it on a device, and change direction
-  cheaply. Wiring to real data often comes later.
-- **What holds up gets split into PRs.** The components a screen needs land
-  first, then the screen wired to real hooks. PRs go into the theme branch,
-  `jskager/feature/next-ui-theme`, and stack when one builds on another. `main`
-  is merged into the theme branch every day or two, and one theme-to-`main` PR
-  lands after the summit.
-- The designer builds with an AI agent, and the devs review it like any other PR.
-- Work that needs QA references an issue. The rest of the v2 plan is tracked in
-  the manifest. Device QA happens on the nightly.
+## Historical
+
+The dual-route beta, the Settings version switch, and the `jskager/feature/next-ui-theme`
+stack are the October 2026 plan in the [manifest](v2-feature-manifest.md).
+Assessments under `docs/assessments/` and the Lovable review keep their
+observations. The word "legacy" on a hash format, a cron fallback, or a Metro
+fallback is a different term. Leave those.

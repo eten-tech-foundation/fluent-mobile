@@ -22,7 +22,7 @@ function style(
   };
 }
 
-/** Legacy sets overline and meta in caps; Next doesn't. */
+/** Overline and meta can be uppercase. Next passes `none`. */
 type MetaCase = 'uppercase' | 'none';
 
 export type TypeFamilies = {
@@ -61,7 +61,7 @@ export function buildTypeStyles(
     body: style(text, 18, 24, '400'),
     /** Verse numbers in chips. */
     label: style(text, 14, 20, '600'),
-    /** Passage title, eyebrows. In Legacy's `monospace`, 500 renders as 400. */
+    /** Passage title, eyebrows. Weight 500 needs a linked file or it renders as 400. */
     overline: style(meta, 20, 24, '500', metaCase),
     /** References and metadata under a title. */
     meta: style(meta, 14, 20, '400', metaCase),
@@ -70,7 +70,7 @@ export function buildTypeStyles(
 
 export type TypeStyleName = keyof ReturnType<typeof buildTypeStyles>;
 
-/** System families, kept by Legacy. */
+/** System families. The app theme uses `nextFontFamilies` in `nextFoundation.ts`. */
 export const systemFontFamilies: TypeFamilies = {
   display: undefined,
   text: undefined,

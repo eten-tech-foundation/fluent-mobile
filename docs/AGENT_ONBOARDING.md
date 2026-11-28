@@ -8,9 +8,9 @@ Quick map for Cursor agents, other coding tools, and new contributors. Verified 
 
 ## What this project is
 
-**Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database and restores the auth session, then shows the navigator. After login (or when the user triggers sync), it syncs Fluent API data into SQLite so translators can browse **projects → chapters → drafting** (Bible / Resources / Record). The **Record** tab captures verse audio, persists takes to the `recordings` table, and uploads pending takes via `recordingSync` + `uploadOrchestrator` (see **Repository layout** and [recordings-sync-contract.md](guides/recordings-sync-contract.md)).
+**Fluent Mobile** is an offline-first React Native companion app for Bible translation recording workflows. **Android-only permanently** — no iOS app. On launch it initializes a local SQLite database and restores the auth session, then shows the navigator. After login (or when the user triggers sync), it syncs Fluent API data into SQLite. Signed-in work is **Home → book → passage** (Listen and Record), with a read-only **Observer** screen when the account may only observe. The passage captures audio, persists takes to the `recordings` table, and uploads pending takes via `recordingSync` + `uploadOrchestrator` (see **Repository layout** and [recordings-sync-contract.md](guides/recordings-sync-contract.md)).
 
-Source audio (architecture, not a device pass): [`src/components/layout/SourceAudioShell.tsx`](../src/components/layout/SourceAudioShell.tsx) imports [`useSourceAudio`](../src/hooks/useSourceAudio.ts) and drives dock fetch/playback via that hook (FluentAPI source-audio + local cache). Scope is the drafting shell / Record-tab integration — not a claim that Nightly or hardware QA has signed off.
+Source audio (architecture, not a device pass): the passage player calls [`useSourceAudio`](../src/hooks/useSourceAudio.ts) (FluentAPI source-audio + local cache). That is not a claim that Nightly or hardware QA has signed off. Nightly scenarios: [qa-process.md](guides/qa-process.md#next-nightly-scenarios).
 
 ## Tech stack
 
@@ -37,10 +37,11 @@ Source audio (architecture, not a device pass): [`src/components/layout/SourceAu
 |------|---------|
 | [`index.js`](../index.js) | Entry: gesture-handler + `expo-router/entry` |
 | [`src/routes/`](../src/routes/) | Expo Router layouts/routes (auth + app groups, drawer) |
-| [`src/app/screens/`](../src/app/screens/) | Screen components: Home, Settings, Sync, Drafting, PrepareForOffline |
-| [`src/app/tabs/`](../src/app/tabs/) | Nested surfaces: ProjectsTab, MyWorkTab, BibleTab, RecordTab, auth/legal |
+| [`src/app/v2/screens/`](../src/app/v2/screens/) | Product screens: Home, book, passage, Observer |
+| [`src/app/screens/`](../src/app/screens/) | Retained operational screens: Settings, Sync, Prepare for offline |
+| [`src/app/tabs/`](../src/app/tabs/) | Login, forgot-password, Privacy Policy, and Terms of Use |
 | [`src/components/`](../src/components/) | Shared `layout/` + `ui/` |
-| [`src/theme/`](../src/theme/) | Design tokens — static `theme` is Legacy-pinned; import `useTheme()` / `useThemedStyles()` from [`src/theme/useTheme`](../src/theme/useTheme.ts) for runtime Legacy/Next ([ui-version-theming.md](guides/ui-version-theming.md)) |
+| [`src/theme/`](../src/theme/) | One theme. Static `theme` is Next Hardware. `useTheme()` / `useThemedStyles()` from [`src/theme/useTheme`](../src/theme/useTheme.ts) follow Canvas and Accent ([ui-version-theming.md](guides/ui-version-theming.md)) |
 | [`src/navigation/`](../src/navigation/) | Auth session provider, href helpers, auth gate |
 | [`src/services/api.ts`](../src/services/api.ts) | HTTP client (`FluentAPI`) — see [api-client-standard.md](guides/api-client-standard.md) |
 | [`src/services/sync.ts`](../src/services/sync.ts) | Sync orchestration, retries, KV counts |
@@ -197,7 +198,7 @@ Auth: email/password via `FluentAPI.signIn`; authenticated API calls use `Author
 - **Env:** `EXPO_PUBLIC_API_BASE_URL` in `.env`; read via `getApiBaseUrl()` from `src/config/apiBaseUrl.ts` — never commit `.env`. ESLint blocks direct `process.env` reads and legacy imports (`@env`, `react-native-fs`, `react-native-keychain`, Simform waveform) outside the config layer.
 - **Types:** API shapes in `src/types/api/`, DB in `src/types/db/`. Route hrefs/params in `src/navigation/hrefs.ts` / `routeParams.ts`.
 - **Prettier:** single quotes, trailing commas, `arrowParens: 'avoid'`.
-- **Styles:** Prefer **`useTheme()` / `useThemedStyles()` from `src/theme/useTheme`** for UI that must follow the active Legacy/Next UI version. The static **`theme`** export from `src/theme` is Legacy-pinned (existing module-level StyleSheets). Do not add new hardcoded hex colors in new StyleSheets. [`src/app/appStyles.ts`](../src/app/appStyles.ts) is legacy shared styles — migrate callers to tokens when you touch them; do not expand it with new hex. See [ui-version-theming.md](guides/ui-version-theming.md).
+- **Styles:** Prefer **`useTheme()` / `useThemedStyles()` from `src/theme/useTheme`** inside a `ColorModeScope` (Canvas or Accent). The static **`theme`** export from `src/theme` is Next Hardware for module-level StyleSheets. Do not add new hardcoded hex colors in new StyleSheets. [`src/app/appStyles.ts`](../src/app/appStyles.ts) is old shared styles — migrate callers to tokens when you touch them; do not expand it with new hex. See [ui-version-theming.md](guides/ui-version-theming.md).
 - **SVG:** import as React components (Metro SVG transformer).
 
 Keep changes **small and scoped** — avoid drive-by refactors.
@@ -218,8 +219,8 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 
 | Task | Start here |
 |------|------------|
-| New stack screen | Add a file under `src/routes/(app)/(stack)/` (or auth group), implement UI in `src/app/screens/` / `src/app/tabs/`, add an `hrefs` helper if needed |
-| Nested drafting/list UI | `src/app/tabs/` or `src/components/` |
+| New stack screen | Add a route file under `src/routes/(app)/(stack)/` that re-exports a screen in `src/app/v2/screens/`. Add an `hrefs` helper if it takes params. Do not branch the route on a UI version. |
+| Nested passage UI | `src/app/v2/screens/passage/` or `src/components/ui/` |
 | New API endpoint | `FluentAPI` in `api.ts`, then `sync.ts` step + `repository.ts` |
 | New table / column | `schema.ts` → prefer versioned migrations (`#110`) → repository inserts → queries → types |
 | Manual re-sync | Sync page / header sync → `useSync` / `syncAllUsers` |
@@ -237,7 +238,7 @@ When adding features: mock `op-sqlite`, navigation, and sync in screen tests fol
 | Native folders | `android/` is gitignored CNG output — customize via `app.config.ts` + plugins. No iOS project. |
 | Upload FG service | `modules/upload-sync-foreground` posts a real Android shade notification (`setOngoing`) so uploads can continue in background. Requires `npm run prebuild` after module/plugin changes; device QA is mandatory. |
 | File SHA-256 | `modules/file-sha256` hashes recordings and draft audio natively (`MessageDigest`, bounded buffer). `src/services/fileSha256.ts` falls back to the JS hasher when the module is not linked, so a JS-only bundle without `npm run prebuild` is correct but slow. |
-| Dual styles | `src/theme` vs legacy `appStyles.ts` hex — new UI must use tokens |
+| Dual styles | `src/theme` vs old `appStyles.ts` hex — new UI must use the Next theme |
 
 ## Open questions / TODOs
 

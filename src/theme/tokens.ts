@@ -1,6 +1,7 @@
 /**
- * Legacy design tokens — frozen baseline for the current UI.
- * Redesign / Next overrides belong in `src/theme/next.ts`, not here.
+ * Workflow stage ids and icon spacing. Screen color, type, and color modes
+ * live in `src/theme/next.ts` and `nextBaseline.ts`. Do not add presentation
+ * colors here.
  */
 
 /** Converts HSL (degrees, percent, percent) to hex for React Native StyleSheet. */

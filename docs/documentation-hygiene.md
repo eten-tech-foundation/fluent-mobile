@@ -41,9 +41,9 @@ them rather than weakening their rules.
 | 16 | [guides/qa-preview-testing.md](./guides/qa-preview-testing.md) | operational | Install nightly |
 | 17 | [guides/qa-multi-account-nightly.md](./guides/qa-multi-account-nightly.md) | operational | Multi-account nightly |
 | 18 | [guides/local-development-workflow.md](./guides/local-development-workflow.md) | operational | Dev vs Docker API |
-| 19–22 | api-client / recordings-sync / pericope / ui-version guides | current | Engineering contract guides |
-| 23–28 | [features/next-ui-redesign/](./features/next-ui-redesign/README.md) (6 files) | design/historical | Working drafts + dated Lovable / Figma reviews |
-| — | [features/next-ui-redesign/retirement-checklist.md](./features/next-ui-redesign/retirement-checklist.md) | design | #907 checklist. Added 2026-11-13. Not in the 2026-10-23 count. |
+| 19–22 | api-client / recordings-sync / pericope / theme guides | current | Engineering contract guides. The theme guide is one theme, three color modes |
+| 23–28 | [features/next-ui-redesign/](./features/next-ui-redesign/README.md) | mixed | README and the retirement checklist are current. Manifest, open questions, Lovable review, and the theme audit are historical |
+| — | [features/next-ui-redesign/retirement-checklist.md](./features/next-ui-redesign/retirement-checklist.md) | current | Route map after #916–#920. Added 2026-11-13 for #907. Not in the 2026-10-23 count. |
 | 29 | [features/record-tab/design/README.md](./features/record-tab/design/README.md) | design | Historical notice applied |
 | 30 | [assessments/README.md](./assessments/README.md) | historical | Assessment index; #717 ledger archive pointer |
 | 31–38 | [assessments/](./assessments/README.md) #526 audits (7 READMEs + 1 ticket) | historical | Matrices preserved |
