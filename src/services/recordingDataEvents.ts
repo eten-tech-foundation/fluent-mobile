@@ -4,8 +4,8 @@
  * Any recording-table mutation that affects pending/failed upload counts
  * (take saved, take deleted) bumps a monotonically increasing version so
  * every mounted `usePendingUploads` instance re-reads its counts from
- * SQLite. This keeps Home, the chapter screen, ViewProject and the Sync
- * page on one shared source instead of per-screen instances that only
+ * SQLite. This keeps Home, the book page, and the Sync page on one shared
+ * source instead of per-screen instances that only
  * refreshed on upload session events (#38, #101; audit #530 A.1/A.2/B.3/B.8).
  *
  * Dependency-free by design: `src/db` imports it, so it must not pull in

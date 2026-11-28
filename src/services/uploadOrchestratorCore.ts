@@ -519,8 +519,8 @@ export function createUploadOrchestrator(
       // not reset to zero (#600). Lock syncing before the claim push so Cancel
       // cannot start a second session (#611).
       if (stageOnly) {
-        // No take progress to show; HomeScreen refreshes on `complete` after
-        // the drain so a mounted My Work list can drop the yellow row (#257).
+        // No take progress to show; Home re-reads on `complete` after the
+        // drain so finished work leaves the lists (#257).
         // Claim-only reconnects take the same path (#886).
         phase = 'syncing';
         log.info('Upload session draining queued claims / stage advances', {

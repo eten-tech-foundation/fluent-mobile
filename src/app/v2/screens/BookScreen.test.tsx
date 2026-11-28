@@ -2,6 +2,7 @@ import React from 'react';
 import { FlatList } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import BookScreen from './BookScreen';
+import { PROJECT_CHAPTERS_EMPTY_MESSAGE } from '../../../constants/messages';
 import type { BookPassage, BookPassages } from '../../../hooks/useBookPassages';
 import { hrefs } from '../../../navigation/hrefs';
 import type { ProjectChapter } from '../../../types/db/types';
@@ -547,9 +548,35 @@ describe('BookScreen', () => {
     };
 
     await render(<BookScreen />);
+
+    expect(screen.getByText('Unable to load this project.')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('book-retry'));
 
     expect(mockRetry).toHaveBeenCalled();
+  });
+
+  it('shows the empty message when the milestone has no chapters', async () => {
+    mockChapters = [];
+
+    await render(<BookScreen />);
+
+    expect(screen.getByText(PROJECT_CHAPTERS_EMPTY_MESSAGE)).toBeTruthy();
+    expect(screen.queryByTestId('book-list')).toBeNull();
+    expect(screen.queryByTestId('book-retry')).toBeNull();
+  });
+
+  it('says the project unassigned you and does not offer retry', async () => {
+    mockLoadState = { loading: false, error: null, removed: true };
+
+    await render(<BookScreen />);
+
+    expect(
+      screen.getByText(
+        "You've been unassigned from this project. Go back to see your other work.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('book-retry')).toBeNull();
+    expect(screen.queryByTestId('book-list')).toBeNull();
   });
 
   it('goes back', async () => {

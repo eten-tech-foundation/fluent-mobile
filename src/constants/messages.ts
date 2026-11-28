@@ -23,12 +23,6 @@ export function formatUnuploadablePendingMessage(count: number): string {
 export const PROJECTS_EMPTY_MESSAGE =
   'No projects are available right now. Connect to the internet to sync and find available work.';
 
-export const MILESTONES_EMPTY_MESSAGE =
-  'No milestones are available right now. Connect to the internet to sync and find available work.';
-
-export const MY_WORK_EMPTY_MESSAGE =
-  "You don't have any chapters to work on right now. Check the Milestones tab to find available work.";
-
 /** Next Home has no Milestones tab to point to. */
 export const HOME_EMPTY_MESSAGE =
   "You don't have any chapters to work on right now. Connect to the internet to sync and find available work.";

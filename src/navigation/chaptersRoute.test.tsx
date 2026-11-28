@@ -21,14 +21,6 @@ jest.mock('../services/storage', () => ({
   },
 }));
 
-jest.mock('../app/tabs/ViewProject', () => ({
-  __esModule: true,
-  default: () => {
-    const { Text } = require('react-native');
-    return <Text>Legacy chapters</Text>;
-  },
-}));
-
 jest.mock('../app/v2/screens/BookScreen', () => ({
   __esModule: true,
   default: function NextBookRouteScreen() {
@@ -45,7 +37,6 @@ describe('chapters route', () => {
   it('shows the book page', async () => {
     await render(<ChaptersRoute />);
     expect(screen.getByText('Next book 9 3 5')).toBeTruthy();
-    expect(screen.queryByText('Legacy chapters')).toBeNull();
   });
 
   it('keeps project, unit and focus on the book href', () => {

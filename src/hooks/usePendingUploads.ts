@@ -21,8 +21,8 @@ export function usePendingUploads(refreshKey = 0): SyncStatusSnapshot & {
   hasFailedUploads: boolean;
   hasUnuploadablePending: boolean;
 } {
-  // Shared store (#530): every consumer — Home, chapter screen, ViewProject,
-  // Sync page — reads the same snapshot, so headers can never disagree.
+  // Shared store (#530): every consumer — Home, the book page, and Sync —
+  // reads the same snapshot, so headers can never disagree.
   const snapshot = useSyncExternalStore(
     subscribeToSyncStatusStore,
     getSyncStatusSnapshot,

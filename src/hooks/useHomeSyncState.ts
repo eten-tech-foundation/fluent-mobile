@@ -49,9 +49,9 @@ export interface HomeSyncState {
 }
 
 /**
- * Home's sync and session behavior, shared by Legacy and Next Home: the
- * loading state after sign-in or adding an account, the download-repair sync,
- * the Prepare for offline auto-prompt and the reauth banner.
+ * Home's sync and session behavior: the loading state after sign-in or
+ * adding an account, the download-repair sync, the Prepare for offline
+ * auto-prompt and the reauth banner.
  */
 export function useHomeSyncState({
   postLoginSyncActive,

@@ -14,14 +14,6 @@ jest.mock('../services/storage', () => ({
   },
 }));
 
-jest.mock('../app/screens/HomeScreen', () => ({
-  __esModule: true,
-  default: () => {
-    const { Text } = require('react-native');
-    return <Text>Legacy home</Text>;
-  },
-}));
-
 jest.mock('../app/v2/screens/HomeScreen', () => ({
   __esModule: true,
   default: function NextHomeRouteScreen() {
@@ -36,7 +28,6 @@ describe('home route', () => {
   it('shows Next Home', async () => {
     await render(<HomeRoute />);
     expect(screen.getByText('Next home true')).toBeTruthy();
-    expect(screen.queryByText('Legacy home')).toBeNull();
   });
 
   it('keeps the home href on this route, including its launch parameter', () => {
