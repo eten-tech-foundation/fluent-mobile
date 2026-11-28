@@ -53,7 +53,7 @@ export interface ReviewOwner {
 
 /**
  * Everyone's takes for the passage or verse Record is on, grouped by who
- * recorded them, as classic drafting's All Takes. Review plays and seeks the
+ * recorded them. Review plays and seeks the
  * tapped take only; it never selects, deletes or makes a take official.
  * Playback it started stops when it closes, the scope changes, or the take
  * is no longer one this account may see, and a play or seek that lands after

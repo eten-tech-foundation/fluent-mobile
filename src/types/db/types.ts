@@ -82,7 +82,7 @@ export interface MyWorkChapter {
   assignedUserId: number | null;
   peerCheckerId: number | null;
   /**
-   * Assigned → mutable verse-detail; observer → guarded read-only destination.
+   * Assigned → the passage; observer → guarded read-only destination.
    * Set only after verified eligibility (not status alone).
    */
   listAccess: MyWorkListAccess;

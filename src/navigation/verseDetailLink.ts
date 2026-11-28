@@ -9,8 +9,9 @@ import {
  * An existing `/verse-detail` URL. A saved recovery link opens the Next
  * passage through {@link resolveRecoveryHref}, using this link's chapter,
  * key and verse — not the drafting setting or where the passage now starts.
- * A chapter link with no recovery still opens classic drafting; #920 removes
- * that screen once nothing still needs it.
+ * A chapter link with no recovery opens that chapter in Next: the Observer
+ * screen when this account may only observe, otherwise the passage at the
+ * chapter's first verse. It never opens classic drafting.
  */
 export type VerseDetailLinkParams = {
   chapterId?: SearchParamValue;
@@ -28,9 +29,15 @@ export type VerseDetailRecovery = {
   sessionKey: string;
 };
 
+/** A chapter link with no recovery. Next opens it; classic drafting is gone. */
+export type VerseDetailChapter = {
+  kind: 'chapter';
+  chapterId: number;
+};
+
 export type VerseDetailClass =
   | VerseDetailRecovery
-  | { kind: 'classic' }
+  | VerseDetailChapter
   | { kind: 'invalid' };
 
 export type VerseDetailRecoveryResult =
@@ -63,7 +70,7 @@ export function classifyVerseDetailLink(
     if (parseOptionalString(params.chapterName) === undefined) {
       return { kind: 'invalid' };
     }
-    return { kind: 'classic' };
+    return { kind: 'chapter', chapterId };
   }
 
   const verse = positiveId(params.recoverVerse);

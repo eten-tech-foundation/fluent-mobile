@@ -36,7 +36,6 @@ export function HeroActions({
   onListen,
   onRecord,
   onDownload,
-  onOpenClassic,
 }: {
   passage: Ready;
   /** The passage's takes, live as they're recorded. */
@@ -55,7 +54,6 @@ export function HeroActions({
   onListen: () => void;
   onRecord: () => void;
   onDownload: () => void;
-  onOpenClassic?: () => void;
 }) {
   const styles = useThemedStyles(t => ({
     actions: {
@@ -113,7 +111,6 @@ export function HeroActions({
             ? [{ id: 'blocked', message: recordBlocked }, ...notices]
             : notices
         }
-        onOpenClassic={onOpenClassic}
         testID="passage-notices"
       />
       {/* Like a music app: one labelled primary, plain circles beside. */}

@@ -80,7 +80,7 @@ export const colors = {
   destructive: '#DC2626',
   /** Drawer / modal scrim over app content. */
   drawerOverlay: 'rgba(10, 18, 40, 0.44)',
-  /** Record button + live-recording waveform (drafting Record tab). */
+  /** Record button + live-recording waveform. */
   recordAccent: '#DC2626',
   /** Progress / paused waveform fill (Lovable `--waveform-active`). */
   waveformActive: hslToHex(219, 87, 59),

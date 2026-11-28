@@ -235,7 +235,7 @@ export function createPlaybackEngine(deps: PlaybackEngineDeps): PlaybackEngine {
       // after the caller asked to stop (same generation counter as load/resume).
       ++loadGeneration;
       // Do not call player.remove() here — usePlaybackEngine owns a singleton
-      // player for the Record tab lifetime. remove() is only for unmount cleanup.
+      // player for the passage lifetime. remove() is only for unmount cleanup.
       player.pause();
       await player.seekTo(0);
       setStatus('idle');

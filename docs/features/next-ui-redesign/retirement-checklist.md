@@ -13,15 +13,26 @@ accepted. Epic signoff is separate and is not this PR.
 
 ## What is still classic
 
+#919 removed the Legacy Home and book screens. #920 removed classic drafting.
+Nothing below is still a reachable classic screen. `verse-detail` stays as an
+adapter: a saved recovery link opens the Next passage with `recoverSessionKey`
+and `recoverVerse`; any other chapter link opens Next (the Observer screen
+when this account may only observe, otherwise the passage at verse 1). A
+chapter whose project cannot be read does not open the editor. The
+title sheet, notices, gallery and recovery do not render classic drafting or
+force a Legacy version.
+
+The table under Workflows is the nightly Android checklist for this
+retirement. A green CI run, and the absence of the old filenames, are not
+that pass.
+
 | Entry | Where | What it still does |
 | --- | --- | --- |
-| Classic drafting | `src/routes/(app)/(stack)/verse-detail.tsx` re-exports `DraftingScreen` | Send, resources the player does not host, all-owner review, and recovery in Legacy |
-| Open in classic drafting | `src/app/v2/screens/passage/TitleSheet.tsx` lines 48–57, test id `passage-classic` | The title sheet's bridge. The comment at lines 6–11 names verse mode, everyone's takes, resources, and Send |
-| Observer | `src/routes/(app)/(stack)/observer-draft.tsx` picks `ObserverScreen` (Next, #913) or `ObserverDraftScreen` (Legacy) by UI version | Read-only chapter. Home and the book page get here from `resolveChapterOpen` (`chapterOpen.ts` lines 77–102) |
-| Recovery in Legacy | `resolveRecoveryHref` (`recoveryHref.ts`), launched from `src/routes/(app)/_layout.tsx` | Legacy opens drafting on the take. Next always opens the passage with `recoverSessionKey` and `recoverVerse`, and `readPassageRecovery` gives the page the saved unit and verse (Q33, #914). Null when the marker or chapter is gone or the chapter's names can't be read, so Resume offers Retry or Discard |
-| Home and book version switch | `src/routes/(app)/(stack)/index.tsx` and `chapters.tsx` | `useUiVersion() === 'next'` picks `HomeScreen` / `BookScreen`; otherwise Legacy `HomeScreen` / `ViewProject` |
-
-No required workflow in the tables below is "done" because that classic link exists. The link is the bridge until the named issue replaces it.
+| Classic drafting | Removed in #920. `verse-detail` redirects to Next | Send, resources, all-owner review and recovery are on the passage |
+| Open in classic drafting | Removed in #920. No `passage-classic` row | Resources, questions, review and Send stay on the passage |
+| Observer | `observer-draft.tsx` renders Next `ObserverScreen` only | Read-only chapter. Home and the book page get here from `resolveChapterOpen` |
+| Recovery | `resolveRecoveryHref` opens the passage with the saved key and verse | Resume does not open classic drafting. Null when the marker or chapter is gone or the names can't be read, so Resume offers Retry or Discard |
+| Home and book | Next `HomeScreen` / `BookScreen` only (#919) | No Legacy version switch |
 
 ## Route map
 
@@ -45,7 +56,7 @@ Every file under `src/routes/` on `c1b3ac51`.
 | `src/routes/(app)/(stack)/index.tsx` | Home | `src/app/v2/screens/HomeScreen.tsx` | #917 removes the `useUiVersion()` branch. #919 then deletes the unused Legacy module, after #915 and #917 |
 | `src/routes/(app)/(stack)/chapters.tsx` | Book / chapter list | `src/app/v2/screens/BookScreen.tsx` | #917 removes the branch. #919 deletes the unused module after #915 and #917 |
 | `src/routes/(app)/(stack)/passage.tsx` | Listen and record | `PassageScreen` only | Retained. Children fill the gaps below |
-| `src/routes/(app)/(stack)/verse-detail.tsx` | Classic drafting | Passage, plus the child destinations | #920 deletes the route after #908–#918. #917 removes links first |
+| `src/routes/(app)/(stack)/verse-detail.tsx` | Old verse-detail URLs | Next passage, or Next Observer for a read-only account. Recovery parameters stay on the passage | #920 keeps this adapter and deletes classic drafting |
 | `src/routes/(app)/(stack)/observer-draft.tsx` | Observer | Next read-only chapter | #913. Does not wait on #918 |
 | `src/routes/(app)/(stack)/sync.tsx` | Sync | `SyncScreen` | Retained. Notification tap stays |
 | `src/routes/(app)/(stack)/prepare-for-offline.tsx` | Downloads | `PrepareForOfflineScreen` | Retained |
@@ -82,7 +93,7 @@ Roles follow [roles and permissions](../../product-behavior/roles-and-permission
 | Prepare for offline | Signed-in user | Online to download | Failed download can be retried | Downloaded files | `prepare-for-offline` | Retained | Prepare tests |
 | Upload notification | Signed-in user | Either | A tap with no session waits until login | Notification id | `useUploadSyncNotificationTap` → Sync | Retained | Notification tap test |
 
-In Next, `resolveRecoveryHref` no longer returns `verse-detail` (#914). Its one `verse-detail` return is Legacy's.
+`resolveRecoveryHref` returns the passage, never `verse-detail` (#914). An old `verse-detail` recovery URL is adapted onto that same passage (#917, #920).
 
 ## Dependency order
 
@@ -94,7 +105,7 @@ No step waits on a later step.
 4. #916 migrates saved Legacy UI choices only after #915.
 5. #917 then points startup and existing links at Next only, and removes the Legacy branch from the home and book route files.
 6. #918 then removes the second theme system. #913 does not wait for it.
-7. #919 deletes the Legacy Home and book modules only after #915 and #917 have made them unreachable. #920 deletes classic drafting after #908–#918.
+7. #919 deletes the Legacy Home and book modules only after #915 and #917 have made them unreachable. #920 deletes classic drafting after #908–#918. The nightly checklist above is the device evidence for that deletion.
 
 #894 signoff, later, needs all of: the workflows above working at runtime, old markers recovered without classic, #915 journeys migrated, one theme system, and no reachable Legacy or classic screen. A disabled control or a green CI run is not that signoff.
 
@@ -114,4 +125,4 @@ These are not presentation. Retirement must not delete them:
 - Sync, upload, and downloads
 - SQLite via `src/db/`
 
-Classic-only types that have to move before `verse-detail` is deleted: the verse-detail search params (`recoverSessionKey`, `recoverVerse` in `hrefs.verseDetail`). #914's destination is `hrefs.passage` with `recover`, so an old verse-detail recovery link maps to it. #913 kept `observer-draft` and `getObserverDraftDestination` as the Next Observer destination, so only the Legacy branch in that route file goes later. #917 may keep an old-URL adapter if a saved link still needs one. #920 removes the verse-detail route and those params when it deletes classic drafting.
+`verse-detail` stays so a saved link still resolves. Recovery params (`recoverSessionKey`, `recoverVerse`) are copied onto `hrefs.passage`. A chapter link with no recovery does not carry them. #913 kept `observer-draft` and `getObserverDraftDestination` as the Next Observer destination. Shared recording, playback, sync and database code stay.

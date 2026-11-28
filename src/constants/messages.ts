@@ -117,7 +117,7 @@ export const PREPARE_OFFLINE_NO_RESOURCES_FOR_SELECTION =
 export const PREPARE_OFFLINE_MANIFEST_LOADING =
   'Loading resources for the selected chapters…';
 
-/** Record tab warning banners (issue #269). */
+/** Passage banners for a chapter someone else holds, or a take conflict (#269). */
 export const RECORD_TAKEN_CHAPTER_WARNING =
   'This chapter is assigned to another translator.';
 export const RECORD_AUDIO_CONFLICT_WARNING =
@@ -161,7 +161,7 @@ export const RECORD_STAGE_ADVANCE_UNUPLOADABLE_WARNING =
 export const PERICOPE_UNAVAILABLE_WARNING =
   "Pericopes aren't available for this project. Showing verses instead.";
 
-/** Record tab when local `bible_texts` row is missing (#448). */
+/** Passage Record when the local `bible_texts` row is missing (#448). */
 export const RECORD_SOURCE_TEXT_SYNCING =
   'Source text still syncing for this verse — recording will unlock when ready.';
 export const RECORD_SOURCE_TEXT_UNAVAILABLE =
@@ -189,24 +189,24 @@ export const RECORD_NOT_OPEN =
   "Recording isn't open on this chapter right now.";
 export const RECORD_MAX_TAKES =
   'This passage has 5 takes. Delete one to record another.';
-/** The cap counts verse-by-verse takes too (#623), which the player doesn't show. */
+/** The cap counts verse-by-verse takes too (#623), which passage mode doesn't show. */
 export const RECORD_MAX_VERSE_TAKES =
-  'A verse here has 5 takes. Delete one in classic drafting to record.';
+  'A verse here has 5 takes. Switch to verse by verse in Settings and delete one to record.';
 export const RECORD_MAX_IN_PASSAGE_TAKES =
   'This verse is in 5 passage takes. Switch to Pericope in Settings and delete one to record it on its own.';
 export const RECORD_MAX_WITH_PASSAGE_TAKES =
   'This verse has 5 takes, counting passage takes over it. Delete one to record.';
 export const RECORD_NO_PERICOPE =
-  "This chapter isn't split into pericopes. Record it in classic drafting.";
+  "This chapter isn't split into pericopes. Switch to verse by verse in Settings to record it.";
 /** Choosing this take would replace an official take recorded as a verse or passage the other way (#896). */
 export const RECORD_REPLACEMENT_BLOCKED_TITLE = "Can't use this take yet";
 export const RECORD_REPLACEMENT_BLOCKED_MESSAGE =
   "An official take overlaps it, recorded as a verse or passage the other way. Replacing that isn't supported yet, so nothing changed. You can still listen to every take.";
 export const RECORD_OBSERVER =
   "You're observing this project, so you can listen but not record.";
-/** Another translator's take is official; the player only lists yours. */
+/** Another translator's take is official; this one is not taken over unseen. */
 export const RECORD_OTHERS_OFFICIAL =
-  "Another translator's take is official. Change it in classic drafting.";
+  "Another translator's take is official. Listen to it in Everyone's takes.";
 export const RECORD_VERSE_BY_VERSE = 'Recorded verse by verse';
 export const recordedOnTheirOwn = (count: number, total: number) =>
   `${count} of ${total} verses recorded on their own`;
@@ -245,12 +245,6 @@ export const swapPassageMessage = (take: RangedTake) =>
   )} anymore.`;
 export const RECORD_OVER_PASSAGE_CANCEL = 'Cancel';
 export const RECORD_OVER_PASSAGE_CONFIRM = 'Record';
-/**
- * Legacy drafting, opened from the Next player for what it has no design for
- * yet: resources.
- */
-export const OPEN_CLASSIC_DRAFTING = 'Open in classic drafting';
-export const OPEN_CLASSIC_DRAFTING_DETAIL = 'Resources';
 /** Next's review of every account's takes here (#910). */
 export const TAKE_REVIEW_TITLE = "Everyone's takes";
 export const TAKE_REVIEW_OPEN_DETAIL = 'Listen to the takes others recorded';

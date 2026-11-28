@@ -31,7 +31,7 @@ const log = logger.create('stageSend');
 
 export type StageSendCheck = {
   chapter: ChapterAssignmentData;
-  /** The Record tab's gate, for the whole chapter. */
+  /** The stage gate, for the whole chapter. */
   visibility: StageAdvanceVisibility;
   hasConflict: boolean;
   hasUnuploadableTakes: boolean;
@@ -39,7 +39,7 @@ export type StageSendCheck = {
 
 /**
  * Whether this account may send the chapter on to its next stage now: the
- * Record tab's gate (role, a fully recorded chapter while drafting, conflict,
+ * stage gate (role, a fully recorded chapter while drafting, conflict,
  * takes that can't upload), read fresh for the whole chapter. Null when the
  * gate offers no send, e.g. a Complete chapter or one not on this phone.
  */
@@ -130,7 +130,7 @@ export class StageSendBlockedError extends Error {
 /**
  * Sends one chapter on to `to` for the account that asked. Rechecks the gate,
  * and refuses if the chapter's next stage is no longer `to`. A nonterminal
- * send is written and queued as the Record tab does, then the queue drains
+ * send is written and queued, then the queue drains
  * once so an online send can come back confirmed. Complete is written only
  * after the server confirms it, and throws otherwise. Throws, writing
  * nothing, when the account changed or the chapter can't be sent.

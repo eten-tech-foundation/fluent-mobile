@@ -59,15 +59,10 @@ import type { ReviewAudio } from './useTakeReview';
 
 const log = logger.create('useRecorder');
 
-/**
- * Something about this passage Legacy's Record tab would show as a banner.
- * `classic`: what it points at is only in classic drafting, so the notice
- * carries the way there.
- */
+/** Something about this passage the player shows as a banner. */
 export interface RecordNotice {
   id: string;
   message: string;
-  classic?: boolean;
 }
 
 /**
@@ -98,15 +93,15 @@ export interface VerseSteps {
   next: number | null;
   /** A take is in progress or saving, so the verse stays put. */
   locked: boolean;
-  /** Asks first mid-take, like leaving a verse in the Record tab. */
+  /** Asks first mid-take, the same leave prompt as backing out. */
   go: (verseNumber: number) => void;
 }
 
 /**
- * Record mode's state for the passage player. Recording works as in Legacy's
- * Record tab: the shared session holds the capture unit, the chapter claim
- * and the rules for who can record here. This turns it into what the fan,
- * the take card and the keys show. In verse mode it records one verse at a
+ * Record mode's state for the passage player. The shared session holds the
+ * capture unit, the chapter claim and the rules for who can record here.
+ * This turns it into what the fan, the take card and the keys show. In verse
+ * mode it records one verse at a
  * time, inside the passage.
  */
 export function useRecorder({
@@ -207,7 +202,7 @@ export function useRecorder({
   const hasConflict =
     isDevPreviewChapterConflictEnabled() || assignment.hasConflict === true;
   const observerOnly = isObserverOnly(assignment, userId);
-  const classicReason =
+  const noPericope =
     !verseMode && session.pericopeUnavailable ? RECORD_NO_PERICOPE : null;
 
   // A saved, deleted or newly picked take re-reads the passage, so its recorded state and send line stay current.
@@ -228,7 +223,7 @@ export function useRecorder({
     reloadRef.current();
   }, [takesKey, textId, verseMode]);
 
-  // Legacy's Record tab warns when a selected take here can't upload (#585).
+  // Warn when a selected take here can't upload (#585).
   const { bibleId, bookId, chapterNumber } = assignment;
   const [unuploadable, setUnuploadable] = useState(false);
   useEffect(() => {
@@ -647,7 +642,7 @@ export function useRecorder({
   // A take waiting on undo is deleted first when Record is pressed.
   const atCap =
     !held &&
-    classicReason === null &&
+    noPericope === null &&
     !deletion.pending &&
     !verseAudio.canRecordNewTake;
   // Our own download doesn't go through sync, so say it's on its way.
@@ -664,7 +659,7 @@ export function useRecorder({
       ? RECORD_NOT_OPEN
       : observerOnly
       ? RECORD_OBSERVER
-      : classicReason);
+      : noPericope);
   const blockedReason = recovered
     ? RECORD_RECOVERED_TAKE
     : paused
@@ -699,14 +694,13 @@ export function useRecorder({
   } else if (observerOnly) {
     notices.push({ id: 'observer', message: RECORD_OBSERVER });
   }
-  if (classicReason !== null && !session.stageLocked) {
-    notices.push({ id: 'classic', message: classicReason, classic: true });
+  if (noPericope !== null && !session.stageLocked) {
+    notices.push({ id: 'no-pericope', message: noPericope });
   }
   if (othersOfficial) {
     notices.push({
       id: 'others-official',
       message: RECORD_OTHERS_OFFICIAL,
-      classic: true,
     });
   }
 
@@ -889,7 +883,7 @@ export function useRecorder({
       session.drafterCaptureBlocked ||
       session.isTaken ||
       observerOnly ||
-      classicReason !== null
+      noPericope !== null
     ) {
       return;
     }
@@ -1113,7 +1107,7 @@ export function useRecorder({
         stepping ||
         (!verseAudio.takesLoaded && verseAudio.state !== 'error') ||
         observerOnly ||
-        classicReason !== null ||
+        noPericope !== null ||
         (verseAudio.takesLoaded && atCap) ||
         session.captureDisabled ||
         session.isTaken),

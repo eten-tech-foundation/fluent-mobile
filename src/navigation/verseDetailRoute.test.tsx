@@ -5,6 +5,7 @@ import { hrefs } from './hrefs';
 
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
+const redirects: string[] = [];
 let mockCanGoBack = true;
 let mockParams: Record<string, string | undefined> = {};
 let mockUserId: number | null = 7;
@@ -19,6 +20,7 @@ jest.mock('expo-router', () => ({
   }),
   Redirect: ({ href }: { href: { pathname: string } }) => {
     const { Text } = require('react-native');
+    redirects.push(href.pathname);
     return <Text>{`Redirect ${href.pathname}`}</Text>;
   },
 }));
@@ -31,12 +33,17 @@ jest.mock('../utils/parseUserId', () => ({
   parseUserId: () => mockUserId,
 }));
 
-jest.mock('../app/screens/DraftingScreen', () => ({
-  __esModule: true,
-  default: () => {
-    const { Text } = require('react-native');
-    return <Text>Classic drafting</Text>;
-  },
+const mockAssignment = jest.fn();
+const mockNames = jest.fn();
+const mockChapterOpen = jest.fn();
+
+jest.mock('../db/queries', () => ({
+  getChapterAssignmentById: (...args: unknown[]) => mockAssignment(...args),
+  getChapterRouteNames: (...args: unknown[]) => mockNames(...args),
+}));
+
+jest.mock('./chapterOpen', () => ({
+  resolveAssignmentOpen: (...args: unknown[]) => mockChapterOpen(...args),
 }));
 
 const passage = hrefs.passage({
@@ -57,14 +64,94 @@ describe('verse-detail route', () => {
     jest.clearAllMocks();
     mockCanGoBack = true;
     mockUserId = 7;
+    redirects.length = 0;
     mockParams = { chapterId: '5', chapterName: 'Mark 14' };
     mockResolve.mockResolvedValue({ status: 'open', href: passage });
+    mockAssignment.mockResolvedValue({
+      id: 5,
+      projectId: 9,
+      projectUnitId: 3,
+      bookName: 'Mark',
+      chapterNumber: 14,
+    });
+    mockNames.mockResolvedValue({
+      projectName: 'Mark Telugu',
+      milestoneName: 'Gospels Phase 1',
+      language: 'Telugu',
+    });
+    mockChapterOpen.mockResolvedValue({ kind: 'work' });
   });
 
-  it('opens classic drafting for a chapter link and does not look the chapter up', async () => {
+  it('opens a chapter link on the Next passage and never renders classic drafting', async () => {
     await render(<VerseDetailRoute />);
-    expect(screen.getByText('Classic drafting')).toBeTruthy();
+    expect(
+      await screen.findByText('Redirect /(app)/(stack)/passage'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Classic drafting')).toBeNull();
+    expect(screen.queryByText('Open in classic drafting')).toBeNull();
     expect(mockResolve).not.toHaveBeenCalled();
+    expect(mockAssignment).toHaveBeenCalledWith(5);
+  });
+
+  it('does not redirect to the previous chapter while the next link is loading', async () => {
+    const view = await render(<VerseDetailRoute />);
+    expect(
+      await screen.findByText('Redirect /(app)/(stack)/passage'),
+    ).toBeTruthy();
+    const redirectsBeforeChange = redirects.length;
+
+    let release: (value: unknown) => void = () => {};
+    mockAssignment.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          release = resolve;
+        }),
+    );
+    mockParams = { chapterId: '8', chapterName: 'Mark 15' };
+    await view.rerender(<VerseDetailRoute />);
+
+    expect(screen.getByTestId('verse-detail-pending')).toBeTruthy();
+    expect(screen.queryByText(/Redirect/)).toBeNull();
+    expect(redirects).toHaveLength(redirectsBeforeChange);
+
+    await act(async () => {
+      release({
+        id: 8,
+        projectId: 9,
+        projectUnitId: 3,
+        bookName: 'Mark',
+        chapterNumber: 15,
+      });
+    });
+    expect(
+      await screen.findByText('Redirect /(app)/(stack)/passage'),
+    ).toBeTruthy();
+    expect(mockAssignment).toHaveBeenCalledWith(8);
+  });
+
+  it('opens an observer chapter on the read-only screen', async () => {
+    mockChapterOpen.mockResolvedValue({
+      kind: 'observer',
+      href: {
+        pathname: '/(app)/(stack)/observer-draft',
+        params: { chapterAssignmentId: '5', projectId: '9' },
+      },
+    });
+    await render(<VerseDetailRoute />);
+    expect(
+      await screen.findByText('Redirect /(app)/(stack)/observer-draft'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Redirect /(app)/(stack)/passage')).toBeNull();
+    expect(mockResolve).not.toHaveBeenCalled();
+    expect(mockNames).not.toHaveBeenCalled();
+  });
+
+  it('shows a missing chapter instead of an editor', async () => {
+    mockAssignment.mockResolvedValue(null);
+    await render(<VerseDetailRoute />);
+    expect(await screen.findByTestId('verse-detail-missing')).toBeTruthy();
+    expect(screen.queryByText(/Redirect/)).toBeNull();
+    expect(mockChapterOpen).not.toHaveBeenCalled();
   });
 
   it('does not flash classic drafting while a recovery link resolves to the passage', async () => {

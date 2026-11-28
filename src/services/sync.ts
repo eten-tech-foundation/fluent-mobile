@@ -1690,7 +1690,7 @@ export async function syncBibleTexts(
         cursorForSync = undefined;
       }
 
-      // Bare UI callers (e.g. DraftingScreen ensure) omit eligibleUserIds — scope
+      // Bare UI callers (e.g. the passage page) omit eligibleUserIds — scope
       // to the active account only. Multi-account syncAllUsers must pass the
       // known-user union explicitly; do not fall back to snapshotKnownUserIds().
       // getActiveUserId() returns '' when unset — reject before Number('') → 0.
@@ -3429,7 +3429,7 @@ export async function refreshChapterMetadataIfOnline(
         sessionToken,
       );
       // One-shot ISO backfill for devices that synced languages before
-      // mapApiLanguage. Verse text stays on Sync Now / DraftingScreen ensure.
+      // mapApiLanguage. Verse text stays on Sync Now / the passage page.
       // NULL/blank ISO only — wrong non-empty codes need #679 by-id seed below.
       await maybeBackfillMasterDataOnRefresh(sessionToken);
       await refreshUserOrgGrants(userIdStr, sessionToken);
@@ -3483,7 +3483,7 @@ export async function refreshChapterMetadataIfOnline(
         stageResult.deferred === 0;
       // New chapters from this light refresh need set-level pericope hydrate
       // (#438 / #766). Warm All-synced sessions have no Sync Now; bible text
-      // already has a DraftingScreen ensure — pericopes must not wait for login.
+      // already has a passage-page ensure — pericopes must not wait for login.
       // Pass the captured session token so unbundled set GETs keep #294 isolation.
       await syncPericopes(sessionToken, userIdStr);
       if (refreshComplete && drainsClean) {

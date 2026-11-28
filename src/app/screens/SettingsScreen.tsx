@@ -200,7 +200,7 @@ export default function SettingsScreen() {
                 <View style={styles.sectionCard}>
                   <SettingsSegmentedRow
                     title="Drafting unit"
-                    subtitle="Choose whether the drafting tabs work one verse at a time or by full pericope."
+                    subtitle="Choose whether a passage is recorded one verse at a time or as a whole pericope."
                     options={[
                       { label: 'Verse', value: 'verse' },
                       { label: 'Pericope', value: 'pericope' },

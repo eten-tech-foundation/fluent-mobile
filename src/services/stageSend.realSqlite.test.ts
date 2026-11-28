@@ -257,7 +257,7 @@ describe('Stage send against real SQLite (#908, #909)', () => {
     expect(mockSubmit).not.toHaveBeenCalled();
   });
 
-  it('reads the gate the Record tab uses, disabling rather than hiding a conflict', async () => {
+  it('reads the stage gate, disabling rather than hiding a conflict', async () => {
     await mockDb.execute(
       'UPDATE chapter_assignments SET has_conflict = 1 WHERE id = 7',
     );
