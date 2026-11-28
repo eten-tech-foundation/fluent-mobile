@@ -1,9 +1,11 @@
 # Next Home -> fixture chapter -> Passage -> back, existing session.
-# Requires: logged-in app, Home reachable, Next up contains the fixture chapter.
-# MAESTRO_FIXTURE_CHAPTER_ID: required digits /^[1-9][0-9]*$/ (anchored selector).
-# Copy the env var onto output.fixtureChapterId first (Graal YAML ${ENV}
-# becomes the literal "undefined" when the key is missing). Fail closed on
-# empty id — do not scroll for home-next-undefined.
+# Requires: logged-in app, Home reachable, and the fixture chapter on the
+# milestone book. Next up only renders a few drafting passages, so an earlier
+# book can fill that rail and hide the fixture. Tap the Next up tile when it
+# is on screen; otherwise open the milestone book.
+# MAESTRO_FIXTURE_CHAPTER_ID and MAESTRO_FIXTURE_MILESTONE_ID: digits
+# /^[1-9][0-9]*$/. Copy the chapter id onto output first (Graal YAML ${ENV}
+# becomes the literal "undefined" when the key is missing).
 # No login or clearState.
 appId: com.eten.fluent
 tags:
@@ -21,14 +23,37 @@ tags:
 - runFlow: ../../shared/nav/goto-home.yaml
 - assertVisible:
     id: 'home-header'
+# Bring Next up on screen, then take the fixture tile only if this account's
+# rail actually rendered it.
 - scrollUntilVisible:
     element:
-      id: '^home-next-${output.fixtureChapterId}:.*'
+      id: 'home-next-up'
     direction: DOWN
-    timeout: 30000
-- runFlow: ../../shared/ensure/ensure-no-modal.yaml
-- tapOn:
-    id: '^home-next-${output.fixtureChapterId}:.*'
+    timeout: 60000
+    visibilityPercentage: 50
+- runFlow:
+    when:
+      visible:
+        id: '^home-next-${output.fixtureChapterId}:.*'
+    commands:
+      - runFlow: ../../shared/ensure/ensure-no-modal.yaml
+      - tapOn:
+          id: '^home-next-${output.fixtureChapterId}:.*'
+# Books sit above Next up. Scroll up before the book helper, which only
+# searches downward.
+- runFlow:
+    when:
+      notVisible:
+        id: 'passage-header|observer-screen'
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: '^home-book-${MAESTRO_FIXTURE_MILESTONE_ID}:.*'
+          direction: UP
+          timeout: 20000
+          visibilityPercentage: 50
+          optional: true
+      - runFlow: ../../shared/nav/open-fixture-chapter-from-milestone.yaml
 - extendedWaitUntil:
     visible:
       id: 'passage-header'
@@ -37,6 +62,18 @@ tags:
     id: 'passage-record|passage-listen'
 - tapOn:
     id: 'passage-back'
+# Next up returns straight to Home. The book path stops on the book page.
+- extendedWaitUntil:
+    visible:
+      id: 'home-header|book-header'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'book-back'
+    commands:
+      - tapOn:
+          id: 'book-back'
 - extendedWaitUntil:
     visible:
       id: 'home-header'
