@@ -24,7 +24,7 @@ A user can be Project Translator **and** drafter on chapter A **and** peer check
 | Project Translator | yes | yes | no | Slot rules apply for edit/submit/claim |
 | Project Observer | yes | no | no | May GET resources (`project:view`); must not edit/claim |
 
-**Inferred current behavior (mobile HEAD `758d4b0`):** app does not persist grants. Gate is signed-in vs not. Resources / Home Sync chrome is **not** grant-gated in client code (`HomeScreen` → `router.push(hrefs.sync)` with no grant check).
+**Inferred current behavior (mobile HEAD `758d4b0`):** app does not persist grants. That pin's note was that the gate is signed-in vs not, and Home Sync is not grant-gated (`HomeScreen` → `router.push(hrefs.sync)`). Chapter open since then is grant-aware: an Observer grant plus project membership opens `observer-draft`, and a failed grant check does not open the editor (`src/navigation/chapterOpen.ts`). Home sync status still opens Sync with no grant check.
 
 **Open product decision:** Should mobile hide Sync, Resources, or Record by grant, or always rely on server 403?
 

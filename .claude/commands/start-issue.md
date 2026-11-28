@@ -175,7 +175,7 @@ When the gate fires:
   when the work matches a skill.
 - Layer boundaries: no `fetch` in screens; no SQL in UI; reads via `queries.ts`
   ([architecture.mdc](../../.cursor/rules/architecture.mdc)).
-- New UI that must differ under Next uses `useTheme()` / `useThemedStyles()` from `src/theme/useTheme` (static `theme` from `src/theme` is Legacy-pinned). Android-only — no iOS config/CI/docs.
+- New UI uses `useTheme()` / `useThemedStyles()` from `src/theme/useTheme` when it sits in a `ColorModeScope` (static `theme` from `src/theme` is Next Hardware). Android-only — no iOS config/CI/docs.
 - Keep the working tree ready for `/create-pr` (`correctness-reviewer` then
   `code-reviewer` on the final working diff inside `/create-pr`).
 

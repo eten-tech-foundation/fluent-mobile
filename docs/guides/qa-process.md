@@ -131,3 +131,87 @@ The **`preview-build`** label still builds an isolated PR APK for **debugging**.
 - Issue / PR linking: [../issue-tracking.md](../issue-tracking.md)
 - CI inventory: [../ci.md](../ci.md)
 - Agent delivery: [../../AGENTS.md](../../AGENTS.md)
+
+## Next nightly scenarios
+
+Human pass on the **nightly** Android APK. Record the nightly comment URL or
+EAS build id with the result. A unit-test run is not this evidence. Maestro
+flows that still tap `drafting-tab-bible`, `record-tab`, or `home-tab-my-work`
+target the retired screens and are not this pass
+([maestro.md](maestro.md)).
+
+Controls: [Next UI](../features/next-ui-redesign/README.md). Multi-account rows
+stay in [qa-multi-account-nightly.md](qa-multi-account-nightly.md).
+
+### Upgrade
+
+On a device that already has an older Fluent install (a stored
+`pref_ui_version`, a `/verse-detail` link, or a paused take):
+
+1. Install the nightly over that install.
+2. Open Settings from the Home avatar → **Accounts on this device** →
+   **Settings**. Confirm there is no **UI version** row. Drafting unit,
+   cellular uploads, Prepare for Offline, Clear cache, Add user, and Log out
+   are still there.
+3. Open a saved `/verse-detail` recovery link (`recoverSessionKey` and
+   `recoverVerse`). It lands on the passage for that chapter and verse. A
+   chapter link with no recovery opens Observer for a read-only account and
+   the passage at the first verse otherwise. A broken link stays on the
+   adapter with **Go back**, and **Try again** when the read failed.
+4. Cold start with a paused take for the active account. The alert offers
+   **Resume** and **Discard**. Resume opens the passage on the saved verse.
+   A failed resume offers **Retry** and **Discard**.
+
+### Offline
+
+1. Prepare for Offline from Settings, then enable airplane mode.
+2. Home and the book page show the last cached chapters. An empty project is
+   an empty list.
+3. Open a prepared passage. Listen plays the downloaded source. Missing audio
+   leaves Play disabled and keeps the verse label.
+4. Open notes from the script, Translation Questions from the title sheet, and
+   Images and maps from the Resources card. Empty content stays empty. A
+   failed load offers Retry.
+5. Record a take. It stays on the device. Sync waits until the network returns.
+
+### Role
+
+1. Drafter or peer: a Home or book tap opens the passage when `chapterOpen`
+   allows work. Open Peer Check re-checks the Translator grant at the tap.
+2. Observer (grant plus project membership): the same tap opens the read-only
+   Observer screen (`observer-draft`). Losing the grant does not open the
+   editor.
+3. A chapter whose project cannot be read does not open the editor.
+4. Send appears on the passage title sheet only for an account allowed to
+   send. The label names the next stage.
+
+### Accessibility
+
+On the nightly, at the passage and on Home:
+
+1. TalkBack reads Listen, Record, and Resume recording, plus the avatar
+   **Accounts** label.
+2. Largest font size and largest display size: scripture uses the 1.3 cap
+   (`fontScale.readingMax`). Line height is capped with it (see the
+   [theme guide](ui-version-theming.md#large-text)). Nothing required is
+   clipped off screen.
+3. Telugu sample text keeps the taller `typeTelugu` line heights.
+4. Canvas (the passage player) uses light status and navigation icons.
+   Hardware chrome uses dark icons.
+5. Remove animations: the player and Resources card still open and close.
+
+### Recovery
+
+The launch alert offers one paused take. A successful Resume does not prompt
+for another marker in that same launch. The other marker stays on disk.
+
+1. Record a verse take, set Settings **Drafting unit** to Pericope, background
+   the app, and relaunch. **Resume** opens the passage on the saved verse in
+   the unit that was saved.
+2. Record a pericope take, set **Drafting unit** back to Verse, background,
+   and relaunch. **Resume** opens that passage in the saved unit.
+3. On a later alert, **Discard** deletes that paused take's segments and stays
+   on Home. It does not upload the take.
+
+Pass or fail follows the rest of this process: a fail after merge gets a new
+bug ticket. This section does not change who merges or when QA runs.

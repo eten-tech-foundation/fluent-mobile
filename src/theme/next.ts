@@ -75,7 +75,7 @@ function deepMergeGroup<T extends object>(base: T, partial: DeepPartial<T>): T {
 
 /**
  * Rebuild layout groups that are derived from colors / spacing / radius so a
- * Next color or spacing override does not leave stale Legacy-derived values.
+ * Next color or spacing override does not leave stale derived values.
  * Explicit layout overrides in `overrides` are applied on top afterward.
  */
 function deriveLayoutTokens(theme: Theme): Theme {
@@ -135,7 +135,7 @@ function applyThemeOverrides(base: Theme, overrides: ThemeOverrides): Theme {
 
 /**
  * Map a Foundations color-role mode onto existing `Theme.colors` keys.
- * Sync/warning workflow colors stay on Legacy until redesign defines them.
+ * Sync and warning colors stay on the baseline until a redesign defines them.
  */
 export function mapRolesToThemeColors(
   roles: NextColorRoles,

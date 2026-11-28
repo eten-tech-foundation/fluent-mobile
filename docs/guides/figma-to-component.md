@@ -5,8 +5,8 @@ component in this repo, and how we check that it looks, moves and *feels*
 right on an Android device. Agents run this as the
 [`figma-component`](../../.claude/skills/figma-component/SKILL.md) skill.
 
-Read [ui-version-theming.md](ui-version-theming.md) first. This guide assumes
-the Legacy / Next split described there.
+Read [ui-version-theming.md](ui-version-theming.md) first. The app has one theme.
+Hardware, Canvas, and Accent are color modes.
 
 ## What's in place
 
@@ -24,11 +24,9 @@ the Legacy / Next split described there.
 | Review screen | `/gallery` (`fluent://gallery`), entries in `src/app/gallery/entries/` |
 | Reference components | `src/components/ui/Key.tsx` (Figma Key, `2326:34`) in `KeyDeck.tsx` (Hardware panel keys, `2411:465`) · `src/components/ui/Switch.tsx` (Figma Switch, `2326:41`) · `src/components/ui/RoundButton.tsx` (Figma Round button, `2326:64`) · `src/components/ui/ProgressRing.tsx` (Figma Progress ring, `2400:302`) |
 
-Legacy carries the same keys with nearest-equivalent values, so components
-never branch on UI version. Components never pick a mode either: they read
-`theme.roles` and the screen decides the mode with `ColorModeScope`. Not yet
-available: the full type scale and gradients. See
-[theme-figma-audit.md](../features/next-ui-redesign/theme-figma-audit.md).
+Components read `theme.roles` and the screen decides the mode with
+`ColorModeScope`. Not yet available: the full type scale and some gradients.
+See [theme-figma-audit.md](../features/next-ui-redesign/theme-figma-audit.md).
 
 Inputs: a GitHub issue on Project 4, and a Figma link **with a `node-id`**
 pointing at the component (or component set), not the page.
@@ -81,10 +79,9 @@ token. If a value has no token:
 3. It's genuinely component-local geometry (a 120px primary key width) →
    a named constant in the component file is fine. Colors never qualify.
 
-No raw hex in component files. No new keys in `tokens.ts` (that's Legacy).
-If a component needs a new `Theme` group, add it in `legacy.ts` with the
-nearest Legacy value, then override it in `next.ts` (that's how `roles`,
-`elevation` and `motion` got there).
+No raw hex in component files. Do not add presentation colors to `tokens.ts`.
+If a component needs a new `Theme` group, add it on `nextBaseline` so every
+mode has the same shape, then override it per mode in `next.ts`.
 
 When the component's bound variables disagree with its Figma description or
 the Foundations notes, build what's bound, flag the mismatch in the PR, and
@@ -95,14 +92,11 @@ three (lip color, sink depth, knob color); their descriptions and the
 ### 4. Build
 
 - **Where:** `src/components/ui/<Name>.tsx`, colocated `<Name>.test.tsx`.
-  No `Next` prefix, since Legacy goes away eventually.
 - **Styles:** `useThemedStyles(t => …)` reading `t.roles`, `t.elevation`,
-  `t.spacing`, `t.radius`. Never module-level `StyleSheet.create` with theme
-  values (it pins Legacy).
-- **Same component or new one?** If Legacy and Next differ only in tokens,
-  it's one component. If the structure differs, build a new component and
-  pick between them once at the screen boundary (`useUiVersion()`), not
-  inside leaf components.
+  `t.spacing`, `t.radius`. A module-level `StyleSheet.create` with theme
+  values stays on Hardware and will not follow Canvas or Accent.
+- **One component.** Structural differences are a branch inside the screen,
+  not a second version of the component. Do not read a UI version.
 - **Keep components presentational.** Props in, callbacks out. No data
   hooks, queries or services inside `src/components/ui/`, so screens own
   the wiring and the gallery can render any state with plain props.
@@ -204,7 +198,8 @@ Rules:
   confirms, never on scroll, never on async results the user didn't just
   cause.
 - One haptic per gesture. Throttle ticks (≥ 50 ms apart) when you add `tick()`.
-- The helper is a no-op in Legacy, so Legacy stays as shipped.
+- The helper stays silent for the whole take, including while it is paused
+  (`isMicActive`).
 
 ### 7. Add it to the gallery
 
@@ -247,8 +242,9 @@ the UI (it can't open on the phone).
   doesn't fire when disabled, and the haptic method and trigger from the
   component's contract (mock `useHaptics`): `press()` on press-in for a Key,
   `toggle(on)` on commit for a Switch.
-- Legacy snapshot (`legacyTheme.test.ts`) may only change additively (new
-  `Theme` groups); any changed or removed value is a regression.
+- `src/theme/legacyTheme.test.ts` locks the Next Hardware mapping. A changed
+  color or type value there is a regression unless the Foundations change
+  is intentional.
 
 ### 9. Feel it on a device
 
@@ -259,7 +255,6 @@ emulator (haptics need a real device):
       `get_screenshot`)
 - [ ] Press feels immediate; release settles; no flicker on fast taps
 - [ ] Haptics fire once, at the right moment, and not during a take (recording or paused)
-- [ ] Settings → Interface → UI version → Legacy: nothing changed
 - [ ] TalkBack: label, role and state read correctly; focus order sensible
 - [ ] Font size at largest + Display size at largest: nothing clips
 - [ ] Remove animations (Accessibility) on: states snap, nothing breaks
@@ -299,12 +294,12 @@ built somewhere: a hook, a query, a sync step, or an API endpoint. Find it
 and use it before writing anything new, then show your work in the PR so a
 dev can check the wiring.
 
-### 1. Start from the Legacy screen
+### 1. Start from the screen that already does the job
 
-Find the Legacy route (`src/routes/`) and screen (`src/app/`) that does the
-same job and list every hook and service it calls. That's the default wiring
-for the Next screen. Next must call the same hooks: the theming guide forbids
-forking sync, recording, DB or auth behavior by UI version.
+Find the route (`src/routes/`) and screen (`src/app/v2/screens/` or
+`src/app/screens/`) that does the same job and list every hook and service it
+calls. The new screen calls those. The theme guide forbids a second copy of
+sync, recording, DB, or auth.
 
 ### 2. Scrub the app for existing functionality
 
@@ -338,7 +333,7 @@ an uncalled method on it), so treat results as leads.
 
 | Status | Meaning | What to do |
 | --- | --- | --- |
-| **Wired** | An app hook or query already provides it | Use it. Same hook as Legacy where one exists |
+| **Wired** | An app hook or query already provides it | Use it. Same hook the current screen uses where one exists |
 | **Available** | The API has it; mobile doesn't call it | Add it the services way (types → `FluentAPI` → sync + repository if cached → test). If the issue doesn't cover it, file a follow-up and leave it out |
 | **Missing** | Nothing exists, app or API | Don't invent an endpoint or fake data in the screen. Show it with fixtures in the gallery only, file a follow-up, and waive the AC in the issue |
 | **Static** | Pure UI (copy, layout, decoration) | Nothing to wire |
@@ -352,11 +347,11 @@ shows how much that matters here.
 Under **Technical changes**, add an **Existing functionality** table. It's the
 thing reviewers check the screen against:
 
-| UI element | Status | Source | Legacy uses it? | Offline? | Dev check |
-| --- | --- | --- | --- | --- | --- |
-| Chapter list | Wired | `useProjectChapters` (`src/hooks/useProjectChapters.ts`) | Yes, `ViewProject` (`src/app/tabs/ViewProject.tsx`) | Yes | Same hook, same sort |
-| Chapter progress ring | Available | `GET /projects/{projectId}/chapter-assignments/progress` | No | No | OK to add a `FluentAPI` method? |
-| Presence ("someone else is editing") | Missing on mobile | `POST /chapter-assignments/{id}/presence` (web only) | No | No | Follow-up #NNN |
+| UI element | Status | Source | Offline? | Dev check |
+| --- | --- | --- | --- | --- |
+| Chapter list | Wired | `useProjectChapters` (`src/hooks/useProjectChapters.ts`) | Yes | Same hook, same sort |
+| Chapter progress ring | Available | `GET /projects/{projectId}/chapter-assignments/progress` | No | OK to add a `FluentAPI` method? |
+| Presence ("someone else is editing") | Missing on mobile | `POST /chapter-assignments/{id}/presence` (web only) | No | Follow-up #NNN |
 
 Then list every **Available** or **Missing** item under **Follow-ups** with
 its issue. Don't bury a gap in "known limitations" (AGENTS.md gate 1).
@@ -433,7 +428,7 @@ its issue. Don't bury a gap in "known limitations" (AGENTS.md gate 1).
 
 - `useThemedStyles` factories must be theme-only (see the theming guide).
 - Never import `src/theme/next*` directly. ESLint will stop you.
-- Don't branch on `uiVersion` inside leaf components.
+- Don't branch on a UI version inside leaf components.
 
 ## Component gallery
 
@@ -449,9 +444,9 @@ The review screen for tapping and feeling components in isolation.
   add it to `.env` and restart Metro.
 - **Route:** top-level `src/routes/gallery.tsx`, registered in the root
   layout behind `Stack.Protected guard={isComponentGalleryEnabled()}`.
-- **Always Next:** the screen wraps itself in `UiVersionOverride` (from
-  `src/theme/useTheme`), so it renders and vibrates as Next whatever the
-  device's UI version is. Check Legacy in the real screens, not here.
+- **Always the one theme.** Hardware, Canvas, and Accent are the Mode control
+  on this screen. They are color modes, not a second UI. Check product screens
+  on a device for flow; check components here.
 - **Controls:** **Mode** (Canvas · Hardware · Accent) recolors only the
   entries without `pin` (Type styles, Icons). Pinned entries render on their
   own mode's background, and Canvas or Accent entries scope their own parts.

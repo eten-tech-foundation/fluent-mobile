@@ -35,21 +35,23 @@ Read it fully before step 1; this file is how an agent executes it.
   server reads by `fileKey` + `nodeId`. If `get_variable_defs` says "nothing
   selected", use a read-only `use_figma` script instead (load the
   `figma-use` guidance first).
-- Code: Next tokens in `src/theme/next*.ts` (never imported from UI; ESLint
-  bans it), Legacy in `src/theme/tokens.ts` (frozen). UI reads everything
-  through `useTheme()` / `useThemedStyles()` from `src/theme/useTheme`:
+- Code: theme sources in `src/theme/next*.ts` (never imported from UI; ESLint
+  bans it). UI reads them through `useTheme()` / `useThemedStyles()` from
+  `src/theme/useTheme`. The static `theme` export is Next Hardware. `tokens.ts`
+  is workflow stage ids and icon spacing, not screen colors. Hooks return
   `t.roles.*` (Foundations role names; Hardware by default, Canvas / Accent
   inside `ColorModeScope`, which screens set and components never do), `t.elevation.*`
   (`boxShadow` strings), `t.motion.*`, `t.opacity.disabled`,
   `t.controlSizes.*`, `t.type.*` (named type styles; layer `t.typeTelugu.*`
-  for Telugu), plus the existing `t.spacing` / `t.radius`. Use `t.type.*` for
-  new text, not the Legacy-keyed `t.typography.sizes`.
+  for Telugu), plus `t.spacing` / `t.radius`. Use `t.type.*` for new text.
+  `t.typography.sizes` stays for older keys such as the record-timer display size.
 - Icons: Phosphor (Figma's `Icon (Phosphor)`), from `src/components/ui/icons`.
   Regular by default, Fill on hardware transport keys; check the weight by
   matching the Figma SVG path to `phosphor-react-native/src/defs/<Name>.tsx`.
-  Add missing icons there as a typed `require` per icon. Lucide is Legacy only.
-- Haptics: `useHaptics()` from `src/hooks/useHaptics.ts` (no-op in Legacy, silent
-  for the whole take, recording or paused, via `src/audio/micActivity.ts`).
+  Add missing icons there as a typed `require` per icon. Do not import
+  `lucide-react-native` in product UI.
+- Haptics: `useHaptics()` from `src/hooks/useHaptics.ts` (silent for the whole
+  take, recording or paused, via `src/audio/micActivity.ts`).
 - Reference implementations: `src/components/ui/Key.tsx` (pressable, latch),
   `Switch.tsx` (controlled value), `RoundButton.tsx` (variant pinned to a mode)
   and `ProgressRing.tsx` (value-driven SVG, wraps a child), with gallery
@@ -118,8 +120,8 @@ Add `src/app/gallery/entries/<Name>Entry.tsx` and register it in
 `entries/index.ts` with the Figma link as a code comment. Live demos only, no
 static state grids: a small realistic interaction that reaches every state
 (see the Key's transport demo), at the sizes Figma uses it, with long-text and
-Telugu samples for text. The gallery always renders Next
-(`UiVersionOverride`), so don't add a version toggle. Demos show the component
+Telugu samples for text. The gallery renders the one theme. Hardware, Canvas,
+and Accent are the Mode control. Demos show the component
 doing its real job in the app: find where Figma instances it on the screen
 pages (content, neighbors, mode) and recreate that, never an invented
 scenario. Every state in the contract must be reachable in the demo (add a
@@ -133,8 +135,8 @@ Check every RN style feature's Android floor against `minSdkVersion` 24 (inset
 Skip for leaf components (they stay presentational). For a screen, run guide
 section "Screens: wire to what exists" before writing screen code:
 
-1. Find the Legacy route + screen for the same job; list every hook/service
-   it calls. Next calls the same ones.
+1. Find the route and screen that already do this job; list every hook and
+   service they call. The new screen calls the same ones.
 2. For each data point and action in the frame, search `src/hooks`,
    `src/db/queries.ts`, `src/services`, `src/audio`, and
    `docs/assessments/<feature>/` (use the Explore agent for a wide sweep).
@@ -153,9 +155,9 @@ section "Screens: wire to what exists" before writing screen code:
 - Unit test via the `write-test` skill (states, a11y state, disabled
   behavior, and the haptic method and trigger from the component's contract,
   with `useHaptics` mocked).
-- `npm run typecheck && npm run lint && npm test -- <Name>`. The Legacy
-  snapshot may only change additively (new `Theme` groups); anything else
-  is a regression.
+- `npm run typecheck && npm run lint && npm test -- <Name>`.
+  `legacyTheme.test.ts` locks the Next Hardware mapping. A changed color or
+  type value there is a regression unless the Foundations change is intentional.
 - If an emulator is attached, open the gallery, drive the demo into each state, screenshot it and
   compare it with the Figma screenshot side by side. Report differences
   honestly.
@@ -176,7 +178,7 @@ token mapping report (collapsed), gallery path under "How to verify",
 before/after screenshots,
 **Needs QA? Yes** if haptics or recording are involved. For screens, add the
 **Existing functionality** table (UI element · Status · Source with file or
-OpenAPI path · Legacy uses it? · Offline? · Dev check) under Technical
+OpenAPI path · Offline? · Dev check) under Technical
 changes, and list every Available / Missing item under Follow-ups with its
 issue. Ask reviewers to confirm the wiring in the PR TLDR.
 
@@ -186,8 +188,8 @@ issue. Ask reviewers to confirm the wiring in the PR TLDR.
 - Don't import `src/theme/next*` from UI, add keys to `tokens.ts`, or put
   hex in component files.
 - Don't call `expo-haptics` directly from components.
-- Don't branch on `uiVersion` inside the component. Branch once at the screen.
+- Don't branch on a UI version inside the component.
 - Don't build adjacent components the ticket didn't ask for (AGENTS.md gate 2).
 - Don't put data hooks or services in `src/components/ui/`, call `fetch`
-  from a screen, or add a new data path when the Legacy screen's hook
+  from a screen, or add a new data path when the current screen's hook
   already provides it.

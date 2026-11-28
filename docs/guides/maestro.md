@@ -42,7 +42,7 @@ bash scripts/maestro-test-qa.sh --config .maestro/config.yaml .maestro/flows/har
 | My Work → drafting | `flows/navigation/my-work-to-drafting.yaml` | `nav` / `smoke` |
 | Projects → drafting | `flows/navigation/projects-to-drafting.yaml` | `nav` / `smoke` |
 | Empty assignments (Account B) | `flows/navigation/empty-assignments.yaml` | `npm run maestro:test:empty-assignments` |
-| Drafting tabs / Bible→Record / Resources | `flows/drafting/*` | `drafting` / `smoke` |
+| Drafting tabs / Bible→Record / Resources | `flows/drafting/*` | `drafting` / `smoke`. These files still tap the retired classic tabs (`drafting-tab-bible`, `record-tab`). They are not the Next nightly script |
 | Record → stop → play → delete | `flows/recording/record-stop-play-delete.yaml` | `record` / `smoke` |
 | Recording nav guard | `flows/recording/recording-nav-guard.yaml` | `edges` / `record` |
 | Sync Now / prepare-offline / settings | `flows/sync/*` | `sync` / `smoke` |
@@ -60,7 +60,7 @@ bash scripts/maestro-test-qa.sh --config .maestro/config.yaml .maestro/flows/har
 | --- | --- | --- |
 | Cold launch / login chrome | `harness/launch`, `auth/login-happy-path` | Boot splash polish |
 | Session restore | `auth/session-restore` | — |
-| My Work / Projects → drafting | `navigation/*`, `drafting/tabs` | Visual polish |
+| My Work / Projects → drafting | `navigation/*`, `drafting/tabs` | Those flows still look for the retired Home tabs. Human nightly evidence for Home, the book page, and the passage is [qa-process.md](qa-process.md#next-nightly-scenarios) |
 | Empty My Work (no assignments) | `navigation/empty-assignments` | — |
 | Record happy path | `recording/record-stop-play-delete` | Mic fidelity, Bluetooth |
 | Sync Now settles | `sync/sync-now` | — |

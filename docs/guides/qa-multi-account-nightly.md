@@ -27,10 +27,10 @@ Optional third account if testing the device limit (`MAX_DEVICE_ACCOUNTS` = 3).
 ## Setup (once per run)
 
 1. Install the nightly APK ([qa-preview-testing.md](qa-preview-testing.md)).
-2. Sign in as **Account A**. On **Home**, tap the **sync icon** in the header → **Sync** screen → run sync and wait for success.
-3. Note one chapter you can open on Account A (project + chapter for recording checks below).
-4. Open the **drawer** (gear menu) → **Add User** → sign in as **Account B** (or use **Settings → Account → Add user**).
-5. While **Account B** is active, run sync from the Home header sync icon and note a chapter distinct from Account A’s.
+2. Sign in as **Account A**. On **Home**, tap the **sync status** button in the header (`home-sync`) → **Sync** screen → run sync and wait for success.
+3. Note one chapter you can open on Account A (project + chapter for the passage checks below).
+4. On Home, tap the **avatar** (or **Accounts and settings** while the name is still loading). In **Accounts on this device**, tap **Add account** and sign in as **Account B**. Settings → **Add user** opens the same sign-in.
+5. While **Account B** is active, run sync from the Home header sync status button and note a chapter distinct from Account A’s.
 
 Record build id / nightly comment URL at the top of your results (see template below).
 
@@ -44,15 +44,15 @@ Mark each row **Pass** / **Fail** / **N/A**. File a **new bug issue** for every 
 
 | # | Step | Expected | Pass? |
 | --- | --- | --- | --- |
-| A1 | Open drawer (gear) → **Accounts** | Lists Account A and Account B; active row shows checkmark / focused state | |
-| A2 | Drawer → **Add User** (or Settings → Account → **Add user**) | Navigates to add-user sign-in; after sign-in, both accounts appear in the drawer list | |
-| A3 | Account limit (optional) | With three accounts stored, add flow reflects limit (no fourth slot) | |
+| A1 | Home avatar → **Accounts on this device** | Lists Account A and Account B; the active row shows a check | |
+| A2 | **Add account** (or Settings → **Add user**) | Opens add-user sign-in; after sign-in, both accounts appear in the sheet | |
+| A3 | Account limit (optional) | With three accounts stored, **Add account** reflects the limit (no fourth slot) | |
 
 ### B. Switch accounts (UI + navigation)
 
 | # | Step | Expected | Pass? |
 | --- | --- | --- | --- |
-| B1 | Switch A → B from drawer **Accounts** | Lands on Home; no white screen or crash | |
+| B1 | Switch A → B from the Accounts sheet | Lands on Home; no white screen or crash | |
 | B2 | Open **Settings** on Account B | Settings renders (header, preferences, account rows) — no red screen | |
 | B3 | Switch B → A | Home loads; switcher shows A as active | |
 | B4 | Open **Settings** on Account A | Same as B2 | |
@@ -63,16 +63,16 @@ Perform these checks **after** switching — data must match the **active** acco
 
 | # | Step | Expected | Pass? |
 | --- | --- | --- | --- |
-| C1 | **My Work** (or project chapter list) | Shows chapters assigned to the active user only; switching users changes the list | |
-| C2 | Open a chapter → **Record** tab (drafting) for a chapter owned by active user | Verse list loads; no other user’s in-progress take appears as yours | |
+| C1 | Home **My work**, or the book page | Shows chapters for the active user; switching users changes the list | |
+| C2 | Open a chapter the active user can edit. On the passage, open **Record** | The take list is that user's. No other user's in-progress take appears as yours | |
 | C3 | Switch to the other account and repeat C1–C2 | Previous account’s assignments do not appear while the other user is active | |
 
 ### D. Sync scoped to active user
 
 | # | Step | Expected | Pass? |
 | --- | --- | --- | --- |
-| D1 | On Account A, Home header **sync icon** → Sync → trigger sync | Completes without auth errors; last-sync indicator updates | |
-| D2 | Switch to Account B, repeat from Home header sync icon | Completes; does not revert A’s UI or show A’s email as active | |
+| D1 | On Account A, Home header **sync status** → Sync → trigger sync | Completes without auth errors; last-sync indicator updates | |
+| D2 | Switch to Account B, repeat from the Home header sync status | Completes; does not revert A’s UI or show A’s email as active | |
 | D3 | Switch back to A | Projects/chapters still present for A (offline data retained per account) | |
 
 ### E. Sign-out / session edge (optional)

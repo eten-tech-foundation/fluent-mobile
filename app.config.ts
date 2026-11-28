@@ -131,7 +131,8 @@ const config: ExpoConfig = {
     [
       'expo-font',
       {
-        // Next UI type styles (src/theme/nextFoundation.ts). Legacy stays on system fonts.
+        // App type styles (src/theme/nextFoundation.ts): Plus Jakarta Sans and
+        // Atkinson Hyperlegible Next. Android families only.
         android: {
           fonts: [
             googleFontFamily('plus-jakarta-sans', 'PlusJakartaSans', {

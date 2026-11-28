@@ -1,13 +1,17 @@
 # v2 feature manifest
 
-> **Working draft.** This plan changes as we prototype, review and test on
-> devices. See the [Next UI README](README.md) for the current approach.
+> **Historical plan, written 2026-10-15.** The tables record what the app did
+> then and what the redesign was drawn to add. Current routing, theme, and
+> recovery: [Next UI](README.md) and [theme](../../guides/ui-version-theming.md).
+> The route map after #916–#920 is the [retirement checklist](retirement-checklist.md).
 
-What the app does today (v1, "Legacy"), what v2 has designs for, what the
-backend supports, and roughly what it takes to move each piece to v2. Built
-2026-10-15 from `origin/main` at `fd4b966`, the fluent-api OpenAPI (v26.10.00,
-127 operations), fluent-web `main`, and the Figma file's My Work, Listen and
-Record pages.
+Inventory of the October 2026 app, the Figma frames, and the backend, plus a
+rough effort guess for moving each piece. Built from `origin/main` at
+`fd4b966`, the fluent-api OpenAPI (v26.10.00, 127 operations), fluent-web
+`main`, and the Figma file's My Work, Listen and Record pages. Sentences
+below that tell you to branch a route by UI version, freeze a removed screen,
+or open classic drafting for Send are that plan. The shipped app does none of
+those.
 
 Open design, product and API questions live in
 [open-questions.md](open-questions.md) (PR #697); this doc refers to them by
@@ -22,13 +26,17 @@ ID.
 
 ## The biggest gaps
 
-Ranked by how much they block a full switch to v2.
+Ranked on 2026-10-15 by how much they blocked a full switch. Still-open API
+and design gaps stay open in [open questions](open-questions.md). The route
+and screen items were finished by #916–#920.
 
-1. **No v2 design for most of the app.** Figma covers the drafting flow. Login,
-   Home, My Work, Milestones, Sync, Prepare for Offline and Settings have no v2
-   frames, and neither do the drafting flow's dialogs and edge states (crash
-   recovery, recording gates, conflicts, stage advance, empty and error
-   states). Agents can build these quickly, but shouldn't invent the design.
+1. **No v2 design for most of the app (October).** Figma covered the drafting
+   flow. Login, Home, My Work, Milestones, Sync, Prepare for Offline and
+   Settings had no v2 frames, and neither did the drafting flow's dialogs and
+   edge states (crash recovery, recording gates, conflicts, stage advance,
+   empty and error states). Home, login, Sync, Prepare for offline, and
+   Settings have since shipped on the shared theme. Do not draw a second
+   version of them.
 2. **The new v2 features have no backend.** The FIA step tracks and listened
    progress are the heart of the new pericope screen, and no endpoint provides
    either (Q11, Q13). The Figma example passage doesn't match the pericope sets
@@ -36,50 +44,42 @@ Ranked by how much they block a full switch to v2.
    on the official take's timeline, taken in turns by reviewers. fluent-api
    has no comments, reviewers or review rounds at all, and the design differs
    from the comment tickets already filed (#451, #703; Q21–Q23).
-3. **One architecture call blocks the Now playing bar.** An app-level player
-   so audio survives navigation (Q9). Where v2 branches from Legacy (Q8) is
-   settled: one signed-in shell, with route files picking the Legacy or Next
-   screen.
-4. **Recording rules live inside the v1 screen.** v2 gets its own screens and
-   Legacy screens stay frozen (see [v2 routes](#v2-routes)), so the 76 Legacy-styled files
-   don't need migrating. `RecordTab.tsx` still holds the stage-advance rules
-   and take handling. The leave-while-recording guard and the drafting upload
-   hold live in `useRecordCaptureLeaveGuard` and `useDraftingUploadHold`,
-   which Legacy drafting and the Next passage screen both call.
-5. **v1 bugs v2 inherits.** The drafting flow reuses v1's logic. Offline stage
+3. **An app-level player (Q9) was the open call for audio that survives
+   navigation.** The passage player is what shipped. Q9 stays in open
+   questions if a bar across other screens is still wanted. Route files do
+   not pick between two screens.
+4. **Recording rules moved into shared hooks.** `RecordTab.tsx` is gone.
+   The passage calls `useRecordCaptureLeaveGuard` and `useDraftingUploadHold`.
+   There is no frozen second screen to keep in parallel.
+5. **Bugs the passage still shares with the old logic.** Offline stage
    advances are queued and synced on reconnect (#257, #770). Changing the
    selected take syncs (#701, #723), and takes other than the selected one
-   upload (#716, #828). Still open: takes play silent on Xiaomi (#707), and
-   pericope uploads target an unmerged endpoint (fluent-api #391).
+   upload (#716, #828). The October inventory also lists takes playing silent
+   on Xiaomi (#707) and pericope uploads against fluent-api #391. Re-check
+   those issues before treating them as open or fixed.
 
-What isn't a gap: drafting itself. Listening, reading, recording, takes,
-resources and stage advance all work in v1, and the backend supports them.
-Moving them to v2 is wiring the new screens to the hooks v1 already has.
+What was not a gap in October: listening, reading, recording, takes,
+resources, and stage advance already had backend support. They now run on
+the passage and the shared hooks.
 
-## v2 routes
+## Routes
 
-One signed-in shell, the existing `(app)` drawer and stack. v2 screens live in
-`src/app/v2/screens/`, and route files pick the Legacy or Next screen by UI
-version at the same path, so params, back stack and every "go home" keep
-working. Screens only v2 has (the chapter's passages, the player) get new
-route files under `(app)` that only Next links to. Legacy screens don't change.
-This follows the #727 review; a separate `/v2` route tree was tried and dropped.
+Shipped shape, replacing the October "pick a screen by UI version" plan. A
+separate `/v2` route tree was tried and dropped in the #727 review. The
+version branch inside the same path was removed in #917–#920.
 
-- **Shared logic, not shared UI.** Both versions call the same hooks and
-  services (auth, sync, uploads, recording engine, source audio, downloads).
-  That's where the backend is wired today, so v2 screens get it for free.
-  Bible, Resources, My Work and Prepare for Offline are already thin over hooks.
-- **The one Legacy change:** lift the rules inside `RecordTab` and
-  `DraftingScreen` into shared hooks (stage advance, recording gates, takes,
-  leave guard), with Legacy calling them unchanged and the existing tests
-  proving it.
-- **Shared destinations stay as they are** (Settings, Sync, Prepare for
-  offline, the drawer) until a v2 version replaces that route's screen.
-- **Legacy Home behaviors v2 Home needs too:** the download-repair sync
-  (`needsDownloadSync`), the Prepare for offline auto-prompt, the reauth
-  banner, and the loading state after adding an account (`newUserLoading`).
-- **Cost:** two UIs until Legacy is deleted. Logic fixes land in both; UI
-  fixes don't.
+Product screens live in `src/app/v2/screens/`. The route file re-exports one
+screen, so params, the back stack, and `hrefs` stay on the existing paths.
+Home, the book page, the passage, and Observer are those screens.
+`verse-detail` adapts old URLs onto the passage or Observer. Settings, Sync,
+and Prepare for offline stay on their routes. Accounts open from the Home
+avatar sheet; drawer swipe is off.
+
+The passage calls the same auth, sync, upload, recording, source-audio, and
+download services. Home still carries the download-repair sync, the Prepare
+for offline auto-prompt, the reauth banner, and `newUserLoading` after adding
+an account. The [retirement checklist](retirement-checklist.md) is the route
+table.
 
 ## Screen triage and drafts
 
@@ -174,7 +174,7 @@ Resources, Images) → the player and recorder.
 
 | Feature | What we need to support | v2 design | Backend |
 | --- | --- | --- | --- |
-| Settings | UI version, Prepare for offline, cellular uploads, verse or pericope drafting, clear cache, add user, log out, session expired | — | Local |
+| Settings | v1 listed UI version plus Prepare for offline, cellular uploads, verse or pericope drafting, clear cache, add user, log out, session expired. Shipped Settings keeps those controls except the UI version row (#916). | — | Local |
 
 ## 2. New in v2
 
@@ -204,7 +204,7 @@ Things the Figma designs add that v1 doesn't do.
 | `GET /projects/{id}/workflow-stages` | Real stage names and order instead of hard-coded ones |
 | `GET/PUT /chapter-assignments/{id}/editor-state` | Resume where you were on another device |
 | `POST/DELETE /chapter-assignments/{id}/presence` | Warn when someone else is in the chapter |
-| `GET /config/features` | Server-side feature flags for v2 rollout |
+| `GET /config/features` | Server-side feature flags. The app does not use this to choose a UI |
 
 ### Needs API work
 
@@ -343,43 +343,38 @@ Settle these before anyone builds them:
 - Selected-take sync (#701, #723), upload of every take (#716, #828), and the
   offline stage-advance queue (#257, #770) shipped after this list was written.
   Next reads that queue for "waiting to send" on passage and book-page covers.
-  Next's own Send is a separate ticket (Q29, Q30). Until it ships, the passage
-  page bridges to Legacy classic drafting, where Send lives.
+  Send is the passage title sheet (`passage-send`), not a second screen. The
+  October note that Send lived in classic drafting is out of date (#908, #920).
 
-### Next parity with Legacy
+### Workflows on the passage
 
-The [retirement checklist](retirement-checklist.md) (#907) is the map of
-each workflow, its Next destination, and the issue that implements it.
-The bridges below stay until those issues land. They are not parity.
+The [retirement checklist](retirement-checklist.md) is the map. Classic
+drafting and "Open in classic drafting" were removed in #920. `verse-detail`
+only adapts old URLs onto the passage or Observer.
 
-Where Next has no design yet, it bridges to the matching Legacy screen rather
-than dead-ending:
+- **Send, resources, questions, and everyone's takes** are on the passage.
+  Verse mode records in the player (Q31).
+- **Observer** (`observer-draft`): an Observer's chapter opens read-only from
+  Home and the book page, with the grant and membership re-checked at the tap.
 
-- **Classic drafting** (`verse-detail`): "Open in classic drafting" in the
-  passage title's sheet, to Send and as a fallback. Verse mode records in the
-  player (Q31).
-- **Observer view** (`observer-draft`): an Observer's chapter opens read-only
-  from Home and the book page, with the grant and membership re-checked at
-  the tap.
-
-Folded in from Legacy, so Next blocks and warns the same way:
+The passage blocks and warns through the same shared rules:
 
 - **Conflicts and uploads:** a sync conflict or takes that can't upload block
-  Record with Legacy's banner. Home, Next up and the book page show "Sync
-  conflict" or "Upload pending", and Books count takes waiting to upload.
+  Record. Home, Next up, and the book page show "Sync conflict" or "Upload
+  pending", and Books count takes waiting to upload.
 - **Ownership:** a chapter taken by someone else, an open Peer Check
-  (Translator grant re-checked at the tap) and Observer chapters block or
-  route as in Legacy. Next up lists peer checks, open peer checks and
-  observed chapters under "Checking and observing". The book page names each
-  chapter's stage and whose it is.
+  (Translator grant re-checked at the tap), and Observer chapters block or
+  route through `chapterOpen`. Next up lists peer checks, open peer checks,
+  and observed chapters under "Checking and observing". The book page names
+  each chapter's stage and whose it is.
 - **Recovery:** every paused take resumes on the passage page, in the unit it
   was saved in and on the verse it was keyed on, whatever the drafting setting
   (Q33).
 - **Source text:** opening a passage repairs a blank language code and
   downloads missing text once when online.
 - **Home:** milestones with no chapters still list, "recorded" counts chapters
-  with takes, the accounts sheet has Privacy Policy and Terms of Use, and the
-  Legacy drawer's swipe is off in Next.
+  with takes, the accounts sheet has Privacy Policy and Terms of Use, and
+  drawer swipe stays off.
 
 ### Hold until after the summit
 
@@ -415,8 +410,9 @@ note), so the design pages read as intent. Each design page carries a
   Wave bar once one exists.
 - Passage row and Now playing: still on the screen pages (58 and 27
   instances), though the app has Passage covers and no Now playing bar.
-- Gallery: the Dialog demo is the player's take-pick confirm, since Next has
-  no Send yet, while Figma's Dialog frame is the send confirm (2648-616).
+- Gallery: the Dialog demo on 11 Nov was the player's take-pick confirm,
+  while Figma's Dialog frame is the send confirm (2648-616). Send has since
+  shipped on the passage title sheet.
 - Word: the Word chip in notes is a space/2 shorter than its line, not a
   space/4.
 
@@ -434,40 +430,29 @@ Ours: #692, #694, #695, #696 (Next UI foundations). The Mobile Feature Audit
 epic (#526) and its audits (#528–#534) are tracking chores with no effect on
 the plan.
 
-## v2 as a beta
+## After the summit
 
-After the summit, v2 stays in the app as a beta so backend hooks and
-connectors can land a little at a time.
+The Settings UI version switch was removed (#916). The app does not read a
+feature flag to choose a second UI. The nightly APK (QA API) and the
+Play internal track are still who has the app. Connectors land on `main` as
+normal PRs. A new persisted shape still needs a migration.
 
-- **Gate:** Settings → Interface → UI version. Next is the default. An explicit
-  Legacy choice stays stored. Later, `GET /config/features` can turn it on per
-  user or project from the server.
-- **Who gets it:** the team on the nightly APK (QA API), and wider testers on
-  the Play internal track, which is the only place production builds go today.
-- **Safe to switch back and forth:** v2 writes through the same hooks and
-  services as v1, so a take recorded in v2 shows up in v1. A connector that
-  writes a new shape of data needs a v1 read path or a migration first.
-- **Connectors land on `main` behind the toggle**, one small PR each: the
-  endpoints mobile can adopt today first, then the API work as it ships.
-- **Unfinished areas** link to the v1 screen rather than show an empty v2 one.
-  Listen plays the chapter's source audio on the Next passage screen. FIA and
-  other material tracks are not connected (no API yet).
-- **Review contract:** PRs that only touch v2 screens, `src/components/ui`, the
-  gallery or docs get a light review, since Legacy users can't reach them.
-  PRs that touch shared hooks or services get the normal review. Needs the
-  team's OK.
+Listen plays the chapter's source audio on the passage. FIA and other
+material tracks are not connected (no API yet). Unfinished areas stay
+unbuilt and linked from [open questions](open-questions.md). They do not open
+another screen.
 
-### Before a public release
+PRs that touch `src/app/v2/`, `src/components/ui`, the gallery, or shared
+hooks get the normal review. Shared hooks and services are the product path.
 
-- Next is now the default. Retire the toggle and the Legacy routes later.
+## Known issues that carry over
 
-## Known v1 issues that carry over
+The passage reuses the same logic. Status below is the October writeup and
+was not re-checked for this doc:
 
-Fix these regardless of v2, since v2 reuses the same logic:
-
-- Offline stage advances are queued and pushed on reconnect (#257, #770). Next
-  shows that pending row as waiting to send; it does not send from the passage
-  screen.
+- Offline stage advances are queued and pushed on reconnect (#257, #770). The
+  passage shows that pending row as waiting to send. Confirming a sendable
+  row is the title sheet (`passage-send`).
 - Take upload is no longer selected-only, and deleting an uploaded take syncs
   (#716, #828). Changing the selected take syncs (#701, #723).
 - Takes recorded since #567 play silence on Xiaomi devices (#707, High).
